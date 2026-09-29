@@ -1,0 +1,9 @@
+node_modules/
+dist/
+artifacts/
+.vscode-test/
+test-results/
+playwright-report/
+coverage/
+*.log
+*.vsix

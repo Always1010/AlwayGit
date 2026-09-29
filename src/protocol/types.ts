@@ -1,0 +1,45 @@
+export interface Repository { id: string; root: string; commonDir: string; name: string }
+export interface Change { path: string; originalPath?: string; indexStatus: string; worktreeStatus: string; conflict: boolean; untracked: boolean }
+export interface GitRef { name: string; fullName: string; kind: 'local' | 'remote' | 'tag'; oid: string; upstream?: string }
+export interface Stash { selector: string; oid: string; subject: string }
+export interface Worktree { path: string; head: string; branch?: string; bare: boolean; detached: boolean; locked?: string; prunable?: string }
+export type OperationKind = 'merge' | 'rebase' | 'cherry-pick' | 'revert';
+export interface OperationState { kind?: OperationKind; conflicts: number; canContinue: boolean; canAbort: boolean; canSkip: boolean }
+export interface Snapshot { repository: Repository; branch: string; head?: string; upstream?: string; ahead: number; behind: number; changes: Change[]; refs: GitRef[]; stashes: Stash[]; worktrees: Worktree[]; operation: OperationState; version: number }
+export interface Commit { oid: string; parents: string[]; author: string; email: string; timestamp: number; subject: string }
+export interface HistoryQuery { offset?: number; limit?: number; tips?: string[]; ref?: string; search?: string }
+export interface HistoryPage { commits: Commit[]; nextOffset: number; hasMore: boolean; tips: string[] }
+export interface CommitFile { path: string; previousPath?: string; status: string }
+export interface CommitDetails { commit: Commit; body: string; files: CommitFile[]; parent?: string }
+export type GitAction =
+  | { type: 'stage' | 'unstage' | 'discard'; paths: string[] }
+  | { type: 'commit'; message: string; amend?: boolean }
+  | { type: 'fetch'; remote?: string }
+  | { type: 'pull'; strategy: 'ff-only' | 'merge' | 'rebase'; remote?: string }
+  | { type: 'push'; remote?: string; branch?: string; forceWithLease?: boolean }
+  | { type: 'branch.create'; name: string; start?: string; checkout?: boolean }
+  | { type: 'branch.checkout'; name: string }
+  | { type: 'branch.delete'; name: string; force?: boolean }
+  | { type: 'tag.create'; name: string; target?: string; message?: string }
+  | { type: 'tag.delete'; name: string }
+  | { type: 'stash.create'; message?: string; includeUntracked?: boolean }
+  | { type: 'stash.apply'; selector: string; pop?: boolean }
+  | { type: 'stash.drop'; selector: string }
+  | { type: 'worktree.add'; path: string; branch?: string; newBranch?: string; start?: string; detach?: boolean }
+  | { type: 'worktree.remove'; path: string; force?: boolean }
+  | { type: 'merge' | 'rebase'; target: string }
+  | { type: 'cherry-pick' | 'revert'; commits: string[]; mainline?: number }
+  | { type: 'reset'; target: string; mode: 'soft' | 'mixed' | 'hard' }
+  | { type: 'operation.continue' | 'operation.abort' | 'operation.skip'; kind: OperationKind };
+export type ContentSource = { kind: 'revision'; revision: string; path: string } | { kind: 'index'; path: string; stage?: 0 | 1 | 2 | 3 } | { kind: 'empty' };
+export type DiffTarget = { kind: 'change'; path: string; area: 'staged' | 'unstaged' | 'conflict' } | { kind: 'commit'; oid: string; path: string; parent?: string; previousPath?: string };
+export interface RpcRequest { id: string; method: 'repositories' | 'addRepository' | 'snapshot' | 'history' | 'details' | 'action' | 'diff' | 'openFile' | 'openWorktree' | 'pickWorktree' | 'showLog' | 'saveSession'; repoId?: string; payload?: unknown }
+export type HostMessage = { type: 'response'; id: string; result?: unknown; error?: { message: string; code?: string } } | { type: 'changed'; repoId: string } | { type: 'activity'; repoId: string; busy: boolean; label: string } | { type: 'repositoriesChanged' } | { type: 'selectRepository'; repoId: string };
+export interface GitServiceContract {
+  discover(root: string): Promise<Repository>;
+  snapshot(repo: Repository): Promise<Snapshot>;
+  history(repo: Repository, query?: HistoryQuery): Promise<HistoryPage>;
+  details(repo: Repository, oid: string, parent?: string): Promise<CommitDetails>;
+  content(repo: Repository, source: ContentSource): Promise<Buffer>;
+  execute(repo: Repository, action: GitAction): Promise<void>;
+}

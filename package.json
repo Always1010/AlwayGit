@@ -1,0 +1,170 @@
+{
+  "name": "alwaygit",
+  "displayName": "AlwayGit",
+  "description": "A professional Git workbench inside Visual Studio Code.",
+  "version": "0.1.0",
+  "publisher": "alwaygit-dev",
+  "private": true,
+  "type": "module",
+  "license": "UNLICENSED",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "SCM Providers",
+    "Visualization"
+  ],
+  "keywords": [
+    "git",
+    "graph",
+    "worktree",
+    "commit"
+  ],
+  "main": "./dist/extension.cjs",
+  "extensionKind": [
+    "workspace"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onWebviewPanel:alwaygit.workbench"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Git execution requires a trusted workspace."
+    },
+    "virtualWorkspaces": {
+      "supported": false
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "alwaygit.open",
+        "title": "Open Git Workbench",
+        "category": "AlwayGit",
+        "icon": "$(git-merge)"
+      },
+      {
+        "command": "alwaygit.addRepository",
+        "title": "Add Repository",
+        "category": "AlwayGit",
+        "icon": "$(add)"
+      },
+      {
+        "command": "alwaygit.refresh",
+        "title": "Refresh Repositories",
+        "category": "AlwayGit",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "alwaygit.showLog",
+        "title": "Show Git Output",
+        "category": "AlwayGit"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "alwaygit",
+          "title": "AlwayGit",
+          "icon": "media/alwaygit.svg"
+        }
+      ]
+    },
+    "views": {
+      "alwaygit": [
+        {
+          "id": "alwaygit.repositories",
+          "name": "Repositories",
+          "when": "isWorkspaceTrusted"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "alwaygit.repositories",
+        "contents": "[Open Git Workbench](command:alwaygit.open)\n[Add Repository](command:alwaygit.addRepository)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "alwaygit.open",
+          "when": "view == alwaygit.repositories",
+          "group": "navigation@1"
+        },
+        {
+          "command": "alwaygit.refresh",
+          "when": "view == alwaygit.repositories",
+          "group": "navigation@2"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "alwaygit.open",
+          "when": "resourceScheme == file",
+          "group": "navigation@20"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "AlwayGit",
+      "properties": {
+        "alwaygit.gitPath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Git executable path. Empty uses the built-in Git extension path or PATH."
+        },
+        "alwaygit.historyPageSize": {
+          "type": "number",
+          "default": 300,
+          "minimum": 50,
+          "maximum": 1000,
+          "description": "Commits loaded per history page."
+        },
+        "alwaygit.refreshInterval": {
+          "type": "number",
+          "default": 15,
+          "minimum": 5,
+          "maximum": 300,
+          "description": "Visible workbench refresh interval in seconds."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "node scripts/build.mjs && vite build",
+    "watch:extension": "node scripts/build.mjs --watch",
+    "watch:webview": "vite build --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:ui": "npm run build && node scripts/test-ui.mjs",
+    "test:extension": "npm run build && node scripts/test-extension.mjs",
+    "package": "node scripts/package.mjs"
+  },
+  "dependencies": {
+    "@tanstack/react-virtual": "^3.14.13",
+    "@vscode/codicons": "^0.0.46-24",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "zod": "^4.6.5",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/vscode": "^1.95.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.28.2",
+    "playwright": "^1.63.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  }
+}
