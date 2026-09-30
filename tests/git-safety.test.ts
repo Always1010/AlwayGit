@@ -46,7 +46,7 @@ describe('Git safety regressions', () => {
     const first = await commit(root, 'a.txt', 'first');
     const second = await commit(root, 'a.txt', 'second');
     await service.execute(repo, { type: 'commit.checkout', target: first });
-    expect(await service.snapshot(repo)).toMatchObject({ branch: '', head: first });
+    expect(await service.snapshot(repo)).toMatchObject({ branch: '', head: first, unpushed: 0 });
     expect(await git(root, 'rev-parse', 'refs/heads/main')).toBe(second);
     await service.execute(repo, { type: 'branch.checkout', name: 'main' });
     expect(await service.snapshot(repo)).toMatchObject({ branch: 'main', head: second });

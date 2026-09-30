@@ -123,7 +123,7 @@ export class GitService implements GitServiceContract {
     await this.verify(repo);
     const [statusOutput, unpushed] = await Promise.all([this.run(repo, ['status', '--porcelain=v2', '-z', '--branch', '--untracked-files=no']), this.unpushed(repo)]);
     const status = parseStatus(statusOutput.stdout);
-    return { repositoryId: repo.id, branch: status.branch, ...(status.upstream ? { upstream: status.upstream } : {}), ahead: status.ahead, unpushed };
+    return { repositoryId: repo.id, branch: status.branch, ...(status.upstream ? { upstream: status.upstream } : {}), ahead: status.ahead, unpushed: status.branch ? unpushed : 0 };
   }
   async snapshot(repo: Repository): Promise<Snapshot> {
     await this.verify(repo);
@@ -162,7 +162,7 @@ export class GitService implements GitServiceContract {
       const remoteBranch = remote && remote === upstreamRemote && upstreamBranch ? upstreamBranch : remote && remote === branchRemote && configuredBranch ? configuredBranch : status.branch;
       pushTarget = { localBranch: status.branch, ...(remote ? { remote } : {}), remoteBranch, configured: !!upstream };
     }
-    return { repository: repo, ...status, unpushed, refs, remotes, ...(defaultBranch ? { defaultBranch } : {}), ...(pushTarget ? { pushTarget } : {}), stashes, worktrees, operation, version: ++this.version };
+    return { repository: repo, ...status, unpushed: status.branch ? unpushed : 0, refs, remotes, ...(defaultBranch ? { defaultBranch } : {}), ...(pushTarget ? { pushTarget } : {}), stashes, worktrees, operation, version: ++this.version };
   }
   private async worktrees(repo: Repository): Promise<Worktree[]> {
     const records = decodePaths((await this.run(repo, ['worktree', 'list', '--porcelain', '-z'])).stdout).split('\0'); const result: Worktree[] = []; let current: Worktree | undefined;

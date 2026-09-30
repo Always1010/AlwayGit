@@ -58,7 +58,7 @@ npm run package
 | 项目 | 结果 | 备注 |
 | --- | --- | --- |
 | `npm run typecheck` | 通过 | Graph 推送状态、仓库状态 RPC、角标与 Working Tree 选择类型一致 |
-| 相关 Vitest 用例 | 通过 | 43 项 Graph 渲染、文件选择、状态管理和协议用例；另有 1 项真实 Git/Bare Remote 集成用例通过，覆盖 Push 前后的远端可达性、未推送计数和轻量仓库状态 |
+| 相关 Vitest 用例 | 通过 | 43 项 Graph 渲染、文件选择、状态管理和协议用例；另有 2 项真实 Git 集成用例通过，覆盖 Push 前后的远端可达性、未推送计数、轻量仓库状态及 Detached HEAD 不显示分支角标 |
 | `npm run build` | 通过 | 扩展与 Webview 生产构建成功 |
 | `git diff --check` | 通过 | 修改文件无空白错误 |
 | `scripts/update-local.ps1` | 通过 | 构建固定包 `artifacts/alwaygit.vsix`，保留上一份和版本包；沿用已记录的 VS Code 默认 Profile 安装。官方 CLI 核对为 `alwaygit-dev.alwaygit@0.8.0`，未关闭或重启用户窗口 |
@@ -68,6 +68,7 @@ npm run package
 ```powershell
 npx vitest run tests/graph-renderer.test.ts tests/file-selection.test.ts tests/ui-state.test.ts tests/workbench-protocol.test.ts
 npx vitest run tests/git-service.test.ts -t 'fetches, pushes and pulls'
+npx vitest run tests/git-safety.test.ts -t 'checks out a commit in Detached HEAD'
 ```
 
 本轮未改动写入型 Git 操作或窗口路由，没有启动对应桌面集成测试。真实 VS Code 内的人工视觉体验、远程宿主、macOS、Linux 和最低支持版本仍需对应环境验收。
