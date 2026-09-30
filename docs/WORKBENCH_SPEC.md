@@ -18,7 +18,7 @@ Graph 提供鲜明 12 色（默认）、高区分 8 色、扩展 16 色，默认
 
 Graph 根据本机最近一次 Fetch 后已知的 `refs/remotes/*` 判断 Commit 是否存在于远端：远端可达的 Commit 使用实心节点和加粗消息，仅本地 Commit 使用较小空心节点和正常字重。Merge Commit 保留较大尺寸，选择和悬停状态与推送状态叠加显示。路径结束后必须及时收拢内部空轨道，以过渡曲线保持相邻行端点一致；默认 Graph 列为 64 px，可在 48–180 px 之间持久化调整，轨道间距自适应，极端并行路径不得被裁掉。历史标题区提供紧凑图例；分页和搜索结果由 Git 层携带推送状态，不根据当前可见引用标签推测。
 
-Working Tree 作为只存在于前端的虚拟提交节点显示，不创建 Git Commit，也不计入历史数量、分页 offset 或 Commit 批量操作。它以当前 HEAD 为父节点，在新到旧的列表中紧邻 HEAD 上方，并随 Commit、Checkout、Reset 和分支切换移动。节点使用区别于实心/空心 Commit 圆点的强调色菱形，整行沿用 Commit 的悬停、焦点和选中反馈；Message 列显示变更数、冲突数和当前分支，Date 列显示 `Uncommitted`。没有首个 Commit 时显示独立的初始 Working Tree 节点；筛选未包含当前 HEAD 时，Working Tree 与只读 HEAD 锚点继续成对显示，锚点明确标记为筛选外。
+Working Tree 作为只存在于前端的虚拟提交节点显示，不创建 Git Commit，也不计入历史数量、分页 offset 或 Commit 批量操作。当前 HEAD 位于 Graph 筛选结果中时，Working Tree 以它为父节点，在新到旧的列表中紧邻 HEAD 上方，并随 Commit、Checkout、Reset 和分支切换移动；当前分支或 HEAD 被筛除时，只保留独立 Working Tree，不重新插入 HEAD，也不绘制指向隐藏 HEAD 的连线。节点使用区别于实心/空心 Commit 圆点的强调色菱形，整行沿用 Commit 的悬停、焦点和选中反馈；Message 列显示变更数、冲突数和当前分支，Date 列显示 `Uncommitted`。没有首个 Commit 时同样显示独立的初始 Working Tree 节点。
 
 单击 Working Tree 显示工作区详情，Enter 等同单击；上下方向键可以在它与相邻 HEAD/Commit 间连续导航。Working Tree 不参加 Ctrl/Cmd 或 Shift Commit 多选，不响应 Checkout 双击，也不显示 Commit 右键菜单。辅助技术必须能够识别其虚拟节点、当前分支、变更数量、未提交状态和选中状态。
 

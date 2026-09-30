@@ -12,14 +12,14 @@ describe('history display items', () => {
     const items=buildHistoryItems([newest,head,older],head);
     expect(items.map(item=>item.oid)).toEqual(['newest',WORKING_TREE_OID,'head','older']);
     expect(items[1]).toMatchObject({kind:'working',parents:['head']});
-    expect(items[2]).toMatchObject({kind:'commit',anchor:false});
+    expect(items[2]).toMatchObject({kind:'commit',commit:head});
   });
 
-  it('keeps a filtered HEAD anchor beside the Working Tree without duplicating results', () => {
+  it('keeps only a standalone Working Tree when filters omit HEAD', () => {
     const head=commit('head',['parent']),match=commit('match',['parent']);
     const items=buildHistoryItems([match],head);
-    expect(items.map(item=>item.oid)).toEqual([WORKING_TREE_OID,'head','match']);
-    expect(items[1]).toMatchObject({kind:'commit',anchor:true,commit:head});
+    expect(items.map(item=>item.oid)).toEqual([WORKING_TREE_OID,'match']);
+    expect(items[0]).toMatchObject({kind:'working',parents:[]});
   });
 
   it('renders a standalone mutable root before the first commit exists', () => {
