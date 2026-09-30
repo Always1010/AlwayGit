@@ -136,7 +136,7 @@ Working Tree 将文件分为 Conflicts、Unstaged 和 Staged。Stage、Unstage �
 
 分组标题采用短标题与数量徽标，右侧 `Stage All` / `Unstage All` 为清晰的描边按钮；有选择时显示操作数量。Working Tree 不显示文件或分组复选框，Discard 为带悬停说明和可访问名称的图标按钮，仅在选中 Unstaged 文件后启用。空分组压缩提示，完整父目录和文件选择规则保持不变。
 
-文件行第一行显示文件名，第二行显示完整的仓库相对父目录链，不限制目录层级；长父目录换行，完整路径也可通过悬浮提示查看。根目录文件显示“仓库根目录”。Working Tree、Commit Details 和 Commit 比较文件列表均不显示复选框：单击文件即选中并预览，Ctrl/Cmd+单击切换选择，Shift+单击选择范围。焦点在文件区域时 Ctrl/Cmd+A 全选当前面板文件，Escape 清空，文本输入保持原生行为。Working Tree 的组内按钮只处理该组选择，没有选择时 Stage / Unstage 明确显示 All，Discard 无选择时禁用；Commit Details 和比较文件的 Copy Paths 处理当前选择。
+文件行第一行显示文件名，第二行显示以 `./` 开头的完整仓库相对父目录链，不限制目录层级；根目录文件显示 `./`，子目录文件显示如 `./docs`、`./src/protocol`。长父目录换行，完整路径也可通过悬浮提示查看。Working Tree、Commit Details 和 Commit 比较文件列表均不显示复选框：单击文件即选中并预览，Ctrl/Cmd+单击切换选择，Shift+单击选择范围。焦点在文件区域时 Ctrl/Cmd+A 全选当前面板文件，Escape 清空，文本输入保持原生行为。Working Tree 的组内按钮只处理该组选择，没有选择时 Stage / Unstage 明确显示 All，Discard 无选择时禁用；Commit Details 和比较文件的 Copy Paths 处理当前选择。
 
 文件右键菜单绑定当前批量选择：右键已选文件保留选择，右键未选文件先切换为单选。Working Tree 按文件区域提供 Stage、Unstage、Mark Resolved 与 Discard；单文件同时提供在 VS Code 中打开 Diff 和编辑入口。历史与比较文件提供打开 Diff、编辑和复制路径。非输入、非可编辑、没有文本选择的工作台区域不显示宿主的剪切、复制、粘贴菜单；文本输入与 Diff 文本选择保留原生编辑和复制行为。
 

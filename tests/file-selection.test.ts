@@ -3,13 +3,13 @@ import { filePathLabel, fileSelectionForClick, fileSelectionKeyboardCommand, fil
 
 describe('file path labels', () => {
   it('keeps the complete repository-relative parent chain at arbitrary depth', () => {
-    expect(filePathLabel('packages/client/src/views/settings/components/Editor.tsx')).toEqual({ name: 'Editor.tsx', parent: 'packages/client/src/views/settings/components' });
-    expect(filePathLabel('src/service.ts')).toEqual({ name: 'service.ts', parent: 'src' });
-    expect(filePathLabel('README.md')).toEqual({ name: 'README.md', parent: '' });
+    expect(filePathLabel('packages/client/src/views/settings/components/Editor.tsx')).toEqual({ name: 'Editor.tsx', parent: './packages/client/src/views/settings/components' });
+    expect(filePathLabel('src/service.ts')).toEqual({ name: 'service.ts', parent: './src' });
+    expect(filePathLabel('README.md')).toEqual({ name: 'README.md', parent: './' });
   });
 
   it('preserves spaces, Unicode, and literal Git filename characters', () => {
-    expect(filePathLabel('资料/我的 项目/a\\b.txt')).toEqual({ name: 'a\\b.txt', parent: '资料/我的 项目' });
+    expect(filePathLabel('资料/我的 项目/a\\b.txt')).toEqual({ name: 'a\\b.txt', parent: './资料/我的 项目' });
   });
 });
 

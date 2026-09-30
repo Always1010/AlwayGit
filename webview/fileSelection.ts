@@ -3,7 +3,7 @@ export interface FileSelection { paths: string[]; anchor?: string }
 /** Git paths use forward slashes; preserve every parent segment and the original path. */
 export function filePathLabel(path: string): { name: string; parent: string } {
   const separator = path.lastIndexOf('/');
-  return { name: path.slice(separator + 1), parent: separator < 0 ? '' : path.slice(0, separator) };
+  return { name: path.slice(separator + 1), parent: separator < 0 ? './' : `./${path.slice(0, separator)}` };
 }
 
 export function reconcileFileSelection(order: readonly string[], selection: FileSelection): FileSelection {
