@@ -56,7 +56,11 @@ h1,h2,p {margin:0;}
 .heading-menu:hover,.heading-menu:focus-visible {border-color:var(--border);color:var(--fg);background:var(--hover);}
 .sidebar-list {padding:3px 4px 5px;}
 .sidebar-item {display:flex;align-items:center;gap:5px;text-align:left;width:100%;min-height:var(--row-height,24px);padding:2px 5px;min-width:0;border-radius:3px;user-select:none;}
+.sidebar-item.action-selected {background:color-mix(in srgb,var(--accent) 18%,var(--panel));outline:1px solid color-mix(in srgb,var(--accent) 52%,transparent);outline-offset:-1px;}
 .sidebar-item .notification-badge {margin-left:auto;flex:none;}
+.repository-batch-list {display:flex;flex-direction:column;gap:5px;max-height:240px;overflow:auto;margin-top:10px;}
+.repository-batch-list>div {display:flex;flex-direction:column;padding:6px 8px;border:1px solid var(--border);border-radius:3px;background:var(--panel);}
+.repository-batch-list span {font-size:11px;color:var(--muted);word-break:break-all;}
 .current-indicator {display:inline-flex;align-items:center;justify-content:center;width:12px;min-width:12px;}
 .current-indicator-glyph {width:0;height:0;border-top:6px solid transparent;border-bottom:6px solid transparent;border-left:9px solid var(--current-indicator-color,var(--fg));}
 .ref-row {display:flex;align-items:center;min-width:0;border-left:3px solid transparent;}

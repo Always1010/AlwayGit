@@ -1,4 +1,5 @@
 import type { DiffTarget, GitRef, Repository, Stash, Worktree } from '../src/protocol/types';
+import type { RepositoryGroup } from '../src/protocol/repositories';
 import type { DialogRequest } from './ActionDialog';
 import type { MenuItem } from './ContextMenu';
 import { useWorkbench } from './store';
@@ -7,8 +8,8 @@ import { rpc } from './rpc';
 import { cherryPickOrder } from './commitSelection';
 
 export interface FileMenuEntry { path: string; target: DiffTarget }
-export type MenuTarget = { kind: 'repository'; repository: Repository } | { kind: 'ref'; ref: GitRef; refs?:GitRef[] } | { kind: 'ref-folder'; label: string; refs: GitRef[] } | { kind: 'files'; primary: FileMenuEntry; files: FileMenuEntry[] } | { kind: 'commit'; oid: string; oids?: string[] } | { kind: 'stash'; stash: Stash } | { kind: 'worktree'; worktree: Worktree } | { kind: 'remote'; name: string } | { kind: 'group'; group: 'repositories' | 'local' | 'remote' | 'tag' | 'stash' | 'worktree' };
-export interface MenuApi { open(dialog: DialogRequest): void; checkout(oid: string): void; openDiff(target: DiffTarget): void; editFile(target: DiffTarget): void; host(method: 'copyText'|'openRepository'|'openWorktree', payload: unknown, repoId?: string): Promise<void>; addRepository(): Promise<void>; fetchRepository(repoId: string): Promise<void> }
+export type MenuTarget = { kind: 'repository'; group: RepositoryGroup; groups?:RepositoryGroup[] } | { kind: 'ref'; ref: GitRef; refs?:GitRef[] } | { kind: 'ref-folder'; label: string; refs: GitRef[] } | { kind: 'files'; primary: FileMenuEntry; files: FileMenuEntry[] } | { kind: 'commit'; oid: string; oids?: string[] } | { kind: 'stash'; stash: Stash } | { kind: 'worktree'; worktree: Worktree } | { kind: 'remote'; name: string } | { kind: 'group'; group: 'repositories' | 'local' | 'remote' | 'tag' | 'stash' | 'worktree' };
+export interface MenuApi { open(dialog: DialogRequest): void; checkout(oid: string): void; openDiff(target: DiffTarget): void; editFile(target: DiffTarget): void; host(method: 'copyText'|'openRepository'|'openWorktree', payload: unknown, repoId?: string):Promise<void>; addRepository():Promise<void>; fetchRepositories(repositories:Repository[]):void }
 export function menuFor(target: MenuTarget, api: MenuApi): { caption: string; items: MenuItem[] } {
   const state=useWorkbench.getState(), snapshot=state.snapshot, busy=state.busy;
   const t=(en:string,zh:string=en)=>state.language==='zh-CN'?zh:en;
@@ -16,7 +17,12 @@ export function menuFor(target: MenuTarget, api: MenuApi): { caption: string; it
   const action=(label:string,dialog:DialogRequest,icon='git-commit',disabled=busy,reason?:string)=>item(label,()=>api.open(dialog),icon,disabled,reason);
   const refresh=item(t('Refresh','刷新'),()=>{void state.refresh();},'refresh',busy);
   const copy=(label:string,text:string)=>item(label,()=>api.host('copyText',{text}),'copy');
-  if(target.kind==='repository')return {caption:target.repository.name,items:[item('Open Workbench',()=>state.selectRepository(target.repository.id),'repo'),item('Open Workbench in New Window',()=>api.host('openRepository',{newWindow:true},target.repository.id),'window'),item(t('Refresh','刷新'),()=>state.selectRepository(target.repository.id),'refresh'),item('Fetch…',()=>api.fetchRepository(target.repository.id),'cloud-download',busy),copy('Copy Repository Path',target.repository.root)]};
+  if(target.kind==='repository'){
+    const groups=target.groups?.length?target.groups:[target.group],repositories=groups.map(group=>group.repository),paths=repositories.map(repository=>repository.root);
+    if(groups.length>1)return {caption:t(`${groups.length} Repositories selected`,`已选择 ${groups.length} 个仓库`),items:[item(t(`Fetch ${groups.length} Repositories…`,`Fetch ${groups.length} 个仓库…`),()=>api.fetchRepositories(repositories),'cloud-download'),item(t(`Refresh Status for ${groups.length} Repositories`,`刷新 ${groups.length} 个仓库的状态`),()=>state.loadRepositoryStatuses(),'refresh'),copy(t(`Copy ${groups.length} Repository Paths`,`复制 ${groups.length} 个仓库路径`),paths.join('\n'))]};
+    const repository=target.group.repository,current=target.group.members.some(member=>member.id===state.repoId);
+    return {caption:target.group.name,items:[item(t('Switch to Repository','切换到此仓库'),()=>state.selectRepository(repository.id),'repo',current,current?t('This repository is already open.','此仓库已打开。'):undefined),item(t('Open in New Window','在新窗口中打开'),()=>api.host('openRepository',{newWindow:true},repository.id),'window'),item('Fetch…',()=>api.fetchRepositories([repository]),'cloud-download'),item(t('Refresh Status','刷新状态'),()=>state.loadRepositoryStatuses(),'refresh'),copy(t('Copy Repository Path','复制仓库路径'),repository.root)]};
+  }
   if(target.kind==='group') {
     const name=target.group;
     const items=name==='repositories'?[item('Add Repository…',api.addRepository,'add'),item(t('Refresh','刷新'),()=>state.initialize(),'refresh')]:name==='local'?[action('Create Branch…',{type:'branch.create'},'git-branch'),item(t('Show All in Graph','全部显示在 Graph'),()=>state.setCheckedRefs([...(state.checkedRefs??[]),...(snapshot?.refs.filter(r=>r.kind==='local').map(r=>r.fullName)??[])]),'check-all'),item(t('Show None in Graph','全部从 Graph 隐藏'),()=>state.setCheckedRefs((state.checkedRefs??[]).filter(r=>!r.startsWith('refs/heads/'))),'clear-all')]:name==='tag'?[action('Create Tag…',{type:'tag.create'},'tag'),refresh]:name==='stash'?[action('Stash Changes…',{type:'stash.create'},'archive',busy||!snapshot?.changes.length||!!snapshot.operation.kind),refresh]:name==='worktree'?[action('Add Worktree…',{type:'worktree.add'},'new-folder'),refresh]:[action('Fetch…',{type:'fetch'},'cloud-download'),refresh];
