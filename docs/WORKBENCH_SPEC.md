@@ -109,7 +109,7 @@ Merge、Rebase、Cherry-pick、Revert 的活动状态在独立操作条中持续
 - Remote Branch 通过 `Create Tracking Branch…` 创建本地跟踪分支；当前范围不删除远端分支。
 - Tag 的 `Checkout…` 明确提示进入 Detached HEAD。
 - 无变更、无 Staged 文件或没有可用目标时禁用对应操作并说明原因。Detached HEAD 禁用工具栏 Push。Push 对话框先显示实际的 `Local Branch → Remote/Remote Branch`；当前 upstream、`branch.*.pushRemote`、`remote.pushDefault` 或唯一远端可确定目标时不得显示空白可选项。用户通过 `Change Target…` 显式修改目标；首次 Push 说明会建立 upstream。多远端且没有配置目标时要求选择远端。
-- 当前分支存在未推送提交时，工具栏 Push 与仓库导航项使用通知角标显示数量；数量为零时不显示角标。仓库列表先显示，角标状态随后在后台加载，当前仓库的角标随状态刷新即时更新。
+- 当前分支存在未推送提交时，工具栏 Push 与仓库导航项使用高饱和红色通知角标显示数量，并以白字和亮色边缘保持醒目；数量为零时不显示角标。仓库列表先显示，角标状态随后在后台加载，当前仓库的角标随状态刷新即时更新。
 - Checkout 可能覆盖修改时显示受影响文件，并提供查看文件与 `Stash Changes & Checkout`。
 - 存在未解决冲突时，提示先解决冲突或 Abort 当前操作。
 
