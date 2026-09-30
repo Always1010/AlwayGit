@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-012：当前项三角标识对比不足且缺少实心观感
+
+- 日期：2026-10-01
+- 状态：已解决
+- 现象：Repository、Worktree 和当前分支的三角标识使用主题强调色且尺寸偏小，在部分背景上不够醒目，也缺少明确的实心形状，难以快速识别当前工作目录。
+- 原因：标识直接复用了 10 px Codicon `play` 字形和 `accent` 颜色；字体轮廓及强调色均不能保证在所有浅色、深色和高对比主题中形成强烈反差。
+- 解决方案：改用尺寸固定的 CSS 实心三角形；浅色与高对比浅色主题固定使用纯黑，深色与高对比深色主题固定使用纯白，继续保留统一占位和 `aria-current` 语义。
+- 验证方式：外观专项无头测试读取实际计算样式，验证浅色主题为 9×12 px 纯黑实心三角形，深色和高对比深色主题为同尺寸纯白实心三角形；Worktree 专项验证标识随切换迁移。
+- 相关文件：`webview/Sidebar.tsx`、`webview/styles.css`、`webview/appearance.css`、`scripts/test-appearance-ui.mjs`、`scripts/test-ui.mjs`、`scripts/test-worktrees-ui.mjs`。
+
 ## BUG-011：文件与分支目录显示无关的原生编辑菜单
 
 - 日期：2026-10-01
