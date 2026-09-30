@@ -245,11 +245,11 @@ try {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
 
   await page.setViewportSize({ width: 700, height: 650 });
-  for (const label of ['Resize author column', 'Resize date column']) {
+  for (const [label, key, maximum] of [['Resize graph column', 'ArrowRight', 180], ['Resize author column', 'ArrowLeft', 220], ['Resize date column', 'ArrowLeft', 220]]) {
     const handle = page.getByRole('separator', { name: label });
     await handle.focus();
-    for (let index = 0; index < 24; index++) await handle.press('ArrowLeft');
-    assert.equal(Number(await handle.getAttribute('aria-valuenow')), 220);
+    for (let index = 0; index < 24; index++) await handle.press(key);
+    assert.equal(Number(await handle.getAttribute('aria-valuenow')), maximum);
   }
   await historyViewport.evaluate(element => { element.scrollLeft = element.scrollWidth; element.dispatchEvent(new Event('scroll', { bubbles: true })); });
   await page.waitForFunction(() => {

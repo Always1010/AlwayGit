@@ -128,6 +128,16 @@ describe('Git history graph', () => {
     expect(state).toEqual(whole.endState);
   });
 
+  it('closes vacant lane gaps after merged paths end', () => {
+    const graph = layoutGraph([
+      commit('merge', 'first', 'second', 'third'),
+      commit('first'), commit('second'), commit('third'),
+    ]);
+    expect(graph.rows.map(row => row.lane)).toEqual([0, 0, 0, 0]);
+    expect(graph.rows[1].segments.filter(segment => segment.kind === 'through').map(segment => [segment.fromLane, segment.toLane])).toEqual([[1, 0], [2, 1]]);
+    expect(graph.endState.lanes).toEqual([]);
+  });
+
   it('never retargets an omitted search-result parent to an unrelated visible commit', () => {
     const first = layoutGraph([commit('match-one', 'omitted-parent')]);
     const second = layoutGraph([commit('match-two')], first.endState);
@@ -167,7 +177,7 @@ describe('Git history graph', () => {
     const graph = layoutGraph([commit('m', ...parents), ...parents.map(parent => commit(parent))]);
     expect(graph.laneCount).toBe(100);
     expect(new Set(graph.rows[0].segments.map(segment => segment.toLane)).size).toBe(100);
-    expect(graph.rows.slice(1).map(row => row.lane)).toEqual(parents.map((_, index) => index));
+    expect(graph.rows.slice(1).map(row => row.lane)).toEqual(parents.map(() => 0));
     expect(graph.endState.lanes).toEqual([]);
   });
 

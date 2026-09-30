@@ -26,7 +26,7 @@ export async function run(): Promise<void> {
   await api.workbench.handle({ id: 'save', method: 'saveSession', payload: {
     version: 2,
     language: 'zh-CN',
-    layout: { preset: 'editor', sidebar: 240, details: 320, diff: 200, author: 110, date: 130, font: 13, row: 26 },
+    layout: { preset: 'editor', sidebar: 240, details: 320, diff: 200, graph: 64, author: 110, date: 130, font: 13, row: 26 },
     repoId: repo.id,
     drafts: { [repo.id]: 'Persisted commit draft' },
     views: { [repo.id]: { checkedRefs: ['refs/heads/main'], search: 'fixture', selectedFile: 'sample.ts', tab: 'changes' } },
