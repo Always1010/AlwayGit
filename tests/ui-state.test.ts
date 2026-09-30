@@ -54,10 +54,10 @@ describe('repository UI consistency', () => {
   it('applies settings through host session validation and restores only panel geometry', async () => {
     const { sessionSchema } = await import('../src/protocol/validation');
     store.getState().beginSettings();
-    store.getState().previewSettings({ language: 'zh-CN', font: 15, row: 28, appearance: { theme: 'contrast', palette: 'distinct', codeFont: 17 } });
+    store.getState().previewSettings({ language: 'zh-CN', font: 15, row: 28, appearance: { theme: 'contrast', palette: 'distinct', codeFont: 17, badgeColor: '#006BFF' } });
     store.getState().finishSettings(true);
     const saved = bridge.save.mock.calls.at(-1)?.[0];
-    expect(sessionSchema.parse(saved).appearance).toMatchObject({ theme: 'contrast', palette: 'distinct', codeFont: 17 });
+    expect(sessionSchema.parse(saved).appearance).toMatchObject({ theme: 'contrast', palette: 'distinct', codeFont: 17, badgeColor: '#006BFF' });
     expect(saved.appearance.colors.light).toHaveLength(8);
     expect(saved.appearance.colors.dark).toHaveLength(8);
     store.getState().setLayout({ sidebar: 260, details: 350 }); store.getState().restoreLayout();
