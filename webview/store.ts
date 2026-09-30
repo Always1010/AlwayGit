@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Commit, CommitComparison, CommitDetails, DiffTarget, GitAction, HistoryQuery, Repository, RepositoryChanges, Snapshot } from '../src/protocol/types';
+import type { Commit, CommitComparison, CommitDetails, DiffTarget, GitAction, HistoryQuery, Repository, RepositoryChanges, RepositoryStatus, Snapshot } from '../src/protocol/types';
 import { demoMode, readSession, rpc, saveSession, subscribe } from './rpc';
 import type { LayoutState } from './rpc';
 import type { Language } from './i18n';
@@ -9,7 +9,7 @@ import { actionTarget } from './actionFeedback';
 import type { ActionFeedback } from './actionFeedback';
 import { normalizeAppearance, type Appearance, type InterfaceSettings, type InterfaceSettingsUpdate } from './appearance';
 
-let repositoryEpoch = 0, snapshotEpoch = 0, historyEpoch = 0, detailEpoch = 0;
+let repositoryEpoch = 0, repositoryStatusEpoch = 0, snapshotEpoch = 0, historyEpoch = 0, detailEpoch = 0;
 let refreshInvalidation: { epoch: number; changes?: RepositoryChanges; forceHistory: boolean } | undefined;
 const session = readSession(), views = session.views ?? {}, executingRepositories = new Set<string>(), hostBusyRepositories = new Set<string>();
 const actionFeedbacks = new Map<string, ActionFeedback>();
@@ -19,10 +19,10 @@ export interface CheckoutFailure { reason?: string; paths: string[]; target: str
 interface WorkbenchState {
   appearance: Appearance; settingsBaseline?: InterfaceSettings;
   beginSettings(): void; previewSettings(value: InterfaceSettingsUpdate): void; finishSettings(apply: boolean): void; restoreLayout(): void;
-  repositories: Repository[]; repoId?: string; snapshot?: Snapshot; commits: Commit[]; details?: CommitDetails; comparison?: CommitComparison; selectedOid?: string; selectedOids: string[]; selectionAnchor?: string; selectedParent?: string; selectedStashOid?: string; stashDetails?: CommitDetails; selectedFile?: string; diffTarget?: DiffTarget; diffRevision: number;
+  repositories: Repository[]; repositoryStatuses: Record<string, RepositoryStatus>; repoId?: string; snapshot?: Snapshot; commits: Commit[]; details?: CommitDetails; comparison?: CommitComparison; selectedOid?: string; selectedOids: string[]; selectionAnchor?: string; selectedParent?: string; selectedStashOid?: string; stashDetails?: CommitDetails; selectedFile?: string; diffTarget?: DiffTarget; diffRevision: number;
   ref?: string; checkedRefs?: string[]; expandedRefGroups?:string[]; collapsedSidebarGroups:string[]; search: string; language: Language; layout: LayoutState; checkoutFailure?: CheckoutFailure; actionFeedback?: ActionFeedback; locateToken:number;
   nextOffset: number; hasMore: boolean; tips: string[]; loading: boolean; historyLoading: boolean; detailsLoading: boolean; busy: boolean; activity: string; error?: string; notice?: string; tab: 'history' | 'changes'; drafts: Record<string, string>;
-  initialize(): Promise<void>; selectRepository(id: string): Promise<void>; refresh(options?: { background?: boolean; changes?: RepositoryChanges }): Promise<void>; loadHistory(append?: boolean): Promise<void>; selectCommit(oid: string, parent?: string, stashOid?: string, preserveSelection?: boolean): Promise<void>; compareCommits(left:string,right:string,preserveOrder?:boolean):Promise<void>; setCommitSelection(oids:string[],anchor?:string):void;
+  initialize(): Promise<void>; loadRepositoryStatuses(): Promise<void>; selectRepository(id: string): Promise<void>; refresh(options?: { background?: boolean; changes?: RepositoryChanges }): Promise<void>; loadHistory(append?: boolean): Promise<void>; selectCommit(oid: string, parent?: string, stashOid?: string, preserveSelection?: boolean): Promise<void>; compareCommits(left:string,right:string,preserveOrder?:boolean):Promise<void>; setCommitSelection(oids:string[],anchor?:string):void;
   setFilter(ref?: string, search?: string): void; setCheckedRefs(refs: string[]): void; setExpandedRefGroup(key:string,expanded:boolean):void; toggleSidebarGroup(key:string):void; setSearch(value: string): void; selectWorking(): void; selectFile(target: DiffTarget): void; locateHead():void;
   execute(action: GitAction): Promise<boolean>; dismissFeedback(): void; setDraft(value: string): void; setLanguage(value: Language): void; setLayout(value: Partial<LayoutState>): void; report(error: unknown): void;
 }
@@ -36,12 +36,24 @@ const initialLayout = layout(session.layout);
 // Only the old default density migrates; custom dimensions and drafts are kept.
 if (!session.appearance && initialLayout.row === 26) initialLayout.row = 24;
 export const useWorkbench = create<WorkbenchState>((set, get) => ({
-  repositories: [], commits: [], selectedOids:[], search: '', language: session.language === 'zh-CN' ? 'zh-CN' : 'en', layout: initialLayout, appearance: normalizeAppearance(session.appearance), locateToken:0,nextOffset: 0, tips: [], hasMore: false, loading: false, historyLoading: false, detailsLoading: false, diffRevision: 0, busy: false, activity: '', tab: 'history', drafts: session.drafts ?? {}, collapsedSidebarGroups:[],
+  repositories: [], repositoryStatuses: {}, commits: [], selectedOids:[], search: '', language: session.language === 'zh-CN' ? 'zh-CN' : 'en', layout: initialLayout, appearance: normalizeAppearance(session.appearance), locateToken:0,nextOffset: 0, tips: [], hasMore: false, loading: false, historyLoading: false, detailsLoading: false, diffRevision: 0, busy: false, activity: '', tab: 'history', drafts: session.drafts ?? {}, collapsedSidebarGroups:[],
   report(error) { set({ error: message(error) }); },
   async initialize() {
     set({ loading: true });
-    try { const repositories = await rpc<Repository[]>('repositories'); set({ repositories }); if (!repositories.some(r => r.id === get().repoId)) { const initial = repositories.find(r => r.id === session.repoId) ?? repositories[0]; if (initial) await get().selectRepository(initial.id); else set({ repoId: undefined, snapshot: undefined, commits: [], details: undefined }); } }
+    try { const repositories = await rpc<Repository[]>('repositories'); set({ repositories }); void get().loadRepositoryStatuses(); if (!repositories.some(r => r.id === get().repoId)) { const initial = repositories.find(r => r.id === session.repoId) ?? repositories[0]; if (initial) await get().selectRepository(initial.id); else set({ repoId: undefined, snapshot: undefined, commits: [], details: undefined }); } }
     catch (error) { get().report(error); } finally { set({ loading: false }); }
+  },
+  async loadRepositoryStatuses() {
+    const request = ++repositoryStatusEpoch;
+    try {
+      const statuses = await rpc<RepositoryStatus[]>('repositoryStatuses');
+      if (request !== repositoryStatusEpoch || !Array.isArray(statuses)) return;
+      const known = new Set(get().repositories.map(repository => repository.id));
+      const repositoryStatuses = Object.fromEntries(statuses.filter(status => known.has(status.repositoryId)).map(status => [status.repositoryId, status]));
+      const snapshot = get().snapshot;
+      if (snapshot && known.has(snapshot.repository.id)) repositoryStatuses[snapshot.repository.id] = { repositoryId: snapshot.repository.id, branch: snapshot.branch, ...(snapshot.upstream ? { upstream: snapshot.upstream } : {}), ahead: snapshot.ahead, unpushed: snapshot.unpushed ?? snapshot.ahead };
+      set({ repositoryStatuses });
+    } catch { /* Repository badges are supplementary; the selected repository still refreshes normally. */ }
   },
   async selectRepository(id) {
     ++repositoryEpoch; ++historyEpoch; ++detailEpoch; const view = views[id];
@@ -64,7 +76,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       const currentFolders=folderKeys(snapshot.branch,'local'),baseExpanded=get().expandedRefGroups,expandedRefGroups=baseExpanded===undefined||previousBranch!==snapshot.branch?[...new Set([...(baseExpanded??[]),...currentFolders])]:baseExpanded;
       const stashDisappeared = !!get().selectedStashOid && !snapshot.stashes.some(stash => stash.oid === get().selectedStashOid);
       const reloadHistory = !previous || invalidation.forceHistory || stashDisappeared || historyKey(previous, previousRefs) !== historyKey(snapshot, checkedRefs);
-      set({ snapshot, checkedRefs,expandedRefGroups });
+      set(state => ({ snapshot, checkedRefs,expandedRefGroups, repositoryStatuses: { ...state.repositoryStatuses, [snapshot.repository.id]: { repositoryId: snapshot.repository.id, branch: snapshot.branch, ...(snapshot.upstream ? { upstream: snapshot.upstream } : {}), ahead: snapshot.ahead, unpushed: snapshot.unpushed ?? snapshot.ahead } } }));
       if (get().tab === 'changes') {
         get().selectWorking();
         const target = get().diffTarget;

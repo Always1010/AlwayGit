@@ -99,7 +99,7 @@ describe('Git service integration', () => {
   });
   it('fetches, pushes and pulls from a local bare remote with upstream tracking', async () => {
     const { root, service, repo } = await setup(); await commit(root, 'a.txt', 'a'); const bare = path.join(root, 'remote.git'); await mkdir(bare); await git(bare, 'init', '--bare'); await git(root, 'remote', 'add', 'origin', bare); await service.execute(repo, { type: 'push', branch: 'main' });
-    await commit(root, 'b.txt', 'b'); expect((await service.snapshot(repo)).ahead).toBe(1);
+    await commit(root, 'b.txt', 'b'); expect(await service.snapshot(repo)).toMatchObject({ ahead: 1, unpushed: 1 }); expect(await service.repositoryStatus(repo)).toMatchObject({ repositoryId: repo.id, branch: 'main', upstream: 'origin/main', ahead: 1, unpushed: 1 });
     const beforePush = await service.history(repo, { tips: ['HEAD'] });
     expect(beforePush.commits.slice(0, 2).map(item => item.pushed)).toEqual([false, true]);
     await service.execute(repo, { type: 'push' }); expect((await service.snapshot(repo)).ahead).toBe(0);

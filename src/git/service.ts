@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { access, realpath, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { Change, CheckoutBlocker, Commit, CommitComparison, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationState, Repository, Snapshot, Stash, Worktree } from '../protocol/types';
+import type { Change, CheckoutBlocker, Commit, CommitComparison, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationState, Repository, RepositoryStatus, Snapshot, Stash, Worktree } from '../protocol/types';
 import { inferDefaultBranch } from './default-branch';
 
 export interface GitServiceOptions {
@@ -114,9 +114,20 @@ export class GitService implements GitServiceContract {
   private async oid(repo: Repository, revision: string): Promise<string> { token(revision, 'revision'); return this.text(repo, ['rev-parse', '--verify', '--end-of-options', `${revision}^{commit}`]); }
   private async refName(repo: Repository, name: string): Promise<string> { token(name, 'reference name'); await this.run(repo, ['check-ref-format', `refs/heads/${name}`]); return name; }
   private async status(repo: Repository) { return parseStatus((await this.run(repo, ['status', '--porcelain=v2', '-z', '--branch', '--untracked-files=all'])).stdout); }
+  private async unpushed(repo: Repository): Promise<number> {
+    const result = await this.run(repo, ['rev-list', '--count', 'HEAD', '--not', '--remotes'], true);
+    const count = Number.parseInt(result.stdout.toString('utf8').trim(), 10);
+    return result.code === 0 && Number.isSafeInteger(count) && count > 0 ? count : 0;
+  }
+  async repositoryStatus(repo: Repository): Promise<RepositoryStatus> {
+    await this.verify(repo);
+    const [statusOutput, unpushed] = await Promise.all([this.run(repo, ['status', '--porcelain=v2', '-z', '--branch', '--untracked-files=no']), this.unpushed(repo)]);
+    const status = parseStatus(statusOutput.stdout);
+    return { repositoryId: repo.id, branch: status.branch, ...(status.upstream ? { upstream: status.upstream } : {}), ahead: status.ahead, unpushed };
+  }
   async snapshot(repo: Repository): Promise<Snapshot> {
     await this.verify(repo);
-    const [status, refsOutput, stashOutput, worktrees, gitDir, remoteOutput] = await Promise.all([this.status(repo), this.text(repo, ['for-each-ref', '--format=%(refname)%00%(objectname)%00%(upstream:short)%00%(*objectname)%00%(*objecttype)%00%(objecttype)%00%(symref)', 'refs/heads', 'refs/remotes', 'refs/tags']), this.text(repo, ['stash', 'list', '--format=%gd%x00%H%x00%s']), this.worktrees(repo), this.text(repo, ['rev-parse', '--path-format=absolute', '--git-dir']), this.text(repo, ['remote'])]);
+    const [status, refsOutput, stashOutput, worktrees, gitDir, remoteOutput, unpushed] = await Promise.all([this.status(repo), this.text(repo, ['for-each-ref', '--format=%(refname)%00%(objectname)%00%(upstream:short)%00%(*objectname)%00%(*objecttype)%00%(objecttype)%00%(symref)', 'refs/heads', 'refs/remotes', 'refs/tags']), this.text(repo, ['stash', 'list', '--format=%gd%x00%H%x00%s']), this.worktrees(repo), this.text(repo, ['rev-parse', '--path-format=absolute', '--git-dir']), this.text(repo, ['remote']), this.unpushed(repo)]);
     const refs: GitRef[] = refsOutput ? await Promise.all(refsOutput.split('\n').map(async line => {
       const [fullName, objectOid, upstream, peeledOid, peeledType, objectType, symbolicTarget] = line.split('\0');
       const kind: GitRef['kind'] = fullName.startsWith('refs/heads/') ? 'local' : fullName.startsWith('refs/remotes/') ? 'remote' : 'tag';
@@ -151,7 +162,7 @@ export class GitService implements GitServiceContract {
       const remoteBranch = remote && remote === upstreamRemote && upstreamBranch ? upstreamBranch : remote && remote === branchRemote && configuredBranch ? configuredBranch : status.branch;
       pushTarget = { localBranch: status.branch, ...(remote ? { remote } : {}), remoteBranch, configured: !!upstream };
     }
-    return { repository: repo, ...status, refs, remotes, ...(defaultBranch ? { defaultBranch } : {}), ...(pushTarget ? { pushTarget } : {}), stashes, worktrees, operation, version: ++this.version };
+    return { repository: repo, ...status, unpushed, refs, remotes, ...(defaultBranch ? { defaultBranch } : {}), ...(pushTarget ? { pushTarget } : {}), stashes, worktrees, operation, version: ++this.version };
   }
   private async worktrees(repo: Repository): Promise<Worktree[]> {
     const records = decodePaths((await this.run(repo, ['worktree', 'list', '--porcelain', '-z'])).stdout).split('\0'); const result: Worktree[] = []; let current: Worktree | undefined;
