@@ -73,6 +73,18 @@ export async function verifyAppearance(browser, url) {
     assert.equal(Number(await separators.diff.getAttribute('aria-valuenow')), 250);
     assert.equal(Number(await separators.author.getAttribute('aria-valuenow')), 112);
     assert.equal(Number(await separators.date.getAttribute('aria-valuenow')), 130);
+    for (const [key, selector, label] of [['author', '.history-columns [role="columnheader"]:nth-child(3)', 'Author'], ['date', '.history-columns [role="columnheader"]:nth-child(4)', 'Date']]) {
+      const cellBox = await requiredBox(history.locator(selector), `${label} header`);
+      const handleBox = await requiredBox(separators[key], `${label} separator`);
+      assert.ok(Math.abs(handleBox.x - cellBox.x) <= 1, `${label} separator stays on the column's left boundary`);
+      await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(handleBox.x + handleBox.width / 2 + 20, handleBox.y + handleBox.height / 2);
+      await page.mouse.up();
+      assert.equal(Number(await separators[key].getAttribute('aria-valuenow')), key === 'author' ? 92 : 110, `${label} narrows when its left boundary moves right`);
+      const movedBox = await requiredBox(separators[key], `${label} moved separator`);
+      assert.ok(Math.abs(movedBox.x - handleBox.x - 20) <= 1, `${label} separator follows the pointer direction`);
+    }
 
     await history.getByRole('button', { name: /Working Tree/ }).click();
     assert.equal(await details.getByRole('textbox', { name: 'Commit message' }).inputValue(), 'Legacy draft survives migration', 'Legacy drafts survive appearance migration');

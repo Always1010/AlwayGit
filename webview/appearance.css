@@ -33,6 +33,9 @@
 .workbench .toolbar .commit-trigger {background:var(--soft-accent);border-color:color-mix(in srgb,var(--accent) 42%,var(--border));color:var(--accent);}
 .workbench .resize-handle {background:var(--panel);}
 .workbench .resize-handle:hover,.workbench .resize-handle:focus-visible {background:var(--accent);}
+.workbench .column-grip.resize-x {background:transparent;}
+.workbench .column-grip.resize-x::after {content:"";position:absolute;inset:0 auto 0 0;width:1px;background:var(--border);}
+.workbench .column-grip.resize-x:hover::after,.workbench .column-grip.resize-x:focus-visible::after {width:2px;background:var(--accent);}
 .workbench .commit-row.selected {box-shadow:inset 3px 0 var(--accent);}
 .workbench .context-menu,.workbench .modal {border-radius:8px;box-shadow:0 12px 40px #07132655;}
 .workbench .modal-heading {background:var(--surface-header);padding:8px 12px;}
