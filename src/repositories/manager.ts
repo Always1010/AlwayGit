@@ -1,11 +1,16 @@
 import * as vscode from 'vscode';
-import type { GitServiceContract, Repository } from '../protocol/types';
+import path from 'node:path';
+import type { GitServiceContract, Repository, RepositoryChanges } from '../protocol/types';
+import { discoverRepositories, type DiscoveryOptions, type DiscoveryResult } from './discovery';
+
+export interface AddDirectoryResult extends DiscoveryResult { added: number; existing: number }
 
 export class RepositoryManager implements vscode.Disposable {
   private readonly repositories = new Map<string, Repository>();
   private readonly watchers = new Map<string, vscode.Disposable[]>();
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
-  private readonly changedEmitter = new vscode.EventEmitter<string>();
+  private readonly pendingChanges = new Map<string, RepositoryChanges>();
+  private readonly changedEmitter = new vscode.EventEmitter<{ repoId: string; changes: RepositoryChanges }>();
   private readonly listEmitter = new vscode.EventEmitter<void>();
   readonly onDidChange = this.changedEmitter.event;
   readonly onDidChangeRepositories = this.listEmitter.event;
@@ -19,21 +24,49 @@ export class RepositoryManager implements vscode.Disposable {
   async add(root: string, remember = true): Promise<Repository> {
     if (!vscode.workspace.isTrusted) throw new Error('Trust this workspace before executing Git.');
     const repo = await this.git.discover(root);
-    if (!this.repositories.has(repo.id)) {
-      this.repositories.set(repo.id, repo);
-      const notify = () => this.notify(repo.id);
-      const worktreeWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(repo.root, '**/*'));
-      const gitWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(repo.commonDir, '{HEAD,index,packed-refs,refs/**,worktrees/**,MERGE_HEAD,CHERRY_PICK_HEAD,REVERT_HEAD,rebase-merge/**,rebase-apply/**,sequencer/**}'));
-      const listen = (watcher: vscode.FileSystemWatcher, filter: boolean) => [watcher,
-        watcher.onDidChange(uri => { if (!filter || !/[\\/](node_modules|\.git)[\\/]/.test(uri.fsPath)) notify(); }),
-        watcher.onDidCreate(uri => { if (!filter || !/[\\/](node_modules|\.git)[\\/]/.test(uri.fsPath)) notify(); }),
-        watcher.onDidDelete(uri => { if (!filter || !/[\\/](node_modules|\.git)[\\/]/.test(uri.fsPath)) notify(); }),
-      ];
-      this.watchers.set(repo.id, [...listen(worktreeWatcher, true), ...listen(gitWatcher, false)]);
-      this.listEmitter.fire();
-    }
+    if (this.register(repo)) this.listEmitter.fire();
     if (remember) await this.context.workspaceState.update('alwaygit.roots', this.list().map(r => r.root));
     return repo;
+  }
+  private register(repo: Repository): boolean {
+    if (!this.repositories.has(repo.id)) {
+      const disposables: vscode.Disposable[] = [];
+      const listen = (base: string, pattern: string, worktree: boolean) => {
+        const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(base, pattern));
+        disposables.push(watcher);
+        const notify = (uri: vscode.Uri) => {
+          if (worktree && /[\\/](node_modules|\.git)[\\/]/.test(uri.fsPath)) return;
+          const relative = path.relative(worktree ? repo.root : repo.commonDir, uri.fsPath).replace(/\\/g, '/');
+          this.notify(repo.id, { paths: worktree ? [relative] : [], index: !worktree && /(^|\/)index$/.test(relative) });
+        };
+        for (const event of [watcher.onDidChange, watcher.onDidCreate, watcher.onDidDelete]) disposables.push(event(notify));
+      };
+      try {
+        listen(repo.root, '**/*', true);
+        listen(repo.commonDir, '{HEAD,index,packed-refs,refs/**,worktrees/**,MERGE_HEAD,CHERRY_PICK_HEAD,REVERT_HEAD,rebase-merge/**,rebase-apply/**,sequencer/**}', false);
+      } catch (error) { for (const disposable of disposables) disposable.dispose(); throw error; }
+      this.watchers.set(repo.id, disposables);
+      this.repositories.set(repo.id, repo);
+      return true;
+    }
+    return false;
+  }
+  async addDirectory(root: string, options: DiscoveryOptions = {}): Promise<AddDirectoryResult> {
+    if (!vscode.workspace.isTrusted) throw new Error('Trust this workspace before executing Git.');
+    const discovery = await discoverRepositories(root, this.git, options);
+    const result: AddDirectoryResult = { ...discovery, added: 0, existing: 0 };
+    if (result.cancelled || options.isCancelled?.()) { result.cancelled = true; return result; }
+    if (!vscode.workspace.isTrusted) throw new Error('Trust this workspace before executing Git.');
+    for (const repo of result.repositories) {
+      try { if (this.register(repo)) result.added++; else result.existing++; }
+      catch (error) { result.issues.push({ path: repo.root, message: error instanceof Error ? error.message : String(error) }); }
+    }
+    // Persist once and notify once, regardless of the number of discovered repositories.
+    if (result.repositories.length) {
+      try { await this.context.workspaceState.update('alwaygit.roots', this.list().map(r => r.root)); }
+      finally { if (result.added) this.listEmitter.fire(); }
+    }
+    return result;
   }
   async scan(): Promise<void> {
     if (!vscode.workspace.isTrusted) return;
@@ -49,12 +82,20 @@ export class RepositoryManager implements vscode.Disposable {
       catch (error) { this.log.appendLine(`[discovery] ${root}: ${error instanceof Error ? error.message : String(error)}`); }
     }
   }
-  notify(id: string): void {
+  notify(id: string, changes: RepositoryChanges = {}): void {
     clearTimeout(this.timers.get(id));
-    this.timers.set(id, setTimeout(() => { this.timers.delete(id); this.changedEmitter.fire(id); }, 300));
+    const previous = this.pendingChanges.get(id);
+    this.pendingChanges.set(id, !previous ? changes : !previous.paths || !changes.paths ? {} : { paths: [...new Set([...previous.paths, ...changes.paths])], index: !!(previous.index || changes.index) });
+    this.timers.set(id, setTimeout(() => {
+      this.timers.delete(id);
+      const pending = this.pendingChanges.get(id)!;
+      this.pendingChanges.delete(id);
+      this.changedEmitter.fire({ repoId: id, changes: pending });
+    }, 300));
   }
   dispose(): void {
     for (const timer of this.timers.values()) clearTimeout(timer);
+    this.pendingChanges.clear();
     for (const items of this.watchers.values()) for (const item of items) item.dispose();
     this.changedEmitter.dispose(); this.listEmitter.dispose();
   }
