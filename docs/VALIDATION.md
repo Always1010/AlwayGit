@@ -4,6 +4,8 @@
 
 ## 标准命令
 
+根据改动选择必要检查，不依次执行下列全部命令。默认完成同一目的的修改后集中验证；失败修复只重跑受影响部分。界面设置与配色可使用构建后的 `node scripts/test-ui.mjs --appearance-only`，只运行该专项无头流程。会弹出窗口的宿主集成测试需先取得用户明确同意。
+
 ```powershell
 npm run typecheck
 npm test
@@ -19,7 +21,8 @@ npm run package
 
 ## 浏览器验收矩阵
 
-- 四区 Workbench、Editor Focus、面板拖动、列拖动、Restore Layout、窄窗口和主题。
+- 固定四区 Workbench、旧 Editor Focus 会话迁移、面板和列拖动、仅恢复几何尺寸的 Restore Layout、窄窗口和主题。
+- 设置浮窗预览、取消、应用、刷新期间的持久化；宿主主题与手动主题优先级、字号和密度同步虚拟行高、三套 Graph 配色的连续性与分页。
 - Repository、Local Branch、Remote Branch、Remote、Tag、Stash、Worktree 及各分组的独立三点菜单；分组标题单击只折叠内容。
 - 菜单指针定位、视口边缘修正、竖向排列、键盘焦点、Escape 与点击外部关闭。
 - 右键对象与操作对话框目标一致；仓库切换后旧菜单和对话框关闭。
@@ -50,15 +53,21 @@ npm run package
 
 ## 本轮结果
 
-执行日期为 2026-10-01，版本为 0.5.1；Windows 环境使用 Node.js 24.20.0、Git 2.55 和 VS Code 1.139.1。UI 验收使用 Microsoft Edge。
+执行日期为 2026-10-01，版本为 0.6.0。检查集中在实现完成后执行，未重跑全量单测、Graph 性能基准或桌面集成测试；没有启动可见 VS Code / 浏览器测试窗口。
 
 | 项目 | 结果 | 备注 |
 | --- | --- | --- |
-| `npm run typecheck` | 通过 | TypeScript 7；协议、宿主与 Webview 类型一致 |
-| `npm test` | 通过 | 22 个测试文件、148 项测试；新增逻辑仓库分组、Windows 路径、独立克隆与 Git 存储、主目录 / Worktree 发现计数、旧路径 / 草稿恢复、自动发现和单次通知回归；已有检查通过 |
-| 构建 + `node scripts/test-ui.mjs` | 通过 | 新增受控宿主验证旧活动 Worktree 和草稿、单个顶层入口、独立克隆、菜单路径、Worktree 切换及列表刷新；原有布局、引用树、菜单、会话、刷新、操作反馈、文件选择、Diff 导航和主题回归通过 |
-| 构建 + `node scripts/test-extension.mjs` | 通过 | VS Code 1.139.1；真实递归分组和添加数量、Worktree 切换、主 / linked 分支与文件状态隔离通过；原有文件 / Index 监听、原生 Diff、未保存文档及标签保持正常 |
-| `npm run test:windows` | 此前通过（0.3.1） | VS Code 1.139.1 与 1.95.3；项目窗口路由专项验收。本次未修改窗口路由，未重跑该专项 |
-| `scripts/update-local.ps1` | 通过 | 构建固定包 `artifacts/alwaygit.vsix`，保留上一份包和版本包；沿用已记录的 VS Code 默认 Profile 安装，官方 CLI 核对为 `alwaygit-dev.alwaygit@0.5.1`；本机目标、时间与校验和保存在忽略的 `artifacts/local-install.json` |
+| `npm run typecheck` | 通过 | Webview 设置、会话协议与 Graph 类型一致 |
+| 相关 Vitest 用例 | 通过 | 20 项 Graph 布局/渲染与 3 项设置状态用例，共 23 项；同文件中其余 22 项状态测试跳过。覆盖色板容量、邻线避让、路径继承、分页/色板切换、预览取消、应用保存和恢复布局范围 |
+| `npm run build` | 通过 | 扩展与 Webview 生产构建成功 |
+| `node scripts/test-ui.mjs --appearance-only` | 通过 | 无头 Edge 加载实际构建，模拟 VS Code 浅色/高对比宿主及灰色主题变量；验证旧布局/草稿迁移、24/28 px 行、设置预览取消/应用重载、手动主题优先级、230 px 详情操作范围和纯图标 Discard。测试选择器误匹配恢复布局按钮、测试服务器缺省 favicon 请求已修正后，仅重跑此专项 |
+| 实际构建截图 | 已核对 | 浅色、深色、设置浮窗及窄详情面板；产物在忽略的 `artifacts/` 内，不作为真实 VS Code 窗口截图 |
+| `scripts/update-local.ps1` | 通过 | 构建固定包 `artifacts/alwaygit.vsix`，保留上一份和版本包；沿用已记录的 VS Code 默认 Profile 安装。官方 CLI 核对为 `alwaygit-dev.alwaygit@0.6.0`，未关闭或重启用户窗口 |
 
-Markdown 本地链接和图片引用检查通过。VS Code 1.95.3 已完成项目窗口路由专项验收；最低版本的完整功能、远程宿主、macOS、Linux 和最低 Git 版本仍需对应环境下的验收。
+复现本轮定向单测：
+
+```powershell
+npx vitest run tests/graph.test.ts tests/graph-renderer.test.ts tests/ui-state.test.ts -t 'Git history graph|Git graph SVG rows|settings|changes language and layout'
+```
+
+本轮未改动 Git 执行或窗口路由，未重复对应集成检查。真实 VS Code 内的人工视觉体验、远程宿主、macOS、Linux 和最低支持版本仍需对应环境验收。
