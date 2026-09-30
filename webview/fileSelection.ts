@@ -11,8 +11,8 @@ export function reconcileFileSelection(order: readonly string[], selection: File
   return { paths: [...new Set(order)].filter(path => selected.has(path)), anchor: selection.anchor && order.includes(selection.anchor) ? selection.anchor : undefined };
 }
 
-/** An ordinary click changes the preview anchor independently of the checked batch. */
-export function fileSelectionForClick(order: readonly string[], selection: FileSelection, path: string, modifiers: { toggle?: boolean; range?: boolean }): FileSelection {
+/** Ordinary clicks can either establish a preview anchor or replace selection. */
+export function fileSelectionForClick(order: readonly string[], selection: FileSelection, path: string, modifiers: { toggle?: boolean; range?: boolean; replace?: boolean }): FileSelection {
   const current = reconcileFileSelection(order, selection);
   if (!order.includes(path)) return current;
   if (modifiers.range) {
@@ -21,7 +21,7 @@ export function fileSelectionForClick(order: readonly string[], selection: FileS
     return reconcileFileSelection(order, { paths: modifiers.toggle ? [...current.paths, ...range] : range, anchor });
   }
   if (modifiers.toggle) return reconcileFileSelection(order, { paths: current.paths.includes(path) ? current.paths.filter(item => item !== path) : [...current.paths, path], anchor: path });
-  return { ...current, anchor: path };
+  return modifiers.replace ? { paths: [path], anchor: path } : { ...current, anchor: path };
 }
 
 export function fileSelectionTargets(order: readonly string[], selection: FileSelection, allWhenEmpty: boolean): string[] {
