@@ -9,17 +9,19 @@ export interface GraphRowProps {
   /** The commit currently checked out, including a detached HEAD. */
   head?: boolean;
   selected?: boolean;
+  main?: boolean;
+  mainTargets?: ReadonlySet<string>;
 }
 
-// Theme-provided terminal colors keep graph lines recognizable in dark, light,
-// and high-contrast VS Code themes. The node has a foreground outline as well.
 const colors = [
-  'var(--vscode-terminal-ansiBlue, #3b82f6)',
-  'var(--vscode-terminal-ansiGreen, #22a06b)',
-  'var(--vscode-terminal-ansiMagenta, #b35ad5)',
-  'var(--vscode-terminal-ansiCyan, #129ca8)',
-  'var(--vscode-terminal-ansiYellow, #bc8a16)',
-  'var(--vscode-terminal-ansiRed, #e05260)',
+  'var(--graph-lane-0, #61a8ff)',
+  'var(--graph-lane-1, #ff9b52)',
+  'var(--graph-lane-2, #c58cff)',
+  'var(--graph-lane-3, #45c7bd)',
+  'var(--graph-lane-4, #f06fae)',
+  'var(--graph-lane-5, #ff7373)',
+  'var(--graph-lane-6, #d9b84e)',
+  'var(--graph-lane-7, #59bde8)',
 ];
 
 const colorFor = (index: number) => colors[index % colors.length];
@@ -35,13 +37,13 @@ function pathFor(segment: GraphSegment, height: number, laneWidth: number): stri
 }
 
 /** A complete, independently renderable row for a fixed-height history table. */
-export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false, selected = false }: GraphRowProps) {
+export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false, selected = false, main = false, mainTargets }: GraphRowProps) {
   const titleId = useId();
   const svgWidth = Math.max(width ?? 0, row.laneCount * laneWidth, laneWidth);
   const parentLabel = row.parents.length
     ? `${row.parents.length > 1 ? 'Merge commit; ' : ''}parents ${row.parents.map(oid => oid.slice(0, 8)).join(', ')}`
     : 'Root commit; no parents';
-  const label = `Commit ${row.oid.slice(0, 8)}, lane ${row.lane + 1}. ${parentLabel}.${head ? ' Current HEAD.' : ''}${selected ? ' Selected commit.' : ''}`;
+  const label = `Commit ${row.oid.slice(0, 8)}, lane ${row.lane + 1}. ${parentLabel}.${main ? ' Main branch.' : ''}${head ? ' Current HEAD.' : ''}${selected ? ' Selected commit.' : ''}`;
   const nodeX = (row.lane + 0.5) * laneWidth;
   const nodeY = height / 2;
 
@@ -55,21 +57,24 @@ export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false
       aria-labelledby={titleId}
       data-head={head || undefined}
       data-selected={selected || undefined}
+      data-main={main || undefined}
       style={{ display: 'block', overflow: 'visible', flexShrink: 0 }}
     >
       <title id={titleId}>{label}</title>
-      {row.segments.map((segment, index) => (
+      {row.segments.map((segment, index) => {
+        const mainSegment=mainTargets?.has(segment.target)??false;
+        return (
         <path
           key={`${segment.kind}-${segment.target}-${index}`}
           d={pathFor(segment, height, laneWidth)}
           fill="none"
-          stroke={colorFor(segment.color)}
-          strokeWidth={2}
+          stroke={mainSegment?'var(--graph-main, #f2f2f2)':colorFor(segment.color)}
+          strokeWidth={mainSegment?3:2.5}
           vectorEffect="non-scaling-stroke"
           strokeLinecap="round"
           aria-hidden="true"
         />
-      ))}
+      );})}
       {head && (
         <circle
           className="git-graph-head-ring"
@@ -88,7 +93,7 @@ export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false
         cx={nodeX}
         cy={nodeY}
         r={row.parents.length > 1 ? 4.5 : 3.5}
-        fill={colorFor(row.color)}
+        fill={main?'var(--graph-main, #f2f2f2)':colorFor(row.color)}
         stroke={selected ? 'var(--vscode-list-activeSelectionForeground, currentColor)' : 'var(--vscode-foreground, currentColor)'}
         strokeWidth={selected ? 2 : 1}
         vectorEffect="non-scaling-stroke"
