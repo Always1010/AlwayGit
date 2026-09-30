@@ -53,21 +53,22 @@ npm run package
 
 ## 本轮结果
 
-执行日期为 2026-10-01，版本为 0.6.0。检查集中在实现完成后执行，未重跑全量单测、Graph 性能基准或桌面集成测试；没有启动可见 VS Code / 浏览器测试窗口。
+执行日期为 2026-10-01，版本为 0.7.0。检查集中在实现完成后执行，未重跑全量单测、Graph 性能基准或桌面集成测试；没有启动可见 VS Code / 浏览器测试窗口。
 
 | 项目 | 结果 | 备注 |
 | --- | --- | --- |
-| `npm run typecheck` | 通过 | Webview 设置、会话协议与 Graph 类型一致 |
-| 相关 Vitest 用例 | 通过 | 20 项 Graph 布局/渲染与 3 项设置状态用例，共 23 项；同文件中其余 22 项状态测试跳过。覆盖色板容量、邻线避让、路径继承、分页/色板切换、预览取消、应用保存和恢复布局范围 |
+| `npm run typecheck` | 通过 | 分级设置、可编辑色板、会话协议与 Graph 类型一致 |
+| 相关 Vitest 用例 | 通过 | 14 项 Graph 布局用例与 3 项设置状态用例，共 17 项；同文件中其余 22 项状态测试跳过。覆盖默认色板背景对比度、色板容量、邻线避让、路径继承、分页、预览取消、应用保存和恢复布局范围 |
 | `npm run build` | 通过 | 扩展与 Webview 生产构建成功 |
-| `node scripts/test-ui.mjs --appearance-only` | 通过 | 无头 Edge 加载实际构建，模拟 VS Code 浅色/高对比宿主及灰色主题变量；验证旧布局/草稿迁移、24/28 px 行、设置预览取消/应用重载、手动主题优先级、230 px 详情操作范围和纯图标 Discard。测试选择器误匹配恢复布局按钮、测试服务器缺省 favicon 请求已修正后，仅重跑此专项 |
-| 实际构建截图 | 已核对 | 浅色、深色、设置浮窗及窄详情面板；产物在忽略的 `artifacts/` 内，不作为真实 VS Code 窗口截图 |
-| `scripts/update-local.ps1` | 通过 | 构建固定包 `artifacts/alwaygit.vsix`，保留上一份和版本包；沿用已记录的 VS Code 默认 Profile 安装。官方 CLI 核对为 `alwaygit-dev.alwaygit@0.6.0`，未关闭或重启用户窗口 |
+| `node scripts/test-ui.mjs --appearance-only` | 通过 | 无头 Edge 加载实际构建；验证分级导航、预设切换、自定义浅色色值保存、深色配对重载、设置预览取消/应用、旧布局/草稿迁移、字号密度和窄详情操作范围。首次运行发现新页面区域与下拉框同名导致测试选择器歧义，修正选择器后仅重跑此专项 |
+| 实际构建截图 | 已核对 | 深色设置浮窗中的分级导航、鲜亮 8 色路径预览、色值编辑器、对比提示和底部操作均完整可见；产物在忽略的 `artifacts/` 内，不作为真实 VS Code 窗口截图 |
+| `scripts/update-local.ps1` | 通过 | 构建固定包 `artifacts/alwaygit.vsix`，保留上一份和版本包；沿用已记录的 VS Code 默认 Profile 安装。官方 CLI 核对为 `alwaygit-dev.alwaygit@0.7.0`，未关闭或重启用户窗口 |
 
 复现本轮定向单测：
 
 ```powershell
-npx vitest run tests/graph.test.ts tests/graph-renderer.test.ts tests/ui-state.test.ts -t 'Git history graph|Git graph SVG rows|settings|changes language and layout'
+npx vitest run tests/graph.test.ts
+npx vitest run tests/ui-state.test.ts -t 'settings|layout'
 ```
 
 本轮未改动 Git 执行或窗口路由，未重复对应集成检查。真实 VS Code 内的人工视觉体验、远程宿主、macOS、Linux 和最低支持版本仍需对应环境验收。

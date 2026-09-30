@@ -4,7 +4,6 @@ import type { RpcRequest } from '../src/protocol/types';
 import { connected, demoMode, rpc } from './rpc';
 import { useWorkbench } from './store';
 import { diffRowHeight, effectiveRowHeight, useResolvedTheme } from './appearance';
-import { getGraphPalette } from './graph/palettes';
 import { SettingsDialog } from './SettingsDialog';
 import { useTranslation } from './i18n';
 import { ActionDialog } from './ActionDialog';
@@ -23,8 +22,8 @@ import { Button, Empty, Icon, Modal, ResizeHandle } from './ui';
 
 export function App() {
   const state=useWorkbench(),t=useTranslation(),[dialog,setDialog]=useState<DialogRequest>(),[context,setContext]=useState<{x:number;y:number;target:MenuTarget}>();
-  const theme=useResolvedTheme(state.appearance.theme),palette=getGraphPalette(state.appearance.palette);
-  const paletteColors=theme.includes('light')?palette.light:palette.dark;
+  const theme=useResolvedTheme(state.appearance.theme),lightTheme=theme.includes('light');
+  const paletteColors=lightTheme?state.appearance.colors.light:state.appearance.colors.dark;
   useEffect(()=>{if(connected)void useWorkbench.getState().initialize();},[]);
   useEffect(()=>{setDialog(undefined);setContext(undefined);},[state.repoId,state.language]);
   const closeMenu=useCallback(()=>setContext(undefined),[]);
@@ -51,7 +50,7 @@ export function App() {
   const snapshot=state.snapshot,layout=state.layout;
   const menu=context?menuFor(context.target,{open,checkout,host,addRepository,fetchRepository:async(repoId)=>{await state.selectRepository(repoId);open({type:'fetch'});}}):undefined;
   if(!connected)return <div className="connection-screen"><Icon name="git-branch"/><h1>AlwayGit</h1><p>{t('Your Git workbench, inside VS Code.','VS Code 中的 Git 工作台。')}</p><a className="button primary" href="?demo=1">{t('Explore Demo','查看示例')}</a></div>;
-  return <div className="workbench layout-workbench" data-testid="workbench" data-theme={theme} style={{'--sidebar-width':`${layout.sidebar}px`,'--details-width':`${layout.details}px`,'--diff-height':`${layout.diff}px`,'--workbench-font':`${layout.font}px`,'--row-height':`${effectiveRowHeight(layout)}px`,'--control-height':`${Math.max(24,Math.round(layout.font*1.35)+6)}px`,'--diff-font':`${state.appearance.codeFont}px`,'--diff-row-height':`${diffRowHeight(state.appearance.codeFont)}px`,...Object.fromEntries(paletteColors.map((color,index)=>[`--graph-lane-${index}`,color]))} as React.CSSProperties}>
+  return <div className="workbench layout-workbench" data-testid="workbench" data-theme={theme} style={{'--sidebar-width':`${layout.sidebar}px`,'--details-width':`${layout.details}px`,'--diff-height':`${layout.diff}px`,'--workbench-font':`${layout.font}px`,'--row-height':`${effectiveRowHeight(layout)}px`,'--control-height':`${Math.max(24,Math.round(layout.font*1.35)+6)}px`,'--diff-font':`${state.appearance.codeFont}px`,'--diff-row-height':`${diffRowHeight(state.appearance.codeFont)}px`,'--graph-main':lightTheme?state.appearance.mainColors.light:state.appearance.mainColors.dark,...Object.fromEntries(paletteColors.map((color,index)=>[`--graph-lane-${index}`,color]))} as React.CSSProperties}>
     <header className="app-chrome"><strong className="brand"><Icon name="git-branch"/>AlwayGit</strong><span className="workbench-tab">{t('Git Workbench','Git 工作台')}</span>{demoMode&&<span className="muted">{t('Demo Repository','模拟仓库')}</span>}<div className="toolbar-spacer"/><Button className="icon-only" icon="layout" title={t('Restore Layout','恢复布局')} aria-label={t('Restore Layout','恢复布局')} onClick={state.restoreLayout}/><Button className="settings-trigger" icon="settings-gear" title={t('Interface Settings','界面设置')} aria-label={t('Interface Settings','界面设置')} onClick={()=>{setContext(undefined);state.beginSettings();}}><span>{t('Interface Settings','界面设置')}</span></Button></header>
     <div className="branch-bar"><span className="branch-identity"><Icon name="git-branch"/><strong data-testid="current-branch">{snapshot?.branch||snapshot?.head?.slice(0,8)||'—'}</strong></span><span className="branch-caption">{snapshot?.branch?t('Current Branch','当前分支'):'Detached HEAD'}</span><span className="muted branch-summary">{snapshot?.repository.name} · Staged {snapshot?.changes.filter(f=>f.indexStatus!==' '&&!f.untracked&&!f.conflict).length??0} · Unstaged {snapshot?.changes.filter(f=>!f.conflict&&(f.worktreeStatus!==' '||f.untracked)).length??0}{snapshot?.upstream?` · → ${snapshot.upstream}`:''}</span><Button icon="location" disabled={!snapshot?.head} onClick={state.locateHead}>Locate HEAD</Button></div>
     <div className="toolbar">

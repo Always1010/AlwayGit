@@ -13,6 +13,7 @@ export interface GraphRowProps {
   main?: boolean;
   mainTargets?: ReadonlySet<string>;
   paletteId?: GraphPaletteId;
+  paletteSize?: number;
   hoveredPath?: string;
   onHoverPath?(pathId?: string): void;
 }
@@ -28,12 +29,12 @@ function pathFor(segment: GraphSegment, height: number, laneWidth: number): stri
 }
 
 /** A complete, independently renderable row for a fixed-height history table. */
-export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false, selected = false, main = false, mainTargets, paletteId = 'vivid', hoveredPath, onHoverPath }: GraphRowProps) {
+export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false, selected = false, main = false, mainTargets, paletteId = 'vivid', paletteSize, hoveredPath, onHoverPath }: GraphRowProps) {
   const titleId = useId();
   const palette = getGraphPalette(paletteId);
   const colorFor = (index: number) => {
-    const slot = index % palette.light.length;
-    return `var(--graph-lane-${slot}, ${palette.dark[slot]})`;
+    const slot = index % (paletteSize ?? palette.light.length);
+    return `var(--graph-lane-${slot}, ${palette.dark[slot % palette.dark.length]})`;
   };
   const svgWidth = Math.max(width ?? 0, row.laneCount * laneWidth, laneWidth);
   const parentLabel = row.parents.length

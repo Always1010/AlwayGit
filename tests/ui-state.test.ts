@@ -57,7 +57,9 @@ describe('repository UI consistency', () => {
     store.getState().previewSettings({ language: 'zh-CN', font: 15, row: 28, appearance: { theme: 'contrast', palette: 'distinct', codeFont: 17 } });
     store.getState().finishSettings(true);
     const saved = bridge.save.mock.calls.at(-1)?.[0];
-    expect(sessionSchema.parse(saved).appearance).toEqual({ theme: 'contrast', palette: 'distinct', codeFont: 17 });
+    expect(sessionSchema.parse(saved).appearance).toMatchObject({ theme: 'contrast', palette: 'distinct', codeFont: 17 });
+    expect(saved.appearance.colors.light).toHaveLength(8);
+    expect(saved.appearance.colors.dark).toHaveLength(8);
     store.getState().setLayout({ sidebar: 260, details: 350 }); store.getState().restoreLayout();
     expect(store.getState()).toMatchObject({ language: 'zh-CN', layout: { sidebar: 210, details: 300, font: 15, row: 28 }, appearance: saved.appearance });
     expect(store.getState().settingsBaseline).toBeUndefined();
