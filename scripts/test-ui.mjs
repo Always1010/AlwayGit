@@ -150,7 +150,11 @@ try {
   await assertMenuButton(sidebar.getByRole('button', { name: 'Remotes actions', exact: true }), ['Fetch…', 'Refresh']);
   await assertMenuButton(sidebar.getByRole('button', { name: 'origin actions', exact: true }), ['Fetch…', 'Refresh']);
   const remoteBranch = sidebar.getByRole('button', { name: 'Branch origin/develop', exact: true });
-  await assertMenu(remoteBranch, ['Show in Graph', 'Show Only This Branch', 'Create Tracking Branch…', 'Merge…', 'Rebase…', 'Copy Branch Name']);
+  await assertMenu(remoteBranch, ['Show in Graph', 'Show Only This Branch', 'Create Tracking Branch…', 'Merge…', 'Rebase…', 'Delete Branch from origin…', 'Copy Branch Name']);
+  const remoteMain=sidebar.getByRole('button',{name:'Branch origin/main',exact:true});
+  await remoteBranch.click();await remoteMain.click({modifiers:['Control']});await openMenu(remoteBranch);
+  assert.ok((await menu.getByRole('menuitem').allTextContents()).some(value=>value.trim()==='Delete 2 Branches from origin…'),'Remote multi-selection exposes an explicit remote deletion action');
+  await menu.getByRole('menuitem',{name:'Delete 2 Branches from origin…',exact:true}).click();dialog=page.getByRole('dialog');await dialog.getByText('Delete from origin',{exact:true}).waitFor();await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
   await assertMenuButton(sidebar.getByRole('button', { name: 'Tags actions', exact: true }), ['Create Tag…', 'Refresh']);
   const tag = sidebar.getByRole('button', { name: 'v0.1.0', exact: true });
   await assertMenu(tag, ['Checkout…', 'Show in Graph', 'Show Only This Tag', 'Create Branch…', 'Delete Tag…', 'Copy Tag Name', 'Copy Commit ID']);

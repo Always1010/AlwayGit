@@ -318,6 +318,17 @@ export class GitService implements GitServiceContract {
         if(failures.length)throw new GitError(`${deleted} branch(es) deleted; ${failures.length} failed.\n${failures.join('\n')}`,'PARTIAL_FAILURE');
         return;
       }
+      case 'remote.delete': {
+        const destination=token(action.remote,'remote'),configured=(await this.text(repo,['remote'])).split('\n').filter(Boolean);
+        if(!configured.includes(destination))throw new GitError(`Unknown remote: ${destination}`,'INVALID_ARGUMENT');
+        const branches=[...new Set(await Promise.all(action.branches.map(name=>this.refName(repo,name))))];
+        if(!branches.length)throw new GitError('Select at least one remote branch','INVALID_ARGUMENT');
+        for(const branch of branches){const expected=action.expectedOids?.[branch];if(expected&&await this.oid(repo,`refs/remotes/${destination}/${branch}`)!==expected)throw new GitError(`Remote-tracking branch changed before deletion: ${destination}/${branch}`,'OPERATION_CHANGED');}
+        const failures:string[]=[];let deleted=0;
+        for(const branch of branches){try{await this.run(repo,['push',destination,'--delete',branch]);deleted++;}catch(error){failures.push(`${destination}/${branch}: ${error instanceof Error?error.message:String(error)}`);}}
+        if(failures.length)throw new GitError(`${deleted} remote branch(es) deleted; ${failures.length} failed.\n${failures.join('\n')}`,'PARTIAL_FAILURE');
+        return;
+      }
       case 'tag.create': await this.run(repo, ['check-ref-format', `refs/tags/${token(action.name, 'tag name')}`]); args = ['tag', ...(action.message ? ['-a', '-m', action.message] : []), action.name, await this.oid(repo, action.target ?? 'HEAD')]; break;
       case 'tag.delete': await this.run(repo, ['check-ref-format', `refs/tags/${token(action.name, 'tag name')}`]); args = ['tag', '-d', '--', action.name]; break;
       case 'stash.create': args = ['stash', 'push', ...(action.includeUntracked ? ['--include-untracked'] : []), ...(action.message ? ['-m', action.message] : [])]; break;

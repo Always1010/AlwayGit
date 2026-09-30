@@ -110,6 +110,7 @@ describe('Git service integration', () => {
     await commit(root, 'tracked.txt', 'tracked'); await service.execute(repo, { type: 'push', remote: 'origin', branch: 'tracked', remoteBranch: 'release/tracked', setUpstream: true });
     expect(await git(bare, 'rev-parse', 'refs/heads/release/tracked')).toBe(await git(root, 'rev-parse', 'HEAD'));
     expect((await service.snapshot(repo)).pushTarget).toEqual({ localBranch: 'tracked', remote: 'origin', remoteBranch: 'release/tracked', configured: true });
+    const remoteRef=(await service.snapshot(repo)).refs.find(ref=>ref.name==='origin/release/tracked')!;await service.execute(repo,{type:'remote.delete',remote:'origin',branches:['release/tracked'],expectedOids:{'release/tracked':remoteRef.oid}});await expect(git(bare,'rev-parse','refs/heads/release/tracked')).rejects.toThrow();
   });
   it('serializes writes across service instances sharing a common directory', async () => {
     const { root, service, repo } = await setup(); await commit(root, 'a.txt', 'base'); const linked = path.join(root, 'linked'); await service.execute(repo, { type: 'worktree.add', path: linked, newBranch: 'linked' }); const other = await service.discover(linked);
