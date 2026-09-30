@@ -2,7 +2,7 @@
   "name": "alwaygit",
   "displayName": "AlwayGit",
   "description": "A professional Git workbench inside Visual Studio Code.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "alwaygit-dev",
   "private": true,
   "type": "module",
@@ -111,6 +111,16 @@
     "configuration": {
       "title": "AlwayGit",
       "properties": {
+        "alwaygit.language": {
+          "type": "string",
+          "enum": [
+            "en",
+            "zh-CN",
+            "auto"
+          ],
+          "default": "en",
+          "description": "Workbench language. Git operation names remain in English. The in-workbench language selector is remembered for this workspace."
+        },
         "alwaygit.gitPath": {
           "type": "string",
           "default": "",

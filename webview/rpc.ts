@@ -1,6 +1,10 @@
 import type { Commit, CommitDetails, GitAction, HistoryPage, HistoryQuery, HostMessage, Repository, RpcRequest, Snapshot } from '../src/protocol/types';
 
-export interface SessionState { repoId?: string; drafts?: Record<string, string>; views?: Record<string, { ref?: string; search: string; selectedOid?: string; selectedStashOid?: string; tab: 'history' | 'changes' }> }
+export interface LayoutState { preset: 'workbench' | 'editor'; sidebar: number; details: number; diff: number; author: number; date: number; font: number; row: number }
+export interface SessionState { version?: number; language?: 'en' | 'zh-CN'; layout?: LayoutState; repoId?: string; drafts?: Record<string, string>; views?: Record<string, { ref?: string; checkedRefs?: string[]; search: string; selectedOid?: string; selectedStashOid?: string; selectedFile?: string; tab: 'history' | 'changes' }> }
+export class RpcError extends Error {
+  constructor(message: string, public code?: string, public details?: { reason?: string; paths: string[]; target: string; worktreePath?: string; stashCreated?: boolean; stashOid?: string }) { super(message); this.name = 'RpcError'; }
+}
 declare global { interface Window { __ALWAYGIT_SESSION__?: SessionState; acquireVsCodeApi?: () => { postMessage(message: unknown): void; getState?(): SessionState | undefined; setState?(state: SessionState): void }; } }
 const vscode = typeof window.acquireVsCodeApi === 'function' ? window.acquireVsCodeApi() : undefined;
 export const demoMode = !vscode && new URLSearchParams(location.search).get('demo') === '1';
@@ -29,12 +33,12 @@ window.addEventListener('message', event => {
     const request = pending.get(message.id);
     if (!request) return;
     pending.delete(message.id); clearTimeout(request.timer);
-    if (message.error) request.reject(new Error(message.error.message)); else request.resolve(message.result);
+    if (message.error) request.reject(new RpcError(message.error.message, message.error.code, message.error.details)); else request.resolve(message.result);
   } else listeners.forEach(listener => listener(message));
 });
 export function subscribe(listener: (event: HostMessage) => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }
 export async function rpc<T>(method: RpcRequest['method'], repoId?: string, payload?: unknown): Promise<T> {
-  if (demoMode) return demoRequest(method, payload) as Promise<T>;
+  if (demoMode) return demoRequest(method, payload, repoId) as Promise<T>;
   if (!vscode) throw new Error('Open AlwayGit in VS Code to connect to your repositories.');
   const id = `webview-${++sequence}`;
   return new Promise<T>((resolve, reject) => {
@@ -62,22 +66,29 @@ let demoSnapshot: Snapshot = { repository: repo, branch: 'main', head: commits[0
   { name: 'origin/develop', fullName: 'refs/remotes/origin/develop', kind: 'remote', oid: commits[6].oid },
   { name: 'v0.1.0', fullName: 'refs/tags/v0.1.0', kind: 'tag', oid: commits[14].oid },
 ], stashes: [{ selector: 'stash@{0}', oid: commits[9].oid, subject: 'WIP: repository picker styling' }], worktrees: [{ path: repo.root, head: commits[0].oid, branch: 'refs/heads/main', bare: false, detached: false }, { path: 'D:\\Projects\\AlwayGit-graph', head: commits[3].oid, branch: 'refs/heads/feature/history-graph', bare: false, detached: false }], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 1 };
-async function demoRequest(method: RpcRequest['method'], payload: unknown): Promise<unknown> {
+const website:Repository={id:'demo-website',root:'D:\\Projects\\website',commonDir:'D:\\Projects\\website\\.git',name:'website'};
+const demoStores:Record<string,{snapshot:Snapshot;commits:Commit[];saved:Map<string,Snapshot['changes']>}>=Object.fromEntries([repo,website].map(repository=>[repository.id,{snapshot:{...structuredClone(demoSnapshot),repository,remotes:['origin'],worktrees:demoSnapshot.worktrees.map((tree,i)=>({...tree,path:i?repository.root+'-graph':repository.root}))},commits:structuredClone(commits),saved:new Map()}]));
+async function demoRequest(method: RpcRequest['method'], payload: unknown, repoId?:string): Promise<unknown> {
   await new Promise(resolve => setTimeout(resolve, 110));
-  if (method === 'repositories' || method === 'addRepository') return [repo];
+  const data=demoStores[repoId??repo.id]??demoStores[repo.id],demoSnapshot=data.snapshot,commits=data.commits;
+  const resolve=(ref:string)=>ref==='HEAD'?demoSnapshot.head!:demoSnapshot.refs.find(r=>r.name===ref||r.fullName===ref)?.oid??ref;
+  if (method === 'repositories' || method === 'addRepository') return [repo,website];
   if (method === 'snapshot') return structuredClone(demoSnapshot);
   if (method === 'history') {
     const query = (payload ?? {}) as HistoryQuery;
-    let result = commits.filter(c => !query.search || `${c.subject} ${c.author} ${c.oid}`.toLowerCase().includes(query.search.toLowerCase()));
-    if (query.ref) { const ref = demoSnapshot.refs.find(r => r.fullName === query.ref || r.name === query.ref); if (ref) result = result.slice(Math.max(0, result.findIndex(c => c.oid === ref.oid))); }
+    const tips=[...new Set(query.tips?.map(resolve)??(query.ref?[resolve(query.ref)]:demoSnapshot.refs.map(r=>r.oid)))],byId=new Map(commits.map(c=>[c.oid,c])),seen=new Set<string>(),pending=[...tips];
+    while(pending.length){const id=pending.pop()!;if(seen.has(id))continue;seen.add(id);pending.push(...(byId.get(id)?.parents??[]));}
+    const result=commits.filter(c=>seen.has(c.oid)&&(!query.search||c.subject.toLowerCase().includes(query.search.toLowerCase())));
     const offset = query.offset ?? 0, limit = query.limit ?? 100;
-    return { commits: result.slice(offset, offset + limit), nextOffset: offset + limit, hasMore: offset + limit < result.length, tips: demoSnapshot.refs.map(r => r.oid) } satisfies HistoryPage;
+    return { commits: result.slice(offset, offset + limit), nextOffset: offset + Math.min(limit,result.length-offset), hasMore: offset + limit < result.length, tips } satisfies HistoryPage;
   }
   if (method === 'details') {
-    const request = payload as { oid: string; parent?: string }; const commit = commits.find(c => c.oid === request.oid) ?? commits[0];
+    const request = payload as { oid: string; parent?: string }; const commit = commits.find(c => c.oid === resolve(request.oid)) ?? commits[0];
     return { commit, body: `${commit.subject}\n\nImprove the repository experience with clear status feedback and consistent navigation.\n\nCloses #24`, parent: request.parent ?? commit.parents[0], files: [{ path: 'webview/App.tsx', status: 'M' }, { path: 'webview/styles.css', status: 'M' }, { path: 'src/git/service.ts', status: 'A' }] } satisfies CommitDetails;
   }
   if (method === 'pickWorktree') return 'D:\\Projects\\AlwayGit-new';
+  if(method==='diffPreview'){const target=payload as {path:string;kind:string;area?:string;oid?:string;parent?:string};return {path:target.path,leftLabel:target.kind==='commit'?'Parent '+(target.parent??'').slice(0,8):target.area==='staged'?'HEAD':'Index',rightLabel:target.kind==='commit'?target.oid?.slice(0,8):target.area==='staged'?'Index':'Working Tree',left:'export function Workbench() {\n  return <HistoryPanel />;\n}\n',right:'export function Workbench() {\n  return (\n    <WorkbenchLayout>\n      <HistoryPanel />\n      <CommitDetails />\n    </WorkbenchLayout>\n  );\n}\n'};}
+  if(method==='copyText'){const {text}=payload as {text:string};if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(text);else throw new Error('Clipboard is unavailable in this browser.');return null;}
   if (method === 'action') {
     const action = payload as GitAction;
     if (action.type === 'stage' || action.type === 'unstage' || action.type === 'discard') {
@@ -88,18 +99,25 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown): Prom
       });
     } else if (action.type === 'commit') {
       const commit = { ...commits[0], oid: oid(999 + demoSnapshot.version), parents: action.amend ? commits[0].parents : [commits[0].oid], subject: action.message.split('\n')[0], timestamp: Math.floor(Date.now() / 1000) }; if (action.amend) commits.shift(); commits.unshift(commit);
-      demoSnapshot.head = commit.oid; demoSnapshot.changes = demoSnapshot.changes.filter(c => c.worktreeStatus !== ' ' || c.untracked).map(c => ({ ...c, indexStatus: ' ' })); demoSnapshot.ahead++;
-    } else if (action.type === 'branch.checkout') demoSnapshot.branch = action.name;
-    else if (action.type === 'branch.create') { demoSnapshot.refs.push({ name: action.name, fullName: `refs/heads/${action.name}`, kind: 'local', oid: action.start ?? commits[0].oid }); if (action.checkout) demoSnapshot.branch = action.name; }
+      demoSnapshot.head = commit.oid;const branch=demoSnapshot.refs.find(r=>r.kind==='local'&&r.name===demoSnapshot.branch);if(branch)branch.oid=commit.oid; demoSnapshot.changes = demoSnapshot.changes.filter(c => c.worktreeStatus !== ' ' || c.untracked).map(c => ({ ...c, indexStatus: ' ' })); demoSnapshot.ahead++;
+    } else if (action.type === 'branch.checkout'||action.type==='commit.checkout'||action.type==='checkout.stash') {
+      const detached=action.type==='commit.checkout'||action.type==='checkout.stash'&&action.detached,target=action.type==='branch.checkout'?action.name:action.target;
+      const occupied=demoSnapshot.worktrees.find(tree=>tree.branch?.replace(/^refs\/heads\//,'')===target&&tree.path!==demoSnapshot.repository.root);
+      if(!detached&&occupied)throw new RpcError('Branch is in use by another Worktree.','WORKTREE_OCCUPIED',{reason:'worktree-occupied',target,paths:[],worktreePath:occupied.path});
+      if(action.type==='checkout.stash'){const stash={selector:'stash@{0}',oid:oid(2000+demoSnapshot.version),subject:'WIP before Checkout'};data.saved.set(stash.oid,structuredClone(demoSnapshot.changes));demoSnapshot.stashes.unshift(stash);demoSnapshot.changes=[];}
+      demoSnapshot.branch=detached?'':target;demoSnapshot.head=resolve(target);const tree=demoSnapshot.worktrees[0];if(tree){tree.branch=detached?undefined:target;tree.detached=!!detached;tree.head=demoSnapshot.head;}
+    }
+    else if (action.type === 'branch.create') {const target=resolve(action.start??'HEAD');demoSnapshot.refs.push({ name: action.name, fullName: `refs/heads/${action.name}`, kind: 'local', oid: target,upstream:action.start?.startsWith('refs/remotes/')?action.start.slice(13):undefined }); if (action.checkout){demoSnapshot.branch = action.name;demoSnapshot.head=target;} }
     else if (action.type === 'branch.delete') demoSnapshot.refs = demoSnapshot.refs.filter(r => !(r.kind === 'local' && r.name === action.name));
-    else if (action.type === 'tag.create') demoSnapshot.refs.push({ name: action.name, fullName: `refs/tags/${action.name}`, kind: 'tag', oid: action.target ?? commits[0].oid });
+    else if (action.type === 'tag.create') demoSnapshot.refs.push({ name: action.name, fullName: `refs/tags/${action.name}`, kind: 'tag', oid: resolve(action.target??'HEAD') });
     else if (action.type === 'tag.delete') demoSnapshot.refs = demoSnapshot.refs.filter(r => !(r.kind === 'tag' && r.name === action.name));
-    else if (action.type === 'stash.create') { demoSnapshot.stashes.unshift({ selector: `stash@{${demoSnapshot.stashes.length}}`, oid: commits[0].oid, subject: action.message || 'WIP on main' }); demoSnapshot.changes = []; }
-    else if (action.type === 'stash.drop' || action.type === 'stash.apply' && action.pop) demoSnapshot.stashes = demoSnapshot.stashes.filter(s => s.selector !== action.selector);
+    else if (action.type === 'stash.create') {const stash={selector:'stash@{0}',oid:oid(2000+demoSnapshot.version),subject:action.message||'WIP on '+demoSnapshot.branch};data.saved.set(stash.oid,structuredClone(demoSnapshot.changes));demoSnapshot.stashes.unshift(stash);demoSnapshot.changes=[];}
+    else if(action.type==='stash.apply'||action.type==='stash.drop'){const stash=demoSnapshot.stashes.find(s=>s.selector===action.selector);if(!stash||action.expectedOid&&stash.oid!==action.expectedOid)throw new RpcError('Stash changed. Refresh and retry.','STASH_CHANGED');if(action.type==='stash.apply'){const saved=data.saved.get(stash.oid)??[{path:'webview/styles.css',indexStatus:' ',worktreeStatus:'M',conflict:false,untracked:false}];if(saved.some(f=>demoSnapshot.changes.some(c=>c.path===f.path)))throw new Error('Stash overlaps with local changes; entry preserved.');demoSnapshot.changes.push(...saved.map(c=>({...c,indexStatus:' ',worktreeStatus:'M'})));}if(action.type==='stash.drop'||action.pop)demoSnapshot.stashes=demoSnapshot.stashes.filter(s=>s.oid!==stash.oid);}
     else if (action.type === 'worktree.add') demoSnapshot.worktrees.push({ path: action.path, head: commits[0].oid, branch: action.branch || action.newBranch, bare: false, detached: !!action.detach });
     else if (action.type === 'worktree.remove') demoSnapshot.worktrees = demoSnapshot.worktrees.filter(w => w.path !== action.path);
     else if (action.type === 'push') demoSnapshot.ahead = 0;
     else if (action.type === 'pull') demoSnapshot.behind = 0;
+    demoSnapshot.stashes.forEach((stash,index)=>stash.selector=`stash@{${index}}`);
     demoSnapshot.version++; return undefined;
   }
   return undefined;

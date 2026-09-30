@@ -6,6 +6,9 @@ export interface GraphRowProps {
   height?: number;
   laneWidth?: number;
   width?: number;
+  /** The commit currently checked out, including a detached HEAD. */
+  head?: boolean;
+  selected?: boolean;
 }
 
 // Theme-provided terminal colors keep graph lines recognizable in dark, light,
@@ -32,13 +35,15 @@ function pathFor(segment: GraphSegment, height: number, laneWidth: number): stri
 }
 
 /** A complete, independently renderable row for a fixed-height history table. */
-export function GraphRow({ row, height = 32, laneWidth = 16, width }: GraphRowProps) {
+export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false, selected = false }: GraphRowProps) {
   const titleId = useId();
   const svgWidth = Math.max(width ?? 0, row.laneCount * laneWidth, laneWidth);
   const parentLabel = row.parents.length
     ? `${row.parents.length > 1 ? 'Merge commit; ' : ''}parents ${row.parents.map(oid => oid.slice(0, 8)).join(', ')}`
     : 'Root commit; no parents';
-  const label = `Commit ${row.oid.slice(0, 8)}, lane ${row.lane + 1}. ${parentLabel}.`;
+  const label = `Commit ${row.oid.slice(0, 8)}, lane ${row.lane + 1}. ${parentLabel}.${head ? ' Current HEAD.' : ''}${selected ? ' Selected commit.' : ''}`;
+  const nodeX = (row.lane + 0.5) * laneWidth;
+  const nodeY = height / 2;
 
   return (
     <svg
@@ -48,6 +53,8 @@ export function GraphRow({ row, height = 32, laneWidth = 16, width }: GraphRowPr
       viewBox={`0 0 ${svgWidth} ${height}`}
       role="img"
       aria-labelledby={titleId}
+      data-head={head || undefined}
+      data-selected={selected || undefined}
       style={{ display: 'block', overflow: 'visible', flexShrink: 0 }}
     >
       <title id={titleId}>{label}</title>
@@ -59,22 +66,38 @@ export function GraphRow({ row, height = 32, laneWidth = 16, width }: GraphRowPr
           stroke={colorFor(segment.color)}
           strokeWidth={2}
           vectorEffect="non-scaling-stroke"
+          strokeLinecap="round"
           aria-hidden="true"
         />
       ))}
+      {head && (
+        <circle
+          className="git-graph-head-ring"
+          cx={nodeX}
+          cy={nodeY}
+          r={6.5}
+          fill="var(--vscode-editor-background, Canvas)"
+          stroke="var(--vscode-focusBorder, currentColor)"
+          strokeWidth={2}
+          vectorEffect="non-scaling-stroke"
+          aria-hidden="true"
+        />
+      )}
       <circle
-        cx={(row.lane + 0.5) * laneWidth}
-        cy={height / 2}
+        className="git-graph-node"
+        cx={nodeX}
+        cy={nodeY}
         r={row.parents.length > 1 ? 4.5 : 3.5}
         fill={colorFor(row.color)}
-        stroke="var(--vscode-foreground, currentColor)"
-        strokeWidth={1}
+        stroke={selected ? 'var(--vscode-list-activeSelectionForeground, currentColor)' : 'var(--vscode-foreground, currentColor)'}
+        strokeWidth={selected ? 2 : 1}
+        vectorEffect="non-scaling-stroke"
         aria-hidden="true"
       />
       {row.parents.length > 1 && (
         <circle
-          cx={(row.lane + 0.5) * laneWidth}
-          cy={height / 2}
+          cx={nodeX}
+          cy={nodeY}
           r={1.5}
           fill="var(--vscode-editor-background, Canvas)"
           aria-hidden="true"

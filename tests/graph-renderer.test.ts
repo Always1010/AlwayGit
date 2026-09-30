@@ -14,9 +14,37 @@ describe('Git graph SVG rows', () => {
     expect(markup).toContain('role="img"');
     expect(markup).toContain('aria-labelledby=');
     expect(markup).toContain('Commit merge123, lane 1. Merge commit; parents first123, second12.');
-    expect(markup).toContain('height="32"');
+    expect(markup).toContain('height="26"');
+    expect(markup).toContain('cy="13"');
     expect(markup.match(/<path/g)).toHaveLength(2);
     expect(markup.match(/<circle/g)).toHaveLength(2);
+  });
+
+  it('marks HEAD visibly and in the accessible description even when detached', () => {
+    const { rows } = layoutGraph([{
+      oid: 'detached123456', parents: [], author: 'A', email: 'a@example.com', timestamp: 0, subject: 'Detached',
+    }]);
+    const markup = renderToStaticMarkup(React.createElement(GraphRow, {
+      row: rows[0], head: true, selected: true,
+    }));
+    expect(markup).toContain('Current HEAD. Selected commit.');
+    expect(markup).toContain('data-head="true"');
+    expect(markup).toContain('class="git-graph-head-ring"');
+    expect(markup).toContain('r="6.5"');
+    expect(markup).toContain('var(--vscode-focusBorder, currentColor)');
+    expect(markup).toContain('var(--vscode-list-activeSelectionForeground, currentColor)');
+    expect(markup.match(/<circle/g)).toHaveLength(2);
+  });
+
+  it('keeps merge curves within the compact row and leaves ordinary commits unmarked', () => {
+    const { rows } = layoutGraph([{
+      oid: 'merge', parents: ['first', 'second'], author: 'A', email: 'a@example.com', timestamp: 0, subject: 'Merge',
+    }]);
+    const markup = renderToStaticMarkup(React.createElement(GraphRow, { row: rows[0] }));
+    expect(markup).toContain('d="M 8 13 C 8 19.5, 24 19.5, 24 26"');
+    expect(markup).not.toContain('git-graph-head-ring');
+    expect(markup).not.toContain('data-head');
+    expect(markup).not.toContain('Current HEAD');
   });
 
   it('labels a parentless root and preserves the requested row dimensions', () => {
