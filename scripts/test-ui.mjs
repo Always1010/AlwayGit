@@ -101,13 +101,14 @@ try {
     await page.keyboard.press('Escape');
     await menu.waitFor({ state: 'hidden' });
   }
-  async function assertMenuButton(locator, labels) {
-    await locator.click();
-    await menu.waitFor();
-    const actual = await menu.getByRole('menuitem').allTextContents();
-    for (const label of labels) assert.ok(actual.some(value => value.trim() === label), `Expected menu item "${label}" in ${JSON.stringify(actual)}`);
-    await page.keyboard.press('Escape');
-    await menu.waitFor({ state: 'hidden' });
+  async function assertIconActions(scope, labels) {
+    for (const label of labels) {
+      const action = scope.getByRole('button', { name: label, exact: true });
+      await action.waitFor();
+      assert.equal((await action.innerText()).trim(), '', `${label} must remain icon-only`);
+      assert.equal(await action.locator('.codicon').count(), 1, `${label} must expose one recognizable icon`);
+      assert.ok((await action.getAttribute('title'))?.startsWith(label), `${label} must expose a hover hint`);
+    }
   }
 
   const repositoriesHeading = sidebar.getByRole('button', { name: 'Repositories', exact: true });
@@ -115,13 +116,20 @@ try {
   await sidebar.getByRole('button', { name: /^AlwayGit/ }).waitFor({ state: 'hidden' });
   assert.equal(await menu.isVisible(), false, 'A section title click must collapse the section without opening its menu');
   await repositoriesHeading.click();
-  await assertMenuButton(sidebar.getByRole('button', { name: 'Repositories actions', exact: true }), ['Add Repository…', 'Refresh']);
+  await assertIconActions(repositoriesHeading.locator('..'), ['Add Repository…', 'Refresh']);
+  assert.equal(await sidebar.locator('.codicon-ellipsis').count(), 0, 'Sidebar actions must not use overflow ellipsis buttons');
+  await assertMenu(repositoriesHeading, ['Add Repository…', 'Refresh']);
   await assertMenu(sidebar.getByRole('option', { name: /^AlwayGit/ }), ['Switch to Repository', 'Open in New AlwayGit Tab', 'Open in New Window', 'Fetch…', 'Refresh Status', 'Copy Repository Path']);
   const localHeading = sidebar.getByRole('button', { name: 'Local Branches', exact: true });
   await localHeading.click();
   await sidebar.getByRole('button', { name: 'Expand feature', exact: true }).waitFor({ state: 'hidden' });
   await localHeading.click();
-  await assertMenuButton(sidebar.getByRole('button', { name: 'Local Branches actions', exact: true }), ['Create Branch…', 'Show All in Graph', 'Show None in Graph']);
+  await assertIconActions(localHeading.locator('..'), ['Create Branch…']);
+  await assertIconActions(sidebar.locator('.branch-shortcuts'), ['Show All in Graph', 'Show Current Branch Only in Graph', 'Show None in Graph']);
+  await localHeading.locator('..').getByRole('button', { name: 'Create Branch…', exact: true }).click();
+  const createBranchDialog = page.getByRole('dialog', { name: 'Create Branch', exact: true });
+  await createBranchDialog.waitFor();
+  await createBranchDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
   await sidebar.getByRole('button', { name: 'Expand feature', exact: true }).click();
   await sidebar.getByRole('button', { name: 'Expand login', exact: true }).click();
   await sidebar.getByRole('button', { name: 'Branch feature/login/api', exact: true }).waitFor();
@@ -154,21 +162,21 @@ try {
   await menu.waitFor();
   assert.ok((await menu.getByRole('menuitem').allTextContents()).some(value=>value.trim()==='Copy Branch Names'),'Branch folders use the custom branch menu');
   await page.keyboard.press('Escape');
-  await assertMenuButton(sidebar.getByRole('button', { name: 'Remotes actions', exact: true }), ['Fetch…', 'Refresh']);
-  await assertMenuButton(sidebar.getByRole('button', { name: 'origin actions', exact: true }), ['Fetch…', 'Refresh']);
+  await assertIconActions(sidebar.getByRole('button', { name: 'Remotes', exact: true }).locator('..'), ['Fetch…', 'Refresh']);
+  await assertIconActions(sidebar.getByRole('button', { name: 'origin', exact: true }).locator('..'), ['Fetch…', 'Refresh']);
   const remoteBranch = sidebar.getByRole('button', { name: 'Branch origin/develop', exact: true });
   await assertMenu(remoteBranch, ['Show in Graph', 'Show Only This Branch', 'Create Tracking Branch…', 'Merge…', 'Rebase…', 'Delete Branch from origin…', 'Copy Branch Name']);
   const remoteMain=sidebar.getByRole('button',{name:'Branch origin/main',exact:true});
   await remoteBranch.click();await remoteMain.click({modifiers:['Control']});await openMenu(remoteBranch);
   assert.ok((await menu.getByRole('menuitem').allTextContents()).some(value=>value.trim()==='Delete 2 Branches from origin…'),'Remote multi-selection exposes an explicit remote deletion action');
   await menu.getByRole('menuitem',{name:'Delete 2 Branches from origin…',exact:true}).click();dialog=page.getByRole('dialog');await dialog.getByText('Delete from origin',{exact:true}).waitFor();await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
-  await assertMenuButton(sidebar.getByRole('button', { name: 'Tags actions', exact: true }), ['Create Tag…', 'Refresh']);
+  await assertIconActions(sidebar.getByRole('button', { name: 'Tags', exact: true }).locator('..'), ['Create Tag…', 'Refresh']);
   const tag = sidebar.getByRole('button', { name: 'v0.1.0', exact: true });
   await assertMenu(tag, ['Checkout…', 'Show in Graph', 'Show Only This Tag', 'Create Branch…', 'Delete Tag…', 'Copy Tag Name', 'Copy Commit ID']);
-  await assertMenuButton(sidebar.getByRole('button', { name: 'Stashes actions', exact: true }), ['Stash Changes…', 'Refresh']);
+  await assertIconActions(sidebar.getByRole('button', { name: 'Stashes', exact: true }).locator('..'), ['Stash Changes…', 'Refresh']);
   const stash = sidebar.getByRole('button').filter({ hasText: 'stash@{0}' });
   await assertMenu(stash, ['View Changes', 'Apply Stash', 'Pop Stash', 'Drop Stash…']);
-  await assertMenuButton(sidebar.getByRole('button', { name: 'Worktrees actions', exact: true }), ['Add Worktree…', 'Refresh']);
+  await assertIconActions(sidebar.getByRole('button', { name: 'Worktrees', exact: true }).locator('..'), ['Add Worktree…', 'Refresh']);
   const secondaryWorktree = sidebar.getByRole('button').filter({ hasText: 'AlwayGit-graph' });
   await assertMenu(secondaryWorktree, ['Open Worktree', 'Open Workbench in New Window', 'Refresh', 'Remove Worktree…', 'Copy Worktree Path']);
 
@@ -207,10 +215,15 @@ try {
   const originalSidebar = Number(await sidebarSeparator.getAttribute('aria-valuenow'));
   await sidebarSeparator.focus(); await sidebarSeparator.press('ArrowRight');
   assert.ok(Number(await sidebarSeparator.getAttribute('aria-valuenow')) > originalSidebar, 'Keyboard resizing must update the sidebar width');
+  await sidebarSeparator.press('Home');
+  assert.equal(Number(await sidebarSeparator.getAttribute('aria-valuenow')), 160, 'Sidebar supports its documented minimum width');
+  const sidebarBox = await sidebar.boundingBox();
+  const actionBoxes = await sidebar.locator('.sidebar-actions').evaluateAll(groups => groups.flatMap(group => [...group.querySelectorAll('button')].map(button => { const box = button.getBoundingClientRect(); return { left: box.left, right: box.right }; })));
+  assert.ok(sidebarBox && actionBoxes.every(box => box.left >= sidebarBox.x - .5 && box.right <= sidebarBox.x + sidebarBox.width + .5), 'Direct sidebar actions must stay visible at the minimum width');
   await page.getByRole('button', { name: 'Restore Layout', exact: true }).click();
   assert.equal(Number(await sidebarSeparator.getAttribute('aria-valuenow')), 210);
 
-  await sidebar.getByRole('button', { name: 'Show None', exact: true }).click();
+  await sidebar.getByRole('button', { name: 'Show None in Graph', exact: true }).click();
   await history.getByText('No branches selected', { exact: true }).waitFor();
   const featureGroup = sidebar.getByLabel('Show branch group feature', { exact: true });
   await featureGroup.check();
