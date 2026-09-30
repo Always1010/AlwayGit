@@ -33,14 +33,18 @@ async function fixture() {
   }
   return root;
 }
-function setup() {
+function setup(globalValues = new Map<string, unknown>()) {
   const values = new Map<string, unknown>();
   values.set('alwaygit.session', { language: 'zh-CN', repoId: 'active', layout: { preset: 'editor' }, drafts: { active: '保留草稿' } });
   const update = vi.fn(async (key: string, value: unknown) => { values.set(key, value); });
-  const context = { workspaceState: { get: (key: string, fallback: unknown) => values.get(key) ?? fallback, update } } as unknown as vscode.ExtensionContext;
+  const globalUpdate = vi.fn(async (key: string, value: unknown) => { globalValues.set(key, value); });
+  const context = {
+    workspaceState: { get: (key: string, fallback: unknown) => values.get(key) ?? fallback, update },
+    globalState: { get: (key: string, fallback: unknown) => globalValues.get(key) ?? fallback, update: globalUpdate },
+  } as unknown as vscode.ExtensionContext;
   const output = { appendLine: vi.fn() } as unknown as vscode.OutputChannel;
   const git = new GitService(), manager = new RepositoryManager(git, context, output); managers.push(manager);
-  return { context, output, git, manager, update, values };
+  return { context, output, git, manager, update, values, globalUpdate, globalValues };
 }
 beforeEach(() => {
   vi.clearAllMocks(); Object.assign(vscode.workspace, { isTrusted: true, workspaceFolders: [] });
@@ -80,7 +84,7 @@ describe('batch repository registration', () => {
     expect(changed).toHaveBeenCalledTimes(1); expect(manager.list()).toHaveLength(2); expect(manager.groups()).toHaveLength(1);
   });
   it('restores legacy Worktree paths, drafts and IDs and groups automatic VS Code discovery', async () => {
-    const root = await fixture(), { main, linked } = await worktree(root), { manager, git, values, update } = setup();
+    const root = await fixture(), { main, linked } = await worktree(root), { manager, git, values, update, globalValues, globalUpdate } = setup();
     const linkedRepo = await git.discover(linked), mainRepo = await git.discover(main);
     const session = { repoId: linkedRepo.id, drafts: { [mainRepo.id]: '主目录草稿', [linkedRepo.id]: 'Worktree 草稿' }, layout: { preset: 'editor' } };
     values.set('alwaygit.roots', [linked, main]); values.set('alwaygit.session', session);
@@ -88,7 +92,8 @@ describe('batch repository registration', () => {
     await manager.scan();
     expect(manager.groups()).toHaveLength(1); expect(new RepositoryTree(manager).getChildren()[0].id).toBe(mainRepo.id);
     expect(manager.get(linkedRepo.id).root).toBe(linkedRepo.root); expect(values.get('alwaygit.session')).toBe(session);
-    expect(update).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled(); expect(globalUpdate).toHaveBeenCalledTimes(1);
+    expect(globalValues.get('alwaygit.repositoryRoots.v1')).toEqual([linked, main]);
   });
   it('shows the main repository name when directly adding only its linked directory', async () => {
     const root = await fixture(), { linked } = await worktree(root), { manager } = setup();
@@ -97,23 +102,26 @@ describe('batch repository registration', () => {
     expect(new RepositoryTree(manager).getChildren()[0]).toMatchObject({ id: repo.id, name: 'A' });
   });
   it('deduplicates, saves and notifies once, restores registered roots, and preserves session data', async () => {
-    const root = await fixture(), { manager, context, output, git, update, values } = setup();
+    const root = await fixture(), shared = new Map<string, unknown>(), { manager, context, output, git, globalUpdate, globalValues, values } = setup(shared);
     const session = values.get('alwaygit.session'), changed = vi.fn(); manager.onDidChangeRepositories(changed);
     expect(await manager.addDirectory(root)).toMatchObject({ found: 2, added: 2, existing: 0, cancelled: false });
-    expect(changed).toHaveBeenCalledTimes(1); expect(update).toHaveBeenCalledTimes(1);
+    expect(changed).toHaveBeenCalledTimes(1); expect(globalUpdate).toHaveBeenCalledTimes(1);
     expect(vscode.workspace.createFileSystemWatcher).toHaveBeenCalledTimes(4);
     expect(await manager.addDirectory(root)).toMatchObject({ found: 2, added: 0, existing: 2 });
     expect(changed).toHaveBeenCalledTimes(1); expect(vscode.workspace.createFileSystemWatcher).toHaveBeenCalledTimes(4);
     expect(values.get('alwaygit.session')).toBe(session);
     const restored = new RepositoryManager(git, context, output); managers.push(restored); await restored.scan();
     expect(restored.list()).toEqual(manager.list());
-    expect(values.get('alwaygit.roots')).toEqual(manager.list().map(r => r.root));
+    expect(globalValues.get('alwaygit.repositoryRoots.v1')).toEqual(manager.list().map(r => r.root));
+
+    const otherWindow = setup(shared).manager; await otherWindow.scan();
+    expect(otherWindow.list()).toEqual(manager.list());
   });
 
   it('cancels after finding one repository without registering or saving a partial batch', async () => {
-    const root = await fixture(), { manager, update } = setup(); let cancelled = false;
+    const root = await fixture(), { manager, globalUpdate } = setup(); let cancelled = false;
     expect(await manager.addDirectory(root, { isCancelled: () => cancelled, onProgress: ({ found }) => { if (found) cancelled = true; } })).toMatchObject({ found: 1, added: 0, cancelled: true });
-    expect(manager.list()).toEqual([]); expect(update).not.toHaveBeenCalled();
+    expect(manager.list()).toEqual([]); expect(globalUpdate).not.toHaveBeenCalled();
     expect(vscode.workspace.createFileSystemWatcher).not.toHaveBeenCalled();
   });
 
@@ -128,10 +136,10 @@ describe('batch repository registration', () => {
   });
 
   it('does not scan or register in an untrusted workspace', async () => {
-    const { manager, git, update } = setup(), discover = vi.spyOn(git, 'discover');
+    const { manager, git, globalUpdate } = setup(), discover = vi.spyOn(git, 'discover');
     Object.assign(vscode.workspace, { isTrusted: false });
     await expect(manager.addDirectory('unused')).rejects.toThrow('Trust');
-    expect(discover).not.toHaveBeenCalled(); expect(update).not.toHaveBeenCalled();
+    expect(discover).not.toHaveBeenCalled(); expect(globalUpdate).not.toHaveBeenCalled();
   });
 });
 

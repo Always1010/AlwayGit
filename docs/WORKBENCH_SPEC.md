@@ -87,6 +87,8 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 
 ## 左侧对象菜单
 
+用户主动添加的仓库列表在同一 VS Code Profile 和本地或远程运行环境内的窗口间共享。各窗口的活动仓库、引用选择、查找、布局和 Commit 草稿仍属于当前工作区会话，不会在多个窗口间互相覆盖。
+
 | 对象 | 项目 |
 | --- | --- |
 | Repository | `Open Workbench`、`Open in New Window`、`Refresh`、`Fetch…`、`Copy Repository Path` |

@@ -27,7 +27,7 @@ const repo: Repository = { id: 'fixture', root, commonDir: path.join(root, '.git
 let manager: RepositoryManager;
 beforeEach(async () => {
   vi.useFakeTimers(); surfaces.watchers.length = 0;
-  manager = new RepositoryManager({ discover: async () => repo } as unknown as GitServiceContract, { workspaceState: { update: vi.fn() } } as any, { appendLine: vi.fn() } as any);
+  manager = new RepositoryManager({ discover: async () => repo } as unknown as GitServiceContract, { workspaceState: { get: vi.fn((_key, fallback) => fallback), update: vi.fn() }, globalState: { get: vi.fn((_key, fallback) => fallback), update: vi.fn() } } as any, { appendLine: vi.fn() } as any);
   await manager.add(root);
 });
 afterEach(() => { manager.dispose(); vi.useRealTimers(); });
