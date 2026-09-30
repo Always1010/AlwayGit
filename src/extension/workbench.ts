@@ -25,7 +25,7 @@ export class Workbench implements vscode.Disposable {
   private language(): Language { return this.context.workspaceState.get<{ language?: Language }>('alwaygit.session', {}).language ?? preferredLanguage(); }
   private text(english: string, chinese: string): string { return hostText(english, chinese, this.language()); }
   constructor(private readonly context: vscode.ExtensionContext, private readonly git: GitServiceContract, private readonly repositories: RepositoryManager, private readonly documents: GitDocuments, private readonly output: vscode.OutputChannel, private readonly projects: ProjectWindows) {
-    this.disposables.push(repositories.onDidChange(id => this.post({ type: 'changed', repoId: id })), repositories.onDidChangeRepositories(() => this.post({ type: 'repositoriesChanged' })));
+    this.disposables.push(repositories.onDidChange(event => this.post({ type: 'changed', ...event })), repositories.onDidChangeRepositories(() => this.post({ type: 'repositoriesChanged' })));
     const seconds = vscode.workspace.getConfiguration('alwaygit').get<number>('refreshInterval', 15);
     this.interval = setInterval(() => void this.poll(), seconds * 1000);
   }
@@ -129,7 +129,7 @@ export class Workbench implements vscode.Disposable {
       if (this.busy.has(repo.commonDir)) return;
       const previous = this.fingerprints.get(repo.id);
       const snapshot = await this.git.snapshot(repo);
-      if (this.recordFingerprint(snapshot) !== previous) this.post({ type: 'changed', repoId: repo.id });
+      if (this.recordFingerprint(snapshot) !== previous) this.post({ type: 'changed', repoId: repo.id, changes: { paths: [] } });
     } catch (error) { this.output.appendLine(redactSecrets(`[refresh] ${error instanceof Error ? error.message : String(error)}`)); }
     finally { this.polling = false; }
   }

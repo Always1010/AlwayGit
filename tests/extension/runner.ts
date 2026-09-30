@@ -1,5 +1,7 @@
 import * as assert from 'node:assert/strict';
 import * as vscode from 'vscode';
+import { writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import type { DiffPreview, GitServiceContract, Repository, Snapshot, HistoryPage } from '../../src/protocol/types';
 import type { Workbench } from '../../src/extension/workbench';
 import type { RepositoryManager } from '../../src/repositories/manager';
@@ -65,7 +67,22 @@ export async function run(): Promise<void> {
   const fileTabsBefore = vscode.window.tabGroups.all.flatMap(group => group.tabs).length;
   await api.workbench.handle({ id: 'open-again', method: 'openFile', repoId: repo.id, payload: { path: 'sample.ts' } });
   assert.equal(vscode.window.tabGroups.all.flatMap(group => group.tabs).length, fileTabsBefore, 'Reopening the working file must reuse its pinned tab');
+  const changes: { paths?: string[]; index?: boolean }[] = [];
+  const subscription = api.manager.onDidChange(event => { if (event.repoId === repo.id) changes.push(event.changes); });
+  try {
+    await writeFile(path.join(repo.root, 'sample.ts'), 'export const value = 4;\n');
+    const fileDeadline = Date.now() + 10000;
+    while (!changes.some(change => change.paths?.includes('sample.ts')) && Date.now() < fileDeadline) await new Promise(resolve => setTimeout(resolve, 100));
+    assert.ok(changes.some(change => change.paths?.includes('sample.ts')), 'Real file watcher must report the changed relative path');
+    const updated = await api.workbench.handle({ id: 'updated-preview', method: 'diffPreview', repoId: repo.id, payload: { kind: 'change', area: 'unstaged', path: 'sample.ts' } }) as DiffPreview;
+    assert.match(updated.right, /value = 4/);
+    changes.length = 0;
+    await api.git.execute(repo, { type: 'stage', paths: ['sample.ts'] });
+    const indexDeadline = Date.now() + 10000;
+    while (!changes.some(change => change.index) && Date.now() < indexDeadline) await new Promise(resolve => setTimeout(resolve, 100));
+    assert.ok(changes.some(change => change.index), 'Real Index watcher must report Index invalidation');
+  } finally { subscription.dispose(); }
   await assert.rejects(api.workbench.handle({ id: 'bad', method: 'openFile', repoId: repo.id, payload: { path: '../outside.ts' } }), /outside/);
   await assert.rejects(api.workbench.handle({ id: 'bad-action', method: 'action', repoId: repo.id, payload: { type: 'reset', target: 'HEAD', mode: 'bad' } }));
-  console.log('ALWAYGIT_EXTENSION_TESTS_PASSED: activation, discovery, session v2, graph queries, native/preview diffs, clipboard, editing, path boundary, message validation');
+  console.log('ALWAYGIT_EXTENSION_TESTS_PASSED: activation, discovery, session v2, graph queries, native/preview diffs, scoped file/Index watchers, clipboard, editing, path boundary, message validation');
 }

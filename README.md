@@ -75,5 +75,6 @@ npm run package
 - [工作台规格](docs/WORKBENCH_SPEC.md)
 - [开发交接](docs/DEVELOPMENT_HANDOFF.md)
 - [验证说明](docs/VALIDATION.md)
+- [问题日志](docs/ISSUES.md)
 
 本项目尚未指定开源许可证，也尚未发布到 Marketplace。
