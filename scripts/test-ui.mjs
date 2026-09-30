@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { verifyRefresh } from './test-refresh-ui.mjs';
 import { verifyFeedback } from './test-feedback-ui.mjs';
 import { verifyFiles } from './test-files-ui.mjs';
+import { verifyHistoryRows } from './test-history-ui.mjs';
 
 const root = path.resolve('dist/webview');
 const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.ttf': 'font/ttf', '.woff2': 'font/woff2', '.svg': 'image/svg+xml' };
@@ -39,6 +40,7 @@ try {
   assert.ok(await history.locator('[data-oid]').count() < 180, 'History must render a virtualized subset');
   assert.ok(await history.locator('svg[role="img"]').count() > 0, 'History must expose accessible Graph rows');
   await history.locator('.head-row').first().waitFor();
+  await verifyHistoryRows(page);
   assert.match(await page.getByTestId('current-branch').innerText(), /main/);
   const projectButton = page.getByTestId('open-project');
   assert.equal(await projectButton.isEnabled(), true);
