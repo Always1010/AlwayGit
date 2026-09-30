@@ -248,6 +248,10 @@ try {
   assert.equal(await showAllBranches.getAttribute('aria-pressed'),'false','The Graph presets are visually exclusive');
   await sidebar.getByLabel('Show branch main', { exact: true }).uncheck();
   await history.getByText('No branches selected', { exact: true }).waitFor();
+  assert.equal(await history.locator('[data-head-commit="true"]').count(),0,'Filtering out the current branch must not reinsert a HEAD anchor');
+  assert.equal(await history.locator('[data-oid]').count(),0,'No commit rows remain when no branches are selected');
+  assert.equal(await history.locator('[data-working-tree]').count(),1,'Working Tree remains as the only history item');
+  assert.equal(await history.getByText('Outside current filter',{exact:true}).count(),0,'The removed HEAD anchor label must not remain');
   const featureGroup = localTree.getByLabel('Show branch group feature', { exact: true });
   await featureGroup.check();
   await history.getByText(/^3 refs/).waitFor();
@@ -262,7 +266,7 @@ try {
 
   const search = history.getByRole('textbox', { name: 'Search commit history' });
   await search.fill('native diff');
-  await page.waitForFunction(() => [...document.querySelectorAll('[data-oid]:not(.head-anchor-row)')].length > 0 && [...document.querySelectorAll('[data-oid]:not(.head-anchor-row)')].every(row => row.textContent?.includes('native diff')));
+  await page.waitForFunction(() => [...document.querySelectorAll('[data-oid]')].length > 0 && [...document.querySelectorAll('[data-oid]')].every(row => row.textContent?.includes('native diff')));
   await history.locator('[data-working-tree]').click();
   const draft = page.getByRole('textbox', { name: 'Commit message' });
   await draft.fill('Persistent bilingual draft');

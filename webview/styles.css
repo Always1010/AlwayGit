@@ -141,14 +141,12 @@ h1,h2,p {margin:0;}
 .working-tree-subject {gap:6px;}
 .working-tree-subject>.codicon {color:var(--accent);}
 .working-tree-subject>strong {flex:none;font-weight:700;}
-.working-change-badge,.head-anchor-note {flex:none;border:1px solid color-mix(in srgb,var(--accent) 55%,var(--border));border-radius:9px;padding:0 6px;font-size:11px;line-height:16px;color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--bg));}
+.working-change-badge {flex:none;border:1px solid color-mix(in srgb,var(--accent) 55%,var(--border));border-radius:9px;padding:0 6px;font-size:11px;line-height:16px;color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--bg));}
 .working-branch {min-width:0;color:var(--muted);font-size:11px;}
 .working-state {font-style:italic;justify-content:space-between;gap:4px;}
 .working-state>.codicon {font-style:normal;color:var(--accent);}
 .commit-row.selected .working-state>.codicon {color:var(--selected-fg);}
 .commit-row.selected .working-branch,.commit-row.selected .working-state {color:var(--selected-fg);opacity:.85;}
-.head-anchor-row {border-bottom-style:dashed;}
-.head-anchor-note {color:var(--muted);border-color:var(--border);background:var(--panel);}
 .working-conflict-badge {font-size:11px;font-weight:600;color:var(--error);border:1px solid var(--error);border-radius:9px;padding:0 6px;background:color-mix(in srgb,var(--error) 12%,var(--bg));}
 .graph-cell {height:100%;overflow:hidden;}
 .graph-cell>button {padding:0;width:100%;height:100%;display:block;}
