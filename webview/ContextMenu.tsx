@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Icon } from './ui';
 
-export interface MenuItem { label: string; icon?: string; disabled?: boolean; reason?: string; run(): void | Promise<void> }
+export interface MenuItem { label: string; icon?: string; disabled?: boolean; reason?: string; pressed?: boolean; run(): void | Promise<void> }
 export function ContextMenu({ x, y, caption, items, close }: { x: number; y: number; caption: string; items: MenuItem[]; close(): void }) {
   const menu = useRef<HTMLDivElement>(null), [position, setPosition] = useState({ x: Math.max(6, x), y: Math.max(6, y) });
   useLayoutEffect(() => {

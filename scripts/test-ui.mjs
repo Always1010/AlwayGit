@@ -137,7 +137,12 @@ try {
   await localTree.getByRole('button', { name: 'Expand feature', exact: true }).waitFor({ state: 'hidden' });
   await localHeading.click();
   await assertIconActions(localHeading.locator('..'), ['Create Branch…']);
-  await assertIconActions(sidebar.locator('.branch-shortcuts'), ['Show All in Graph', 'Show Current Branch Only in Graph', 'Show None in Graph']);
+  const graphPresets=sidebar.getByRole('group',{name:'Graph branch display presets',exact:true});
+  await assertIconActions(graphPresets, ['Show All Local Branches in Graph', 'Show Current Branch Only in Graph']);
+  assert.equal(await sidebar.getByRole('button',{name:'Show None in Graph',exact:true}).count(),0,'Graph presets must not expose a Show None shortcut');
+  await openMenu(localHeading);
+  assert.deepEqual((await menu.getByRole('menuitem').allTextContents()).map(value=>value.trim()),['Create Branch…','Show All Local Branches in Graph','Show Current Branch Only in Graph']);
+  await page.keyboard.press('Escape');
   await localHeading.locator('..').getByRole('button', { name: 'Create Branch…', exact: true }).click();
   const createBranchDialog = page.getByRole('dialog', { name: 'Create Branch', exact: true });
   await createBranchDialog.waitFor();
@@ -235,7 +240,13 @@ try {
   await page.getByRole('button', { name: 'Restore Layout', exact: true }).click();
   assert.equal(Number(await sidebarSeparator.getAttribute('aria-valuenow')), 210);
 
-  await sidebar.getByRole('button', { name: 'Show None in Graph', exact: true }).click();
+  const showAllBranches=graphPresets.getByRole('button',{name:'Show All Local Branches in Graph',exact:true}),showCurrentBranch=graphPresets.getByRole('button',{name:'Show Current Branch Only in Graph',exact:true});
+  await showAllBranches.click();
+  assert.equal(await showAllBranches.getAttribute('aria-pressed'),'true','Show All exposes its active preset state');
+  await showCurrentBranch.click();
+  assert.equal(await showCurrentBranch.getAttribute('aria-pressed'),'true','Current Only exposes its active preset state');
+  assert.equal(await showAllBranches.getAttribute('aria-pressed'),'false','The Graph presets are visually exclusive');
+  await sidebar.getByLabel('Show branch main', { exact: true }).uncheck();
   await history.getByText('No branches selected', { exact: true }).waitFor();
   const featureGroup = localTree.getByLabel('Show branch group feature', { exact: true });
   await featureGroup.check();
