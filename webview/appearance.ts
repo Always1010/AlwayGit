@@ -10,6 +10,7 @@ export interface Appearance {
   theme: ThemePreference;
   palette: GraphPaletteId;
   codeFont: number;
+  badgeColor: string;
   colors: GraphPaletteColors;
   mainColors: { light: string; dark: string };
 }
@@ -17,6 +18,7 @@ export interface InterfaceSettings { language: Language; font: number; row: numb
 export type InterfaceSettingsUpdate = Partial<Omit<InterfaceSettings, 'appearance'>> & { appearance?: Partial<Appearance> };
 const hexColor = /^#[0-9a-f]{6}$/i;
 const defaultMainColors = { light: '#283447', dark: '#EDF3FF' } as const;
+export const defaultBadgeColor = '#D61F3C';
 
 export function presetColors(id: GraphPaletteId): GraphPaletteColors {
   const palette = getGraphPalette(id);
@@ -24,7 +26,7 @@ export function presetColors(id: GraphPaletteId): GraphPaletteColors {
 }
 
 export const defaultAppearance: Appearance = {
-  theme: 'system', palette: 'vivid', codeFont: 12, colors: presetColors('vivid'), mainColors: { ...defaultMainColors },
+  theme: 'system', palette: 'vivid', codeFont: 12, badgeColor: defaultBadgeColor, colors: presetColors('vivid'), mainColors: { ...defaultMainColors },
 };
 
 function normalizeColors(value: Partial<GraphPaletteColors> | undefined, palette: GraphPaletteId): GraphPaletteColors {
@@ -40,6 +42,7 @@ export function normalizeAppearance(value: Partial<Appearance> = {}): Appearance
     theme: themePreferences.includes(value.theme as ThemePreference) ? value.theme! : 'system',
     palette,
     codeFont: Number.isFinite(value.codeFont) ? Math.round(Math.max(11, Math.min(18, value.codeFont!))) : 12,
+    badgeColor: hexColor.test(value.badgeColor ?? '') ? value.badgeColor!.toUpperCase() : defaultBadgeColor,
     colors: normalizeColors(value.colors, palette),
     mainColors: {
       light: hexColor.test(value.mainColors?.light ?? '') ? value.mainColors!.light.toUpperCase() : defaultMainColors.light,
@@ -50,6 +53,12 @@ export function normalizeAppearance(value: Partial<Appearance> = {}): Appearance
 export const effectiveRowHeight = (layout: Pick<LayoutState, 'font' | 'row'>) => Math.max(layout.row, Math.round(layout.font * 1.35) + 6);
 export const diffRowHeight = (font: number) => Math.max(22, Math.round(font * 1.6) + 3);
 export const isLightTheme = (theme: ResolvedTheme) => ['light', 'paper', 'mist', 'hc-light'].includes(theme);
+export function textColorForBackground(hex: string): '#000000' | '#FFFFFF' {
+  const channels = [1, 3, 5].map(offset => parseInt(hex.slice(offset, offset + 2), 16) / 255)
+    .map(value => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4);
+  const luminance = .2126 * channels[0] + .7152 * channels[1] + .0722 * channels[2];
+  return (luminance + .05) / .05 >= 1.05 / (luminance + .05) ? '#000000' : '#FFFFFF';
+}
 
 function hostTheme(): ResolvedTheme {
   const kind = document.body.dataset.vscodeThemeKind;

@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { useWorkbench } from './store';
 import { useTranslation } from './i18n';
 import type { Language } from './i18n';
-import { effectiveRowHeight, isLightTheme, presetColors, type ResolvedTheme, type ThemePreference } from './appearance';
+import { defaultBadgeColor, effectiveRowHeight, isLightTheme, presetColors, textColorForBackground, type ResolvedTheme, type ThemePreference } from './appearance';
 import { graphPalettes, type GraphPaletteId } from './graph/palettes';
 import { Button, Icon, Modal } from './ui';
 
-type SettingsPage = 'language' | 'theme' | 'density' | 'colors';
+type SettingsPage = 'language' | 'theme' | 'density' | 'status' | 'colors';
 type ColorTheme = 'light' | 'dark';
 const defaultMainColors = { light: '#283447', dark: '#EDF3FF' } as const;
 const themes: { id: ThemePreference; label: string; labelZh: string; colors: readonly [string, string, string] }[] = [
@@ -21,6 +21,7 @@ const themes: { id: ThemePreference; label: string; labelZh: string; colors: rea
   { id: 'berry', label: 'Berry Purple', labelZh: '莓紫', colors: ['#27172F', '#E879F9', '#57306B'] },
   { id: 'contrast', label: 'High Contrast', labelZh: '高对比', colors: ['#0C1016', '#FFE875', '#153F6B'] },
 ];
+const badgeColors = ['#D61F3C', '#FF5A00', '#006BFF', '#B900E6', '#008F5D', '#FFD400'] as const;
 
 function ColorField({ value, label, removable, onChange, onRemove }: { value: string; label: string; removable?: boolean; onChange(value: string): void; onRemove?(): void }) {
   const t = useTranslation();
@@ -86,7 +87,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
   };
   const presetBase = presetColors(appearance.palette);
   const customized = appearance.colors.light.some((color, index) => color !== presetBase.light[index]) || appearance.colors.dark.some((color, index) => color !== presetBase.dark[index]) || appearance.colors.light.length !== presetBase.light.length;
-  const pageLabel = page === 'language' ? t('Language', '语言') : page === 'theme' ? t('Theme', '主题') : page === 'density' ? t('Text & density', '字号与密度') : t('Graph colors', '提交图配色');
+  const pageLabel = page === 'language' ? t('Language', '语言') : page === 'theme' ? t('Theme', '主题') : page === 'density' ? t('Text & density', '字号与密度') : page === 'status' ? t('Status indicators', '状态提醒') : t('Graph colors', '提交图配色');
   const navItem = (id: SettingsPage, icon: string, en: string, zh: string) => <button type="button" className={`settings-nav-item ${page === id ? 'is-active' : ''}`} aria-current={page === id ? 'page' : undefined} onClick={() => setPage(id)}><Icon name={icon}/><span>{t(en, zh)}</span></button>;
 
   return <Modal title={t('Interface Settings', '界面设置')} onClose={close} footer={
@@ -95,7 +96,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
     <div className="interface-settings" data-testid="interface-settings">
       <nav className="settings-nav" aria-label={t('Settings categories', '设置分类')}>
         <div className="settings-nav-group"><strong>{t('General', '常规')}</strong>{navItem('language', 'globe', 'Language', '语言')}</div>
-        <div className="settings-nav-group"><strong>{t('Interface', '界面')}</strong>{navItem('theme', 'color-mode', 'Theme', '主题')}{navItem('density', 'text-size', 'Text & density', '字号与密度')}</div>
+        <div className="settings-nav-group"><strong>{t('Interface', '界面')}</strong>{navItem('theme', 'color-mode', 'Theme', '主题')}{navItem('density', 'text-size', 'Text & density', '字号与密度')}{navItem('status', 'bell-dot', 'Status indicators', '状态提醒')}</div>
         <div className="settings-nav-group"><strong>{t('Commit graph', '提交图')}</strong>{navItem('colors', 'git-merge', 'Colors', '配色')}</div>
       </nav>
       <main className="settings-content">
@@ -127,6 +128,16 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
           </div>
           <div className="settings-row-preview" style={{ minHeight: effectiveRowHeight(layout) }}><Icon name="git-commit"/><span className="ref-badge current">HEAD · main</span><span className="truncate">feat: {t('Refine the workbench', '优化工作台体验')}</span><span className="muted">{effectiveRowHeight(layout)}px</span></div>
           <p className="settings-note">{t('Row height grows with larger text to keep every line readable.', '大字号会自动增加最小行高，避免文字被裁切。')}</p>
+        </section>}
+
+        {page === 'status' && <section className="settings-page" aria-labelledby="status-heading">
+          <div className="settings-title-row"><div><h3 id="status-heading">{t('Status indicators', '状态提醒')}</h3><p className="settings-page-copy">{t('Choose the color used for unpushed Commit counts.', '选择未推送 Commit 数量提醒的颜色。')}</p></div><Button className="icon-only" icon="discard" title={t('Restore default', '恢复默认')} aria-label={t('Restore default badge color', '恢复默认提醒颜色')} onClick={() => updateAppearance({ ...appearance, badgeColor: defaultBadgeColor })}/></div>
+          <div className="badge-preview-row"><span>{t('Preview', '预览')}</span><span className="notification-badge settings-badge-preview" style={{ background: appearance.badgeColor, color: textColorForBackground(appearance.badgeColor) }}>24</span><span className="notification-badge settings-badge-preview" style={{ background: appearance.badgeColor, color: textColorForBackground(appearance.badgeColor) }}>69</span></div>
+          <div className="badge-presets" role="radiogroup" aria-label={t('Badge color presets', '提醒颜色预设')}>
+            {badgeColors.map(color => <button key={color} type="button" role="radio" aria-checked={appearance.badgeColor === color} aria-label={color} className={appearance.badgeColor === color ? 'is-chosen' : ''} style={{ background: color }} onClick={() => updateAppearance({ ...appearance, badgeColor: color })}/>)}
+          </div>
+          <label className="status-color-field"><span>{t('Custom color', '自定义颜色')}</span><ColorField value={appearance.badgeColor} label={t('Notification badge color', '通知角标颜色')} onChange={value => updateAppearance({ ...appearance, badgeColor: value })}/></label>
+          <p className="settings-note">{t('Text switches between black and white automatically for contrast.', '文字会根据背景自动切换黑色或白色，保持清晰。')}</p>
         </section>}
 
         {page === 'colors' && <section className="settings-page graph-colors-page" aria-labelledby="colors-heading">
