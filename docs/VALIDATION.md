@@ -51,10 +51,10 @@ npm run package
 | 项目 | 结果 | 备注 |
 | --- | --- | --- |
 | `npm run typecheck` | 通过 | TypeScript 7；协议、宿主与 Webview 类型一致 |
-| `npm test` | 通过 | 16 个测试文件、100 项测试；新增真实多层仓库、Worktree、损坏仓库、权限异常模拟、junction、批量去重与恢复、取消、会话保留和长扫描 RPC 回归 |
-| 构建 + `node scripts/test-ui.mjs` | 通过 | 分支树、三态选择、菜单、Push 目标、会话、Diff 和主题；项目按钮位于工具栏最右侧，窄窗口不溢出 |
-| 构建 + `node scripts/test-extension.mjs` | 通过 | VS Code 1.139.1；新增递归批量注册、去重、单次列表通知和活动仓库保留验收；原生 Diff、未保存文档、文件标签及原有宿主功能通过 |
+| `npm test` | 通过 | 17 个测试文件、113 项测试；涵盖 Git、安全、协议、图形、目录批量发现和注册、长扫描 RPC，以及自动刷新范围、Merge Parent、比较区域、事件合并和异步竞争回归 |
+| `npm run test:ui` | 通过 | 原有布局、引用树、菜单、会话、Diff 和主题验收通过；受控宿主验证历史详情与 Parent 保留、按引用更新 History、dirty 状态不变时更新内容、后台 Diff 无 Loading 清空、滚动位置及 Staged 比较保留 |
+| 构建 + `node scripts/test-extension.mjs` | 通过 | VS Code 1.139.1；真实文件与 Index 监听携带正确变化范围，修改文件后预览内容更新；批量注册、去重、活动仓库、原生 Diff、未保存文档及已有标签保持正常 |
 | `npm run test:windows` | 此前通过（0.3.1） | VS Code 1.139.1 与 1.95.3；项目窗口路由专项验收。本次未修改窗口路由，未重跑该专项 |
-| `scripts/update-local.ps1` | 通过 | 固定包 `artifacts/alwaygit.vsix` 和本机扩展 ID / 版本核对为 `alwaygit-dev.alwaygit@0.4.0`；沿用已记录的 VS Code 默认 Profile |
+| `scripts/update-local.ps1` | 通过 | 在修复 Worktree 构建并安装 0.4.1；同步日常固定包至 `D:\WRK\AlwayGit\artifacts\alwaygit.vsix` 并核对包内 ID、版本和校验和，本机核对为 `alwaygit-dev.alwaygit@0.4.1`；保留上一份包，沿用已记录的 VS Code 默认 Profile |
 
 Markdown 本地链接和图片引用检查通过。VS Code 1.95.3 已完成项目窗口路由专项验收；最低版本的完整功能、远程宿主、macOS、Linux 和最低 Git 版本仍需对应环境下的验收。
