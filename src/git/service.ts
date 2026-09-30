@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { access, realpath, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { Change, Commit, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationState, Repository, Snapshot, Stash, Worktree } from '../protocol/types';
+import type { Change, CheckoutBlocker, Commit, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationState, Repository, Snapshot, Stash, Worktree } from '../protocol/types';
 
 export interface GitServiceOptions {
   gitPath?: string;
@@ -12,7 +12,7 @@ export interface GitServiceOptions {
   environment?: NodeJS.ProcessEnv | ((repo: Repository, args: readonly string[]) => Promise<NodeJS.ProcessEnv | { env: NodeJS.ProcessEnv; dispose?: () => void | Promise<void> }>);
 }
 export class GitError extends Error {
-  constructor(message: string, public readonly code: string, public readonly stdout = '', public readonly stderr = '') { super(message); this.name = 'GitError'; }
+  constructor(message: string, public readonly code: string, public readonly stdout = '', public readonly stderr = '', public readonly details?: CheckoutBlocker) { super(message); this.name = 'GitError'; }
 }
 type Result = { stdout: Buffer; stderr: Buffer; code: number };
 const queues = new Map<string, Promise<unknown>>();
@@ -56,18 +56,21 @@ const commitFormat = '%H%x00%P%x00%an%x00%ae%x00%at%x00%s';
 export class GitService implements GitServiceContract {
   private version = 0;
   constructor(private readonly options: GitServiceOptions = {}) {}
-  private async run(repo: Repository, args: string[], allowFailure = false): Promise<Result> {
+  private async run(repo: Repository, args: string[], allowFailure = false, captureBytes?: number): Promise<Result> {
     const adapter = this.options.environment;
     const supplied = typeof adapter === 'function' ? await adapter(repo, args) : adapter;
     const wrapped = supplied && 'env' in supplied && typeof supplied.env === 'object' ? supplied as { env: NodeJS.ProcessEnv; dispose?: () => void | Promise<void> } : undefined;
     const env = wrapped?.env ?? supplied as NodeJS.ProcessEnv | undefined;
     try {
       const result = await new Promise<Result>((resolve, reject) => {
-        const child = spawn(this.options.gitPath ?? 'git', ['-C', repo.root, '--literal-pathspecs', ...args], { shell: false, windowsHide: true, detached: process.platform !== 'win32', env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never', GIT_EDITOR: 'true', GIT_SEQUENCE_EDITOR: 'true', ...(['status', 'log', 'show', 'ls-tree', 'ls-files', 'for-each-ref'].includes(args[0]) ? { GIT_OPTIONAL_LOCKS: '0' } : {}), ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
-        const out: Buffer[] = []; const err: Buffer[] = []; let size = 0; let failure: GitError | undefined;
+        // Stash accepts no user pathspecs in this API. Its internal cleanup relies on
+        // Git pathspec matching; inheriting --literal-pathspecs leaves saved untracked
+        // files behind on Git for Windows. All file actions still use literal paths.
+        const child = spawn(this.options.gitPath ?? 'git', ['-C', repo.root, ...(args[0] === 'stash' ? [] : ['--literal-pathspecs']), ...args], { shell: false, windowsHide: true, detached: process.platform !== 'win32', env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never', GIT_EDITOR: 'true', GIT_SEQUENCE_EDITOR: 'true', ...(['status', 'log', 'show', 'ls-tree', 'ls-files', 'for-each-ref'].includes(args[0]) ? { GIT_OPTIONAL_LOCKS: '0' } : {}), ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
+        const out: Buffer[] = []; const err: Buffer[] = []; let size = 0; let captured = 0; let failure: GitError | undefined;
         const stop = (error: GitError) => { failure = error; if (child.pid) { if (process.platform === 'win32') { const killer = spawn('taskkill', ['/PID', String(child.pid), '/T', '/F'], { shell: false, windowsHide: true, stdio: 'ignore' }); killer.on('error', () => child.kill()); } else { try { process.kill(-child.pid, 'SIGKILL'); } catch { child.kill(); } } } child.stdout.destroy(); child.stderr.destroy(); reject(error); };
         const timer = setTimeout(() => stop(new GitError('Git timed out. Check credentials, hooks, or another Git process, then retry.', 'TIMEOUT')), this.options.timeoutMs ?? 60000);
-        const collect = (bucket: Buffer[], chunk: Buffer) => { size += chunk.length; if (size > (this.options.maxOutputBytes ?? 32 * 1024 * 1024)) { clearTimeout(timer); stop(new GitError('Git output exceeded the configured limit', 'OUTPUT_LIMIT')); return; } bucket.push(chunk); if (bucket === err) this.options.onOutput?.(repo, chunk.toString('utf8')); };
+        const collect = (bucket: Buffer[], chunk: Buffer) => { if (bucket === out && captureBytes !== undefined) { const remaining = captureBytes - captured; if (remaining > 0) { const piece = chunk.subarray(0, remaining); bucket.push(piece); captured += piece.length; } return; } size += chunk.length; if (size > (this.options.maxOutputBytes ?? 32 * 1024 * 1024)) { clearTimeout(timer); stop(new GitError('Git output exceeded the configured limit', 'OUTPUT_LIMIT')); return; } bucket.push(chunk); if (bucket === err) this.options.onOutput?.(repo, chunk.toString('utf8')); };
         child.stdout.on('data', chunk => collect(out, chunk)); child.stderr.on('data', chunk => collect(err, chunk));
         child.once('error', e => { clearTimeout(timer); reject(new GitError(`Cannot run Git: ${e.message}`, 'GIT_UNAVAILABLE')); });
         child.once('close', code => { clearTimeout(timer); if (failure) reject(failure); else resolve({ stdout: Buffer.concat(out), stderr: Buffer.concat(err), code: code ?? 1 }); });
@@ -100,8 +103,16 @@ export class GitService implements GitServiceContract {
   private async status(repo: Repository) { return parseStatus((await this.run(repo, ['status', '--porcelain=v2', '-z', '--branch', '--untracked-files=all'])).stdout); }
   async snapshot(repo: Repository): Promise<Snapshot> {
     await this.verify(repo);
-    const [status, refsOutput, stashOutput, worktrees, gitDir] = await Promise.all([this.status(repo), this.text(repo, ['for-each-ref', '--format=%(refname)%00%(objectname)%00%(upstream:short)%00%(*objectname)%00%(*objecttype)', 'refs/heads', 'refs/remotes', 'refs/tags']), this.text(repo, ['stash', 'list', '--format=%gd%x00%H%x00%s']), this.worktrees(repo), this.text(repo, ['rev-parse', '--path-format=absolute', '--git-dir'])]);
-    const refs: GitRef[] = refsOutput ? await Promise.all(refsOutput.split('\n').map(async line => { const [fullName, objectOid, upstream, peeledOid, peeledType] = line.split('\0'); const kind: GitRef['kind'] = fullName.startsWith('refs/heads/') ? 'local' : fullName.startsWith('refs/remotes/') ? 'remote' : 'tag'; const oid = peeledType === 'commit' ? peeledOid : peeledType === 'tag' && await this.text(repo, ['cat-file', '-t', `${fullName}^{}`]) === 'commit' ? await this.oid(repo, fullName) : objectOid; return { fullName, name: fullName.replace(/^refs\/(heads|remotes|tags)\//, ''), kind, oid, ...(upstream ? { upstream } : {}) }; })) : [];
+    const [status, refsOutput, stashOutput, worktrees, gitDir, remoteOutput] = await Promise.all([this.status(repo), this.text(repo, ['for-each-ref', '--format=%(refname)%00%(objectname)%00%(upstream:short)%00%(*objectname)%00%(*objecttype)%00%(objecttype)', 'refs/heads', 'refs/remotes', 'refs/tags']), this.text(repo, ['stash', 'list', '--format=%gd%x00%H%x00%s']), this.worktrees(repo), this.text(repo, ['rev-parse', '--path-format=absolute', '--git-dir']), this.text(repo, ['remote'])]);
+    const refs: GitRef[] = refsOutput ? await Promise.all(refsOutput.split('\n').map(async line => {
+      const [fullName, objectOid, upstream, peeledOid, peeledType, objectType] = line.split('\0');
+      const kind: GitRef['kind'] = fullName.startsWith('refs/heads/') ? 'local' : fullName.startsWith('refs/remotes/') ? 'remote' : 'tag';
+      // for-each-ref's starred fields peel one annotated-tag layer. Dereference
+      // nested tags fully before deciding whether Commit actions are meaningful.
+      const targetType = (peeledType === 'tag' ? await this.text(repo, ['cat-file', '-t', `${fullName}^{}`]) : peeledType || objectType) as GitRef['targetType'];
+      const oid = targetType === 'commit' ? peeledType === 'commit' ? peeledOid : peeledType === 'tag' ? await this.oid(repo, fullName) : objectOid : objectOid;
+      return { fullName, name: fullName.replace(/^refs\/(heads|remotes|tags)\//, ''), kind, oid, targetType, ...(upstream ? { upstream } : {}) };
+    })) : [];
     const stashes: Stash[] = stashOutput ? stashOutput.split('\n').map(line => { const [selector, oid, subject] = line.split('\0'); return { selector, oid, subject }; }) : [];
     const operation: OperationState = { conflicts: status.changes.filter(x => x.conflict).length, canContinue: false, canAbort: false, canSkip: false };
     const markers = await Promise.all(['rebase-merge', 'rebase-apply', 'MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'sequencer'].map(name => exists(path.join(gitDir, name))));
@@ -109,7 +120,7 @@ export class GitService implements GitServiceContract {
       const todo = await readFile(path.join(gitDir, 'sequencer', 'todo'), 'utf8'); if (/^pick /m.test(todo)) operation.kind = 'cherry-pick'; else if (/^revert /m.test(todo)) operation.kind = 'revert';
     }
     if (operation.kind) { operation.canContinue = operation.conflicts === 0; operation.canAbort = true; operation.canSkip = operation.kind !== 'merge'; }
-    return { repository: repo, ...status, refs, stashes, worktrees, operation, version: ++this.version };
+    return { repository: repo, ...status, refs, remotes: remoteOutput ? remoteOutput.split('\n') : [], stashes, worktrees, operation, version: ++this.version };
   }
   private async worktrees(repo: Repository): Promise<Worktree[]> {
     const records = decodePaths((await this.run(repo, ['worktree', 'list', '--porcelain', '-z'])).stdout).split('\0'); const result: Worktree[] = []; let current: Worktree | undefined;
@@ -138,20 +149,62 @@ export class GitService implements GitServiceContract {
     for (let i = 0; i < names.length && names[i];) { const status = names[i++]; const name = names[i++]; if (status.startsWith('R') || status.startsWith('C')) files.push({ status, previousPath: name, path: names[i++] }); else files.push({ status, path: name }); }
     return { commit, body: data.slice(6).join('\0').trimEnd(), files, ...(base ? { parent: base } : {}) };
   }
-  async content(repo: Repository, source: ContentSource): Promise<Buffer> {
+  async content(repo: Repository, source: ContentSource, maxBytes?: number): Promise<Buffer> {
+    if (maxBytes !== undefined && (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 32 * 1024 * 1024)) throw new GitError('Invalid content limit', 'INVALID_ARGUMENT');
     if (source.kind === 'empty') return Buffer.alloc(0); await this.verify(repo); const name = validateFilePath(source.path); let object: string | undefined;
     if (source.kind === 'revision') { const oid = await this.oid(repo, source.revision); const records = decodePaths((await this.run(repo, ['ls-tree', '-z', oid, '--', name])).stdout).split('\0'); for (const record of records) { const tab = record.indexOf('\t'); if (record.slice(tab + 1) === name) { const meta = record.slice(0, tab).split(' '); if (meta[1] !== 'blob') throw new GitError('The selected path is not a file', 'INVALID_PATH'); object = meta[2]; } } }
     else { const stage = source.stage ?? 0; if (![0, 1, 2, 3].includes(stage)) throw new GitError('Invalid index stage', 'INVALID_ARGUMENT'); const records = decodePaths((await this.run(repo, ['ls-files', '--stage', '-z', '--', name])).stdout).split('\0'); for (const record of records) { const tab = record.indexOf('\t'); const meta = record.slice(0, tab).split(' '); if (record.slice(tab + 1) === name && Number(meta[2]) === stage) object = meta[1]; } }
-    return object ? (await this.run(repo, ['cat-file', 'blob', object])).stdout : Buffer.alloc(0);
+    return object ? (await this.run(repo, ['cat-file', 'blob', object], false, maxBytes)).stdout : Buffer.alloc(0);
   }
   async execute(repo: Repository, action: GitAction): Promise<void> {
     const key = normalized(repo.commonDir); const prior = queues.get(key) ?? Promise.resolve();
     const operation = prior.catch(() => {}).then(async () => { await this.verify(repo); await this.executeNow(repo, action); });
     queues.set(key, operation); try { await operation; } finally { if (queues.get(key) === operation) queues.delete(key); }
   }
+  private async checkout(repo: Repository, target: string, detached = false, stashFirst = false, includeUntracked = false): Promise<void> {
+    const resolved = detached ? await this.oid(repo, target) : await this.refName(repo, target);
+    if (!detached) await this.oid(repo, `refs/heads/${resolved}`);
+    const snapshot = await this.snapshot(repo);
+    const conflictPaths = snapshot.changes.filter(change => change.conflict).map(change => change.path);
+    if (conflictPaths.length || snapshot.operation.kind) {
+      throw new GitError(conflictPaths.length ? 'Resolve conflicts or Abort the active Git operation before Checkout.' : `Continue or Abort the active ${snapshot.operation.kind} before Checkout.`, 'CHECKOUT_BLOCKED', '', '', { reason: conflictPaths.length ? 'conflicts' : 'operation-active', paths: conflictPaths, target });
+    }
+    const occupied = !detached && snapshot.worktrees.find(tree => tree.branch === target && normalized(tree.path) !== normalized(repo.root));
+    if (occupied) throw new GitError(`Branch ${target} is checked out in ${occupied.path}. Open that Worktree to use this branch.`, 'WORKTREE_OCCUPIED', '', '', { reason: 'worktree-occupied', paths: [], target, worktreePath: occupied.path });
+    let stashOid: string | undefined;
+    if (stashFirst) {
+      const previous = snapshot.stashes[0]?.oid;
+      await this.run(repo, ['stash', 'push', ...(includeUntracked ? ['--include-untracked'] : []), '-m', `AlwayGit: before Checkout ${target}`]);
+      const top = await this.run(repo, ['rev-parse', '--verify', 'refs/stash'], true);
+      const saved = top.code ? undefined : top.stdout.toString('utf8').trim();
+      if (saved !== previous) stashOid = saved;
+    }
+    try {
+      await this.run(repo, ['-c', 'core.quotePath=false', 'switch', ...(detached ? ['--detach'] : []), '--', resolved]);
+    } catch (error) {
+      const cause = error instanceof Error ? error.message : String(error);
+      const blocked = /would be overwritten|local changes|needs merge|unmerged/i.test(cause);
+      const listed = cause.split(/\r?\n/).filter(line => /^\t/.test(line)).map(line => line.slice(1));
+      const current = await this.status(repo).catch(() => ({ changes: snapshot.changes }));
+      // Porcelain paths are authoritative even for filenames which Git quotes in its diagnostic.
+      const affected = listed.length ? current.changes.filter(change => listed.includes(change.path) || listed.includes(change.originalPath ?? '')).map(change => change.path) : [];
+      const paths = blocked ? (affected.length ? affected : current.changes.map(change => change.path)) : [];
+      const details: CheckoutBlocker = { reason: blocked ? 'local-changes' : 'checkout-failed', paths, target, ...(stashOid ? { stashCreated: true, stashOid } : stashFirst ? { stashCreated: false } : {}) };
+      const message = `${cause}${stashOid ? `\nStash ${stashOid} was created and retained. Checkout did not complete; your saved changes remain in Stashes.` : ''}`;
+      throw new GitError(message, blocked ? 'CHECKOUT_BLOCKED' : error instanceof GitError ? error.code : 'CHECKOUT_FAILED', error instanceof GitError ? error.stdout : '', error instanceof GitError ? error.stderr : '', details);
+    }
+  }
+  private async validateStash(repo: Repository, selector: string, expectedOid?: string): Promise<string> {
+    if (!/^stash@\{\d+\}$/.test(selector)) throw new GitError('Invalid stash selector', 'INVALID_ARGUMENT');
+    if (expectedOid) {
+      token(expectedOid, 'stash ID');
+      const current = await this.run(repo, ['rev-parse', '--verify', '--end-of-options', `${selector}^{commit}`], true);
+      if (current.code || current.stdout.toString('utf8').trim() !== expectedOid) throw new GitError('The Stash list changed. Refresh and select the saved entry again.', 'STASH_CHANGED');
+    }
+    return selector;
+  }
   private async executeNow(repo: Repository, action: GitAction): Promise<void> {
     let args: string[]; const remote = (value?: string) => value ? [token(value, 'remote')] : [];
-    const stash = (value: string) => { if (!/^stash@\{\d+\}$/.test(value)) throw new GitError('Invalid stash selector', 'INVALID_ARGUMENT'); return value; };
     switch (action.type) {
       case 'stage': case 'unstage': case 'discard': {
         if (!action.paths.length) throw new GitError('Select at least one file', 'INVALID_ARGUMENT'); const paths = action.paths.map(validateFilePath);
@@ -192,20 +245,35 @@ export class GitService implements GitServiceContract {
         const name = await this.refName(repo, action.name); const start = action.start ? await this.oid(repo, action.start) : undefined; const upstream = action.start?.startsWith('refs/remotes/') ? action.start : undefined;
         if (upstream) await this.run(repo, ['show-ref', '--verify', '--', upstream]); args = action.checkout ? ['switch', '-c', name] : ['branch', name]; if (start) args.push(start); await this.run(repo, args); if (upstream) await this.run(repo, ['branch', `--set-upstream-to=${upstream}`, '--', name]); return;
       }
-      case 'branch.checkout': args = ['switch', '--', await this.refName(repo, action.name)]; break;
+      case 'branch.checkout': return this.checkout(repo, action.name);
+      case 'commit.checkout': return this.checkout(repo, action.target, true);
+      case 'checkout.stash': return this.checkout(repo, action.target, action.detached, true, action.includeUntracked);
       case 'branch.delete': args = ['branch', action.force ? '-D' : '-d', '--', await this.refName(repo, action.name)]; break;
       case 'tag.create': await this.run(repo, ['check-ref-format', `refs/tags/${token(action.name, 'tag name')}`]); args = ['tag', ...(action.message ? ['-a', '-m', action.message] : []), action.name, await this.oid(repo, action.target ?? 'HEAD')]; break;
       case 'tag.delete': await this.run(repo, ['check-ref-format', `refs/tags/${token(action.name, 'tag name')}`]); args = ['tag', '-d', '--', action.name]; break;
       case 'stash.create': args = ['stash', 'push', ...(action.includeUntracked ? ['--include-untracked'] : []), ...(action.message ? ['-m', action.message] : [])]; break;
-      case 'stash.apply': args = ['stash', action.pop ? 'pop' : 'apply', stash(action.selector)]; break;
-      case 'stash.drop': args = ['stash', 'drop', stash(action.selector)]; break;
+      case 'stash.apply': {
+        const selector = await this.validateStash(repo, action.selector, action.expectedOid);
+        if (action.expectedOid) {
+          // Apply the captured object rather than a reflog position which can move externally.
+          await this.run(repo, ['stash', 'apply', action.expectedOid]);
+          if (action.pop) {
+            try { await this.validateStash(repo, selector, action.expectedOid); }
+            catch { throw new GitError('Stash changes were applied, but the Stash list changed before Drop. The saved entry was retained; refresh the list.', 'STASH_CHANGED'); }
+            await this.run(repo, ['stash', 'drop', selector]);
+          }
+          return;
+        }
+        args = ['stash', action.pop ? 'pop' : 'apply', selector]; break;
+      }
+      case 'stash.drop': args = ['stash', 'drop', await this.validateStash(repo, action.selector, action.expectedOid)]; break;
       case 'worktree.add': {
         token(action.path, 'worktree path'); if (action.detach && (action.branch || action.newBranch)) throw new GitError('Detached worktrees cannot also select a branch', 'INVALID_ARGUMENT'); if (action.branch && action.newBranch) throw new GitError('Choose an existing or a new branch', 'INVALID_ARGUMENT');
         const target = path.resolve(repo.root, action.path); const current = await this.worktrees(repo); if (current.some(x => normalized(x.path) === normalized(target))) throw new GitError('Worktree already registered', 'INVALID_WORKTREE');
         args = ['worktree', 'add', ...(action.detach ? ['--detach'] : []), ...(action.newBranch ? ['-b', await this.refName(repo, action.newBranch)] : []), '--', target];
         if (action.branch) { await this.refName(repo, action.branch); args.push(await this.oid(repo, `refs/heads/${action.branch}`)); if (!action.detach) args[args.length - 1] = action.branch; } else if (action.start) args.push(await this.oid(repo, action.start)); break;
       }
-      case 'worktree.remove': { token(action.path, 'worktree path'); const target = await canonicalPath(path.resolve(repo.root, action.path)); const trees = await this.worktrees(repo); const canonical = await Promise.all(trees.map(tree => canonicalPath(tree.path))); const selected = trees.find((_, index) => normalized(canonical[index]) === normalized(target)); if (!selected || normalized(target) === normalized(canonical[0])) throw new GitError('Only registered linked worktrees can be removed', 'INVALID_WORKTREE'); args = ['worktree', 'remove', ...(action.force ? ['--force'] : []), '--', selected.path]; break; }
+      case 'worktree.remove': { token(action.path, 'worktree path'); const target = await canonicalPath(path.resolve(repo.root, action.path)); const trees = await this.worktrees(repo); const canonical = await Promise.all(trees.map(tree => canonicalPath(tree.path))); const selected = trees.find((_, index) => normalized(canonical[index]) === normalized(target)); if (!selected || normalized(target) === normalized(canonical[0]) || normalized(target) === normalized(repo.root)) throw new GitError('Only registered linked worktrees other than the current Worktree can be removed', 'INVALID_WORKTREE'); if (selected.locked) throw new GitError(`This Worktree is Locked: ${selected.locked}. Unlock it before removal.`, 'WORKTREE_LOCKED'); args = ['worktree', 'remove', ...(action.force ? ['--force'] : []), '--', selected.path]; break; }
       case 'merge': case 'rebase': args = [action.type, await this.oid(repo, action.target)]; break;
       case 'cherry-pick': case 'revert': if (!action.commits.length) throw new GitError('Select commits', 'INVALID_ARGUMENT'); if (action.mainline !== undefined && (!Number.isSafeInteger(action.mainline) || action.mainline < 1)) throw new GitError('Invalid merge parent number', 'INVALID_ARGUMENT'); args = [action.type, ...(action.mainline ? ['-m', String(action.mainline)] : []), ...(await Promise.all(action.commits.map(x => this.oid(repo, x))))]; break;
       case 'reset': if (!['soft', 'mixed', 'hard'].includes(action.mode)) throw new GitError('Invalid reset mode', 'INVALID_ARGUMENT'); args = ['reset', `--${action.mode}`, await this.oid(repo, action.target), '--']; break;
