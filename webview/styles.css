@@ -1,4 +1,4 @@
-:root { color-scheme:dark; --bg:var(--vscode-editor-background,#1f1f1f); --panel:var(--vscode-sideBar-background,#252526); --fg:var(--vscode-foreground,#dedede); --muted:var(--vscode-descriptionForeground,#adadad); --border:var(--vscode-panel-border,#414141); --row-border:color-mix(in srgb,var(--border) 55%,transparent); --hover:var(--vscode-list-hoverBackground,#303d48); --selected:var(--vscode-list-activeSelectionBackground,#284565); --selected-fg:var(--vscode-list-activeSelectionForeground,#fff); --accent:var(--vscode-focusBorder,#84b4ee); --button:var(--vscode-button-background,#235e9b); --button-fg:var(--vscode-button-foreground,#fff); --input:var(--vscode-input-background,#303030); --error:var(--vscode-errorForeground,#f29da2); --green:var(--vscode-gitDecoration-addedResourceForeground,#87c59c); --yellow:var(--vscode-gitDecoration-modifiedResourceForeground,#d9b476); --font:var(--vscode-font-family,'Segoe UI',sans-serif); font-family:var(--font); font-size:13px; color:var(--fg); background:var(--bg); }
+:root { color-scheme:dark; --bg:var(--vscode-editor-background,#1f1f1f); --panel:var(--vscode-sideBar-background,#252526); --fg:var(--vscode-foreground,#dedede); --muted:var(--vscode-descriptionForeground,#adadad); --border:var(--vscode-panel-border,#414141); --section-border:color-mix(in srgb,var(--border) 72%,var(--fg)); --row-border:color-mix(in srgb,var(--border) 70%,transparent); --hover:var(--vscode-list-hoverBackground,#303d48); --selected:var(--vscode-list-activeSelectionBackground,#284565); --selected-fg:var(--vscode-list-activeSelectionForeground,#fff); --accent:var(--vscode-focusBorder,#84b4ee); --button:var(--vscode-button-background,#235e9b); --button-fg:var(--vscode-button-foreground,#fff); --input:var(--vscode-input-background,#303030); --error:var(--vscode-errorForeground,#f29da2); --green:var(--vscode-gitDecoration-addedResourceForeground,#87c59c); --yellow:var(--vscode-gitDecoration-modifiedResourceForeground,#d9b476); --diff-added:color-mix(in srgb,var(--vscode-diffEditor-insertedLineBackground,transparent) 45%,color-mix(in srgb,var(--green) 29%,var(--bg))); --diff-removed:color-mix(in srgb,var(--vscode-diffEditor-removedLineBackground,transparent) 45%,color-mix(in srgb,var(--error) 29%,var(--bg))); --font:var(--vscode-font-family,'Segoe UI',sans-serif); font-family:var(--font); font-size:13px; color:var(--fg); background:var(--bg); }
 * {box-sizing:border-box;}
 html,body,#root {width:100%;height:100%;margin:0;overflow:hidden;}
 button,input,select,textarea {font:inherit;color:inherit;}
@@ -25,7 +25,7 @@ h1,h2,p {margin:0;}
 .toolbar-spacer {flex:1;}
 .selected {background:var(--selected)!important;color:var(--selected-fg);}
 .workbench {height:100%;display:flex;flex-direction:column;min-width:0;overflow:hidden;font-size:var(--workbench-font,13px);line-height:1.4;}
-.app-chrome,.branch-bar,.toolbar {display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:5px 9px;border-bottom:1px solid var(--border);flex:none;}
+.app-chrome,.branch-bar,.toolbar {display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:5px 9px;border-bottom:1px solid var(--section-border);flex:none;}
 .app-chrome,.branch-bar {background:var(--panel);}
 .brand {display:flex;align-items:center;gap:7px;font-weight:600;}
 .workbench-tab {background:var(--bg);border-bottom:2px solid var(--accent);padding:3px 8px;}
@@ -36,8 +36,8 @@ h1,h2,p {margin:0;}
 .toolbar {gap:1px;padding:3px 7px;}
 .toolbar-divider {width:1px;height:20px;background:var(--border);margin:0 6px;}
 .workspace {display:grid;grid-template-columns:var(--sidebar-width,210px) 6px minmax(0,1fr);flex:1;min-height:0;min-width:0;}
-.sidebar {background:var(--panel);overflow:auto;min-width:0;}
-.sidebar-heading {display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);border-bottom:1px solid var(--border);min-height:28px;padding:0 5px;font-weight:600;}
+.sidebar {background:var(--panel);overflow:auto;min-width:0;box-shadow:inset -1px 0 var(--section-border);}
+.sidebar-heading {display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--section-border);border-bottom:1px solid var(--section-border);min-height:29px;padding:0 4px;font-weight:600;background:color-mix(in srgb,var(--panel) 91%,var(--fg));}
 .sidebar-heading:first-child {border-top:0;}
 .sidebar-heading>.button {font-weight:600;justify-content:flex-start;flex:1;}
 .sidebar-heading>.codicon {color:var(--muted);}
@@ -47,8 +47,8 @@ h1,h2,p {margin:0;}
 .ref-row.is-current {border-left-color:var(--green);background:color-mix(in srgb,var(--green) 12%,var(--panel));}
 .ref-row .sidebar-item {flex:1;min-width:0;padding-left:2px;}
 .branch-check {display:flex;align-items:center;justify-content:center;width:23px;min-height:28px;flex:none;}
-.branch-shortcuts {display:flex;flex-wrap:wrap;padding:2px 5px;font-size:11px;}
-.branch-shortcuts .button {padding:2px 5px;}
+.branch-shortcuts {display:flex;flex-wrap:wrap;gap:3px;padding:5px;font-size:11px;border-bottom:1px solid var(--row-border);}
+.branch-shortcuts .button {padding:2px 6px;min-height:23px;border:1px solid var(--border);background:color-mix(in srgb,var(--panel) 84%,var(--bg));}
 .remote-heading {display:flex;align-items:center;gap:5px;text-align:left;padding:3px 8px;width:100%;color:var(--muted);}
 .sidebar-empty {color:var(--muted);padding:7px 8px;font-size:12px;}
 .resize-handle {padding:0;position:relative;background:var(--border);border:0;touch-action:none;min-width:0;}
@@ -58,8 +58,10 @@ h1,h2,p {margin:0;}
 .main-panel {min-width:0;min-height:0;display:grid;grid-template-rows:minmax(0,1fr) 6px var(--diff-height,220px);}
 .layout-editor .main-panel {grid-template-rows:minmax(0,1fr);}
 .top-panels {display:grid;grid-template-columns:minmax(0,1fr) 6px var(--details-width,300px);min-width:0;min-height:0;}
-.history-panel,.details-panel,.diff-preview {display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden;}
-.pane-heading {display:flex;align-items:center;justify-content:space-between;gap:5px;padding:4px 7px;min-height:29px;background:var(--panel);border-bottom:1px solid var(--border);flex:none;}
+.history-panel,.details-panel,.diff-preview {display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden;background:var(--bg);}
+.details-panel {box-shadow:inset 1px 0 var(--section-border);}
+.diff-preview {box-shadow:inset 0 1px var(--section-border);}
+.pane-heading {display:flex;align-items:center;justify-content:space-between;gap:5px;padding:4px 7px;min-height:30px;background:color-mix(in srgb,var(--panel) 91%,var(--fg));border-bottom:1px solid var(--section-border);flex:none;}
 .pane-heading strong {font-weight:600;}
 .pane-heading select {max-width:135px;font-size:11px;}
 .pane-heading>.truncate {flex:1;}
@@ -126,12 +128,17 @@ h1,h2,p {margin:0;}
 .diff-labels>span+span {border-left:1px solid var(--border);}
 .diff-viewport {overflow:auto;flex:1;min-height:0;}
 .diff-line {font:12px/22px var(--vscode-editor-font-family,Consolas,monospace);}
-.diff-line>div {display:flex;overflow:hidden;white-space:pre;min-width:0;}
+.diff-line>div {display:flex;overflow:hidden;white-space:pre;min-width:0;box-shadow:inset 0 -1px color-mix(in srgb,var(--row-border) 70%,transparent);}
 .diff-line>div+div {border-left:1px solid var(--border);}
 .diff-line code {font:inherit;overflow:hidden;text-overflow:ellipsis;white-space:pre;tab-size:4;}
-.line-number {display:inline-block;min-width:38px;flex:none;text-align:right;color:var(--muted);padding-right:9px;font-size:11px;user-select:none;}
-.added {background:var(--vscode-diffEditor-insertedLineBackground,color-mix(in srgb,var(--green) 16%,var(--bg)));}
-.removed {background:var(--vscode-diffEditor-removedLineBackground,color-mix(in srgb,var(--error) 16%,var(--bg)));}
+.diff-marker {display:inline-block;min-width:18px;flex:none;text-align:center;font-weight:700;user-select:none;}
+.line-number {display:inline-block;min-width:34px;flex:none;text-align:right;color:var(--muted);padding-right:8px;font-size:11px;user-select:none;}
+.added {background:var(--diff-added);box-shadow:inset 3px 0 var(--green)!important;}
+.removed {background:var(--diff-removed);box-shadow:inset 3px 0 var(--error)!important;}
+.added .diff-marker {color:var(--green);}.removed .diff-marker {color:var(--error);}
+.diff-word-added,.diff-word-removed {color:inherit;border-radius:2px;padding:0 1px;}
+.diff-word-added {background:var(--vscode-diffEditor-insertedTextBackground,color-mix(in srgb,var(--green) 48%,transparent));}
+.diff-word-removed {background:var(--vscode-diffEditor-removedTextBackground,color-mix(in srgb,var(--error) 48%,transparent));}
 .banner,.operation-banner {display:flex;align-items:center;gap:7px;padding:5px 9px;flex:none;font-size:12px;flex-wrap:wrap;}
 .banner.error {background:var(--vscode-inputValidation-errorBackground,#472b2d);color:var(--error);}
 .banner>span {flex:1;overflow-wrap:anywhere;}
@@ -160,7 +167,7 @@ h1,h2,p {margin:0;}
 ::-webkit-scrollbar {width:9px;height:9px;}
 ::-webkit-scrollbar-thumb {background:var(--vscode-scrollbarSlider-background,#8996af55);}
 ::-webkit-scrollbar-corner {background:transparent;}
-.vscode-light {color-scheme:light;--bg:var(--vscode-editor-background,#fff);--panel:var(--vscode-sideBar-background,#f3f3f3);--fg:var(--vscode-foreground,#292929);--muted:var(--vscode-descriptionForeground,#626262);--border:var(--vscode-panel-border,#cecece);--hover:var(--vscode-list-hoverBackground,#e9f0f7);--selected:var(--vscode-list-activeSelectionBackground,#dceafa);--selected-fg:var(--vscode-list-activeSelectionForeground,#292929);--accent:var(--vscode-focusBorder,#225fa7);--input:var(--vscode-input-background,#fff);--green:var(--vscode-gitDecoration-addedResourceForeground,#297143);--error:var(--vscode-errorForeground,#9c3036);--yellow:var(--vscode-gitDecoration-modifiedResourceForeground,#91631c);}
+.vscode-light {color-scheme:light;--bg:var(--vscode-editor-background,#fff);--panel:var(--vscode-sideBar-background,#f3f3f3);--fg:var(--vscode-foreground,#292929);--muted:var(--vscode-descriptionForeground,#626262);--border:var(--vscode-panel-border,#c4c4c4);--section-border:#aeb3b8;--row-border:#d7d9dc;--hover:var(--vscode-list-hoverBackground,#e9f0f7);--selected:var(--vscode-list-activeSelectionBackground,#dceafa);--selected-fg:var(--vscode-list-activeSelectionForeground,#292929);--accent:var(--vscode-focusBorder,#225fa7);--input:var(--vscode-input-background,#fff);--green:var(--vscode-gitDecoration-addedResourceForeground,#26713f);--error:var(--vscode-errorForeground,#9c3036);--yellow:var(--vscode-gitDecoration-modifiedResourceForeground,#91631c);--diff-added:color-mix(in srgb,var(--vscode-diffEditor-insertedLineBackground,transparent) 35%,#bfe7c5);--diff-removed:color-mix(in srgb,var(--vscode-diffEditor-removedLineBackground,transparent) 35%,#f2bfc3);}
 .vscode-light .current-marker,.vscode-light .ref-badge.current {color:#fff;}
 .vscode-light .banner.error {background:var(--vscode-inputValidation-errorBackground,#fceaea);}
 .vscode-high-contrast,.vscode-high-contrast-light {--border:var(--vscode-contrastBorder,#f2e76a);--accent:var(--vscode-focusBorder,#f2e76a);}

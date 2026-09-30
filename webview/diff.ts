@@ -1,4 +1,11 @@
 export interface DiffRow { before?: string; after?: string; beforeLine?: number; afterLine?: number; changed: boolean }
+export interface ChangedParts { prefix: string; before: string; after: string; suffix: string }
+export function changedParts(before: string, after: string): ChangedParts {
+  let start=0,endBefore=before.length,endAfter=after.length;
+  while(start<endBefore&&start<endAfter&&before[start]===after[start])start++;
+  while(endBefore>start&&endAfter>start&&before[endBefore-1]===after[endAfter-1]){endBefore--;endAfter--;}
+  return {prefix:before.slice(0,start),before:before.slice(start,endBefore),after:after.slice(start,endAfter),suffix:before.slice(endBefore)};
+}
 // A bounded look-ahead aligns context without an unbounded quadratic matrix.
 // Every input line is emitted once; ambiguous blocks remain conservative replacements.
 export function alignDiff(before: string, after: string): DiffRow[] {
