@@ -3,6 +3,21 @@ import assert from 'node:assert/strict';
 export async function verifyHistoryRows(page) {
   const history = page.getByTestId('history'), rows = history.locator('[data-oid]');
   const first = rows.nth(0), second = rows.nth(1), third = rows.nth(2);
+  const working = history.locator('[data-working-tree]'), head = history.locator('.head-row').first();
+  await working.waitFor();
+  assert.ok(await working.locator('svg[data-working="true"] .git-graph-working-node').count(), 'Working Tree must use a distinct graph node');
+  const workingBox=await working.boundingBox(),headBox=await head.boundingBox();
+  assert.ok(workingBox&&headBox&&workingBox.y<headBox.y&&Math.abs(workingBox.y+workingBox.height-headBox.y)<2,'Working Tree must sit immediately above HEAD');
+  assert.match(await working.innerText(),/Working Tree.*changes.*on main/s);
+  await working.click();
+  assert.equal(await working.getAttribute('aria-selected'),'true');
+  await working.press('ArrowDown');
+  await page.waitForFunction(()=>document.activeElement?.classList.contains('head-row'));
+  assert.equal(await head.getAttribute('aria-selected'),'true');
+  await head.press('ArrowUp');
+  await page.waitForFunction(()=>document.activeElement?.hasAttribute('data-working-tree'));
+  assert.equal(await working.getAttribute('aria-selected'),'true');
+  await first.click();
   const secondOid = await second.getAttribute('data-oid'), thirdOid = await third.getAttribute('data-oid');
   const normalBackground = await second.evaluate(row => getComputedStyle(row).backgroundColor);
   await second.locator('.history-author').hover();
@@ -35,5 +50,5 @@ export async function verifyHistoryRows(page) {
   assert.equal(await second.getAttribute('aria-selected'), 'true');
   await first.locator('.history-author').click();
   assert.equal(await history.locator('[data-oid][aria-selected="true"]').count(), 1);
-  console.log('ALWAYGIT_HISTORY_UI_TESTS_PASSED: whole row pointer, author selection, keyboard focus, context and double-click across cells');
+  console.log('ALWAYGIT_HISTORY_UI_TESTS_PASSED: Working Tree node adjacency and navigation; commit row pointer, selection, context and double-click');
 }

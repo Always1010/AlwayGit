@@ -1,5 +1,6 @@
-import type { Commit } from '../../src/protocol/types';
 import { getGraphPalette, paletteColorDistance, type GraphPaletteColors, type GraphPaletteId } from './palettes';
+
+export interface GraphCommit { oid: string; parents: readonly string[] }
 
 /** A lane reserves a path to a parent that has not been rendered yet. */
 export interface GraphLane {
@@ -52,7 +53,7 @@ export interface GraphLayout {
  * Pass endState into the next page; an empty page keeps pending parents intact.
  * Neither commits nor a caller's state is mutated.
  */
-export function layoutGraph(commits: readonly Commit[], previousState?: GraphState, paletteId: GraphPaletteId = previousState?.paletteId ?? 'vivid', colors?: GraphPaletteColors): GraphLayout {
+export function layoutGraph<T extends GraphCommit>(commits: readonly T[], previousState?: GraphState, paletteId: GraphPaletteId = previousState?.paletteId ?? 'vivid', colors?: GraphPaletteColors): GraphLayout {
   const paletteSize = colors?.light.length ?? getGraphPalette(paletteId).light.length;
   const paletteKey = colors ? `${colors.light.join(',')}|${colors.dark.join(',')}` : paletteId;
   const prior = previousState && (!previousState.paletteId || previousState.paletteId === paletteId)

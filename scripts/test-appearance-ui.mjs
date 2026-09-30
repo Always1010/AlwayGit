@@ -108,7 +108,7 @@ export async function verifyAppearance(browser, url) {
       assert.ok(Math.abs(movedBox.x - handleBox.x - 20) <= 1, `${label} separator follows the pointer direction`);
     }
 
-    await history.getByRole('button', { name: /Working Tree/ }).click();
+    await history.locator('[data-working-tree]').click();
     assert.equal(await details.getByRole('textbox', { name: 'Commit message' }).inputValue(), 'Legacy draft survives migration', 'Legacy drafts survive appearance migration');
     await history.locator('.head-row').click();
     const migrated = await readSession(page);
@@ -215,7 +215,7 @@ export async function verifyAppearance(browser, url) {
       assert.ok(box.y >= largeRowBox.y - .5 && box.y + box.height <= largeRowBox.y + largeRowBox.height + .5, `${label} must not overlap a 28px row`);
     }
 
-    await history.getByRole('button', { name: /Working Tree/ }).click();
+    await history.locator('[data-working-tree]').click();
     await separators.details.focus();
     await separators.details.press('Home');
     assert.equal(Number(await separators.details.getAttribute('aria-valuenow')), 230);

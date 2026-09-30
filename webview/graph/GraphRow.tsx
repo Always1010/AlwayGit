@@ -12,6 +12,8 @@ export interface GraphRowProps {
   selected?: boolean;
   main?: boolean;
   pushed?: boolean;
+  /** A mutable Working Tree node which is visually distinct from a Git commit. */
+  working?: boolean;
   mainTargets?: ReadonlySet<string>;
   paletteId?: GraphPaletteId;
   paletteSize?: number;
@@ -30,7 +32,7 @@ function pathFor(segment: GraphSegment, height: number, laneWidth: number): stri
 }
 
 /** A complete, independently renderable row for a fixed-height history table. */
-export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false, selected = false, main = false, pushed = true, mainTargets, paletteId = 'vivid', paletteSize, hoveredPath, onHoverPath }: GraphRowProps) {
+export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false, selected = false, main = false, pushed = true, working = false, mainTargets, paletteId = 'vivid', paletteSize, hoveredPath, onHoverPath }: GraphRowProps) {
   const titleId = useId();
   const palette = getGraphPalette(paletteId);
   const colorFor = (index: number) => {
@@ -41,7 +43,9 @@ export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false
   const parentLabel = row.parents.length
     ? `${row.parents.length > 1 ? 'Merge commit; ' : ''}parents ${row.parents.map(oid => oid.slice(0, 8)).join(', ')}`
     : 'Root commit; no parents';
-  const label = `Commit ${row.oid.slice(0, 8)}, lane ${row.lane + 1}. ${parentLabel}.${main ? ' Main branch.' : ''}${head ? ' Current HEAD.' : ''}${selected ? ' Selected commit.' : ''}`;
+  const label = working
+    ? `Working Tree virtual node, lane ${row.lane + 1}.${selected ? ' Selected.' : ''}`
+    : `Commit ${row.oid.slice(0, 8)}, lane ${row.lane + 1}. ${parentLabel}.${main ? ' Main branch.' : ''}${head ? ' Current HEAD.' : ''}${selected ? ' Selected commit.' : ''}`;
   const nodeX = (row.lane + 0.5) * laneWidth;
   const nodeY = height / 2;
   const nodeColor = main ? 'var(--graph-main, #f2f2f2)' : colorFor(row.color);
@@ -57,6 +61,7 @@ export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false
       data-head={head || undefined}
       data-selected={selected || undefined}
       data-main={main || undefined}
+      data-working={working || undefined}
       style={{ display: 'block', overflow: 'visible', flexShrink: 0 }}
     >
       <title id={titleId}>{label}</title>
@@ -80,7 +85,7 @@ export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false
           aria-hidden="true"
         />
       );})}
-      {head && (
+      {head && !working && (
         <circle
           className="git-graph-head-ring"
           cx={nodeX}
@@ -93,23 +98,39 @@ export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false
           aria-hidden="true"
         />
       )}
-      <circle
-        className="git-graph-node"
-        cx={nodeX}
-        cy={nodeY}
-        r={row.parents.length > 1 ? pushed ? 4.5 : 4 : pushed ? 3.5 : 3}
-        fill={pushed ? nodeColor : 'var(--bg, var(--vscode-editor-background, Canvas))'}
-        stroke={selected ? 'var(--selected-fg, var(--vscode-list-activeSelectionForeground, currentColor))' : pushed ? 'var(--fg, var(--vscode-foreground, currentColor))' : nodeColor}
-        strokeWidth={selected ? 2 : pushed ? 1 : 2}
-        opacity={hoveredPath && row.pathId !== hoveredPath ? .35 : 1}
+      {working ? <rect
+        className="git-graph-working-node"
+        x={nodeX-4}
+        y={nodeY-4}
+        width={8}
+        height={8}
+        rx={1}
+        transform={`rotate(45 ${nodeX} ${nodeY})`}
+        fill="var(--bg, var(--vscode-editor-background, Canvas))"
+        stroke={selected?'var(--selected-fg, var(--vscode-list-activeSelectionForeground, currentColor))':'var(--accent, var(--vscode-focusBorder, currentColor))'}
+        strokeWidth={2}
         data-path-id={row.pathId}
         onMouseEnter={()=>onHoverPath?.(row.pathId)}
         onMouseLeave={()=>onHoverPath?.()}
         vectorEffect="non-scaling-stroke"
-        data-pushed={pushed}
         aria-hidden="true"
-      />
-      {pushed && row.parents.length > 1 && (
+      />:<circle
+          className="git-graph-node"
+          cx={nodeX}
+          cy={nodeY}
+          r={row.parents.length > 1 ? pushed ? 4.5 : 4 : pushed ? 3.5 : 3}
+          fill={pushed ? nodeColor : 'var(--bg, var(--vscode-editor-background, Canvas))'}
+          stroke={selected ? 'var(--selected-fg, var(--vscode-list-activeSelectionForeground, currentColor))' : pushed ? 'var(--fg, var(--vscode-foreground, currentColor))' : nodeColor}
+          strokeWidth={selected ? 2 : pushed ? 1 : 2}
+          opacity={hoveredPath && row.pathId !== hoveredPath ? .35 : 1}
+          data-path-id={row.pathId}
+          onMouseEnter={()=>onHoverPath?.(row.pathId)}
+          onMouseLeave={()=>onHoverPath?.()}
+          vectorEffect="non-scaling-stroke"
+          data-pushed={pushed}
+          aria-hidden="true"
+        />}
+      {!working && pushed && row.parents.length > 1 && (
         <circle
           cx={nodeX}
           cy={nodeY}
