@@ -20,6 +20,48 @@ beforeEach(async () => {
   store = (await import('../webview/store')).useWorkbench;
 });
 describe('repository UI consistency', () => {
+  it('passes a selected ref union and preserves an explicitly empty selection', async () => {
+    await store.getState().selectRepository('a');
+    store.getState().setCheckedRefs(['refs/heads/main','refs/heads/topic','refs/heads/main']);
+    await store.getState().loadHistory();
+    expect(bridge.rpc.mock.calls.filter(([method])=>method==='history').at(-1)?.[2]).toMatchObject({tips:['refs/heads/main','refs/heads/topic']});
+    store.getState().setCheckedRefs([]);await store.getState().refresh();
+    expect(store.getState().checkedRefs).toEqual([]);
+    expect(bridge.rpc.mock.calls.filter(([method])=>method==='history').at(-1)?.[2]).toMatchObject({tips:[]});
+  });
+  it('changes language and layout without mutating repository selection or drafts', async () => {
+    await store.getState().selectRepository('a');store.getState().setDraft('用户原文');
+    const id=store.getState().selectedOid;
+    store.getState().setLanguage('zh-CN');store.getState().setLayout({sidebar:240,details:320,preset:'editor'});
+    expect(store.getState().selectedOid).toBe(id);expect(store.getState().drafts.a).toBe('用户原文');
+    expect(bridge.save.mock.calls.at(-1)?.[0]).toMatchObject({version:2,language:'zh-CN',layout:{preset:'editor',sidebar:240,details:320}});
+    expect(bridge.rpc.mock.calls.some(([method])=>method==='action')).toBe(false);
+  });
+  it('ignores operation success after switching during its refresh', async () => {
+    await store.getState().selectRepository('a');const delayed=deferred<Snapshot>(),started=deferred<void>(),fallback=bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method,repoId,payload)=>{if(method==='snapshot'&&repoId==='a'){started.resolve();return delayed.promise;}return fallback(method,repoId,payload);});
+    const operation=store.getState().execute({type:'branch.checkout',name:'topic'});await started.promise;
+    await store.getState().selectRepository('b');delayed.resolve(snapshot(a));await operation;
+    expect(store.getState().repoId).toBe('b');expect(store.getState().notice).toBeUndefined();expect(store.getState().busy).toBe(false);
+  });
+  it('clears busy when returning to a repository while its old operation completes', async () => {
+    await store.getState().selectRepository('a');const pending=deferred<void>(),fallback=bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method,repoId,payload)=>method==='action'?pending.promise:fallback(method,repoId,payload));
+    const operation=store.getState().execute({type:'fetch'});await store.getState().selectRepository('b');await store.getState().selectRepository('a');expect(store.getState().busy).toBe(true);
+    pending.resolve();await operation;expect(store.getState().busy).toBe(false);
+  });
+  it('clears disappeared Stash selection instead of resurrecting its old details', async () => {
+    const fallback=bridge.rpc.getMockImplementation()!;let exists=true;
+    bridge.rpc.mockImplementation((method,repoId,payload)=>method==='snapshot'?Promise.resolve({...snapshot(a),stashes:exists?[{selector:'stash@{0}',oid:commit.oid,subject:'WIP'}]:[]}):fallback(method,repoId,payload));
+    await store.getState().selectRepository('a');await store.getState().selectCommit(commit.oid,undefined,commit.oid);expect(store.getState().selectedStashOid).toBe(commit.oid);
+    exists=false;await store.getState().refresh();expect(store.getState().selectedStashOid).toBeUndefined();expect(store.getState().stashDetails).toBeUndefined();
+  });
+  it('ignores details arriving after Working Tree was selected', async () => {
+    await store.getState().selectRepository('a');const pending=deferred<{commit:Commit;body:string;files:[]}>(),fallback=bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method,repoId,payload)=>method==='details'?pending.promise:fallback(method,repoId,payload));
+    const selecting=store.getState().selectCommit(commit.oid);store.getState().selectWorking();pending.resolve({commit,body:'old',files:[]});await selecting;
+    expect(store.getState().tab).toBe('changes');expect(store.getState().detailsLoading).toBe(false);
+  });
   it('ignores delayed status responses after switching repositories', async () => {
     const delayed = deferred<Snapshot>();
     const fallback = bridge.rpc.getMockImplementation()!;

@@ -96,6 +96,38 @@ describe('Git history graph', () => {
     expect(graph.endState.lanes).toEqual([]);
   });
 
+  it('joins independent selected branch tips at one common ancestor across pages', () => {
+    // git log --topo-order over several tips emits their reachable union once.
+    const history = [commit('left-tip', 'left'), commit('right-tip', 'right'),
+      commit('left', 'base'), commit('right', 'base'), commit('base', 'root'), commit('root')];
+    const whole = layoutGraph(history);
+    expect(whole.rows.filter(row => row.oid === 'base')).toHaveLength(1);
+    expect(whole.rows[3].segments.find(segment => segment.kind === 'parent')).toMatchObject({
+      target: 'base', toLane: whole.rows[4].lane,
+    });
+    let state = undefined as Parameters<typeof layoutGraph>[1];
+    const pagedRows = [] as typeof whole.rows;
+    for (const commitRow of history) {
+      const page = layoutGraph([commitRow], state);
+      pagedRows.push(...page.rows);
+      state = page.endState;
+    }
+    expect(pagedRows).toEqual(whole.rows);
+    expect(state).toEqual(whole.endState);
+  });
+
+  it('never retargets an omitted search-result parent to an unrelated visible commit', () => {
+    const first = layoutGraph([commit('match-one', 'omitted-parent')]);
+    const second = layoutGraph([commit('match-two')], first.endState);
+    expect(second.rows[0].hasIncoming).toBe(false);
+    expect(second.rows[0].lane).toBe(1);
+    expect(second.rows[0].segments).toEqual([
+      { fromLane: 0, toLane: 0, from: 'top', to: 'bottom', color: 0,
+        kind: 'through', target: 'omitted-parent' },
+    ]);
+    expect(second.endState.lanes).toEqual([{ oid: 'omitted-parent', color: 0 }]);
+  });
+
   it('matches every outgoing endpoint to the next row in a complex interleaved DAG', () => {
     const history = Array.from({ length: 80 }, (_, index) => {
       const parents = [index + 1, index + 3, index + 9]
