@@ -1,4 +1,16 @@
 export interface DiffRow { before?: string; after?: string; beforeLine?: number; afterLine?: number; changed: boolean }
+export interface DiffChangeRange { start: number; end: number }
+
+export function changedRanges(rows: readonly DiffRow[]): DiffChangeRange[] {
+  const ranges: DiffChangeRange[]=[];
+  for(let index=0;index<rows.length;index++){
+    if(!rows[index].changed)continue;
+    const start=index;
+    while(index+1<rows.length&&rows[index+1].changed)index++;
+    ranges.push({start,end:index});
+  }
+  return ranges;
+}
 export interface ChangedParts { prefix: string; before: string; after: string; suffix: string }
 export function changedParts(before: string, after: string): ChangedParts {
   let start=0,endBefore=before.length,endAfter=after.length;
