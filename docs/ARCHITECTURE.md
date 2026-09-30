@@ -1,6 +1,6 @@
 # 架构与开发约定
 
-本文维护 AlwayGit 的运行结构、模块边界和跨层约定。产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准，当前进展以 [开发交接](DEVELOPMENT_HANDOFF.md) 为准。
+本文维护 AlwayGit 的运行结构、代码入口、跨层约定和开发流程。产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准，检查方法和验证证据见 [验证与本地更新](VALIDATION.md)，协作要求见 [项目规则](../AGENTS.md)。
 
 ## 运行结构
 
@@ -10,16 +10,19 @@ AlwayGit 是 Workspace 类型的 VS Code 扩展。每个 React WebviewPanel 提�
 
 ## 模块边界
 
-| 目录 | 职责 |
-| --- | --- |
-| `src/extension` | 扩展激活、WebviewPanel、RPC 路由、VS Code 命令和生命周期 |
-| `src/application` | 操作确认、认证桥接、日志脱敏和面向用例的协调 |
-| `src/git` | 系统 Git 执行、结构化解析、查询、操作及共享仓库队列 |
-| `src/repositories` | 仓库注册、文件监听和活动栏仓库导航 |
-| `src/editor` | 安全路径解析、Git 内容文档、只读预览和 VS Code 原生 Diff |
-| `src/protocol` | 数据模型、RPC 请求响应和运行时校验 |
-| `webview` | React 工作台、菜单与对话框、Zustand 状态、会话和主题 |
-| `webview/graph` | 可分页的轨道布局及 SVG 行渲染 |
+| 目录 | 主要入口 | 职责 |
+| --- | --- | --- |
+| `src/extension` | `extension.ts`、`workbench.ts`、`project-windows.ts` | 扩展激活、面板集合、RPC 路由、VS Code 命令和生命周期 |
+| `src/application` | `confirm.ts`、`credentials.ts`、`window-bridge.ts`、`logging.ts` | 操作确认、认证与窗口 IPC、日志脱敏和用例协调 |
+| `src/git` | `service.ts`、`default-branch.ts` | 系统 Git 执行、结构化解析、查询、操作及共享仓库队列 |
+| `src/repositories` | `manager.ts`、`discovery.ts` | 仓库注册、递归发现、文件监听和活动栏仓库导航 |
+| `src/editor` | `paths.ts`、`documents.ts` | 安全路径解析、Git 内容文档、只读预览和 VS Code 原生 Diff |
+| `src/protocol` | `types.ts`、`validation.ts`、`repositories.ts` | 数据模型、RPC 请求响应、运行时校验和仓库展示分组 |
+| `webview` | `App.tsx`、`store.ts`、`rpc.ts` | React 组合、Zustand 状态、宿主桥接和 Demo |
+| `webview` | `Sidebar.tsx`、`History.tsx`、`Details.tsx`、`DiffPreview.tsx` | 四区呈现、对象选择和只读比较 |
+| `webview` | `menus.ts`、`SettingsDialog.tsx`、`appearance.ts`、`i18n.ts` | 动作定义、界面设置、外观和语言 |
+| `webview` | `refresh.ts`、`fileSelection.ts`、`commitSelection.ts`、`diff.ts` | 刷新失效范围、选择规则和修改块导航 |
+| `webview/graph` | `layout.ts`、`GraphRow.tsx`、`palettes.ts` | 可分页的轨道布局、SVG 行渲染和配色 |
 
 共享协议先于两端实现修改。新增宿主能力时，应依次维护共享类型与校验、宿主路由、Git 或编辑器实现、Webview 调用和真实仓库测试。Webview 菜单及工具栏应复用相同的动作描述和执行入口，避免同一 Git 操作出现不同参数或禁用规则。
 
@@ -85,8 +88,12 @@ Snapshot 为当前分支解析 Push 目标，依次考虑 `branch.<name>.pushRem
 
 未受信任工作区不执行 Git。Webview 使用 CSP、脚本 nonce 和受限资源目录。工作区文件打开会校验目录边界和符号链接祖先；只有已注册的非 Bare Worktree 可通过工作台打开。剪贴板和新窗口操作由宿主处理，Webview 只提交经过协议约束的数据。
 
-## 验证
+## 开发流程与文档维护
 
-单元测试覆盖协议、路径、历史图布局、渲染、状态恢复和认证桥。Git 测试使用系统临时目录中的真实仓库及本地 Bare Remote。VS Code 集成测试验证扩展激活、仓库发现、RPC、原生 Diff、文件编辑、剪贴板和窗口入口。浏览器测试验证构建后的工作台布局、菜单、筛选、会话、键盘和响应式行为；显式 `?demo=1` 模式只修改样例数据。
+1. 阅读 README、相关工作台规格和本文，检查 `git status --short`；保留现有未提交修改。
+2. 对照当前行为界定改动。同一需求的相关修改集中完成，独立功能或问题分别提交；仅已确认的问题进入 [问题日志](ISSUES.md)。
+3. 跨层能力先维护协议类型和运行时校验，再修改宿主、Git 或编辑器实现及 Webview。调整会话时兼容已有状态和草稿。
+4. 按 [验证与本地更新](VALIDATION.md) 选择最小必要检查。Demo 验证呈现与请求，真实临时仓库验证 Git，宿主集成验证 VS Code 原生能力。
+5. 更新对应的长期文档，检查链接、图片与旧文件名引用，按 [项目规则](../AGENTS.md) 创建本地提交。扩展修改通过检查后执行规定的本机更新流程。
 
-构建输出、VSIX、截图、测试报告和缓存位于忽略范围。验证命令及当次结果记录在 [验证说明](VALIDATION.md)。
+README 只维护启动、主要功能和导航；交互与配置归工作台规格；模块与跨层设计归本文；检查方法和证据归验证文档；已确认问题归问题日志。实现状态以当前代码与规格为依据，验证结论必须注明对应版本和范围，不根据旧记录推定新版本已通过。

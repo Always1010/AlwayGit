@@ -1,21 +1,38 @@
-# 验证说明
+# 验证与本地更新
 
-本文区分验收范围、执行方法和实际结果。没有列入“本轮结果”的项目不应被描述为已通过。
+本文维护检查入口、验收范围、验证证据和本机更新流程。验收矩阵描述应覆盖的行为；已有执行结果只对注明的版本与范围有效。当前源码版本以 `package.json` 为准。
 
-## 标准命令
+## 检查选择
 
-根据改动选择必要检查，不依次执行下列全部命令。默认完成同一目的的修改后集中验证；失败修复只重跑受影响部分。界面设置与配色可使用构建后的 `node scripts/test-ui.mjs --appearance-only`，只运行该专项无头流程。会弹出窗口的宿主集成测试需先取得用户明确同意。
+根据改动选择必要检查，不依次执行全部命令。同一目的的修改集中验证；修复失败后只重跑受影响部分。单纯文档修改检查链接、图片、旧文件名引用与 `git diff --check`，不重跑功能测试。会弹出窗口的宿主集成测试需按 [项目规则](../AGENTS.md) 先取得用户明确同意。
 
-```powershell
-npm run typecheck
-npm test
-npm run test:ui
-npm run test:extension
-npm run test:windows
-npm run package
-```
+| 改动范围 | 检查入口 | 说明 |
+| --- | --- | --- |
+| TypeScript 类型与跨层协议 | `npm run typecheck` | 无界面，不生成产物 |
+| 明确模块的逻辑或 Git 行为 | `npx vitest run tests/<相关文件>.test.ts` | 选择实际相关文件；Git 测试使用临时真实仓库及本地 Bare Remote |
+| 影响范围无法可靠缩小的核心变更 | `npm test` | 全量 Vitest；说明为何需要扩大范围 |
+| 构建或扩展实现 | `npm run build` | 生成扩展和 Webview 产物，构建本身不证明行为正确 |
+| 浏览器专项 | 先构建，再使用下表的 `node scripts/test-ui.mjs --…-only` | 无头 Playwright，验证构建产物；单个专项不运行全部 UI 检查 |
+| 整体界面交互 | `npm run test:ui` | 先构建再运行完整浏览器验收 |
+| VS Code API 与扩展宿主 | `npm run test:extension` | 先构建；会启动 Extension Development Host |
+| 跨窗口路由 | `npm run test:windows` | 先构建；会启动并切换测试窗口，可能影响桌面焦点 |
 
-`test:ui` 会先构建并以 `?demo=1` 加载产物。Windows 默认使用 Microsoft Edge；可用 `ALWAYGIT_BROWSER_EXECUTABLE` 指定浏览器。`test:extension` 使用临时真实仓库和本地 Bare Remote；可通过 `ALWAYGIT_VSCODE_EXECUTABLE` 或 `ALWAYGIT_VSCODE_VERSION` 选择 VS Code。
+浏览器专项入口：
+
+| 参数 | 主要范围 |
+| --- | --- |
+| `--appearance-only` | 设置、主题、配色、字体、尺寸与恢复布局 |
+| `--files-only` | 文件选择、目录显示、菜单和分组操作 |
+| `--history-only` | Commit / Working Tree 行、选择、比较和键盘操作 |
+| `--diff-only` | 修改块统计、导航、滚动和内容更新 |
+| `--worktrees-only` | 仓库归并、Worktree 选择及草稿隔离 |
+| `--remote-tracking-only` | 远程来源、本地跟踪分支与批量创建 |
+
+每次选择一个专项参数；脚本使用互斥分支，不会把多个参数组合执行。刷新与操作反馈专项已包含在完整 UI 流程中，目前没有独立命令行参数。
+
+浏览器脚本以 `?demo=1` 加载产物，默认无头运行。Windows 默认使用 Microsoft Edge，其他平台使用 Playwright Chromium；可用 `ALWAYGIT_BROWSER_EXECUTABLE` 指定路径。Demo 只操作示例数据；即使使用受控宿主验证消息，也不能据此确认真实 Git、原生编辑器、剪贴板或窗口动作通过。
+
+`test:extension` 默认下载并运行稳定版 VS Code；可通过 `ALWAYGIT_VSCODE_EXECUTABLE` 使用现有安装，或通过 `ALWAYGIT_VSCODE_VERSION` 检查指定版本。测试在系统临时目录创建独立仓库，网络操作使用本地 Bare Remote。
 
 `test:windows` 使用独立临时 Profile、测试仓库和测试伴随扩展，验证项目窗口激活、跨窗口 Diff/编辑、保留标签和未保存文档，以及未打开项目的新窗口启动；测试进程不使用或关闭用户的 VS Code 窗口。多根工作区和不同 Worktree 的目录匹配同时由 IPC 单元测试覆盖。
 
@@ -23,7 +40,7 @@ npm run package
 
 - 固定四区 Workbench、旧 Editor Focus 会话迁移、面板和列拖动、Diff 动态最大高度与收起恢复、仅恢复布局而不重置界面设置的 Restore Layout、窄窗口和主题。
 - 设置浮窗分级导航、预览、取消、应用、刷新期间的持久化；宿主主题与主题卡片优先级、丰富明暗主题、可配置未推送角标、字号和密度同步虚拟行高、Graph 预设及自定义浅色/深色色板的连续性与分页。
-- Repository、Local Branch、Remote Branch、Remote、Tag、Stash、Worktree 及各分组的独立三点菜单；分组标题单击只折叠内容。Repository 单击、Ctrl/Cmd、Shift、Ctrl/Cmd+A 与 Escape 管理独立的批量操作选择，右键遵循所选范围，双击或 Enter 才切换；Worktree 单击只聚焦、双击或 Enter 切换。当前 Repository、Worktree 和本地分支使用排头实心三角形及 `aria-current`，与 Repository 蓝色操作选择相互独立；浅色背景为纯黑、深色背景为纯白，不显示 Current 文字徽标。
+- Repository、Local Branch、Remote Branch、Remote、Tag、Stash、Worktree 的对象菜单；分组标题单击只折叠内容，右侧图标执行分组操作，右键标题打开相同操作菜单，Local Branches 的 Graph 预设具有激活状态。Repository 单击、Ctrl/Cmd、Shift、Ctrl/Cmd+A 与 Escape 管理独立的批量操作选择，右键遵循所选范围，双击或 Enter 才切换；Worktree 单击只聚焦、双击或 Enter 切换。当前 Repository、Worktree 和本地分支使用排头实心三角形及 `aria-current`，与 Repository 蓝色操作选择相互独立；浅色背景为纯黑、深色背景为纯白，不显示 Current 文字徽标。
 - 菜单指针定位、视口边缘修正、竖向排列、键盘焦点、Escape 与点击外部关闭。
 - 右键对象与操作对话框目标一致；仓库切换后旧菜单和对话框关闭。
 - 递归分支目录、目录展开、三态目录选择、多引用选择、共同提交去重、清空选择、分页、搜索、HEAD 标记及 Locate HEAD。
@@ -48,35 +65,43 @@ npm run package
 - 同一文件同时含 Staged / Unstaged 修改时，Discard 只处理工作区一侧。
 - Detached HEAD、Tracking Branch、Tag Checkout 和主 / 当前 / Locked Worktree 限制。
 - Push 目标配置解析、不同名称的本地 / 远端分支 refspec 及 upstream 建立。
+- 同 Remote 的远程分支单项和批量删除、符号引用限制、身份校验、确认清单及部分失败汇总。
 - Diff 文本、二进制、大小限制、删除 / 重命名、Merge Parent 和冲突 Stage。
 - VS Code 原生 Diff、普通编辑、剪贴板、打开 Worktree、新 AlwayGit 标签协议和新窗口。
 - 多仓库共享 `commonDir` 的串行写操作与活动状态。
 
-## 本轮结果
-
-执行日期为 2026-10-01，版本为 0.10.0。检查范围覆盖丰富主题的即时预览、取消、应用与重载，自定义未推送角标颜色，文件相对父目录显示，以及生产构建、固定包更新和本机安装。未重跑与本轮界面改动无关的仓库管理、Git 操作和窗口桥接测试。
-
-| 项目 | 结果 | 备注 |
-| --- | --- | --- |
-| `npm run typecheck` | 通过 | 新主题、角标设置、会话校验与文件路径显示类型一致 |
-| `npx vitest run tests/ui-state.test.ts tests/file-selection.test.ts` | 通过 | 2 个文件、34 项；覆盖设置保存/回滚、角标颜色校验及根目录和多层目录标签 |
-| `npm run build` | 通过 | 扩展与 Webview 生产构建成功 |
-| `node scripts/test-ui.mjs --appearance-only` | 通过 | 无头专项覆盖主题卡片、附加主题、角标颜色预览/保存/重载、设置取消和布局恢复 |
-| `node scripts/test-ui.mjs --files-only` | 通过 | 无头专项覆盖 `./` 相对目录、文件选择、右键菜单和分组操作 |
-| `scripts/update-local.ps1` | 通过 | 生成固定包及 0.10.0 版本包，并使用已记录目标完成安装 |
-| `git diff --check` | 通过 | 修改文件无空白错误 |
-| 官方 VS Code CLI 安装核对 | 通过 | 沿用 `D:\vscode\Microsoft VS Code\bin\code.cmd` 和默认 Profile，已安装 `alwaygit-dev.alwaygit@0.10.0`，未关闭或重启用户窗口 |
-
-复现本轮定向单测：
+## 打包与本地更新
 
 ```powershell
-npm run typecheck
-npx vitest run tests/ui-state.test.ts tests/file-selection.test.ts
-npm run build
-node scripts/test-ui.mjs --appearance-only
-node scripts/test-ui.mjs --files-only
-scripts/update-local.ps1
-git diff --check
+node scripts/package.mjs
 ```
 
-本轮未运行会弹出并切换焦点的 `npm run test:windows`，也未重跑无关的完整 Vitest。主题在无头 Edge 中完成布局和交互验证；macOS、Linux、远程宿主和最低支持版本仍需对应环境验收。
+打包由 VSCE 触发 `vscode:prepublish` 完成构建；无需在紧接着打包前重复构建。成功后才替换固定包 `artifacts/alwaygit.vsix`，保留上一份 `artifacts/alwaygit-previous.vsix` 和带版本号的包；失败时保留原固定包。
+
+扩展修改通过相应检查后，按已授权流程安装到实际使用的 VS Code：
+
+```powershell
+scripts/update-local.ps1
+# 若已成功生成当前版本包，跳过重复构建：
+scripts/update-local.ps1 -InstallOnly
+```
+
+两条命令按情况择一。脚本沿用 `artifacts/local-install.json` 中记录的 CLI 和 Profile；首次默认使用 PATH 中的 `code` 和默认 Profile。可用 `-CodePath` / `-Profile` 或 `ALWAYGIT_CODE_CLI` / `ALWAYGIT_VSCODE_PROFILE` 显式指定目标。
+
+脚本检查包身份和版本，调用官方 CLI `--install-extension <VSIX> --force`，再核对已安装扩展 `alwaygit-dev.alwaygit` 的版本。只有安装及校验成功后，才可告知用户方便时重启 VS Code；脚本不自动关闭或重启用户窗口。仅替换 VSIX 不代表已安装扩展更新成功。
+
+扩展身份保持不变，功能版本正常递增，不通过卸载或删除用户数据更新。全部安装包、本机安装记录、构建输出、截图、报告、trace、缓存和日志均不提交。文档整理无需触发扩展重新打包安装。
+
+## 验证证据与覆盖边界
+
+2026-10-01 文档整理时，源码版本为 0.16.0。此前本文件可追溯的功能执行记录对应 0.10.0；它只支持下表的既有结论，不代表 0.16.0 已完成同范围复测，也不能据此推断后续版本未经过检查。问题级回归摘要见 [问题日志](ISSUES.md)。
+
+| 证据范围 | 日期 / 版本 | 已记录结果与限制 |
+| --- | --- | --- |
+| 类型、状态及路径逻辑 | 2026-10-01 / 0.10.0 | 类型检查通过；`ui-state`、`file-selection` 两个文件 34 项通过，覆盖设置保存/回滚、角标颜色及目录标签 |
+| 生产构建与浏览器专项 | 2026-10-01 / 0.10.0 | 构建、无头 Edge 的 `--appearance-only` 与 `--files-only` 通过；范围为主题、角标、布局恢复和文件交互 |
+| 打包与本机安装 | 2026-10-01 / 0.10.0 | 固定包、版本包生成及官方 CLI 安装核对通过；此记录不是当前本机安装状态，本机目标与状态以忽略目录中的安装记录和实际 CLI 核对为准 |
+| 仓库管理、完整 Git 行为及窗口桥接 | 上述 0.10.0 执行范围之外 | 该记录未包含相关复测、完整 Vitest 或 `test:windows` 的新结果 |
+| 文档整理 | 2026-10-01 / 源码 0.16.0 | Markdown 本地链接、标题锚点、图片及旧文件名引用检查通过；`git diff --check` 通过。未运行功能测试，未重新打包或安装扩展 |
+
+macOS、Linux、WSL、Remote SSH、Dev Containers 和最低支持版本仍需相应环境的专项证据。验收矩阵、架构兼容性和测试文件的存在都不等同于这些环境已通过验收。
