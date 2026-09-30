@@ -1,7 +1,7 @@
 import type { Commit, CommitDetails, GitAction, HistoryPage, HistoryQuery, HostMessage, Repository, RpcRequest, Snapshot } from '../src/protocol/types';
 
 export interface LayoutState { preset: 'workbench' | 'editor'; sidebar: number; details: number; diff: number; author: number; date: number; font: number; row: number }
-export interface SessionState { version?: number; language?: 'en' | 'zh-CN'; layout?: LayoutState; repoId?: string; drafts?: Record<string, string>; views?: Record<string, { ref?: string; checkedRefs?: string[]; search: string; selectedOid?: string; selectedStashOid?: string; selectedFile?: string; tab: 'history' | 'changes' }> }
+export interface SessionState { version?: number; language?: 'en' | 'zh-CN'; layout?: LayoutState; repoId?: string; drafts?: Record<string, string>; views?: Record<string, { ref?: string; checkedRefs?: string[]; expandedRefGroups?: string[]; collapsedSidebarGroups?: string[]; search: string; selectedOid?: string; selectedStashOid?: string; selectedFile?: string; tab: 'history' | 'changes' }> }
 export class RpcError extends Error {
   constructor(message: string, public code?: string, public details?: { reason?: string; paths: string[]; target: string; worktreePath?: string; stashCreated?: boolean; stashOid?: string }) { super(message); this.name = 'RpcError'; }
 }
@@ -61,6 +61,8 @@ let demoSnapshot: Snapshot = { repository: repo, branch: 'main', head: commits[0
 ], refs: [
   { name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commits[0].oid, upstream: 'origin/main' },
   { name: 'feature/history-graph', fullName: 'refs/heads/feature/history-graph', kind: 'local', oid: commits[3].oid },
+  { name: 'feature/login/api', fullName: 'refs/heads/feature/login/api', kind: 'local', oid: commits[5].oid },
+  { name: 'feature/test', fullName: 'refs/heads/feature/test', kind: 'local', oid: commits[7].oid },
   { name: 'fix/status-refresh', fullName: 'refs/heads/fix/status-refresh', kind: 'local', oid: commits[8].oid },
   { name: 'origin/main', fullName: 'refs/remotes/origin/main', kind: 'remote', oid: commits[2].oid },
   { name: 'origin/develop', fullName: 'refs/remotes/origin/develop', kind: 'remote', oid: commits[6].oid },

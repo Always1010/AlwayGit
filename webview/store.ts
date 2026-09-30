@@ -3,6 +3,7 @@ import type { Commit, CommitDetails, DiffTarget, GitAction, HistoryQuery, Reposi
 import { demoMode, readSession, rpc, saveSession, subscribe } from './rpc';
 import type { LayoutState } from './rpc';
 import type { Language } from './i18n';
+import { folderKeys } from './refTree';
 
 let repositoryEpoch = 0, snapshotEpoch = 0, historyEpoch = 0, detailEpoch = 0;
 const session = readSession(), views = session.views ?? {}, executingRepositories = new Set<string>(), hostBusyRepositories = new Set<string>();
@@ -10,10 +11,10 @@ export const defaultLayout: LayoutState = { preset: 'workbench', sidebar: 210, d
 export interface CheckoutFailure { reason?: string; paths: string[]; target: string; worktreePath?: string; stashCreated?: boolean; stashOid?: string; detached?: boolean }
 interface WorkbenchState {
   repositories: Repository[]; repoId?: string; snapshot?: Snapshot; commits: Commit[]; details?: CommitDetails; selectedOid?: string; selectedStashOid?: string; stashDetails?: CommitDetails; selectedFile?: string; diffTarget?: DiffTarget;
-  ref?: string; checkedRefs?: string[]; search: string; language: Language; layout: LayoutState; checkoutFailure?: CheckoutFailure; locateToken:number;
+  ref?: string; checkedRefs?: string[]; expandedRefGroups?:string[]; collapsedSidebarGroups:string[]; search: string; language: Language; layout: LayoutState; checkoutFailure?: CheckoutFailure; locateToken:number;
   nextOffset: number; hasMore: boolean; tips: string[]; loading: boolean; historyLoading: boolean; detailsLoading: boolean; busy: boolean; activity: string; error?: string; notice?: string; tab: 'history' | 'changes'; drafts: Record<string, string>;
   initialize(): Promise<void>; selectRepository(id: string): Promise<void>; refresh(): Promise<void>; loadHistory(append?: boolean): Promise<void>; selectCommit(oid: string, parent?: string, stashOid?: string): Promise<void>;
-  setFilter(ref?: string, search?: string): void; setCheckedRefs(refs: string[]): void; setSearch(value: string): void; selectWorking(): void; selectFile(target: DiffTarget): void; locateHead():void;
+  setFilter(ref?: string, search?: string): void; setCheckedRefs(refs: string[]): void; setExpandedRefGroup(key:string,expanded:boolean):void; toggleSidebarGroup(key:string):void; setSearch(value: string): void; selectWorking(): void; selectFile(target: DiffTarget): void; locateHead():void;
   execute(action: GitAction): Promise<boolean>; setDraft(value: string): void; setLanguage(value: Language): void; setLayout(value: Partial<LayoutState>): void; report(error: unknown): void;
 }
 const message = (error: unknown) => error instanceof Error ? error.message : String(error);
@@ -23,7 +24,7 @@ function layout(value: Partial<LayoutState> = {}): LayoutState {
   return { preset: l.preset === 'editor' ? 'editor' : 'workbench', sidebar: clamp(l.sidebar, 160, 360, 210), details: clamp(l.details, 230, 480, 300), diff: clamp(l.diff, 130, 450, 220), author: clamp(l.author, 64, 220, 100), date: clamp(l.date, 82, 220, 120), font: clamp(l.font, 12, 16, 13), row: clamp(l.row, 24, 36, 26) };
 }
 export const useWorkbench = create<WorkbenchState>((set, get) => ({
-  repositories: [], commits: [], search: '', language: session.language === 'zh-CN' ? 'zh-CN' : 'en', layout: layout(session.layout), locateToken:0,nextOffset: 0, tips: [], hasMore: false, loading: false, historyLoading: false, detailsLoading: false, busy: false, activity: '', tab: 'history', drafts: session.drafts ?? {},
+  repositories: [], commits: [], search: '', language: session.language === 'zh-CN' ? 'zh-CN' : 'en', layout: layout(session.layout), locateToken:0,nextOffset: 0, tips: [], hasMore: false, loading: false, historyLoading: false, detailsLoading: false, busy: false, activity: '', tab: 'history', drafts: session.drafts ?? {}, collapsedSidebarGroups:[],
   report(error) { set({ error: message(error) }); },
   async initialize() {
     set({ loading: true });
@@ -32,16 +33,17 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   },
   async selectRepository(id) {
     ++repositoryEpoch; ++historyEpoch; ++detailEpoch; const view = views[id];
-    set({ repoId: id, snapshot: undefined, commits: [], tips: [], details: undefined, stashDetails: undefined, diffTarget: undefined, selectedFile: view?.selectedFile, selectedOid: view?.selectedOid, selectedStashOid: view?.selectedStashOid, ref: view?.ref, checkedRefs: view?.checkedRefs ? [...view.checkedRefs] : view?.ref ? [view.ref] : undefined, search: view?.search ?? '', tab: view?.tab ?? 'history', checkoutFailure: undefined, error: undefined, notice: undefined, loading: true, busy: executingRepositories.has(id), activity: '', detailsLoading: false, historyLoading: false });
+    set({ repoId: id, snapshot: undefined, commits: [], tips: [], details: undefined, stashDetails: undefined, diffTarget: undefined, selectedFile: view?.selectedFile, selectedOid: view?.selectedOid, selectedStashOid: view?.selectedStashOid, ref: view?.ref, checkedRefs: view?.checkedRefs ? [...view.checkedRefs] : view?.ref ? [view.ref] : undefined, expandedRefGroups:view?.expandedRefGroups?[...view.expandedRefGroups]:undefined,collapsedSidebarGroups:[...(view?.collapsedSidebarGroups??[])], search: view?.search ?? '', tab: view?.tab ?? 'history', checkoutFailure: undefined, error: undefined, notice: undefined, loading: true, busy: executingRepositories.has(id), activity: '', detailsLoading: false, historyLoading: false });
     await get().refresh();
   },
   async refresh() {
     const epoch = repositoryEpoch, request = ++snapshotEpoch, repoId = get().repoId; if (!repoId) return; set({ loading: true });
     try {
       const snapshot = await rpc<Snapshot>('snapshot', repoId); if (epoch !== repositoryEpoch || request !== snapshotEpoch || snapshot.version < (get().snapshot?.version ?? -1)) return;
-      const initial = get().checkedRefs === undefined;
+      const initial = get().checkedRefs === undefined,previousBranch=get().snapshot?.branch;
       const checkedRefs = initial ? [snapshot.refs.find(r => r.kind === 'local' && r.name === snapshot.branch)?.fullName ?? (snapshot.head ? 'HEAD' : ''), snapshot.refs.find(r => r.kind === 'remote' && r.name === snapshot.upstream)?.fullName ?? ''].filter(Boolean) : get().checkedRefs!.filter(ref => ref === 'HEAD' || snapshot.refs.some(r => r.fullName === ref));
-      set({ snapshot, checkedRefs }); await get().loadHistory(); if (get().tab === 'changes') get().selectWorking();
+      const currentFolders=folderKeys(snapshot.branch,'local'),baseExpanded=get().expandedRefGroups,expandedRefGroups=baseExpanded===undefined||previousBranch!==snapshot.branch?[...new Set([...(baseExpanded??[]),...currentFolders])]:baseExpanded;
+      set({ snapshot, checkedRefs,expandedRefGroups }); await get().loadHistory(); if (get().tab === 'changes') get().selectWorking();
     } catch (error) { if (epoch === repositoryEpoch && request === snapshotEpoch) get().report(error); }
     finally { if (epoch === repositoryEpoch && request === snapshotEpoch) set({ loading: false }); }
   },
@@ -76,6 +78,8 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   },
   setFilter(ref, search = get().search) { set({ ref, checkedRefs: ref ? [ref] : get().snapshot?.refs.filter(r => r.kind !== 'tag').map(r => r.fullName) ?? [], search, tips: [], selectedStashOid: undefined }); void get().loadHistory(); },
   setCheckedRefs(refs) { set({ checkedRefs: [...new Set(refs)], ref: undefined, tips: [] }); void get().loadHistory(); },
+  setExpandedRefGroup(key,expanded){set({expandedRefGroups:expanded?[...new Set([...(get().expandedRefGroups??[]),key])]:(get().expandedRefGroups??[]).filter(item=>item!==key)});},
+  toggleSidebarGroup(key){set({collapsedSidebarGroups:get().collapsedSidebarGroups.includes(key)?get().collapsedSidebarGroups.filter(item=>item!==key):[...get().collapsedSidebarGroups,key]});},
   setSearch(search) { set({ search, tips: [] }); void get().loadHistory(); },
   selectWorking() {
     ++detailEpoch; const file = get().snapshot?.changes.find(f => f.path === get().selectedFile) ?? get().snapshot?.changes[0]; set({ tab: 'changes', detailsLoading: false });
@@ -110,7 +114,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   setLayout(value) { set({ layout: layout({ ...get().layout, ...value }) }); },
 }));
 useWorkbench.subscribe(state => {
-  if (state.repoId) views[state.repoId] = { ref: state.ref, checkedRefs: state.checkedRefs, search: state.search, selectedOid: state.selectedOid, selectedStashOid: state.selectedStashOid, selectedFile: state.selectedFile, tab: state.tab };
+  if (state.repoId) views[state.repoId] = { ref: state.ref, checkedRefs: state.checkedRefs, expandedRefGroups:state.expandedRefGroups,collapsedSidebarGroups:state.collapsedSidebarGroups, search: state.search, selectedOid: state.selectedOid, selectedStashOid: state.selectedStashOid, selectedFile: state.selectedFile, tab: state.tab };
   saveSession({ version: 2, repoId: state.repoId, drafts: state.drafts, views, language: state.language, layout: state.layout });
 });
 let changedTimer: ReturnType<typeof setTimeout>;
