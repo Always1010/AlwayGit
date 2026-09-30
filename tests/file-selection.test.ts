@@ -18,6 +18,7 @@ describe('file batch selection', () => {
 
   it('keeps ordinary preview clicks independent of batch selection while establishing a range anchor', () => {
     expect(fileSelectionForClick(order, { paths: ['d.txt'] }, 'a.txt', {})).toEqual({ paths: ['d.txt'], anchor: 'a.txt' });
+    expect(fileSelectionForClick(order, { paths: ['d.txt'] }, 'a.txt', { replace: true })).toEqual({ paths: ['a.txt'], anchor: 'a.txt' });
     expect(fileSelectionForClick(order, { paths: [], anchor: 'a.txt' }, 'nested/c.txt', { range: true })).toEqual({ paths: order.slice(0, 3), anchor: 'a.txt' });
   });
 

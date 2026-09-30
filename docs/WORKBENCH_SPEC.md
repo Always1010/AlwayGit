@@ -117,9 +117,9 @@ Merge、Rebase、Cherry-pick、Revert 的活动状态在独立操作条中持续
 
 Working Tree 将文件分为 Conflicts、Unstaged 和 Staged。Stage、Unstage 与 Stash 是不同操作。`Discard Changes…` 只丢弃所选 Unstaged 修改，保留 Index 中同一文件的 Staged 修改；确认对话框必须准确描述受影响内容。
 
-分组标题采用单行复选框、短标题与数量徽标，右侧 `Stage All` / `Unstage All` 为清晰的描边按钮；有选择时显示操作数量。Discard 为带悬停说明和可访问名称的图标按钮，仅在选中 Unstaged 文件后启用。空分组压缩提示，完整父目录和文件选择规则保持不变。
+分组标题采用短标题与数量徽标，右侧 `Stage All` / `Unstage All` 为清晰的描边按钮；有选择时显示操作数量。Working Tree 不显示文件或分组复选框，Discard 为带悬停说明和可访问名称的图标按钮，仅在选中 Unstaged 文件后启用。空分组压缩提示，完整父目录和文件选择规则保持不变。
 
-文件行第一行显示文件名，第二行显示完整的仓库相对父目录链，不限制目录层级；长父目录换行，完整路径也可通过悬浮提示查看。根目录文件显示“仓库根目录”。单击预览不修改批量勾选；Ctrl/Cmd+单击切换勾选，Shift+单击选择范围。焦点在文件区域时 Ctrl/Cmd+A 全选当前面板文件，Escape 清空，文本输入保持原生行为。Working Tree 的组内按钮只处理该组选择，没有选择时 Stage / Unstage 明确显示 All，Discard 无选择时禁用；Commit 和比较文件可批量 Copy Paths。
+文件行第一行显示文件名，第二行显示完整的仓库相对父目录链，不限制目录层级；长父目录换行，完整路径也可通过悬浮提示查看。根目录文件显示“仓库根目录”。Working Tree 中单击文件即选中并预览，Ctrl/Cmd+单击切换选择，Shift+单击选择范围；Commit 和比较文件仍以复选框维护批量 Copy Paths 选择。焦点在文件区域时 Ctrl/Cmd+A 全选当前面板文件，Escape 清空，文本输入保持原生行为。Working Tree 的组内按钮只处理该组选择，没有选择时 Stage / Unstage 明确显示 All，Discard 无选择时禁用。
 
 Commit 表单保存每仓库草稿。Commit 只提交 Index；Amend 替换当前提交。底部预览显示选中文件和比较目标，并提供在 VS Code 原生 Diff 或编辑器中打开的图标入口，文字通过悬浮提示和无障碍标签提供。上一处、下一处按钮在当前文件的连续修改块之间移动，到达首尾后禁用而不循环。删除与新增使用高辨识度的红色和绿色整行底色、边缘标记、`−` / `+` 标记及行内变化强调。二进制、超限、缺失或非法编码内容显示具体说明。
 
