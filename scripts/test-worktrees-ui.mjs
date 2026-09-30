@@ -38,7 +38,7 @@ export async function verifyWorktrees(browser, url) {
     const app = groups.filter({ has: page.locator('span.truncate', { hasText: /^App$/ }) }).first();
     const clone = page.locator('[data-repository-group][title^="D:/Other/App"]');
     assert.equal(await app.innerText(), 'App'); assert.equal((await app.getAttribute('title'))?.split('\n')[0], 'D:/Projects/App-feature');
-    assert.equal(await app.getAttribute('aria-current'), 'true'); assert.equal(await app.locator('.current-indicator .codicon-play').count(), 1);
+    assert.equal(await app.getAttribute('aria-current'), 'true'); assert.equal(await app.locator('.current-indicator-glyph').count(), 1);
     assert.equal(await sidebar.getByRole('button', { name: 'Branch feature', exact: true }).getAttribute('aria-current'), 'true');
     assert.equal(await sidebar.getByRole('button', { name: 'Branch feature', exact: true }).innerText(), 'feature', 'The current branch uses an icon instead of a Current label');
     assert.equal(await sidebar.getByRole('button', { name: 'feature · App-feature', exact: true }).getAttribute('aria-current'), 'true');

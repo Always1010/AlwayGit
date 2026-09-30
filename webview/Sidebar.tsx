@@ -14,7 +14,7 @@ export type ContextHandler = (event: React.MouseEvent | React.KeyboardEvent, tar
 type Group = Extract<MenuTarget,{kind:'group'}>['group'];
 
 function CurrentIndicator({current}:{current:boolean}) {
-  return <span className="current-indicator" aria-hidden="true">{current&&<Icon name="play"/>}</span>;
+  return <span className="current-indicator" aria-hidden="true">{current&&<span className="current-indicator-glyph"/>}</span>;
 }
 
 function TreeCheckbox({label,checked,mixed,onChange}:{label:string;checked:boolean;mixed:boolean;onChange(checked:boolean):void}) {

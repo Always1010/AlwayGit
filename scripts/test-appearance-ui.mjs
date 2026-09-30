@@ -22,6 +22,14 @@ async function assertCentered(locator, expected, label, tolerance = 1.5) {
   assert.ok(Math.abs(centerY(box) - expected) <= tolerance, `${label} must align with the graph node center`);
 }
 
+async function assertCurrentIndicator(locator, color, label) {
+  const shape = await locator.evaluate(element => {
+    const style = getComputedStyle(element);
+    return { color: style.borderLeftColor, width: style.borderLeftWidth, top: style.borderTopWidth, bottom: style.borderBottomWidth };
+  });
+  assert.deepEqual(shape, { color, width: '9px', top: '6px', bottom: '6px' }, `${label} uses a large solid high-contrast triangle`);
+}
+
 export async function verifyAppearance(browser, url) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 940 } });
   const runtimeErrors = [], consoleErrors = [];
@@ -53,6 +61,8 @@ export async function verifyAppearance(browser, url) {
     await Promise.all([workbench.waitFor(), history.locator('[data-oid]').first().waitFor(), details.waitFor()]);
     assert.equal(await workbench.getAttribute('data-theme'), 'light', 'System appearance follows the simulated light VS Code host');
     assert.equal(await workbench.evaluate(element => getComputedStyle(element).backgroundColor), 'rgb(255, 255, 255)', 'Workbench light theme overrides gray host surface tokens');
+    const currentIndicator = workbench.locator('[data-repository-group][aria-current="true"] .current-indicator-glyph');
+    await assertCurrentIndicator(currentIndicator, 'rgb(0, 0, 0)', 'Light theme current marker');
     assert.equal(await page.getByLabel('Layout', { exact: true }).count(), 0, 'Removed Layout control must not remain in the workbench');
     assert.equal(await page.getByLabel('Language').count(), 0, 'Language control belongs only in Interface Settings');
     const top = page.locator('.app-chrome, .branch-bar, .toolbar');
@@ -135,6 +145,7 @@ export async function verifyAppearance(browser, url) {
     await settings.getByRole('button', { name: 'Colors', exact: true }).click();
     await settings.getByRole('radio', { name: /Distinct/ }).click();
     assert.equal(await workbench.getAttribute('data-theme'), 'dark', 'Theme previews live');
+    await assertCurrentIndicator(currentIndicator, 'rgb(255, 255, 255)', 'Dark theme current marker');
     assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--workbench-font').trim()), '15px', 'Interface font previews live');
     assert.notEqual(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--graph-lane-0').trim()), initialLane, 'Graph palette previews live');
     const previewSession = await readSession(page);
@@ -144,6 +155,7 @@ export async function verifyAppearance(browser, url) {
     await page.screenshot({ path: 'artifacts/appearance-settings.png' });
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     assert.equal(await workbench.getAttribute('data-theme'), 'hc-dark', 'Cancel restores the host-resolved high-contrast theme');
+    await assertCurrentIndicator(currentIndicator, 'rgb(255, 255, 255)', 'High-contrast dark current marker');
     assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--workbench-font').trim()), '13px', 'Cancel restores interface font');
     await page.evaluate(() => {
       document.body.classList.remove('vscode-high-contrast');
