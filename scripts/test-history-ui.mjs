@@ -21,6 +21,17 @@ export async function verifyHistoryRows(page) {
   await head.press('ArrowUp');
   await page.waitForFunction(()=>document.activeElement?.hasAttribute('data-working-tree'));
   assert.equal(await working.getAttribute('aria-selected'),'true');
+  const historyTable = history.getByRole('table', { name: 'Commit history' });
+  const loadedCommitCount = Number(await historyTable.getAttribute('aria-rowcount')) - 2;
+  await first.press('Control+a');
+  assert.equal(await history.locator('[data-oid][aria-selected="true"]').count(), await rows.count(), 'Ctrl+A marks every rendered real Commit as selected');
+  assert.equal(await working.getAttribute('aria-selected'), 'false', 'Ctrl+A excludes Working Tree from Commit selection');
+  await history.getByText(new RegExp(`\\b${loadedCommitCount} Commits selected\\b`)).waitFor();
+  assert.equal(Number(await historyTable.getAttribute('aria-rowcount')) - 2, loadedCommitCount, 'Ctrl+A must not load another history page');
+  assert.equal(await page.evaluate(() => window.getSelection()?.toString()), '', 'History Ctrl+A must not select page text');
+  await first.press('Escape');
+  assert.equal(await history.locator('[data-oid][aria-selected="true"]').count(), 0, 'Escape clears Commit action selection');
+  assert.equal(Number(await historyTable.getAttribute('aria-rowcount')) - 2, loadedCommitCount, 'Escape must not load another history page');
   await first.click();
   const secondOid = await second.getAttribute('data-oid'), thirdOid = await third.getAttribute('data-oid');
   const normalBackground = await second.evaluate(row => getComputedStyle(row).backgroundColor);

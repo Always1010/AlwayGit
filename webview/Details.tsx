@@ -5,7 +5,8 @@ import { useWorkbench } from './store';
 import { useTranslation } from './i18n';
 import { rpc } from './rpc';
 import { Button, Empty, Icon } from './ui';
-import { filePathLabel, fileSelectionForClick, fileSelectionKeyboardCommand, fileSelectionTargets, filterFilesByPath, reconcileFileSelection, type FileSelection } from './fileSelection';
+import { filePathLabel, fileSelectionForClick, fileSelectionTargets, filterFilesByPath, reconcileFileSelection, type FileSelection } from './fileSelection';
+import { handleSelectionKeyboard } from './selectionKeyboard';
 import type { ContextHandler } from './Sidebar';
 
 function FileLabel({ path }: { path: string }) {
@@ -20,12 +21,7 @@ function useFileSelection(scope: string, order: string[]) {
   const update = (change: (current: FileSelection) => FileSelection) => setSaved(old => ({ scope, selection: change(reconcileFileSelection(order, old.scope === scope ? old.selection : { paths: [] })) }));
   const click = (path: string, event: Pick<MouseEvent, 'ctrlKey' | 'metaKey' | 'shiftKey'>, replace = false) => update(current => fileSelectionForClick(order, current, path, { toggle: event.ctrlKey || event.metaKey, range: event.shiftKey, replace }));
   const keyDown = (event: KeyboardEvent<HTMLElement>) => {
-    const target = event.target as HTMLElement, input = target.closest('input');
-    const editable = !!target.closest('textarea,[contenteditable]:not([contenteditable="false"])') || !!input && !['checkbox', 'radio', 'button', 'submit', 'reset'].includes(input.type);
-    const command = fileSelectionKeyboardCommand(event.key, event, editable);
-    if (!command) return;
-    event.preventDefault(); event.stopPropagation();
-    update(() => ({ paths: command === 'all' ? [...order] : [] }));
+    handleSelectionKeyboard(event, () => update(() => ({ paths: [...order] })), () => update(() => ({ paths: [] })));
   };
   return { selection, click, keyDown };
 }
@@ -37,7 +33,7 @@ function FileSelectionHint({ count, clickSelect = false }: { count: number; clic
 
 function CommitFiles({ files, scope, filter, onFilterChange, target, empty, edit, context }: { files: CommitFile[]; scope: string; filter: string; onFilterChange(value:string):void; target(file: CommitFile): DiffTarget; empty: string; edit(): void; context:ContextHandler }) {
   const state = useWorkbench(), t = useTranslation(), visibleFiles = filterFilesByPath(files, filter), batch = useFileSelection(`${state.repoId}:${scope}`, visibleFiles.map(file => file.path)), filtering=!!filter.trim();
-  return <div className="file-selection-panel" onKeyDown={batch.keyDown}>
+  return <div className="file-selection-panel" onKeyDownCapture={batch.keyDown}>
     <div className="file-selection-toolbar"><label className="file-path-filter"><Icon name="search"/><input type="search" aria-label={t('Filter changed file paths', '筛选变更文件路径')} placeholder={t('Filter paths…', '筛选相对路径…')} value={filter} onChange={event=>onFilterChange(event.target.value)}/></label>{filtering&&<span className="file-filter-count" aria-live="polite">{visibleFiles.length} / {files.length}</span>}<Button icon="copy" disabled={!batch.selection.paths.length} onClick={() => void rpc('copyText', state.repoId, { text: batch.selection.paths.join('\n') }).catch(state.report)}>{t('Copy Paths', '复制路径')}{batch.selection.paths.length ? ` (${batch.selection.paths.length})` : ''}</Button></div>
     <FileSelectionHint clickSelect count={batch.selection.paths.length}/>
     <div className="detail-files" tabIndex={0} role="listbox" aria-multiselectable="true" aria-label={t('Changed files', '变更文件')}>{visibleFiles.map(file => { const diff = target(file), preview = state.diffTarget?.kind === diff.kind && state.selectedFile === file.path, checked = batch.selection.paths.includes(file.path); return <div key={file.path} role="option" aria-selected={checked} className={`file-item ${preview ? 'selected' : ''} ${checked ? 'batch-selected' : ''}`} onContextMenu={event=>{const paths=checked?batch.selection.paths:[file.path];if(!checked)batch.click(file.path,event,true);state.selectFile(diff);context(event,{kind:'files',primary:{path:file.path,target:diff},files:paths.map(path=>{const item=visibleFiles.find(candidate=>candidate.path===path)!;return {path,target:target(item)};})});}}>
@@ -81,7 +77,7 @@ function WorkingTree({ open, edit, context }: { open(dialog:DialogRequest):void;
       {!files.length&&<div className="change-empty">{t('No changes','没有变更')}</div>}
     </div>;
   };
-  return <><div className="working-summary"><span>{snapshot.branch||'Detached HEAD'}</span><span className="muted">Staged {staged.length} · Unstaged {unstaged.length}</span></div><div className="change-groups" tabIndex={0} role="listbox" aria-multiselectable="true" aria-label={t('Working tree files','工作区文件')} onKeyDown={batch.keyDown}><FileSelectionHint clickSelect count={new Set(batch.selection.paths.map(key=>(JSON.parse(key) as string[])[1])).size}/>{!!conflicts.length&&group('conflict',conflicts)}{group('unstaged',unstaged)}{group('staged',staged)}</div>
+  return <><div className="working-summary"><span>{snapshot.branch||'Detached HEAD'}</span><span className="muted">Staged {staged.length} · Unstaged {unstaged.length}</span></div><div className="change-groups" tabIndex={0} role="listbox" aria-multiselectable="true" aria-label={t('Working tree files','工作区文件')} onKeyDownCapture={batch.keyDown}><FileSelectionHint clickSelect count={new Set(batch.selection.paths.map(key=>(JSON.parse(key) as string[])[1])).size}/>{!!conflicts.length&&group('conflict',conflicts)}{group('unstaged',unstaged)}{group('staged',staged)}</div>
     <form className="commit-form" onSubmit={event=>{event.preventDefault();const repoId=state.repoId;void state.execute({type:'commit',message:(state.drafts[repoId!]??'').trim(),amend}).then(success=>{if(success&&useWorkbench.getState().repoId===repoId){state.setDraft('');setAmend(false);}});}}>
       <label htmlFor="ag-commit-message">{t('Commit Message','Commit 信息')}</label><textarea id="ag-commit-message" aria-label="Commit message" placeholder={t('Describe your changes…','描述这次变更…')} value={state.drafts[state.repoId!]??''} onChange={event=>state.setDraft(event.target.value)} disabled={state.busy}/>
       <div className="commit-options"><label><input type="checkbox" checked={amend} disabled={!snapshot.head||state.busy} onChange={event=>{setAmend(event.target.checked);if(event.target.checked&&!state.drafts[state.repoId!]){const repoId=state.repoId;void rpc<{body:string;commit:{subject:string}}>('details',repoId,{oid:snapshot.head}).then(detail=>{if(useWorkbench.getState().repoId===repoId&&!useWorkbench.getState().drafts[repoId!])state.setDraft(detail.body||detail.commit.subject);}).catch(state.report);}}}/>Amend</label><span className="muted">{staged.length} Staged</span><Button type="submit" className="primary" disabled={state.busy||!state.drafts[state.repoId!]?.trim()||!!conflicts.length||!amend&&!staged.length}>{amend?'Amend Commit':'Commit'}</Button></div><p className="muted commit-note">{t('Only Staged Changes are committed.','Commit 仅包含 Staged Changes。')}</p>

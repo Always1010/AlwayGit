@@ -58,6 +58,12 @@ export async function verifyWorktrees(browser, url) {
     assert.equal(await clone.getAttribute('aria-selected'), 'true', 'Single-click selects a repository for actions');
     assert.equal(await app.getAttribute('aria-selected'), 'false');
     assert.equal(await draft.inputValue(), 'Edited linked draft');
+    await clone.press('Control+a');
+    assert.equal(await page.locator('.repository-list [aria-selected="true"]').count(), await groups.count(), 'Ctrl+A selects every logical repository group');
+    assert.equal(await page.evaluate(() => window.getSelection()?.toString()), '', 'Repository Ctrl+A must not select page text');
+    await clone.press('Escape');
+    assert.equal(await page.locator('.repository-list [aria-selected="true"]').count(), 0, 'Escape clears Ctrl+A repository selection');
+    await clone.click();
     await app.click({ modifiers: ['Control'] });
     assert.equal(await page.locator('.repository-list [aria-selected="true"]').count(), 2, 'Ctrl+click toggles repository action selection');
     await app.click({ button: 'right' });
