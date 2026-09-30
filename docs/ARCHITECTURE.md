@@ -97,3 +97,97 @@ Snapshot 为当前分支解析 Push 目标，依次考虑 `branch.<name>.pushRem
 5. 更新对应的长期文档，检查链接、图片与旧文件名引用，按 [项目规则](../AGENTS.md) 创建本地提交。扩展修改通过检查后执行规定的本机更新流程。
 
 README 只维护启动、主要功能和导航；交互与配置归工作台规格；模块与跨层设计归本文；检查方法和证据归验证文档；已确认问题归问题日志。实现状态以当前代码与规格为依据，验证结论必须注明对应版本和范围，不根据旧记录推定新版本已通过。
+
+## 后续改进建议
+
+以下建议基于 0.16.0 的静态代码审查，尚未实施；性能收益需要专项测量，风险需要复现实验。P1 表示优先评估，P2 表示在相关模块演进时推进，P3 表示需求确认后的功能探索。实施后应直接更新对应说明并移除已完成建议。
+
+现有参数数组执行、宿主输入校验、工作区信任、`commonDir` 写队列、固定 tips 分页、请求代数和 Diff 范围失效应作为改动约束继续保留。
+
+| 优先级 | 方向 | 预期收益 | 改动规模 |
+| --- | --- | --- | --- |
+| P1 | 合并 Snapshot 读取并复用结果 | 减少操作、轮询和多标签的重复 Git 查询 | 中 |
+| P1 | 限制只读查询并发，搜索防抖与取消 | 控制大量引用和快速筛选时的子进程数量 | 中 |
+| P1，待验证 | 远端危险操作绑定确认时的 OID | 增强多人协作时的远端并发保护 | 先做小实验，再评估跨层修改 |
+| P2 | 会话保存确认、节流与共享模型 | 降低序列化开销，明确宿主恢复基线是否保存成功 | 中 |
+| P2 | React 按字段订阅，缓存引用派生数据 | 降低草稿输入、尺寸调整引起的无关渲染 | 小至中 |
+| P2 | 共享 Git 监听与仓库登记生命周期 | 减少同仓库多 Worktree 的重复监听 | 中 |
+| P2 | 按职责拆分 Git、宿主和前端状态 | 降低审查与回归定位成本 | 分多次小改动 |
+| P3 | 仓库取消登记、分块暂存与历史整理 | 完善长期使用和精细提交的工作流 | 需求与安全模型分别设计 |
+
+### P1：Snapshot 查询协调
+
+证据入口：[宿主 Workbench](../src/extension/workbench.ts) 的 `handleRequest('action')`、`poll()`，[前端 Store](../webview/store.ts) 的 `execute()`、`refresh()`，以及 [GitService](../src/git/service.ts) 的 `snapshot()`。
+
+宿主操作完成后已经返回完整 Snapshot，前端忽略该返回值再调用 `refresh()`；`changed` 通知也会触发后台读取。轮询同样先读取完整 Snapshot，再广播变化让前端重新读取。一个 Snapshot 包含状态、引用、Stash、Worktree、远端和 Push 配置等多条 Git 查询，重复读取会增加成本。
+
+建议先抽取统一的 `applySnapshot` 入口，再按实际工作目录 ID 合并正在执行的读取，让操作返回值与轮询结果能够被复用。不同 Worktree 的 HEAD、Index 和工作区不能共享同一份 Snapshot；写操作后、文件变化及手动强制刷新需要明确失效代数，旧请求不得替换新状态。合并通知时仍保留 Diff 所需的路径与 Index 变化范围。
+
+验证复用 `tests/ui-state.test.ts`、`tests/workbench-protocol.test.ts` 和 `tests/repository-watch.test.ts`，覆盖多标签、延迟响应、切库、写操作与通知交叠；同时断言实际读取次数，避免只验证最终结果正确。
+
+### P1：只读任务的资源控制
+
+证据入口：[GitService](../src/git/service.ts) 的 `history()` 对每个 tip 使用独立 `oid()` 查询，并以 `Promise.all` 同时发起；[historySchema](../src/protocol/validation.ts) 允许最多 10,000 个 tips。[Store](../webview/store.ts) 的 `setSearch()` 每次输入立即查询，旧响应虽被代数丢弃，宿主任务仍继续执行。未推送状态的辅助查询随分页使用 `offset + limit + 1`，深分页会重复遍历较长前缀。
+
+建议先对输入引用去重，批量解析或限制解析并发；搜索加入短防抖，并为已过时的只读请求建立取消协议。取消在 Git runner 中统一处理，沿用现有子进程树清理；写操作不套用只读取消策略。Node 的子进程 API 支持 `AbortSignal`，但该机制仍需要与项目自己的任务和进程树生命周期整合。[Node 官方说明](https://nodejs.org/api/child_process.html#child_processspawncommand-args-options)
+
+先记录 Git 调用数、峰值并发与深分页成本，再决定是否缓存推送状态或调整查询算法。验证固定 tips、引用移动、快速输入、分页与切库时的一致性，以及取消后资源释放；优先使用调用次数与并发上限断言，不依赖机器负载敏感的耗时阈值。
+
+### P1：远端操作的预期 OID，先验证风险
+
+证据入口：[GitService](../src/git/service.ts) 的 `remote.delete` 只核对本地 `refs/remotes/*` 与 `expectedOids`，随后执行 `push --delete`；`push` 的强制选项使用未显式指定 OID 的 `--force-with-lease`。
+
+静态实现能说明本地选择是否变化，不能单独证明远端仍指向用户确认时的提交。普通 lease 已具有保护，但其隐式预期值依赖本地远端跟踪引用；Git 官方说明显式预期值可使用 `--force-with-lease=<refname>:<expect>`，并说明后台 Fetch 对隐式 lease 的影响。[Git 官方说明](https://git-scm.com/docs/git-push)
+
+建议先在系统临时目录创建本地 Bare Remote 和两个 clone，验证另一 clone 推进远端、本地仍持有旧确认，以及后台 Fetch 更新跟踪引用的情形。若确认具体影响，再为删除和改写远端历史携带确认时的目标 OID，并评估用显式 lease 约束相应写操作；远端变化时要求刷新并重新确认。此处尚未运行复现实验，不作为已确认 Bug 登记。
+
+实现时协议和 Git 执行先于界面；验证远端变化后旧确认不能删除或覆盖新提交，并保留批量部分失败的清单与反馈。使用临时真实仓库，扩展现有 `tests/git-service.test.ts` 和 `tests/git-safety.test.ts` 中的相关回归。
+
+### P2：会话保存与共享模型
+
+证据入口：[Store](../webview/store.ts) 的全量 `subscribe` 每次更新构造会话；[RPC](../webview/rpc.ts) 的 `saveSession()` 序列化整份状态，并在宿主确认前更新去重基线。保存请求未进入普通请求的 pending 表，宿主失败响应无法反馈给该保存流程。[sessionSchema](../src/protocol/validation.ts) 与前端 `SessionState` 分别维护，宿主限制会话总长度。
+
+建议只订阅需要持久化的字段；Webview 自身状态及时保存，宿主基线写入短防抖、串行执行并保留最新待写状态。确认成功后再更新宿主去重基线，失败有明确反馈和有限重试。将会话 schema、类型和兼容迁移收敛到共享协议，保留设置预览时写已应用 baseline 的规则。
+
+验证旧会话、大草稿、保存拒绝/失败、快速连续修改、多标签独立恢复和设置取消；复用 `tests/ui-state.test.ts`、`tests/workbench-protocol.test.ts`。当前静态观察不等同于已经发生草稿丢失：Webview 自身状态和宿主恢复基线必须分别验证。
+
+### P2：减少无关渲染与引用扫描
+
+证据入口：[App](../webview/App.tsx)、[History](../webview/History.tsx)、[Sidebar](../webview/Sidebar.tsx) 和 [Details](../webview/Details.tsx) 多处直接调用无 selector 的 `useWorkbench()`；Sidebar 渲染时构造引用树，History 为每个可见 Commit 扫描全部 refs。
+
+建议先测量草稿输入、拖动和大引用列表的渲染次数，再让组件按职责订阅字段，缓存引用树及 `OID → refs` 索引。Zustand 官方说明全量订阅会在任意状态变化时更新组件，多个字段可使用稳定的 selector 或 `useShallow`；新增 selector 应保持输出稳定。[Zustand 官方说明](https://github.com/pmndrs/zustand/blob/main/README.md#fetching-everything)
+
+优先处理 History 与 Sidebar，再按测量结果处理 Details；保留虚拟列表、Graph 分页、焦点和滚动语义。使用固定大引用数据集对照渲染与计算次数，复用 `--history-only`、必要的文件专项和现有 Graph 回归。
+
+### P2：监听与登记生命周期
+
+证据入口：[RepositoryManager](../src/repositories/manager.ts) 的 `register()` 为每个工作目录建立自身监听及 `commonDir` 监听；多个 Worktree 会重复监听同一共享 Git 存储，监听主要在 Manager `dispose()` 时释放，`scan()` 逐个重新验证已保存路径。
+
+建议为共享 Git 目录建立引用计数的监听，向相关工作目录发布变化；工作区文件监听仍按工作目录独立维护。`worktrees/<id>/index`、HEAD 和操作标记应映射到对应 Worktree，共享 refs 变化再向相关成员广播，不能把所有事件都标为全部 Worktree 的 Index 变化。随后评估已登记路径的扫描合并和重新验证策略，不能用缓存跳过执行前的仓库安全校验。
+
+验证一个 `commonDir` 的多个 Worktree、重复添加、释放一个成员后其他成员仍收到通知、最后成员释放以及扫描取消；复用 `tests/repository-watch.test.ts` 和 `tests/repository-manager.test.ts`。若增加取消登记能力，需在该生命周期基础上处理保存路径、标签与会话。
+
+### P2：按职责拆分模块
+
+证据入口：[GitService](../src/git/service.ts) 同时负责子进程、解析、查询组合和全部 Git 写操作；[Workbench](../src/extension/workbench.ts) 路由混合会话、窗口、确认和刷新；[Store](../webview/store.ts) 集中数据与界面状态，[RPC](../webview/rpc.ts) 同时包含生产桥接和 Demo 数据模型。
+
+建议先完成查询与持久化入口收敛，再依次提取 Git runner、解析、查询和动作执行职责，宿主保留薄路由与用例协调；前端按仓库数据、选择、会话和外观划分状态职责，保留统一 facade。Demo adapter 单独隔离。只有边界稳定且存在实际维护收益时才拆分，避免只按文件行数切分。
+
+每次重构只处理一个职责，保持协议和行为；使用相关的真实 Git、协议与状态测试。无需为单纯转发函数添加镜像实现的测试。现有 `tests/graph-benchmark.test.ts` 已覆盖十万 Commit 的分页图布局，后续基准应补足 Git 调用成本和真实界面渲染，避免重复增加同类图测试。
+
+### P3：产品能力探索
+
+优先考虑“从工作台移除仓库”：它只取消登记与监听，保留磁盘仓库；需明确多个标签、Worktree 分组、保存路径和草稿的保留规则。完成监听生命周期设计后再实现。
+
+分块暂存可以降低精细提交时切换工具的成本，但需要补丁上下文校验、Index 与工作区分别更新，以及过期 Diff 的拒绝规则。交互式 Rebase、Squash / Fixup 和历史重排需要独立设计操作计划、冲突恢复与中断处理。它们仍在当前功能范围之外，应先确认使用场景，再各自形成可审查的小需求。
+
+### 实施拆分与依赖
+
+默认由一个实施 Agent 逐项负责协议、实现、针对性验证和本地提交；查询协调、状态与会话修改共享关键文件，串行实施便于保持一致性。每项独立提交，明确收益或验证结论，再进入下一项。
+
+1. 先做远端并发的最小复现实验和查询/渲染基线。若确认安全问题，优先修复并按规则记录到问题日志。
+2. 收敛 Snapshot 应用入口，再完成宿主查询合并；只读任务预算在该入口稳定后增加取消协议、并发限制与搜索防抖。
+3. 统一会话模型与保存确认，再优化持久化订阅；React 字段订阅和引用索引随后实施，避免同时改写 Store。
+4. 共享 Git 监听可以与界面性能工作独立推进；取消登记依赖监听生命周期。模块拆分最后按已稳定的职责进行，功能扩展各自另行确认需求。
+
+若实现阶段需要并行，限定为两个不共享修改文件的任务：Git/宿主由 `gpt-6.1-sol`、`high`、`fork_turns="1"` 负责，界面测量与定向验证由 `gpt-6-luna`、`medium`、`fork_turns="1"` 负责；主 Agent 先统一协议和文件归属，再整合验证。打包、安装与核对仍由单一 Agent 完成。
