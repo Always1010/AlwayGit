@@ -25,7 +25,7 @@ export const actionSchema = z.union([
   z.object({ type: z.literal('reset'), target: text, mode: z.enum(['soft', 'mixed', 'hard']) }),
   z.object({ type: z.enum(['operation.continue', 'operation.abort', 'operation.skip']), kind }),
 ]);
-export const requestSchema = z.object({ id: z.string().min(1).max(128), method: z.enum(['repositories', 'addRepository', 'snapshot', 'history', 'details', 'compare', 'action', 'diff', 'diffPreview', 'copyText', 'openRepository', 'openProject', 'openFile', 'openWorktree', 'pickWorktree', 'showLog', 'saveSession']), repoId: text.optional(), payload: z.unknown().optional() });
+export const requestSchema = z.object({ id: z.string().min(1).max(128), method: z.enum(['repositories', 'repositoryStatuses', 'addRepository', 'snapshot', 'history', 'details', 'compare', 'action', 'diff', 'diffPreview', 'copyText', 'openRepository', 'openProject', 'openFile', 'openWorktree', 'pickWorktree', 'showLog', 'saveSession']), repoId: text.optional(), payload: z.unknown().optional() });
 const graphColor = z.string().regex(/^#[0-9a-f]{6}$/i);
 const graphColors = z.object({ light: z.array(graphColor).min(4).max(16), dark: z.array(graphColor).min(4).max(16) })
   .refine(colors => colors.light.length === colors.dark.length, 'Light and dark graph palettes must have the same size');

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { CheckoutBlocker, GitServiceContract, HostMessage, RpcRequest, Snapshot } from '../protocol/types';
+import type { CheckoutBlocker, GitServiceContract, HostMessage, RepositoryStatus, RpcRequest, Snapshot } from '../protocol/types';
 import { actionSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorktreeSchema } from '../protocol/validation';
 import type { RepositoryManager } from '../repositories/manager';
 import type { GitDocuments } from '../editor/documents';
@@ -92,6 +92,7 @@ export class Workbench implements vscode.Disposable {
     if (request.method === 'copyText') { await vscode.env.clipboard.writeText(copySchema.parse(request.payload).text); return null; }
     if (!vscode.workspace.isTrusted) throw new Error(this.text('Git execution requires a trusted workspace.', '请先信任工作区，再执行 Git 操作。'));
     if (request.method === 'repositories') { const list = this.repositories.list(); return this.activeRepository ? list.sort((a, b) => Number(b.id === this.activeRepository) - Number(a.id === this.activeRepository)) : list; }
+    if (request.method === 'repositoryStatuses') return this.repositoryStatuses();
     if (request.method === 'addRepository') return this.addRepository();
     if (request.method === 'pickWorktree') {
       const value = await vscode.window.showSaveDialog({ title: 'New Worktree Directory', saveLabel: 'Use Directory', defaultUri: vscode.Uri.file(path.join(path.dirname(this.repositories.get(request.repoId).root), 'new-worktree')) });
@@ -143,6 +144,18 @@ export class Workbench implements vscode.Disposable {
         const snapshot = await this.git.snapshot(repo); this.recordFingerprint(snapshot); return snapshot;
       }
     }
+  }
+  private async repositoryStatuses(): Promise<RepositoryStatus[]> {
+    const repositories = this.repositories.list(), results: Array<RepositoryStatus | undefined> = new Array(repositories.length);
+    let next = 0;
+    await Promise.all(Array.from({ length: Math.min(4, repositories.length) }, async () => {
+      while (next < repositories.length) {
+        const index = next++, repo = repositories[index];
+        try { results[index] = await this.git.repositoryStatus(repo); }
+        catch (error) { this.output.appendLine(redactSecrets(`[repository-status:${repo.name}] ${error instanceof Error ? error.message : String(error)}`)); }
+      }
+    }));
+    return results.filter((result): result is RepositoryStatus => !!result);
   }
   private recordFingerprint(snapshot: Snapshot): string {
     const { version: _version, ...state } = snapshot; const key = JSON.stringify(state); this.fingerprints.set(snapshot.repository.id, key); return key;

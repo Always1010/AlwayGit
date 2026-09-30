@@ -1,4 +1,5 @@
 export interface Repository { id: string; root: string; commonDir: string; name: string; mainRoot?: string }
+export interface RepositoryStatus { repositoryId: string; branch: string; upstream?: string; ahead: number; unpushed: number }
 export interface Change { path: string; originalPath?: string; indexStatus: string; worktreeStatus: string; conflict: boolean; untracked: boolean }
 export interface GitRef { name: string; fullName: string; kind: 'local' | 'remote' | 'tag'; oid: string; targetType?: 'commit' | 'tree' | 'blob' | 'tag'; upstream?: string; symbolicTarget?: string }
 export interface Stash { selector: string; oid: string; subject: string }
@@ -6,7 +7,7 @@ export interface Worktree { path: string; head: string; branch?: string; bare: b
 export type OperationKind = 'merge' | 'rebase' | 'cherry-pick' | 'revert';
 export interface OperationState { kind?: OperationKind; conflicts: number; canContinue: boolean; canAbort: boolean; canSkip: boolean }
 export interface PushTarget { localBranch: string; remote?: string; remoteBranch: string; configured: boolean }
-export interface Snapshot { repository: Repository; branch: string; head?: string; upstream?: string; defaultBranch?: string; pushTarget?: PushTarget; ahead: number; behind: number; changes: Change[]; refs: GitRef[]; remotes?: string[]; stashes: Stash[]; worktrees: Worktree[]; operation: OperationState; version: number }
+export interface Snapshot { repository: Repository; branch: string; head?: string; upstream?: string; defaultBranch?: string; pushTarget?: PushTarget; ahead: number; behind: number; unpushed?: number; changes: Change[]; refs: GitRef[]; remotes?: string[]; stashes: Stash[]; worktrees: Worktree[]; operation: OperationState; version: number }
 export interface Commit { oid: string; parents: string[]; author: string; email: string; timestamp: number; subject: string; pushed?: boolean }
 export interface HistoryQuery { offset?: number; limit?: number; tips?: string[]; ref?: string; search?: string }
 export interface HistoryPage { commits: Commit[]; nextOffset: number; hasMore: boolean; tips: string[] }
@@ -39,12 +40,13 @@ export type ContentSource = { kind: 'revision'; revision: string; path: string }
 export type DiffTarget = { kind: 'change'; path: string; area: 'staged' | 'unstaged' | 'conflict' } | { kind: 'commit'; oid: string; path: string; parent?: string; previousPath?: string } | { kind: 'comparison'; left: string; right: string; path: string; previousPath?: string };
 export interface DiffPreview { path: string; leftLabel: string; rightLabel: string; left: string; right: string; binary?: boolean; truncated?: boolean }
 export interface CheckoutBlocker { reason: 'local-changes' | 'conflicts' | 'operation-active' | 'worktree-occupied' | 'checkout-failed'; paths: string[]; target: string; worktreePath?: string; stashOid?: string; stashCreated?: boolean }
-export interface RpcRequest { id: string; method: 'repositories' | 'addRepository' | 'snapshot' | 'history' | 'details' | 'compare' | 'action' | 'diff' | 'diffPreview' | 'copyText' | 'openRepository' | 'openProject' | 'openFile' | 'openWorktree' | 'pickWorktree' | 'showLog' | 'saveSession'; repoId?: string; payload?: unknown }
+export interface RpcRequest { id: string; method: 'repositories' | 'repositoryStatuses' | 'addRepository' | 'snapshot' | 'history' | 'details' | 'compare' | 'action' | 'diff' | 'diffPreview' | 'copyText' | 'openRepository' | 'openProject' | 'openFile' | 'openWorktree' | 'pickWorktree' | 'showLog' | 'saveSession'; repoId?: string; payload?: unknown }
 /** Missing paths means the source cannot limit which working files changed. */
 export interface RepositoryChanges { paths?: string[]; index?: boolean }
 export type HostMessage = { type: 'response'; id: string; result?: unknown; error?: { message: string; code?: string; details?: CheckoutBlocker } } | { type: 'changed'; repoId: string; changes?: RepositoryChanges } | { type: 'activity'; repoId: string; busy: boolean; label: string } | { type: 'repositoriesChanged' } | { type: 'selectRepository'; repoId: string };
 export interface GitServiceContract {
   discover(root: string): Promise<Repository>;
+  repositoryStatus(repo: Repository): Promise<RepositoryStatus>;
   snapshot(repo: Repository): Promise<Snapshot>;
   history(repo: Repository, query?: HistoryQuery): Promise<HistoryPage>;
   details(repo: Repository, oid: string, parent?: string): Promise<CommitDetails>;

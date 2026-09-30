@@ -1,4 +1,4 @@
-import type { Commit, CommitComparison, CommitDetails, GitAction, HistoryPage, HistoryQuery, HostMessage, Repository, RpcRequest, Snapshot } from '../src/protocol/types';
+import type { Commit, CommitComparison, CommitDetails, GitAction, HistoryPage, HistoryQuery, HostMessage, Repository, RepositoryStatus, RpcRequest, Snapshot } from '../src/protocol/types';
 import type { Appearance } from './appearance';
 
 export interface LayoutState { preset: 'workbench' | 'editor'; sidebar: number; details: number; diff: number; author: number; date: number; font: number; row: number }
@@ -77,6 +77,7 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
   const data=demoStores[repoId??repo.id]??demoStores[repo.id],demoSnapshot=data.snapshot,commits=data.commits;
   const resolve=(ref:string)=>ref==='HEAD'?demoSnapshot.head!:demoSnapshot.refs.find(r=>r.name===ref||r.fullName===ref)?.oid??ref;
   if (method === 'repositories' || method === 'addRepository') return [repo,website];
+  if (method === 'repositoryStatuses') return Object.values(demoStores).map(({ snapshot }) => ({ repositoryId: snapshot.repository.id, branch: snapshot.branch, upstream: snapshot.upstream, ahead: snapshot.ahead, unpushed: snapshot.unpushed ?? snapshot.ahead } satisfies RepositoryStatus));
   if (method === 'snapshot') return structuredClone(demoSnapshot);
   if (method === 'history') {
     const query = (payload ?? {}) as HistoryQuery;
