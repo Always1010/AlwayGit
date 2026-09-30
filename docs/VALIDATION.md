@@ -48,7 +48,7 @@ npm run package
 - Detached HEAD、Tracking Branch、Tag Checkout 和主 / 当前 / Locked Worktree 限制。
 - Push 目标配置解析、不同名称的本地 / 远端分支 refspec 及 upstream 建立。
 - Diff 文本、二进制、大小限制、删除 / 重命名、Merge Parent 和冲突 Stage。
-- VS Code 原生 Diff、普通编辑、剪贴板、打开 Worktree 和新窗口。
+- VS Code 原生 Diff、普通编辑、剪贴板、打开 Worktree、新 AlwayGit 标签协议和新窗口。
 - 多仓库共享 `commonDir` 的串行写操作与活动状态。
 
 ## 本轮结果

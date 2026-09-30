@@ -40,7 +40,7 @@ npm run build
 - Fetch、Pull、Push、Merge、Rebase、Cherry-pick、Reset 和 Revert；Push 与仓库导航以通知角标显示未推送提交数，Push 在执行前显示本地分支、远端和远端分支，并允许显式调整目标；识别未完成操作并提供 Continue、Abort 和 Skip。
 - Checkout 前识别未提交修改、冲突和被其他 Worktree 占用的分支；可在适用时执行 `Stash Changes & Checkout`。
 - VS Code 原生文件编辑和原生 Diff，以及工作台中的只读 Diff 预览。
-- 工具栏打开项目、复用项目窗口，并在目标窗口保留原生 Diff 和文件编辑标签；Repository 和 Worktree 可在新项目窗口直接打开对应 Git Workbench。
+- 工具栏打开项目、复用项目窗口，并在目标窗口保留原生 Diff 和文件编辑标签；Repository 可在当前窗口的新 AlwayGit 标签或新项目窗口中打开，Worktree 可在新项目窗口直接打开对应 Git Workbench。
 
 Git 操作在仓库所在的扩展宿主中执行，架构兼容 WSL、Remote SSH 和 Dev Containers。纯浏览器虚拟工作区不受支持。当前使用整文件暂存和普通 Rebase；分块暂存、交互式 Rebase、远程 Tag 管理、提交重排、Squash、Fixup、Format Patch 和任意两个 Commit 比较不在当前范围内。底部文本预览限制为每侧 256 KiB、最多 4000 行，超出时提示截断；原生 Git 文本文档限制为 8 MB，二进制内容显示说明。
 

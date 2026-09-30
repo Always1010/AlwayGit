@@ -4,7 +4,7 @@
 
 ## 运行结构
 
-AlwayGit 是 Workspace 类型的 VS Code 扩展。React WebviewPanel 提供工作台，Node.js 扩展宿主负责 Git 子进程、仓库发现、剪贴板、窗口和文件操作。Webview 不直接读取磁盘，也不执行 Git。
+AlwayGit 是 Workspace 类型的 VS Code 扩展。每个 React WebviewPanel 提供一个独立工作台标签，Node.js 扩展宿主管理面板集合，并共享 Git 子进程、仓库发现、剪贴板、窗口和文件操作。Webview 不直接读取磁盘，也不执行 Git。
 
 `src/protocol` 是 Webview 和宿主的共享边界。请求以 `id` 关联响应，Zod 在宿主入口验证方法与参数；宿主主动发布仓库变更、操作活动和仓库选择事件。宿主只接受已经注册的仓库及预定义方法，不暴露任意命令执行接口。
 
@@ -45,7 +45,7 @@ Status 使用 porcelain v2 与 NUL 分隔，分别保存 Index 和工作区状�
 - 每仓库视图：已勾选引用、引用目录展开状态、侧栏分区折叠状态、搜索、当前 Commit、文件、Stash、活动区域和 Commit 草稿。
 - 全局界面：语言、主题、可编辑的浅色/深色 Graph 色板与主线颜色、界面与 Diff 字号、密度、面板尺寸和表格列宽。
 
-会话写入 VS Code Webview state，并由扩展宿主保存到 `workspaceState` 以支持面板重建。Demo 模式使用浏览器 localStorage。持久化的数据只包含界面状态，不包含凭据、Git 输出或文件内容。
+会话写入各自的 VS Code Webview state，并由扩展宿主把最近状态保存到 `workspaceState` 作为新标签和兼容恢复的基线。多个标签具有独立的活动仓库与前端选择状态；宿主按请求来源定向响应和切换仓库，仓库变化与 Git 活动事件广播到全部标签。补偿刷新覆盖所有可见标签当前仓库，并按仓库去重。Demo 模式使用浏览器 localStorage。持久化的数据只包含界面状态，不包含凭据、Git 输出或文件内容。
 
 version 2 会话通过可选 `appearance` 字段兼容新增设置，宿主协议验证后保留；旧会话缺少自定义色值时使用当前预设生成完整浅色/深色色板。旧 Editor Focus 迁移为 Workbench，旧默认 26 px 行高迁移为 24 px，其余尺寸和草稿保留。设置浮窗使用内存基线实现实时预览，订阅持久化时仍写入基线，应用后才保存新值；取消只恢复设置，不覆盖刷新后的仓库数据。虚拟列表尺寸由实际字号与密度共同决定。
 

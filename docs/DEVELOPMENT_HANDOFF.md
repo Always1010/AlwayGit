@@ -52,7 +52,7 @@ AlwayGit 的目标是 VS Code 内的完整 Git 工作台：左侧仓库和引用
 
 ## 当前实现和验证状态
 
-- 工作台四区布局、设置浮窗、面板与列尺寸、English / 简体中文、清晰的面板层级及兼容会话恢复已经实现。
+- 工作台四区布局、设置浮窗、面板与列尺寸、English / 简体中文、清晰的面板层级、同窗口多 AlwayGit 标签及兼容会话恢复已经实现。
 - 添加仓库支持选择分类总目录并递归批量加载；顶层仓库归并与 Worktree 切换、扫描边界和取消行为见 [工作台规格](WORKBENCH_SPEC.md)。
 - Repository、分组、Local / Remote Branch、Remote、Tag、Stash、Worktree 和 Commit 菜单已经实现；分区标题负责折叠，独立三点按钮打开菜单。Local / Remote Branch 以递归目录显示并支持目录级三态选择。
 - 多引用历史、空选择、固定 tips 分页、HEAD 呈现及紧凑 Graph 已经接入；同一 OID 的 `Locate HEAD`、分页后定位以及表头与内容横向滚动同步都有回归测试。

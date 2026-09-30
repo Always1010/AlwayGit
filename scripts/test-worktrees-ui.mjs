@@ -44,6 +44,10 @@ export async function verifyWorktrees(browser, url) {
     assert.equal(await sidebar.getByRole('button', { name: 'feature · App-feature', exact: true }).getAttribute('aria-current'), 'true');
     assert.equal(await draft.inputValue(), 'Linked draft');
     await app.click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Open in New AlwayGit Tab', exact: true }).click();
+    await page.waitForFunction(() => window.__worktreeFixture.calls.some(call => call.method === 'openRepository' && call.payload.newTab === true));
+    assert.equal(await page.evaluate(() => window.__worktreeFixture.calls.find(call => call.method === 'openRepository' && call.payload.newTab === true).repoId), 'linked');
+    await app.click({ button: 'right' });
     await page.getByRole('menuitem', { name: 'Copy Repository Path', exact: true }).click();
     await page.waitForFunction(() => window.__worktreeFixture.calls.some(call => call.method === 'copyText'));
     assert.equal(await page.evaluate(() => window.__worktreeFixture.calls.find(call => call.method === 'copyText').payload.text), 'D:/Projects/App-feature');
