@@ -137,9 +137,11 @@ export async function verifyAppearance(browser, url) {
     await page.waitForFunction(() => document.querySelector('[data-testid="workbench"]')?.getAttribute('data-theme') === 'hc-dark');
     await page.getByRole('button', { name: 'Interface Settings', exact: true }).click();
     let dialog = page.getByRole('dialog', { name: 'Interface Settings' }), settings = page.getByTestId('interface-settings');
-    await settings.getByRole('combobox', { name: 'Theme', exact: true }).selectOption('light');
+    await settings.getByRole('radio', { name: 'Clear Light', exact: true }).click();
     assert.equal(await workbench.getAttribute('data-theme'), 'light', 'Manual light theme overrides a high-contrast host');
-    await settings.getByRole('combobox', { name: 'Theme', exact: true }).selectOption('dark');
+    await settings.getByRole('radio', { name: 'Warm Paper', exact: true }).click();
+    assert.equal(await workbench.getAttribute('data-theme'), 'paper', 'Additional themes preview live');
+    await settings.getByRole('radio', { name: 'Deep Night', exact: true }).click();
     await settings.getByRole('button', { name: 'Text & density', exact: true }).click();
     await settings.getByLabel('Interface font', { exact: true }).selectOption('15');
     await settings.getByRole('button', { name: 'Colors', exact: true }).click();
@@ -167,18 +169,22 @@ export async function verifyAppearance(browser, url) {
 
     await page.getByRole('button', { name: 'Interface Settings', exact: true }).click();
     dialog = page.getByRole('dialog', { name: 'Interface Settings' }); settings = page.getByTestId('interface-settings');
-    await settings.getByRole('combobox', { name: 'Theme', exact: true }).selectOption('dark');
+    await settings.getByRole('radio', { name: 'Berry Purple', exact: true }).click();
     await settings.getByRole('button', { name: 'Text & density', exact: true }).click();
     await settings.getByLabel('Interface font', { exact: true }).selectOption('16');
     await settings.getByLabel('Diff font', { exact: true }).selectOption('15');
     await settings.getByLabel('List density', { exact: true }).selectOption('22');
+    await settings.getByRole('button', { name: 'Status indicators', exact: true }).click();
+    await settings.getByRole('radio', { name: '#006BFF', exact: true }).click();
+    assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--notification-badge').trim()), '#006BFF', 'Badge color previews live');
     await settings.getByRole('button', { name: 'Colors', exact: true }).click();
     await settings.getByRole('radio', { name: /Extended/ }).click();
     await settings.getByRole('textbox', { name: 'Path color 1', exact: true }).fill('#0066DD');
     await settings.getByRole('textbox', { name: 'Path color 1', exact: true }).press('Enter');
     await dialog.getByRole('button', { name: 'Apply', exact: true }).click();
     let applied = await readSession(page);
-    assert.equal(applied.appearance.theme, 'dark');
+    assert.equal(applied.appearance.theme, 'berry');
+    assert.equal(applied.appearance.badgeColor, '#006BFF');
     assert.equal(applied.appearance.palette, 'extended');
     assert.equal(applied.appearance.codeFont, 15);
     assert.equal(applied.appearance.colors.light[0], '#0066DD');
@@ -190,8 +196,9 @@ export async function verifyAppearance(browser, url) {
 
     await page.reload();
     await Promise.all([workbench.waitFor(), history.locator('[data-oid]').first().waitFor()]);
-    assert.equal(await workbench.getAttribute('data-theme'), 'dark', 'Applied theme survives reload despite the light host');
-    assert.equal(await workbench.evaluate(element => getComputedStyle(element).backgroundColor), 'rgb(27, 34, 45)', 'Explicit dark theme overrides gray VS Code tokens');
+    assert.equal(await workbench.getAttribute('data-theme'), 'berry', 'Applied theme survives reload despite the light host');
+    assert.equal(await workbench.evaluate(element => getComputedStyle(element).backgroundColor), 'rgb(39, 23, 47)', 'Explicit berry theme overrides gray VS Code tokens');
+    assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--notification-badge').trim()), '#006BFF', 'Applied badge color survives reload');
     assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--graph-lane-0').trim()), '#4DA3FF', 'The paired dark color survives reload alongside the edited light color');
     assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--workbench-font').trim()), '16px');
     assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--row-height').trim()), '28px', '16px interface font raises effective row height to 28px');
@@ -202,10 +209,10 @@ export async function verifyAppearance(browser, url) {
     assert.equal(Number(await separators.details.getAttribute('aria-valuenow')), 300);
     assert.equal(Number(await separators.diff.getAttribute('aria-valuenow')), 220);
     assert.equal(Number(await separators.graph.getAttribute('aria-valuenow')), 64);
-    assert.equal(await workbench.getAttribute('data-theme'), 'dark', 'Restore Layout does not reset theme');
+    assert.equal(await workbench.getAttribute('data-theme'), 'berry', 'Restore Layout does not reset theme');
     assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--workbench-font').trim()), '16px', 'Restore Layout does not reset interface font');
     applied = await readSession(page);
-    assert.equal(applied.appearance.theme, 'dark');
+    assert.equal(applied.appearance.theme, 'berry');
     assert.equal(applied.layout.font, 16);
 
     const largeRow = history.locator('[data-oid]').first(), largeRowBox = await requiredBox(largeRow, '16px commit row');
@@ -237,7 +244,7 @@ export async function verifyAppearance(browser, url) {
 
     assert.deepEqual(runtimeErrors, [], 'Appearance flow must not throw page errors');
     assert.deepEqual(consoleErrors, [], 'Appearance flow must not log console errors');
-    console.log('ALWAYGIT_APPEARANCE_UI_TESTS_PASSED: migration, compact alignment, preview/cancel/apply persistence, explicit themes, adaptive font rows and 230px details actions');
+    console.log('ALWAYGIT_APPEARANCE_UI_TESTS_PASSED: migration, compact alignment, preview/cancel/apply persistence, theme gallery, badge colors, adaptive font rows and 230px details actions');
   } catch (error) {
     await page.screenshot({ path: 'artifacts/appearance-failure.png' }).catch(() => {});
     throw error;
