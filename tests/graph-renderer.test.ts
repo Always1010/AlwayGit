@@ -60,6 +60,17 @@ describe('Git graph SVG rows', () => {
     expect(markup).not.toContain('<path');
   });
 
+  it('renders a local-only commit as a smaller hollow node', () => {
+    const { rows } = layoutGraph([{
+      oid: 'local-only', parents: [], author: 'A', email: 'a@example.com', timestamp: 0, subject: 'Local',
+    }]);
+    const markup = renderToStaticMarkup(React.createElement(GraphRow, { row: rows[0], pushed: false }));
+    expect(markup).toContain('data-pushed="false"');
+    expect(markup).toContain('r="3"');
+    expect(markup).toContain('fill="var(--bg, var(--vscode-editor-background, Canvas))"');
+    expect(markup).toContain('stroke-width="2"');
+  });
+
   it('renders the default branch as a heavier neutral path', () => {
     const { rows } = layoutGraph([{
       oid: 'main-tip', parents: ['main-parent'], author: 'A', email: 'a@example.com', timestamp: 0, subject: 'Main',

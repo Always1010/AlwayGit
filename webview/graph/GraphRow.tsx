@@ -11,6 +11,7 @@ export interface GraphRowProps {
   head?: boolean;
   selected?: boolean;
   main?: boolean;
+  pushed?: boolean;
   mainTargets?: ReadonlySet<string>;
   paletteId?: GraphPaletteId;
   paletteSize?: number;
@@ -29,7 +30,7 @@ function pathFor(segment: GraphSegment, height: number, laneWidth: number): stri
 }
 
 /** A complete, independently renderable row for a fixed-height history table. */
-export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false, selected = false, main = false, mainTargets, paletteId = 'vivid', paletteSize, hoveredPath, onHoverPath }: GraphRowProps) {
+export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false, selected = false, main = false, pushed = true, mainTargets, paletteId = 'vivid', paletteSize, hoveredPath, onHoverPath }: GraphRowProps) {
   const titleId = useId();
   const palette = getGraphPalette(paletteId);
   const colorFor = (index: number) => {
@@ -43,6 +44,7 @@ export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false
   const label = `Commit ${row.oid.slice(0, 8)}, lane ${row.lane + 1}. ${parentLabel}.${main ? ' Main branch.' : ''}${head ? ' Current HEAD.' : ''}${selected ? ' Selected commit.' : ''}`;
   const nodeX = (row.lane + 0.5) * laneWidth;
   const nodeY = height / 2;
+  const nodeColor = main ? 'var(--graph-main, #f2f2f2)' : colorFor(row.color);
 
   return (
     <svg
@@ -95,18 +97,19 @@ export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false
         className="git-graph-node"
         cx={nodeX}
         cy={nodeY}
-        r={row.parents.length > 1 ? 4.5 : 3.5}
-        fill={main?'var(--graph-main, #f2f2f2)':colorFor(row.color)}
-        stroke={selected ? 'var(--selected-fg, var(--vscode-list-activeSelectionForeground, currentColor))' : 'var(--fg, var(--vscode-foreground, currentColor))'}
-        strokeWidth={selected ? 2 : 1}
+        r={row.parents.length > 1 ? pushed ? 4.5 : 4 : pushed ? 3.5 : 3}
+        fill={pushed ? nodeColor : 'var(--bg, var(--vscode-editor-background, Canvas))'}
+        stroke={selected ? 'var(--selected-fg, var(--vscode-list-activeSelectionForeground, currentColor))' : pushed ? 'var(--fg, var(--vscode-foreground, currentColor))' : nodeColor}
+        strokeWidth={selected ? 2 : pushed ? 1 : 2}
         opacity={hoveredPath && row.pathId !== hoveredPath ? .35 : 1}
         data-path-id={row.pathId}
         onMouseEnter={()=>onHoverPath?.(row.pathId)}
         onMouseLeave={()=>onHoverPath?.()}
         vectorEffect="non-scaling-stroke"
+        data-pushed={pushed}
         aria-hidden="true"
       />
-      {row.parents.length > 1 && (
+      {pushed && row.parents.length > 1 && (
         <circle
           cx={nodeX}
           cy={nodeY}

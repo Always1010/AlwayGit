@@ -99,7 +99,12 @@ describe('Git service integration', () => {
   });
   it('fetches, pushes and pulls from a local bare remote with upstream tracking', async () => {
     const { root, service, repo } = await setup(); await commit(root, 'a.txt', 'a'); const bare = path.join(root, 'remote.git'); await mkdir(bare); await git(bare, 'init', '--bare'); await git(root, 'remote', 'add', 'origin', bare); await service.execute(repo, { type: 'push', branch: 'main' });
-    await commit(root, 'b.txt', 'b'); expect((await service.snapshot(repo)).ahead).toBe(1); await service.execute(repo, { type: 'push' }); expect((await service.snapshot(repo)).ahead).toBe(0); await service.execute(repo, { type: 'fetch', remote: 'origin' }); await service.execute(repo, { type: 'pull', strategy: 'ff-only' });
+    await commit(root, 'b.txt', 'b'); expect((await service.snapshot(repo)).ahead).toBe(1);
+    const beforePush = await service.history(repo, { tips: ['HEAD'] });
+    expect(beforePush.commits.slice(0, 2).map(item => item.pushed)).toEqual([false, true]);
+    await service.execute(repo, { type: 'push' }); expect((await service.snapshot(repo)).ahead).toBe(0);
+    expect((await service.history(repo, { tips: ['HEAD'] })).commits.every(item => item.pushed)).toBe(true);
+    await service.execute(repo, { type: 'fetch', remote: 'origin' }); await service.execute(repo, { type: 'pull', strategy: 'ff-only' });
     const snapshot = await service.snapshot(repo); expect(snapshot.upstream).toBe('origin/main'); expect(snapshot.refs.some(x => x.name === 'origin/main')).toBe(true); expect(snapshot.pushTarget).toEqual({ localBranch: 'main', remote: 'origin', remoteBranch: 'main', configured: true });
     await service.execute(repo, { type: 'branch.create', name: 'tracked', start: 'refs/remotes/origin/main', checkout: true }); expect((await service.snapshot(repo)).upstream).toBe('origin/main');
     await commit(root, 'tracked.txt', 'tracked'); await service.execute(repo, { type: 'push', remote: 'origin', branch: 'tracked', remoteBranch: 'release/tracked', setUpstream: true });

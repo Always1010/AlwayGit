@@ -170,7 +170,15 @@ export class GitService implements GitServiceContract {
     if (query.search?.includes('\0')) throw new GitError('Invalid search', 'INVALID_ARGUMENT');
     const output = (await this.run(repo, ['log', '--topo-order', '-z', `--format=${commitFormat}`, `--skip=${offset}`, `--max-count=${limit + 1}`, ...searchArgs, ...tips, '--'])).stdout.toString('utf8').split('\0');
     const commits: Commit[] = []; for (let i = 0; i + 5 < output.length; i += 6) commits.push(parseCommit(output.slice(i, i + 6)));
-    return { commits: commits.slice(0, limit), nextOffset: offset + Math.min(commits.length, limit), hasMore: commits.length > limit, tips };
+    const visible = commits.slice(0, limit);
+    if (visible.length) {
+      // Remote availability is based on locally known remote-tracking refs. The
+      // same search filter keeps the bounded query aligned with history paging.
+      const localOnlyOutput = await this.text(repo, ['rev-list', '--topo-order', `--max-count=${offset + limit + 1}`, ...searchArgs, ...tips, '--not', '--remotes', '--']);
+      const localOnly = new Set(localOnlyOutput ? localOnlyOutput.split('\n') : []);
+      for (const commit of visible) commit.pushed = !localOnly.has(commit.oid);
+    }
+    return { commits: visible, nextOffset: offset + Math.min(commits.length, limit), hasMore: commits.length > limit, tips };
   }
   async details(repo: Repository, revision: string, parent?: string): Promise<CommitDetails> {
     await this.verify(repo); const oid = await this.oid(repo, revision); const data = (await this.run(repo, ['show', '-s', `--format=${commitFormat}%x00%B`, oid, '--'])).stdout.toString('utf8').split('\0'); const commit = parseCommit(data);
