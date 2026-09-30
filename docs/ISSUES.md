@@ -18,8 +18,8 @@
 - 状态：已解决
 - 现象：History 顶部的 Working Tree 虽然可以点击，但采用独立的跨列状态条外观，没有 Graph 节点、整行提交语义和明确的分支归属；多引用历史中它还会固定在表头下方，不能跟随当前 HEAD。
 - 原因：Working Tree 在虚拟提交列表之外单独渲染，只复用普通按钮反馈；Graph 布局、虚拟滚动、键盘导航和提交行选择都只处理真实 Commit。
-- 解决方案：把 Working Tree 建模为只存在于前端的虚拟历史项，以当前 HEAD 为父节点，在倒序历史中紧邻 HEAD 上方显示独立菱形节点和连接线；整行复用 Commit 的悬停、焦点和选中反馈，并显示变更数、冲突数和当前分支。筛选排除 HEAD 时保留当前 HEAD 锚点，分页和 Git 操作仍只计算真实 Commit。
-- 验证方式：视图模型和 Graph 渲染单测覆盖可见 HEAD、筛选外 HEAD 与无首个 Commit；Git 集成测试验证筛选结果仍返回 HEAD 摘要；无头 History 检查验证虚拟节点、相邻位置、整行选择和与 HEAD 间的方向键导航。
+- 解决方案：把 Working Tree 建模为只存在于前端的虚拟历史项，以当前 HEAD 为父节点，在倒序历史中紧邻 HEAD 上方显示实心菱形节点和连接线；使用更明确的默认底色、边界、加粗标题、数量徽标、进入箭头以及悬停、焦点和选中反馈表达可操作性，不依赖说明性 Tooltip。普通 HEAD Commit 不再增加外圈、绿色行标或 `HEAD ·` 绿色徽标，只按普通 Commit 节点显示当前分支名称并保留辅助技术语义。筛选排除 HEAD 时保留当前 HEAD 锚点，分页和 Git 操作仍只计算真实 Commit。
+- 验证方式：视图模型和 Graph 渲染单测覆盖可见 HEAD、筛选外 HEAD 与无首个 Commit；Git 集成测试验证筛选结果仍返回 HEAD 摘要；无头 History 检查验证虚拟节点、相邻位置、明显的行交互反馈、普通 HEAD 节点与分支徽标，以及 Working Tree 和 HEAD 间的方向键导航。
 - 相关文件：`webview/History.tsx`、`webview/historyItems.ts`、`webview/graph/GraphRow.tsx`、`webview/graph/layout.ts`、`webview/styles.css`、`webview/store.ts`、`src/git/service.ts`、`src/protocol/types.ts`、`tests/history-items.test.ts`、`tests/graph-renderer.test.ts`、`tests/git-service.test.ts`、`scripts/test-history-ui.mjs`。
 
 ## BUG-012：当前项三角标识对比不足且缺少实心观感

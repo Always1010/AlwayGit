@@ -20,7 +20,7 @@ describe('Git graph SVG rows', () => {
     expect(markup.match(/<circle/g)).toHaveLength(2);
   });
 
-  it('marks HEAD visibly and in the accessible description even when detached', () => {
+  it('keeps HEAD visually consistent with other commits while exposing its semantics', () => {
     const { rows } = layoutGraph([{
       oid: 'detached123456', parents: [], author: 'A', email: 'a@example.com', timestamp: 0, subject: 'Detached',
     }]);
@@ -29,11 +29,9 @@ describe('Git graph SVG rows', () => {
     }));
     expect(markup).toContain('Current HEAD. Selected commit.');
     expect(markup).toContain('data-head="true"');
-    expect(markup).toContain('class="git-graph-head-ring"');
-    expect(markup).toContain('r="6.5"');
-    expect(markup).toContain('var(--vscode-focusBorder, currentColor)');
+    expect(markup).not.toContain('git-graph-head-ring');
     expect(markup).toContain('var(--vscode-list-activeSelectionForeground, currentColor)');
-    expect(markup.match(/<circle/g)).toHaveLength(2);
+    expect(markup.match(/<circle/g)).toHaveLength(1);
   });
 
   it('renders the Working Tree as a distinct virtual node connected to HEAD', () => {
@@ -100,7 +98,7 @@ describe('Git graph SVG rows', () => {
     expect(markup).toContain('fill="var(--graph-main, #f2f2f2)"');
   });
 
-  it('uses extended palette slots and highlights a lineage without losing HEAD', () => {
+  it('uses extended palette slots and highlights a lineage without decorating HEAD', () => {
     const { rows } = layoutGraph([{
       oid: 'merge', parents: Array.from({ length: 16 }, (_, index) => `parent${index}`),
       author: 'A', email: 'a@example.com', timestamp: 0, subject: 'Wide merge',
@@ -113,6 +111,7 @@ describe('Git graph SVG rows', () => {
     expect(markup).toContain(`data-path-id="${highlighted.pathId}"`);
     expect(markup).toContain('stroke-width="4"');
     expect(markup).toContain('opacity="0.35"');
-    expect(markup).toContain('git-graph-head-ring');
+    expect(markup).not.toContain('git-graph-head-ring');
+    expect(markup).toContain('data-head="true"');
   });
 });

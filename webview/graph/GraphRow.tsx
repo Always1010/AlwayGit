@@ -85,30 +85,17 @@ export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false
           aria-hidden="true"
         />
       );})}
-      {head && !working && (
-        <circle
-          className="git-graph-head-ring"
-          cx={nodeX}
-          cy={nodeY}
-          r={6.5}
-          fill="var(--bg, var(--vscode-editor-background, Canvas))"
-          stroke="var(--accent, var(--vscode-focusBorder, currentColor))"
-          strokeWidth={2}
-          vectorEffect="non-scaling-stroke"
-          aria-hidden="true"
-        />
-      )}
       {working ? <rect
         className="git-graph-working-node"
-        x={nodeX-4}
-        y={nodeY-4}
-        width={8}
-        height={8}
+        x={nodeX-4.5}
+        y={nodeY-4.5}
+        width={9}
+        height={9}
         rx={1}
         transform={`rotate(45 ${nodeX} ${nodeY})`}
-        fill="var(--bg, var(--vscode-editor-background, Canvas))"
-        stroke={selected?'var(--selected-fg, var(--vscode-list-activeSelectionForeground, currentColor))':'var(--accent, var(--vscode-focusBorder, currentColor))'}
-        strokeWidth={2}
+        fill={selected?'var(--selected-fg, var(--vscode-list-activeSelectionForeground, currentColor))':'var(--accent, var(--vscode-focusBorder, currentColor))'}
+        stroke="var(--bg, var(--vscode-editor-background, Canvas))"
+        strokeWidth={1.5}
         data-path-id={row.pathId}
         onMouseEnter={()=>onHoverPath?.(row.pathId)}
         onMouseLeave={()=>onHoverPath?.()}
