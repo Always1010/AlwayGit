@@ -54,7 +54,36 @@ export async function verifyFeedback(browser, url) {
     assert.match(await bar.locator('pre').innerText(), /fatal: could not push/);
     await bar.getByRole('button', { name: 'Show Log', exact: true }).click();
     await page.waitForFunction(() => window.__feedbackFixture.calls.some(call => call.method === 'showLog'));
+    await page.evaluate(() => {
+      const fixture = window.__feedbackFixture;
+      fixture.snapshot.operation = { kind: 'cherry-pick', conflicts: 2, canContinue: false, canAbort: true, canSkip: true };
+      fixture.snapshot.changes = ['src/features/auth/login.ts', 'webview/Details.tsx'].map(path => ({ path, indexStatus: 'U', worktreeStatus: 'U', conflict: true, untracked: false }));
+      window.postMessage({ type: 'changed', repoId: 'feedback' }, '*');
+    });
+    const operation = page.getByTestId('operation-notice');
+    await operation.getByText('Cherry-pick paused', { exact: true }).waitFor();
+    await operation.getByText('2 conflicts', { exact: true }).waitFor();
+    assert.equal(await operation.getByRole('button', { name: 'Continue', exact: true }).isDisabled(), true);
+    await operation.getByText('Resolve and Stage conflicting files before Continue.', { exact: true }).waitFor();
+    await operation.getByRole('button', { name: 'View Conflicts', exact: true }).click();
+    await page.waitForFunction(() => window.__feedbackFixture.calls.some(call => call.method === 'diffPreview' && call.payload.area === 'conflict' && call.payload.path === 'src/features/auth/login.ts'));
+    await page.getByTestId('details').locator('.change-group').first().getByText('src/features/auth', { exact: true }).waitFor();
+    await operation.getByRole('button', { name: 'Abort…', exact: true }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
+    await page.screenshot({ path: 'artifacts/workbench-conflicts.png' });
+    await page.evaluate(() => {
+      const fixture = window.__feedbackFixture;
+      fixture.snapshot.operation = { kind: 'cherry-pick', conflicts: 0, canContinue: true, canAbort: true, canSkip: true };
+      fixture.snapshot.changes = fixture.snapshot.changes.map(file => ({ ...file, indexStatus: 'M', worktreeStatus: ' ', conflict: false }));
+      window.postMessage({ type: 'changed', repoId: 'feedback' }, '*');
+    });
+    await operation.getByText('Ready to Continue', { exact: true }).waitFor();
+    assert.equal(await operation.getByRole('button', { name: 'Continue', exact: true }).isEnabled(), true);
+    await operation.getByRole('button', { name: 'Continue', exact: true }).click();
+    await page.waitForFunction(() => window.__feedbackFixture.pending?.payload.type === 'operation.continue');
+    await page.evaluate(() => { window.__feedbackFixture.snapshot.operation = { conflicts: 0, canContinue: false, canSkip: false, canAbort: false }; window.__feedbackFixture.complete(); });
+    await operation.waitFor({ state: 'hidden' });
     assert.deepEqual(errors, []);
-    console.log('ALWAYGIT_FEEDBACK_UI_TESTS_PASSED: Push running/success/failure, target, persistent results, error details and log');
+    console.log('ALWAYGIT_FEEDBACK_UI_TESTS_PASSED: Push states and target, persistent results, error/log, conflicts navigation, disabled reason, resolved Continue');
   } finally { await page.close(); }
 }

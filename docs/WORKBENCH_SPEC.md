@@ -85,6 +85,8 @@ Graph 中 Commit 的菜单集中提供 `Create Branch…`、`Create Tag…`、Ch
 
 工具栏下的操作信息栏显示 Git 操作名称、目标及进行中、成功、失败状态；结果保留到用户关闭或下一次操作，进行中不可关闭。失败显示原因摘要，并提供完整错误详情和日志入口；失败后重新读取仓库状态。操作反馈按仓库隔离，切换仓库不会展示其他仓库的结果。
 
+Merge、Rebase、Cherry-pick、Revert 的活动状态在独立操作条中持续显示。冲突时显示数量、处理说明和“查看冲突”，进入 Working Tree 并定位首个冲突文件；Continue 禁用原因直接可见。解决并 Stage 冲突后显示“等待 Continue”，完成或 Abort 后移除。没有活动操作的冲突也显示提醒。Skip 只在 Git 支持时出现，Abort 使用确认对话框。
+
 - 当前分支禁用 `Checkout` 与 `Delete Branch`。
 - 被其他 Worktree 使用的分支显示占用路径，并允许打开该 Worktree。
 - 主 Worktree 和当前 Worktree不能移除；Locked Worktree 显示锁定原因。

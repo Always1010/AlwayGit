@@ -15,6 +15,7 @@ import { History } from './History';
 import { Details } from './Details';
 import { DiffPreview } from './DiffPreview';
 import { ActionFeedbackBar } from './ActionFeedbackBar';
+import { OperationNotice } from './OperationNotice';
 import { Button, Empty, Icon, Modal, ResizeHandle } from './ui';
 
 export function App() {
@@ -55,9 +56,9 @@ export function App() {
       <Button icon="archive" disabled={!snapshot?.changes.length||state.busy||!!snapshot?.operation.kind} onClick={()=>open({type:'stash.create'})}>Stash Changes…</Button>
       <div className="toolbar-spacer"/><Button icon="vscode" data-testid="open-project" title={snapshot?.repository.root??t('Select a repository first','请先选择仓库')} disabled={!snapshot} onClick={()=>void host('openProject')}>{t('Open in VS Code','在 VS Code 中打开项目')}</Button>
     </div>
+    <OperationNotice abort={()=>open({type:'operation.abort'})}/>
     <ActionFeedbackBar showLog={()=>void host('showLog')}/>
     {state.error&&state.error!==state.actionFeedback?.error&&!state.checkoutFailure&&<div className="banner error" role="alert"><Icon name="error"/><span>{state.error}</span><Button onClick={()=>void host('showLog')}>{t('Show Log','查看日志')}</Button><Button icon="close" aria-label="Dismiss error" onClick={()=>useWorkbench.setState({error:undefined})}/></div>}
-    {snapshot?.operation.kind&&<div className="operation-banner"><strong>{snapshot.operation.kind} · {t('in progress','进行中')}</strong><span>{snapshot.operation.conflicts} {t('conflicts','个冲突')}</span><Button disabled={!snapshot.operation.canContinue||state.busy} onClick={()=>void state.execute({type:'operation.continue',kind:snapshot.operation.kind!})}>Continue</Button><Button disabled={!snapshot.operation.canSkip||state.busy} onClick={()=>void state.execute({type:'operation.skip',kind:snapshot.operation.kind!})}>Skip</Button><Button disabled={!snapshot.operation.canAbort||state.busy} onClick={()=>open({type:'operation.abort'})}>Abort…</Button></div>}
     <div className="workspace"><Sidebar context={showContext} checkoutBranch={name=>void checkoutBranch(name)} openWorktree={path=>void host('openWorktree',{path,newWindow:false})}/><ResizeHandle axis="x" label="Resize repository sidebar" value={layout.sidebar} min={160} max={360} onChange={sidebar=>state.setLayout({sidebar})}/><main className="main-panel">
       {!snapshot?<Empty title={state.loading?t('Opening repository…','正在打开仓库…'):t('Add or select a repository','添加或选择仓库')}><Button onClick={()=>void addRepository()}>Add Repository…</Button></Empty>:<>
         <div className="top-panels"><History context={showContext} checkout={checkout} checkoutBranch={name=>void checkoutBranch(name)}/><ResizeHandle axis="x" label="Resize details panel" value={layout.details} min={230} max={480} reverse onChange={details=>state.setLayout({details})}/><Details open={open} edit={()=>void edit()}/></div>
