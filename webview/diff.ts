@@ -1,5 +1,6 @@
 export interface DiffRow { before?: string; after?: string; beforeLine?: number; afterLine?: number; changed: boolean }
 export interface DiffChangeRange { start: number; end: number }
+export interface DiffChangeSummary { added: number; modified: number; removed: number }
 
 export function changedRanges(rows: readonly DiffRow[]): DiffChangeRange[] {
   const ranges: DiffChangeRange[]=[];
@@ -10,6 +11,21 @@ export function changedRanges(rows: readonly DiffRow[]): DiffChangeRange[] {
     ranges.push({start,end:index});
   }
   return ranges;
+}
+
+export function summarizeChanges(rows: readonly DiffRow[], ranges=changedRanges(rows)): DiffChangeSummary {
+  const summary:DiffChangeSummary={added:0,modified:0,removed:0};
+  for(const range of ranges){
+    let before=false,after=false;
+    for(let index=range.start;index<=range.end;index++){
+      before||=rows[index].before!==undefined;
+      after||=rows[index].after!==undefined;
+    }
+    if(before&&after)summary.modified++;
+    else if(after)summary.added++;
+    else if(before)summary.removed++;
+  }
+  return summary;
 }
 
 /** Select the block containing the viewport anchor, or its nearest neighbour. */

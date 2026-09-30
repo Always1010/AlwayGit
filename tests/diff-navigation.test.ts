@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { alignDiff, changeAtRow, changedRanges, remapChange } from '../webview/diff';
+import { alignDiff, changeAtRow, changedRanges, remapChange, summarizeChanges, type DiffRow } from '../webview/diff';
 
 describe('Diff change navigation', () => {
   it('groups adjacent changed rows and keeps separate changes independently navigable', () => {
@@ -10,6 +10,19 @@ describe('Diff change navigation', () => {
     expect(rows.slice(ranges[0].start,ranges[0].end+1).every(row=>row.changed)).toBe(true);
     expect(rows.slice(ranges[1].start,ranges[1].end+1).every(row=>row.changed)).toBe(true);
     expect(ranges[1].start).toBeGreaterThan(ranges[0].end+1);
+  });
+
+  it('counts added, modified and removed blocks using the same navigation ranges', () => {
+    const rows:DiffRow[]=[
+      {before:'old',after:'new',changed:true},{before:'old 2',after:'new 2',changed:true},
+      {before:'context',after:'context',changed:false},
+      {after:'added',changed:true},
+      {before:'context 2',after:'context 2',changed:false},
+      {before:'removed',changed:true},
+    ];
+    const ranges=changedRanges(rows);
+    expect(summarizeChanges(rows,ranges)).toEqual({added:1,modified:1,removed:1});
+    expect(Object.values(summarizeChanges(rows,ranges)).reduce((total,count)=>total+count,0)).toBe(ranges.length);
   });
 
   it('selects the containing block or the nearest block when manually scrolling through context', () => {

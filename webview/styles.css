@@ -225,7 +225,11 @@ h1,h2,p {margin:0;}
 .diff-line.active-change:after {content:'';position:absolute;inset:0;border-left:1px solid var(--accent);border-right:1px solid var(--accent);pointer-events:none;}
 .diff-line.active-change-start:after {border-top:1px solid var(--accent);}
 .diff-line.active-change-end:after {border-bottom:1px solid var(--accent);}
-.diff-change-count {min-width:40px;white-space:nowrap;font-size:11px;font-variant-numeric:tabular-nums;text-align:center;padding:1px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--fg);}
+.diff-change-summary {display:inline-flex;align-items:center;gap:7px;margin:0 2px;font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.diff-preview .inline-actions {flex:none;flex-wrap:nowrap;}
+.diff-change-kind {font-weight:600;}
+.diff-change-added {color:var(--green);}.diff-change-modified {color:var(--yellow);}.diff-change-removed {color:var(--error);}
+.diff-change-count {min-width:32px;white-space:nowrap;font-size:11px;font-variant-numeric:tabular-nums;text-align:center;padding:0 2px;color:var(--fg);}
 .diff-marker {display:inline-block;min-width:18px;flex:none;text-align:center;font-weight:700;user-select:none;}
 .line-number {display:inline-block;min-width:34px;flex:none;text-align:right;color:var(--muted);padding-right:8px;font-size:11px;user-select:none;}
 .added {background:var(--diff-added);box-shadow:inset 3px 0 var(--green)!important;}
