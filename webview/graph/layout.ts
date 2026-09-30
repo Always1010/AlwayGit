@@ -136,19 +136,27 @@ export function layoutGraph(commits: readonly Commit[], previousState?: GraphSta
       });
     }
 
+    const compacted: GraphLane[] = [];
+    const compactedLane = new Map<number, number>();
+    lanes.forEach((lane, index) => {
+      if (!lane) return;
+      compactedLane.set(index, compacted.length);
+      compacted.push(lane);
+    });
     const segments: GraphSegment[] = [];
     for (let lane = 0; lane < top.length; lane++) {
       const pending = top[lane];
       if (!pending) continue;
+      const incoming = lane === nodeLane;
       segments.push({
-        fromLane: lane, toLane: lane, from: 'top',
-        to: lane === nodeLane ? 'middle' : 'bottom',
-        color: pending.color, kind: lane === nodeLane ? 'incoming' : 'through',
+        fromLane: lane, toLane: incoming ? nodeLane : compactedLane.get(lane) ?? lane, from: 'top',
+        to: incoming ? 'middle' : 'bottom',
+        color: pending.color, kind: incoming ? 'incoming' : 'through',
         target: pending.oid,
         pathId: pending.pathId,
       });
     }
-    segments.push(...parentSegments);
+    segments.push(...parentSegments.map(segment => ({ ...segment, toLane: compactedLane.get(segment.toLane) ?? segment.toLane })));
 
     const rowLaneCount = Math.max(top.length, lanes.length, nodeLane + 1);
     laneCount = Math.max(laneCount, rowLaneCount);
@@ -157,9 +165,9 @@ export function layoutGraph(commits: readonly Commit[], previousState?: GraphSta
       laneCount: rowLaneCount, parents, hasIncoming, segments,
       pathId: nodePathId,
     });
-    // Only remove trailing vacant slots: retained lane positions must agree
-    // exactly across row and page boundaries.
-    while (lanes.length && lanes[lanes.length - 1] === null) lanes.pop();
+    // Close gaps as soon as a path ends. Curved through segments above keep
+    // the bottom endpoints aligned with the compact state used by the next row.
+    lanes.splice(0, lanes.length, ...compacted);
   }
 
   return { rows, endState: { lanes, nextColor, paletteId, paletteSize, paletteKey }, laneCount };

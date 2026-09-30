@@ -65,14 +65,26 @@ export async function verifyAppearance(browser, url) {
       sidebar: page.getByRole('separator', { name: 'Resize repository sidebar' }),
       details: page.getByRole('separator', { name: 'Resize details panel' }),
       diff: page.getByRole('separator', { name: 'Resize Diff panel' }),
+      graph: page.getByRole('separator', { name: 'Resize graph column' }),
       author: page.getByRole('separator', { name: 'Resize author column' }),
       date: page.getByRole('separator', { name: 'Resize date column' }),
     };
     assert.equal(Number(await separators.sidebar.getAttribute('aria-valuenow')), 248);
     assert.equal(Number(await separators.details.getAttribute('aria-valuenow')), 330);
     assert.equal(Number(await separators.diff.getAttribute('aria-valuenow')), 250);
+    assert.equal(Number(await separators.graph.getAttribute('aria-valuenow')), 64);
     assert.equal(Number(await separators.author.getAttribute('aria-valuenow')), 112);
     assert.equal(Number(await separators.date.getAttribute('aria-valuenow')), 130);
+    const graphHeaderBox = await requiredBox(history.locator('.history-columns [role="columnheader"]').first(), 'Graph header');
+    const graphHandleBox = await requiredBox(separators.graph, 'Graph separator');
+    assert.ok(Math.abs(graphHandleBox.x + graphHandleBox.width - graphHeaderBox.x - graphHeaderBox.width) <= 1, 'Graph separator stays on the column right boundary');
+    await page.mouse.move(graphHandleBox.x + graphHandleBox.width / 2, graphHandleBox.y + graphHandleBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(graphHandleBox.x + graphHandleBox.width / 2 + 20, graphHandleBox.y + graphHandleBox.height / 2);
+    await page.mouse.up();
+    assert.equal(Number(await separators.graph.getAttribute('aria-valuenow')), 84, 'Graph widens when its right boundary moves right');
+    const movedGraphHandleBox = await requiredBox(separators.graph, 'Moved Graph separator');
+    assert.ok(Math.abs(movedGraphHandleBox.x - graphHandleBox.x - 20) <= 1, 'Graph separator follows the pointer direction');
     for (const [key, selector, label] of [['author', '.history-columns [role="columnheader"]:nth-child(3)', 'Author'], ['date', '.history-columns [role="columnheader"]:nth-child(4)', 'Date']]) {
       const cellBox = await requiredBox(history.locator(selector), `${label} header`);
       const handleBox = await requiredBox(separators[key], `${label} separator`);
@@ -92,6 +104,7 @@ export async function verifyAppearance(browser, url) {
     const migrated = await readSession(page);
     assert.equal(migrated.layout.preset, 'workbench');
     assert.equal(migrated.layout.row, 24, 'Legacy default row 26 migrates to compact row 24');
+    assert.equal(migrated.layout.graph, 84, 'Legacy sessions gain a persisted Graph width after adjustment');
     assert.equal(migrated.layout.sidebar, 248, 'Migration retains custom panel widths');
     assert.equal(migrated.layout.details, 330, 'Migration retains the custom details width');
     assert.equal(migrated.drafts['demo-alwaygit'], 'Legacy draft survives migration');
@@ -176,6 +189,7 @@ export async function verifyAppearance(browser, url) {
     assert.equal(Number(await separators.sidebar.getAttribute('aria-valuenow')), 210);
     assert.equal(Number(await separators.details.getAttribute('aria-valuenow')), 300);
     assert.equal(Number(await separators.diff.getAttribute('aria-valuenow')), 220);
+    assert.equal(Number(await separators.graph.getAttribute('aria-valuenow')), 64);
     assert.equal(await workbench.getAttribute('data-theme'), 'dark', 'Restore Layout does not reset theme');
     assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--workbench-font').trim()), '16px', 'Restore Layout does not reset interface font');
     applied = await readSession(page);

@@ -14,7 +14,7 @@ let refreshInvalidation: { epoch: number; changes?: RepositoryChanges; forceHist
 const session = readSession(), views = session.views ?? {}, executingRepositories = new Set<string>(), hostBusyRepositories = new Set<string>();
 const actionFeedbacks = new Map<string, ActionFeedback>();
 let actionSequence = 0;
-export const defaultLayout: LayoutState = { preset: 'workbench', sidebar: 210, details: 300, diff: 220, author: 100, date: 120, font: 13, row: 24 };
+export const defaultLayout: LayoutState = { preset: 'workbench', sidebar: 210, details: 300, diff: 220, graph: 64, author: 100, date: 120, font: 13, row: 24 };
 export interface CheckoutFailure { reason?: string; paths: string[]; target: string; worktreePath?: string; stashCreated?: boolean; stashOid?: string; detached?: boolean }
 interface WorkbenchState {
   appearance: Appearance; settingsBaseline?: InterfaceSettings;
@@ -30,7 +30,7 @@ const message = (error: unknown) => error instanceof Error ? error.message : Str
 const clamp = (n: number, min: number, max: number, fallback: number) => Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : fallback;
 function layout(value: Partial<LayoutState> = {}): LayoutState {
   const l = { ...defaultLayout, ...value };
-  return { preset: 'workbench', sidebar: clamp(l.sidebar, 160, 360, 210), details: clamp(l.details, 230, 480, 300), diff: clamp(l.diff, 130, 450, 220), author: clamp(l.author, 64, 220, 100), date: clamp(l.date, 82, 220, 120), font: Math.round(clamp(l.font, 12, 16, 13)), row: Math.round(clamp(l.row, 22, 36, 24)) };
+  return { preset: 'workbench', sidebar: clamp(l.sidebar, 160, 360, 210), details: clamp(l.details, 230, 480, 300), diff: clamp(l.diff, 130, 450, 220), graph: clamp(l.graph, 48, 180, 64), author: clamp(l.author, 64, 220, 100), date: clamp(l.date, 82, 220, 120), font: Math.round(clamp(l.font, 12, 16, 13)), row: Math.round(clamp(l.row, 22, 36, 24)) };
 }
 const initialLayout = layout(session.layout);
 // Only the old default density migrates; custom dimensions and drafts are kept.

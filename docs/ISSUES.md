@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-010：Merge 后 Graph 保留空轨道并按历史峰值过度占宽
+
+- 日期：2026-10-01
+- 状态：已解决
+- 现象：历史中出现多次 Merge 或短时多轨道后，Graph 列按已加载历史的最大轨道数统一扩宽，已结束路径留下的中间空位也会继续挤压提交信息。
+- 原因：轨道分配只删除尾部空位，不收拢内部空洞；列宽固定按每轨 16 px 乘全局峰值计算，且用户无法单独调整 Graph 宽度。
+- 解决方案：每行结束时按原有顺序收拢活跃轨道，用过渡曲线对齐下一行；Graph 默认宽度改为 64 px，轨道间距在可用宽度内自适应，极端并行路径保留最小间距并交由历史区横向滚动。Graph 右边界新增 48–180 px 可持久化拖动。
+- 验证方式：Graph 布局单测覆盖空轨道收拢、复杂 DAG 端点连续性、百父节点 Merge 和分页一致性；类型检查与无头界面验证确认旧会话迁移、Graph 分隔线跟随和宽度恢复。
+- 相关文件：`webview/graph/layout.ts`、`webview/History.tsx`、`webview/store.ts`、`webview/rpc.ts`、`src/protocol/validation.ts`、`tests/graph.test.ts`、`scripts/test-appearance-ui.mjs`。
+
 ## BUG-009：提交列表列拖柄方向相反且日期拖柄难以命中
 
 - 日期：2026-10-01

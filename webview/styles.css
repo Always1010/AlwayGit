@@ -111,7 +111,9 @@ h1,h2,p {margin:0;}
 .history-columns {display:grid;height:24px;flex:none;background:var(--surface-toolbar);color:var(--muted);font-size:11px;font-weight:600;border-bottom:1px solid var(--border);overflow:hidden;}
 .history-columns>span {position:relative;padding:4px 5px;overflow:hidden;white-space:nowrap;}
 .history-columns>span.resizable-column-start {padding-left:12px;}
+.history-columns>span.resizable-column-end {padding-right:12px;}
 .column-grip.resize-x {position:absolute;top:0;left:0;width:9px;height:100%;}
+.column-grip.column-grip-end.resize-x {right:0;left:auto;}
 .working-row {display:flex;align-items:center;gap:8px;min-height:var(--row-height,24px);padding:2px 7px;flex:none;background:var(--panel);border-bottom:1px solid var(--border);text-align:left;}
 .working-row>.muted {margin-left:auto;font-size:11px;}
 .history-viewport {overflow:auto;flex:1;min-height:0;}
