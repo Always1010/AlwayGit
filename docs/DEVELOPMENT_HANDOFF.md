@@ -56,7 +56,7 @@ AlwayGit 的目标是 VS Code 内的完整 Git 工作台：左侧仓库和引用
 - 添加仓库支持选择分类总目录并递归批量加载；顶层仓库归并与 Worktree 切换、扫描边界和取消行为见 [工作台规格](WORKBENCH_SPEC.md)。
 - Repository、分组、Local / Remote Branch、Remote、Tag、Stash、Worktree 和 Commit 菜单已经实现；分区标题负责折叠，独立三点按钮打开菜单。Local / Remote Branch 以递归目录显示并支持目录级三态选择。
 - 多引用历史、空选择、固定 tips 分页、HEAD 呈现及紧凑 Graph 已经接入；同一 OID 的 `Locate HEAD`、分页后定位以及表头与内容横向滚动同步都有回归测试。
-- Checkout / Detached HEAD、脏文件与 Worktree 阻塞、Stash 后 Checkout、Push 目标解析、Diff Preview、剪贴板和窗口接口已经接入宿主。
+- Checkout / Detached HEAD、远程分支单项 Checkout 与目录批量创建本地跟踪分支、脏文件与 Worktree 阻塞、Stash 后 Checkout、Push 目标解析、Diff Preview、剪贴板和窗口接口已经接入宿主。
 - 自动刷新已保留历史 Commit 的查看状态，并按变化范围更新工作区 Diff；行为见 [工作台规格](WORKBENCH_SPEC.md#自动更新与查看状态)，已解决问题见 [问题日志](ISSUES.md)。
 - 当前验收结果和本机安装版本统一见 [验证说明](VALIDATION.md)。
 - 紧凑视觉、Commit 整行交互、完整父目录、文件范围全选、Diff 修改块计数及持久操作提醒已接入；交互细节统一见 [工作台规格](WORKBENCH_SPEC.md)，回归入口为 `scripts/test-ui.mjs`。

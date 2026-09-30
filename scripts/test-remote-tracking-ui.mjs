@@ -1,0 +1,43 @@
+import assert from 'node:assert/strict';
+
+export async function verifyRemoteTracking(browser, url) {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  await page.goto(url);await page.evaluate(()=>localStorage.clear());await page.reload();
+  const sidebar=page.getByTestId('sidebar'),menu=page.getByTestId('context-menu');
+  await sidebar.getByRole('button',{name:'Branch origin/develop',exact:true}).waitFor();
+  const remoteGroup=sidebar.locator('.remote-group').filter({has:page.getByRole('button',{name:'origin',exact:true})});
+  await remoteGroup.getByRole('button',{name:'Expand feature',exact:true}).locator('..').click({button:'right'});
+  await menu.getByRole('menuitem',{name:'Create Local Tracking Branches…',exact:true}).click();
+  let dialog=page.getByRole('dialog',{name:'Create Local Tracking Branches',exact:true});
+  await dialog.waitFor();
+  assert.equal(await dialog.getByLabel('Local branch for origin/feature/checkout',{exact:true}).inputValue(),'feature/checkout');
+  assert.equal(await dialog.getByLabel('Local branch for origin/feature/subtree/api',{exact:true}).inputValue(),'feature/subtree/api');
+  assert.equal(await dialog.getByRole('checkbox').count(),0,'Batch tracking must not offer a Checkout toggle');
+  const create=dialog.getByRole('button',{name:'Create Local Branches',exact:true});
+  await dialog.getByLabel('Local branch for origin/feature/checkout',{exact:true}).fill('feature/history-graph');
+  assert.equal(await create.isDisabled(),true,'A local branch with another upstream must block the batch');
+  await dialog.getByText('Name already exists with a different upstream.',{exact:true}).waitFor();
+  await dialog.getByLabel('Local branch for origin/feature/checkout',{exact:true}).fill('feature/checkout');
+  await create.click();await dialog.getByRole('button',{name:'Done',exact:true}).waitFor();
+  assert.equal(await dialog.getByText('Created',{exact:true}).count(),2,'Both descendants must be created, including nested paths');
+  assert.equal(await page.getByTestId('current-branch').innerText(),'main','Bulk tracking must preserve the checked out branch');
+  await dialog.getByRole('button',{name:'Done',exact:true}).click();
+  await remoteGroup.getByRole('button',{name:'Create Local Tracking Branches…',exact:true}).click();
+  await dialog.waitFor();assert.equal(await dialog.getByLabel(/^Local branch for/).count(),4,'The Remote parent must include all ordinary branches');
+  await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
+  await sidebar.getByRole('button',{name:'Branch origin/develop',exact:true}).dblclick();
+  dialog=page.getByRole('dialog',{name:'Checkout as Local Branch',exact:true});await dialog.waitFor();
+  assert.equal(await dialog.getByLabel('Local branch for origin/develop',{exact:true}).inputValue(),'develop');
+  assert.equal(await dialog.getByRole('checkbox',{name:'Checkout local branch',exact:true}).isChecked(),true);
+  await dialog.getByRole('button',{name:'Create & Checkout',exact:true}).click();
+  await dialog.getByRole('button',{name:'Done',exact:true}).waitFor();
+  assert.equal(await page.getByTestId('current-branch').innerText(),'develop');
+  await dialog.getByRole('button',{name:'Done',exact:true}).click();
+  await page.getByTestId('history').getByRole('button',{name:'origin/develop',exact:true}).dblclick();
+  await dialog.waitFor();await dialog.getByText('Already tracked; reuse local branch',{exact:true}).waitFor();
+  await dialog.getByRole('button',{name:'Create & Checkout',exact:true}).click();
+  await dialog.getByText('Already tracked',{exact:true}).waitFor();
+  assert.equal(await sidebar.getByRole('button',{name:'Branch develop',exact:true}).count(),1,'Existing tracking branches must be reused');
+  assert.deepEqual(errors,[]);await page.close();
+}

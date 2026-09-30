@@ -5,9 +5,10 @@ import { demoMode, rpc } from './rpc';
 import { useTranslation } from './i18n';
 import { Button, Modal } from './ui';
 import { samePath } from './pathIdentity';
+import { RemoteTrackingDialog } from './RemoteTrackingDialog';
 
 export type ActionType = GitAction['type'];
-export interface DialogRequest { type: ActionType; target?: string; paths?: string[]; names?:string[]; expectedOids?:Record<string,string>; remoteBranches?:string[]; pop?: boolean; expectedOid?: string; remote?: string; branch?: string; checkout?: boolean; candidates?: string[] }
+export interface DialogRequest { type: ActionType; target?: string; sources?: string[]; batch?: boolean; paths?: string[]; names?:string[]; expectedOids?:Record<string,string>; remoteBranches?:string[]; pop?: boolean; expectedOid?: string; remote?: string; branch?: string; checkout?: boolean; candidates?: string[] }
 export const actionTitles: Partial<Record<ActionType, string>> = { 'branch.create': 'Create Branch', 'branch.checkout': 'Checkout', 'commit.checkout': 'Checkout', 'branch.delete': 'Delete Branch', 'remote.delete':'Delete Remote Branches', 'tag.create': 'Create Tag', 'tag.delete': 'Delete Tag', 'stash.create': 'Stash Changes', 'stash.apply': 'Apply Stash', 'stash.drop': 'Drop Stash', 'worktree.add': 'Add Worktree', 'worktree.remove': 'Remove Worktree', merge: 'Merge', rebase: 'Rebase', 'cherry-pick': 'Cherry-pick', revert: 'Revert', reset: 'Reset', fetch: 'Fetch', pull: 'Pull', push: 'Push', discard: 'Discard Changes', 'operation.abort': 'Abort' };
 function pushDefaults(snapshot: Snapshot, dialog: DialogRequest) {
   const localBranch=dialog.branch??snapshot.branch,ref=snapshot.refs.find(item=>item.kind==='local'&&item.name===localBranch),upstream=ref?.upstream;
@@ -18,6 +19,10 @@ function pushDefaults(snapshot: Snapshot, dialog: DialogRequest) {
   return {localBranch,remote,remoteBranch,configured:current?.configured??!!upstream};
 }
 export function ActionDialog({ dialog, onClose }: { dialog: DialogRequest; onClose(): void }) {
+  if(dialog.type==='branch.track')return <RemoteTrackingDialog dialog={dialog} onClose={onClose}/>;
+  return <StandardActionDialog dialog={dialog} onClose={onClose}/>;
+}
+function StandardActionDialog({ dialog, onClose }: { dialog: DialogRequest; onClose(): void }) {
   const state = useWorkbench(), snapshot = state.snapshot!, t = useTranslation(), { type } = dialog;
   const local = snapshot.refs.filter(r => r.kind === 'local'), tags = snapshot.refs.filter(r => r.kind === 'tag');
   const push=pushDefaults(snapshot,dialog);

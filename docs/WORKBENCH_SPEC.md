@@ -48,6 +48,7 @@ Repository 名称行单击只改变操作选择，不切换当前仓库；普通
 | `Ctrl` / `Cmd` + 单击分支 | 加入或移出批量操作选择，不改变 Graph 勾选状态 |
 | `Shift` + 单击分支 | 在同一个 Local 或 Remote 树内按可见顺序选择连续范围 |
 | 双击本地分支 | Checkout 到该分支 |
+| 双击远程分支 / 远程引用徽标 | 打开 `Checkout as Local Branch…`，创建或复用本地跟踪分支并默认 Checkout |
 | 右键已选分支 | 保留当前批量选择并打开适用菜单，不改变 Graph 筛选 |
 | 右键未选分支 | 先将批量操作选择切换到该分支，再打开菜单 |
 | 右键分支目录 | 选择目录下全部分支，并打开批量操作菜单 |
@@ -95,8 +96,9 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 | Repository（单选） | `Switch to Repository`、`Open in New AlwayGit Tab`、`Open in New Window`、`Fetch…`、`Refresh Status`、`Copy Repository Path` |
 | Repository（多选） | `Fetch N Repositories…`、`Refresh Status for N Repositories`、`Copy N Repository Paths` |
 | Local Branch | `Checkout…`、`Show in Graph`、`Show Only This Branch`、`Create Branch…`、`Create Tag…`、`Merge…`、`Rebase…`、`Push…`、`Delete Branch…`、`Copy Branch Name` |
-| Remote Branch | `Show in Graph`、`Show Only This Branch`、`Create Tracking Branch…`、`Merge…`、`Rebase…`、`Delete Branch from <remote>…`、`Copy Branch Name` |
-| Remote，例如 `origin` | `Fetch…`、`Refresh` |
+| Remote Branch | `Show in Graph`、`Show Only This Branch`、`Checkout as Local Branch…`、`Merge…`、`Rebase…`、`Delete Branch from <remote>…`、`Copy Branch Name` |
+| Remote 分支目录 / 多选 | `Create Local Tracking Branches…`、Graph 批量筛选、远端批量删除和复制名称 |
+| Remote，例如 `origin` | `Fetch…`、`Create Local Tracking Branches…`、`Refresh` |
 | Tag | `Show in Graph`、`Show Only This Tag`、`Create Branch…`、`Checkout…`、`Delete Tag…`、`Copy Tag Name`、`Copy Commit ID` |
 | Stash | `View Changes`、`Apply Stash`、`Pop Stash`、`Drop Stash…` |
 | Worktree | `Open Worktree`、`Open Workbench in New Window`、`Refresh`、`Remove Worktree…`、`Copy Worktree Path` |
@@ -109,7 +111,7 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 | --- | --- |
 | Repositories | `Add Repository…`、`Refresh` |
 | Local Branches | 标题：`Create Branch…`；Graph 操作条：`Show All in Graph`、`Show Current Branch Only in Graph`、`Show None in Graph` |
-| Remotes | `Fetch…`、`Refresh` |
+| Remotes | `Fetch…`、`Create Local Tracking Branches…`、`Refresh` |
 | Tags | `Create Tag…`、`Refresh` |
 | Stashes | `Stash Changes…`、`Refresh` |
 | Worktrees | `Add Worktree…`、`Refresh` |
@@ -127,7 +129,8 @@ Merge、Rebase、Cherry-pick、Revert 的活动状态在独立操作条中持续
 - 当前分支禁用 `Checkout` 与 `Delete Branch`。
 - 被其他 Worktree 使用的分支显示占用路径，并允许打开该 Worktree。
 - 主 Worktree 和当前 Worktree不能移除；Locked Worktree 显示锁定原因。
-- Remote Branch 通过 `Create Tracking Branch…` 创建本地跟踪分支。Local 与 Remote 的批量选择互相隔离；同一 Remote 下的普通分支可以批量 `Delete … from <remote>…`，操作明确显示远端和分支清单并二次确认，通过逐项 Push 删除并汇总部分失败。`origin/HEAD` 等符号引用不可删除。
+- Remote Branch 的 `Checkout as Local Branch…` 列出远程来源与本地名称，默认剥除 Remote 前缀并保持完整目录（`origin/feature/login/api` → `feature/login/api`），自动选择已有跟踪分支，允许改名。多个已有本地跟踪分支时提示用户选择名称。单项默认 Checkout，可取消切换；Remote 父级、Remotes 分组、分支目录和远程多选通过 `Create Local Tracking Branches…` 创建或复用全部后代，保持当前分支。对话框逐项显示将创建、已跟踪、同名 upstream 冲突、路径冲突与成功结果；名称冲突阻止执行，不覆盖已有分支或改写 upstream。使用最近 Fetch 的引用，不自动 Fetch/Pull；后端重新校验来源与 OID。`origin/HEAD` 等符号引用不可检出为本地分支，批量范围自动排除。
+- Local 与 Remote 的批量选择互相隔离；同一 Remote 下的普通分支可以批量 `Delete … from <remote>…`，操作明确显示远端和分支清单并二次确认，通过逐项 Push 删除并汇总部分失败。`origin/HEAD` 等符号引用不可删除。
 - Tag 的 `Checkout…` 明确提示进入 Detached HEAD。
 - 无变更、无 Staged 文件或没有可用目标时禁用对应操作并说明原因。Detached HEAD 禁用工具栏 Push。Push 对话框先显示实际的 `Local Branch → Remote/Remote Branch`；当前 upstream、`branch.*.pushRemote`、`remote.pushDefault` 或唯一远端可确定目标时不得显示空白可选项。用户通过 `Change Target…` 显式修改目标；首次 Push 说明会建立 upstream。多远端且没有配置目标时要求选择远端。
 - 当前分支存在未推送提交时，工具栏 Push 与仓库导航项使用高饱和通知角标显示数量；用户可以在“界面 / 状态提醒”中选用预设色或输入 HEX，文字自动在黑白之间选择以保持对比，并使用亮色边缘增强辨识度。数量为零时不显示角标。仓库列表先显示，角标状态随后在后台加载，当前仓库的角标随状态刷新即时更新。

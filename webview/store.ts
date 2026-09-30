@@ -16,7 +16,7 @@ const session = readSession(), views = session.views ?? {}, executingRepositorie
 const actionFeedbacks = new Map<string, ActionFeedback>();
 let actionSequence = 0;
 export const defaultLayout: LayoutState = { preset: 'workbench', sidebar: 210, details: 300, diff: 220, diffCollapsed: false, graph: 64, author: 100, date: 120, font: 13, row: 24 };
-export interface CheckoutFailure { reason?: string; paths: string[]; target: string; worktreePath?: string; stashCreated?: boolean; stashOid?: string; detached?: boolean }
+export interface CheckoutFailure { reason?: string; paths: string[]; target: string; worktreePath?: string; stashCreated?: boolean; stashOid?: string; detached?: boolean; trackBranches?: {source:string;name:string;expectedOid?:string}[] }
 interface WorkbenchState {
   appearance: Appearance; settingsBaseline?: InterfaceSettings;
   beginSettings(): void; previewSettings(value: InterfaceSettingsUpdate): void; finishSettings(apply: boolean): void; restoreLayout(): void;
@@ -162,7 +162,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       if (epoch === repositoryEpoch) {
         await get().refresh();
         if(epoch===repositoryEpoch) {
-          const checkout = ['branch.checkout', 'commit.checkout', 'checkout.stash'].includes(action.type) || action.type === 'branch.create' && action.checkout;
+          const checkout = ['branch.checkout', 'commit.checkout', 'checkout.stash'].includes(action.type) || (action.type === 'branch.create' || action.type === 'branch.track') && action.checkout;
           if (checkout) { const snap = get().snapshot; const ref = snap?.refs.find(r => r.kind === 'local' && r.name === snap.branch)?.fullName ?? (snap?.head ? 'HEAD' : undefined); if (ref && !get().checkedRefs?.includes(ref)) get().setCheckedRefs([...(get().checkedRefs ?? []), ref]); }
           set({ notice: demoMode ? (get().language === 'zh-CN' ? `模拟操作：${action.type}；未修改实际仓库。` : `Demo: ${action.type} completed. No disk changes.`) : `${action.type} ✓` });
         }

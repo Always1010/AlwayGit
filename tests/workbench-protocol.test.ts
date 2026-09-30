@@ -24,5 +24,10 @@ describe('Workbench protocol validation', () => {
     expect(actionSchema.parse({type:'branch.delete',names:['topic','fix/a'],expectedOids:{topic:'a'.repeat(40)}})).toMatchObject({names:['topic','fix/a']});
     expect(()=>actionSchema.parse({type:'branch.delete',names:[]})).toThrow();
     expect(actionSchema.parse({type:'remote.delete',remote:'origin',branches:['feature/a'],expectedOids:{'feature/a':'b'.repeat(40)}})).toMatchObject({remote:'origin',branches:['feature/a']});
+    const branches = [{ source: 'refs/remotes/origin/feature/a', name: 'feature/a', expectedOid: 'c'.repeat(40) }];
+    expect(actionSchema.parse({ type: 'branch.track', branches, checkout: true, stashFirst: true, includeUntracked: true })).toEqual({ type: 'branch.track', branches, checkout: true, stashFirst: true, includeUntracked: true });
+    expect(() => actionSchema.parse({ type: 'branch.track', branches: [] })).toThrow();
+    expect(() => actionSchema.parse({ type: 'branch.track', branches: [...branches, { source: 'refs/remotes/origin/feature/b', name: 'feature/b' }], checkout: true })).toThrow();
+    expect(() => actionSchema.parse({ type: 'branch.track', branches, stashFirst: true })).toThrow();
   });
 });

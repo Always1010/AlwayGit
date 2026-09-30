@@ -68,6 +68,8 @@ let demoSnapshot: Snapshot = { repository: repo, branch: 'main', head: commits[0
   { name: 'fix/status-refresh', fullName: 'refs/heads/fix/status-refresh', kind: 'local', oid: commits[8].oid },
   { name: 'origin/main', fullName: 'refs/remotes/origin/main', kind: 'remote', oid: commits[2].oid },
   { name: 'origin/develop', fullName: 'refs/remotes/origin/develop', kind: 'remote', oid: commits[6].oid },
+  { name: 'origin/feature/checkout', fullName: 'refs/remotes/origin/feature/checkout', kind: 'remote', oid: commits[7].oid },
+  { name: 'origin/feature/subtree/api', fullName: 'refs/remotes/origin/feature/subtree/api', kind: 'remote', oid: commits[8].oid },
   { name: 'v0.1.0', fullName: 'refs/tags/v0.1.0', kind: 'tag', oid: commits[14].oid },
 ], stashes: [{ selector: 'stash@{0}', oid: commits[9].oid, subject: 'WIP: repository picker styling' }], worktrees: [{ path: repo.root, head: commits[0].oid, branch: 'refs/heads/main', bare: false, detached: false }, { path: 'D:\\Projects\\AlwayGit-graph', head: commits[3].oid, branch: 'refs/heads/feature/history-graph', bare: false, detached: false }], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 1 };
 const website:Repository={id:'demo-website',root:'D:\\Projects\\website',commonDir:'D:\\Projects\\website\\.git',name:'website'};
@@ -113,6 +115,13 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
       if(!detached&&occupied)throw new RpcError('Branch is in use by another Worktree.','WORKTREE_OCCUPIED',{reason:'worktree-occupied',target,paths:[],worktreePath:occupied.path});
       if(action.type==='checkout.stash'){const stash={selector:'stash@{0}',oid:oid(2000+demoSnapshot.version),subject:'WIP before Checkout'};data.saved.set(stash.oid,structuredClone(demoSnapshot.changes));demoSnapshot.stashes.unshift(stash);demoSnapshot.changes=[];}
       demoSnapshot.branch=detached?'':target;demoSnapshot.head=resolve(target);const tree=demoSnapshot.worktrees[0];if(tree){tree.branch=detached?undefined:target;tree.detached=!!detached;tree.head=demoSnapshot.head;}
+    }
+    else if (action.type === 'branch.track') {
+      const branches=action.branches.map(branch=>{const source=demoSnapshot.refs.find(ref=>ref.kind==='remote'&&ref.fullName===branch.source),existing=demoSnapshot.refs.find(ref=>ref.kind==='local'&&ref.name===branch.name);if(!source||source.symbolicTarget||branch.expectedOid&&source.oid!==branch.expectedOid)throw new Error('Remote branch changed. Refresh and retry.');if(existing&&existing.upstream!==source.name)throw new Error('Local branch has a different upstream.');return {branch,source,existing};});
+      const target=branches[0]?.branch.name,occupied=action.checkout&&demoSnapshot.worktrees.find(tree=>tree.branch?.replace(/^refs\/heads\//,'')===target&&tree.path!==demoSnapshot.repository.root);
+      if(occupied)throw new RpcError('Branch is in use by another Worktree.','WORKTREE_OCCUPIED',{reason:'worktree-occupied',target:target!,paths:[],worktreePath:occupied.path});
+      for(const {branch,source,existing} of branches)if(!existing)demoSnapshot.refs.push({name:branch.name,fullName:'refs/heads/'+branch.name,kind:'local',oid:source.oid,upstream:source.name});
+      if(action.checkout&&branches[0]){demoSnapshot.branch=target!;demoSnapshot.head=branches[0].existing?.oid??branches[0].source.oid;demoSnapshot.upstream=branches[0].source.name;const tree=demoSnapshot.worktrees[0];if(tree){tree.branch='refs/heads/'+target;tree.detached=false;tree.head=demoSnapshot.head;}}
     }
     else if (action.type === 'branch.create') {const target=resolve(action.start??'HEAD');demoSnapshot.refs.push({ name: action.name, fullName: `refs/heads/${action.name}`, kind: 'local', oid: target,upstream:action.start?.startsWith('refs/remotes/')?action.start.slice(13):undefined }); if (action.checkout){demoSnapshot.branch = action.name;demoSnapshot.head=target;} }
     else if (action.type === 'branch.delete') demoSnapshot.refs = demoSnapshot.refs.filter(r => !(r.kind === 'local' && action.names.includes(r.name)));
