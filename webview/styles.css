@@ -116,6 +116,10 @@ h1,h2,p {margin:0;}
 .commit-metadata {display:flex;flex-direction:column;gap:5px;padding:9px 10px;flex:none;overflow-wrap:anywhere;font-size:12px;max-height:46%;overflow:auto;}
 .commit-metadata strong {font-size:var(--workbench-font,13px);}
 .commit-metadata pre {font:inherit;white-space:pre-wrap;overflow-wrap:anywhere;margin:4px 0 0;}
+.comparison-summary {display:grid;grid-template-columns:minmax(0,1fr) 20px minmax(0,1fr);align-items:center;gap:5px;padding:9px 10px;border-bottom:1px solid var(--border);}
+.comparison-summary>div {display:flex;flex-direction:column;gap:3px;min-width:0;}
+.comparison-summary strong {font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.comparison-summary>.codicon {justify-self:center;color:var(--muted);}
 .detail-files {padding:4px;overflow:auto;flex:1;min-height:40px;}
 .file-item {display:flex;align-items:center;gap:5px;text-align:left;width:100%;min-height:28px;border-bottom:1px solid var(--row-border);padding:4px;font-size:12px;}
 .file-status {min-width:17px;flex:none;text-align:center;}

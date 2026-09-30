@@ -25,15 +25,17 @@ export const actionSchema = z.union([
   z.object({ type: z.literal('reset'), target: text, mode: z.enum(['soft', 'mixed', 'hard']) }),
   z.object({ type: z.enum(['operation.continue', 'operation.abort', 'operation.skip']), kind }),
 ]);
-export const requestSchema = z.object({ id: z.string().min(1).max(128), method: z.enum(['repositories', 'addRepository', 'snapshot', 'history', 'details', 'action', 'diff', 'diffPreview', 'copyText', 'openRepository', 'openProject', 'openFile', 'openWorktree', 'pickWorktree', 'showLog', 'saveSession']), repoId: text.optional(), payload: z.unknown().optional() });
+export const requestSchema = z.object({ id: z.string().min(1).max(128), method: z.enum(['repositories', 'addRepository', 'snapshot', 'history', 'details', 'compare', 'action', 'diff', 'diffPreview', 'copyText', 'openRepository', 'openProject', 'openFile', 'openWorktree', 'pickWorktree', 'showLog', 'saveSession']), repoId: text.optional(), payload: z.unknown().optional() });
 export const sessionSchema = z.object({ version: z.literal(2).optional(), language: z.enum(['en', 'zh-CN']).optional(), layout: z.object({ preset: z.enum(['workbench', 'editor']), sidebar: z.number().min(140).max(1200), details: z.number().min(200).max(1600), diff: z.number().min(80).max(1400), author: z.number().min(60).max(800), date: z.number().min(60).max(800), font: z.number().min(10).max(22), row: z.number().min(20).max(48) }).optional(), repoId: text.optional(), drafts: z.record(z.string().max(128), z.string().max(100000)).optional(), views: z.record(z.string().max(128), z.object({ ref: text.optional(), checkedRefs: z.array(text).max(10000).optional(), expandedRefGroups:z.array(text).max(10000).optional(),collapsedSidebarGroups:z.array(text).max(100).optional(), search: z.string().max(1000), selectedOid: text.optional(), selectedStashOid: text.optional(), selectedFile: text.optional(), tab: z.enum(['history', 'changes']) })).optional() }).refine(state => JSON.stringify(state).length <= 1000000, 'Session exceeds the storage limit');
 export const copySchema = z.object({ text: z.string().max(1000000) });
 export const openRepositorySchema = z.object({ newWindow: z.boolean().optional() });
 export const openWorktreeSchema = z.object({ path: text, newWindow: z.boolean().optional() });
 export const historySchema = z.object({ offset: z.number().int().min(0).max(10000000).optional(), limit: z.number().int().min(1).max(1000).optional(), tips: z.array(text).max(10000).optional(), ref: text.optional(), search: z.string().max(1000).optional() });
 export const detailsSchema = z.object({ oid: text, parent: text.optional() });
+export const comparisonSchema = z.object({ left: text, right: text, preserveOrder:z.boolean().optional() });
 export const fileSchema = z.object({ path: text });
 export const diffSchema = z.union([
   z.object({ kind: z.literal('change'), path: text, area: z.enum(['staged', 'unstaged', 'conflict']) }),
   z.object({ kind: z.literal('commit'), oid: text, path: text, parent: text.optional(), previousPath: text.optional() }),
+  z.object({ kind: z.literal('comparison'), left: text, right: text, path: text, previousPath: text.optional() }),
 ]);

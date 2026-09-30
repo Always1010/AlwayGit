@@ -71,6 +71,13 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
       left = { source: details.parent && file.status !== 'A' ? { kind: 'revision', revision: details.parent, path: before } : { kind: 'empty' }, label: details.parent?.slice(0, 8) ?? 'Empty', path: before };
       right = { source: file.status === 'D' ? { kind: 'empty' } : { kind: 'revision', revision: details.commit.oid, path: file.path }, label: details.commit.oid.slice(0, 8), path: file.path };
       label = `${path.basename(file.path)} · ${details.parent?.slice(0, 8) ?? 'empty'} ↔ ${details.commit.oid.slice(0, 8)}`;
+    } else if(target.kind==='comparison'){
+      const comparison=await this.git.compare(repo,target.left,target.right,true),file=comparison.files.find(item=>item.path===target.path);
+      if(!file)throw new Error('This file is not part of the selected comparison.');
+      const before=file.previousPath??file.path;
+      left={source:file.status==='A'?{kind:'empty'}:{kind:'revision',revision:comparison.left.oid,path:before},label:comparison.left.oid.slice(0,8),path:before};
+      right={source:file.status==='D'?{kind:'empty'}:{kind:'revision',revision:comparison.right.oid,path:file.path},label:comparison.right.oid.slice(0,8),path:file.path};
+      label=`${path.basename(file.path)} · ${comparison.left.oid.slice(0,8)} ↔ ${comparison.right.oid.slice(0,8)}`;
     } else {
       const snapshot = await this.git.snapshot(repo);
       const change = snapshot.changes.find(c => c.path === target.path);

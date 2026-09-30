@@ -43,6 +43,11 @@ describe('Bounded Git Diff previews', () => {
     await expect(documents.preview(repo, { kind: 'commit', oid: deleted, path: '../outside.txt' })).rejects.toThrow('not part');
   });
 
+  it('previews a renamed file between any two commits',async()=>{
+    const {root,repo,documents}=await setup();await writeFile(path.join(root,'before.txt'),'common\nleft');const left=await commit(root,'left');await rename(path.join(root,'before.txt'),path.join(root,'after.txt'));await writeFile(path.join(root,'after.txt'),'common\nright');const right=await commit(root,'right');
+    expect(await documents.preview(repo,{kind:'comparison',left,right,path:'after.txt'})).toMatchObject({leftLabel:left.slice(0,8),rightLabel:right.slice(0,8),left:'common\nleft',right:'common\nright'});
+  });
+
   it('bounds large files by bytes and lines and reports binary content without exposing text', async () => {
     const { root, repo, documents } = await setup();
     await writeFile(path.join(root, 'base.txt'), 'base'); await commit(root, 'initial');

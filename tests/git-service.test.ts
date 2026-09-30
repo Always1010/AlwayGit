@@ -68,6 +68,13 @@ describe('Git service integration', () => {
     const detail = await service.details(repo, merge, side); expect(detail.parent).toBe(side); expect(detail.files.map(x => x.path)).toEqual(['main.txt']); await expect(service.details(repo, merge, first)).rejects.toThrow('not a parent');
     const mainDetail = await service.details(repo, merge, main); expect(mainDetail.files.map(x => x.path)).toEqual(['side.txt']);
   });
+  it('compares arbitrary commits and normalizes ancestor direction',async()=>{
+    const {root,service,repo}=await setup();await writeFile(path.join(root,'old.txt'),'common\nbefore');const base=await commit(root,'old.txt','common\nbefore','base');
+    await rename(path.join(root,'old.txt'),path.join(root,'new.txt'));await writeFile(path.join(root,'new.txt'),'common\nafter');await git(root,'add','-A');await git(root,'commit','-m','rename and edit');const latest=await git(root,'rev-parse','HEAD');
+    const comparison=await service.compare(repo,latest,base);
+    expect(comparison.left.oid).toBe(base);expect(comparison.right.oid).toBe(latest);expect(comparison.files).toEqual([{status:expect.stringMatching(/^R/),previousPath:'old.txt',path:'new.txt'}]);
+    const reversed=await service.compare(repo,latest,base,true);expect(reversed.left.oid).toBe(latest);expect(reversed.right.oid).toBe(base);
+  });
   it('reports conflicts, index stages, operation controls and aborts merge', async () => {
     const { root, service, repo } = await setup(); await commit(root, 'same.txt', 'base'); await service.execute(repo, { type: 'branch.create', name: 'topic', checkout: true }); await commit(root, 'same.txt', 'topic'); await service.execute(repo, { type: 'branch.checkout', name: 'main' }); await commit(root, 'same.txt', 'main');
     await expect(service.execute(repo, { type: 'merge', target: 'topic' })).rejects.toThrow(); const snap = await service.snapshot(repo); expect(snap.operation).toMatchObject({ kind: 'merge', conflicts: 1, canContinue: false, canAbort: true, canSkip: false }); expect(snap.changes[0].conflict).toBe(true);

@@ -38,7 +38,7 @@ export function App() {
     else if(candidates.length>1)open({type:'branch.checkout',target:candidates[0].name,candidates:candidates.map(r=>r.name)});
     else open({type:'commit.checkout',target:oid});
   }
-  async function edit(){const current=useWorkbench.getState();if(!current.selectedFile)return;try{await rpc('openFile',current.repoId,{path:current.selectedFile});if(demoMode)useWorkbench.setState({notice:t('Demo: edit in VS Code.','模拟：在 VS Code 中编辑。')});}catch(error){if(current.diffTarget?.kind==='commit')await host('diff',current.diffTarget,current.repoId);else current.report(error);}}
+  async function edit(){const current=useWorkbench.getState();if(!current.selectedFile)return;if(current.diffTarget?.kind==='comparison'){await host('diff',current.diffTarget,current.repoId);return;}try{await rpc('openFile',current.repoId,{path:current.selectedFile});if(demoMode)useWorkbench.setState({notice:t('Demo: edit in VS Code.','模拟：在 VS Code 中编辑。')});}catch(error){if(current.diffTarget?.kind==='commit')await host('diff',current.diffTarget,current.repoId);else current.report(error);}}
   const native=()=>{if(state.diffTarget)void host('diff',state.diffTarget);};
   useEffect(()=>{if(state.layout.preset==='editor'&&state.diffTarget)void host('diff',state.diffTarget,state.repoId);},[state.layout.preset,state.diffTarget,state.repoId]);
   useEffect(()=>{const key=(event:KeyboardEvent)=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='r'){event.preventDefault();void useWorkbench.getState().refresh();}};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);},[]);
