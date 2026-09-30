@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { filePathLabel, fileSelectionForClick, fileSelectionKeyboardCommand, fileSelectionTargets, filterFilesByPath, reconcileFileSelection } from '../webview/fileSelection';
+import { filePathLabel, fileSelectionForClick, fileSelectionTargets, filterFilesByPath, reconcileFileSelection } from '../webview/fileSelection';
+import { selectionKeyboardCommand } from '../webview/selectionKeyboard';
 
 describe('file path labels', () => {
   it('keeps the complete repository-relative parent chain at arbitrary depth', () => {
@@ -68,16 +69,17 @@ describe('file list keyboard commands', () => {
   const plain = { ctrlKey: false, metaKey: false, altKey: false, shiftKey: false };
 
   it('recognizes Windows and macOS select-all and Escape within file lists', () => {
-    expect(fileSelectionKeyboardCommand('a', { ...plain, ctrlKey: true }, false)).toBe('all');
-    expect(fileSelectionKeyboardCommand('A', { ...plain, metaKey: true }, false)).toBe('all');
-    expect(fileSelectionKeyboardCommand('Escape', plain, false)).toBe('clear');
-    expect(fileSelectionKeyboardCommand('a', plain, false)).toBeUndefined();
-    expect(fileSelectionKeyboardCommand('a', { ...plain, ctrlKey: true, altKey: true }, false)).toBeUndefined();
+    expect(selectionKeyboardCommand('a', { ...plain, ctrlKey: true }, false)).toBe('all');
+    expect(selectionKeyboardCommand('A', { ...plain, metaKey: true }, false)).toBe('all');
+    expect(selectionKeyboardCommand('Escape', plain, false)).toBe('clear');
+    expect(selectionKeyboardCommand('a', plain, false)).toBeUndefined();
+    expect(selectionKeyboardCommand('a', { ...plain, ctrlKey: true, altKey: true }, false)).toBeUndefined();
+    expect(selectionKeyboardCommand('a', { ...plain, ctrlKey: true, shiftKey: true }, false)).toBeUndefined();
   });
 
   it('preserves native editing keys in inputs, textareas, and editable content', () => {
-    expect(fileSelectionKeyboardCommand('a', { ...plain, ctrlKey: true }, true)).toBeUndefined();
-    expect(fileSelectionKeyboardCommand('a', { ...plain, metaKey: true }, true)).toBeUndefined();
-    expect(fileSelectionKeyboardCommand('Escape', plain, true)).toBeUndefined();
+    expect(selectionKeyboardCommand('a', { ...plain, ctrlKey: true }, true)).toBeUndefined();
+    expect(selectionKeyboardCommand('a', { ...plain, metaKey: true }, true)).toBeUndefined();
+    expect(selectionKeyboardCommand('Escape', plain, true)).toBeUndefined();
   });
 });

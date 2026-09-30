@@ -9,6 +9,7 @@ import type { ContextHandler } from './Sidebar';
 import { selectionForClick } from './commitSelection';
 import { effectiveRowHeight } from './appearance';
 import { buildHistoryItems, WORKING_TREE_OID, type HistoryItem } from './historyItems';
+import { handleSelectionKeyboard } from './selectionKeyboard';
 
 const sameGraphPrefix = (prior: readonly GraphCommit[], next: readonly GraphCommit[]) => prior.every((commit,index)=>{
   const candidate=next[index];
@@ -53,7 +54,8 @@ export function History({ context, checkout, checkoutBranch }: { context: Contex
   const move=(index:number,direction:-1|1)=>{const next=Math.min(items.length-1,Math.max(0,index+direction)),item=items[next];if(item&&next!==index){pendingRowFocus.current=item.key;virtual.scrollToIndex(next,{align:'auto'});selectItem(item);}};
   const keyboard=(event:React.KeyboardEvent,index:number,item:HistoryItem)=>{if(event.key==='Enter'){event.preventDefault();event.stopPropagation();if(item.kind==='working')state.selectWorking();else choose(event,item);}else if(event.key==='ArrowUp'||event.key==='ArrowDown'){event.preventDefault();event.stopPropagation();move(index,event.key==='ArrowDown'?1:-1);}else if(item.kind==='commit'&&(event.key==='ContextMenu'||event.shiftKey&&event.key==='F10')){event.preventDefault();event.stopPropagation();openContext(event,item.oid);}};
   const conflictCount=state.snapshot?.changes.filter(change=>change.conflict).length??0,changeCount=state.snapshot?.changes.length??0,branch=state.snapshot?.branch||'Detached HEAD';
-  return <section className="history-panel" data-testid="history">
+  const selectionKeys=(event:React.KeyboardEvent<HTMLElement>)=>{const oids=items.flatMap(item=>item.kind==='commit'?[item.oid]:[]),primary=state.selectedOid&&oids.includes(state.selectedOid)?state.selectedOid:oids[0];handleSelectionKeyboard(event,()=>state.setCommitSelection(oids,primary,primary),()=>state.setCommitSelection([]));};
+  return <section className="history-panel" data-testid="history" onKeyDownCapture={selectionKeys}>
     <div className="pane-heading"><strong>Graph · {t('Commit History','提交历史')}</strong><label className="search"><Icon name="search"/><input aria-label="Search commit history" placeholder={t('Filter commit messages…','过滤 Commit 信息…')} value={state.search} onChange={e=>state.setSearch(e.target.value)}/></label></div>
     <div className="history-caption selection-summary"><span>{state.checkedRefs?.length??0} {t('refs','个引用')} · {state.commits.length}{state.hasMore?'+':''} Commit · {t('Shared ancestry shown once','共同历史合并展示')}{state.selectedOids.length>1?` · ${state.selectedOids.length} ${t('Commits selected','个 Commit 已选择')}`:''}</span><div className="push-state-legend" aria-label={t('Commit push status legend','Commit 推送状态图例')}><span><i className="push-node pushed"/>{t('Pushed','已推送')}</span><span><i className="push-node local"/>{t('Local only','仅本地')}</span></div>{state.selectedOids.length>1&&<Button icon="close" onClick={()=>state.setCommitSelection([])}>{t('Clear','清除')}</Button>}</div>
     <div className="history-table" role="table" aria-label="Commit history" aria-multiselectable="true" aria-rowcount={items.length+1}>

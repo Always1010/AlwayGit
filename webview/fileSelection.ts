@@ -33,9 +33,3 @@ export function fileSelectionTargets(order: readonly string[], selection: FileSe
   const selected = reconcileFileSelection(order, selection).paths;
   return selected.length || !allWhenEmpty ? selected : [...new Set(order)];
 }
-
-export function fileSelectionKeyboardCommand(key: string, modifiers: { ctrlKey: boolean; metaKey: boolean; altKey: boolean; shiftKey: boolean }, editable: boolean): 'all' | 'clear' | undefined {
-  if (editable) return;
-  if (key === 'Escape') return 'clear';
-  if (key.toLowerCase() === 'a' && (modifiers.ctrlKey || modifiers.metaKey) && !modifiers.altKey && !modifiers.shiftKey) return 'all';
-}
