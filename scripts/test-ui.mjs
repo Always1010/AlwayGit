@@ -10,6 +10,7 @@ import { verifyHistoryRows } from './test-history-ui.mjs';
 import { verifyDiffNavigation } from './test-diff-ui.mjs';
 import { verifyWorktrees } from './test-worktrees-ui.mjs';
 import { verifyAppearance } from './test-appearance-ui.mjs';
+import { verifyRemoteTracking } from './test-remote-tracking-ui.mjs';
 
 const root = path.resolve('dist/webview');
 const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.ttf': 'font/ttf', '.woff2': 'font/woff2', '.svg': 'image/svg+xml' };
@@ -27,7 +28,10 @@ let browser;
 try {
   browser = await chromium.launch(process.env.ALWAYGIT_BROWSER_EXECUTABLE ? { executablePath: process.env.ALWAYGIT_BROWSER_EXECUTABLE } : process.platform === 'win32' ? { channel: 'msedge' } : {});
   const url = `http://127.0.0.1:${server.address().port}/?demo=1`;
-  if (process.argv.includes('--worktrees-only')) {
+  if (process.argv.includes('--remote-tracking-only')) {
+    await verifyRemoteTracking(browser,url);
+    console.log('ALWAYGIT_UI_TESTS_PASSED: remote-tracking-only');
+  } else if (process.argv.includes('--worktrees-only')) {
     await verifyWorktrees(browser, url);
     console.log('ALWAYGIT_UI_TESTS_PASSED: worktrees-only');
   } else if (process.argv.includes('--files-only')) {
@@ -122,7 +126,8 @@ try {
   await assertMenu(sidebar.getByRole('option', { name: /^AlwayGit/ }), ['Switch to Repository', 'Open in New AlwayGit Tab', 'Open in New Window', 'Fetch…', 'Refresh Status', 'Copy Repository Path']);
   const localHeading = sidebar.getByRole('button', { name: 'Local Branches', exact: true });
   await localHeading.click();
-  await sidebar.getByRole('button', { name: 'Expand feature', exact: true }).waitFor({ state: 'hidden' });
+  const localTree=sidebar.locator('.branch-tree[data-ref-kind="local"]');
+  await localTree.getByRole('button', { name: 'Expand feature', exact: true }).waitFor({ state: 'hidden' });
   await localHeading.click();
   await assertIconActions(localHeading.locator('..'), ['Create Branch…']);
   await assertIconActions(sidebar.locator('.branch-shortcuts'), ['Show All in Graph', 'Show Current Branch Only in Graph', 'Show None in Graph']);
@@ -130,7 +135,7 @@ try {
   const createBranchDialog = page.getByRole('dialog', { name: 'Create Branch', exact: true });
   await createBranchDialog.waitFor();
   await createBranchDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await sidebar.getByRole('button', { name: 'Expand feature', exact: true }).click();
+  await localTree.getByRole('button', { name: 'Expand feature', exact: true }).click();
   await sidebar.getByRole('button', { name: 'Expand login', exact: true }).click();
   await sidebar.getByRole('button', { name: 'Branch feature/login/api', exact: true }).waitFor();
   const currentBranch = sidebar.getByRole('button', { name: 'Branch main', exact: true });
@@ -157,7 +162,7 @@ try {
   await dialog.getByText('feature/login/api',{exact:true}).waitFor();
   await dialog.getByText('feature/test',{exact:true}).waitFor();
   await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
-  const featureFolder=sidebar.getByRole('button',{name:'Collapse feature',exact:true}).locator('..');
+  const featureFolder=localTree.getByRole('button',{name:'Collapse feature',exact:true}).locator('..');
   await featureFolder.click({button:'right'});
   await menu.waitFor();
   assert.ok((await menu.getByRole('menuitem').allTextContents()).some(value=>value.trim()==='Copy Branch Names'),'Branch folders use the custom branch menu');
@@ -165,7 +170,7 @@ try {
   await assertIconActions(sidebar.getByRole('button', { name: 'Remotes', exact: true }).locator('..'), ['Fetch…', 'Refresh']);
   await assertIconActions(sidebar.getByRole('button', { name: 'origin', exact: true }).locator('..'), ['Fetch…', 'Refresh']);
   const remoteBranch = sidebar.getByRole('button', { name: 'Branch origin/develop', exact: true });
-  await assertMenu(remoteBranch, ['Show in Graph', 'Show Only This Branch', 'Create Tracking Branch…', 'Merge…', 'Rebase…', 'Delete Branch from origin…', 'Copy Branch Name']);
+  await assertMenu(remoteBranch, ['Show in Graph', 'Show Only This Branch', 'Checkout as Local Branch…', 'Merge…', 'Rebase…', 'Delete Branch from origin…', 'Copy Branch Name']);
   const remoteMain=sidebar.getByRole('button',{name:'Branch origin/main',exact:true});
   await remoteBranch.click();await remoteMain.click({modifiers:['Control']});await openMenu(remoteBranch);
   assert.ok((await menu.getByRole('menuitem').allTextContents()).some(value=>value.trim()==='Delete 2 Branches from origin…'),'Remote multi-selection exposes an explicit remote deletion action');
@@ -196,9 +201,9 @@ try {
   assert.equal(await dialog.getByLabel('Target Commit', { exact: true }).inputValue(), 'refs/heads/feature/history-graph');
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
   await openMenu(remoteBranch);
-  await menu.getByRole('menuitem', { name: 'Create Tracking Branch…', exact: true }).click();
+  await menu.getByRole('menuitem', { name: 'Checkout as Local Branch…', exact: true }).click();
   await dialog.waitFor();
-  assert.equal(await dialog.getByLabel('Start Point', { exact: true }).inputValue(), 'refs/remotes/origin/develop');
+  assert.equal(await dialog.getByLabel('Local branch for origin/develop', { exact: true }).inputValue(), 'develop');
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
   await openMenu(stash);
   await menu.getByRole('menuitem', { name: 'Pop Stash', exact: true }).click();
@@ -225,7 +230,7 @@ try {
 
   await sidebar.getByRole('button', { name: 'Show None in Graph', exact: true }).click();
   await history.getByText('No branches selected', { exact: true }).waitFor();
-  const featureGroup = sidebar.getByLabel('Show branch group feature', { exact: true });
+  const featureGroup = localTree.getByLabel('Show branch group feature', { exact: true });
   await featureGroup.check();
   await history.getByText(/^3 refs/).waitFor();
   await featureGroup.uncheck();
@@ -312,6 +317,7 @@ try {
   await verifyFiles(browser, url);
   await verifyDiffNavigation(browser, url);
   await verifyWorktrees(browser, url);
+  await verifyRemoteTracking(browser, url);
   console.log('ALWAYGIT_UI_TESTS_PASSED: four-pane layout, complete context menus, focus/viewport keyboard behavior, targeted dialogs, resizing and header scroll sync, Locate HEAD, multi-ref filtering, language/session, Diff preview, compact themes');
   }
 } finally {

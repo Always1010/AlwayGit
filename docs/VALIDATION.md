@@ -41,7 +41,8 @@ npm run package
 - 添加分类目录递归发现多层仓库、`.git` 文件 Worktree、已有仓库去重、一次保存与列表通知、取消不产生部分添加；损坏仓库与无法访问目录跳过，目录链接和 junction 不跟随，已有会话保持。
 - 同一共享 Git 存储的工作目录在顶层只显示一次；独立克隆与独立 Git 存储保持正确身份。覆盖旧保存路径恢复、直接添加 Worktree、VS Code 自动发现、主目录优先选择、活动 Worktree / 菜单目标、各工作目录草稿与文件状态隔离。
 - 多引用历史首次查询与分页使用相同 tips，共同祖先无重复。
-- Checkout 成功、当前分支、脏文件可能被覆盖、未解决冲突和 Worktree 占用。
+- Checkout 成功、当前分支、脏文件可能被覆盖、未解决冲突和 Worktree 占用；单个远程分支创建并 Checkout、本地跟踪分支复用和 Stash 重试。
+- 远程分支目录递归批量创建本地跟踪分支，保持当前 HEAD；批量名称、upstream、符号引用、远程来源和层级冲突在写入前完成验证。
 - `Stash Changes & Checkout` 分步结果；Checkout 失败时保留已经创建的 Stash。
 - Apply、Pop、Drop Stash 在列表变化后仍验证正确对象。
 - 同一文件同时含 Staged / Unstaged 修改时，Discard 只处理工作区一侧。

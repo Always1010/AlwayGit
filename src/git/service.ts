@@ -224,9 +224,9 @@ export class GitService implements GitServiceContract {
     const operation = prior.catch(() => {}).then(async () => { await this.verify(repo); await this.executeNow(repo, action); });
     queues.set(key, operation); try { await operation; } finally { if (queues.get(key) === operation) queues.delete(key); }
   }
-  private async checkout(repo: Repository, target: string, detached = false, stashFirst = false, includeUntracked = false): Promise<void> {
+  private async checkout(repo: Repository, target: string, detached = false, stashFirst = false, includeUntracked = false, createFrom?: string): Promise<void> {
     const resolved = detached ? await this.oid(repo, target) : await this.refName(repo, target);
-    if (!detached) await this.oid(repo, `refs/heads/${resolved}`);
+    if (!detached && !createFrom) await this.oid(repo, `refs/heads/${resolved}`);
     const snapshot = await this.snapshot(repo);
     const conflictPaths = snapshot.changes.filter(change => change.conflict).map(change => change.path);
     if (conflictPaths.length || snapshot.operation.kind) {
@@ -243,7 +243,7 @@ export class GitService implements GitServiceContract {
       if (saved !== previous) stashOid = saved;
     }
     try {
-      await this.run(repo, ['-c', 'core.quotePath=false', 'switch', ...(detached ? ['--detach'] : []), '--', resolved]);
+      await this.run(repo, ['-c', 'core.quotePath=false', 'switch', ...(createFrom ? ['-c', resolved, '--track', '--', createFrom] : [...(detached ? ['--detach'] : []), '--', resolved])]);
     } catch (error) {
       const cause = error instanceof Error ? error.message : String(error);
       const blocked = /would be overwritten|local changes|needs merge|unmerged/i.test(cause);
@@ -255,6 +255,56 @@ export class GitService implements GitServiceContract {
       const details: CheckoutBlocker = { reason: blocked ? 'local-changes' : 'checkout-failed', paths, target, ...(stashOid ? { stashCreated: true, stashOid } : stashFirst ? { stashCreated: false } : {}) };
       const message = `${cause}${stashOid ? `\nStash ${stashOid} was created and retained. Checkout did not complete; your saved changes remain in Stashes.` : ''}`;
       throw new GitError(message, blocked ? 'CHECKOUT_BLOCKED' : error instanceof GitError ? error.code : 'CHECKOUT_FAILED', error instanceof GitError ? error.stdout : '', error instanceof GitError ? error.stderr : '', details);
+    }
+  }
+  private async trackBranches(repo: Repository, action: Extract<GitAction, { type: 'branch.track' }>): Promise<void> {
+    if (!action.branches.length || action.branches.length > 1000 || (action.checkout && action.branches.length !== 1) || (action.stashFirst && !action.checkout)) throw new GitError('Select up to 1000 branches; Checkout and Stash require a single branch.', 'INVALID_ARGUMENT');
+    // Re-read full ref names under the common-directory write queue. Short names
+    // are ambiguous across remotes and upstreams may have changed since the UI opened.
+    const [output, remoteOutput] = await Promise.all([
+      this.text(repo, ['for-each-ref', '--format=%(refname)%00%(objectname)%00%(upstream)%00%(symref)%00%(objecttype)', 'refs/heads', 'refs/remotes']),
+      this.text(repo, ['remote']),
+    ]);
+    const refs = new Map(output.split('\n').filter(Boolean).map(line => { const [fullName, oid, upstream, symbolicTarget, type] = line.split('\0'); return [fullName, { oid, upstream, symbolicTarget, type }] as const; }));
+    const remotes = remoteOutput.split('\n').filter(Boolean);
+    const plan: { source: string; name: string; exists: boolean }[] = [];
+    const names = new Map<string, string>();
+    for (const branch of action.branches) {
+      const name = await this.refName(repo, branch.name), source = token(branch.source, 'remote reference');
+      const remoteRef = refs.get(source);
+      if (!source.startsWith('refs/remotes/') || !remotes.some(remote => source.startsWith(`refs/remotes/${remote}/`)) || !remoteRef || remoteRef.symbolicTarget || remoteRef.type !== 'commit') throw new GitError(`Select an existing remote branch rather than a symbolic reference: ${source}`, 'INVALID_ARGUMENT');
+      if (branch.expectedOid && remoteRef.oid !== branch.expectedOid) throw new GitError(`Remote branch changed. Refresh and select it again: ${source}`, 'OPERATION_CHANGED');
+      const prior = names.get(name);
+      if (prior && prior !== source) throw new GitError(`Multiple remote branches would use the same local name: ${name}. Choose distinct local names.`, 'BRANCH_EXISTS');
+      if (prior) continue;
+      names.set(name, source);
+      const local = refs.get(`refs/heads/${name}`);
+      if (local && (local.symbolicTarget || local.upstream !== source)) throw new GitError(`Local branch ${name} already exists and does not track ${source.replace('refs/remotes/', '')}. Choose another local name.`, 'BRANCH_EXISTS');
+      // refs/heads/feature and refs/heads/feature/a cannot coexist. Detect this
+      // before creating any branch, including collisions within the batch.
+      const collision = [...refs.keys()].filter(ref => ref.startsWith('refs/heads/')).map(ref => ref.slice('refs/heads/'.length)).concat([...names.keys()]).find(other => other !== name && (other.startsWith(`${name}/`) || name.startsWith(`${other}/`)));
+      if (collision) throw new GitError(`Local branch names conflict: ${name} and ${collision}. Choose another local name.`, 'BRANCH_EXISTS');
+      plan.push({ source, name, exists: !!local });
+    }
+    if (action.checkout) {
+      const branch = plan[0];
+      try { await this.checkout(repo, branch.name, false, action.stashFirst, action.includeUntracked, branch.exists ? undefined : branch.source); }
+      catch (error) {
+        if (error instanceof GitError && error.details) throw new GitError(error.message, error.code, error.stdout, error.stderr, { ...error.details, trackBranches: action.branches });
+        throw error;
+      }
+      return;
+    }
+    let created = 0;
+    for (const branch of plan) {
+      if (branch.exists) continue;
+      try { await this.run(repo, ['branch', '--track', '--', branch.name, branch.source]); created++; }
+      catch (error) {
+        // An external Git process can race the preflight. Report exactly how far
+        // this operation got; never roll back refs which the user may now be using.
+        if (!created) throw error;
+        throw new GitError(`${created} local branch(es) created; creation stopped at ${branch.name}. Refresh before retrying.\n${error instanceof Error ? error.message : String(error)}`, 'PARTIAL_FAILURE');
+      }
     }
   }
   private async validateStash(repo: Repository, selector: string, expectedOid?: string): Promise<string> {
@@ -312,6 +362,7 @@ export class GitService implements GitServiceContract {
         if (upstream) await this.run(repo, ['show-ref', '--verify', '--', upstream]); args = action.checkout ? ['switch', '-c', name] : ['branch', name]; if (start) args.push(start); await this.run(repo, args); if (upstream) await this.run(repo, ['branch', `--set-upstream-to=${upstream}`, '--', name]); return;
       }
       case 'branch.checkout': return this.checkout(repo, action.name);
+      case 'branch.track': return this.trackBranches(repo, action);
       case 'commit.checkout': return this.checkout(repo, action.target, true);
       case 'checkout.stash': return this.checkout(repo, action.target, action.detached, true, action.includeUntracked);
       case 'branch.delete': {

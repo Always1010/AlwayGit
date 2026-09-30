@@ -294,6 +294,12 @@ h1,h2,p {margin:0;}
 .modal-footer {display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap;padding:10px 13px;border-top:1px solid var(--border);}
 .warning-text,.form-error {color:var(--error);}
 .discard-paths {overflow:auto;max-height:150px;font:12px/1.7 var(--vscode-editor-font-family,Consolas,monospace);overflow-wrap:anywhere;}
+.remote-tracking-list {display:grid;gap:10px;max-height:45vh;overflow:auto;}
+.remote-tracking-row {display:grid;grid-template-columns:minmax(0,1fr) 16px minmax(0,1fr);gap:4px 8px;align-items:center;}
+.remote-tracking-source {overflow-wrap:anywhere;font-family:var(--vscode-editor-font-family,Consolas,monospace);}
+.remote-tracking-row small {grid-column:1/-1;}
+.remote-tracking-row .form-field {min-width:0;}
+.remote-tracking-row .form-field>span {font-size:11px;color:var(--muted);}
 .connection-screen {height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:15px;padding:20px;text-align:center;}
 .workbench ::-webkit-scrollbar {width:6px;height:6px;}
 .workbench ::-webkit-scrollbar-track,.workbench ::-webkit-scrollbar-corner {background:transparent;}

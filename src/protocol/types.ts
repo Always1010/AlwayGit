@@ -21,6 +21,7 @@ export type GitAction =
   | { type: 'pull'; strategy: 'ff-only' | 'merge' | 'rebase'; remote?: string }
   | { type: 'push'; remote?: string; branch?: string; remoteBranch?: string; setUpstream?: boolean; forceWithLease?: boolean }
   | { type: 'branch.create'; name: string; start?: string; checkout?: boolean }
+  | { type: 'branch.track'; branches: { source: string; name: string; expectedOid?: string }[]; checkout?: boolean; stashFirst?: boolean; includeUntracked?: boolean }
   | { type: 'branch.checkout'; name: string }
   | { type: 'commit.checkout'; target: string }
   | { type: 'checkout.stash'; target: string; detached?: boolean; includeUntracked?: boolean }
@@ -40,7 +41,7 @@ export type GitAction =
 export type ContentSource = { kind: 'revision'; revision: string; path: string } | { kind: 'index'; path: string; stage?: 0 | 1 | 2 | 3 } | { kind: 'empty' };
 export type DiffTarget = { kind: 'change'; path: string; area: 'staged' | 'unstaged' | 'conflict' } | { kind: 'commit'; oid: string; path: string; parent?: string; previousPath?: string } | { kind: 'comparison'; left: string; right: string; path: string; previousPath?: string };
 export interface DiffPreview { path: string; leftLabel: string; rightLabel: string; left: string; right: string; binary?: boolean; truncated?: boolean }
-export interface CheckoutBlocker { reason: 'local-changes' | 'conflicts' | 'operation-active' | 'worktree-occupied' | 'checkout-failed'; paths: string[]; target: string; worktreePath?: string; stashOid?: string; stashCreated?: boolean }
+export interface CheckoutBlocker { reason: 'local-changes' | 'conflicts' | 'operation-active' | 'worktree-occupied' | 'checkout-failed'; paths: string[]; target: string; worktreePath?: string; stashOid?: string; stashCreated?: boolean; trackBranches?: { source: string; name: string; expectedOid?: string }[] }
 export interface RpcRequest { id: string; method: 'repositories' | 'repositoryStatuses' | 'addRepository' | 'snapshot' | 'history' | 'details' | 'compare' | 'action' | 'diff' | 'diffPreview' | 'copyText' | 'openRepository' | 'openProject' | 'openFile' | 'openWorktree' | 'pickWorktree' | 'showLog' | 'saveSession'; repoId?: string; payload?: unknown }
 /** Missing paths means the source cannot limit which working files changed. */
 export interface RepositoryChanges { paths?: string[]; index?: boolean }

@@ -29,17 +29,17 @@ function TreeCheckbox({label,checked,mixed,onChange}:{label:string;checked:boole
   return <label className="branch-check"><input ref={element} type="checkbox" aria-label={label} checked={checked} onChange={event=>onChange(event.target.checked)}/></label>;
 }
 
-function BranchLeaf({refItem,depth,order,context,checkoutBranch}:{refItem:GitRef;depth:number;order:GitRef[];context:ContextHandler;checkoutBranch(name:string):void}) {
+function BranchLeaf({refItem,depth,order,context,checkoutBranch}:{refItem:GitRef;depth:number;order:GitRef[];context:ContextHandler;checkoutBranch(name:string,remote?:boolean):void}) {
   const state=useWorkbench(),current=refItem.kind==='local'&&refItem.name===state.snapshot?.branch,selected=state.selectedRefs.includes(refItem.fullName);
   const choose=(event:React.MouseEvent|React.KeyboardEvent)=>{const names=order.map(ref=>ref.fullName),existing=state.selectedRefs.filter(name=>names.includes(name)),next=selectionForClick(names,existing,state.refSelectionAnchor,refItem.fullName,{toggle:event.ctrlKey||event.metaKey,range:event.shiftKey});state.setRefSelection(next.selected,next.anchor);void state.selectCommit(refItem.oid);};
   const openContext=(event:React.MouseEvent|React.KeyboardEvent)=>{const refs=selected?order.filter(ref=>state.selectedRefs.includes(ref.fullName)):[refItem];if(!selected)state.setRefSelection([refItem.fullName],refItem.fullName);context(event,{kind:'ref',ref:refItem,refs});};
   return <div className={`ref-row tree-row ${selected?'action-selected':''}`} style={{'--tree-depth':depth} as React.CSSProperties} onContextMenu={openContext} role="treeitem" aria-selected={selected}>
     <span className="tree-spacer"/>{refItem.kind!=='tag'&&<TreeCheckbox label={`Show branch ${refItem.name}`} checked={state.checkedRefs?.includes(refItem.fullName)??false} mixed={false} onChange={checked=>state.setCheckedRefs(checked?[...(state.checkedRefs??[]),refItem.fullName]:(state.checkedRefs??[]).filter(name=>name!==refItem.fullName))}/>}
-    <button className="sidebar-item ref-item" aria-label={`Branch ${refItem.name}`} aria-current={current?'true':undefined} title={`${refItem.fullName}${current?' · HEAD':''}`} onClick={choose} onDoubleClick={()=>{if(refItem.kind==='local')checkoutBranch(refItem.name);}} onKeyDown={event=>{if(event.key==='ContextMenu'||event.shiftKey&&event.key==='F10'){event.preventDefault();openContext(event);}}}><CurrentIndicator current={current}/><Icon name={refItem.kind==='remote'?'cloud':'git-branch'}/><span className="truncate">{refItem.name.split('/').at(-1)}</span></button>
+    <button className="sidebar-item ref-item" aria-label={`Branch ${refItem.name}`} aria-current={current?'true':undefined} title={`${refItem.fullName}${current?' · HEAD':''}`} onClick={choose} onDoubleClick={()=>{if(refItem.kind==='local')checkoutBranch(refItem.name);else if(refItem.kind==='remote')checkoutBranch(refItem.fullName,true);}} onKeyDown={event=>{if(event.key==='ContextMenu'||event.shiftKey&&event.key==='F10'){event.preventDefault();openContext(event);}}}><CurrentIndicator current={current}/><Icon name={refItem.kind==='remote'?'cloud':'git-branch'}/><span className="truncate">{refItem.name.split('/').at(-1)}</span></button>
   </div>;
 }
 
-function BranchNode({node,depth,order,context,checkoutBranch}:{node:RefTreeNode;depth:number;order:GitRef[];context:ContextHandler;checkoutBranch(name:string):void}) {
+function BranchNode({node,depth,order,context,checkoutBranch}:{node:RefTreeNode;depth:number;order:GitRef[];context:ContextHandler;checkoutBranch(name:string,remote?:boolean):void}) {
   const state=useWorkbench(),t=useTranslation(),hasChildren=node.children.length>0;
   if(!hasChildren&&node.ref)return <BranchLeaf refItem={node.ref} depth={depth} order={order} context={context} checkoutBranch={checkoutBranch}/>;
   const refs=refsUnder(node),selected=refs.filter(ref=>state.checkedRefs?.includes(ref.fullName)).length,expanded=state.expandedRefGroups?.includes(node.key)??false;
@@ -54,12 +54,12 @@ function BranchNode({node,depth,order,context,checkoutBranch}:{node:RefTreeNode;
   </div>;
 }
 
-function BranchTree({refs,keyPrefix,stripPrefix='',context,checkoutBranch}:{refs:GitRef[];keyPrefix:string;stripPrefix?:string;context:ContextHandler;checkoutBranch(name:string):void}) {
+function BranchTree({refs,keyPrefix,stripPrefix='',context,checkoutBranch}:{refs:GitRef[];keyPrefix:string;stripPrefix?:string;context:ContextHandler;checkoutBranch(name:string,remote?:boolean):void}) {
   const state=useWorkbench(),nodes=buildRefTree(refs,keyPrefix,stripPrefix),order=nodes.flatMap(refsUnder),names=order.map(ref=>ref.fullName);
-  return <div className="branch-tree" role="tree" aria-multiselectable="true" onKeyDown={event=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='a'){event.preventDefault();state.setRefSelection(names,names[0]);}else if(event.key==='Escape'){event.preventDefault();state.setRefSelection([]);}}}>{nodes.map(node=><BranchNode key={node.key} node={node} depth={0} order={order} context={context} checkoutBranch={checkoutBranch}/>)}</div>;
+  return <div className="branch-tree" data-ref-kind={refs[0]?.kind} role="tree" aria-multiselectable="true" onKeyDown={event=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='a'){event.preventDefault();state.setRefSelection(names,names[0]);}else if(event.key==='Escape'){event.preventDefault();state.setRefSelection([]);}}}>{nodes.map(node=><BranchNode key={node.key} node={node} depth={0} order={order} context={context} checkoutBranch={checkoutBranch}/>)}</div>;
 }
 
-export function Sidebar({ context, actions, checkoutBranch, openWorktree }: { context: ContextHandler; actions:SidebarActionProvider; checkoutBranch(name:string):void; openWorktree(path:string):void }) {
+export function Sidebar({ context, actions, checkoutBranch, openWorktree }: { context: ContextHandler; actions:SidebarActionProvider; checkoutBranch(name:string,remote?:boolean):void; openWorktree(path:string):void }) {
   const state=useWorkbench(),snapshot=state.snapshot,t=useTranslation();
   const keyboard=(event:React.KeyboardEvent,target:MenuTarget,activate?:()=>void)=>{if(event.key==='ContextMenu'||event.shiftKey&&event.key==='F10'){event.preventDefault();context(event,target);}else if(event.key==='Enter'&&activate){event.preventDefault();activate();}};
   const heading=(label:string,group:Group)=>{const target:MenuTarget={kind:'group',group},collapsed=state.collapsedSidebarGroups.includes(group),items=actions(target);return <div className="sidebar-heading" onContextMenu={event=>context(event,target)}><Button className="heading-toggle" icon={collapsed?'chevron-right':'chevron-down'} title={label} aria-expanded={!collapsed} onClick={()=>state.toggleSidebarGroup(group)}><span className="truncate">{label}</span></Button><SidebarActions items={group==='local'?items.slice(0,1):items}/></div>;};
