@@ -1,5 +1,10 @@
 export interface FileSelection { paths: string[]; anchor?: string }
 
+export function filterFilesByPath<T extends { path: string }>(files: readonly T[], query: string): T[] {
+  const needle = query.trim().toLowerCase();
+  return needle ? files.filter(file => file.path.toLowerCase().includes(needle)) : [...files];
+}
+
 /** Git paths use forward slashes; preserve every parent segment and the original path. */
 export function filePathLabel(path: string): { name: string; parent: string } {
   const separator = path.lastIndexOf('/');
