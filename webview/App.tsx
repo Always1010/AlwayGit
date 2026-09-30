@@ -3,7 +3,7 @@ import type React from 'react';
 import type { RpcRequest } from '../src/protocol/types';
 import { connected, demoMode, rpc } from './rpc';
 import { useWorkbench } from './store';
-import { diffRowHeight, effectiveRowHeight, useResolvedTheme } from './appearance';
+import { diffRowHeight, effectiveRowHeight, isLightTheme, useResolvedTheme } from './appearance';
 import { SettingsDialog } from './SettingsDialog';
 import { useTranslation } from './i18n';
 import { ActionDialog } from './ActionDialog';
@@ -22,7 +22,7 @@ import { Button, Empty, Icon, Modal, ResizeHandle } from './ui';
 
 export function App() {
   const state=useWorkbench(),t=useTranslation(),[dialog,setDialog]=useState<DialogRequest>(),[context,setContext]=useState<{x:number;y:number;target:MenuTarget}>();
-  const theme=useResolvedTheme(state.appearance.theme),lightTheme=theme.includes('light');
+  const theme=useResolvedTheme(state.appearance.theme),lightTheme=isLightTheme(theme);
   const paletteColors=lightTheme?state.appearance.colors.light:state.appearance.colors.dark;
   useEffect(()=>{if(connected)void useWorkbench.getState().initialize();},[]);
   useEffect(()=>{setDialog(undefined);setContext(undefined);},[state.repoId,state.language]);
