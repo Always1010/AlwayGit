@@ -37,6 +37,12 @@ describe('repository UI consistency', () => {
     expect(bridge.save.mock.calls.at(-1)?.[0]).toMatchObject({version:2,language:'zh-CN',layout:{preset:'editor',sidebar:240,details:320}});
     expect(bridge.rpc.mock.calls.some(([method])=>method==='action')).toBe(false);
   });
+  it('opens a two-commit comparison and selects its first changed file',async()=>{
+    await store.getState().selectRepository('a');const left={...commit,oid:'left',subject:'Left'},right={...commit,oid:'right',subject:'Right'},fallback=bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method,repoId,payload)=>method==='compare'?Promise.resolve({left,right,files:[{path:'changed.txt',status:'M'}]}):fallback(method,repoId,payload));
+    await store.getState().compareCommits(left.oid,right.oid);
+    expect(store.getState().comparison).toMatchObject({left:{oid:'left'},right:{oid:'right'}});expect(store.getState().diffTarget).toEqual({kind:'comparison',left:'left',right:'right',path:'changed.txt'});
+  });
   it('ignores operation success after switching during its refresh', async () => {
     await store.getState().selectRepository('a');const delayed=deferred<Snapshot>(),started=deferred<void>(),fallback=bridge.rpc.getMockImplementation()!;
     bridge.rpc.mockImplementation((method,repoId,payload)=>{if(method==='snapshot'&&repoId==='a'){started.resolve();return delayed.promise;}return fallback(method,repoId,payload);});

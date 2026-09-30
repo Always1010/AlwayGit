@@ -7,10 +7,10 @@ import { rpc } from './rpc';
 import { Button, Empty, Icon } from './ui';
 
 export function Details({ open, edit }: { open(dialog:DialogRequest):void; edit():void }) {
-  const state=useWorkbench(),t=useTranslation(),detail=state.details;
+  const state=useWorkbench(),t=useTranslation(),detail=state.details,comparison=state.comparison;
   return <section className="details-panel" data-testid="details">
-    <div className="pane-heading"><strong>{state.tab==='changes'?t('Working Tree Status','工作区状态'):t('Commit Details','Commit 详情')}</strong></div>
-    {state.tab==='changes'?<WorkingTree open={open} edit={edit}/>:!detail?<Empty title={state.detailsLoading?t('Loading details…','正在读取详情…'):t('Select a Commit','选择 Commit')}/>:<>
+    <div className="pane-heading"><strong>{state.tab==='changes'?t('Working Tree Status','工作区状态'):comparison?t('Compare Commits','比较 Commit'):t('Commit Details','Commit 详情')}</strong>{comparison&&<Button className="icon-only" icon="arrow-swap" title={t('Swap comparison sides','交换比较方向')} aria-label={t('Swap comparison sides','交换比较方向')} onClick={()=>void state.compareCommits(comparison.right.oid,comparison.left.oid,true)}/>}</div>
+    {state.tab==='changes'?<WorkingTree open={open} edit={edit}/>:comparison?<ComparisonDetails edit={edit}/>:!detail?<Empty title={state.detailsLoading?t('Loading details…','正在读取详情…'):t('Select a Commit','选择 Commit')}/>:<>
       <div className="commit-metadata"><strong>{detail.commit.subject}</strong><span className="hash" title={detail.commit.oid}>{detail.commit.oid.slice(0,8)}</span><span>{detail.commit.author} &lt;{detail.commit.email}&gt;</span><span className="muted">{new Date(detail.commit.timestamp*1000).toLocaleString(state.language)}</span><pre>{detail.body||detail.commit.subject}</pre>
         {state.selectedStashOid&&state.stashDetails&&<div className="stash-tabs"><Button onClick={()=>void state.selectCommit(state.selectedStashOid!,undefined,state.selectedStashOid)}>Working Tree</Button>{state.stashDetails.commit.parents[1]&&<Button onClick={()=>void state.selectCommit(state.stashDetails!.commit.parents[1],undefined,state.selectedStashOid)}>Index</Button>}{state.stashDetails.commit.parents[2]&&<Button onClick={()=>void state.selectCommit(state.stashDetails!.commit.parents[2],undefined,state.selectedStashOid)}>{t('Untracked Files','未跟踪文件')}</Button>}</div>}
       </div>
@@ -18,6 +18,11 @@ export function Details({ open, edit }: { open(dialog:DialogRequest):void; edit(
       <div className="detail-files">{detail.files.map(file=><button key={file.path} className={`file-item ${state.selectedFile===file.path?'selected':''}`} title={file.previousPath?`${file.previousPath} → ${file.path}`:file.path} onClick={()=>state.selectFile({kind:'commit',oid:detail.commit.oid,parent:detail.parent,path:file.path,previousPath:file.previousPath})} onDoubleClick={edit}><span className={`file-status status-${file.status[0]}`}>{file.status}</span><Icon name="file-code"/><span className="truncate">{file.path}</span></button>)}{!detail.files.length&&<Empty title={t('No changed files','没有变更文件')}/>}</div>
     </>}
   </section>;
+}
+
+function ComparisonDetails({edit}:{edit():void}){
+  const state=useWorkbench(),t=useTranslation(),comparison=state.comparison!;
+  return <><div className="comparison-summary"><div><span className="hash">{comparison.left.oid.slice(0,8)}</span><strong>{comparison.left.subject}</strong></div><Icon name="arrow-right"/><div><span className="hash">{comparison.right.oid.slice(0,8)}</span><strong>{comparison.right.subject}</strong></div></div><div className="pane-heading"><strong>{t('Changed Files','变更文件')} · {comparison.files.length}</strong></div><div className="detail-files">{comparison.files.map(file=>{const selected=state.diffTarget?.kind==='comparison'&&state.selectedFile===file.path;return <button key={`${file.previousPath??''}\0${file.path}`} className={`file-item ${selected?'selected':''}`} title={file.previousPath?`${file.previousPath} → ${file.path}`:file.path} onClick={()=>state.selectFile({kind:'comparison',left:comparison.left.oid,right:comparison.right.oid,path:file.path,previousPath:file.previousPath})} onDoubleClick={edit}><span className={`file-status status-${file.status[0]}`}>{file.status}</span><Icon name="file-code"/><span className="truncate">{file.path}</span></button>;})}{!comparison.files.length&&<Empty title={t('The selected Commits have identical file contents','所选 Commit 的文件内容相同')}/>}</div></>;
 }
 
 function WorkingTree({ open, edit }: { open(dialog:DialogRequest):void; edit():void }) {

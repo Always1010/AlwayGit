@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { CheckoutBlocker, GitServiceContract, HostMessage, RpcRequest, Snapshot } from '../protocol/types';
-import { actionSchema, requestSchema, historySchema, detailsSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorktreeSchema } from '../protocol/validation';
+import { actionSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorktreeSchema } from '../protocol/validation';
 import type { RepositoryManager } from '../repositories/manager';
 import type { GitDocuments } from '../editor/documents';
 import { confirmAction } from '../application/confirm';
@@ -80,6 +80,7 @@ export class Workbench implements vscode.Disposable {
       }
       case 'history': return this.git.history(repo, { limit: vscode.workspace.getConfiguration('alwaygit').get<number>('historyPageSize', 300), ...historySchema.parse(request.payload ?? {}) });
       case 'details': { const data = detailsSchema.parse(request.payload); return this.git.details(repo, data.oid, data.parent); }
+      case 'compare': { const data=comparisonSchema.parse(request.payload); return this.git.compare(repo,data.left,data.right,data.preserveOrder); }
       case 'diff': await this.projects.openDiff(repo.root, diffSchema.parse(request.payload)); return null;
       case 'diffPreview': return this.documents.preview(repo, diffSchema.parse(request.payload));
       case 'openRepository': {

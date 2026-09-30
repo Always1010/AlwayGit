@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { access, realpath, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { Change, CheckoutBlocker, Commit, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationState, Repository, Snapshot, Stash, Worktree } from '../protocol/types';
+import type { Change, CheckoutBlocker, Commit, CommitComparison, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationState, Repository, Snapshot, Stash, Worktree } from '../protocol/types';
 import { inferDefaultBranch } from './default-branch';
 
 export interface GitServiceOptions {
@@ -52,6 +52,7 @@ export function parseStatus(buffer: Buffer): { branch: string; head?: string; up
   return result;
 }
 function parseCommit(values: string[]): Commit { return { oid: values[0], parents: values[1] ? values[1].split(' ') : [], author: values[2], email: values[3], timestamp: Number(values[4]), subject: values[5] }; }
+function parseCommitFiles(output:Buffer):CommitFile[]{const names=decodePaths(output).split('\0'),files:CommitFile[]=[];for(let i=0;i<names.length&&names[i];){const status=names[i++],name=names[i++];if(status.startsWith('R')||status.startsWith('C'))files.push({status,previousPath:name,path:names[i++]});else files.push({status,path:name});}return files;}
 const commitFormat = '%H%x00%P%x00%an%x00%ae%x00%at%x00%s';
 
 export class GitService implements GitServiceContract {
@@ -169,9 +170,14 @@ export class GitService implements GitServiceContract {
     await this.verify(repo); const oid = await this.oid(repo, revision); const data = (await this.run(repo, ['show', '-s', `--format=${commitFormat}%x00%B`, oid, '--'])).stdout.toString('utf8').split('\0'); const commit = parseCommit(data);
     const base = parent ? await this.oid(repo, parent) : commit.parents[0];
     if (base && !commit.parents.includes(base)) throw new GitError('Selected parent is not a parent of this commit', 'INVALID_PARENT');
-    const args = ['diff-tree', '--no-commit-id', '--name-status', '-z', '-r', '-M', ...(base ? [base, oid] : ['--root', oid]), '--']; const names = decodePaths((await this.run(repo, args)).stdout).split('\0'); const files: CommitFile[] = [];
-    for (let i = 0; i < names.length && names[i];) { const status = names[i++]; const name = names[i++]; if (status.startsWith('R') || status.startsWith('C')) files.push({ status, previousPath: name, path: names[i++] }); else files.push({ status, path: name }); }
+    const args = ['diff-tree', '--no-commit-id', '--name-status', '-z', '-r', '-M', ...(base ? [base, oid] : ['--root', oid]), '--']; const files=parseCommitFiles((await this.run(repo,args)).stdout);
     return { commit, body: data.slice(6).join('\0').trimEnd(), files, ...(base ? { parent: base } : {}) };
+  }
+  async compare(repo:Repository,leftRevision:string,rightRevision:string,preserveOrder=false):Promise<CommitComparison>{
+    await this.verify(repo);let left=await this.oid(repo,leftRevision),right=await this.oid(repo,rightRevision);
+    if(!preserveOrder){const leftAncestor=await this.run(repo,['merge-base','--is-ancestor',left,right],true),rightAncestor=leftAncestor.code===0?undefined:await this.run(repo,['merge-base','--is-ancestor',right,left],true);if(rightAncestor?.code===0)[left,right]=[right,left];}
+    const [leftData,rightData,diff]=await Promise.all([this.text(repo,['show','-s',`--format=${commitFormat}`,left,'--']),this.text(repo,['show','-s',`--format=${commitFormat}`,right,'--']),this.run(repo,['diff','--name-status','-z','-M',left,right,'--'])]);
+    return {left:parseCommit(leftData.split('\0')),right:parseCommit(rightData.split('\0')),files:parseCommitFiles(diff.stdout)};
   }
   async content(repo: Repository, source: ContentSource, maxBytes?: number): Promise<Buffer> {
     if (maxBytes !== undefined && (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 32 * 1024 * 1024)) throw new GitError('Invalid content limit', 'INVALID_ARGUMENT');
