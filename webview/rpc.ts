@@ -1,7 +1,7 @@
 import type { Commit, CommitDetails, GitAction, HistoryPage, HistoryQuery, HostMessage, Repository, RpcRequest, Snapshot } from '../src/protocol/types';
 
 export interface LayoutState { preset: 'workbench' | 'editor'; sidebar: number; details: number; diff: number; author: number; date: number; font: number; row: number }
-export interface SessionState { version?: number; language?: 'en' | 'zh-CN'; layout?: LayoutState; repoId?: string; drafts?: Record<string, string>; views?: Record<string, { ref?: string; checkedRefs?: string[]; expandedRefGroups?: string[]; collapsedSidebarGroups?: string[]; search: string; selectedOid?: string; selectedStashOid?: string; selectedFile?: string; tab: 'history' | 'changes' }> }
+export interface SessionState { version?: number; language?: 'en' | 'zh-CN'; layout?: LayoutState; repoId?: string; drafts?: Record<string, string>; views?: Record<string, { ref?: string; checkedRefs?: string[]; expandedRefGroups?: string[]; collapsedSidebarGroups?: string[]; search: string; selectedOid?: string; selectedParent?: string; selectedStashOid?: string; selectedFile?: string; tab: 'history' | 'changes' }> }
 export class RpcError extends Error {
   constructor(message: string, public code?: string, public details?: { reason?: string; paths: string[]; target: string; worktreePath?: string; stashCreated?: boolean; stashOid?: string }) { super(message); this.name = 'RpcError'; }
 }
