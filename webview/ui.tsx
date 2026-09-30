@@ -10,8 +10,8 @@ export function ResizeHandle({ axis, label, value, onChange, min, max, reverse =
   const listeners = useRef<(() => void) | undefined>(undefined);
   useEffect(() => () => listeners.current?.(), []);
   return <button type="button" role="separator" aria-label={label} aria-orientation={axis === 'x' ? 'vertical' : 'horizontal'} aria-valuenow={value} aria-valuemin={min} aria-valuemax={max} className={`resize-handle resize-${axis} ${className}`} onKeyDown={event => {
-    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home'].includes(event.key)) return;
-    event.preventDefault(); const positive = ['ArrowRight', 'ArrowDown'].includes(event.key); onChange(event.key === 'Home' ? min : bound(value + (positive ? 8 : -8) * (reverse ? -1 : 1)));
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault(); const positive = ['ArrowRight', 'ArrowDown'].includes(event.key); onChange(event.key === 'Home' ? min : event.key === 'End' ? max : bound(value + (positive ? 8 : -8) * (reverse ? -1 : 1)));
   }} onPointerDown={event => {
     if (event.button !== 0) return; event.preventDefault(); listeners.current?.();
     const element = event.currentTarget, start = axis === 'x' ? event.clientX : event.clientY; element.setPointerCapture(event.pointerId);

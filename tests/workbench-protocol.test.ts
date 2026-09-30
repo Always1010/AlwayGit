@@ -3,7 +3,7 @@ import { actionSchema, openRepositorySchema, requestSchema, sessionSchema } from
 
 describe('Workbench protocol validation', () => {
   it('retains v2 layout, multi-reference views and drafts while accepting legacy sessions', () => {
-    const state = { version: 2, language: 'zh-CN', layout: { preset: 'workbench', sidebar: 230, details: 360, diff: 240, graph: 72, author: 120, date: 150, font: 13, row: 26 }, repoId: 'fixture', drafts: { fixture: 'Commit draft' }, views: { fixture: { checkedRefs: [],expandedRefGroups:['local:feature'],collapsedSidebarGroups:['tag'], search: '', selectedOid: 'abc', selectedParent: 'parent-2', selectedStashOid: 'def', selectedFile: 'a.txt', tab: 'history' } } };
+    const state = { version: 2, language: 'zh-CN', layout: { preset: 'workbench', sidebar: 230, details: 360, diff: 720, diffCollapsed: true, graph: 72, author: 120, date: 150, font: 13, row: 26 }, repoId: 'fixture', drafts: { fixture: 'Commit draft' }, views: { fixture: { checkedRefs: [],expandedRefGroups:['local:feature'],collapsedSidebarGroups:['tag'], search: '', selectedOid: 'abc', selectedParent: 'parent-2', selectedStashOid: 'def', selectedFile: 'a.txt', tab: 'history' } } };
     expect(sessionSchema.parse(state)).toEqual(state);
     expect(sessionSchema.parse({ views: { fixture: { ref: 'refs/heads/main', search: '', tab: 'changes' } } })).toEqual({ views: { fixture: { ref: 'refs/heads/main', search: '', tab: 'changes' } } });
     expect(() => sessionSchema.parse({ ...state, layout: { ...state.layout, sidebar: -100 } })).toThrow();

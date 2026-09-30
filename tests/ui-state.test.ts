@@ -60,8 +60,8 @@ describe('repository UI consistency', () => {
     expect(sessionSchema.parse(saved).appearance).toMatchObject({ theme: 'contrast', palette: 'distinct', codeFont: 17, badgeColor: '#006BFF' });
     expect(saved.appearance.colors.light).toHaveLength(8);
     expect(saved.appearance.colors.dark).toHaveLength(8);
-    store.getState().setLayout({ sidebar: 260, details: 350 }); store.getState().restoreLayout();
-    expect(store.getState()).toMatchObject({ language: 'zh-CN', layout: { sidebar: 210, details: 300, font: 15, row: 28 }, appearance: saved.appearance });
+    store.getState().setLayout({ sidebar: 260, details: 350, diff: 900, diffCollapsed: true }); store.getState().restoreLayout();
+    expect(store.getState()).toMatchObject({ language: 'zh-CN', layout: { sidebar: 210, details: 300, diff: 220, diffCollapsed: false, font: 15, row: 28 }, appearance: saved.appearance });
     expect(store.getState().settingsBaseline).toBeUndefined();
   });
   it('opens a two-commit comparison and selects its first changed file',async()=>{

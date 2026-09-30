@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type React from 'react';
 import type { Repository, RpcRequest } from '../src/protocol/types';
 import { connected, demoMode, rpc } from './rpc';
@@ -22,6 +22,7 @@ import { Button, Empty, Icon, Modal, ResizeHandle } from './ui';
 
 export function App() {
   const state=useWorkbench(),t=useTranslation(),[dialog,setDialog]=useState<DialogRequest>(),[repositoryFetch,setRepositoryFetch]=useState<Repository[]>(),[context,setContext]=useState<{x:number;y:number;target:MenuTarget}>();
+  const mainPanel=useRef<HTMLElement>(null),[mainPanelHeight,setMainPanelHeight]=useState(0);
   const theme=useResolvedTheme(state.appearance.theme),lightTheme=isLightTheme(theme);
   const paletteColors=lightTheme?state.appearance.colors.light:state.appearance.colors.dark;
   useEffect(()=>{if(connected)void useWorkbench.getState().initialize();},[]);
@@ -47,7 +48,9 @@ export function App() {
   async function edit(target=useWorkbench.getState().diffTarget){const current=useWorkbench.getState();if(!target)return;if(target.kind==='comparison'){await host('diff',target,current.repoId);return;}try{await rpc('openFile',current.repoId,{path:target.path});if(demoMode)useWorkbench.setState({notice:t('Demo: edit in VS Code.','模拟：在 VS Code 中编辑。')});}catch(error){if(target.kind==='commit')await host('diff',target,current.repoId);else current.report(error);}}
   const native=()=>{if(state.diffTarget)void host('diff',state.diffTarget);};
   useEffect(()=>{const key=(event:KeyboardEvent)=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='r'){event.preventDefault();void useWorkbench.getState().refresh();}};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);},[]);
+  useLayoutEffect(()=>{const element=mainPanel.current;if(!element)return;const measure=()=>setMainPanelHeight(element.clientHeight);measure();const observer=new ResizeObserver(measure);observer.observe(element);return()=>observer.disconnect();},[]);
   const snapshot=state.snapshot,layout=state.layout,unpushed=snapshot?.unpushed??snapshot?.ahead??0;
+  const maxDiffHeight=Math.max(130,(mainPanelHeight||576)-126),diffHeight=Math.min(layout.diff,maxDiffHeight);
   const menu=context?menuFor(context.target,{open,checkout,openDiff:target=>void host('diff',target),editFile:target=>void edit(target),host,addRepository,fetchRepositories:repositories=>setRepositoryFetch(repositories)}):undefined;
   if(!connected)return <div className="connection-screen"><Icon name="git-branch"/><h1>AlwayGit</h1><p>{t('Your Git workbench, inside VS Code.','VS Code 中的 Git 工作台。')}</p><a className="button primary" href="?demo=1">{t('Explore Demo','查看示例')}</a></div>;
   return <div className="workbench layout-workbench" data-testid="workbench" data-theme={theme} onContextMenu={event=>{if(event.defaultPrevented)return;const target=event.target as HTMLElement,editable=!!target.closest('input:not([type=checkbox]),textarea,[contenteditable]:not([contenteditable="false"])'),selection=window.getSelection();if(!editable&&(!selection||selection.isCollapsed))event.preventDefault();}} style={{'--sidebar-width':`${layout.sidebar}px`,'--details-width':`${layout.details}px`,'--diff-height':`${layout.diff}px`,'--workbench-font':`${layout.font}px`,'--row-height':`${effectiveRowHeight(layout)}px`,'--control-height':`${Math.max(24,Math.round(layout.font*1.35)+6)}px`,'--diff-font':`${state.appearance.codeFont}px`,'--diff-row-height':`${diffRowHeight(state.appearance.codeFont)}px`,'--notification-badge':state.appearance.badgeColor,'--notification-badge-fg':textColorForBackground(state.appearance.badgeColor),'--graph-main':lightTheme?state.appearance.mainColors.light:state.appearance.mainColors.dark,...Object.fromEntries(paletteColors.map((color,index)=>[`--graph-lane-${index}`,color]))} as React.CSSProperties}>
@@ -62,10 +65,10 @@ export function App() {
     <OperationNotice abort={()=>open({type:'operation.abort'})}/>
     <ActionFeedbackBar showLog={()=>void host('showLog')}/>
     {state.error&&state.error!==state.actionFeedback?.error&&!state.checkoutFailure&&<div className="banner error" role="alert"><Icon name="error"/><span>{state.error}</span><Button onClick={()=>void host('showLog')}>{t('Show Log','查看日志')}</Button><Button icon="close" aria-label="Dismiss error" onClick={()=>useWorkbench.setState({error:undefined})}/></div>}
-    <div className="workspace"><Sidebar context={showContext} checkoutBranch={name=>void checkoutBranch(name)} openWorktree={path=>void host('openWorktree',{path,newWindow:false})}/><ResizeHandle axis="x" label="Resize repository sidebar" value={layout.sidebar} min={160} max={360} onChange={sidebar=>state.setLayout({sidebar})}/><main className="main-panel">
+    <div className="workspace"><Sidebar context={showContext} checkoutBranch={name=>void checkoutBranch(name)} openWorktree={path=>void host('openWorktree',{path,newWindow:false})}/><ResizeHandle axis="x" label="Resize repository sidebar" value={layout.sidebar} min={160} max={360} onChange={sidebar=>state.setLayout({sidebar})}/><main ref={mainPanel} className={`main-panel${layout.diffCollapsed?' diff-collapsed':''}`} style={{'--diff-height':`${diffHeight}px`} as React.CSSProperties}>
       {!snapshot?<Empty title={state.loading?t('Opening repository…','正在打开仓库…'):t('Add or select a repository','添加或选择仓库')}><Button onClick={()=>void addRepository()}>Add Repository…</Button></Empty>:<>
         <div className="top-panels"><History context={showContext} checkout={checkout} checkoutBranch={name=>void checkoutBranch(name)}/><ResizeHandle axis="x" label="Resize details panel" value={layout.details} min={230} max={480} reverse onChange={details=>state.setLayout({details})}/><Details open={open} edit={()=>void edit()} context={showContext}/></div>
-        <ResizeHandle axis="y" label="Resize Diff panel" value={layout.diff} min={130} max={450} reverse onChange={diff=>state.setLayout({diff})}/><DiffPreview native={native} edit={()=>void edit()}/>
+        {!layout.diffCollapsed&&<ResizeHandle axis="y" label="Resize Diff panel" value={diffHeight} min={130} max={maxDiffHeight} reverse onChange={diff=>state.setLayout({diff})}/>}<DiffPreview native={native} edit={()=>void edit()}/>
       </>}
     </main></div>
     <footer className="statusbar" role="status"><span>{state.busy?state.activity:state.historyLoading?t('Loading history…','正在读取历史…'):state.notice??t('Ready','就绪')}</span><span>{layout.font}px / {effectiveRowHeight(layout)}px · Workbench</span></footer>
