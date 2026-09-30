@@ -6,7 +6,7 @@ const ref=(name:string,oid:string,kind:GitRef['kind']='remote'):GitRef=>({name,f
 
 describe('default branch inference',()=>{
   it('prefers the upstream remote symbolic HEAD over other remotes',()=>{
-    const refs=[ref('origin/HEAD','one'),ref('origin/main','one'),ref('team/HEAD','two'),ref('team/trunk','two')];
+    const refs=[ref('origin/HEAD','one'),ref('origin/main','one'),{...ref('team/HEAD','two'),symbolicTarget:'refs/remotes/team/trunk'},ref('team/other','two'),ref('team/trunk','two')];
     expect(inferDefaultBranch(refs,['origin','team'],'team/trunk')).toBe('trunk');
   });
 
