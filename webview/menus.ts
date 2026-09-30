@@ -1,4 +1,4 @@
-import type { GitRef, Repository, Stash, Worktree } from '../src/protocol/types';
+import type { DiffTarget, GitRef, Repository, Stash, Worktree } from '../src/protocol/types';
 import type { DialogRequest } from './ActionDialog';
 import type { MenuItem } from './ContextMenu';
 import { useWorkbench } from './store';
@@ -6,8 +6,9 @@ import { samePath } from './pathIdentity';
 import { rpc } from './rpc';
 import { cherryPickOrder } from './commitSelection';
 
-export type MenuTarget = { kind: 'repository'; repository: Repository } | { kind: 'ref'; ref: GitRef } | { kind: 'commit'; oid: string; oids?: string[] } | { kind: 'stash'; stash: Stash } | { kind: 'worktree'; worktree: Worktree } | { kind: 'remote'; name: string } | { kind: 'group'; group: 'repositories' | 'local' | 'remote' | 'tag' | 'stash' | 'worktree' };
-export interface MenuApi { open(dialog: DialogRequest): void; checkout(oid: string): void; host(method: 'copyText'|'openRepository'|'openWorktree', payload: unknown, repoId?: string): Promise<void>; addRepository(): Promise<void>; fetchRepository(repoId: string): Promise<void> }
+export interface FileMenuEntry { path: string; target: DiffTarget }
+export type MenuTarget = { kind: 'repository'; repository: Repository } | { kind: 'ref'; ref: GitRef } | { kind: 'ref-folder'; label: string; refs: GitRef[] } | { kind: 'files'; primary: FileMenuEntry; files: FileMenuEntry[] } | { kind: 'commit'; oid: string; oids?: string[] } | { kind: 'stash'; stash: Stash } | { kind: 'worktree'; worktree: Worktree } | { kind: 'remote'; name: string } | { kind: 'group'; group: 'repositories' | 'local' | 'remote' | 'tag' | 'stash' | 'worktree' };
+export interface MenuApi { open(dialog: DialogRequest): void; checkout(oid: string): void; openDiff(target: DiffTarget): void; editFile(target: DiffTarget): void; host(method: 'copyText'|'openRepository'|'openWorktree', payload: unknown, repoId?: string): Promise<void>; addRepository(): Promise<void>; fetchRepository(repoId: string): Promise<void> }
 export function menuFor(target: MenuTarget, api: MenuApi): { caption: string; items: MenuItem[] } {
   const state=useWorkbench.getState(), snapshot=state.snapshot, busy=state.busy;
   const t=(en:string,zh:string=en)=>state.language==='zh-CN'?zh:en;
@@ -22,6 +23,21 @@ export function menuFor(target: MenuTarget, api: MenuApi): { caption: string; it
     return {caption:{repositories:t('Repositories','仓库'),local:t('Local Branches','本地分支'),remote:t('Remotes','远端'),tag:'Tags',stash:'Stashes',worktree:'Worktrees'}[name],items};
   }
   if(target.kind==='remote')return {caption:target.name,items:[action('Fetch…',{type:'fetch',remote:target.name},'cloud-download'),refresh]};
+  if(target.kind==='ref-folder') {
+    const refs=target.refs.filter(ref=>ref.targetType===undefined||ref.targetType==='commit'),names=refs.map(ref=>ref.fullName);
+    return {caption:`${target.label} · ${refs.length} ${t('branches','个分支')}`,items:[item(t('Show All in Graph','全部显示在 Graph'),()=>state.setCheckedRefs([...(state.checkedRefs??[]),...names]),'eye',!refs.length),item(t('Show Only This Folder','仅显示此目录'),()=>state.setCheckedRefs(names),'filter',!refs.length),item(t('Hide All from Graph','全部从 Graph 隐藏'),()=>state.setCheckedRefs((state.checkedRefs??[]).filter(name=>!names.includes(name))),'eye-closed',!refs.length),copy(t('Copy Branch Names','复制分支名称'),refs.map(ref=>ref.name).join('\n'))]};
+  }
+  if(target.kind==='files') {
+    const unique=[...new Map(target.files.map(file=>[`${file.target.kind}:${file.path}:${'area' in file.target?file.target.area:''}`,file])).values()],paths=[...new Set(unique.map(file=>file.path))];
+    const changes=unique.filter((file):file is FileMenuEntry & {target:Extract<DiffTarget,{kind:'change'}>}=>file.target.kind==='change'),stage=changes.filter(file=>file.target.area!=='staged').map(file=>file.path),unstage=changes.filter(file=>file.target.area==='staged').map(file=>file.path),discard=changes.filter(file=>file.target.area==='unstaged').map(file=>file.path),conflicts=changes.filter(file=>file.target.area==='conflict').map(file=>file.path);
+    const items:MenuItem[]=[];
+    if(unique.length===1)items.push(item(t('Open Diff in VS Code','在 VS Code 中打开 Diff'),()=>api.openDiff(target.primary.target),'diff'),item(t('Edit in VS Code','在 VS Code 中编辑'),()=>api.editFile(target.primary.target),'edit'));
+    if(stage.length)items.push(item(conflicts.length===stage.length?t(`Mark ${stage.length} Resolved`,`标记 ${stage.length} 个已解决`):t(`Stage ${stage.length} File${stage.length===1?'':'s'}`,`Stage ${stage.length} 个文件`),()=>{void state.execute({type:'stage',paths:stage});},'add',busy));
+    if(unstage.length)items.push(item(t(`Unstage ${unstage.length} File${unstage.length===1?'':'s'}`,`Unstage ${unstage.length} 个文件`),()=>{void state.execute({type:'unstage',paths:unstage});},'remove',busy));
+    if(discard.length)items.push(action(t(`Discard ${discard.length} File${discard.length===1?'':'s'}…`,`Discard ${discard.length} 个文件…`),{type:'discard',paths:discard},'discard',busy));
+    items.push(copy(paths.length===1?t('Copy Path','复制路径'):t(`Copy ${paths.length} Paths`,`复制 ${paths.length} 个路径`),paths.join('\n')));
+    return {caption:paths.length===1?paths[0]:t(`${paths.length} Files`,`${paths.length} 个文件`),items};
+  }
   if(target.kind==='ref') {
     const ref=target.ref, occupied=snapshot?.worktrees.find(w=>w.branch?.replace(/^refs\/heads\//,'')===ref.name&&!samePath(w.path,snapshot.repository.root));
     const commitTarget=ref.targetType===undefined||ref.targetType==='commit';

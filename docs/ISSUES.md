@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-011：文件与分支目录显示无关的原生编辑菜单
+
+- 日期：2026-10-01
+- 状态：已解决
+- 现象：在 Working Tree、Commit Details、Commit 比较文件和分支虚拟目录上右键时，显示“剪切 / 复制 / 粘贴”，没有对象相关操作；Remote 名称只有三点按钮能稳定打开菜单。
+- 原因：文件行和分支目录没有注册对象级 `contextmenu` 处理，工作台也没有为非编辑区域提供兜底，因此事件落入 Webview 的浏览器原生编辑菜单。
+- 解决方案：文件右键菜单按当前单选或多选提供 Diff、编辑、Stage、Unstage、Mark Resolved、Discard 与复制路径；分支目录提供 Graph 范围和复制名称操作，Remote 标题整行响应菜单。工作台仅在非编辑且没有文本选择时抑制无意义的原生菜单。
+- 验证方式：文件无头界面检查覆盖单选、多选、Working Tree 操作菜单、历史文件菜单和输入框原生行为；主界面检查覆盖分支目录与 Remote 标题菜单。
+- 相关文件：`webview/App.tsx`、`webview/Details.tsx`、`webview/Sidebar.tsx`、`webview/menus.ts`、`scripts/test-files-ui.mjs`、`scripts/test-ui.mjs`。
+
 ## BUG-010：Merge 后 Graph 保留空轨道并按历史峰值过度占宽
 
 - 日期：2026-10-01
