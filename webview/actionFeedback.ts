@@ -13,7 +13,7 @@ export function actionName(action: GitAction): string {
   const names: Partial<Record<GitAction['type'], string>> = {
     stage: 'Stage', unstage: 'Unstage', discard: 'Discard', commit: action.type === 'commit' && action.amend ? 'Amend' : 'Commit',
     fetch: 'Fetch', pull: 'Pull', push: 'Push', 'branch.create': 'Create Branch', 'branch.checkout': 'Checkout', 'commit.checkout': 'Checkout',
-    'checkout.stash': 'Stash & Checkout', 'branch.delete': action.type==='branch.delete'&&action.names.length>1?'Delete Branches':'Delete Branch', 'tag.create': 'Create Tag', 'tag.delete': 'Delete Tag',
+    'checkout.stash': 'Stash & Checkout', 'branch.delete': action.type==='branch.delete'&&action.names.length>1?'Delete Branches':'Delete Branch', 'remote.delete':'Delete Remote Branches', 'tag.create': 'Create Tag', 'tag.delete': 'Delete Tag',
     'stash.create': 'Stash', 'stash.apply': action.type === 'stash.apply' && action.pop ? 'Pop Stash' : 'Apply Stash', 'stash.drop': 'Drop Stash',
     'worktree.add': 'Add Worktree', 'worktree.remove': 'Remove Worktree', merge: 'Merge', rebase: 'Rebase', 'cherry-pick': 'Cherry-pick', revert: 'Revert', reset: 'Reset',
   };
@@ -35,6 +35,7 @@ export function actionTarget(action: GitAction, snapshot?: Snapshot): string | u
     return branch && remote ? `${branch} → ${remote}/${remoteBranch}` : branch;
   }
   if(action.type==='branch.delete')return action.names.join(', ');
+  if(action.type==='remote.delete')return `${action.remote}: ${action.branches.join(', ')}`;
   if ('target' in action) return action.target;
   if ('name' in action) return action.name;
   if ('remote' in action) return action.remote;

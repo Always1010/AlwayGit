@@ -7,8 +7,8 @@ import { Button, Modal } from './ui';
 import { samePath } from './pathIdentity';
 
 export type ActionType = GitAction['type'];
-export interface DialogRequest { type: ActionType; target?: string; paths?: string[]; names?:string[]; expectedOids?:Record<string,string>; pop?: boolean; expectedOid?: string; remote?: string; branch?: string; checkout?: boolean; candidates?: string[] }
-export const actionTitles: Partial<Record<ActionType, string>> = { 'branch.create': 'Create Branch', 'branch.checkout': 'Checkout', 'commit.checkout': 'Checkout', 'branch.delete': 'Delete Branch', 'tag.create': 'Create Tag', 'tag.delete': 'Delete Tag', 'stash.create': 'Stash Changes', 'stash.apply': 'Apply Stash', 'stash.drop': 'Drop Stash', 'worktree.add': 'Add Worktree', 'worktree.remove': 'Remove Worktree', merge: 'Merge', rebase: 'Rebase', 'cherry-pick': 'Cherry-pick', revert: 'Revert', reset: 'Reset', fetch: 'Fetch', pull: 'Pull', push: 'Push', discard: 'Discard Changes', 'operation.abort': 'Abort' };
+export interface DialogRequest { type: ActionType; target?: string; paths?: string[]; names?:string[]; expectedOids?:Record<string,string>; remoteBranches?:string[]; pop?: boolean; expectedOid?: string; remote?: string; branch?: string; checkout?: boolean; candidates?: string[] }
+export const actionTitles: Partial<Record<ActionType, string>> = { 'branch.create': 'Create Branch', 'branch.checkout': 'Checkout', 'commit.checkout': 'Checkout', 'branch.delete': 'Delete Branch', 'remote.delete':'Delete Remote Branches', 'tag.create': 'Create Tag', 'tag.delete': 'Delete Tag', 'stash.create': 'Stash Changes', 'stash.apply': 'Apply Stash', 'stash.drop': 'Drop Stash', 'worktree.add': 'Add Worktree', 'worktree.remove': 'Remove Worktree', merge: 'Merge', rebase: 'Rebase', 'cherry-pick': 'Cherry-pick', revert: 'Revert', reset: 'Reset', fetch: 'Fetch', pull: 'Pull', push: 'Push', discard: 'Discard Changes', 'operation.abort': 'Abort' };
 function pushDefaults(snapshot: Snapshot, dialog: DialogRequest) {
   const localBranch=dialog.branch??snapshot.branch,ref=snapshot.refs.find(item=>item.kind==='local'&&item.name===localBranch),upstream=ref?.upstream;
   const upstreamRemote=(snapshot.remotes??[]).slice().sort((a,b)=>b.length-a.length).find(remote=>upstream?.startsWith(`${remote}/`));
@@ -47,6 +47,7 @@ export function ActionDialog({ dialog, onClose }: { dialog: DialogRequest; onClo
       case 'branch.checkout': action={type,name:v.name}; break;
       case 'commit.checkout': action={type,target:v.target}; break;
       case 'branch.delete': action={type,names:dialog.names?.length?dialog.names:[v.name],force:!!checks.force,expectedOids:dialog.expectedOids}; break;
+      case 'remote.delete': if(!dialog.remote||!dialog.remoteBranches?.length)return;action={type,remote:dialog.remote,branches:dialog.remoteBranches,expectedOids:dialog.expectedOids};break;
       case 'tag.create': action={type,name:v.name,target:v.target,message:v.message || undefined}; break;
       case 'tag.delete': action={type,name:v.name}; break;
       case 'stash.create': action={type,message:v.message || undefined,includeUntracked:!!checks.includeUntracked}; break;
@@ -64,11 +65,12 @@ export function ActionDialog({ dialog, onClose }: { dialog: DialogRequest; onClo
     }
     if(await state.execute(action)){if(['branch.checkout','commit.checkout'].includes(type)||type==='branch.create'&&checks.checkout){const latest=useWorkbench.getState();if(latest.repoId===state.repoId&&latest.snapshot?.head)void latest.selectCommit(latest.snapshot.head);}onClose();}
   }
-  const destructive = ['discard','branch.delete','tag.delete','stash.drop','worktree.remove','operation.abort'].includes(type) || type==='reset' && values.mode==='hard';
+  const destructive = ['discard','branch.delete','remote.delete','tag.delete','stash.drop','worktree.remove','operation.abort'].includes(type) || type==='reset' && values.mode==='hard';
   return <Modal title={title} busy={state.busy} onClose={onClose} footer={<><Button onClick={onClose} disabled={state.busy}>{t('Cancel','取消')}</Button><Button type="submit" form="ag-action-form" className={destructive?'danger':'primary'} disabled={state.busy}>{state.busy?t('Working…','处理中…'):title}</Button></>}><form id="ag-action-form" className="action-form" onSubmit={event=>void submit(event)}>
     <p className="muted">{snapshot.repository.name} · {branch}</p>
     {type==='branch.create' && <>{field('name','Branch Name','分支名称',undefined,true,'feature/my-change')}{field('start','Start Point','起始位置',undefined,true)}{checkbox('checkout','Checkout new branch','Checkout 到新分支')}</>}
     {(type==='branch.checkout'||type==='branch.delete') && <>{type==='branch.delete'&&dialog.names?.length?<div className="discard-paths">{dialog.names.map(name=><div key={name}>{name}</div>)}</div>:field('name','Branch','分支',(dialog.candidates ? local.filter(r=>dialog.candidates!.includes(r.name)) : local.filter(r=>type!=='branch.delete'||r.name!==snapshot.branch)).map(r=>({value:r.name,label:r.name})),true)}{type==='branch.delete'&&checkbox('force','Force deletion of unmerged branches','强制删除尚未合并的分支')}{type==='branch.checkout'&&<p>{t('Checkout preserves changes when possible; Git stops if they would be overwritten.','Checkout 会尽可能保留修改；可能覆盖修改时 Git 会停止操作。')}</p>}</>}
+    {type==='remote.delete'&&<><strong>{t(`Delete from ${dialog.remote}`,`从 ${dialog.remote} 删除`)}</strong><div className="discard-paths">{dialog.remoteBranches?.map(name=><div key={name}>{name}</div>)}</div><p className="warning-text">{t('This deletes branches from the shared remote repository.','此操作会从共享远端仓库删除分支。')}</p></>}
     {type==='commit.checkout'&&<><strong>Checkout {displayTarget}</strong><p>{t('No local branch was selected. This enters Detached HEAD. Create a branch to keep new commits.','此操作进入 Detached HEAD。可以创建分支来保留新的 Commit。')}</p></>}
     {type==='tag.create'&&<>{field('name','Tag Name','Tag 名称',undefined,true)}{field('target','Target Commit','目标 Commit',undefined,true)}{field('message','Annotation (optional)','说明（可选）')}</>}
     {type==='tag.delete'&&field('name','Tag','Tag',tags.map(r=>({value:r.name,label:r.name})),true)}

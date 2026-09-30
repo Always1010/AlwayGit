@@ -9,6 +9,7 @@ export async function confirmAction(repo: Repository, action: GitAction, languag
   if (action.type === 'reset') warning = `Reset ${repo.name} to ${action.target} (${action.mode})? ${action.mode === 'hard' ? 'HEAD, Index and working files will change; uncommitted content can be lost.' : action.mode === 'mixed' ? 'HEAD and Index will change; working files remain.' : 'HEAD will change; Index and working files remain.'}`;
   if (action.type === 'push' && action.forceWithLease) warning = 'Push with force-with-lease? Published branch history may be replaced.';
   if (action.type === 'branch.delete') warning = `Delete ${action.names.length} local branch${action.names.length===1?'':'es'}?\n${action.names.join('\n')}${action.force ? '\nForce deletion may remove the last branch referencing unmerged commits.' : ''}`;
+  if(action.type==='remote.delete')warning=`Delete ${action.branches.length} branch${action.branches.length===1?'':'es'} from remote ${action.remote}?\n${action.branches.join('\n')}\nThis changes the shared remote repository.`;
   if (action.type === 'tag.delete') warning = `Delete local tag ${action.name}?`;
   if (action.type === 'stash.drop') warning = `Drop ${action.selector}? Its saved uncommitted changes may become unreachable.`;
   if (action.type === 'worktree.remove') warning = `Remove worktree ${action.path}?${action.force ? ' Forced removal may delete uncommitted files.' : ''}`;
@@ -17,6 +18,7 @@ export async function confirmAction(repo: Repository, action: GitAction, languag
   if (action.type === 'checkout.stash' && action.detached) warning = text(`Stash Changes and Checkout ${action.target} as Detached HEAD? The Stash will be retained for you to apply.`, `Stash Changes 后 Checkout ${action.target} 并进入 Detached HEAD？Stash 将保留，供你之后 Apply。`);
   if (language === 'zh-CN') {
     if (action.type === 'branch.delete') warning = `Delete ${action.names.length} 个本地分支？\n${action.names.join('\n')}${action.force ? '\n强制删除可能使未合并提交失去分支引用。' : ''}`;
+    if(action.type==='remote.delete')warning=`从远端 ${action.remote} Delete ${action.branches.length} 个分支？\n${action.branches.join('\n')}\n此操作会修改共享远端仓库。`;
     if (action.type === 'tag.delete') warning = `Delete 本地 Tag ${action.name}？`;
     if (action.type === 'stash.drop') warning = `Drop ${action.selector}？保存的未提交修改可能无法再恢复。`;
     if (action.type === 'worktree.remove') warning = `Remove Worktree ${action.path}？${action.force ? '强制移除可能删除未提交的文件。' : ''}`;

@@ -25,6 +25,7 @@ export type GitAction =
   | { type: 'commit.checkout'; target: string }
   | { type: 'checkout.stash'; target: string; detached?: boolean; includeUntracked?: boolean }
   | { type: 'branch.delete'; names: string[]; force?: boolean; expectedOids?: Record<string,string> }
+  | { type: 'remote.delete'; remote:string; branches:string[]; expectedOids?:Record<string,string> }
   | { type: 'tag.create'; name: string; target?: string; message?: string }
   | { type: 'tag.delete'; name: string }
   | { type: 'stash.create'; message?: string; includeUntracked?: boolean }
