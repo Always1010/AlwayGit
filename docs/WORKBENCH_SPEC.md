@@ -105,12 +105,12 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 
 ## 左侧分组操作
 
-分组标题不使用省略号菜单；项目少且含义明确的操作直接显示为纯图标按钮，并通过悬浮提示、键盘焦点和无障碍名称说明用途。右键标题仍可打开同一组操作。Local Branches 的 Graph 筛选位于标题下方的图标操作条，避免与标题操作重复。
+分组标题不使用省略号菜单；项目少且含义明确的操作直接显示为纯图标按钮，并通过悬浮提示、键盘焦点和无障碍名称说明用途。右键标题仍可打开同一组操作。Local Branches 的 Graph 筛选位于标题下方的分段图标控件，提供全部本地分支和仅当前分支两个预设；当前预设以强调状态显示，自定义勾选组合时两项均不激活。
 
 | 标题 | 项目 |
 | --- | --- |
 | Repositories | `Add Repository…`、`Refresh` |
-| Local Branches | 标题：`Create Branch…`；Graph 操作条：`Show All in Graph`、`Show Current Branch Only in Graph`、`Show None in Graph` |
+| Local Branches | 标题：`Create Branch…`；Graph 预设：`Show All Local Branches in Graph`、`Show Current Branch Only in Graph` |
 | Remotes | `Fetch…`、`Create Local Tracking Branches…`、`Refresh` |
 | Tags | `Create Tag…`、`Refresh` |
 | Stashes | `Stash Changes…`、`Refresh` |
