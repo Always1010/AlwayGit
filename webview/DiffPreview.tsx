@@ -18,7 +18,13 @@ function content(value:string|undefined,other:string|undefined,changed:boolean,s
   return <code style={style}>{parts.prefix}{middle&&<mark className={side==='before'?'diff-word-removed':'diff-word-added'}>{middle}</mark>}{parts.suffix}</code>;
 }
 export function DiffPreview({ native, edit }: { native():void; edit():void }) {
-  const state=useWorkbench(),t=useTranslation(),[preview,setPreview]=useState<Preview>(),[error,setError]=useState<string>(),[loading,setLoading]=useState(false),[selection,setSelection]=useState<Selection>(),[horizontalScroll,setHorizontalScroll]=useState(0),viewport=useRef<HTMLDivElement>(null),displayedKey=useRef(''),lastScrollTop=useRef(0),navigationScroll=useRef<number|undefined>(undefined);
+  const state=useWorkbench(),t=useTranslation(),[preview,setPreview]=useState<Preview>(),[error,setError]=useState<string>(),[loading,setLoading]=useState(false),[selection,setSelection]=useState<Selection>(),[horizontalScroll,setHorizontalScroll]=useState(0),[viewportWidth,setViewportWidth]=useState(0),viewport=useRef<HTMLDivElement>(null),displayedKey=useRef(''),lastScrollTop=useRef(0),navigationScroll=useRef<number|undefined>(undefined);
+  useLayoutEffect(()=>{
+    const element=viewport.current;if(!element)return;
+    const measure=()=>setViewportWidth(element.clientWidth);
+    measure();const observer=new ResizeObserver(measure);observer.observe(element);
+    return()=>observer.disconnect();
+  },[]);
   const targetKey=JSON.stringify([state.repoId,diffKey(state.diffTarget)]),revision=state.diffTarget?.kind==='change'?state.diffRevision:0;
   useEffect(()=>{
     let live=true;
@@ -50,7 +56,6 @@ export function DiffPreview({ native, edit }: { native():void; edit():void }) {
     const index=changeAtRow(changes,(element.scrollTop+element.clientHeight/2)/ROW_HEIGHT);
     setSelection(current=>current?.key===targetKey&&current.rows===rows&&current.index===index?current:{key:targetKey,rows,index});
   };
-  const viewportWidth=viewport.current?.clientWidth||virtual.scrollRect?.width||0;
   const contentColumns=useMemo(()=>{
     let columns=0;
     for(const row of rows)for(const value of [row.before,row.after]){
