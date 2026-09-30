@@ -101,4 +101,4 @@
 .workbench .diff-line,.workbench .diff-content {font-size:var(--diff-font,12px);line-height:var(--diff-row-height,22px);}
 .workbench .diff-line code {background:transparent;border:0;border-radius:0;padding:0;color:inherit;}
 .workbench .line-number {font-size:max(11px,calc(var(--diff-font,12px) - 1px));}
-@media(max-width:640px) {.settings-trigger>span{display:none;}.settings-save-hint{display:none;}.interface-settings{grid-template-columns:124px minmax(0,1fr);}.settings-nav-item{padding-left:9px}.settings-page-heading small{display:none}.palette-presets,.color-editor-grid{grid-template-columns:1fr}.graph-color-preview text{display:none}}
+@media(max-width:640px) {.settings-save-hint{display:none;}.interface-settings{grid-template-columns:124px minmax(0,1fr);}.settings-nav-item{padding-left:9px}.settings-page-heading small{display:none}.palette-presets,.color-editor-grid{grid-template-columns:1fr}.graph-color-preview text{display:none}}
