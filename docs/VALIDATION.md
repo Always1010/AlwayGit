@@ -53,22 +53,22 @@ npm run package
 
 ## 本轮结果
 
-执行日期为 2026-10-01，版本为 0.8.1。检查集中在实现完成后执行；0.8.1 仅增强角标颜色和已推送提交字重，因此复用 0.8.0 的功能用例结果，没有重跑无关单测、Graph 性能基准或桌面集成测试，也没有启动可见 VS Code / 浏览器测试窗口。
+执行日期为 2026-10-01，版本为 0.8.2。检查集中在两项实现完成后执行，范围限定为列分隔拖动、Graph 轨道布局、会话列宽迁移和恢复。没有重跑无关单测、Graph 性能基准或桌面集成测试，也没有启动可见 VS Code / 浏览器测试窗口。
 
 | 项目 | 结果 | 备注 |
 | --- | --- | --- |
-| `npm run typecheck` | 通过 | 0.8.1 样式调整后的 Webview 类型一致 |
-| 相关 Vitest 用例 | 通过 | 43 项 Graph 渲染、文件选择、状态管理和协议用例；另有 2 项真实 Git 集成用例通过，覆盖 Push 前后的远端可达性、未推送计数、轻量仓库状态及 Detached HEAD 不显示分支角标 |
+| `npm run typecheck` | 通过 | Graph 宽度会话字段、布局算法和 Webview 类型一致 |
+| 相关 Vitest 用例 | 通过 | 49 项 Graph 布局与渲染、状态管理和会话协议用例；覆盖空轨道收拢、复杂 DAG 端点连续性、分页一致性、百父节点 Merge 和旧会话兼容 |
+| appearance-only 无头界面测试 | 通过 | 实际拖动 Graph、作者和日期分隔线，验证边界跟随、方向换算、旧会话默认宽度、持久化及 Restore Layout |
 | `npm run build` | 通过 | 扩展与 Webview 生产构建成功 |
 | `git diff --check` | 通过 | 修改文件无空白错误 |
-| `scripts/update-local.ps1` | 通过 | 构建固定包 `artifacts/alwaygit.vsix`，保留上一份和版本包；沿用已记录的 VS Code 默认 Profile 安装。官方 CLI 核对为 `alwaygit-dev.alwaygit@0.8.1`，未关闭或重启用户窗口 |
+| `scripts/update-local.ps1` | 通过 | 构建固定包 `artifacts/alwaygit.vsix`，保留 0.8.1 为 previous 并生成 0.8.2 版本包；沿用已记录的 VS Code 默认 Profile 安装。官方 CLI 核对为 `alwaygit-dev.alwaygit@0.8.2`，未关闭或重启用户窗口 |
 
 复现本轮定向单测：
 
 ```powershell
-npx vitest run tests/graph-renderer.test.ts tests/file-selection.test.ts tests/ui-state.test.ts tests/workbench-protocol.test.ts
-npx vitest run tests/git-service.test.ts -t 'fetches, pushes and pulls'
-npx vitest run tests/git-safety.test.ts -t 'checks out a commit in Detached HEAD'
+npx vitest run tests/graph.test.ts tests/graph-renderer.test.ts tests/workbench-protocol.test.ts tests/ui-state.test.ts
+node scripts/test-ui.mjs --appearance-only
 ```
 
-本轮未改动写入型 Git 操作或窗口路由，没有启动对应桌面集成测试。真实 VS Code 内的人工视觉体验、远程宿主、macOS、Linux 和最低支持版本仍需对应环境验收。
+本轮未改动写入型 Git 操作或窗口路由，没有启动对应桌面集成测试。无头截图已核对 Graph 紧凑布局和表头列边界；真实 VS Code 内的人工拖动体验、远程宿主、macOS、Linux 和最低支持版本仍需对应环境验收。
