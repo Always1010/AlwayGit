@@ -27,7 +27,10 @@ let browser;
 try {
   browser = await chromium.launch(process.env.ALWAYGIT_BROWSER_EXECUTABLE ? { executablePath: process.env.ALWAYGIT_BROWSER_EXECUTABLE } : process.platform === 'win32' ? { channel: 'msedge' } : {});
   const url = `http://127.0.0.1:${server.address().port}/?demo=1`;
-  if (process.argv.includes('--appearance-only')) {
+  if (process.argv.includes('--files-only')) {
+    await verifyFiles(browser, url);
+    console.log('ALWAYGIT_UI_TESTS_PASSED: files-only');
+  } else if (process.argv.includes('--appearance-only')) {
     await verifyAppearance(browser, url);
     console.log('ALWAYGIT_UI_TESTS_PASSED: appearance-only');
   } else {

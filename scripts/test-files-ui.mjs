@@ -31,23 +31,27 @@ export async function verifyFiles(browser, url) {
     await panel.getByText('Repository root', { exact: true }).waitFor();
     await panel.getByRole('button', { name: 'src/features/auth/login.ts', exact: true }).click();
     await page.keyboard.press('Control+a');
-    assert.equal(await panel.locator('.file-item input:checked').count(), 3);
+    assert.equal(await panel.locator('.file-item[aria-selected="true"]').count(), 3);
     assert.equal(await page.evaluate(() => window.getSelection().toString()), '', 'Ctrl+A must not select page text');
     await panel.getByRole('button', { name: 'Copy Paths (3)', exact: true }).click();
     await page.waitForFunction(() => window.__filesFixture.calls.some(call => call.method === 'copyText'));
     assert.equal(await page.evaluate(() => window.__filesFixture.calls.find(call => call.method === 'copyText').payload.text), 'src/features/auth/login.ts\nsrc/services/auth/login.ts\nREADME.md');
     await page.keyboard.press('Escape');
-    assert.equal(await panel.locator('.file-item input:checked').count(), 0);
+    assert.equal(await panel.locator('.file-item[aria-selected="true"]').count(), 0);
     await panel.getByRole('button', { name: 'README.md', exact: true }).click({ modifiers: ['Control'] });
-    assert.equal(await panel.locator('.file-item input:checked').count(), 1);
-    assert.equal(await panel.getByLabel('Select all changed files').evaluate(input => input.indeterminate), true);
+    assert.equal(await panel.locator('.file-item[aria-selected="true"]').count(), 1);
+    await panel.getByRole('button', { name: 'README.md', exact: true }).click({ button: 'right' });
+    const menu = page.getByTestId('context-menu');
+    await menu.waitFor();
+    assert.deepEqual((await menu.getByRole('menuitem').allTextContents()).map(value=>value.trim()), ['Open Diff in VS Code','Edit in VS Code','Copy Path']);
+    await page.keyboard.press('Escape');
     await page.getByTestId('history').getByRole('button', { name: /Working Tree/ }).click();
     const groups = details.locator('.change-groups'), unstaged = groups.locator('.change-group:has(.change-heading-unstaged)'), staged = groups.locator('.change-group:has(.change-heading-staged)');
     await unstaged.getByRole('button', { name: 'Stage All', exact: true }).waitFor();
     assert.equal(await unstaged.getByRole('button', { name: 'Discard selected files…', exact: true }).isDisabled(), true);
     await unstaged.getByRole('button', { name: 'src/features/auth/login.ts', exact: true }).click();
     await page.keyboard.press('Control+a');
-    assert.equal(await groups.locator('.change-file input:checked').count(), 4);
+    assert.equal(await groups.locator('.change-file[aria-selected="true"]').count(), 4);
     assert.equal(await page.evaluate(() => window.getSelection().toString()), '');
     await unstaged.getByRole('button', { name: 'Stage (3)', exact: true }).click();
     await page.waitForFunction(() => window.__filesFixture.calls.some(call => call.method === 'action'));
@@ -58,7 +62,7 @@ export async function verifyFiles(browser, url) {
     assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action')[1].payload), { type: 'unstage', paths: ['src/features/auth/login.ts'] });
     await page.getByTestId('action-feedback').getByText('Unstage completed', { exact: true }).waitFor();
     await groups.focus(); await page.keyboard.press('Escape');
-    assert.equal(await groups.locator('.change-file input:checked').count(), 0);
+    assert.equal(await groups.locator('.change-file[aria-selected="true"]').count(), 0);
     await unstaged.getByRole('button', { name: 'README.md', exact: true }).click({ modifiers: ['Control'] });
     await unstaged.getByRole('button', { name: 'Discard selected files…', exact: true }).click();
     const dialog = page.getByRole('dialog');
@@ -67,8 +71,14 @@ export async function verifyFiles(browser, url) {
     const draft = details.getByRole('textbox', { name: 'Commit message' });
     await draft.fill('draft stays editable'); await draft.press('Control+a'); await draft.press('Backspace');
     assert.equal(await draft.inputValue(), '', 'Text area keeps native Select All');
-    assert.equal(await groups.locator('.change-file input:checked').count(), 1, 'Editing Ctrl+A must not change file selection');
+    assert.equal(await groups.locator('.change-file[aria-selected="true"]').count(), 1, 'Editing Ctrl+A must not change file selection');
+    await unstaged.getByRole('button', { name: 'README.md', exact: true }).click({ button: 'right' });
+    await menu.waitFor();
+    assert.deepEqual((await menu.getByRole('menuitem').allTextContents()).map(value=>value.trim()), ['Open Diff in VS Code','Edit in VS Code','Stage 1 File','Discard 1 File…','Copy Path']);
+    await page.keyboard.press('Escape');
+    await draft.click({ button: 'right' });
+    assert.equal(await menu.isVisible(), false, 'Editable text keeps the native context menu');
     assert.deepEqual(errors, []);
-    console.log('ALWAYGIT_FILES_UI_TESTS_PASSED: full parent paths, scoped select-all, Copy Paths, mixed checkbox, group actions, explicit Discard and native textarea');
+    console.log('ALWAYGIT_FILES_UI_TESTS_PASSED: full parent paths, scoped select-all, file context menus, group actions, explicit Discard and native textarea');
   } finally { await page.close(); }
 }
