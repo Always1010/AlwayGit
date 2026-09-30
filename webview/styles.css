@@ -135,6 +135,22 @@ h1,h2,p {margin:0;}
 .change-heading .button {font-size:11px;min-height:24px;padding:3px 4px;}
 .change-file {display:flex;align-items:center;gap:5px;font-size:12px;border-bottom:1px solid var(--row-border);min-height:28px;padding:2px 4px;}
 .file-name {flex:1;text-align:left;min-height:26px;padding:3px 0;}
+.file-selection-panel {display:flex;flex-direction:column;min-height:0;flex:1;}
+.file-selection-toolbar {display:flex;align-items:center;justify-content:space-between;gap:5px;padding:2px 7px;font-size:11px;border-bottom:1px solid var(--row-border);}
+.file-selection-toolbar label {display:flex;align-items:center;gap:5px;}
+.file-selection-toolbar .button {font-size:11px;min-height:23px;padding:2px 5px;}
+.file-selection-hint {display:flex;justify-content:space-between;align-items:center;gap:5px;padding:3px 4px;color:var(--muted);font-size:10px;line-height:1.35;border-bottom:1px solid var(--row-border);}
+.file-selection-hint>span {min-width:0;}
+.file-selection-hint strong {white-space:nowrap;font-weight:500;font-variant-numeric:tabular-nums;}
+.file-item,.change-file {min-height:36px;padding:2px 5px;user-select:none;border-radius:3px;}
+.file-item:hover,.change-file:hover {background:var(--hover);}
+.file-item .file-name,.change-file .file-name {display:flex;min-width:0;padding:2px 0;}
+.file-name:hover {background:transparent!important;}
+.file-label {display:flex;flex:1;flex-direction:column;min-width:0;line-height:1.3;}
+.file-basename {font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.file-parent-path {font-size:10px;color:var(--muted);overflow-wrap:anywhere;}
+.batch-selected {background:color-mix(in srgb,var(--accent) 10%,var(--bg));}
+.selected .file-parent-path {color:inherit;opacity:.82;}
 .change-empty {color:var(--muted);font-size:11px;padding:5px 8px;}
 .commit-form {border-top:1px solid var(--border);padding:8px;flex:none;background:var(--panel);font-size:12px;}
 .commit-form textarea {width:100%;min-height:60px;max-height:150px;padding:5px;display:block;margin-top:4px;}
