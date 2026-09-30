@@ -44,15 +44,24 @@ describe('recursive repository discovery', () => {
     expect(await discoverRepositories(a, service)).toMatchObject({ scanned: 1, found: 1 });
   });
 
-  it('discovers a .git file Worktree separately from its main repository', async () => {
+  it('discovers both working directories but counts a .git file Worktree as part of its repository', async () => {
     const root = await fixture(), main = await repository(root, 'main');
     await git(main, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '--allow-empty', '-m', 'Initial');
     const worktree = path.join(root, 'category/worktree'); await mkdir(path.dirname(worktree));
     await git(main, 'worktree', 'add', '--detach', worktree);
     const result = await discoverRepositories(root, new GitService());
-    expect(result.found).toBe(2); expect(result.issues).toEqual([]);
+    expect(result.found).toBe(1); expect(result.repositories).toHaveLength(2); expect(result.issues).toEqual([]);
     expect(result.repositories[0].commonDir).toBe(result.repositories[1].commonDir);
     expect(new Set(result.repositories.map(r => r.id)).size).toBe(2);
+    expect(result.repositories.map(r => r.mainRoot)).toEqual([await realpath(main), await realpath(main)]);
+  });
+
+  it('keeps a separate Git storage directory from changing a normal repository name or identity', async () => {
+    const root = await fixture(), main = path.join(root, 'project'), storage = path.join(root, 'storage');
+    await mkdir(main); await git(main, 'init', '--separate-git-dir', storage, '-b', 'main');
+    const result = await discoverRepositories(root, new GitService());
+    expect(result).toMatchObject({ found: 1, issues: [] });
+    expect(result.repositories[0]).toMatchObject({ root: await realpath(main), mainRoot: await realpath(main), commonDir: await realpath(storage), name: 'project' });
   });
 
   it('skips invalid markers and unreadable directories while continuing other branches', async () => {

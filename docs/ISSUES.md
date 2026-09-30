@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-007：递归发现将同一仓库的 Worktree 平铺为多个顶层仓库
+
+- 日期：2026-10-01
+- 状态：已解决
+- 现象：扫描包含主目录和兄弟 Worktree 的分类目录时，Repositories 顶层将同一个 SwiftResume 仓库显示四次；启动恢复与打开 Worktree 也会注册这些独立入口。
+- 原因：Repository ID 基于工作目录路径，发现与注册仅按该 ID 去重；顶层界面直接遍历所有工作目录，没有按共享 `commonDir` 归并。原测试将 Worktree 独立计为仓库，未覆盖逻辑仓库展示。
+- 解决方案：保持工作目录 ID 和独立操作状态，按规范化的共享 Git 存储派生统一展示分组；Git 报告主目录名称，Webview 和活动栏共用分组逻辑。发现与添加数量按逻辑仓库计数，兼容既有保存路径、活动 Worktree 和各自草稿。
+- 验证方式：真实 Git 验证主目录及 linked Worktree、独立 Git 存储、递归/直接添加、旧路径恢复、自动发现、单次通知及独立状态；共享函数验证 Windows 路径与独立克隆；受控浏览器验证顶层归并、活动入口、菜单路径、Worktree 切换及草稿保留。VS Code 集成检查验证切换 Worktree 后的分支与文件状态隔离；对用户的四个 SwiftResume 目录只读验证归并为一个入口。完整结果见 [验证说明](VALIDATION.md)。
+- 相关文件：`src/protocol/types.ts`、`src/protocol/repositories.ts`、`src/git/service.ts`、`src/repositories/discovery.ts`、`src/repositories/manager.ts`、`webview/Sidebar.tsx`、`tests/repository-discovery.test.ts`、`tests/repository-manager.test.ts`、`tests/repository-groups.test.ts`、`tests/extension/runner.ts`、`scripts/test-worktrees-ui.mjs`、`scripts/test-ui.mjs`。
+
 ## BUG-006：Diff 定位逐行蓝框且缺少修改块序号
 
 - 日期：2026-10-01

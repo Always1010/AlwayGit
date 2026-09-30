@@ -6,7 +6,7 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { GitService } from '../src/git/service';
-import { RepositoryManager } from '../src/repositories/manager';
+import { RepositoryManager, RepositoryTree } from '../src/repositories/manager';
 import { Workbench } from '../src/extension/workbench';
 
 vi.mock('vscode', () => {
@@ -19,7 +19,7 @@ vi.mock('vscode', () => {
   return {
     EventEmitter, RelativePattern: class { constructor(public base: string, public pattern: string) {} },
     workspace: { isTrusted: true, workspaceFolders: [], createFileSystemWatcher: vi.fn(), getConfiguration: () => ({ get: (_key: string, fallback: unknown) => fallback }) },
-    extensions: { getExtension: () => undefined }, ProgressLocation: { Notification: 15 },
+    extensions: { getExtension: vi.fn() }, ProgressLocation: { Notification: 15 },
     window: { showOpenDialog: vi.fn(), withProgress: vi.fn(), showInformationMessage: vi.fn(), showWarningMessage: vi.fn() },
   };
 });
@@ -43,7 +43,8 @@ function setup() {
   return { context, output, git, manager, update, values };
 }
 beforeEach(() => {
-  vi.clearAllMocks(); Object.assign(vscode.workspace, { isTrusted: true });
+  vi.clearAllMocks(); Object.assign(vscode.workspace, { isTrusted: true, workspaceFolders: [] });
+  vi.mocked(vscode.extensions.getExtension).mockReturnValue(undefined);
   vi.mocked(vscode.workspace.createFileSystemWatcher).mockImplementation(watcher as unknown as typeof vscode.workspace.createFileSystemWatcher);
   vi.mocked(vscode.window.showInformationMessage).mockResolvedValue(undefined);
   vi.mocked(vscode.window.showWarningMessage).mockResolvedValue(undefined);
@@ -59,6 +60,42 @@ afterEach(async () => {
 });
 
 describe('batch repository registration', () => {
+  async function worktree(root: string) {
+    const main = path.join(root, 'A'), linked = path.join(root, 'category/A-linked');
+    await exec('git', ['-C', main, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '--allow-empty', '-m', 'Initial'], { windowsHide: true });
+    await exec('git', ['-C', main, 'worktree', 'add', '-b', 'feature', linked], { windowsHide: true });
+    return { main, linked };
+  }
+  it('groups recursive Worktrees in both navigation lists and counts logical repositories', async () => {
+    const root = await fixture(); await worktree(root); const { manager } = setup();
+    expect(await manager.addDirectory(root)).toMatchObject({ found: 2, added: 2, existing: 0 });
+    expect(manager.list()).toHaveLength(3); expect(manager.groups()).toHaveLength(2);
+    expect(new RepositoryTree(manager).getChildren().map(repo => repo.name).sort()).toEqual(['A', 'B']);
+    expect(await manager.addDirectory(root)).toMatchObject({ found: 2, added: 0, existing: 2 });
+  });
+  it('notifies when adding a new Worktree to an existing group without counting a new repository', async () => {
+    const root = await fixture(), { main, linked } = await worktree(root), { manager } = setup();
+    await manager.add(main); const changed = vi.fn(); manager.onDidChangeRepositories(changed);
+    expect(await manager.addDirectory(linked)).toMatchObject({ found: 1, added: 0, existing: 1 });
+    expect(changed).toHaveBeenCalledTimes(1); expect(manager.list()).toHaveLength(2); expect(manager.groups()).toHaveLength(1);
+  });
+  it('restores legacy Worktree paths, drafts and IDs and groups automatic VS Code discovery', async () => {
+    const root = await fixture(), { main, linked } = await worktree(root), { manager, git, values, update } = setup();
+    const linkedRepo = await git.discover(linked), mainRepo = await git.discover(main);
+    const session = { repoId: linkedRepo.id, drafts: { [mainRepo.id]: '主目录草稿', [linkedRepo.id]: 'Worktree 草稿' }, layout: { preset: 'editor' } };
+    values.set('alwaygit.roots', [linked, main]); values.set('alwaygit.session', session);
+    vi.mocked(vscode.extensions.getExtension).mockReturnValue({ activate: async () => ({ getAPI: () => ({ repositories: [{ rootUri: { scheme: 'file', fsPath: linked } }, { rootUri: { scheme: 'file', fsPath: main } }] }) }) } as never);
+    await manager.scan();
+    expect(manager.groups()).toHaveLength(1); expect(new RepositoryTree(manager).getChildren()[0].id).toBe(mainRepo.id);
+    expect(manager.get(linkedRepo.id).root).toBe(linkedRepo.root); expect(values.get('alwaygit.session')).toBe(session);
+    expect(update).not.toHaveBeenCalled();
+  });
+  it('shows the main repository name when directly adding only its linked directory', async () => {
+    const root = await fixture(), { linked } = await worktree(root), { manager } = setup();
+    const repo = await manager.add(linked);
+    expect(manager.groups()[0]).toMatchObject({ name: 'A', repository: repo });
+    expect(new RepositoryTree(manager).getChildren()[0]).toMatchObject({ id: repo.id, name: 'A' });
+  });
   it('deduplicates, saves and notifies once, restores registered roots, and preserves session data', async () => {
     const root = await fixture(), { manager, context, output, git, update, values } = setup();
     const session = values.get('alwaygit.session'), changed = vi.fn(); manager.onDidChangeRepositories(changed);

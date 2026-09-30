@@ -1,6 +1,7 @@
 import { readdir, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import type { GitServiceContract, Repository } from '../protocol/types';
+import { repositoryGroupKey } from '../protocol/repositories';
 
 export interface DiscoveryProgress { scanned: number; found: number }
 export interface DiscoveryOptions {
@@ -18,6 +19,7 @@ export async function discoverRepositories(root: string, git: Pick<GitServiceCon
   const result: DiscoveryResult = { scanned: 0, found: 0, repositories: [], issues: [], cancelled: false };
   const pending = [await realpath(root)];
   const seen = new Set<string>();
+  const groups = new Set<string>();
   const cancelled = () => !!options.isCancelled?.();
   while (pending.length && !cancelled()) {
     const directory = pending.pop()!;
@@ -33,7 +35,8 @@ export async function discoverRepositories(root: string, git: Pick<GitServiceCon
           if (cancelled()) break;
           repository = true;
           if (!seen.has(repo.id)) {
-            seen.add(repo.id); result.repositories.push(repo); result.found++;
+            seen.add(repo.id); result.repositories.push(repo);
+            groups.add(repositoryGroupKey(repo)); result.found = groups.size;
           }
         } catch (error) {
           // A missing Git executable affects every repository, so fail the operation.

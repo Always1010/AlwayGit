@@ -93,20 +93,36 @@ export async function run(): Promise<void> {
       const directory = path.join(collection, relative); await mkdir(directory, { recursive: true });
       await promisify(execFile)('git', ['-C', directory, 'init', '-b', 'main'], { windowsHide: true });
     }
+    const main = path.join(collection, 'A'), linked = path.join(collection, 'category/A-linked');
+    await promisify(execFile)('git', ['-C', main, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '--allow-empty', '-m', 'Initial'], { windowsHide: true });
+    await promisify(execFile)('git', ['-C', main, 'worktree', 'add', '-b', 'feature', linked], { windowsHide: true });
+    await writeFile(path.join(linked, 'linked.txt'), 'Only this Worktree');
     let listEvents = 0;
     const listener = api.manager.onDidChangeRepositories(() => { listEvents++; });
     try {
       const added = await api.manager.addDirectory(collection);
       assert.equal(added.added, 2); assert.equal(added.issues.length, 0); assert.equal(listEvents, 1);
+      assert.equal(added.found, 2); assert.equal(api.manager.groups().length, 3);
       const repeated = await api.manager.addDirectory(collection);
       assert.equal(repeated.added, 0); assert.equal(repeated.existing, 2); assert.equal(listEvents, 1);
       const after = await api.workbench.handle({ id: 'after-batch', method: 'repositories' }) as Repository[];
-      assert.equal(after.length, 3); assert.equal(after[0].id, repo.id, 'Batch registration retains active repository');
+      assert.equal(after.length, 4); assert.equal(after[0].id, repo.id, 'Batch registration retains active repository');
+      const group = api.manager.groups().find(group => group.name === 'A')!;
+      assert.equal(group.members.length, 2);
+      const linkedRepo = api.manager.list().find(candidate => candidate.root.replace(/\\/g, '/').endsWith('/category/A-linked'))!;
+      // Worktree UI sends Git's canonical path, not the Windows short-name temp alias.
+      await api.workbench.handle({ id: 'open-linked', method: 'openWorktree', repoId: group.repository.id, payload: { path: linkedRepo.root, newWindow: false } });
+      const linkedSnapshot = await api.workbench.handle({ id: 'linked-snapshot', method: 'snapshot', repoId: linkedRepo.id }) as Snapshot;
+      assert.equal(linkedSnapshot.branch, 'feature'); assert.equal(linkedSnapshot.changes[0].path, 'linked.txt');
+      const mainSnapshot = await api.git.snapshot(api.manager.get(group.repository.id));
+      assert.equal(mainSnapshot.branch, 'main'); assert.equal(mainSnapshot.changes.length, 0);
+      assert.equal(api.manager.groups().length, 3, 'Opening a Worktree does not add a top-level repository');
+      await api.workbench.open(repo.id);
       assert.equal(sentinel.isDirty, true);
     } finally { listener.dispose(); }
   } finally {
     if (path.dirname(collection) !== path.resolve(os.tmpdir()) || !path.basename(collection).startsWith('alwaygit-batch-')) throw new Error('Unsafe cleanup target');
     await rm(collection, { recursive: true, force: true, maxRetries: 5 });
   }
-  console.log('ALWAYGIT_EXTENSION_TESTS_PASSED: activation, recursive batch discovery and deduplication, session v2, graph queries, native/preview diffs, scoped file/Index watchers, clipboard, editing, path boundary, message validation');
+  console.log('ALWAYGIT_EXTENSION_TESTS_PASSED: activation, logical repository groups, recursive batch discovery and deduplication, Worktree switching and isolated status, session v2, graph queries, native/preview diffs, scoped file/Index watchers, clipboard, editing, path boundary, message validation');
 }
