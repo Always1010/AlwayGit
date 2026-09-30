@@ -7,6 +7,7 @@ import { verifyRefresh } from './test-refresh-ui.mjs';
 import { verifyFeedback } from './test-feedback-ui.mjs';
 import { verifyFiles } from './test-files-ui.mjs';
 import { verifyHistoryRows } from './test-history-ui.mjs';
+import { verifyDiffNavigation } from './test-diff-ui.mjs';
 
 const root = path.resolve('dist/webview');
 const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.ttf': 'font/ttf', '.woff2': 'font/woff2', '.svg': 'image/svg+xml' };
@@ -245,6 +246,7 @@ try {
   await verifyRefresh(browser, url);
   await verifyFeedback(browser, url);
   await verifyFiles(browser, url);
+  await verifyDiffNavigation(browser, url);
   console.log('ALWAYGIT_UI_TESTS_PASSED: four-pane layout, complete context menus, focus/viewport keyboard behavior, targeted dialogs, resizing and header scroll sync, Locate HEAD, multi-ref filtering, language/session, Diff preview, compact themes');
 } finally {
   await browser?.close();

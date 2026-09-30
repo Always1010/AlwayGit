@@ -11,6 +11,46 @@ export function changedRanges(rows: readonly DiffRow[]): DiffChangeRange[] {
   }
   return ranges;
 }
+
+/** Select the block containing the viewport anchor, or its nearest neighbour. */
+export function changeAtRow(ranges: readonly DiffChangeRange[], row: number): number {
+  let nearest=-1,distance=Infinity;
+  for(let index=0;index<ranges.length;index++){
+    const range=ranges[index],nextDistance=Math.max(range.start-row,row-range.end,0);
+    if(nextDistance<distance){nearest=index;distance=nextDistance;}
+  }
+  return nearest;
+}
+
+/** Keep a selected block across a same-file refresh without moving the viewport. */
+export function remapChange(rowsBefore: readonly DiffRow[], rowsAfter: readonly DiffRow[], selected: number): number {
+  const before=changedRanges(rowsBefore),after=changedRanges(rowsAfter);
+  if(!after.length)return -1;
+  const previous=before[selected];
+  if(!previous)return Math.max(0,Math.min(selected,after.length-1));
+  const anchor=rowsBefore[previous.start];
+  let matchedRow=-1,matchedDistance=Infinity;
+  for(let index=0;index<rowsAfter.length;index++){
+    const row=rowsAfter[index];
+    if(!row.changed||row.before!==anchor.before||row.after!==anchor.after)continue;
+    const distance=Math.abs((row.beforeLine??row.afterLine??index)-(anchor.beforeLine??anchor.afterLine??previous.start));
+    if(distance<matchedDistance){matchedRow=index;matchedDistance=distance;}
+  }
+  if(matchedRow>=0)return changeAtRow(after,matchedRow);
+  // If the selected edit disappeared, choose the closest surviving source line.
+  const side=anchor.beforeLine!==undefined?'beforeLine':'afterLine';
+  const line=anchor[side];
+  if(line===undefined)return Math.min(selected,after.length-1);
+  let nearest=0,distance=Infinity;
+  for(let index=0;index<after.length;index++){
+    const range=after[index];
+    for(let rowIndex=range.start;rowIndex<=range.end;rowIndex++){
+      const rowLine=rowsAfter[rowIndex][side];
+      if(rowLine!==undefined&&Math.abs(rowLine-line)<distance){nearest=index;distance=Math.abs(rowLine-line);}
+    }
+  }
+  return distance===Infinity?Math.min(selected,after.length-1):nearest;
+}
 export interface ChangedParts { prefix: string; before: string; after: string; suffix: string }
 export function changedParts(before: string, after: string): ChangedParts {
   let start=0,endBefore=before.length,endAfter=after.length;
