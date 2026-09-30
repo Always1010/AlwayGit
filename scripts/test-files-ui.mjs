@@ -42,9 +42,9 @@ export async function verifyFiles(browser, url) {
     assert.equal(await panel.locator('.file-item input:checked').count(), 1);
     assert.equal(await panel.getByLabel('Select all changed files').evaluate(input => input.indeterminate), true);
     await page.getByTestId('history').getByRole('button', { name: /Working Tree/ }).click();
-    const groups = details.locator('.change-groups'), unstaged = groups.locator('.change-group').filter({ hasText: /^Unstaged Changes/ }), staged = groups.locator('.change-group').filter({ hasText: /^Staged Changes/ });
+    const groups = details.locator('.change-groups'), unstaged = groups.locator('.change-group:has(.change-heading-unstaged)'), staged = groups.locator('.change-group:has(.change-heading-staged)');
     await unstaged.getByRole('button', { name: 'Stage All', exact: true }).waitFor();
-    assert.equal(await unstaged.getByRole('button', { name: 'Discard Changes…', exact: true }).isDisabled(), true);
+    assert.equal(await unstaged.getByRole('button', { name: 'Discard selected files…', exact: true }).isDisabled(), true);
     await unstaged.getByRole('button', { name: 'src/features/auth/login.ts', exact: true }).click();
     await page.keyboard.press('Control+a');
     assert.equal(await groups.locator('.change-file input:checked').count(), 4);
@@ -60,7 +60,7 @@ export async function verifyFiles(browser, url) {
     await groups.focus(); await page.keyboard.press('Escape');
     assert.equal(await groups.locator('.change-file input:checked').count(), 0);
     await unstaged.getByRole('button', { name: 'README.md', exact: true }).click({ modifiers: ['Control'] });
-    await unstaged.getByRole('button', { name: 'Discard Changes…', exact: true }).click();
+    await unstaged.getByRole('button', { name: 'Discard selected files…', exact: true }).click();
     const dialog = page.getByRole('dialog');
     assert.equal((await dialog.locator('.discard-paths').innerText()).trim(), 'README.md');
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
