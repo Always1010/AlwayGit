@@ -22,7 +22,7 @@ npm run build
 - 右侧显示 Commit 详情及文件；选择 Working Tree 时显示变更管理与 Commit 表单。
 - 底部显示选中文件的只读 Diff 预览。
 
-`Editor Focus` 布局收起底部 Diff，把空间留给历史和详情；文件仍可在 VS Code 原生编辑器或原生 Diff 中打开。面板和表格列可以拖动调整，`Restore Layout` 恢复默认尺寸。
+工作台固定使用四区 Workbench，面板和表格列可拖动调整；右上角恢复布局图标仅恢复尺寸。通过“界面设置”浮窗调整主题、语言、界面与 Diff 字号、列表密度和 Graph 配色，实时预览后应用或取消。文件仍可在 VS Code 原生编辑器或原生 Diff 中打开。
 
 分支及分支目录前的复选框决定 Graph 中显示哪些引用，目录复选框支持全选、清空和半选状态。勾选多个分支时显示各分支可达提交的并集，共同祖先只出现一次；清空选择时显示空状态。单击分支名称定位并查看它，双击本地分支执行 Checkout。单击 Commit 显示详情，双击 Commit 可切换到关联的本地分支，或在确认后进入 Detached HEAD。当前 HEAD 始终有清晰标记，并可通过 `Locate HEAD` 重新定位。
 
@@ -49,7 +49,7 @@ Git 操作在仓库所在的扩展宿主中执行，架构兼容 WSL、Remote SS
 - `alwaygit.gitPath`：Git 可执行文件路径；留空时依次使用 VS Code 内置 Git 配置和 PATH。
 - `alwaygit.historyPageSize`：每页历史条数。
 - `alwaygit.refreshInterval`：可见工作台的补偿刷新间隔，单位为秒。
-- `alwaygit.language`：工作台初始语言；工作台内的 Language 选择会按当前工作区记忆。
+- `alwaygit.language`：工作台初始语言；“界面设置”中的语言选择会按当前工作区记忆。
 
 修改 Git 路径或刷新间隔后重新加载窗口。
 
