@@ -9,6 +9,7 @@ import type { GitDocuments } from '../editor/documents';
 import { confirmAction } from '../application/confirm';
 import { redactSecrets } from '../application/logging';
 import { hostText, preferredLanguage, type Language } from '../application/language';
+import type { ProjectWindows } from './project-windows';
 
 export class Workbench implements vscode.Disposable {
   private panel?: vscode.WebviewPanel;
@@ -23,7 +24,7 @@ export class Workbench implements vscode.Disposable {
   private readonly interval: ReturnType<typeof setInterval>;
   private language(): Language { return this.context.workspaceState.get<{ language?: Language }>('alwaygit.session', {}).language ?? preferredLanguage(); }
   private text(english: string, chinese: string): string { return hostText(english, chinese, this.language()); }
-  constructor(private readonly context: vscode.ExtensionContext, private readonly git: GitServiceContract, private readonly repositories: RepositoryManager, private readonly documents: GitDocuments, private readonly output: vscode.OutputChannel) {
+  constructor(private readonly context: vscode.ExtensionContext, private readonly git: GitServiceContract, private readonly repositories: RepositoryManager, private readonly documents: GitDocuments, private readonly output: vscode.OutputChannel, private readonly projects: ProjectWindows) {
     this.disposables.push(repositories.onDidChange(id => this.post({ type: 'changed', repoId: id })), repositories.onDidChangeRepositories(() => this.post({ type: 'repositoriesChanged' })));
     const seconds = vscode.workspace.getConfiguration('alwaygit').get<number>('refreshInterval', 15);
     this.interval = setInterval(() => void this.poll(), seconds * 1000);
@@ -88,6 +89,7 @@ export class Workbench implements vscode.Disposable {
         return null;
       }
       case 'openFile': await this.documents.openFile(repo, fileSchema.parse(request.payload).path); return null;
+      case 'openProject': await this.projects.openProject(repo.root); return null;
       case 'openWorktree': {
         const data = openWorktreeSchema.parse(request.payload);
         const snapshot = await this.git.snapshot(repo);

@@ -28,6 +28,7 @@ export async function run(): Promise<void> {
   assert.equal(snapshot.branch, 'main');
   assert.deepEqual(snapshot.changes.map(c => [c.path, c.indexStatus, c.worktreeStatus]), [['sample.ts', 'M', 'M']]);
   const history = await api.workbench.handle({ id: 'history', method: 'history', repoId: repo.id, payload: { limit: 100 } }) as HistoryPage;
+  await api.workbench.handle({ id: 'project', method: 'openProject', repoId: repo.id });
   assert.equal(history.commits.length, 1); assert.equal(history.commits[0].subject, 'Initial fixture');
   await vscode.commands.executeCommand('alwaygit.open', repo.id);
   const deadline = Date.now() + 12000;
