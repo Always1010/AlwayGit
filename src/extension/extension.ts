@@ -5,6 +5,7 @@ import { GitDocuments } from '../editor/documents';
 import { Workbench } from './workbench';
 import { credentialEnvironment } from '../application/credentials';
 import { redactSecrets } from '../application/logging';
+import { ProjectWindows } from './project-windows';
 
 export async function activate(context: vscode.ExtensionContext) {
   const output = vscode.window.createOutputChannel('AlwayGit');
@@ -26,9 +27,10 @@ export async function activate(context: vscode.ExtensionContext) {
   });
   const manager = new RepositoryManager(git, context, output);
   const documents = new GitDocuments(git);
-  const workbench = new Workbench(context, git, manager, documents, output);
+  const projects = new ProjectWindows(context, output);
+  const workbench = new Workbench(context, git, manager, documents, output, projects);
   const tree = new RepositoryTree(manager);
-  context.subscriptions.push(output, manager, workbench,
+  context.subscriptions.push(output, manager, workbench, projects,
     vscode.workspace.registerTextDocumentContentProvider('alwaygit-content', documents),
     vscode.window.registerTreeDataProvider('alwaygit.repositories', tree),
     manager.onDidChangeRepositories(() => tree.refresh()),
@@ -42,8 +44,9 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.workspace.onDidChangeConfiguration(e => { if (e.affectsConfiguration('alwaygit.gitPath') || e.affectsConfiguration('alwaygit.refreshInterval')) void vscode.window.showInformationMessage('Reload the VS Code window to apply AlwayGit runtime configuration changes.'); }),
     vscode.window.registerWebviewPanelSerializer('alwaygit.workbench', { async deserializeWebviewPanel(panel, state: { repoId?: string } | undefined) { await workbench.open(state?.repoId, panel); } }),
   );
+  await projects.start();
   await manager.scan();
   output.appendLine('AlwayGit activated. Git operations run in the workspace extension host.');
-  return { git, manager, documents, workbench };
+  return { git, manager, documents, workbench, projects };
 }
 export function deactivate(): void {}

@@ -37,6 +37,13 @@ try {
   assert.ok(await history.locator('svg[role="img"]').count() > 0, 'History must expose accessible Graph rows');
   await history.locator('.head-row').first().waitFor();
   assert.match(await page.getByTestId('current-branch').innerText(), /main/);
+  const projectButton = page.getByTestId('open-project');
+  assert.equal(await projectButton.isEnabled(), true);
+  assert.match(await projectButton.getAttribute('title'), /AlwayGit/);
+  const toolbarBox = await page.locator('.toolbar').boundingBox(), projectBox = await projectButton.boundingBox();
+  assert.ok(toolbarBox && projectBox && toolbarBox.x + toolbarBox.width - projectBox.x - projectBox.width < 16, 'Project button belongs at the far right of the action toolbar');
+  await projectButton.click();
+  await page.getByText('Demo: native VS Code command preview.', { exact: true }).waitFor();
   const historyViewport = history.locator('.history-viewport');
   await historyViewport.evaluate(element => { element.scrollTop = 500; });
   assert.ok(await historyViewport.evaluate(element => element.scrollTop) > 0, 'Fixture must scroll away from HEAD before Locate HEAD');

@@ -38,7 +38,7 @@ export type ContentSource = { kind: 'revision'; revision: string; path: string }
 export type DiffTarget = { kind: 'change'; path: string; area: 'staged' | 'unstaged' | 'conflict' } | { kind: 'commit'; oid: string; path: string; parent?: string; previousPath?: string };
 export interface DiffPreview { path: string; leftLabel: string; rightLabel: string; left: string; right: string; binary?: boolean; truncated?: boolean }
 export interface CheckoutBlocker { reason: 'local-changes' | 'conflicts' | 'operation-active' | 'worktree-occupied' | 'checkout-failed'; paths: string[]; target: string; worktreePath?: string; stashOid?: string; stashCreated?: boolean }
-export interface RpcRequest { id: string; method: 'repositories' | 'addRepository' | 'snapshot' | 'history' | 'details' | 'action' | 'diff' | 'diffPreview' | 'copyText' | 'openRepository' | 'openFile' | 'openWorktree' | 'pickWorktree' | 'showLog' | 'saveSession'; repoId?: string; payload?: unknown }
+export interface RpcRequest { id: string; method: 'repositories' | 'addRepository' | 'snapshot' | 'history' | 'details' | 'action' | 'diff' | 'diffPreview' | 'copyText' | 'openRepository' | 'openProject' | 'openFile' | 'openWorktree' | 'pickWorktree' | 'showLog' | 'saveSession'; repoId?: string; payload?: unknown }
 export type HostMessage = { type: 'response'; id: string; result?: unknown; error?: { message: string; code?: string; details?: CheckoutBlocker } } | { type: 'changed'; repoId: string } | { type: 'activity'; repoId: string; busy: boolean; label: string } | { type: 'repositoriesChanged' } | { type: 'selectRepository'; repoId: string };
 export interface GitServiceContract {
   discover(root: string): Promise<Repository>;
