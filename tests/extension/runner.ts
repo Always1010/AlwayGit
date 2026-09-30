@@ -14,6 +14,10 @@ export async function run(): Promise<void> {
   const repos = await api.workbench.handle({ id: 'repos', method: 'repositories' }) as Repository[];
   assert.equal(repos.length, 1);
   const repo = repos[0];
+  const sentinel = await vscode.workspace.openTextDocument({ content: 'Keep this editor', language: 'plaintext' });
+  await vscode.window.showTextDocument(sentinel, { preview: false, viewColumn: vscode.ViewColumn.One });
+  const dirtyEdit = new vscode.WorkspaceEdit(); dirtyEdit.insert(sentinel.uri, new vscode.Position(0, 0), 'Unsaved '); await vscode.workspace.applyEdit(dirtyEdit);
+  const groupCount = vscode.window.tabGroups.all.length;
   await api.workbench.handle({ id: 'save', method: 'saveSession', payload: {
     version: 2,
     language: 'zh-CN',
@@ -43,6 +47,9 @@ export async function run(): Promise<void> {
   assert.match(stagedPreview.left, /value = 1/); assert.match(stagedPreview.right, /value = 2/);
   assert.equal(stagedPreview.binary, undefined); assert.equal(stagedPreview.truncated, undefined);
   await api.workbench.handle({ id: 'unstaged', method: 'diff', repoId: repo.id, payload: { kind: 'change', area: 'unstaged', path: 'sample.ts' } });
+  const diffTabs = vscode.window.tabGroups.all.flatMap(group => group.tabs).filter(tab => tab.input instanceof vscode.TabInputTextDiff);
+  assert.ok(diffTabs.length >= 2, 'Opening another comparison must retain the previous Diff tab');
+  assert.ok(diffTabs.every(tab => !tab.isPreview), 'Native Diff tabs must be pinned');
   assert.ok(vscode.workspace.textDocuments.some(d => d.uri.scheme === 'file' && d.getText().includes('value = 3')));
   const unstagedPreview = await api.workbench.handle({ id: 'unstaged-preview', method: 'diffPreview', repoId: repo.id, payload: { kind: 'change', area: 'unstaged', path: 'sample.ts' } }) as DiffPreview;
   assert.equal(unstagedPreview.leftLabel, 'Index'); assert.equal(unstagedPreview.rightLabel, 'Working Tree');
@@ -51,6 +58,13 @@ export async function run(): Promise<void> {
   assert.equal(await vscode.env.clipboard.readText(), 'AlwayGit clipboard fixture');
   await api.workbench.handle({ id: 'open', method: 'openFile', repoId: repo.id, payload: { path: 'sample.ts' } });
   assert.equal(vscode.window.activeTextEditor?.document.uri.scheme, 'file');
+  assert.equal(vscode.window.tabGroups.all.length, groupCount, 'Native opens must not create a side editor group');
+  assert.ok(vscode.window.tabGroups.all.flatMap(group => group.tabs).some(tab => tab.input instanceof vscode.TabInputText && tab.input.uri.toString() === sentinel.uri.toString()), 'Existing editor must remain open');
+  assert.equal(sentinel.isDirty, true); assert.match(sentinel.getText(), /Unsaved Keep this editor/);
+  assert.equal(vscode.window.tabGroups.activeTabGroup.activeTab?.isPreview, false);
+  const fileTabsBefore = vscode.window.tabGroups.all.flatMap(group => group.tabs).length;
+  await api.workbench.handle({ id: 'open-again', method: 'openFile', repoId: repo.id, payload: { path: 'sample.ts' } });
+  assert.equal(vscode.window.tabGroups.all.flatMap(group => group.tabs).length, fileTabsBefore, 'Reopening the working file must reuse its pinned tab');
   await assert.rejects(api.workbench.handle({ id: 'bad', method: 'openFile', repoId: repo.id, payload: { path: '../outside.ts' } }), /outside/);
   await assert.rejects(api.workbench.handle({ id: 'bad-action', method: 'action', repoId: repo.id, payload: { type: 'reset', target: 'HEAD', mode: 'bad' } }));
   console.log('ALWAYGIT_EXTENSION_TESTS_PASSED: activation, discovery, session v2, graph queries, native/preview diffs, clipboard, editing, path boundary, message validation');
