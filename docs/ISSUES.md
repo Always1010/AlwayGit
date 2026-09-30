@@ -6,11 +6,11 @@
 
 - 日期：2026-10-01
 - 状态：已解决
-- 现象：焦点位于 Repository、Local Branch、单个 Remote 或 Commit History 等可批量选择区域时，按 Ctrl/Cmd+A 可能没有选中该区域内的对象，反而触发浏览器默认行为并选中整页文本；不同区域对 Escape 清除选择的支持也不一致。
-- 原因：选择快捷键分别绑定在部分子列表的冒泡阶段，焦点落在标题、操作控件或行内元素时可能越过处理边界；各区域还使用分散且不一致的按键判定，History 缺少区域级全选处理。
-- 解决方案：统一共享 Ctrl/Cmd+A 与 Escape 的键盘判定，在可聚焦的侧栏选择容器和 History 面板捕获按键，并按焦点所在作用域更新对象选择。Repository 全选逻辑仓库，Local 只全选本地分支，Remote 只全选当前 Remote 的分支，且分支 action selection 不改变 Graph `checkedRefs`。History 只选择当前已经加载的真实 Commit，不隐式加载更多并排除 Working Tree；文件区域沿用相同判定。输入框、文本域和可编辑内容继续使用原生全选与 Escape 行为。
-- 验证方式：选择键盘判定单测覆盖 Windows/macOS 修饰键、无效修饰键组合及可编辑控件；无头界面验证 Repository、Local、单个 Remote、History 与文件区域的 Ctrl/Cmd+A 和 Escape 作用域，确认页面文本不被选中、Graph 勾选不变、History 数量不增长且 Working Tree 不进入 Commit 多选。
-- 相关文件：`webview/selectionKeyboard.ts`、`webview/Sidebar.tsx`、`webview/History.tsx`、`webview/Details.tsx`、`webview/fileSelection.ts`、`tests/file-selection.test.ts`、`scripts/test-ui.mjs`、`scripts/test-worktrees-ui.mjs`、`scripts/test-history-ui.mjs`、`docs/WORKBENCH_SPEC.md`。
+- 现象：焦点位于 Repository、Local Branch、单个 Remote、Worktrees 或 Commit History 等可批量选择区域时，按 Ctrl/Cmd+A 可能没有选中该区域内的对象，反而触发浏览器默认行为并选中整页文本；不同区域对 Escape 清除选择的支持也不一致。首次修复还错误地把 Worktrees 当成仅单项导航而排除，导致该区域继续复现。
+- 原因：选择快捷键分别绑定在部分子列表的冒泡阶段，焦点落在标题、操作控件或行内元素时可能越过处理边界；各区域还使用分散且不一致的按键判定，History 和 Worktrees 缺少区域级全选处理。
+- 解决方案：统一共享 Ctrl/Cmd+A 与 Escape 的键盘判定，在可聚焦的侧栏选择容器和 History 面板捕获按键，并按焦点所在作用域更新对象选择。Repository 全选逻辑仓库，Local 只全选本地分支，Remote 只全选当前 Remote 的分支，Worktrees 全选当前仓库的全部 Worktree；分支 action selection 不改变 Graph `checkedRefs`。History 只选择当前已经加载的真实 Commit，不隐式加载更多并排除 Working Tree 虚拟 Commit；文件区域沿用相同判定。输入框、文本域和可编辑内容继续使用原生全选与 Escape 行为。
+- 验证方式：选择键盘判定单测覆盖 Windows/macOS 修饰键、无效修饰键组合及可编辑控件；无头界面覆盖 Repository、Local、单个 Remote、History 与文件区域。Worktrees 专项保留 Ctrl/Cmd+A 全选、Escape 清空和页面文本不被选中的回归场景。
+- 相关文件：`webview/selectionKeyboard.ts`、`webview/Sidebar.tsx`、`webview/menus.ts`、`webview/History.tsx`、`webview/Details.tsx`、`webview/fileSelection.ts`、`tests/file-selection.test.ts`、`scripts/test-ui.mjs`、`scripts/test-worktrees-ui.mjs`、`scripts/test-history-ui.mjs`、`docs/WORKBENCH_SPEC.md`。
 
 ## BUG-016：普通单击活动 Commit 未必退出多选
 

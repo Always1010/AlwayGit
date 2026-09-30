@@ -32,9 +32,9 @@ Working Tree 作为只存在于前端的虚拟提交节点显示，不创建 Git
 
 Repositories 顶层列表和活动栏按共享 Git 存储归并，同一仓库的主目录及 linked Worktree 只占一个入口；仓库名称来自 Git 报告的主工作目录。递归发现、新增和已有仓库数量均按归并后的仓库统计，独立克隆保持独立。工作目录在当前仓库的 Worktrees 区域切换；选中 linked Worktree 时，顶层仍标记所属仓库，菜单和工具栏操作以当前工作目录为目标。直接只添加 Worktree 也保留其入口；没有当前选择时优先使用已注册的主目录。
 
-Repository 名称行单击只改变操作选择，不切换当前仓库；普通单击单选，Ctrl/Cmd 单击切换单项，Shift 单击选择连续范围，Ctrl/Cmd+Shift 将连续范围加入既有选择。右键已选项保留批量选择，右键未选项先切为单选。双击或键盘 Enter 才切换仓库。Worktree 名称行单击只取得焦点，双击或 Enter 切换。当前 Repository、Worktree 和本地分支统一在内容排头显示实心播放三角形，浅色背景使用纯黑、深色背景使用纯白；Repository 的蓝色选择背景只表示操作范围，两者可以同时存在。非当前行保留同宽空位以对齐内容。分支复选框属于 Graph 筛选控件，三角形位于复选框之后、分支图标之前。当前状态使用 `aria-current` 暴露给辅助技术，不重复显示 `Current` 文字徽标。Detached HEAD 时不标记本地分支，但仍标记当前 Worktree。
+Repository 和 Worktree 名称行单击只改变操作选择，不切换当前仓库或工作目录；普通单击单选，Ctrl/Cmd 单击切换单项，Shift 单击选择连续范围，Ctrl/Cmd+Shift 将连续范围加入既有选择。右键已选项保留批量选择，右键未选项先切为单选。双击或键盘 Enter 才切换仓库或 Worktree。当前 Repository、Worktree 和本地分支统一在内容排头显示实心播放三角形，浅色背景使用纯黑、深色背景使用纯白；蓝色选择背景只表示操作范围，当前状态与操作选择可以同时存在。非当前行保留同宽空位以对齐内容。分支复选框属于 Graph 筛选控件，三角形位于复选框之后、分支图标之前。当前状态使用 `aria-current` 暴露给辅助技术，不重复显示 `Current` 文字徽标。Detached HEAD 时不标记本地分支，但仍标记当前 Worktree。
 
-当焦点位于可多选区域或其标题、行内控件时，Ctrl/Cmd+A 只全选焦点所属作用域，Escape 只清除该作用域的操作选择；快捷键由区域容器捕获，不能落到整页文本选择。Repository 的范围是全部逻辑仓库；Local Branches 的范围是全部本地分支；每个 Remote 是独立范围，只包含该 Remote 下的分支。分支 action selection 与 Graph 筛选复选框相互独立，Ctrl/Cmd+A 和 Escape 都不改变 `checkedRefs`。History 的范围是当前已经加载的真实 Commit，不为全选隐式加载下一页，并排除 Working Tree。Working Tree、Commit Details 和 Commit 比较的文件区域只处理当前面板可见文件。输入框、文本域和可编辑内容保留 Ctrl/Cmd+A 与 Escape 的原生行为。
+当焦点位于可多选区域或其标题、行内控件时，Ctrl/Cmd+A 只全选焦点所属作用域，Escape 只清除该作用域的操作选择；快捷键由区域容器捕获，不能落到整页文本选择。Repository 的范围是全部逻辑仓库；Local Branches 的范围是全部本地分支；每个 Remote 是独立范围，只包含该 Remote 下的分支；Worktrees 的范围是当前仓库的全部 Worktree。分支 action selection 与 Graph 筛选复选框相互独立，Ctrl/Cmd+A 和 Escape 都不改变 `checkedRefs`。History 的范围是当前已经加载的真实 Commit，不为全选隐式加载下一页，并排除 Working Tree 虚拟 Commit。Working Tree、Commit Details 和 Commit 比较的文件区域只处理当前面板可见文件。输入框、文本域和可编辑内容保留 Ctrl/Cmd+A 与 Escape 的原生行为。
 
 分组应用于全部添加、恢复和自动发现入口。已有保存路径无需清除，工作目录 ID、各自的 Commit 草稿与视图继续保留；不将多个 Worktree 的文件或暂存区状态合并。
 
@@ -42,7 +42,8 @@ Repository 名称行单击只改变操作选择，不切换当前仓库；普通
 | --- | --- |
 | 单击 Repository 名称 | 更新单选或 Ctrl/Cmd、Shift 批量操作选择，不切换当前仓库 |
 | Repositories 中按 `Ctrl` / `Cmd` + `A`；按 `Escape` | 全选全部逻辑仓库的操作选择；清除 Repository 操作选择 |
-| 单击 Worktree 名称 | 只取得焦点，不切换当前工作目录 |
+| 单击 Worktree 名称 | 更新单选或 Ctrl/Cmd、Shift 批量操作选择，不切换当前工作目录 |
+| Worktrees 中按 `Ctrl` / `Cmd` + `A`；按 `Escape` | 全选当前仓库的全部 Worktree；清除 Worktree 操作选择 |
 | 双击 Repository / Worktree 名称 | 切换到目标仓库或 Worktree |
 | Repository / Worktree 名称获得焦点后按 Enter | 与双击相同，切换到目标仓库或 Worktree |
 | 勾选引用复选框 | 加入或移出 Graph 显示范围，不 Checkout |
@@ -108,6 +109,7 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 | Tag | `Show in Graph`、`Show Only This Tag`、`Create Branch…`、`Checkout…`、`Delete Tag…`、`Copy Tag Name`、`Copy Commit ID` |
 | Stash | `View Changes`、`Apply Stash`、`Pop Stash`、`Drop Stash…` |
 | Worktree | `Open Worktree`、`Open Workbench in New Window`、`Refresh`、`Remove Worktree…`、`Copy Worktree Path` |
+| Worktree（多选） | `Refresh`、`Copy N Worktree Paths` |
 
 ## 左侧分组操作
 

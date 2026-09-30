@@ -95,6 +95,11 @@ export async function verifyWorktrees(browser, url) {
     await page.waitForTimeout(30);
     assert.equal(await page.evaluate(() => window.__worktreeFixture.session.repoId), 'main', 'Single-clicking a Worktree must not switch it');
     assert.equal(await draft.inputValue(), 'Main draft');
+    await featureWorktree.press('Control+a');
+    assert.equal(await page.locator('.worktree-list [aria-selected="true"]').count(), 2, 'Ctrl+A selects every Worktree without switching');
+    assert.equal(await page.evaluate(() => window.getSelection()?.toString()), '', 'Worktree Ctrl+A must not select page text');
+    await featureWorktree.press('Escape');
+    assert.equal(await page.locator('.worktree-list [aria-selected="true"]').count(), 0, 'Escape clears Worktree selection');
     await featureWorktree.dblclick();
     await page.waitForFunction(() => document.querySelector('#ag-commit-message')?.value === 'Edited linked draft');
     assert.equal(await featureWorktree.getAttribute('aria-current'), 'true', 'The current Worktree marker follows a double-click switch');

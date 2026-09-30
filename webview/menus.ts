@@ -8,7 +8,7 @@ import { rpc } from './rpc';
 import { cherryPickOrder } from './commitSelection';
 
 export interface FileMenuEntry { path: string; target: DiffTarget }
-export type MenuTarget = { kind: 'repository'; group: RepositoryGroup; groups?:RepositoryGroup[] } | { kind: 'ref'; ref: GitRef; refs?:GitRef[] } | { kind: 'ref-folder'; label: string; refs: GitRef[] } | { kind: 'files'; primary: FileMenuEntry; files: FileMenuEntry[] } | { kind: 'commit'; oid: string; oids?: string[] } | { kind: 'stash'; stash: Stash } | { kind: 'worktree'; worktree: Worktree } | { kind: 'remote'; name: string } | { kind: 'group'; group: 'repositories' | 'local' | 'remote' | 'tag' | 'stash' | 'worktree' };
+export type MenuTarget = { kind: 'repository'; group: RepositoryGroup; groups?:RepositoryGroup[] } | { kind: 'ref'; ref: GitRef; refs?:GitRef[] } | { kind: 'ref-folder'; label: string; refs: GitRef[] } | { kind: 'files'; primary: FileMenuEntry; files: FileMenuEntry[] } | { kind: 'commit'; oid: string; oids?: string[] } | { kind: 'stash'; stash: Stash } | { kind: 'worktree'; worktree: Worktree; worktrees?:Worktree[] } | { kind: 'remote'; name: string } | { kind: 'group'; group: 'repositories' | 'local' | 'remote' | 'tag' | 'stash' | 'worktree' };
 export interface MenuApi { open(dialog: DialogRequest): void; checkout(oid: string): void; openDiff(target: DiffTarget): void; editFile(target: DiffTarget): void; host(method: 'copyText'|'openRepository'|'openWorktree', payload: unknown, repoId?: string):Promise<void>; addRepository():Promise<void>; fetchRepositories(repositories:Repository[]):void }
 export function menuFor(target: MenuTarget, api: MenuApi): { caption: string; items: MenuItem[] } {
   const state=useWorkbench.getState(), snapshot=state.snapshot, busy=state.busy;
@@ -77,6 +77,8 @@ export function menuFor(target: MenuTarget, api: MenuApi): { caption: string; it
   }
   if(target.kind==='stash')return {caption:`${target.stash.selector} · ${target.stash.subject}`,items:[item('View Changes',()=>state.selectCommit(target.stash.oid,undefined,target.stash.oid),'diff'),action('Apply Stash',{type:'stash.apply',target:target.stash.selector,expectedOid:target.stash.oid},'unarchive'),action('Pop Stash',{type:'stash.apply',target:target.stash.selector,pop:true,expectedOid:target.stash.oid},'unarchive'),action('Drop Stash…',{type:'stash.drop',target:target.stash.selector,expectedOid:target.stash.oid},'trash')]};
   if(target.kind==='worktree') {
+    const trees=target.worktrees?.length?target.worktrees:[target.worktree];
+    if(trees.length>1)return {caption:t(`${trees.length} Worktrees selected`,`已选择 ${trees.length} 个 Worktree`),items:[refresh,copy(t(`Copy ${trees.length} Worktree Paths`,`复制 ${trees.length} 个 Worktree 路径`),trees.map(tree=>tree.path).join('\n'))]};
     const tree=target.worktree,disabled=busy||!!snapshot&&samePath(tree.path,snapshot.repository.root)||tree===snapshot?.worktrees[0]||!!tree.locked||tree.bare;
     return {caption:tree.path,items:[item('Open Worktree',()=>api.host('openWorktree',{path:tree.path,newWindow:false}),'folder-opened',tree.bare),item('Open Workbench in New Window',()=>api.host('openWorktree',{path:tree.path,newWindow:true}),'window',tree.bare),refresh,action('Remove Worktree…',{type:'worktree.remove',target:tree.path},'trash',disabled,tree.locked||t('The main or current Worktree cannot be removed.','主 Worktree 或当前 Worktree 无法移除。')),copy('Copy Worktree Path',tree.path)]};
   }

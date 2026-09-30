@@ -2,7 +2,7 @@
   "name": "alwaygit",
   "displayName": "AlwayGit",
   "description": "A professional Git workbench inside Visual Studio Code.",
-  "version": "0.16.2",
+  "version": "0.16.3",
   "publisher": "alwaygit-dev",
   "private": true,
   "type": "module",
