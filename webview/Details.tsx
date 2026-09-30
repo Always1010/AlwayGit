@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react';
 import type { Change, DiffTarget } from '../src/protocol/types';
 import type { DialogRequest } from './ActionDialog';
-import type { ContextHandler } from './Sidebar';
 import { useWorkbench } from './store';
 import { useTranslation } from './i18n';
 import { rpc } from './rpc';
 import { Button, Empty, Icon } from './ui';
 
-export function Details({ open, context, edit }: { open(dialog:DialogRequest):void; context:ContextHandler; edit():void }) {
+export function Details({ open, edit }: { open(dialog:DialogRequest):void; edit():void }) {
   const state=useWorkbench(),t=useTranslation(),detail=state.details;
   return <section className="details-panel" data-testid="details">
-    <div className="pane-heading"><strong>{state.tab==='changes'?t('Working Tree Status','工作区状态'):t('Commit Details','Commit 详情')}</strong>{state.tab==='history'&&state.selectedOid&&<Button icon="ellipsis" onClick={event=>context(event,{kind:'commit',oid:state.selectedOid!})}>Commit Actions</Button>}</div>
+    <div className="pane-heading"><strong>{state.tab==='changes'?t('Working Tree Status','工作区状态'):t('Commit Details','Commit 详情')}</strong></div>
     {state.tab==='changes'?<WorkingTree open={open} edit={edit}/>:!detail?<Empty title={state.detailsLoading?t('Loading details…','正在读取详情…'):t('Select a Commit','选择 Commit')}/>:<>
       <div className="commit-metadata"><strong>{detail.commit.subject}</strong><span className="hash" title={detail.commit.oid}>{detail.commit.oid.slice(0,8)}</span><span>{detail.commit.author} &lt;{detail.commit.email}&gt;</span><span className="muted">{new Date(detail.commit.timestamp*1000).toLocaleString(state.language)}</span><pre>{detail.body||detail.commit.subject}</pre>
         {state.selectedStashOid&&state.stashDetails&&<div className="stash-tabs"><Button onClick={()=>void state.selectCommit(state.selectedStashOid!,undefined,state.selectedStashOid)}>Working Tree</Button>{state.stashDetails.commit.parents[1]&&<Button onClick={()=>void state.selectCommit(state.stashDetails!.commit.parents[1],undefined,state.selectedStashOid)}>Index</Button>}{state.stashDetails.commit.parents[2]&&<Button onClick={()=>void state.selectCommit(state.stashDetails!.commit.parents[2],undefined,state.selectedStashOid)}>{t('Untracked Files','未跟踪文件')}</Button>}</div>}
