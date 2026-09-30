@@ -101,12 +101,14 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 | Stash | `View Changes`、`Apply Stash`、`Pop Stash`、`Drop Stash…` |
 | Worktree | `Open Worktree`、`Open Workbench in New Window`、`Refresh`、`Remove Worktree…`、`Copy Worktree Path` |
 
-## 左侧分组菜单
+## 左侧分组操作
+
+分组标题不使用省略号菜单；项目少且含义明确的操作直接显示为纯图标按钮，并通过悬浮提示、键盘焦点和无障碍名称说明用途。右键标题仍可打开同一组操作。Local Branches 的 Graph 筛选位于标题下方的图标操作条，避免与标题操作重复。
 
 | 标题 | 项目 |
 | --- | --- |
 | Repositories | `Add Repository…`、`Refresh` |
-| Local Branches | `Create Branch…`、`Show All in Graph`、`Show None in Graph` |
+| Local Branches | 标题：`Create Branch…`；Graph 操作条：`Show All in Graph`、`Show Current Branch Only in Graph`、`Show None in Graph` |
 | Remotes | `Fetch…`、`Refresh` |
 | Tags | `Create Tag…`、`Refresh` |
 | Stashes | `Stash Changes…`、`Refresh` |
