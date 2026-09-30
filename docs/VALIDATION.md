@@ -50,9 +50,10 @@ npm run package
 | 项目 | 结果 | 备注 |
 | --- | --- | --- |
 | `npm run typecheck` | 通过 | TypeScript 7；协议、宿主与 Webview 类型一致 |
-| `npm test` | 通过 | 12 个测试文件、74 项测试，包含真实 Git、Push refspec、协议、Diff、引用树、Graph、路径、安全和状态回归 |
-| `npm run test:ui` | 通过 | 四区布局、递归分支树、三态选择、标题折叠、独立三点菜单、Push 目标、对象绑定、键盘、会话、Diff 和主题 |
-| `npm run test:extension` | 通过 | VS Code 1.139.1；Session v2、原生 / 预览 Diff、剪贴板、编辑、路径边界和协议校验 |
-| `scripts/update-local.ps1` | 通过 | 固定安装包 `artifacts/alwaygit.vsix`；包内及本机已安装版本均核对为 0.3.0 |
+| `npm test` | 通过 | 13 个测试文件、84 项测试；包含真实 Git、Push refspec、协议、Diff、引用树、Graph、路径、安全、状态及跨窗口 IPC 回归 |
+| `npm run test:ui` | 通过 | 分支树、三态选择、菜单、Push 目标、会话、Diff 和主题；项目按钮位于工具栏最右侧，窄窗口不溢出 |
+| `npm run test:extension` | 通过 | VS Code 1.139.1；保留多个 Diff 标签与已有未保存文档、文件标签复用、不新增侧边编辑器组，以及原有宿主功能 |
+| `npm run test:windows` | 通过 | VS Code 1.139.1 与 1.95.3；隔离 Profile 中的真实项目窗口切换、跨窗口 Staged/Unstaged Diff、文件编辑、未打开项目启动与未保存文档保留 |
+| `scripts/update-local.ps1` | 通过 | 在原 Worktree 构建固定安装包 `artifacts/alwaygit.vsix`，包内及本机已安装版本均核对为 0.3.1；使用已记录的 VS Code 默认 Profile |
 
-当前 README 中出现的历史环境信息不代表本轮结果。远程宿主、macOS、Linux 和声明的最低 VS Code / Git 版本需要在对应环境单独验收。
+Markdown 本地链接和图片引用检查通过。VS Code 1.95.3 已完成项目窗口路由专项验收；最低版本的完整功能、远程宿主、macOS、Linux 和最低 Git 版本仍需对应环境下的验收。
