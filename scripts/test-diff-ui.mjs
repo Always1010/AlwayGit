@@ -30,6 +30,15 @@ export async function verifyDiffNavigation(browser, url) {
     await page.goto(url);
     const diff = page.getByTestId('diff-preview'), count = diff.getByTestId('diff-change-count'), viewport = diff.locator('.diff-viewport');
     await count.getByText('1/3', { exact: true }).waitFor();
+    const resize = page.getByRole('separator', { name: 'Resize Diff panel' });
+    await resize.press('End');
+    assert.ok((await diff.boundingBox()).height > 450, 'Diff panel maximum follows the available workbench height');
+    const expandedHeight = (await diff.boundingBox()).height;
+    await diff.getByRole('button', { name: 'Minimize Diff panel' }).click();
+    assert.ok((await diff.boundingBox()).height <= 27, 'Minimized Diff keeps only its heading');
+    assert.equal(await diff.locator('.diff-viewport').count(), 0);
+    await diff.getByRole('button', { name: 'Expand Diff panel' }).click();
+    assert.ok(Math.abs((await diff.boundingBox()).height - expandedHeight) < 2, 'Expanded Diff restores its previous height');
     assert.equal(await diff.getByRole('button', { name: 'Previous change' }).isDisabled(), true);
     await diff.getByRole('button', { name: 'Next change' }).click();
     await count.getByText('2/3', { exact: true }).waitFor();

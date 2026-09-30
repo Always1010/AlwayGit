@@ -19,12 +19,13 @@ function content(value:string|undefined,other:string|undefined,changed:boolean,s
 }
 export function DiffPreview({ native, edit }: { native():void; edit():void }) {
   const state=useWorkbench(),t=useTranslation(),[preview,setPreview]=useState<Preview>(),[error,setError]=useState<string>(),[loading,setLoading]=useState(false),[selection,setSelection]=useState<Selection>(),[horizontalScroll,setHorizontalScroll]=useState(0),[viewportWidth,setViewportWidth]=useState(0),viewport=useRef<HTMLDivElement>(null),displayedKey=useRef(''),lastScrollTop=useRef(0),navigationScroll=useRef<number|undefined>(undefined);
+  const collapsed=state.layout.diffCollapsed;
   useLayoutEffect(()=>{
     const element=viewport.current;if(!element)return;
     const measure=()=>setViewportWidth(element.clientWidth);
     measure();const observer=new ResizeObserver(measure);observer.observe(element);
     return()=>observer.disconnect();
-  },[]);
+  },[collapsed]);
   const targetKey=JSON.stringify([state.repoId,diffKey(state.diffTarget)]),revision=state.diffTarget?.kind==='change'?state.diffRevision:0;
   useEffect(()=>{
     let live=true;
@@ -76,14 +77,14 @@ export function DiffPreview({ native, edit }: { native():void; edit():void }) {
   // retain their visible width and only code moves beneath the fixed gutters.
   const contentWidth=`max(100%, calc(${contentColumns}ch + ${viewportWidth/2+64}px))`;
   const highlighted=activeChange>=0?changes[activeChange]:undefined;
-  const openLabel=t('Open Diff','打开 Diff'),editLabel=t('Edit in VS Code','在 VS Code 中编辑'),previousLabel=t('Previous change','上一处修改'),nextLabel=t('Next change','下一处修改');
+  const openLabel=t('Open Diff','打开 Diff'),editLabel=t('Edit in VS Code','在 VS Code 中编辑'),previousLabel=t('Previous change','上一处修改'),nextLabel=t('Next change','下一处修改'),toggleLabel=collapsed?t('Expand Diff panel','展开 Diff 面板'):t('Minimize Diff panel','最小化 Diff 面板');
   const countLabel=t('Change blocks','修改块'),countText=`${activeChange<0?0:activeChange+1}/${changes.length}${preview?.truncated?t(' (preview)','（预览）'):''}`;
-  return <section className="diff-preview" data-testid="diff-preview"><div className="pane-heading"><span className="truncate">Diff · {state.selectedFile||t('No file selected','未选择文件')}</span><div className="inline-actions"><Button className="icon-only" icon="diff" title={openLabel} aria-label={openLabel} onClick={native} disabled={!state.diffTarget}/><Button className="icon-only" icon="go-to-file" title={editLabel} aria-label={editLabel} onClick={edit} disabled={!state.selectedFile}/><Button className="icon-only" icon="arrow-up" title={previousLabel} aria-label={previousLabel} onClick={()=>jump(activeChange-1)} disabled={activeChange<=0}/><Button className="icon-only" icon="arrow-down" title={nextLabel} aria-label={nextLabel} onClick={()=>jump(activeChange+1)} disabled={!changes.length||activeChange>=changes.length-1}/><span className="diff-change-count" data-testid="diff-change-count" role="status" aria-label={`${countLabel}: ${countText}`} title={preview?.truncated?t('Change blocks in the truncated preview','截断预览中的修改块'):countLabel}>{countText}</span></div></div>
-    {preview&&<div className="diff-labels"><span>{preview.leftLabel}</span><span>{preview.rightLabel}</span></div>}
+  return <section className="diff-preview" data-testid="diff-preview"><div className="pane-heading"><span className="truncate">Diff · {state.selectedFile||t('No file selected','未选择文件')}</span><div className="inline-actions"><Button className="icon-only" icon="diff" title={openLabel} aria-label={openLabel} onClick={native} disabled={!state.diffTarget}/><Button className="icon-only" icon="go-to-file" title={editLabel} aria-label={editLabel} onClick={edit} disabled={!state.selectedFile}/>{!collapsed&&<><Button className="icon-only" icon="arrow-up" title={previousLabel} aria-label={previousLabel} onClick={()=>jump(activeChange-1)} disabled={activeChange<=0}/><Button className="icon-only" icon="arrow-down" title={nextLabel} aria-label={nextLabel} onClick={()=>jump(activeChange+1)} disabled={!changes.length||activeChange>=changes.length-1}/></>}<span className="diff-change-count" data-testid="diff-change-count" role="status" aria-label={`${countLabel}: ${countText}`} title={preview?.truncated?t('Change blocks in the truncated preview','截断预览中的修改块'):countLabel}>{countText}</span><span className="diff-toolbar-divider"/><Button className="icon-only diff-panel-toggle" icon={collapsed?'chevron-up':'chevron-down'} title={toggleLabel} aria-label={toggleLabel} onClick={()=>state.setLayout({diffCollapsed:!collapsed})}/></div></div>
+    {!collapsed&&<>{preview&&<div className="diff-labels"><span>{preview.leftLabel}</span><span>{preview.rightLabel}</span></div>}
     {preview?.truncated&&<div className="history-caption">{t('Preview is truncated. Open Diff to inspect the full comparison.','预览已截断；可以 Open Diff 查看完整比较。')}</div>}
     <div className="diff-viewport" ref={viewport} onScroll={trackScroll}>
       {error&&<p className="form-error" role="alert">{error}</p>}
       {loading&&!preview?<Empty title={t('Loading Diff…','正在读取 Diff…')}/>:preview?.binary?<Empty title={t('Binary file: text preview unavailable','二进制文件：无法提供文本预览')}/>:!preview?(!error&&<Empty title={t('Select a file to preview its Diff','选择文件以预览 Diff')}/>):<div className="diff-content" style={{height:virtual.getTotalSize(),position:'relative',width:contentWidth}}>{virtual.getVirtualItems().map(item=>{const row=rows[item.index],active=!!highlighted&&item.index>=highlighted.start&&item.index<=highlighted.end;return <div key={item.index} className={`diff-line${active?' active-change':''}${active&&item.index===highlighted?.start?' active-change-start':''}${active&&item.index===highlighted?.end?' active-change-end':''}`} style={{position:'absolute',left:horizontalScroll,width:viewportWidth||'100%',height:ROW_HEIGHT,transform:`translateY(${item.start}px)`}}><div className={`${row.changed&&row.before!==undefined?'removed':''}`}><span className="diff-marker" aria-hidden="true">{row.changed&&row.before!==undefined?'−':''}</span><span className="line-number">{row.beforeLine??''}</span><span className="diff-code">{content(row.before,row.after,row.changed,'before',horizontalScroll)}</span></div><div className={`${row.changed&&row.after!==undefined?'added':''}`}><span className="diff-marker" aria-hidden="true">{row.changed&&row.after!==undefined?'+':''}</span><span className="line-number">{row.afterLine??''}</span><span className="diff-code">{content(row.after,row.before,row.changed,'after',horizontalScroll)}</span></div></div>;})}</div>}
-    </div>
+    </div></>}
   </section>;
 }

@@ -36,6 +36,9 @@ try {
   } else if (process.argv.includes('--appearance-only')) {
     await verifyAppearance(browser, url);
     console.log('ALWAYGIT_UI_TESTS_PASSED: appearance-only');
+  } else if (process.argv.includes('--diff-only')) {
+    await verifyDiffNavigation(browser, url);
+    console.log('ALWAYGIT_UI_TESTS_PASSED: diff-only');
   } else {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
