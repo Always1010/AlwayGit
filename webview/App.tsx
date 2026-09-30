@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type React from 'react';
-import type { RpcRequest } from '../src/protocol/types';
+import type { Repository, RpcRequest } from '../src/protocol/types';
 import { connected, demoMode, rpc } from './rpc';
 import { useWorkbench } from './store';
 import { diffRowHeight, effectiveRowHeight, isLightTheme, textColorForBackground, useResolvedTheme } from './appearance';
@@ -21,7 +21,7 @@ import { OperationNotice } from './OperationNotice';
 import { Button, Empty, Icon, Modal, ResizeHandle } from './ui';
 
 export function App() {
-  const state=useWorkbench(),t=useTranslation(),[dialog,setDialog]=useState<DialogRequest>(),[context,setContext]=useState<{x:number;y:number;target:MenuTarget}>();
+  const state=useWorkbench(),t=useTranslation(),[dialog,setDialog]=useState<DialogRequest>(),[repositoryFetch,setRepositoryFetch]=useState<Repository[]>(),[context,setContext]=useState<{x:number;y:number;target:MenuTarget}>();
   const theme=useResolvedTheme(state.appearance.theme),lightTheme=isLightTheme(theme);
   const paletteColors=lightTheme?state.appearance.colors.light:state.appearance.colors.dark;
   useEffect(()=>{if(connected)void useWorkbench.getState().initialize();},[]);
@@ -48,7 +48,7 @@ export function App() {
   const native=()=>{if(state.diffTarget)void host('diff',state.diffTarget);};
   useEffect(()=>{const key=(event:KeyboardEvent)=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='r'){event.preventDefault();void useWorkbench.getState().refresh();}};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);},[]);
   const snapshot=state.snapshot,layout=state.layout,unpushed=snapshot?.unpushed??snapshot?.ahead??0;
-  const menu=context?menuFor(context.target,{open,checkout,openDiff:target=>void host('diff',target),editFile:target=>void edit(target),host,addRepository,fetchRepository:async(repoId)=>{await state.selectRepository(repoId);open({type:'fetch'});}}):undefined;
+  const menu=context?menuFor(context.target,{open,checkout,openDiff:target=>void host('diff',target),editFile:target=>void edit(target),host,addRepository,fetchRepositories:repositories=>setRepositoryFetch(repositories)}):undefined;
   if(!connected)return <div className="connection-screen"><Icon name="git-branch"/><h1>AlwayGit</h1><p>{t('Your Git workbench, inside VS Code.','VS Code 中的 Git 工作台。')}</p><a className="button primary" href="?demo=1">{t('Explore Demo','查看示例')}</a></div>;
   return <div className="workbench layout-workbench" data-testid="workbench" data-theme={theme} onContextMenu={event=>{if(event.defaultPrevented)return;const target=event.target as HTMLElement,editable=!!target.closest('input:not([type=checkbox]),textarea,[contenteditable]:not([contenteditable="false"])'),selection=window.getSelection();if(!editable&&(!selection||selection.isCollapsed))event.preventDefault();}} style={{'--sidebar-width':`${layout.sidebar}px`,'--details-width':`${layout.details}px`,'--diff-height':`${layout.diff}px`,'--workbench-font':`${layout.font}px`,'--row-height':`${effectiveRowHeight(layout)}px`,'--control-height':`${Math.max(24,Math.round(layout.font*1.35)+6)}px`,'--diff-font':`${state.appearance.codeFont}px`,'--diff-row-height':`${diffRowHeight(state.appearance.codeFont)}px`,'--notification-badge':state.appearance.badgeColor,'--notification-badge-fg':textColorForBackground(state.appearance.badgeColor),'--graph-main':lightTheme?state.appearance.mainColors.light:state.appearance.mainColors.dark,...Object.fromEntries(paletteColors.map((color,index)=>[`--graph-lane-${index}`,color]))} as React.CSSProperties}>
     <header className="app-chrome"><strong className="brand"><Icon name="git-branch"/>AlwayGit</strong><span className="workbench-tab">{t('Git Workbench','Git 工作台')}</span>{demoMode&&<span className="muted">{t('Demo Repository','模拟仓库')}</span>}<div className="toolbar-spacer"/><Button className="icon-only" icon="layout" title={t('Restore Layout','恢复布局')} aria-label={t('Restore Layout','恢复布局')} onClick={state.restoreLayout}/><Button className="icon-only settings-trigger" icon="settings-gear" title={t('Interface Settings','界面设置')} aria-label={t('Interface Settings','界面设置')} onClick={()=>{setContext(undefined);state.beginSettings();}}/></header>
@@ -71,9 +71,16 @@ export function App() {
     <footer className="statusbar" role="status"><span>{state.busy?state.activity:state.historyLoading?t('Loading history…','正在读取历史…'):state.notice??t('Ready','就绪')}</span><span>{layout.font}px / {effectiveRowHeight(layout)}px · Workbench</span></footer>
     {dialog&&snapshot&&!state.checkoutFailure&&<ActionDialog key={`${state.repoId}-${dialog.type}-${dialog.target}-${dialog.names?.join('|')}-${dialog.remoteBranches?.join('|')}-${dialog.pop}`} dialog={dialog} onClose={()=>setDialog(undefined)}/>}
     {context&&menu&&<ContextMenu x={context.x} y={context.y} caption={menu.caption} items={menu.items} close={closeMenu}/>}
+    {repositoryFetch&&<RepositoryFetchDialog repositories={repositoryFetch} onClose={()=>setRepositoryFetch(undefined)}/>}
     {state.checkoutFailure&&snapshot&&<CheckoutFailureDialog onClose={()=>{setDialog(undefined);useWorkbench.setState({checkoutFailure:undefined,error:undefined});}} host={host}/>}
     {state.settingsBaseline&&<SettingsDialog theme={theme}/>}
   </div>;
+}
+
+function RepositoryFetchDialog({repositories,onClose}:{repositories:Repository[];onClose():void}) {
+  const state=useWorkbench(),t=useTranslation(),[busy,setBusy]=useState(false),[failure,setFailure]=useState<string>();
+  const run=async()=>{setBusy(true);setFailure(undefined);const results=await Promise.allSettled(repositories.map(repository=>rpc('action',repository.id,{type:'fetch'}))),failed=results.flatMap((result,index)=>result.status==='rejected'?[`${repositories[index].name}: ${result.reason instanceof Error?result.reason.message:String(result.reason)}`]:[]);await state.loadRepositoryStatuses();if(repositories.some(repository=>repository.id===useWorkbench.getState().repoId))await useWorkbench.getState().refresh({background:true});if(failed.length){setFailure(failed.join('\n'));setBusy(false);return;}useWorkbench.setState({notice:t(repositories.length===1?'Fetch completed.':`Fetched ${repositories.length} repositories.`,repositories.length===1?'Fetch 完成。':`已 Fetch ${repositories.length} 个仓库。`)});onClose();};
+  return <Modal title={t(repositories.length===1?'Fetch Repository':`Fetch ${repositories.length} Repositories`,repositories.length===1?'Fetch 仓库':`Fetch ${repositories.length} 个仓库`)} busy={busy} onClose={onClose} footer={<><Button disabled={busy} onClick={onClose}>{t('Cancel','取消')}</Button><Button className="primary" disabled={busy} onClick={()=>void run()}>{busy?t('Fetching…','正在 Fetch…'):'Fetch'}</Button></>}><p>{t('Fetch the selected repositories without changing the repository open in this tab.','Fetch 所选仓库，不切换当前标签页中打开的仓库。')}</p><div className="repository-batch-list">{repositories.map(repository=><div key={repository.id}><strong>{repository.name}</strong><span>{repository.root}</span></div>)}</div>{failure&&<pre className="warning-text" role="alert">{failure}</pre>}</Modal>;
 }
 
 function CheckoutFailureDialog({onClose,host}:{onClose():void;host(method:RpcRequest['method'],payload?:unknown):Promise<void>}) {

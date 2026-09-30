@@ -113,7 +113,7 @@ try {
   assert.equal(await menu.isVisible(), false, 'A section title click must collapse the section without opening its menu');
   await repositoriesHeading.click();
   await assertMenuButton(sidebar.getByRole('button', { name: 'Repositories actions', exact: true }), ['Add Repository…', 'Refresh']);
-  await assertMenu(sidebar.getByRole('button', { name: /^AlwayGit/ }), ['Open Workbench', 'Open Workbench in New Window', 'Refresh', 'Fetch…', 'Copy Repository Path']);
+  await assertMenu(sidebar.getByRole('option', { name: /^AlwayGit/ }), ['Switch to Repository', 'Open in New Window', 'Fetch…', 'Refresh Status', 'Copy Repository Path']);
   const localHeading = sidebar.getByRole('button', { name: 'Local Branches', exact: true });
   await localHeading.click();
   await sidebar.getByRole('button', { name: 'Expand feature', exact: true }).waitFor({ state: 'hidden' });
