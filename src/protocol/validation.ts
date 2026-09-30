@@ -12,7 +12,7 @@ export const actionSchema = z.union([
   z.object({ type: z.literal('branch.checkout'), name: text }),
   z.object({ type: z.literal('commit.checkout'), target: text }),
   z.object({ type: z.literal('checkout.stash'), target: text, detached: z.boolean().optional(), includeUntracked: z.boolean().optional() }),
-  z.object({ type: z.literal('branch.delete'), name: text, force: z.boolean().optional() }),
+  z.object({ type: z.literal('branch.delete'), names: z.array(text).min(1).max(1000), force: z.boolean().optional(), expectedOids:z.record(text,text).optional() }),
   z.object({ type: z.literal('tag.create'), name: text, target: text.optional(), message: z.string().max(100000).optional() }),
   z.object({ type: z.literal('tag.delete'), name: text }),
   z.object({ type: z.literal('stash.create'), message: z.string().max(10000).optional(), includeUntracked: z.boolean().optional() }),

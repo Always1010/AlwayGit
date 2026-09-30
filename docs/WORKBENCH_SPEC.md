@@ -35,9 +35,12 @@ Repositories 顶层列表和活动栏按共享 Git 存储归并，同一仓库�
 | 勾选引用复选框 | 加入或移出 Graph 显示范围，不 Checkout |
 | 勾选分支目录复选框 | 选择或清除该目录下全部分支；部分选中时显示半选状态 |
 | 单击引用名称 | 选择并定位该引用，不改变其他引用的勾选状态 |
+| `Ctrl` / `Cmd` + 单击分支 | 加入或移出批量操作选择，不改变 Graph 勾选状态 |
+| `Shift` + 单击分支 | 在同一个 Local 或 Remote 树内按可见顺序选择连续范围 |
 | 双击本地分支 | Checkout 到该分支 |
-| 右键引用 | 打开该对象的菜单，不改变 Graph 筛选 |
-| 右键分支目录 | 打开该目录下全部分支的 Graph 与复制操作菜单 |
+| 右键已选分支 | 保留当前批量选择并打开适用菜单，不改变 Graph 筛选 |
+| 右键未选分支 | 先将批量操作选择切换到该分支，再打开菜单 |
+| 右键分支目录 | 选择目录下全部分支，并打开批量操作菜单 |
 | `Show in Graph` | 把目标加入现有筛选 |
 | `Show Only This Branch/Tag` | 仅显示目标，不 Checkout |
 | 单击 Commit | 单选该 Commit，显示提交详情和文件列表 |
@@ -88,7 +91,7 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 | 标题 | 项目 |
 | --- | --- |
 | Repositories | `Add Repository…`、`Refresh` |
-| Local Branches | `Create Branch…`、`Select All`、`Clear Selection` |
+| Local Branches | `Create Branch…`、`Show All in Graph`、`Show None in Graph` |
 | Remotes | `Fetch…`、`Refresh` |
 | Tags | `Create Tag…`、`Refresh` |
 | Stashes | `Stash Changes…`、`Refresh` |

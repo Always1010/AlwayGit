@@ -306,7 +306,18 @@ export class GitService implements GitServiceContract {
       case 'branch.checkout': return this.checkout(repo, action.name);
       case 'commit.checkout': return this.checkout(repo, action.target, true);
       case 'checkout.stash': return this.checkout(repo, action.target, action.detached, true, action.includeUntracked);
-      case 'branch.delete': args = ['branch', action.force ? '-D' : '-d', '--', await this.refName(repo, action.name)]; break;
+      case 'branch.delete': {
+        const names=[...new Set(await Promise.all(action.names.map(name=>this.refName(repo,name))))];
+        if(!names.length)throw new GitError('Select at least one branch','INVALID_ARGUMENT');
+        const state=await this.snapshot(repo),current=state.branch,occupied=new Set(state.worktrees.map(tree=>tree.branch?.replace(/^refs\/heads\//,'')).filter(Boolean));
+        if(current&&names.includes(current))throw new GitError(`The current branch cannot be deleted: ${current}`,'INVALID_ARGUMENT');
+        const inUse=names.find(name=>occupied.has(name));if(inUse)throw new GitError(`Branch is used by a Worktree: ${inUse}`,'WORKTREE_OCCUPIED');
+        for(const name of names){const expected=action.expectedOids?.[name];if(expected&&await this.oid(repo,`refs/heads/${name}`)!==expected)throw new GitError(`Branch changed before deletion: ${name}`,'OPERATION_CHANGED');}
+        const failures:string[]=[];let deleted=0;
+        for(const name of names){try{await this.run(repo,['branch',action.force?'-D':'-d','--',name]);deleted++;}catch(error){failures.push(`${name}: ${error instanceof Error?error.message:String(error)}`);}}
+        if(failures.length)throw new GitError(`${deleted} branch(es) deleted; ${failures.length} failed.\n${failures.join('\n')}`,'PARTIAL_FAILURE');
+        return;
+      }
       case 'tag.create': await this.run(repo, ['check-ref-format', `refs/tags/${token(action.name, 'tag name')}`]); args = ['tag', ...(action.message ? ['-a', '-m', action.message] : []), action.name, await this.oid(repo, action.target ?? 'HEAD')]; break;
       case 'tag.delete': await this.run(repo, ['check-ref-format', `refs/tags/${token(action.name, 'tag name')}`]); args = ['tag', '-d', '--', action.name]; break;
       case 'stash.create': args = ['stash', 'push', ...(action.includeUntracked ? ['--include-untracked'] : []), ...(action.message ? ['-m', action.message] : [])]; break;
