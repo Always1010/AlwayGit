@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filePathLabel, fileSelectionForClick, fileSelectionKeyboardCommand, fileSelectionTargets, reconcileFileSelection } from '../webview/fileSelection';
+import { filePathLabel, fileSelectionForClick, fileSelectionKeyboardCommand, fileSelectionTargets, filterFilesByPath, reconcileFileSelection } from '../webview/fileSelection';
 
 describe('file path labels', () => {
   it('keeps the complete repository-relative parent chain at arbitrary depth', () => {
@@ -10,6 +10,21 @@ describe('file path labels', () => {
 
   it('preserves spaces, Unicode, and literal Git filename characters', () => {
     expect(filePathLabel('资料/我的 项目/a\\b.txt')).toEqual({ name: 'a\\b.txt', parent: './资料/我的 项目' });
+  });
+});
+
+describe('changed file path filtering',()=>{
+  const files=[{path:'src/features/auth/login.ts'},{path:'src/services/auth/login.ts'},{path:'README.md'}];
+
+  it('matches case-insensitive keywords across the complete repository-relative path',()=>{
+    expect(filterFilesByPath(files,' FEATURES/AUTH ')).toEqual([files[0]]);
+    expect(filterFilesByPath(files,'login.ts')).toEqual(files.slice(0,2));
+    expect(filterFilesByPath(files,'src/')).toEqual(files.slice(0,2));
+  });
+
+  it('returns all files for an empty query and none for a missing path fragment',()=>{
+    expect(filterFilesByPath(files,'  ')).toEqual(files);
+    expect(filterFilesByPath(files,'missing/directory')).toEqual([]);
   });
 });
 

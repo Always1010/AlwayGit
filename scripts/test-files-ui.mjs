@@ -29,13 +29,29 @@ export async function verifyFiles(browser, url) {
     await panel.getByText('./src/features/auth', { exact: true }).waitFor();
     await panel.getByText('./src/services/auth', { exact: true }).waitFor();
     await panel.getByText('./', { exact: true }).waitFor();
+    const filter = panel.getByRole('searchbox', { name: 'Filter changed file paths', exact: true });
+    await filter.fill(' FEATURES/AUTH ');
+    assert.equal(await panel.locator('.file-item').count(), 1, 'Directory fragments must filter the complete relative path case-insensitively');
+    await panel.getByText('1 / 3', { exact: true }).waitFor();
+    await filter.press('Control+a'); await filter.type('services/auth');
+    assert.equal(await filter.inputValue(), 'services/auth', 'Ctrl+A in the filter must keep native text editing');
+    await panel.getByRole('button', { name: 'src/services/auth/login.ts', exact: true }).click();
+    await page.keyboard.press('Control+a');
+    assert.equal(await panel.locator('.file-item[aria-selected="true"]').count(), 1, 'Select All must stay within filtered files');
+    await panel.getByRole('button', { name: 'Copy Paths (1)', exact: true }).click();
+    await page.waitForFunction(() => window.__filesFixture.calls.some(call => call.method === 'copyText'));
+    assert.equal(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'copyText').at(-1).payload.text), 'src/services/auth/login.ts');
+    await filter.fill('missing/directory');
+    await panel.getByText('No files match this path filter', { exact: true }).waitFor();
+    await filter.fill('');
+    await panel.locator('.detail-files').focus(); await page.keyboard.press('Escape');
     await panel.getByRole('button', { name: 'src/features/auth/login.ts', exact: true }).click();
     await page.keyboard.press('Control+a');
     assert.equal(await panel.locator('.file-item[aria-selected="true"]').count(), 3);
     assert.equal(await page.evaluate(() => window.getSelection().toString()), '', 'Ctrl+A must not select page text');
     await panel.getByRole('button', { name: 'Copy Paths (3)', exact: true }).click();
-    await page.waitForFunction(() => window.__filesFixture.calls.some(call => call.method === 'copyText'));
-    assert.equal(await page.evaluate(() => window.__filesFixture.calls.find(call => call.method === 'copyText').payload.text), 'src/features/auth/login.ts\nsrc/services/auth/login.ts\nREADME.md');
+    await page.waitForFunction(() => window.__filesFixture.calls.filter(call => call.method === 'copyText').length === 2);
+    assert.equal(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'copyText').at(-1).payload.text), 'src/features/auth/login.ts\nsrc/services/auth/login.ts\nREADME.md');
     await page.keyboard.press('Escape');
     assert.equal(await panel.locator('.file-item[aria-selected="true"]').count(), 0);
     await panel.getByRole('button', { name: 'README.md', exact: true }).click({ modifiers: ['Control'] });
@@ -79,6 +95,6 @@ export async function verifyFiles(browser, url) {
     await draft.click({ button: 'right' });
     assert.equal(await menu.isVisible(), false, 'Editable text keeps the native context menu');
     assert.deepEqual(errors, []);
-    console.log('ALWAYGIT_FILES_UI_TESTS_PASSED: full parent paths, scoped select-all, file context menus, group actions, explicit Discard and native textarea');
+    console.log('ALWAYGIT_FILES_UI_TESTS_PASSED: full-path filtering, full parent paths, scoped select-all, file context menus, group actions, explicit Discard and native text editing');
   } finally { await page.close(); }
 }

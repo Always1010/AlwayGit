@@ -5,7 +5,7 @@ import { useWorkbench } from './store';
 import { useTranslation } from './i18n';
 import { rpc } from './rpc';
 import { Button, Empty, Icon } from './ui';
-import { filePathLabel, fileSelectionForClick, fileSelectionKeyboardCommand, fileSelectionTargets, reconcileFileSelection, type FileSelection } from './fileSelection';
+import { filePathLabel, fileSelectionForClick, fileSelectionKeyboardCommand, fileSelectionTargets, filterFilesByPath, reconcileFileSelection, type FileSelection } from './fileSelection';
 import type { ContextHandler } from './Sidebar';
 
 function FileLabel({ path }: { path: string }) {
@@ -35,35 +35,36 @@ function FileSelectionHint({ count, clickSelect = false }: { count: number; clic
   return <div className="file-selection-hint"><span title={t('Ctrl/Cmd+click toggles · Shift+click selects range · Esc clears', 'Ctrl/Cmd+单击切换选择 · Shift+单击范围选择 · Esc 清空')}>{clickSelect?t('Click selects · Ctrl+A selects all files','单击选择 · Ctrl+A 全选文件'):t('Click to preview · Ctrl+A selects files', '单击预览 · Ctrl+A 全选文件')}</span><strong aria-live="polite">{t(`${count} selected`, `已选 ${count} 个`)}</strong></div>;
 }
 
-function CommitFiles({ files, scope, target, empty, edit, context }: { files: CommitFile[]; scope: string; target(file: CommitFile): DiffTarget; empty: string; edit(): void; context:ContextHandler }) {
-  const state = useWorkbench(), t = useTranslation(), batch = useFileSelection(`${state.repoId}:${scope}`, files.map(file => file.path));
-  return <div className="file-selection-panel" tabIndex={0} role="listbox" aria-multiselectable="true" aria-label={t('Changed files', '变更文件')} onKeyDown={batch.keyDown}>
-    <div className="file-selection-toolbar"><Button icon="copy" disabled={!batch.selection.paths.length} onClick={() => void rpc('copyText', state.repoId, { text: batch.selection.paths.join('\n') }).catch(state.report)}>{t('Copy Paths', '复制路径')}{batch.selection.paths.length ? ` (${batch.selection.paths.length})` : ''}</Button></div>
+function CommitFiles({ files, scope, filter, onFilterChange, target, empty, edit, context }: { files: CommitFile[]; scope: string; filter: string; onFilterChange(value:string):void; target(file: CommitFile): DiffTarget; empty: string; edit(): void; context:ContextHandler }) {
+  const state = useWorkbench(), t = useTranslation(), visibleFiles = filterFilesByPath(files, filter), batch = useFileSelection(`${state.repoId}:${scope}`, visibleFiles.map(file => file.path)), filtering=!!filter.trim();
+  return <div className="file-selection-panel" onKeyDown={batch.keyDown}>
+    <div className="file-selection-toolbar"><label className="file-path-filter"><Icon name="search"/><input type="search" aria-label={t('Filter changed file paths', '筛选变更文件路径')} placeholder={t('Filter paths…', '筛选相对路径…')} value={filter} onChange={event=>onFilterChange(event.target.value)}/></label>{filtering&&<span className="file-filter-count" aria-live="polite">{visibleFiles.length} / {files.length}</span>}<Button icon="copy" disabled={!batch.selection.paths.length} onClick={() => void rpc('copyText', state.repoId, { text: batch.selection.paths.join('\n') }).catch(state.report)}>{t('Copy Paths', '复制路径')}{batch.selection.paths.length ? ` (${batch.selection.paths.length})` : ''}</Button></div>
     <FileSelectionHint clickSelect count={batch.selection.paths.length}/>
-    <div className="detail-files">{files.map(file => { const diff = target(file), preview = state.diffTarget?.kind === diff.kind && state.selectedFile === file.path, checked = batch.selection.paths.includes(file.path); return <div key={file.path} role="option" aria-selected={checked} className={`file-item ${preview ? 'selected' : ''} ${checked ? 'batch-selected' : ''}`} onContextMenu={event=>{const paths=checked?batch.selection.paths:[file.path];if(!checked)batch.click(file.path,event,true);state.selectFile(diff);context(event,{kind:'files',primary:{path:file.path,target:diff},files:paths.map(path=>{const item=files.find(candidate=>candidate.path===path)!;return {path,target:target(item)};})});}}>
+    <div className="detail-files" tabIndex={0} role="listbox" aria-multiselectable="true" aria-label={t('Changed files', '变更文件')}>{visibleFiles.map(file => { const diff = target(file), preview = state.diffTarget?.kind === diff.kind && state.selectedFile === file.path, checked = batch.selection.paths.includes(file.path); return <div key={file.path} role="option" aria-selected={checked} className={`file-item ${preview ? 'selected' : ''} ${checked ? 'batch-selected' : ''}`} onContextMenu={event=>{const paths=checked?batch.selection.paths:[file.path];if(!checked)batch.click(file.path,event,true);state.selectFile(diff);context(event,{kind:'files',primary:{path:file.path,target:diff},files:paths.map(path=>{const item=visibleFiles.find(candidate=>candidate.path===path)!;return {path,target:target(item)};})});}}>
       <span className={`file-status status-${file.status[0]}`}>{file.status}</span><Icon name="file-code"/><button className="file-name" aria-label={file.path} title={file.previousPath ? `${file.previousPath} → ${file.path}` : file.path} onClick={event => { batch.click(file.path, event, true); state.selectFile(diff); }} onDoubleClick={edit}><FileLabel path={file.path}/></button>
-    </div>; })}{!files.length && <Empty title={empty}/>}</div>
+    </div>; })}{!visibleFiles.length && <Empty title={files.length?t('No files match this path filter','没有符合路径筛选的文件'):empty}/>}</div>
   </div>;
 }
 
 export function Details({ open, edit, context }: { open(dialog:DialogRequest):void; edit():void; context:ContextHandler }) {
-  const state=useWorkbench(),t=useTranslation(),detail=state.details,comparison=state.comparison;
+  const state=useWorkbench(),t=useTranslation(),detail=state.details,comparison=state.comparison,[fileFilter,setFileFilter]=useState('');
+  useEffect(()=>{setFileFilter('');},[state.repoId,state.tab]);
   const bodyLines=detail?.body.split('\n')??[],body=(bodyLines[0]===detail?.commit.subject?bodyLines.slice(1):bodyLines).join('\n').trim();
   return <section className="details-panel" data-testid="details">
     <div className="pane-heading"><strong>{state.tab==='changes'?t('Working Tree Status','工作区状态'):comparison?t('Compare Commits','比较 Commit'):t('Commit Details','Commit 详情')}</strong>{comparison&&<Button className="icon-only" icon="arrow-swap" title={t('Swap comparison sides','交换比较方向')} aria-label={t('Swap comparison sides','交换比较方向')} onClick={()=>void state.compareCommits(comparison.right.oid,comparison.left.oid,true)}/>}</div>
-    {state.tab==='changes'?<WorkingTree open={open} edit={edit} context={context}/>:comparison?<ComparisonDetails edit={edit} context={context}/>:!detail?<Empty title={state.detailsLoading?t('Loading details…','正在读取详情…'):t('Select a Commit','选择 Commit')}/>:<>
+    {state.tab==='changes'?<WorkingTree open={open} edit={edit} context={context}/>:comparison?<ComparisonDetails filter={fileFilter} onFilterChange={setFileFilter} edit={edit} context={context}/>:!detail?<Empty title={state.detailsLoading?t('Loading details…','正在读取详情…'):t('Select a Commit','选择 Commit')}/>:<>
       <div className="commit-metadata"><strong>{detail.commit.subject}</strong><span className="hash" title={detail.commit.oid}>{detail.commit.oid.slice(0,8)}</span><span>{detail.commit.author} &lt;{detail.commit.email}&gt;</span><span className="muted">{new Date(detail.commit.timestamp*1000).toLocaleString(state.language)}</span>{body&&<pre>{body}</pre>}
         {state.selectedStashOid&&state.stashDetails&&<div className="stash-tabs"><Button onClick={()=>void state.selectCommit(state.selectedStashOid!,undefined,state.selectedStashOid)}>Working Tree</Button>{state.stashDetails.commit.parents[1]&&<Button onClick={()=>void state.selectCommit(state.stashDetails!.commit.parents[1],undefined,state.selectedStashOid)}>Index</Button>}{state.stashDetails.commit.parents[2]&&<Button onClick={()=>void state.selectCommit(state.stashDetails!.commit.parents[2],undefined,state.selectedStashOid)}>{t('Untracked Files','未跟踪文件')}</Button>}</div>}
       </div>
       <div className="pane-heading"><strong>{t('Changed Files','变更文件')} · {detail.files.length}</strong>{detail.commit.parents.length>1&&<select aria-label="Compare parent" value={detail.parent??detail.commit.parents[0]} onChange={event=>void state.selectCommit(detail.commit.oid,event.target.value,state.selectedStashOid)}>{detail.commit.parents.map((parent,i)=><option key={parent} value={parent}>Parent {i+1} · {parent.slice(0,8)}</option>)}</select>}</div>
-      <CommitFiles files={detail.files} scope={`commit:${detail.commit.oid}:${detail.parent??''}`} target={file=>({kind:'commit',oid:detail.commit.oid,parent:detail.parent,path:file.path,previousPath:file.previousPath})} empty={t('No changed files','没有变更文件')} edit={edit} context={context}/>
+      <CommitFiles files={detail.files} scope={`commit:${detail.commit.oid}:${detail.parent??''}`} filter={fileFilter} onFilterChange={setFileFilter} target={file=>({kind:'commit',oid:detail.commit.oid,parent:detail.parent,path:file.path,previousPath:file.previousPath})} empty={t('No changed files','没有变更文件')} edit={edit} context={context}/>
     </>}
   </section>;
 }
 
-function ComparisonDetails({edit,context}:{edit():void;context:ContextHandler}){
+function ComparisonDetails({filter,onFilterChange,edit,context}:{filter:string;onFilterChange(value:string):void;edit():void;context:ContextHandler}){
   const state=useWorkbench(),t=useTranslation(),comparison=state.comparison!;
-  return <><div className="comparison-summary"><div><span className="hash">{comparison.left.oid.slice(0,8)}</span><strong>{comparison.left.subject}</strong></div><Icon name="arrow-right"/><div><span className="hash">{comparison.right.oid.slice(0,8)}</span><strong>{comparison.right.subject}</strong></div></div><div className="pane-heading"><strong>{t('Changed Files','变更文件')} · {comparison.files.length}</strong></div><CommitFiles files={comparison.files} scope={`comparison:${comparison.left.oid}:${comparison.right.oid}`} target={file=>({kind:'comparison',left:comparison.left.oid,right:comparison.right.oid,path:file.path,previousPath:file.previousPath})} empty={t('The selected Commits have identical file contents','所选 Commit 的文件内容相同')} edit={edit} context={context}/></>;
+  return <><div className="comparison-summary"><div><span className="hash">{comparison.left.oid.slice(0,8)}</span><strong>{comparison.left.subject}</strong></div><Icon name="arrow-right"/><div><span className="hash">{comparison.right.oid.slice(0,8)}</span><strong>{comparison.right.subject}</strong></div></div><div className="pane-heading"><strong>{t('Changed Files','变更文件')} · {comparison.files.length}</strong></div><CommitFiles files={comparison.files} scope={`comparison:${comparison.left.oid}:${comparison.right.oid}`} filter={filter} onFilterChange={onFilterChange} target={file=>({kind:'comparison',left:comparison.left.oid,right:comparison.right.oid,path:file.path,previousPath:file.previousPath})} empty={t('The selected Commits have identical file contents','所选 Commit 的文件内容相同')} edit={edit} context={context}/></>;
 }
 
 function WorkingTree({ open, edit, context }: { open(dialog:DialogRequest):void; edit():void; context:ContextHandler }) {
