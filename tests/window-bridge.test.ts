@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtemp, mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { WindowBridge, canonicalPath, windowMatch, type ProjectRequest } from '../src/application/window-bridge';
+import { WindowBridge, canonicalPath, windowMatch, projectRequestSchema, type ProjectRequest } from '../src/application/window-bridge';
 
 const directories: string[] = [], bridges: WindowBridge[] = [];
 afterEach(async () => {
@@ -22,6 +22,14 @@ async function start(registry: string, roots: string[], execute: (request: Proje
   const bridge = new WindowBridge(registry, execute); bridges.push(bridge); await bridge.start(roots); return bridge;
 }
 describe('Project window routing', () => {
+  it('validates file/diff targets and rejects arbitrary commands at the IPC boundary', async () => {
+    const { root } = await setup();
+    expect(projectRequestSchema.safeParse({ root, action: 'file', path: 'sample.ts' }).success).toBe(true);
+    expect(projectRequestSchema.safeParse({ root, action: 'diff', target: { kind: 'change', path: 'sample.ts', area: 'staged' } }).success).toBe(true);
+    expect(projectRequestSchema.safeParse({ root, action: 'file', path: '../outside.ts' }).success).toBe(false);
+    expect(projectRequestSchema.safeParse({ root, action: 'command', command: 'workbench.action.closeWindow' }).success).toBe(false);
+    expect(projectRequestSchema.safeParse({ root, action: 'diff', target: { kind: 'change', path: 'sample.ts', area: 'invalid' } }).success).toBe(false);
+  });
   it('delivers only to the project workspace, not a different active window', async () => {
     const { registry, root, other } = await setup(), received: ProjectRequest[] = [];
     const source = await start(registry, [other]), target = await start(registry, [root], async request => { received.push(request); });

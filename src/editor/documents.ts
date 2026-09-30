@@ -29,12 +29,12 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
   }
   async openFile(repo: Repository, filename: string): Promise<void> {
     const full = await safeWorkingPath(repo.root, filename);
-    await vscode.window.showTextDocument(vscode.Uri.file(full), { viewColumn: vscode.ViewColumn.Beside, preview: false });
+    await vscode.window.showTextDocument(vscode.Uri.file(full), { viewColumn: vscode.ViewColumn.Active, preview: false, preserveFocus: false });
   }
   async diff(repo: Repository, target: DiffTarget): Promise<void> {
     const comparison = await this.comparison(repo, target);
     const uri = (side: Side) => 'workingPath' in side ? vscode.Uri.file(side.workingPath) : this.uri(repo, side.source, side.label, side.path);
-    await vscode.commands.executeCommand('vscode.diff', uri(comparison.left), uri(comparison.right), comparison.label, { viewColumn: vscode.ViewColumn.Beside, preview: true });
+    await vscode.commands.executeCommand('vscode.diff', uri(comparison.left), uri(comparison.right), comparison.label, { viewColumn: vscode.ViewColumn.Active, preview: false, preserveFocus: false });
   }
   async preview(repo: Repository, target: DiffTarget): Promise<DiffPreview> {
     const comparison = await this.comparison(repo, target);

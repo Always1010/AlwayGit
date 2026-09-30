@@ -3,12 +3,19 @@ import { randomBytes } from 'node:crypto';
 import { mkdir, readFile, readdir, rename, rm, realpath, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
+import { diffSchema, fileSchema } from '../protocol/validation';
 
 const LIMIT = 64 * 1024;
 const HEARTBEAT = 5000;
 const recordSchema = z.object({ version: z.literal(1), id: z.string().regex(/^[a-f0-9]{32}$/), port: z.number().int().min(1).max(65535), token: z.string().regex(/^[a-f0-9]{64}$/), roots: z.array(z.string().max(4096)).max(128), focusedAt: z.number(), updatedAt: z.number() });
 export type WindowRecord = z.infer<typeof recordSchema>;
-export const projectRequestSchema = z.object({ root: z.string().min(1).max(4096).refine(value => path.isAbsolute(value) && !value.includes('\0')), action: z.literal('project') }).strict();
+const rootSchema = z.string().min(1).max(4096).refine(value => path.isAbsolute(value) && !value.includes('\0'));
+const repositoryPath = (value: string) => !path.isAbsolute(value) && !/^[a-z]:/i.test(value) && !value.includes('\0') && !value.split(/[\\/]/).includes('..');
+export const projectRequestSchema = z.discriminatedUnion('action', [
+  z.object({ root: rootSchema, action: z.literal('project') }).strict(),
+  z.object({ root: rootSchema, action: z.literal('file'), path: fileSchema.shape.path.refine(repositoryPath, 'File path is outside the repository.') }).strict(),
+  z.object({ root: rootSchema, action: z.literal('diff'), target: diffSchema.refine(target => repositoryPath(target.path), 'File path is outside the repository.') }).strict(),
+]);
 export type ProjectRequest = z.infer<typeof projectRequestSchema>;
 
 export async function canonicalPath(value: string): Promise<string> {

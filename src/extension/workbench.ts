@@ -80,7 +80,7 @@ export class Workbench implements vscode.Disposable {
       }
       case 'history': return this.git.history(repo, { limit: vscode.workspace.getConfiguration('alwaygit').get<number>('historyPageSize', 300), ...historySchema.parse(request.payload ?? {}) });
       case 'details': { const data = detailsSchema.parse(request.payload); return this.git.details(repo, data.oid, data.parent); }
-      case 'diff': await this.documents.diff(repo, diffSchema.parse(request.payload)); return null;
+      case 'diff': await this.projects.openDiff(repo.root, diffSchema.parse(request.payload)); return null;
       case 'diffPreview': return this.documents.preview(repo, diffSchema.parse(request.payload));
       case 'openRepository': {
         const data = openRepositorySchema.parse(request.payload ?? {});
@@ -88,7 +88,7 @@ export class Workbench implements vscode.Disposable {
         else await this.open(repo.id);
         return null;
       }
-      case 'openFile': await this.documents.openFile(repo, fileSchema.parse(request.payload).path); return null;
+      case 'openFile': await this.projects.openFile(repo.root, fileSchema.parse(request.payload).path); return null;
       case 'openProject': await this.projects.openProject(repo.root); return null;
       case 'openWorktree': {
         const data = openWorktreeSchema.parse(request.payload);

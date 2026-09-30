@@ -26,7 +26,6 @@
   ],
   "activationEvents": [
     "onStartupFinished",
-    "onUri",
     "onWebviewPanel:alwaygit.workbench"
   ],
   "capabilities": {
@@ -154,6 +153,7 @@
     "test": "vitest run",
     "test:ui": "npm run build && node scripts/test-ui.mjs",
     "test:extension": "npm run build && node scripts/test-extension.mjs",
+    "test:windows": "npm run build && node scripts/test-windows.mjs",
     "package": "node scripts/package.mjs"
   },
   "dependencies": {
