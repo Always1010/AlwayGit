@@ -64,11 +64,15 @@ describe('repository UI consistency', () => {
     expect(store.getState()).toMatchObject({ language: 'zh-CN', layout: { sidebar: 210, details: 300, diff: 220, diffCollapsed: false, font: 15, row: 28 }, appearance: saved.appearance });
     expect(store.getState().settingsBaseline).toBeUndefined();
   });
-  it('opens a two-commit comparison and selects its first changed file',async()=>{
+  it('opens and preserves a comparison when exactly two commits are selected',async()=>{
     await store.getState().selectRepository('a');const left={...commit,oid:'left',subject:'Left'},right={...commit,oid:'right',subject:'Right'},fallback=bridge.rpc.getMockImplementation()!;
-    bridge.rpc.mockImplementation((method,repoId,payload)=>method==='compare'?Promise.resolve({left,right,files:[{path:'changed.txt',status:'M'}]}):fallback(method,repoId,payload));
-    await store.getState().compareCommits(left.oid,right.oid);
+    bridge.rpc.mockImplementation((method,repoId,payload)=>method==='compare'?Promise.resolve({left,right,files:[{path:'changed.txt',status:'M'}]}):method==='details'&&(payload as {oid?:string})?.oid===left.oid?Promise.resolve({commit:left,body:left.subject,files:[]}):fallback(method,repoId,payload));
+    store.getState().setCommitSelection([left.oid,right.oid],left.oid,right.oid);
+    await vi.waitFor(()=>expect(store.getState().comparison).toMatchObject({left:{oid:'left'},right:{oid:'right'}}));
     expect(store.getState().comparison).toMatchObject({left:{oid:'left'},right:{oid:'right'}});expect(store.getState().diffTarget).toEqual({kind:'comparison',left:'left',right:'right',path:'changed.txt'});
+    await store.getState().loadHistory();expect(store.getState().comparison).toMatchObject({left:{oid:'left'},right:{oid:'right'}});
+    store.getState().setCommitSelection([left.oid],left.oid,left.oid);await vi.waitFor(()=>expect(store.getState().details?.commit.oid).toBe(left.oid));expect(store.getState().comparison).toBeUndefined();
+    store.getState().setCommitSelection([]);expect(store.getState()).toMatchObject({selectedOids:[],selectedOid:undefined,details:undefined,comparison:undefined,diffTarget:undefined});
   });
   it('ignores operation success after switching during its refresh', async () => {
     await store.getState().selectRepository('a');const delayed=deferred<Snapshot>(),started=deferred<void>(),fallback=bridge.rpc.getMockImplementation()!;

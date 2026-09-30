@@ -52,7 +52,11 @@ export async function verifyHistoryRows(page) {
   await second.locator('.history-author').click({ modifiers: ['Control'] });
   assert.equal(await first.getAttribute('aria-selected'), 'true');
   assert.equal(await second.getAttribute('aria-selected'), 'true');
+  const details=page.getByTestId('details');
+  await details.locator('.comparison-summary').waitFor();
+  assert.ok(await details.locator('.detail-files .file-item').count(),'Selecting exactly two Commits must show their changed files without another action');
   await first.locator('.history-author').click();
   assert.equal(await history.locator('[data-oid][aria-selected="true"]').count(), 1);
-  console.log('ALWAYGIT_HISTORY_UI_TESTS_PASSED: Working Tree affordance and adjacency; plain HEAD node and branch badge; commit row interactions');
+  assert.equal(await details.locator('.comparison-summary').count(),0,'Returning to one Commit must leave comparison mode');
+  console.log('ALWAYGIT_HISTORY_UI_TESTS_PASSED: Working Tree affordance and adjacency; plain HEAD node and branch badge; commit row interactions; automatic two-Commit comparison');
 }

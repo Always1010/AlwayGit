@@ -54,8 +54,8 @@ Repository 名称行单击只改变操作选择，不切换当前仓库；普通
 | `Show in Graph` | 把目标加入现有筛选 |
 | `Show Only This Branch/Tag` | 仅显示目标，不 Checkout |
 | 单击 Commit | 单选该 Commit，显示提交详情和文件列表 |
-| `Ctrl` / `Cmd` + 单击 Commit | 加入或移出多选集合 |
-| `Shift` + 单击 Commit | 从选择锚点到目标 Commit 按当前列表顺序选择连续区间 |
+| `Ctrl` / `Cmd` + 单击 Commit | 加入或移出多选集合；恰好选中两个时自动比较 |
+| `Shift` + 单击 Commit | 从选择锚点到目标 Commit 按当前列表顺序选择连续区间；区间恰好包含两个时自动比较 |
 | `Ctrl` / `Cmd` + `Shift` + 单击 Commit | 在现有集合上追加连续区间 |
 | 右键已选 Commit | 保留当前多选集合并显示适用操作 |
 | 双击 Commit | 关联一个本地分支时 Checkout；关联多个时选择；没有时确认 Detached HEAD |
@@ -114,7 +114,7 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 
 Graph 中 Commit 的菜单集中提供 `Create Branch…`、`Create Tag…`、Cherry-pick、`Revert…`、`Reset…`、Checkout / Detached HEAD、`Copy Commit ID` 和 `Copy Commit Message`；顶部工具栏和 Commit Details 标题不重复提供这些入口。普通 Commit 的 Cherry-pick 点击后直接执行；Merge Commit 单独选择 Mainline Parent。多选 Commit 按当前拓扑列表从旧到新执行批量 Cherry-pick，且只处理明确选中的 Commit；包含 Merge Commit 时禁用批量操作并要求单独处理。具体项目根据提交、当前分支和仓库操作状态禁用。
 
-恰好选择两个 Commit 时提供 `Compare Commits`。存在祖先关系时祖先位于左侧；没有祖先关系时保持选择顺序。右侧显示两个 Commit 和差异文件列表，交换按钮可反转比较方向，文件 Diff 支持新增、删除和重命名。
+恰好选择两个 Commit 时自动进入 `Compare Commits`，右键菜单仍保留显式入口。存在祖先关系时祖先位于左侧；没有祖先关系时保持选择顺序。右侧显示两个 Commit 和差异文件列表，交换按钮可反转比较方向，文件 Diff 支持新增、删除和重命名。取消到一个 Commit 时恢复该提交详情；增加到三个以上时显示最后操作的提交并保留多选批量操作；清空选择时同步清空右侧详情。手动或后台刷新 History 时保留仍然有效的双 Commit 比较。
 
 ## 禁用与受阻规则
 

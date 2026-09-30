@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-015：双选 Commit 不会自动显示两点差异
+
+- 日期：2026-10-01
+- 状态：已解决
+- 现象：在 Graph 中使用 Ctrl/Cmd 或 Shift 恰好选中两个 Commit 后，右侧仍显示最后点击的单个 Commit 详情，必须再从右键菜单执行 `Compare Commits` 才能看到两个提交之间的文件差异。
+- 原因：多选处理只更新 `selectedOids`，随后仍调用单 Commit 的 `selectCommit`；现有比较 RPC、Git 查询和详情界面仅连接到右键菜单入口。History 刷新恢复还把“没有单 Commit 详情”误判为需要重新选择 Commit，会清除已经打开的比较。
+- 解决方案：将 Commit 多选与右侧展示统一为选择状态转换：恰好两个时自动比较，一个或三个以上时显示相应活动 Commit，清空时同步清除详情；History 刷新显式保留双 Commit 比较。继续保留右键比较和方向交换入口。
+- 验证方式：状态回归覆盖双选自动比较、首个差异文件、History 刷新保持比较、取消到单选和清空选择；无头 History 界面验证 Ctrl 双选后直接出现比较摘要和差异文件。类型检查及相关单元测试通过。
+- 相关文件：`webview/History.tsx`、`webview/store.ts`、`tests/ui-state.test.ts`、`scripts/test-history-ui.mjs`、`docs/WORKBENCH_SPEC.md`、`README.md`。
+
 ## BUG-014：手动添加的仓库在新窗口中丢失
 
 - 日期：2026-10-01
