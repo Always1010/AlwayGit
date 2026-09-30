@@ -28,8 +28,12 @@ export async function verifyDiffNavigation(browser, url) {
       } });
     });
     await page.goto(url);
-    const diff = page.getByTestId('diff-preview'), count = diff.getByTestId('diff-change-count'), viewport = diff.locator('.diff-viewport');
+    const diff = page.getByTestId('diff-preview'), count = diff.getByTestId('diff-change-count'), summary = diff.getByTestId('diff-change-summary'), viewport = diff.locator('.diff-viewport');
     await count.getByText('1/3', { exact: true }).waitFor();
+    assert.equal(await summary.locator('.diff-change-added').innerText(), '+0');
+    assert.equal(await summary.locator('.diff-change-modified').innerText(), '~3');
+    assert.equal(await summary.locator('.diff-change-removed').innerText(), '−0');
+    assert.equal(await count.evaluate(element => getComputedStyle(element).borderTopWidth), '0px', 'Current/total count is flat text, not an input-like badge');
     const resize = page.getByRole('separator', { name: 'Resize Diff panel' });
     await resize.press('End');
     assert.ok((await diff.boundingBox()).height > 450, 'Diff panel maximum follows the available workbench height');
@@ -83,6 +87,6 @@ export async function verifyDiffNavigation(browser, url) {
     await page.evaluate(() => { window.__diffFixture.truncated = true; window.__diffFixture.emit(); });
     await count.getByText('2/2 (preview)', { exact: true }).waitFor();
     assert.deepEqual(errors, []);
-    console.log('ALWAYGIT_DIFF_UI_TESTS_PASSED: block outline, count/arrows, jump visibility, manual scroll, long lines, reset, refresh remap and truncation');
+    console.log('ALWAYGIT_DIFF_UI_TESTS_PASSED: dynamic panel, collapse/restore, type summary, flat count, block navigation, scrolling, refresh remap and truncation');
   } finally { await page.close(); }
 }
