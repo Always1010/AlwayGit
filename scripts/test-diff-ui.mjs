@@ -48,6 +48,15 @@ export async function verifyDiffNavigation(browser, url) {
     assert.ok(halves.every(width => width > 300 && width < 700), 'Both columns retain half viewport width for long lines');
     assert.equal(await count.innerText(), '3/3', 'Horizontal scroll must not change current block');
     assert.ok(await viewport.evaluate(element => element.scrollWidth > element.clientWidth));
+    await page.setViewportSize({ width: 960, height: 700 });
+    await page.waitForFunction(() => {
+      const viewport = document.querySelector('.diff-viewport'), row = document.querySelector('.diff-line');
+      return Math.abs(row.getBoundingClientRect().width - viewport.clientWidth) < 1;
+    });
+    const resizedHalves = await diff.locator('.active-change-start').evaluate(row => [...row.children].map(cell => cell.getBoundingClientRect().width));
+    assert.ok(resizedHalves.every(width => width < 400), 'Resize recomputes both comparison columns');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.waitForFunction(() => Math.abs(document.querySelector('.diff-line').getBoundingClientRect().width - document.querySelector('.diff-viewport').clientWidth) < 1);
     await viewport.evaluate(element => { element.scrollTop = 0; element.dispatchEvent(new Event('scroll')); });
     await count.getByText('1/3', { exact: true }).waitFor();
     await page.getByTestId('details').getByRole('button', { name: 'same.txt', exact: true }).click();
