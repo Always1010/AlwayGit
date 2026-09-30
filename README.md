@@ -36,7 +36,7 @@ npm run build
 
 - 分类目录递归批量添加仓库、多仓库导航、拓扑提交图、分页、提交消息搜索、提交详情和 Merge Commit 父提交选择。
 - 本地与远端分支、Tag、Stash、Worktree 浏览和常用管理操作。
-- Staged、Unstaged、Conflicts 分组；Working Tree 直接用单击、Ctrl/Cmd 和 Shift 选择文件，支持整文件及批量 Stage、Unstage、Discard、Commit 和 Amend。
+- Staged、Unstaged、Conflicts 分组；Working Tree、Commit Details 和 Commit 比较文件列表不显示复选框，直接用单击、Ctrl/Cmd 和 Shift 选择文件，支持整文件及批量 Stage、Unstage、Discard、Copy Paths、Commit 和 Amend。
 - Fetch、Pull、Push、Merge、Rebase、Cherry-pick、Reset 和 Revert；Push 与仓库导航以通知角标显示未推送提交数，Push 在执行前显示本地分支、远端和远端分支，并允许显式调整目标；识别未完成操作并提供 Continue、Abort 和 Skip。
 - Checkout 前识别未提交修改、冲突和被其他 Worktree 占用的分支；可在适用时执行 `Stash Changes & Checkout`。
 - VS Code 原生文件编辑和原生 Diff，以及工作台中的只读 Diff 预览。
