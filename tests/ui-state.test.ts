@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Commit, HostMessage, Repository, Snapshot } from '../src/protocol/types';
 const bridge = vi.hoisted(() => ({ rpc: vi.fn(), save: vi.fn(), event: undefined as ((message: HostMessage) => void) | undefined }));
 vi.mock('../webview/rpc', () => ({ demoMode: false, readSession: () => ({}), saveSession: bridge.save, rpc: bridge.rpc, subscribe: (listener: (message: HostMessage) => void) => { bridge.event = listener; return () => {}; } }));
@@ -19,6 +19,7 @@ beforeEach(async () => {
   });
   store = (await import('../webview/store')).useWorkbench;
 });
+afterEach(() => { vi.useRealTimers(); });
 describe('repository UI consistency', () => {
   it('passes a selected ref union and preserves an explicitly empty selection', async () => {
     await store.getState().selectRepository('a');
@@ -99,5 +100,118 @@ describe('repository UI consistency', () => {
     expect(store.getState().busy).toBe(true);
     pending.resolve(); await operation;
     expect(store.getState().busy).toBe(false);
+  });
+
+  it('keeps historical details, file and Merge Parent when working files or refs change', async () => {
+    const merge = { ...commit, parents: ['first', 'second'] }, fallback = bridge.rpc.getMockImplementation()!;
+    let head = commit.oid;
+    bridge.rpc.mockImplementation((method, repoId, payload) => {
+      if (method === 'snapshot') return Promise.resolve({ ...snapshot(a, 2), head, refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: head }] });
+      if (method === 'details') return Promise.resolve({ commit: merge, body: 'Merge', parent: payload.parent ?? 'first', files: [{ path: 'a.txt', status: 'M' }, { path: 'b.txt', status: 'M' }] });
+      return fallback(method, repoId, payload);
+    });
+    await store.getState().selectRepository('a');
+    await store.getState().selectCommit(commit.oid, 'second');
+    store.getState().selectFile({ kind: 'commit', oid: commit.oid, parent: 'second', path: 'b.txt' });
+    const details = store.getState().details, target = store.getState().diffTarget;
+    bridge.rpc.mockClear();
+    await store.getState().refresh({ background: true, changes: { paths: ['unrelated.txt'] } });
+    expect(bridge.rpc.mock.calls.map(([method]) => method)).toEqual(['snapshot']);
+    head = 'new-head';
+    await store.getState().refresh({ background: true, changes: { paths: [] } });
+    expect(bridge.rpc.mock.calls.map(([method]) => method)).toEqual(['snapshot', 'snapshot', 'history']);
+    expect(store.getState().details).toBe(details); expect(store.getState().diffTarget).toBe(target);
+    expect(store.getState().detailsLoading).toBe(false); expect(store.getState().selectedParent).toBe('second');
+    await store.getState().refresh();
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'details')).toHaveLength(0);
+    expect(bridge.save.mock.calls.at(-1)?.[0].views.a.selectedParent).toBe('second');
+  });
+
+  it('restores the selected Merge Parent after switching repositories', async () => {
+    const fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, repoId, payload) => method === 'details'
+      ? Promise.resolve({ commit: { ...commit, parents: ['first', 'second'] }, body: 'Merge', files: [], parent: payload.parent ?? 'first' }) : fallback(method, repoId, payload));
+    await store.getState().selectRepository('a'); await store.getState().selectCommit(commit.oid, 'second');
+    await store.getState().selectRepository('b'); bridge.rpc.mockClear(); await store.getState().selectRepository('a');
+    expect(bridge.rpc.mock.calls.find(([method]) => method === 'details')?.[2]).toMatchObject({ parent: 'second' });
+  });
+
+  it('does not restart details that are still loading during an automatic refresh', async () => {
+    const pending = deferred<unknown>(), fallback = bridge.rpc.getMockImplementation()!;
+    await store.getState().selectRepository('a');
+    bridge.rpc.mockImplementation((method, repoId, payload) => method === 'details' ? pending.promise : fallback(method, repoId, payload));
+    const selecting = store.getState().selectCommit('different'); bridge.rpc.mockClear();
+    await store.getState().refresh();
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'details')).toHaveLength(0);
+    pending.resolve({ commit: { ...commit, oid: 'different' }, body: 'body', files: [] }); await selecting;
+    expect(store.getState().selectedOid).toBe('different'); expect(store.getState().details?.commit.oid).toBe('different');
+  });
+
+  async function workingFixture() {
+    const fallback = bridge.rpc.getMockImplementation()!;
+    const current: Snapshot = { ...snapshot(a), changes: [{ path: 'a.txt', indexStatus: 'M', worktreeStatus: 'M', conflict: false, untracked: false }, { path: 'b.txt', indexStatus: ' ', worktreeStatus: 'M', conflict: false, untracked: false }] };
+    bridge.rpc.mockImplementation((method, repoId, payload) => method === 'snapshot' ? Promise.resolve(structuredClone(current)) : fallback(method, repoId, payload));
+    await store.getState().selectRepository('a'); store.getState().selectWorking(); bridge.rpc.mockClear();
+    return current;
+  }
+
+  it('updates the selected working file even when its dirty status stays unchanged', async () => {
+    await workingFixture(); const revision = store.getState().diffRevision, target = store.getState().diffTarget;
+    await store.getState().refresh({ background: true, changes: { paths: ['b.txt'] } });
+    expect(store.getState().diffRevision).toBe(revision); expect(store.getState().diffTarget).toBe(target);
+    await store.getState().refresh({ background: true, changes: { paths: ['a.txt'] } });
+    expect(store.getState().diffRevision).toBe(revision + 1); expect(store.getState().diffTarget).toBe(target);
+    expect(bridge.rpc.mock.calls.map(([method]) => method)).toEqual(['snapshot', 'snapshot']);
+  });
+
+  it('preserves Staged selection and ignores working-file edits until Index or HEAD changes', async () => {
+    const current = await workingFixture(); store.getState().selectFile({ kind: 'change', path: 'a.txt', area: 'staged' });
+    const revision = store.getState().diffRevision;
+    await store.getState().refresh({ background: true, changes: { paths: ['a.txt'] } });
+    expect(store.getState().diffTarget).toMatchObject({ area: 'staged' }); expect(store.getState().diffRevision).toBe(revision);
+    await store.getState().refresh({ background: true, changes: { paths: [], index: true } });
+    expect(store.getState().diffRevision).toBe(revision + 1);
+    current.head = 'different'; await store.getState().refresh({ background: true, changes: { paths: [] } });
+    expect(store.getState().diffRevision).toBe(revision + 2); expect(store.getState().diffTarget).toMatchObject({ area: 'staged' });
+  });
+
+  it('updates poll-detected changes and falls back when the selected comparison disappears', async () => {
+    const current = await workingFixture();
+    store.getState().selectFile({ kind: 'change', path: 'a.txt', area: 'staged' });
+    current.changes[0].indexStatus = ' ';
+    await store.getState().refresh({ background: true, changes: { paths: [] } });
+    expect(store.getState().diffTarget).toMatchObject({ path: 'a.txt', area: 'unstaged' });
+    current.changes.splice(0, 1); await store.getState().refresh({ background: true, changes: { paths: [] } });
+    expect(store.getState().diffTarget).toMatchObject({ path: 'b.txt' });
+    current.changes = []; await store.getState().refresh({ background: true, changes: { paths: [] } });
+    expect(store.getState().diffTarget).toBeUndefined(); expect(store.getState().selectedFile).toBeUndefined();
+  });
+
+  it('merges file invalidation across overlapping snapshot requests', async () => {
+    await workingFixture(); const pending = deferred<Snapshot>(), fallback = bridge.rpc.getMockImplementation()!;
+    let first = true;
+    bridge.rpc.mockImplementation((method, repoId, payload) => { if (method === 'snapshot' && first) { first = false; return pending.promise; } return fallback(method, repoId, payload); });
+    const revision = store.getState().diffRevision;
+    const old = store.getState().refresh({ background: true, changes: { paths: ['a.txt'] } });
+    await store.getState().refresh({ background: true, changes: { paths: ['b.txt'] } });
+    pending.resolve(snapshot(a)); await old;
+    expect(store.getState().diffRevision).toBe(revision + 1);
+  });
+
+  it('merges debounced file events without losing the selected file or unknown changes', async () => {
+    await workingFixture(); vi.useFakeTimers(); const revision = store.getState().diffRevision;
+    bridge.event?.({ type: 'changed', repoId: 'a', changes: { paths: ['a.txt'] } });
+    bridge.event?.({ type: 'changed', repoId: 'a', changes: { paths: ['b.txt'] } });
+    await vi.advanceTimersByTimeAsync(160);
+    expect(bridge.rpc.mock.calls.map(([method]) => method)).toEqual(['snapshot']); expect(store.getState().diffRevision).toBe(revision + 1);
+    bridge.event?.({ type: 'changed', repoId: 'a' }); bridge.event?.({ type: 'changed', repoId: 'a', changes: { paths: ['b.txt'] } });
+    await vi.advanceTimersByTimeAsync(160); expect(store.getState().diffRevision).toBe(revision + 2);
+  });
+
+  it('does not apply a debounced repository event to a newly selected repository', async () => {
+    await store.getState().selectRepository('a'); vi.useFakeTimers();
+    bridge.event?.({ type: 'changed', repoId: 'a', changes: { paths: ['a.txt'] } });
+    await store.getState().selectRepository('b'); bridge.rpc.mockClear(); await vi.advanceTimersByTimeAsync(160);
+    expect(bridge.rpc).not.toHaveBeenCalled();
   });
 });

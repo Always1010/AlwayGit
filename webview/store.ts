@@ -1,19 +1,21 @@
 import { create } from 'zustand';
-import type { Commit, CommitComparison, CommitDetails, DiffTarget, GitAction, HistoryQuery, Repository, Snapshot } from '../src/protocol/types';
+import type { Commit, CommitComparison, CommitDetails, DiffTarget, GitAction, HistoryQuery, Repository, RepositoryChanges, Snapshot } from '../src/protocol/types';
 import { demoMode, readSession, rpc, saveSession, subscribe } from './rpc';
 import type { LayoutState } from './rpc';
 import type { Language } from './i18n';
 import { folderKeys } from './refTree';
+import { affectsWorkingDiff, diffKey, historyKey, mergeChanges, workingTarget } from './refresh';
 
 let repositoryEpoch = 0, snapshotEpoch = 0, historyEpoch = 0, detailEpoch = 0;
+let refreshInvalidation: { epoch: number; changes?: RepositoryChanges; forceHistory: boolean } | undefined;
 const session = readSession(), views = session.views ?? {}, executingRepositories = new Set<string>(), hostBusyRepositories = new Set<string>();
 export const defaultLayout: LayoutState = { preset: 'workbench', sidebar: 210, details: 300, diff: 220, author: 100, date: 120, font: 13, row: 26 };
 export interface CheckoutFailure { reason?: string; paths: string[]; target: string; worktreePath?: string; stashCreated?: boolean; stashOid?: string; detached?: boolean }
 interface WorkbenchState {
-  repositories: Repository[]; repoId?: string; snapshot?: Snapshot; commits: Commit[]; details?: CommitDetails; comparison?: CommitComparison; selectedOid?: string; selectedOids: string[]; selectionAnchor?: string; selectedStashOid?: string; stashDetails?: CommitDetails; selectedFile?: string; diffTarget?: DiffTarget;
+  repositories: Repository[]; repoId?: string; snapshot?: Snapshot; commits: Commit[]; details?: CommitDetails; comparison?: CommitComparison; selectedOid?: string; selectedOids: string[]; selectionAnchor?: string; selectedParent?: string; selectedStashOid?: string; stashDetails?: CommitDetails; selectedFile?: string; diffTarget?: DiffTarget; diffRevision: number;
   ref?: string; checkedRefs?: string[]; expandedRefGroups?:string[]; collapsedSidebarGroups:string[]; search: string; language: Language; layout: LayoutState; checkoutFailure?: CheckoutFailure; locateToken:number;
   nextOffset: number; hasMore: boolean; tips: string[]; loading: boolean; historyLoading: boolean; detailsLoading: boolean; busy: boolean; activity: string; error?: string; notice?: string; tab: 'history' | 'changes'; drafts: Record<string, string>;
-  initialize(): Promise<void>; selectRepository(id: string): Promise<void>; refresh(): Promise<void>; loadHistory(append?: boolean): Promise<void>; selectCommit(oid: string, parent?: string, stashOid?: string, preserveSelection?: boolean): Promise<void>; compareCommits(left:string,right:string,preserveOrder?:boolean):Promise<void>; setCommitSelection(oids:string[],anchor?:string):void;
+  initialize(): Promise<void>; selectRepository(id: string): Promise<void>; refresh(options?: { background?: boolean; changes?: RepositoryChanges }): Promise<void>; loadHistory(append?: boolean): Promise<void>; selectCommit(oid: string, parent?: string, stashOid?: string, preserveSelection?: boolean): Promise<void>; compareCommits(left:string,right:string,preserveOrder?:boolean):Promise<void>; setCommitSelection(oids:string[],anchor?:string):void;
   setFilter(ref?: string, search?: string): void; setCheckedRefs(refs: string[]): void; setExpandedRefGroup(key:string,expanded:boolean):void; toggleSidebarGroup(key:string):void; setSearch(value: string): void; selectWorking(): void; selectFile(target: DiffTarget): void; locateHead():void;
   execute(action: GitAction): Promise<boolean>; setDraft(value: string): void; setLanguage(value: Language): void; setLayout(value: Partial<LayoutState>): void; report(error: unknown): void;
 }
@@ -24,7 +26,7 @@ function layout(value: Partial<LayoutState> = {}): LayoutState {
   return { preset: l.preset === 'editor' ? 'editor' : 'workbench', sidebar: clamp(l.sidebar, 160, 360, 210), details: clamp(l.details, 230, 480, 300), diff: clamp(l.diff, 130, 450, 220), author: clamp(l.author, 64, 220, 100), date: clamp(l.date, 82, 220, 120), font: clamp(l.font, 12, 16, 13), row: clamp(l.row, 24, 36, 26) };
 }
 export const useWorkbench = create<WorkbenchState>((set, get) => ({
-  repositories: [], commits: [], selectedOids:[], search: '', language: session.language === 'zh-CN' ? 'zh-CN' : 'en', layout: layout(session.layout), locateToken:0,nextOffset: 0, tips: [], hasMore: false, loading: false, historyLoading: false, detailsLoading: false, busy: false, activity: '', tab: 'history', drafts: session.drafts ?? {}, collapsedSidebarGroups:[],
+  repositories: [], commits: [], selectedOids:[], search: '', language: session.language === 'zh-CN' ? 'zh-CN' : 'en', layout: layout(session.layout), locateToken:0,nextOffset: 0, tips: [], hasMore: false, loading: false, historyLoading: false, detailsLoading: false, diffRevision: 0, busy: false, activity: '', tab: 'history', drafts: session.drafts ?? {}, collapsedSidebarGroups:[],
   report(error) { set({ error: message(error) }); },
   async initialize() {
     set({ loading: true });
@@ -33,19 +35,34 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   },
   async selectRepository(id) {
     ++repositoryEpoch; ++historyEpoch; ++detailEpoch; const view = views[id];
-    set({ repoId: id, snapshot: undefined, commits: [], selectedOids:[], selectionAnchor:undefined, tips: [], details: undefined, comparison:undefined, stashDetails: undefined, diffTarget: undefined, selectedFile: view?.selectedFile, selectedOid: view?.selectedOid, selectedStashOid: view?.selectedStashOid, ref: view?.ref, checkedRefs: view?.checkedRefs ? [...view.checkedRefs] : view?.ref ? [view.ref] : undefined, expandedRefGroups:view?.expandedRefGroups?[...view.expandedRefGroups]:undefined,collapsedSidebarGroups:[...(view?.collapsedSidebarGroups??[])], search: view?.search ?? '', tab: view?.tab ?? 'history', checkoutFailure: undefined, error: undefined, notice: undefined, loading: true, busy: executingRepositories.has(id), activity: '', detailsLoading: false, historyLoading: false });
+    set({ repoId: id, snapshot: undefined, commits: [], selectedOids:[], selectionAnchor:undefined, tips: [], details: undefined, comparison:undefined, stashDetails: undefined, diffTarget: undefined, diffRevision:0, selectedFile: view?.selectedFile, selectedOid: view?.selectedOid, selectedParent: view?.selectedParent, selectedStashOid: view?.selectedStashOid, ref: view?.ref, checkedRefs: view?.checkedRefs ? [...view.checkedRefs] : view?.ref ? [view.ref] : undefined, expandedRefGroups:view?.expandedRefGroups?[...view.expandedRefGroups]:undefined,collapsedSidebarGroups:[...(view?.collapsedSidebarGroups??[])], search: view?.search ?? '', tab: view?.tab ?? 'history', checkoutFailure: undefined, error: undefined, notice: undefined, loading: true, busy: executingRepositories.has(id), activity: '', detailsLoading: false, historyLoading: false });
     await get().refresh();
   },
-  async refresh() {
+  async refresh(options = {}) {
     const epoch = repositoryEpoch, request = ++snapshotEpoch, repoId = get().repoId; if (!repoId) return; set({ loading: true });
+    refreshInvalidation = {
+      epoch,
+      changes: refreshInvalidation?.epoch === epoch ? mergeChanges(refreshInvalidation.changes, options.changes) : options.changes,
+      forceHistory: !options.background || (refreshInvalidation?.epoch === epoch && refreshInvalidation.forceHistory),
+    };
     try {
       const snapshot = await rpc<Snapshot>('snapshot', repoId); if (epoch !== repositoryEpoch || request !== snapshotEpoch || snapshot.version < (get().snapshot?.version ?? -1)) return;
-      const initial = get().checkedRefs === undefined,previousBranch=get().snapshot?.branch;
+      const invalidation = refreshInvalidation!; refreshInvalidation = undefined;
+      const previous = get().snapshot, previousRefs = get().checkedRefs ?? [], previousTarget = get().diffTarget;
+      const initial = get().checkedRefs === undefined,previousBranch=previous?.branch;
       const checkedRefs = initial ? [snapshot.refs.find(r => r.kind === 'local' && r.name === snapshot.branch)?.fullName ?? (snapshot.head ? 'HEAD' : ''), snapshot.refs.find(r => r.kind === 'remote' && r.name === snapshot.upstream)?.fullName ?? ''].filter(Boolean) : get().checkedRefs!.filter(ref => ref === 'HEAD' || snapshot.refs.some(r => r.fullName === ref));
       const currentFolders=folderKeys(snapshot.branch,'local'),baseExpanded=get().expandedRefGroups,expandedRefGroups=baseExpanded===undefined||previousBranch!==snapshot.branch?[...new Set([...(baseExpanded??[]),...currentFolders])]:baseExpanded;
-      set({ snapshot, checkedRefs,expandedRefGroups }); await get().loadHistory(); if (get().tab === 'changes') get().selectWorking();
+      const stashDisappeared = !!get().selectedStashOid && !snapshot.stashes.some(stash => stash.oid === get().selectedStashOid);
+      const reloadHistory = !previous || invalidation.forceHistory || stashDisappeared || historyKey(previous, previousRefs) !== historyKey(snapshot, checkedRefs);
+      set({ snapshot, checkedRefs,expandedRefGroups });
+      if (get().tab === 'changes') {
+        get().selectWorking();
+        const target = get().diffTarget;
+        if (target && diffKey(target) === diffKey(previousTarget) && affectsWorkingDiff(previous, snapshot, target, invalidation.changes)) set({ diffRevision: get().diffRevision + 1 });
+      }
+      if (reloadHistory) await get().loadHistory();
     } catch (error) { if (epoch === repositoryEpoch && request === snapshotEpoch) get().report(error); }
-    finally { if (epoch === repositoryEpoch && request === snapshotEpoch) set({ loading: false }); }
+    finally { if (epoch === repositoryEpoch && request === snapshotEpoch) { refreshInvalidation = undefined; set({ loading: false }); } }
   },
   async loadHistory(append = false) {
     const { repoId, search, nextOffset, historyLoading, checkedRefs } = get(); if (!repoId || append && historyLoading) return;
@@ -57,20 +74,23 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       const prior = new Set(get().commits.map(c => c.oid)), all = append ? [...get().commits, ...page.commits.filter(c => !prior.has(c.oid))] : page.commits;
       set({ commits: all, tips: page.tips, nextOffset: page.nextOffset, hasMore: page.hasMore });
       const stashSelected = !!get().selectedStashOid && get().snapshot?.stashes.some(s => s.oid === get().selectedStashOid);
-      if(get().selectedStashOid&&!stashSelected)set({selectedStashOid:undefined,stashDetails:undefined,selectedOid:all[0]?.oid,details:undefined});
+      if(get().selectedStashOid&&!stashSelected){++detailEpoch;set({selectedStashOid:undefined,stashDetails:undefined,selectedOid:all[0]?.oid,selectedParent:undefined,details:undefined,detailsLoading:false,diffTarget:undefined});}
       if (!append && get().tab === 'history' && !get().selectedOid && all.length) void get().selectCommit(all[0].oid);
-      else if (!append && get().tab === 'history' && get().selectedOid) void get().selectCommit(get().selectedOid!, undefined, stashSelected ? get().selectedStashOid : undefined, get().selectedOids.length>1);
+      else if (!append && get().tab === 'history' && get().selectedOid && !get().details && !get().detailsLoading) void get().selectCommit(get().selectedOid!, get().selectedParent, stashSelected ? get().selectedStashOid : undefined, get().selectedOids.length>1);
     } catch (error) { if (epoch === historyEpoch && repoEpoch === repositoryEpoch) get().report(error); }
     finally { if (epoch === historyEpoch && repoEpoch === repositoryEpoch) set({ historyLoading: false }); }
   },
   async selectCommit(oid, parent, stashOid, preserveSelection=false) {
-    const epoch = ++detailEpoch, repoEpoch = repositoryEpoch, repoId = get().repoId, same = oid === get().selectedOid;
+    const repoEpoch = repositoryEpoch, repoId = get().repoId, same = oid === get().selectedOid;
+    parent ??= same ? get().selectedParent : undefined;
     const selectedStashOid = stashOid ?? (same ? get().selectedStashOid : undefined);
-    set({ selectedOid: oid, ...(!preserveSelection?{selectedOids:[oid],selectionAnchor:oid}:{}), selectedStashOid, comparison:undefined, details: undefined, detailsLoading: true, tab: 'history', diffTarget: undefined });
+    if (same && get().tab === 'history' && get().details?.commit.oid === oid && get().details?.parent === parent && selectedStashOid === get().selectedStashOid) return;
+    const epoch = ++detailEpoch;
+    set({ selectedOid: oid, selectedParent: parent, ...(!preserveSelection?{selectedOids:[oid],selectionAnchor:oid}:{}), selectedStashOid, comparison:undefined, details: undefined, detailsLoading: true, tab: 'history', diffTarget: undefined });
     try {
       const [details, stashDetails] = await Promise.all([rpc<CommitDetails>('details', repoId, { oid, parent }), selectedStashOid && selectedStashOid !== oid && get().stashDetails?.commit.oid !== selectedStashOid ? rpc<CommitDetails>('details', repoId, { oid: selectedStashOid }) : Promise.resolve(get().stashDetails)]);
       if (epoch !== detailEpoch || repoEpoch !== repositoryEpoch) return;
-      set({ details, stashDetails: selectedStashOid === oid ? details : stashDetails });
+      set({ details, selectedParent: details.parent, stashDetails: selectedStashOid === oid ? details : stashDetails });
       const file = (same ? details.files.find(f => f.path === get().selectedFile) : undefined) ?? details.files[0];
       if (file) get().selectFile({ kind: 'commit', oid, path: file.path, previousPath: file.previousPath, parent: details.parent }); else set({ selectedFile: undefined, diffTarget: undefined });
     } catch (error) { if (epoch === detailEpoch && repoEpoch === repositoryEpoch) get().report(error); }
@@ -89,10 +109,10 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   toggleSidebarGroup(key){set({collapsedSidebarGroups:get().collapsedSidebarGroups.includes(key)?get().collapsedSidebarGroups.filter(item=>item!==key):[...get().collapsedSidebarGroups,key]});},
   setSearch(search) { set({ search, tips: [], selectedOids:[], selectionAnchor:undefined, comparison:undefined }); void get().loadHistory(); },
   selectWorking() {
-    ++detailEpoch; const file = get().snapshot?.changes.find(f => f.path === get().selectedFile) ?? get().snapshot?.changes[0]; set({ tab: 'changes', selectedOids:[], selectionAnchor:undefined, comparison:undefined, detailsLoading: false });
-    if (file) get().selectFile({ kind: 'change', path: file.path, area: file.conflict ? 'conflict' : file.worktreeStatus !== ' ' || file.untracked ? 'unstaged' : 'staged' }); else set({ selectedFile: undefined, diffTarget: undefined });
+    ++detailEpoch; const snapshot = get().snapshot, target = snapshot && workingTarget(snapshot, get().diffTarget, get().selectedFile); set({ tab: 'changes', selectedOids:[], selectionAnchor:undefined, comparison:undefined, detailsLoading: false });
+    if (target) get().selectFile(target); else set({ selectedFile: undefined, diffTarget: undefined });
   },
-  selectFile(target) { set({ selectedFile: target.path, diffTarget: target }); },
+  selectFile(target) { if (diffKey(target) !== diffKey(get().diffTarget)) set({ selectedFile: target.path, diffTarget: target }); },
   locateHead(){const snapshot=get().snapshot;if(!snapshot?.head)return;const ref=snapshot.refs.find(r=>r.kind==='local'&&r.name===snapshot.branch)?.fullName??'HEAD';set({checkedRefs:[...new Set([...(get().checkedRefs??[]),ref])],search:'',locateToken:get().locateToken+1,selectedStashOid:undefined});void get().loadHistory();void get().selectCommit(snapshot.head);},
   async execute(action) {
     const repoId = get().repoId, epoch = repositoryEpoch; if (!repoId || get().busy) return false;
@@ -121,13 +141,21 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   setLayout(value) { set({ layout: layout({ ...get().layout, ...value }) }); },
 }));
 useWorkbench.subscribe(state => {
-  if (state.repoId) views[state.repoId] = { ref: state.ref, checkedRefs: state.checkedRefs, expandedRefGroups:state.expandedRefGroups,collapsedSidebarGroups:state.collapsedSidebarGroups, search: state.search, selectedOid: state.selectedOid, selectedStashOid: state.selectedStashOid, selectedFile: state.selectedFile, tab: state.tab };
+  if (state.repoId) views[state.repoId] = { ref: state.ref, checkedRefs: state.checkedRefs, expandedRefGroups:state.expandedRefGroups,collapsedSidebarGroups:state.collapsedSidebarGroups, search: state.search, selectedOid: state.selectedOid, selectedParent: state.selectedParent, selectedStashOid: state.selectedStashOid, selectedFile: state.selectedFile, tab: state.tab };
   saveSession({ version: 2, repoId: state.repoId, drafts: state.drafts, views, language: state.language, layout: state.layout });
 });
 let changedTimer: ReturnType<typeof setTimeout>;
+let pendingChange: { repoId: string; changes?: RepositoryChanges } | undefined;
 subscribe(event => {
   const state = useWorkbench.getState(); if (event.type === 'repositoriesChanged') void state.initialize();
-  if (event.type === 'changed' && event.repoId === state.repoId) { clearTimeout(changedTimer); changedTimer = setTimeout(() => { void useWorkbench.getState().refresh(); }, 160); }
+  if (event.type === 'changed' && event.repoId === state.repoId) {
+    clearTimeout(changedTimer);
+    pendingChange = { repoId: event.repoId, changes: pendingChange?.repoId === event.repoId ? mergeChanges(pendingChange.changes, event.changes) : event.changes };
+    changedTimer = setTimeout(() => {
+      const pending = pendingChange; pendingChange = undefined;
+      if (pending && pending.repoId === useWorkbench.getState().repoId) void useWorkbench.getState().refresh({ background: true, changes: pending.changes });
+    }, 160);
+  }
   if(event.type==='activity'){if(event.busy)hostBusyRepositories.add(event.repoId);else hostBusyRepositories.delete(event.repoId);if(event.repoId===state.repoId)useWorkbench.setState({busy:event.busy||executingRepositories.has(event.repoId),activity:event.label});}
   if (event.type === 'selectRepository') void state.selectRepository(event.repoId);
 });

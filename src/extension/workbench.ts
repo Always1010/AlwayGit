@@ -19,13 +19,14 @@ export class Workbench implements vscode.Disposable {
   private readonly busy = new Set<string>();
   private polling = false;
   private requestCount = 0;
+  private addingRepositories = false;
   /** Diagnostic count used to verify the real Webview message bridge. */
   get receivedWebviewRequests(): number { return this.requestCount; }
   private readonly interval: ReturnType<typeof setInterval>;
   private language(): Language { return this.context.workspaceState.get<{ language?: Language }>('alwaygit.session', {}).language ?? preferredLanguage(); }
   private text(english: string, chinese: string): string { return hostText(english, chinese, this.language()); }
   constructor(private readonly context: vscode.ExtensionContext, private readonly git: GitServiceContract, private readonly repositories: RepositoryManager, private readonly documents: GitDocuments, private readonly output: vscode.OutputChannel, private readonly projects: ProjectWindows) {
-    this.disposables.push(repositories.onDidChange(id => this.post({ type: 'changed', repoId: id })), repositories.onDidChangeRepositories(() => this.post({ type: 'repositoriesChanged' })));
+    this.disposables.push(repositories.onDidChange(event => this.post({ type: 'changed', ...event })), repositories.onDidChangeRepositories(() => this.post({ type: 'repositoriesChanged' })));
     const seconds = vscode.workspace.getConfiguration('alwaygit').get<number>('refreshInterval', 15);
     this.interval = setInterval(() => void this.poll(), seconds * 1000);
   }
@@ -56,9 +57,33 @@ export class Workbench implements vscode.Disposable {
     panel.webview.html = await this.html(panel.webview);
   }
   async addRepository(): Promise<unknown> {
-    const selected = await vscode.window.showOpenDialog({ canSelectFolders: true, canSelectFiles: false, canSelectMany: false, openLabel: this.text('Add Git Repository', '添加 Git 仓库') });
-    if (!selected?.[0]) return undefined;
-    return this.repositories.add(selected[0].fsPath);
+    if (!vscode.workspace.isTrusted) throw new Error(this.text('Git execution requires a trusted workspace.', '请先信任工作区，再执行 Git 操作。'));
+    if (this.addingRepositories) return undefined;
+    this.addingRepositories = true;
+    try {
+      const selected = await vscode.window.showOpenDialog({ canSelectFolders: true, canSelectFiles: false, canSelectMany: false, title: this.text('Select a repository or a folder containing repositories', '选择仓库或存放多个仓库的目录'), openLabel: this.text('Add Repositories', '添加仓库') });
+      if (!selected?.[0]) return undefined;
+      const result = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: this.text('Discovering Git repositories', '正在查找 Git 仓库'), cancellable: true }, (progress, token) => {
+        let lastReport = 0;
+        return this.repositories.addDirectory(selected[0].fsPath, {
+          isCancelled: () => token.isCancellationRequested,
+          onProgress: ({ scanned, found }) => {
+            if (Date.now() - lastReport < 100) return;
+            lastReport = Date.now();
+            progress.report({ message: this.text(`Scanned ${scanned} folders, found ${found} repositories`, `已扫描 ${scanned} 个目录，发现 ${found} 个仓库`) });
+          },
+        });
+      });
+      for (const issue of result.issues) this.output.appendLine(redactSecrets(`[discovery] ${issue.path}: ${issue.message}`));
+      if (result.cancelled) {
+        void vscode.window.showInformationMessage(this.text('Repository discovery cancelled. No repositories were added.', '已取消仓库扫描，未添加任何仓库。'));
+      } else {
+        const summary = result.found ? this.text(`Added ${result.added} repositories; ${result.existing} already registered.`, `新增 ${result.added} 个仓库，${result.existing} 个已存在。`) : this.text('No Git repositories found in the selected folder.', '所选目录中没有找到 Git 仓库。');
+        if (result.issues.length) void vscode.window.showWarningMessage(summary + this.text(` Skipped ${result.issues.length} folders or repositories. See AlwayGit output for details.`, ` 跳过 ${result.issues.length} 个异常目录或仓库，详情请查看 AlwayGit 输出。`));
+        else void vscode.window.showInformationMessage(summary);
+      }
+      return { added: result.added, existing: result.existing, skipped: result.issues.length, cancelled: result.cancelled };
+    } finally { this.addingRepositories = false; }
   }
   /** All UI requests go through the same validated, trusted application boundary. */
   async handle(request: RpcRequest): Promise<unknown> {
@@ -130,7 +155,7 @@ export class Workbench implements vscode.Disposable {
       if (this.busy.has(repo.commonDir)) return;
       const previous = this.fingerprints.get(repo.id);
       const snapshot = await this.git.snapshot(repo);
-      if (this.recordFingerprint(snapshot) !== previous) this.post({ type: 'changed', repoId: repo.id });
+      if (this.recordFingerprint(snapshot) !== previous) this.post({ type: 'changed', repoId: repo.id, changes: { paths: [] } });
     } catch (error) { this.output.appendLine(redactSecrets(`[refresh] ${error instanceof Error ? error.message : String(error)}`)); }
     finally { this.polling = false; }
   }

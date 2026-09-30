@@ -34,7 +34,7 @@ npm run build
 
 ## 功能范围
 
-- 多仓库导航、拓扑提交图、分页、提交消息搜索、提交详情和 Merge Commit 父提交选择。
+- 分类目录递归批量添加仓库、多仓库导航、拓扑提交图、分页、提交消息搜索、提交详情和 Merge Commit 父提交选择。
 - 本地与远端分支、Tag、Stash、Worktree 浏览和常用管理操作。
 - Staged、Unstaged、Conflicts 分组，整文件及批量 Stage、Unstage、Discard、Commit 和 Amend。
 - Fetch、Pull、Push、Merge、Rebase、Cherry-pick、Reset 和 Revert；Push 在执行前显示本地分支、远端和远端分支，并允许显式调整目标；识别未完成操作并提供 Continue、Abort 和 Skip。
@@ -75,5 +75,6 @@ npm run package
 - [工作台规格](docs/WORKBENCH_SPEC.md)
 - [开发交接](docs/DEVELOPMENT_HANDOFF.md)
 - [验证说明](docs/VALIDATION.md)
+- [问题日志](docs/ISSUES.md)
 
 本项目尚未指定开源许可证，也尚未发布到 Marketplace。
