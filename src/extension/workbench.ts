@@ -111,7 +111,7 @@ export class Workbench implements vscode.Disposable {
       case 'diffPreview': return this.documents.preview(repo, diffSchema.parse(request.payload));
       case 'openRepository': {
         const data = openRepositorySchema.parse(request.payload ?? {});
-        if (data.newWindow) await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(repo.root), { forceNewWindow: true });
+        if (data.newWindow) await this.projects.openWorkbenchInNewWindow(repo.root);
         else await this.open(repo.id);
         return null;
       }
@@ -125,7 +125,7 @@ export class Workbench implements vscode.Disposable {
         if (!worktree || worktree.bare) throw new Error(this.text('Select a registered non-bare Worktree.', '请选择已注册的非 bare Worktree。'));
         if (normalized(worktree.path) === normalized(repo.root) && !data.newWindow) { await this.open(repo.id); return null; }
         const registered = await this.repositories.add(worktree.path);
-        if (data.newWindow !== false) await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(worktree.path), { forceNewWindow: true });
+        if (data.newWindow !== false) await this.projects.openWorkbenchInNewWindow(worktree.path);
         else await this.open(registered.id);
         return null;
       }

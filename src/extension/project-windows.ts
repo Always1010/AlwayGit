@@ -13,7 +13,7 @@ export class ProjectWindows implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private focusCommand = false;
   private readonly opening = new Map<string, Promise<WindowRecord>>();
-  constructor(context: vscode.ExtensionContext, private readonly log: vscode.OutputChannel, private readonly repositories: RepositoryManager, private readonly documents: GitDocuments) {
+  constructor(context: vscode.ExtensionContext, private readonly log: vscode.OutputChannel, private readonly repositories: RepositoryManager, private readonly documents: GitDocuments, private readonly showWorkbench: (repoId: string) => Promise<void>) {
     const scope = createHash('sha256').update([context.globalStorageUri.toString(), vscode.env.appRoot, vscode.env.remoteName ?? '', process.env.VSCODE_IPC_HOOK ?? ''].join('|')).digest('hex').slice(0, 24);
     this.bridge = new WindowBridge(path.join(tmpdir(), 'alwaygit-windows-' + scope), request => this.execute(request), message => this.log.appendLine('[project-window] ' + message));
   }
@@ -25,6 +25,16 @@ export class ProjectWindows implements vscode.Disposable {
     this.disposables.push(vscode.workspace.onDidChangeWorkspaceFolders(update), vscode.window.onDidChangeWindowState(update));
   }
   async openProject(root: string): Promise<void> { await this.route({ root, action: 'project' }); }
+  async openWorkbenchInNewWindow(root: string): Promise<void> {
+    const canonical = await canonicalPath(root), key = `workbench:${canonical}`;
+    let opened = this.opening.get(key);
+    if (!opened) {
+      opened = this.openNewAndWait(canonical);
+      this.opening.set(key, opened);
+      void opened.finally(() => { if (this.opening.get(key) === opened) this.opening.delete(key); }).catch(() => {});
+    }
+    await WindowBridge.send(await opened, { root: canonical, action: 'workbench' });
+  }
   async openFile(root: string, filename: string): Promise<void> { await this.route({ root, action: 'file', path: filename }); }
   async openDiff(root: string, target: DiffTarget): Promise<void> { await this.route({ root, action: 'diff', target }); }
   private async execute(request: ProjectRequest): Promise<void> {
@@ -32,7 +42,8 @@ export class ProjectWindows implements vscode.Disposable {
     if (request.action !== 'project') {
       const repo = await this.repositories.add(request.root, false);
       if (await canonicalPath(repo.root) !== request.root) throw new Error('The repository directory changed. Reopen it from AlwayGit.');
-      if (request.action === 'file') await this.documents.openFile(repo, request.path);
+      if (request.action === 'workbench') await this.showWorkbench(repo.id);
+      else if (request.action === 'file') await this.documents.openFile(repo, request.path);
       else await this.documents.diff(repo, request.target);
     }
     await this.focus();
@@ -81,6 +92,20 @@ export class ProjectWindows implements vscode.Disposable {
       await new Promise(resolve => setTimeout(resolve, 250));
     }
     throw new Error('The project was opened, but AlwayGit did not respond. Enable AlwayGit and trust that project window, then try again.');
+  }
+  private async openNewAndWait(root: string): Promise<WindowRecord> {
+    const previous = new Set((await this.bridge.candidates(root)).map(candidate => candidate.id));
+    await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(root), { forceNewWindow: true });
+    const deadline = Date.now() + 20000;
+    while (Date.now() < deadline) {
+      for (const candidate of await this.bridge.candidates(root)) {
+        if (previous.has(candidate.id)) continue;
+        try { await WindowBridge.send(candidate, undefined, 500); return candidate; }
+        catch { /* The new extension host has not finished starting. */ }
+      }
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+    throw new Error('The project was opened in a new window, but AlwayGit did not respond. Enable AlwayGit and trust that project window, then try again.');
   }
   dispose(): void { this.bridge.dispose(); for (const disposable of this.disposables) disposable.dispose(); }
 }

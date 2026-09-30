@@ -21,7 +21,7 @@ async function read(name) { try { return JSON.parse(await readFile(path.join(mai
 async function waitFor(label, probe, timeout = 45000) {
   const deadline = Date.now() + timeout;
   while (Date.now() < deadline) { const result = await probe(); if (result) return result; await new Promise(resolve => setTimeout(resolve, 100)); }
-  const states = await Promise.all(['source', 'target', 'new-project'].map(name => read(name + '.state.json')));
+  const states = await Promise.all(['source', 'target', 'new-project', 'workbench-project'].map(name => read(name + '.state.json')));
   throw new Error(`${label} timed out. States: ${JSON.stringify(states)}\n${processOutput}`);
 }
 function launch(root) {
@@ -55,7 +55,7 @@ try {
   await writeFile(path.join(controller, 'README.md'), 'Companion extension used only by isolated AlwayGit window integration tests.\n');
   await build({ entryPoints: ['tests/extension/window-controller.ts'], outfile: path.join(controller, 'extension.cjs'), bundle: true, platform: 'node', format: 'cjs', target: 'node20', external: ['vscode'] });
   const roots = {};
-  for (const name of ['source', 'target', 'new-project']) {
+  for (const name of ['source', 'target', 'new-project', 'workbench-project']) {
     const root = roots[name] = path.join(directory, name); await mkdir(root);
     const git = (...args) => exec('git', ['-C', root, ...args], { windowsHide: true });
     await git('init', '-b', 'main'); await git('config', 'user.name', 'Window Test'); await git('config', 'user.email', 'windows@example.com'); await git('config', 'commit.gpgsign', 'false');
@@ -105,8 +105,11 @@ try {
   await action('source', { root: roots['new-project'], method: 'openFile', payload: { path: 'sample.ts' } });
   const fresh = await waitFor('New project file tab', async () => { const state = await read('new-project.state.json'); return state && tabs(state).some(tab => tab.uri?.endsWith('/sample.ts')) && state; });
   assertPreserved(fresh);
-  assert.equal((await readdir(source.registry)).filter(name => name.endsWith('.json')).length, 3, 'Existing project windows must be reused and unopened projects get one new window');
-  console.log('ALWAYGIT_WINDOW_TESTS_PASSED: exact project window/focus, receiving-host staged/unstaged Diff, pinned file tabs, no side group, preserved unsaved editors/workbench, unopened project startup');
+  await action('source', { root: roots['workbench-project'], method: 'openRepository', payload: { newWindow: true } });
+  const workbenchProject = await waitFor('New project workbench tab', async () => { const state = await read('workbench-project.state.json'); return state && tabs(state).some(tab => tab.label === 'AlwayGit') && state; });
+  assertPreserved(workbenchProject);
+  assert.equal((await readdir(source.registry)).filter(name => name.endsWith('.json')).length, 4, 'Existing project windows must be reused and explicit Workbench opens get one new window');
+  console.log('ALWAYGIT_WINDOW_TESTS_PASSED: exact project window/focus, receiving-host staged/unstaged Diff, pinned file tabs, no side group, preserved unsaved editors/workbench, unopened project startup, new-window Workbench startup');
 } finally {
   // Only terminate processes launched with this isolated test profile; never touch user VS Code.
   for (const child of children) {
@@ -115,7 +118,7 @@ try {
     else child.kill('SIGTERM');
   }
   // A reused main process can leave child windows; ask only the test companion to close them.
-  for (const name of ['new-project', 'source', 'target']) await writeFile(path.join(mailbox, name + '.action.json'), JSON.stringify({ id: 'close-' + (++sequence), type: 'close' })).catch(() => {});
+  for (const name of ['new-project', 'workbench-project', 'source', 'target']) await writeFile(path.join(mailbox, name + '.action.json'), JSON.stringify({ id: 'close-' + (++sequence), type: 'close' })).catch(() => {});
   await new Promise(resolve => setTimeout(resolve, 1500));
   const absolute = path.resolve(directory);
   if (path.dirname(absolute) !== path.resolve(tmpdir()) || !path.basename(absolute).startsWith('alwaygit-windows-test-')) throw new Error('Unsafe window test cleanup target');

@@ -26,6 +26,7 @@ describe('Project window routing', () => {
     const { root } = await setup();
     expect(projectRequestSchema.safeParse({ root, action: 'file', path: 'sample.ts' }).success).toBe(true);
     expect(projectRequestSchema.safeParse({ root, action: 'diff', target: { kind: 'change', path: 'sample.ts', area: 'staged' } }).success).toBe(true);
+    expect(projectRequestSchema.safeParse({ root, action: 'workbench' }).success).toBe(true);
     expect(projectRequestSchema.safeParse({ root, action: 'file', path: '../outside.ts' }).success).toBe(false);
     expect(projectRequestSchema.safeParse({ root, action: 'command', command: 'workbench.action.closeWindow' }).success).toBe(false);
     expect(projectRequestSchema.safeParse({ root, action: 'diff', target: { kind: 'change', path: 'sample.ts', area: 'invalid' } }).success).toBe(false);
@@ -37,7 +38,8 @@ describe('Project window routing', () => {
     const candidates = await source.candidates(root);
     expect(candidates.map(window => window.id)).toEqual([target.record.id]);
     await WindowBridge.send(candidates[0], { root, action: 'project' });
-    expect(received).toEqual([{ root: await canonicalPath(root), action: 'project' }]);
+    await WindowBridge.send(candidates[0], { root, action: 'workbench' });
+    expect(received).toEqual([{ root: await canonicalPath(root), action: 'project' }, { root: await canonicalPath(root), action: 'workbench' }]);
   });
   it('prefers an exact project root over a parent and supports multi-root workspaces', async () => {
     const { registry, directory, root, other } = await setup();
