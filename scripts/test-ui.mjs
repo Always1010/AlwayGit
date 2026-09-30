@@ -248,7 +248,7 @@ try {
   for (const label of ['Resize author column', 'Resize date column']) {
     const handle = page.getByRole('separator', { name: label });
     await handle.focus();
-    for (let index = 0; index < 24; index++) await handle.press('ArrowRight');
+    for (let index = 0; index < 24; index++) await handle.press('ArrowLeft');
     assert.equal(Number(await handle.getAttribute('aria-valuenow')), 220);
   }
   await historyViewport.evaluate(element => { element.scrollLeft = element.scrollWidth; element.dispatchEvent(new Event('scroll', { bubbles: true })); });
