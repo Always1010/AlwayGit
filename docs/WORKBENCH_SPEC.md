@@ -88,11 +88,11 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 
 ## 左侧对象菜单
 
-用户主动添加的仓库列表在同一 VS Code Profile 和本地或远程运行环境内的窗口间共享。各窗口的活动仓库、引用选择、查找、布局和 Commit 草稿仍属于当前工作区会话，不会在多个窗口间互相覆盖。
+用户主动添加的仓库列表在同一 VS Code Profile 和本地或远程运行环境内的窗口间共享。`Open in New AlwayGit Tab` 在当前 VS Code 窗口创建独立编辑器标签，标题为 `AlwayGit — 仓库名`；每个标签独立维护活动仓库、引用选择、查找、滚动和查看状态，Git 状态变化与仓库操作忙碌状态在标签间同步。显式选择新标签时始终新建，不复用已有标签；多选仓库菜单不提供批量打开标签。不同 VS Code 窗口的界面会话同样不会互相覆盖。
 
 | 对象 | 项目 |
 | --- | --- |
-| Repository（单选） | `Switch to Repository`、`Open in New Window`、`Fetch…`、`Refresh Status`、`Copy Repository Path` |
+| Repository（单选） | `Switch to Repository`、`Open in New AlwayGit Tab`、`Open in New Window`、`Fetch…`、`Refresh Status`、`Copy Repository Path` |
 | Repository（多选） | `Fetch N Repositories…`、`Refresh Status for N Repositories`、`Copy N Repository Paths` |
 | Local Branch | `Checkout…`、`Show in Graph`、`Show Only This Branch`、`Create Branch…`、`Create Tag…`、`Merge…`、`Rebase…`、`Push…`、`Delete Branch…`、`Copy Branch Name` |
 | Remote Branch | `Show in Graph`、`Show Only This Branch`、`Create Tracking Branch…`、`Merge…`、`Rebase…`、`Delete Branch from <remote>…`、`Copy Branch Name` |
@@ -157,3 +157,5 @@ Diff 的上下箭头右侧显示“当前/总修改块”，一个连续修改�
 ## 会话恢复
 
 保存工作区内的界面设置、面板尺寸和列宽；按仓库保存勾选引用、分支目录展开状态、侧栏分区折叠状态、搜索、当前 Commit / Stash / 文件、活动区域和 Commit 草稿。恢复时若对象已不存在，清除该对象并给出稳定的回退选择，不对 Git 仓库执行写操作。
+
+同一窗口中的多个 AlwayGit 标签分别使用 VS Code Webview state 恢复自身状态；最近保存的工作区会话只作为新建标签的初始基线，不会主动覆盖已打开标签的内存状态。

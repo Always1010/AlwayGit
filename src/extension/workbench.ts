@@ -10,9 +10,13 @@ import { confirmAction } from '../application/confirm';
 import { redactSecrets } from '../application/logging';
 import { hostText, preferredLanguage, type Language } from '../application/language';
 import type { ProjectWindows } from './project-windows';
+import { groupRepositories } from '../protocol/repositories';
+
+interface WorkbenchPanel { panel: vscode.WebviewPanel; activeRepository?: string }
 
 export class Workbench implements vscode.Disposable {
-  private panel?: vscode.WebviewPanel;
+  private readonly panels = new Map<vscode.WebviewPanel, WorkbenchPanel>();
+  private lastPanel?: WorkbenchPanel;
   private activeRepository?: string;
   private readonly fingerprints = new Map<string, string>();
   private readonly disposables: vscode.Disposable[] = [];
@@ -30,31 +34,33 @@ export class Workbench implements vscode.Disposable {
     const seconds = vscode.workspace.getConfiguration('alwaygit').get<number>('refreshInterval', 15);
     this.interval = setInterval(() => void this.poll(), seconds * 1000);
   }
-  async open(repoId?: string, restoredPanel?: vscode.WebviewPanel): Promise<void> {
+  async open(repoId?: string, restoredPanel?: vscode.WebviewPanel, newTab = false): Promise<void> {
     if (!vscode.workspace.isTrusted) { await vscode.window.showWarningMessage(this.text('Trust this workspace using VS Code Workspace Trust, then reopen AlwayGit.', '请在 VS Code 中信任此工作区，然后重新打开 AlwayGit。')); return; }
     await this.repositories.scan();
     if (repoId) this.activeRepository = repoId;
-    if (this.panel) { this.panel.reveal(); this.post({ type: 'repositoriesChanged' }); if (repoId) this.post({ type: 'selectRepository', repoId }); return; }
+    const existing=!restoredPanel&&!newTab?(this.lastPanel??[...this.panels.values()].at(-1)):undefined;
+    if(existing){existing.panel.reveal();this.lastPanel=existing;this.post({type:'repositoriesChanged'},existing);if(repoId)this.selectPanelRepository(existing,repoId);return;}
     const options = { enableScripts: true, localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview')] };
     const panel = restoredPanel ?? vscode.window.createWebviewPanel('alwaygit.workbench', 'AlwayGit', vscode.ViewColumn.Active, options);
     panel.webview.options = options;
-    this.panel = panel;
+    const entry:WorkbenchPanel={panel,activeRepository:repoId};
+    this.panels.set(panel,entry);this.lastPanel=entry;this.updatePanelTitle(entry);
     panel.iconPath = vscode.Uri.joinPath(this.context.extensionUri, 'media', 'alwaygit.svg');
-    panel.onDidDispose(() => { this.panel = undefined; });
+    panel.onDidDispose(() => { this.panels.delete(panel);if(this.lastPanel===entry)this.lastPanel=[...this.panels.values()].at(-1); });
     panel.webview.onDidReceiveMessage(async (raw: unknown) => {
       const parsed = requestSchema.safeParse(raw);
       if (!parsed.success) return;
       this.requestCount++;
-      try { const result = await this.handle(parsed.data); this.post({ type: 'response', id: parsed.data.id, result }); }
+      try { const result = await this.handleRequest(parsed.data,entry); this.post({ type: 'response', id: parsed.data.id, result },entry); }
       catch (error) {
         const message = redactSecrets(error instanceof Error ? error.message : String(error));
         this.output.appendLine(`[request:${parsed.data.method}] ${message}`);
         const details = (error as { details?: CheckoutBlocker }).details;
-        this.post({ type: 'response', id: parsed.data.id, error: { message, code: String((error as { code?: unknown }).code ?? 'FAILED'), ...(details ? { details } : {}) } });
+        this.post({ type: 'response', id: parsed.data.id, error: { message, code: String((error as { code?: unknown }).code ?? 'FAILED'), ...(details ? { details } : {}) } },entry);
       }
     });
-    panel.onDidChangeViewState(event => { if (event.webviewPanel.visible) { this.post({ type: 'repositoriesChanged' }); if (this.activeRepository) this.post({ type: 'changed', repoId: this.activeRepository }); } });
-    panel.webview.html = await this.html(panel.webview);
+    panel.onDidChangeViewState(event => { if (event.webviewPanel.visible) { this.lastPanel=entry;this.post({ type: 'repositoriesChanged' },entry); if (entry.activeRepository) this.post({ type: 'changed', repoId: entry.activeRepository },entry); } });
+    panel.webview.html = await this.html(panel.webview,repoId);
   }
   async addRepository(): Promise<unknown> {
     if (!vscode.workspace.isTrusted) throw new Error(this.text('Git execution requires a trusted workspace.', '请先信任工作区，再执行 Git 操作。'));
@@ -86,12 +92,13 @@ export class Workbench implements vscode.Disposable {
     } finally { this.addingRepositories = false; }
   }
   /** All UI requests go through the same validated, trusted application boundary. */
-  async handle(request: RpcRequest): Promise<unknown> {
+  async handle(request: RpcRequest): Promise<unknown> { return this.handleRequest(request); }
+  private async handleRequest(request: RpcRequest, source?:WorkbenchPanel): Promise<unknown> {
     if (request.method === 'showLog') { this.output.show(true); return null; }
     if (request.method === 'saveSession') { await this.context.workspaceState.update('alwaygit.session', sessionSchema.parse(request.payload)); return null; }
     if (request.method === 'copyText') { await vscode.env.clipboard.writeText(copySchema.parse(request.payload).text); return null; }
     if (!vscode.workspace.isTrusted) throw new Error(this.text('Git execution requires a trusted workspace.', '请先信任工作区，再执行 Git 操作。'));
-    if (request.method === 'repositories') { const list = this.repositories.list(); return this.activeRepository ? list.sort((a, b) => Number(b.id === this.activeRepository) - Number(a.id === this.activeRepository)) : list; }
+    if (request.method === 'repositories') { const list = this.repositories.list(),active=source?.activeRepository??this.activeRepository; return active ? list.sort((a, b) => Number(b.id === active) - Number(a.id === active)) : list; }
     if (request.method === 'repositoryStatuses') return this.repositoryStatuses();
     if (request.method === 'addRepository') return this.addRepository();
     if (request.method === 'pickWorktree') {
@@ -101,7 +108,7 @@ export class Workbench implements vscode.Disposable {
     const repo = this.repositories.get(request.repoId);
     switch (request.method) {
       case 'snapshot': {
-        this.activeRepository = repo.id;
+        this.activeRepository = repo.id;if(source){source.activeRepository=repo.id;this.lastPanel=source;this.updatePanelTitle(source);}
         const snapshot = await this.git.snapshot(repo); this.recordFingerprint(snapshot); return snapshot;
       }
       case 'history': return this.git.history(repo, { limit: vscode.workspace.getConfiguration('alwaygit').get<number>('historyPageSize', 300), ...historySchema.parse(request.payload ?? {}) });
@@ -112,6 +119,8 @@ export class Workbench implements vscode.Disposable {
       case 'openRepository': {
         const data = openRepositorySchema.parse(request.payload ?? {});
         if (data.newWindow) await this.projects.openWorkbenchInNewWindow(repo.root);
+        else if(data.newTab)await this.open(repo.id,undefined,true);
+        else if(source)this.selectPanelRepository(source,repo.id);
         else await this.open(repo.id);
         return null;
       }
@@ -123,10 +132,10 @@ export class Workbench implements vscode.Disposable {
         const normalized = (value: string) => process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
         const worktree = snapshot.worktrees.find(w => normalized(w.path) === normalized(data.path));
         if (!worktree || worktree.bare) throw new Error(this.text('Select a registered non-bare Worktree.', '请选择已注册的非 bare Worktree。'));
-        if (normalized(worktree.path) === normalized(repo.root) && !data.newWindow) { await this.open(repo.id); return null; }
+        if (normalized(worktree.path) === normalized(repo.root) && !data.newWindow) { if(source)this.selectPanelRepository(source,repo.id);else await this.open(repo.id); return null; }
         const registered = await this.repositories.add(worktree.path);
         if (data.newWindow !== false) await this.projects.openWorkbenchInNewWindow(worktree.path);
-        else await this.open(registered.id);
+        else if(source)this.selectPanelRepository(source,registered.id);else await this.open(registered.id);
         return null;
       }
       case 'action': {
@@ -161,28 +170,27 @@ export class Workbench implements vscode.Disposable {
     const { version: _version, ...state } = snapshot; const key = JSON.stringify(state); this.fingerprints.set(snapshot.repository.id, key); return key;
   }
   private async poll(): Promise<void> {
-    if (!this.panel?.visible || !this.activeRepository || this.polling || !vscode.workspace.isTrusted) return;
+    const ids=[...new Set([...this.panels.values()].filter(entry=>entry.panel.visible).map(entry=>entry.activeRepository).filter((id):id is string=>!!id))];
+    if (!ids.length || this.polling || !vscode.workspace.isTrusted) return;
     this.polling = true;
     try {
-      const repo = this.repositories.get(this.activeRepository);
-      if (this.busy.has(repo.commonDir)) return;
-      const previous = this.fingerprints.get(repo.id);
-      const snapshot = await this.git.snapshot(repo);
-      if (this.recordFingerprint(snapshot) !== previous) this.post({ type: 'changed', repoId: repo.id, changes: { paths: [] } });
-    } catch (error) { this.output.appendLine(redactSecrets(`[refresh] ${error instanceof Error ? error.message : String(error)}`)); }
+      for(const id of ids){try{const repo=this.repositories.get(id);if(this.busy.has(repo.commonDir))continue;const previous=this.fingerprints.get(repo.id),snapshot=await this.git.snapshot(repo);if(this.recordFingerprint(snapshot)!==previous)this.post({type:'changed',repoId:repo.id,changes:{paths:[]}});}catch(error){this.output.appendLine(redactSecrets(`[refresh] ${error instanceof Error?error.message:String(error)}`));}}
+    }
     finally { this.polling = false; }
   }
-  private post(message: HostMessage): void { void this.panel?.webview.postMessage(message); }
-  private async html(webview: vscode.Webview): Promise<string> {
+  private selectPanelRepository(entry:WorkbenchPanel,repoId:string):void {entry.activeRepository=repoId;this.activeRepository=repoId;this.lastPanel=entry;this.updatePanelTitle(entry);entry.panel.reveal();this.post({type:'selectRepository',repoId},entry);}
+  private updatePanelTitle(entry:WorkbenchPanel):void {let name:string|undefined;try{name=entry.activeRepository?groupRepositories(this.repositories.list(),entry.activeRepository).find(group=>group.members.some(repo=>repo.id===entry.activeRepository))?.name:undefined;}catch{/* Repository discovery can remove a stale restored ID. */}entry.panel.title=name?`AlwayGit — ${name}`:'AlwayGit';}
+  private post(message: HostMessage,target?:WorkbenchPanel): void {if(target){void target.panel.webview.postMessage(message);return;}for(const entry of this.panels.values())void entry.panel.webview.postMessage(message);}
+  private async html(webview: vscode.Webview,activeRepository?:string): Promise<string> {
     const root = vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview');
     let html = await readFile(vscode.Uri.joinPath(root, 'index.html').fsPath, 'utf8');
     const nonce = randomBytes(20).toString('base64');
     html = html.replace(/(src|href)="\.\/([^"\s]+)"/g, (_match, attr, resource: string) => `${attr}="${webview.asWebviewUri(vscode.Uri.joinPath(root, resource))}"`);
     html = html.replace(/<script /g, `<script nonce="${nonce}" `);
     const saved = this.context.workspaceState.get<Record<string, unknown>>('alwaygit.session', {});
-    const session = JSON.stringify({ ...saved, language: saved.language ?? preferredLanguage() }).replace(/</g, '\\u003c');
+    const session = JSON.stringify({ ...saved, ...(activeRepository?{repoId:activeRepository}:{}), language: saved.language ?? preferredLanguage() }).replace(/</g, '\\u003c');
     html = html.replace('</head>', `<script nonce="${nonce}">window.__ALWAYGIT_SESSION__=${session};</script></head>`);
     return html.replace('<head>', `<head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">`);
   }
-  dispose(): void { clearInterval(this.interval); this.panel?.dispose(); for (const disposable of this.disposables) disposable.dispose(); }
+  dispose(): void { clearInterval(this.interval);const panels=[...this.panels.keys()];this.panels.clear();this.lastPanel=undefined;for(const panel of panels)panel.dispose();for (const disposable of this.disposables) disposable.dispose(); }
 }
