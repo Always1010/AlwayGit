@@ -35,8 +35,32 @@ describe('repository UI consistency', () => {
     const id=store.getState().selectedOid;
     store.getState().setLanguage('zh-CN');store.getState().setLayout({sidebar:240,details:320,preset:'editor'});
     expect(store.getState().selectedOid).toBe(id);expect(store.getState().drafts.a).toBe('用户原文');
-    expect(bridge.save.mock.calls.at(-1)?.[0]).toMatchObject({version:2,language:'zh-CN',layout:{preset:'editor',sidebar:240,details:320}});
+    expect(bridge.save.mock.calls.at(-1)?.[0]).toMatchObject({version:2,language:'zh-CN',layout:{preset:'workbench',sidebar:240,details:320}});
     expect(bridge.rpc.mock.calls.some(([method])=>method==='action')).toBe(false);
+  });
+  it('previews settings without persisting them and rolls back while preserving live data', async () => {
+    await store.getState().selectRepository('a'); store.getState().setDraft('keep my draft');
+    const original = store.getState(), target = original.diffTarget;
+    original.beginSettings();
+    store.getState().previewSettings({ language: 'zh-CN', font: 16, row: 28, appearance: { theme: 'light', palette: 'extended', codeFont: 18 } });
+    expect(store.getState().appearance.palette).toBe('extended');
+    expect(bridge.save.mock.calls.at(-1)?.[0]).toMatchObject({ language: original.language, layout: original.layout, appearance: original.appearance });
+    // A background refresh/save during preview must still persist committed settings.
+    await store.getState().refresh();
+    expect(bridge.save.mock.calls.at(-1)?.[0].appearance).toEqual(original.appearance);
+    store.getState().finishSettings(false);
+    expect(store.getState()).toMatchObject({ language: original.language, layout: original.layout, appearance: original.appearance, drafts: { a: 'keep my draft' }, diffTarget: target });
+  });
+  it('applies settings through host session validation and restores only panel geometry', async () => {
+    const { sessionSchema } = await import('../src/protocol/validation');
+    store.getState().beginSettings();
+    store.getState().previewSettings({ language: 'zh-CN', font: 15, row: 28, appearance: { theme: 'contrast', palette: 'distinct', codeFont: 17 } });
+    store.getState().finishSettings(true);
+    const saved = bridge.save.mock.calls.at(-1)?.[0];
+    expect(sessionSchema.parse(saved).appearance).toEqual({ theme: 'contrast', palette: 'distinct', codeFont: 17 });
+    store.getState().setLayout({ sidebar: 260, details: 350 }); store.getState().restoreLayout();
+    expect(store.getState()).toMatchObject({ language: 'zh-CN', layout: { sidebar: 210, details: 300, font: 15, row: 28 }, appearance: saved.appearance });
+    expect(store.getState().settingsBaseline).toBeUndefined();
   });
   it('opens a two-commit comparison and selects its first changed file',async()=>{
     await store.getState().selectRepository('a');const left={...commit,oid:'left',subject:'Left'},right={...commit,oid:'right',subject:'Right'},fallback=bridge.rpc.getMockImplementation()!;

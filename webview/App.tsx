@@ -2,7 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 import type React from 'react';
 import type { RpcRequest } from '../src/protocol/types';
 import { connected, demoMode, rpc } from './rpc';
-import { defaultLayout, useWorkbench } from './store';
+import { useWorkbench } from './store';
+import { diffRowHeight, effectiveRowHeight, useResolvedTheme } from './appearance';
+import { getGraphPalette } from './graph/palettes';
+import { SettingsDialog } from './SettingsDialog';
 import { useTranslation } from './i18n';
 import { ActionDialog } from './ActionDialog';
 import type { DialogRequest } from './ActionDialog';
@@ -20,6 +23,8 @@ import { Button, Empty, Icon, Modal, ResizeHandle } from './ui';
 
 export function App() {
   const state=useWorkbench(),t=useTranslation(),[dialog,setDialog]=useState<DialogRequest>(),[context,setContext]=useState<{x:number;y:number;target:MenuTarget}>();
+  const theme=useResolvedTheme(state.appearance.theme),palette=getGraphPalette(state.appearance.palette);
+  const paletteColors=theme.includes('light')?palette.light:palette.dark;
   useEffect(()=>{if(connected)void useWorkbench.getState().initialize();},[]);
   useEffect(()=>{setDialog(undefined);setContext(undefined);},[state.repoId,state.language]);
   const closeMenu=useCallback(()=>setContext(undefined),[]);
@@ -42,17 +47,16 @@ export function App() {
   }
   async function edit(){const current=useWorkbench.getState();if(!current.selectedFile)return;if(current.diffTarget?.kind==='comparison'){await host('diff',current.diffTarget,current.repoId);return;}try{await rpc('openFile',current.repoId,{path:current.selectedFile});if(demoMode)useWorkbench.setState({notice:t('Demo: edit in VS Code.','模拟：在 VS Code 中编辑。')});}catch(error){if(current.diffTarget?.kind==='commit')await host('diff',current.diffTarget,current.repoId);else current.report(error);}}
   const native=()=>{if(state.diffTarget)void host('diff',state.diffTarget);};
-  useEffect(()=>{if(state.layout.preset==='editor'&&state.diffTarget)void host('diff',state.diffTarget,state.repoId);},[state.layout.preset,state.diffTarget,state.repoId]);
   useEffect(()=>{const key=(event:KeyboardEvent)=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='r'){event.preventDefault();void useWorkbench.getState().refresh();}};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);},[]);
-  const snapshot=state.snapshot,layout=state.layout,chosen=snapshot?.changes.find(f=>f.path===state.selectedFile),working=state.tab==='changes';
+  const snapshot=state.snapshot,layout=state.layout;
   const menu=context?menuFor(context.target,{open,checkout,host,addRepository,fetchRepository:async(repoId)=>{await state.selectRepository(repoId);open({type:'fetch'});}}):undefined;
   if(!connected)return <div className="connection-screen"><Icon name="git-branch"/><h1>AlwayGit</h1><p>{t('Your Git workbench, inside VS Code.','VS Code 中的 Git 工作台。')}</p><a className="button primary" href="?demo=1">{t('Explore Demo','查看示例')}</a></div>;
-  return <div className={`workbench layout-${layout.preset}`} data-testid="workbench" style={{'--sidebar-width':`${layout.sidebar}px`,'--details-width':`${layout.details}px`,'--diff-height':`${layout.diff}px`,'--workbench-font':`${layout.font}px`,'--row-height':`${layout.row}px`} as React.CSSProperties}>
-    <header className="app-chrome"><strong className="brand"><Icon name="git-branch"/>AlwayGit</strong><span className="workbench-tab">{t('Git Workbench','Git 工作台')}</span>{demoMode&&<span className="muted">{t('Demo Repository','模拟仓库')}</span>}<div className="toolbar-spacer"/><select aria-label="Layout" value={layout.preset} onChange={event=>state.setLayout({preset:event.target.value as 'workbench'|'editor'})}><option value="workbench">Workbench</option><option value="editor">Editor Focus</option></select><Button icon="layout" onClick={()=>state.setLayout(defaultLayout)}>{t('Restore Layout','恢复布局')}</Button><select aria-label="Language" value={state.language} onChange={event=>state.setLanguage(event.target.value as 'en'|'zh-CN')}><option value="en">English</option><option value="zh-CN">简体中文</option></select></header>
+  return <div className="workbench layout-workbench" data-testid="workbench" data-theme={theme} style={{'--sidebar-width':`${layout.sidebar}px`,'--details-width':`${layout.details}px`,'--diff-height':`${layout.diff}px`,'--workbench-font':`${layout.font}px`,'--row-height':`${effectiveRowHeight(layout)}px`,'--control-height':`${Math.max(24,Math.round(layout.font*1.35)+6)}px`,'--diff-font':`${state.appearance.codeFont}px`,'--diff-row-height':`${diffRowHeight(state.appearance.codeFont)}px`,...Object.fromEntries(paletteColors.map((color,index)=>[`--graph-lane-${index}`,color]))} as React.CSSProperties}>
+    <header className="app-chrome"><strong className="brand"><Icon name="git-branch"/>AlwayGit</strong><span className="workbench-tab">{t('Git Workbench','Git 工作台')}</span>{demoMode&&<span className="muted">{t('Demo Repository','模拟仓库')}</span>}<div className="toolbar-spacer"/><Button className="icon-only" icon="layout" title={t('Restore Layout','恢复布局')} aria-label={t('Restore Layout','恢复布局')} onClick={state.restoreLayout}/><Button className="settings-trigger" icon="settings-gear" title={t('Interface Settings','界面设置')} aria-label={t('Interface Settings','界面设置')} onClick={()=>{setContext(undefined);state.beginSettings();}}><span>{t('Interface Settings','界面设置')}</span></Button></header>
     <div className="branch-bar"><span className="branch-identity"><Icon name="git-branch"/><strong data-testid="current-branch">{snapshot?.branch||snapshot?.head?.slice(0,8)||'—'}</strong></span><span className="branch-caption">{snapshot?.branch?t('Current Branch','当前分支'):'Detached HEAD'}</span><span className="muted branch-summary">{snapshot?.repository.name} · Staged {snapshot?.changes.filter(f=>f.indexStatus!==' '&&!f.untracked&&!f.conflict).length??0} · Unstaged {snapshot?.changes.filter(f=>!f.conflict&&(f.worktreeStatus!==' '||f.untracked)).length??0}{snapshot?.upstream?` · → ${snapshot.upstream}`:''}</span><Button icon="location" disabled={!snapshot?.head} onClick={state.locateHead}>Locate HEAD</Button></div>
     <div className="toolbar">
       <Button icon="cloud-download" disabled={!snapshot||state.busy} onClick={()=>void state.execute({type:'fetch'})}>Fetch</Button><Button icon="arrow-down" disabled={!snapshot||state.busy} onClick={()=>open({type:'pull'})}>Pull{snapshot?.behind?` (${snapshot.behind})`:''}</Button><Button icon="arrow-up" disabled={!snapshot?.branch||state.busy} title={!snapshot?.branch?t('Push requires a local branch.','Push 需要当前处于本地分支。'):undefined} onClick={()=>open({type:'push'})}>Push{snapshot?.ahead?` (${snapshot.ahead})`:''}</Button><Button icon="refresh" aria-label="Refresh" disabled={!snapshot||state.busy} onClick={()=>void state.refresh()}/><span className="toolbar-divider"/>
-      <Button icon="add" title="Stage Changes" disabled={!working||!chosen||state.busy||state.diffTarget?.kind!=='change'||state.diffTarget.area==='staged'} onClick={()=>void state.execute({type:'stage',paths:[state.selectedFile!]})}>Stage</Button><Button icon="remove" title="Unstage Changes" disabled={!working||!chosen||state.busy||state.diffTarget?.kind!=='change'||state.diffTarget.area!=='staged'} onClick={()=>void state.execute({type:'unstage',paths:[state.selectedFile!]})}>Unstage</Button><Button icon="discard" disabled={!working||!chosen||state.busy||state.diffTarget?.kind!=='change'||state.diffTarget.area!=='unstaged'} onClick={()=>open({type:'discard',paths:[state.selectedFile!]})}>Discard…</Button><Button icon="git-commit" disabled={!snapshot} onClick={()=>{state.selectWorking();setTimeout(()=>document.getElementById('ag-commit-message')?.focus(),0);}}>Commit</Button><span className="toolbar-divider"/>
+      <Button className="commit-trigger" icon="git-commit" disabled={!snapshot} onClick={()=>{state.selectWorking();setTimeout(()=>document.getElementById('ag-commit-message')?.focus(),0);}}>Commit</Button><span className="toolbar-divider"/>
       <Button icon="archive" disabled={!snapshot?.changes.length||state.busy||!!snapshot?.operation.kind} onClick={()=>open({type:'stash.create'})}>Stash Changes…</Button>
       <div className="toolbar-spacer"/><Button icon="vscode" data-testid="open-project" title={snapshot?.repository.root??t('Select a repository first','请先选择仓库')} disabled={!snapshot} onClick={()=>void host('openProject')}>{t('Open in VS Code','在 VS Code 中打开项目')}</Button>
     </div>
@@ -62,13 +66,14 @@ export function App() {
     <div className="workspace"><Sidebar context={showContext} checkoutBranch={name=>void checkoutBranch(name)} openWorktree={path=>void host('openWorktree',{path,newWindow:false})}/><ResizeHandle axis="x" label="Resize repository sidebar" value={layout.sidebar} min={160} max={360} onChange={sidebar=>state.setLayout({sidebar})}/><main className="main-panel">
       {!snapshot?<Empty title={state.loading?t('Opening repository…','正在打开仓库…'):t('Add or select a repository','添加或选择仓库')}><Button onClick={()=>void addRepository()}>Add Repository…</Button></Empty>:<>
         <div className="top-panels"><History context={showContext} checkout={checkout} checkoutBranch={name=>void checkoutBranch(name)}/><ResizeHandle axis="x" label="Resize details panel" value={layout.details} min={230} max={480} reverse onChange={details=>state.setLayout({details})}/><Details open={open} edit={()=>void edit()}/></div>
-        {layout.preset==='workbench'&&<><ResizeHandle axis="y" label="Resize Diff panel" value={layout.diff} min={130} max={450} reverse onChange={diff=>state.setLayout({diff})}/><DiffPreview native={native} edit={()=>void edit()}/></>}
+        <ResizeHandle axis="y" label="Resize Diff panel" value={layout.diff} min={130} max={450} reverse onChange={diff=>state.setLayout({diff})}/><DiffPreview native={native} edit={()=>void edit()}/>
       </>}
     </main></div>
-    <footer className="statusbar" role="status"><span>{state.busy?state.activity:state.historyLoading?t('Loading history…','正在读取历史…'):state.notice??t('Ready','就绪')}</span><span>{layout.font}px / {layout.row}px · {layout.preset==='workbench'?'Workbench':'Editor Focus'}</span></footer>
+    <footer className="statusbar" role="status"><span>{state.busy?state.activity:state.historyLoading?t('Loading history…','正在读取历史…'):state.notice??t('Ready','就绪')}</span><span>{layout.font}px / {effectiveRowHeight(layout)}px · Workbench</span></footer>
     {dialog&&snapshot&&!state.checkoutFailure&&<ActionDialog key={`${state.repoId}-${dialog.type}-${dialog.target}-${dialog.pop}`} dialog={dialog} onClose={()=>setDialog(undefined)}/>}
     {context&&menu&&<ContextMenu x={context.x} y={context.y} caption={menu.caption} items={menu.items} close={closeMenu}/>}
     {state.checkoutFailure&&snapshot&&<CheckoutFailureDialog onClose={()=>{setDialog(undefined);useWorkbench.setState({checkoutFailure:undefined,error:undefined});}} host={host}/>}
+    {state.settingsBaseline&&<SettingsDialog theme={theme}/>}
   </div>;
 }
 

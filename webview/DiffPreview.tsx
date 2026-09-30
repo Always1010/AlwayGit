@@ -6,10 +6,10 @@ import { rpc } from './rpc';
 import { alignDiff, changeAtRow, changedParts, changedRanges, remapChange, type DiffRow } from './diff';
 import { Button, Empty } from './ui';
 import { diffKey } from './refresh';
+import { diffRowHeight } from './appearance';
 
 interface Preview {path:string;leftLabel:string;rightLabel:string;left:string;right:string;binary?:boolean;truncated?:boolean}
 interface Selection {key:string;rows:readonly DiffRow[];index:number}
-const ROW_HEIGHT=22;
 function content(value:string|undefined,other:string|undefined,changed:boolean,side:'before'|'after',scrollLeft:number) {
   if(value===undefined)return null;
   const style={transform:`translateX(-${scrollLeft}px)`};
@@ -36,7 +36,14 @@ export function DiffPreview({ native, edit }: { native():void; edit():void }) {
     return()=>{live=false;};
   },[targetKey,revision]);
   const rows=useMemo(()=>preview&&!preview.binary?alignDiff(preview.left,preview.right):[],[preview]);
+  const ROW_HEIGHT=diffRowHeight(state.appearance.codeFont);
   const virtual=useVirtualizer({count:rows.length,getScrollElement:()=>viewport.current,estimateSize:()=>ROW_HEIGHT,overscan:8});
+  const previousRowHeight=useRef(ROW_HEIGHT);
+  useLayoutEffect(()=>{
+    const element=viewport.current,topRow=(element?.scrollTop??0)/previousRowHeight.current;
+    previousRowHeight.current=ROW_HEIGHT;virtual.measure();
+    if(element){element.scrollTop=topRow*ROW_HEIGHT;lastScrollTop.current=element.scrollTop;}
+  },[ROW_HEIGHT]);
   const changes=useMemo(()=>changedRanges(rows),[rows]);
   const activeChange=selection?.key===targetKey?selection.rows===rows?Math.min(selection.index,changes.length-1):remapChange(selection.rows,rows,selection.index):changes.length?0:-1;
   useLayoutEffect(()=>{setSelection({key:targetKey,rows,index:activeChange});},[targetKey,rows]);
