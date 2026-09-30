@@ -53,15 +53,15 @@ npm run package
 
 ## 本轮结果
 
-执行日期为 2026-10-01，版本为 0.8.0。检查集中在实现完成后执行，未重跑全量单测、Graph 性能基准或桌面集成测试；没有启动可见 VS Code / 浏览器测试窗口。
+执行日期为 2026-10-01，版本为 0.8.1。检查集中在实现完成后执行；0.8.1 仅增强角标颜色和已推送提交字重，因此复用 0.8.0 的功能用例结果，没有重跑无关单测、Graph 性能基准或桌面集成测试，也没有启动可见 VS Code / 浏览器测试窗口。
 
 | 项目 | 结果 | 备注 |
 | --- | --- | --- |
-| `npm run typecheck` | 通过 | Graph 推送状态、仓库状态 RPC、角标与 Working Tree 选择类型一致 |
+| `npm run typecheck` | 通过 | 0.8.1 样式调整后的 Webview 类型一致 |
 | 相关 Vitest 用例 | 通过 | 43 项 Graph 渲染、文件选择、状态管理和协议用例；另有 2 项真实 Git 集成用例通过，覆盖 Push 前后的远端可达性、未推送计数、轻量仓库状态及 Detached HEAD 不显示分支角标 |
 | `npm run build` | 通过 | 扩展与 Webview 生产构建成功 |
 | `git diff --check` | 通过 | 修改文件无空白错误 |
-| `scripts/update-local.ps1` | 通过 | 构建固定包 `artifacts/alwaygit.vsix`，保留上一份和版本包；沿用已记录的 VS Code 默认 Profile 安装。官方 CLI 核对为 `alwaygit-dev.alwaygit@0.8.0`，未关闭或重启用户窗口 |
+| `scripts/update-local.ps1` | 通过 | 构建固定包 `artifacts/alwaygit.vsix`，保留上一份和版本包；沿用已记录的 VS Code 默认 Profile 安装。官方 CLI 核对为 `alwaygit-dev.alwaygit@0.8.1`，未关闭或重启用户窗口 |
 
 复现本轮定向单测：
 

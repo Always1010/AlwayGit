@@ -45,7 +45,7 @@ h1,h2,p {margin:0;}
 .toolbar {gap:3px;padding:3px 7px;background:var(--surface-toolbar);}
 .toolbar .button {min-height:var(--control-height,24px);font-size:12px;}
 .toolbar [data-testid=open-project] {border-color:var(--border);background:var(--bg);}
-.notification-badge {display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;margin-left:2px;border-radius:999px;background:var(--vscode-badge-background,var(--accent));color:var(--vscode-badge-foreground,var(--button-fg));font-size:10px;font-weight:700;line-height:1;box-sizing:border-box;}
+.notification-badge {display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;margin-left:2px;border:1px solid #ff8293;border-radius:999px;background:#d61f3c;color:#fff;box-shadow:0 0 0 1px color-mix(in srgb,#d61f3c 35%,transparent);font-size:10px;font-weight:800;line-height:1;box-sizing:border-box;}
 .toolbar-divider {width:1px;height:20px;background:var(--border);margin:0 6px;}
 .workspace {display:grid;grid-template-columns:var(--sidebar-width,210px) 6px minmax(0,1fr);flex:1;min-height:0;min-width:0;}
 .sidebar {background:var(--panel);overflow:auto;min-width:0;box-shadow:inset -1px 0 var(--section-border);}
@@ -121,7 +121,7 @@ h1,h2,p {margin:0;}
 .commit-row:focus-visible {outline:1px solid var(--accent);outline-offset:-1px;z-index:1;}
 .commit-row.selected .history-author,.commit-row.selected .history-date {color:var(--selected-fg);opacity:.85;}
 .commit-row .commit-message-button {cursor:inherit;}
-.commit-row.pushed-commit .commit-message-button {font-weight:600;}
+.commit-row.pushed-commit .commit-message-button,.commit-row.pushed-commit .history-author,.commit-row.pushed-commit .history-date {font-weight:700;}
 .commit-row .ref-badge:hover {background:color-mix(in srgb,var(--accent) 18%,var(--panel));border-color:var(--accent);}
 .working-conflict-badge {font-size:11px;font-weight:600;color:var(--error);border:1px solid var(--error);border-radius:9px;padding:0 6px;background:color-mix(in srgb,var(--error) 12%,var(--bg));}
 .commit-row.head-row {box-shadow:inset 3px 0 var(--green);}
