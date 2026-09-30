@@ -71,7 +71,7 @@ export async function verifyRefresh(browser, url) {
     await viewport.evaluate(element => { element.scrollTop = element.scrollHeight; element.dispatchEvent(new Event('scroll')); });
     await diff.getByText('updated selected file', { exact: true }).waitFor();
 
-    const staged = details.locator('.change-group').filter({ hasText: /^Staged Changes/ });
+    const staged = details.locator('.change-group:has(.change-heading-staged)');
     await staged.getByRole('button', { name: 'a.txt', exact: true }).click();
     await diff.locator('.diff-labels').getByText('HEAD', { exact: true }).waitFor();
     await page.evaluate(() => { const fixture = window.__refreshFixture; fixture.calls.length = 0; fixture.diffDelay = 30; fixture.emit({ paths: ['a.txt'] }); });
