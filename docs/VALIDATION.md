@@ -22,18 +22,18 @@ npm run package
 ## 浏览器验收矩阵
 
 - 固定四区 Workbench、旧 Editor Focus 会话迁移、面板和列拖动、仅恢复几何尺寸的 Restore Layout、窄窗口和主题。
-- 设置浮窗预览、取消、应用、刷新期间的持久化；宿主主题与手动主题优先级、字号和密度同步虚拟行高、三套 Graph 配色的连续性与分页。
+- 设置浮窗分级导航、预览、取消、应用、刷新期间的持久化；宿主主题与手动主题优先级、字号和密度同步虚拟行高、Graph 预设及自定义浅色/深色色板的连续性与分页。
 - Repository、Local Branch、Remote Branch、Remote、Tag、Stash、Worktree 及各分组的独立三点菜单；分组标题单击只折叠内容。
 - 菜单指针定位、视口边缘修正、竖向排列、键盘焦点、Escape 与点击外部关闭。
 - 右键对象与操作对话框目标一致；仓库切换后旧菜单和对话框关闭。
 - 递归分支目录、目录展开、三态目录选择、多引用选择、共同提交去重、清空选择、分页、搜索、HEAD 标记及 Locate HEAD。
-- Commit 整行悬停、指针、选择、各列双击、键盘焦点、本地分支 Checkout 及 Detached HEAD 对话框。
+- Commit 整行悬停、指针、选择、已推送实心节点与粗体消息、本地未推送空心节点与常规消息、各列双击、键盘焦点、本地分支 Checkout 及 Detached HEAD 对话框。
 - English / 简体中文切换，并验证 Git 命令、分支、路径和草稿保持不变。
 - 切换仓库或重载后恢复筛选、选择、布局和 Commit 草稿。
-- 文件完整多层父目录、文件区域 Ctrl/Cmd+A、原生文本框全选、路径复制、三态选择、Stage / Unstage 范围和显式 Discard。
+- 文件完整多层父目录、Working Tree 单击/Ctrl/Cmd/Shift 选择及无复选框交互、文件区域 Ctrl/Cmd+A、原生文本框全选、提交文件路径复制、Stage / Unstage 范围和显式 Discard。
 - Push 等操作进行中、成功、失败与目标；错误详情、日志；持久冲突条、查看冲突、Continue 禁用原因与已解决状态。
 - Diff 修改块外框、当前/总块数、箭头、手动滚动、刷新重映射、缩放、长行横向滚动和截断计数。
-- Stash、Commit、浅色/深色及两种高对比主题、减少动态效果，以及默认与自定义 Push 目标。
+- Stash、Commit、浅色/深色及两种高对比主题、减少动态效果、未推送数量角标，以及默认与自定义 Push 目标。
 - Demo 中的原生宿主按钮只验证发出明确请求和提示，不把模拟结果当作真实 VS Code 验证。
 
 ## Git 与宿主验收矩阵
@@ -53,22 +53,21 @@ npm run package
 
 ## 本轮结果
 
-执行日期为 2026-10-01，版本为 0.7.0。检查集中在实现完成后执行，未重跑全量单测、Graph 性能基准或桌面集成测试；没有启动可见 VS Code / 浏览器测试窗口。
+执行日期为 2026-10-01，版本为 0.8.0。检查集中在实现完成后执行，未重跑全量单测、Graph 性能基准或桌面集成测试；没有启动可见 VS Code / 浏览器测试窗口。
 
 | 项目 | 结果 | 备注 |
 | --- | --- | --- |
-| `npm run typecheck` | 通过 | 分级设置、可编辑色板、会话协议与 Graph 类型一致 |
-| 相关 Vitest 用例 | 通过 | 14 项 Graph 布局用例与 3 项设置状态用例，共 17 项；同文件中其余 22 项状态测试跳过。覆盖默认色板背景对比度、色板容量、邻线避让、路径继承、分页、预览取消、应用保存和恢复布局范围 |
+| `npm run typecheck` | 通过 | Graph 推送状态、仓库状态 RPC、角标与 Working Tree 选择类型一致 |
+| 相关 Vitest 用例 | 通过 | 43 项 Graph 渲染、文件选择、状态管理和协议用例；另有 1 项真实 Git/Bare Remote 集成用例通过，覆盖 Push 前后的远端可达性、未推送计数和轻量仓库状态 |
 | `npm run build` | 通过 | 扩展与 Webview 生产构建成功 |
-| `node scripts/test-ui.mjs --appearance-only` | 通过 | 无头 Edge 加载实际构建；验证分级导航、预设切换、自定义浅色色值保存、深色配对重载、设置预览取消/应用、旧布局/草稿迁移、字号密度和窄详情操作范围。首次运行发现新页面区域与下拉框同名导致测试选择器歧义，修正选择器后仅重跑此专项 |
-| 实际构建截图 | 已核对 | 深色设置浮窗中的分级导航、鲜亮 8 色路径预览、色值编辑器、对比提示和底部操作均完整可见；产物在忽略的 `artifacts/` 内，不作为真实 VS Code 窗口截图 |
-| `scripts/update-local.ps1` | 通过 | 构建固定包 `artifacts/alwaygit.vsix`，保留上一份和版本包；沿用已记录的 VS Code 默认 Profile 安装。官方 CLI 核对为 `alwaygit-dev.alwaygit@0.7.0`，未关闭或重启用户窗口 |
+| `git diff --check` | 通过 | 修改文件无空白错误 |
+| `scripts/update-local.ps1` | 通过 | 构建固定包 `artifacts/alwaygit.vsix`，保留上一份和版本包；沿用已记录的 VS Code 默认 Profile 安装。官方 CLI 核对为 `alwaygit-dev.alwaygit@0.8.0`，未关闭或重启用户窗口 |
 
 复现本轮定向单测：
 
 ```powershell
-npx vitest run tests/graph.test.ts
-npx vitest run tests/ui-state.test.ts -t 'settings|layout'
+npx vitest run tests/graph-renderer.test.ts tests/file-selection.test.ts tests/ui-state.test.ts tests/workbench-protocol.test.ts
+npx vitest run tests/git-service.test.ts -t 'fetches, pushes and pulls'
 ```
 
-本轮未改动 Git 执行或窗口路由，未重复对应集成检查。真实 VS Code 内的人工视觉体验、远程宿主、macOS、Linux 和最低支持版本仍需对应环境验收。
+本轮未改动写入型 Git 操作或窗口路由，没有启动对应桌面集成测试。真实 VS Code 内的人工视觉体验、远程宿主、macOS、Linux 和最低支持版本仍需对应环境验收。
