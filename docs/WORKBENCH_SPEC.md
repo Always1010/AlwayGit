@@ -108,6 +108,8 @@ Commit 表单保存每仓库草稿。Commit 只提交 Index；Amend 替换当前
 
 `Open Diff` 与 `Edit in VS Code` 沿用项目按钮的窗口定位规则，在目标窗口的当前主编辑器组打开保留的标签（非 Preview），不向右新建分屏，也不关闭已有标签或未保存文档。Diff 请求在目标宿主重新读取原有比较类型，不把当前窗口的内存文档 URI 跨窗口搬运。已打开的工作区文件复用其标签；历史中已删除的文件仍回退到原生 Diff。
 
+Diff 的上下箭头右侧显示“当前/总修改块”，一个连续修改块只画一个外边框。手动纵向滚动以视口中心对应的最近修改块更新序号；换文件重置，同文件刷新保持滚动并重映射当前块。长行横向滚动时两侧比较列及行号保持可见。截断文件的计数注明仅覆盖预览。
+
 ## 语言与文案
 
 支持 English 和 `简体中文`。语言选择对屏幕文字、工具提示、空状态、错误和确认生效。Git 操作与专业术语保留英文，包括 Checkout、Fetch、Pull、Push、Merge、Rebase、Stage、Unstage、Stash、Commit、HEAD、Index 和 Worktree。Commit Message、作者、分支、Tag、路径、代码和 Git 返回文本保持原文。
