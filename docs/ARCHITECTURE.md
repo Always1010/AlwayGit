@@ -27,6 +27,8 @@ AlwayGit 是 Workspace 类型的 VS Code 扩展。React WebviewPanel 提供工�
 
 Repository 标识工作目录，`commonDir` 标识共享 Git 存储。同一存储的多个 Worktree 共用写操作队列，但保持独立的 HEAD、Index 和工作区状态。写操作在执行前重新验证仓库、引用和 Worktree 状态。
 
+Git 发现比较 Git 目录与共享目录识别主工作目录；linked Worktree 使用 `worktree list` 返回的主目录维护可选 `mainRoot`，独立存储的普通仓库仍使用自身工作目录。不根据 `.git` 文件类型或远端 URL 推断归属。共享纯函数 `src/protocol/repositories.ts` 按规范化 `commonDir` 派生顶层展示分组，供 Webview 与活动栏使用；活动工作目录仍为实际操作目标。RepositoryManager 和 RPC 保留完整工作目录列表及原路径 ID，旧保存路径、会话和草稿无需重写；扫描数量以逻辑仓库分组计数，新增 Worktree 即使不增加仓库数也发布列表变化。
+
 手动添加目录由 `src/repositories/discovery.ts` 使用异步迭代遍历，仅对有 `.git` 标记的候选目录调用 Git 验证，并在有效仓库处停止深入。扫描结果由 RepositoryManager 批量去重、注册监听、保存和发布一次列表变更；扫描取消则不注册。启动恢复仍只加载已保存路径及 VS Code 提供的仓库，不重复扫描分类目录。
 
 Status 使用 porcelain v2 与 NUL 分隔，分别保存 Index 和工作区状态。历史查询接受一组完整引用名；首次查询固定 tips，后续分页沿用同一组 tips，避免翻页过程中引用移动造成重复或遗漏。多个引用的结果使用 Git 可达提交并集，共同祖先只返回一次。图算法的 pending lanes 跨页延续，虚拟列表只渲染可见行。

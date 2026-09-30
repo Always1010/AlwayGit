@@ -102,6 +102,12 @@ export class GitService implements GitServiceContract {
     provisional.commonDir = await realpath(await this.text(provisional, ['rev-parse', '--path-format=absolute', '--git-common-dir']));
     provisional.id = createHash('sha256').update(normalized(provisional.root)).digest('hex').slice(0, 24);
     provisional.name = path.basename(provisional.root);
+    const gitDir = await realpath(await this.text(provisional, ['rev-parse', '--path-format=absolute', '--git-dir']));
+    if (normalized(gitDir) === normalized(provisional.commonDir)) provisional.mainRoot = provisional.root;
+    else {
+      const [main] = await this.worktrees(provisional);
+      if (main && !main.bare) provisional.mainRoot = await canonicalPath(main.path);
+    }
     return provisional;
   }
   private async verify(repo: Repository) { const current = await this.discover(repo.root); if (normalized(current.commonDir) !== normalized(repo.commonDir) || current.id !== repo.id) throw new GitError('Repository changed; reopen it before continuing', 'REPOSITORY_CHANGED'); return current; }

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import path from 'node:path';
 import type { GitServiceContract, Repository, RepositoryChanges } from '../protocol/types';
+import { groupRepositories, repositoryGroupKey } from '../protocol/repositories';
 import { discoverRepositories, type DiscoveryOptions, type DiscoveryResult } from './discovery';
 
 export interface AddDirectoryResult extends DiscoveryResult { added: number; existing: number }
@@ -16,6 +17,7 @@ export class RepositoryManager implements vscode.Disposable {
   readonly onDidChangeRepositories = this.listEmitter.event;
   constructor(private readonly git: GitServiceContract, private readonly context: vscode.ExtensionContext, private readonly log: vscode.OutputChannel) {}
   list(): Repository[] { return [...this.repositories.values()]; }
+  groups() { return groupRepositories(this.list()); }
   get(id: string | undefined): Repository {
     const repo = id && this.repositories.get(id);
     if (!repo) throw new Error('Select a registered repository first.');
@@ -57,14 +59,17 @@ export class RepositoryManager implements vscode.Disposable {
     const result: AddDirectoryResult = { ...discovery, added: 0, existing: 0 };
     if (result.cancelled || options.isCancelled?.()) { result.cancelled = true; return result; }
     if (!vscode.workspace.isTrusted) throw new Error('Trust this workspace before executing Git.');
+    const existingGroups = new Set(this.groups().map(group => group.key)), successfulGroups = new Set<string>();
+    let registered = false;
     for (const repo of result.repositories) {
-      try { if (this.register(repo)) result.added++; else result.existing++; }
+      try { if (this.register(repo)) registered = true; successfulGroups.add(repositoryGroupKey(repo)); }
       catch (error) { result.issues.push({ path: repo.root, message: error instanceof Error ? error.message : String(error) }); }
     }
+    for (const key of successfulGroups) { if (existingGroups.has(key)) result.existing++; else result.added++; }
     // Persist once and notify once, regardless of the number of discovered repositories.
     if (result.repositories.length) {
       try { await this.context.workspaceState.update('alwaygit.roots', this.list().map(r => r.root)); }
-      finally { if (result.added) this.listEmitter.fire(); }
+      finally { if (registered) this.listEmitter.fire(); }
     }
     return result;
   }
@@ -106,7 +111,7 @@ export class RepositoryTree implements vscode.TreeDataProvider<Repository> {
   readonly onDidChangeTreeData = this.emitter.event;
   constructor(private readonly manager: RepositoryManager) {}
   refresh(): void { this.emitter.fire(undefined); }
-  getChildren(): Repository[] { return this.manager.list(); }
+  getChildren(): Repository[] { return this.manager.groups().map(group => ({ ...group.repository, name: group.name })); }
   getTreeItem(repo: Repository): vscode.TreeItem {
     const item = new vscode.TreeItem(repo.name);
     item.description = repo.root; item.tooltip = repo.root;
