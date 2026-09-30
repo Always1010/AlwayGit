@@ -83,6 +83,8 @@ Graph 中 Commit 的菜单集中提供 `Create Branch…`、`Create Tag…`、Ch
 
 ## 禁用与受阻规则
 
+工具栏下的操作信息栏显示 Git 操作名称、目标及进行中、成功、失败状态；结果保留到用户关闭或下一次操作，进行中不可关闭。失败显示原因摘要，并提供完整错误详情和日志入口；失败后重新读取仓库状态。操作反馈按仓库隔离，切换仓库不会展示其他仓库的结果。
+
 - 当前分支禁用 `Checkout` 与 `Delete Branch`。
 - 被其他 Worktree 使用的分支显示占用路径，并允许打开该 Worktree。
 - 主 Worktree 和当前 Worktree不能移除；Locked Worktree 显示锁定原因。

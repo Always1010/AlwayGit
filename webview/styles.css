@@ -165,6 +165,21 @@ h1,h2,p {margin:0;}
 .banner>span {flex:1;overflow-wrap:anywhere;}
 .operation-banner {background:var(--panel);border-bottom:1px solid var(--border);}
 .operation-banner>strong {color:var(--yellow);}
+.action-feedback {display:flex;align-items:flex-start;gap:8px;flex:none;padding:7px 10px;border-bottom:1px solid var(--border);border-left:3px solid var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--bg));font-size:12px;}
+.action-feedback>.codicon {margin-top:4px;color:var(--accent);font-size:16px;}
+.feedback-content {display:flex;align-items:center;gap:6px 12px;flex:1;min-width:0;flex-wrap:wrap;}
+.feedback-content strong {font-weight:600;}
+.feedback-target {color:var(--muted);overflow-wrap:anywhere;}
+.feedback-message {flex-basis:100%;overflow-wrap:anywhere;}
+.feedback-details {width:100%;font-size:11px;}
+.feedback-details summary {cursor:pointer;color:var(--muted);width:fit-content;}
+.feedback-details pre {margin:5px 0 0;padding:7px;border:1px solid var(--border);max-height:130px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.5 var(--vscode-editor-font-family,Consolas,monospace);}
+.feedback-success {border-left-color:var(--green);background:color-mix(in srgb,var(--green) 10%,var(--bg));}
+.feedback-success>.codicon {color:var(--green);}
+.feedback-error {border-left-color:var(--error);background:color-mix(in srgb,var(--error) 12%,var(--bg));}
+.feedback-error>.codicon {color:var(--error);}
+.feedback-spinner {animation:feedback-spin 1.2s linear infinite;}
+@keyframes feedback-spin {to{transform:rotate(360deg);}}
 .statusbar {display:flex;align-items:center;justify-content:space-between;gap:8px;flex:none;min-height:25px;border-top:1px solid var(--border);background:var(--panel);font-size:11px;padding:3px 8px;}
 .statusbar>span:first-child {flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .context-menu {position:fixed;z-index:100;width:270px;max-width:calc(100vw - 12px);max-height:calc(100vh - 12px);overflow:auto;padding:4px;background:var(--vscode-menu-background,var(--bg));color:var(--vscode-menu-foreground,var(--fg));border:1px solid var(--vscode-menu-border,var(--border));border-radius:4px;box-shadow:0 7px 24px #0005;}

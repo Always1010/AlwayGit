@@ -102,6 +102,43 @@ describe('repository UI consistency', () => {
     expect(store.getState().busy).toBe(false);
   });
 
+  it('shows Push running with its target, then retains success until dismissed', async () => {
+    await store.getState().selectRepository('a'); const pending = deferred<void>(), fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, repoId, payload) => method === 'action' ? pending.promise : fallback(method, repoId, payload));
+    const pushing = store.getState().execute({ type: 'push', branch: 'main', remote: 'origin', remoteBranch: 'release' });
+    expect(store.getState().actionFeedback).toMatchObject({ status: 'running', target: 'main → origin/release' });
+    bridge.event?.({ type: 'activity', repoId: 'a', busy: false, label: '' });
+    expect(store.getState().actionFeedback?.status).toBe('running');
+    store.getState().dismissFeedback(); expect(store.getState().actionFeedback?.status).toBe('running');
+    pending.resolve(); await pushing;
+    expect(store.getState().actionFeedback?.status).toBe('success');
+    await store.getState().refresh({ background: true }); expect(store.getState().actionFeedback?.status).toBe('success');
+    store.getState().dismissFeedback(); expect(store.getState().actionFeedback).toBeUndefined();
+  });
+
+  it('retains failed action details and refreshes conflicts after failure', async () => {
+    await store.getState().selectRepository('a'); const fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, repoId, payload) => {
+      if (method === 'action') return Promise.reject(new Error('CONFLICT: resolve a.txt'));
+      if (method === 'snapshot') return Promise.resolve({ ...snapshot(a, 2), operation: { kind: 'cherry-pick', conflicts: 1, canContinue: false, canAbort: true, canSkip: true } });
+      return fallback(method, repoId, payload);
+    });
+    expect(await store.getState().execute({ type: 'cherry-pick', commits: ['abc'] })).toBe(false);
+    expect(store.getState().actionFeedback).toMatchObject({ status: 'error', error: 'CONFLICT: resolve a.txt' });
+    expect(store.getState().snapshot?.operation.conflicts).toBe(1);
+    store.getState().dismissFeedback(); expect(store.getState().error).toBeUndefined();
+  });
+
+  it('isolates operation feedback by repository and completes it after returning', async () => {
+    await store.getState().selectRepository('a'); const pending = deferred<void>(), fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, repoId, payload) => method === 'action' ? pending.promise : fallback(method, repoId, payload));
+    const operation = store.getState().execute({ type: 'push', remote: 'origin' });
+    await store.getState().selectRepository('b'); expect(store.getState().actionFeedback).toBeUndefined();
+    await store.getState().selectRepository('a'); expect(store.getState().actionFeedback?.status).toBe('running');
+    pending.resolve(); await operation;
+    expect(store.getState().actionFeedback?.status).toBe('success'); expect(store.getState().busy).toBe(false);
+  });
+
   it('keeps historical details, file and Merge Parent when working files or refs change', async () => {
     const merge = { ...commit, parents: ['first', 'second'] }, fallback = bridge.rpc.getMockImplementation()!;
     let head = commit.oid;
