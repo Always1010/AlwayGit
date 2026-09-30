@@ -34,7 +34,7 @@ npm run build
 
 ## 功能范围
 
-- 多仓库导航、拓扑提交图、分页、提交消息搜索、提交详情和 Merge Commit 父提交选择。
+- 分类目录递归批量添加仓库、多仓库导航、拓扑提交图、分页、提交消息搜索、提交详情和 Merge Commit 父提交选择。
 - 本地与远端分支、Tag、Stash、Worktree 浏览和常用管理操作。
 - Staged、Unstaged、Conflicts 分组，整文件及批量 Stage、Unstage、Discard、Commit 和 Amend。
 - Fetch、Pull、Push、Merge、Rebase、Cherry-pick、Reset 和 Revert；Push 在执行前显示本地分支、远端和远端分支，并允许显式调整目标；识别未完成操作并提供 Continue、Abort 和 Skip。
