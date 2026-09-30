@@ -1,6 +1,6 @@
 import * as assert from 'node:assert/strict';
 import * as vscode from 'vscode';
-import type { GitServiceContract, Repository, Snapshot, HistoryPage } from '../../src/protocol/types';
+import type { DiffPreview, GitServiceContract, Repository, Snapshot, HistoryPage } from '../../src/protocol/types';
 import type { Workbench } from '../../src/extension/workbench';
 import type { RepositoryManager } from '../../src/repositories/manager';
 import type { GitDocuments } from '../../src/editor/documents';
@@ -14,8 +14,16 @@ export async function run(): Promise<void> {
   const repos = await api.workbench.handle({ id: 'repos', method: 'repositories' }) as Repository[];
   assert.equal(repos.length, 1);
   const repo = repos[0];
-  await api.workbench.handle({ id: 'save', method: 'saveSession', payload: { repoId: repo.id, drafts: { [repo.id]: 'Persisted commit draft' }, views: {} } });
+  await api.workbench.handle({ id: 'save', method: 'saveSession', payload: {
+    version: 2,
+    language: 'zh-CN',
+    layout: { preset: 'editor', sidebar: 240, details: 320, diff: 200, author: 110, date: 130, font: 13, row: 26 },
+    repoId: repo.id,
+    drafts: { [repo.id]: 'Persisted commit draft' },
+    views: { [repo.id]: { checkedRefs: ['refs/heads/main'], search: 'fixture', selectedFile: 'sample.ts', tab: 'changes' } },
+  } });
   await assert.rejects(api.workbench.handle({ id: 'bad-session', method: 'saveSession', payload: { drafts: { malicious: ['invalid'] } } }));
+  await assert.rejects(api.workbench.handle({ id: 'bad-layout', method: 'saveSession', payload: { version: 2, layout: { preset: 'floating' } } }));
   const snapshot = await api.workbench.handle({ id: 'snapshot', method: 'snapshot', repoId: repo.id }) as Snapshot;
   assert.equal(snapshot.branch, 'main');
   assert.deepEqual(snapshot.changes.map(c => [c.path, c.indexStatus, c.worktreeStatus]), [['sample.ts', 'M', 'M']]);
@@ -28,11 +36,21 @@ export async function run(): Promise<void> {
   await api.workbench.handle({ id: 'staged', method: 'diff', repoId: repo.id, payload: { kind: 'change', area: 'staged', path: 'sample.ts' } });
   assert.ok(vscode.workspace.textDocuments.some(d => d.uri.scheme === 'alwaygit-content' && d.getText().includes('value = 1')));
   assert.ok(vscode.workspace.textDocuments.some(d => d.uri.scheme === 'alwaygit-content' && d.getText().includes('value = 2')));
+  const stagedPreview = await api.workbench.handle({ id: 'staged-preview', method: 'diffPreview', repoId: repo.id, payload: { kind: 'change', area: 'staged', path: 'sample.ts' } }) as DiffPreview;
+  assert.equal(stagedPreview.path, 'sample.ts');
+  assert.equal(stagedPreview.leftLabel, 'HEAD'); assert.equal(stagedPreview.rightLabel, 'Index');
+  assert.match(stagedPreview.left, /value = 1/); assert.match(stagedPreview.right, /value = 2/);
+  assert.equal(stagedPreview.binary, undefined); assert.equal(stagedPreview.truncated, undefined);
   await api.workbench.handle({ id: 'unstaged', method: 'diff', repoId: repo.id, payload: { kind: 'change', area: 'unstaged', path: 'sample.ts' } });
   assert.ok(vscode.workspace.textDocuments.some(d => d.uri.scheme === 'file' && d.getText().includes('value = 3')));
+  const unstagedPreview = await api.workbench.handle({ id: 'unstaged-preview', method: 'diffPreview', repoId: repo.id, payload: { kind: 'change', area: 'unstaged', path: 'sample.ts' } }) as DiffPreview;
+  assert.equal(unstagedPreview.leftLabel, 'Index'); assert.equal(unstagedPreview.rightLabel, 'Working Tree');
+  assert.match(unstagedPreview.left, /value = 2/); assert.match(unstagedPreview.right, /value = 3/);
+  await api.workbench.handle({ id: 'copy', method: 'copyText', payload: { text: 'AlwayGit clipboard fixture' } });
+  assert.equal(await vscode.env.clipboard.readText(), 'AlwayGit clipboard fixture');
   await api.workbench.handle({ id: 'open', method: 'openFile', repoId: repo.id, payload: { path: 'sample.ts' } });
   assert.equal(vscode.window.activeTextEditor?.document.uri.scheme, 'file');
   await assert.rejects(api.workbench.handle({ id: 'bad', method: 'openFile', repoId: repo.id, payload: { path: '../outside.ts' } }), /outside/);
   await assert.rejects(api.workbench.handle({ id: 'bad-action', method: 'action', repoId: repo.id, payload: { type: 'reset', target: 'HEAD', mode: 'bad' } }));
-  console.log('ALWAYGIT_EXTENSION_TESTS_PASSED: activation, discovery, graph queries, staged/unstaged native diff, editing, path boundary, message validation');
+  console.log('ALWAYGIT_EXTENSION_TESTS_PASSED: activation, discovery, session v2, graph queries, native/preview diffs, clipboard, editing, path boundary, message validation');
 }
