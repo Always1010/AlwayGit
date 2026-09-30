@@ -53,25 +53,25 @@ npm run package
 
 ## 本轮结果
 
-执行日期为 2026-10-01，版本为 0.9.3。检查范围覆盖 Working Tree 虚拟节点的 HEAD 相邻位置、Graph 连接、筛选外 HEAD 锚点、整行选择、键盘导航、分页隔离和无首个 Commit 状态，并回归既有 History、自动刷新、文件操作、Diff、Worktree、主题和布局；没有重跑无关的完整 Vitest 集、Graph 性能基准或桌面集成测试，也没有启动可见 VS Code / 浏览器测试窗口。
+执行日期为 2026-10-01，版本为 0.9.4。检查范围覆盖仓库目录的全局持久化、旧工作区数据迁移、两个窗口共享恢复、窗口 IPC 的 Workbench 请求边界和生产构建。真实多窗口脚本已补充“新窗口直接显示 Workbench”验收，但遵循桌面焦点规则未在本轮自动启动可见 VS Code 窗口；也未重跑无关的完整 Vitest 和无头 UI 回归。
 
 | 项目 | 结果 | 备注 |
 | --- | --- | --- |
-| `npm run typecheck` | 通过 | History 视图模型、Graph 虚拟节点、HEAD 摘要协议及交互类型一致 |
-| `npx vitest run tests/history-items.test.ts tests/graph-renderer.test.ts tests/git-service.test.ts` | 通过 | 3 个文件、26 项；覆盖节点插入、筛选锚点、初始工作区、SVG 语义和真实 Git HEAD 摘要 |
-| `npm run build` | 通过 | 扩展与 Webview 生产构建成功 |
-| `node scripts/test-ui.mjs` | 通过 | 完整无头 UI 回归；验证 Working Tree 菱形节点紧邻 HEAD、整行选中、方向键导航和筛选外锚点，既有 History、刷新、文件、Diff、Worktree、主题与布局通过 |
+| `npm run typecheck` | 通过 | 全局状态、窗口路由回调、Workbench IPC 和 Webview 菜单类型一致 |
+| `npx vitest run tests/repository-manager.test.ts tests/repository-watch.test.ts` | 通过 | 2 个文件、15 项；覆盖全局目录共享、旧路径迁移、批量保存、取消、异常和文件监听 |
+| `npx vitest run tests/window-bridge.test.ts` | 通过 | 1 个文件、10 项；覆盖受限 `workbench` 请求的验证、传递、工作区边界和令牌校验 |
+| `node scripts/package.mjs` | 通过 | 扩展与 Webview 生产构建成功，生成固定包及 0.9.4 版本包 |
 | `git diff --check` | 通过 | 修改文件无空白错误 |
-| `scripts/update-local.ps1` | 通过 | 构建固定包 `artifacts/alwaygit.vsix` 和 0.9.3 版本包，保留上一份为 `artifacts/alwaygit-previous.vsix`；沿用已记录的 VS Code 默认 Profile 安装，官方 CLI 核对为 `alwaygit-dev.alwaygit@0.9.3`，未关闭或重启用户窗口 |
+| `scripts/update-local.ps1 -InstallOnly` | 通过 | 沿用已记录的 `D:\vscode\Microsoft VS Code\bin\code.cmd` 和默认 Profile 安装，官方 CLI 核对为 `alwaygit-dev.alwaygit@0.9.4`，未关闭或重启用户窗口 |
 
 复现本轮定向单测：
 
 ```powershell
 npm run typecheck
-npx vitest run tests/history-items.test.ts tests/graph-renderer.test.ts tests/git-service.test.ts
-npm run build
-node scripts/test-ui.mjs
+npx vitest run tests/repository-manager.test.ts tests/repository-watch.test.ts
+npx vitest run tests/window-bridge.test.ts
+node scripts/package.mjs
 git diff --check
 ```
 
-本轮没有改动窗口路由，也没有启动 VS Code 桌面集成测试。真实 VS Code 内的人工视觉体验、真实网络远端的权限/保护规则、远程宿主、macOS、Linux 和最低支持版本仍需对应环境验收。
+本轮未运行会弹出并切换焦点的 `npm run test:windows`。真实 VS Code 多窗口自动显示 Workbench、远程宿主的全局状态范围、macOS、Linux 和最低支持版本仍需对应环境验收。

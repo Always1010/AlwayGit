@@ -113,7 +113,7 @@ try {
   assert.equal(await menu.isVisible(), false, 'A section title click must collapse the section without opening its menu');
   await repositoriesHeading.click();
   await assertMenuButton(sidebar.getByRole('button', { name: 'Repositories actions', exact: true }), ['Add Repository…', 'Refresh']);
-  await assertMenu(sidebar.getByRole('button', { name: /^AlwayGit/ }), ['Open Workbench', 'Open in New Window', 'Refresh', 'Fetch…', 'Copy Repository Path']);
+  await assertMenu(sidebar.getByRole('button', { name: /^AlwayGit/ }), ['Open Workbench', 'Open Workbench in New Window', 'Refresh', 'Fetch…', 'Copy Repository Path']);
   const localHeading = sidebar.getByRole('button', { name: 'Local Branches', exact: true });
   await localHeading.click();
   await sidebar.getByRole('button', { name: 'Expand feature', exact: true }).waitFor({ state: 'hidden' });
@@ -167,7 +167,7 @@ try {
   await assertMenu(stash, ['View Changes', 'Apply Stash', 'Pop Stash', 'Drop Stash…']);
   await assertMenuButton(sidebar.getByRole('button', { name: 'Worktrees actions', exact: true }), ['Add Worktree…', 'Refresh']);
   const secondaryWorktree = sidebar.getByRole('button').filter({ hasText: 'AlwayGit-graph' });
-  await assertMenu(secondaryWorktree, ['Open Worktree', 'Open in New Window', 'Refresh', 'Remove Worktree…', 'Copy Worktree Path']);
+  await assertMenu(secondaryWorktree, ['Open Worktree', 'Open Workbench in New Window', 'Refresh', 'Remove Worktree…', 'Copy Worktree Path']);
 
   await featureBranch.dispatchEvent('contextmenu', { button: 2, clientX: 1438, clientY: 898, bubbles: true });
   await menu.waitFor();

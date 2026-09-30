@@ -13,6 +13,7 @@ const rootSchema = z.string().min(1).max(4096).refine(value => path.isAbsolute(v
 const repositoryPath = (value: string) => !path.isAbsolute(value) && !/^[a-z]:/i.test(value) && !value.includes('\0') && !value.split(/[\\/]/).includes('..');
 export const projectRequestSchema = z.discriminatedUnion('action', [
   z.object({ root: rootSchema, action: z.literal('project') }).strict(),
+  z.object({ root: rootSchema, action: z.literal('workbench') }).strict(),
   z.object({ root: rootSchema, action: z.literal('file'), path: fileSchema.shape.path.refine(repositoryPath, 'File path is outside the repository.') }).strict(),
   z.object({ root: rootSchema, action: z.literal('diff'), target: diffSchema.refine(target => repositoryPath(target.path), 'File path is outside the repository.') }).strict(),
 ]);

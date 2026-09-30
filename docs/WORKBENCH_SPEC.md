@@ -91,13 +91,13 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 
 | 对象 | 项目 |
 | --- | --- |
-| Repository | `Open Workbench`、`Open in New Window`、`Refresh`、`Fetch…`、`Copy Repository Path` |
+| Repository | `Open Workbench`、`Open Workbench in New Window`、`Refresh`、`Fetch…`、`Copy Repository Path` |
 | Local Branch | `Checkout…`、`Show in Graph`、`Show Only This Branch`、`Create Branch…`、`Create Tag…`、`Merge…`、`Rebase…`、`Push…`、`Delete Branch…`、`Copy Branch Name` |
 | Remote Branch | `Show in Graph`、`Show Only This Branch`、`Create Tracking Branch…`、`Merge…`、`Rebase…`、`Delete Branch from <remote>…`、`Copy Branch Name` |
 | Remote，例如 `origin` | `Fetch…`、`Refresh` |
 | Tag | `Show in Graph`、`Show Only This Tag`、`Create Branch…`、`Checkout…`、`Delete Tag…`、`Copy Tag Name`、`Copy Commit ID` |
 | Stash | `View Changes`、`Apply Stash`、`Pop Stash`、`Drop Stash…` |
-| Worktree | `Open Worktree`、`Open in New Window`、`Refresh`、`Remove Worktree…`、`Copy Worktree Path` |
+| Worktree | `Open Worktree`、`Open Workbench in New Window`、`Refresh`、`Remove Worktree…`、`Copy Worktree Path` |
 
 ## 左侧分组菜单
 

@@ -27,8 +27,9 @@ export async function activate(context: vscode.ExtensionContext) {
   });
   const manager = new RepositoryManager(git, context, output);
   const documents = new GitDocuments(git);
-  const projects = new ProjectWindows(context, output, manager, documents);
-  const workbench = new Workbench(context, git, manager, documents, output, projects);
+  let workbench: Workbench;
+  const projects = new ProjectWindows(context, output, manager, documents, repoId => workbench.open(repoId));
+  workbench = new Workbench(context, git, manager, documents, output, projects);
   const tree = new RepositoryTree(manager);
   context.subscriptions.push(output, manager, workbench, projects,
     vscode.workspace.registerTextDocumentContentProvider('alwaygit-content', documents),
