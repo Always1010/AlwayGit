@@ -36,6 +36,8 @@ try {
   const history = page.getByTestId('history');
   const details = page.getByTestId('details');
   await Promise.all([workbench.waitFor(), sidebar.waitFor(), history.waitFor(), details.waitFor()]);
+  assert.ok((await sidebar.locator('.sidebar-heading').first().boundingBox()).height <= 29, 'Sidebar section headers stay compact');
+  assert.ok((await history.locator('.pane-heading').first().boundingBox()).height <= 29, 'Pane headers stay compact');
   await page.getByRole('table', { name: 'Commit history' }).waitFor();
   await history.locator('[data-oid]').first().waitFor();
   assert.ok(await history.locator('[data-oid]').count() < 180, 'History must render a virtualized subset');
@@ -223,10 +225,20 @@ try {
   await page.setViewportSize({ width: 960, height: 700 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false, 'Outer workbench must not overflow horizontally');
   await page.screenshot({ path: 'artifacts/workbench-compact.png', fullPage: true });
-  await page.evaluate(() => document.documentElement.classList.add('vscode-light'));
+  await page.evaluate(() => document.body.classList.add('vscode-light'));
+  await page.waitForTimeout(150);
+  assert.equal(await projectButton.evaluate(button => getComputedStyle(button).backgroundColor), 'rgb(255, 255, 255)', 'Light buttons must follow the VS Code body theme');
   await page.screenshot({ path: 'artifacts/workbench-light.png', fullPage: true });
-  await page.evaluate(() => { document.documentElement.classList.remove('vscode-light'); document.documentElement.classList.add('vscode-high-contrast'); });
+  await page.evaluate(() => { document.body.classList.remove('vscode-light'); document.body.classList.add('vscode-high-contrast'); });
+  await page.waitForTimeout(150);
   await page.screenshot({ path: 'artifacts/workbench-high-contrast.png', fullPage: true });
+  await page.evaluate(() => { document.body.classList.remove('vscode-high-contrast'); document.body.classList.add('vscode-high-contrast-light'); });
+  await page.waitForTimeout(150);
+  await page.screenshot({ path: 'artifacts/workbench-high-contrast-light.png', fullPage: true });
+  await page.evaluate(() => document.body.classList.remove('vscode-high-contrast-light'));
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  assert.equal(await page.locator('.toolbar .button').first().evaluate(button => getComputedStyle(button).transitionDuration), '0s');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
 
   await page.setViewportSize({ width: 700, height: 650 });
   for (const label of ['Resize author column', 'Resize date column']) {
