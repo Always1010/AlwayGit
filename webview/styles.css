@@ -287,9 +287,12 @@ h1,h2,p {margin:0;}
 .warning-text,.form-error {color:var(--error);}
 .discard-paths {overflow:auto;max-height:150px;font:12px/1.7 var(--vscode-editor-font-family,Consolas,monospace);overflow-wrap:anywhere;}
 .connection-screen {height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:15px;padding:20px;text-align:center;}
-::-webkit-scrollbar {width:9px;height:9px;}
-::-webkit-scrollbar-thumb {background:var(--vscode-scrollbarSlider-background,#8996af55);}
-::-webkit-scrollbar-corner {background:transparent;}
+.workbench ::-webkit-scrollbar {width:6px;height:6px;}
+.workbench ::-webkit-scrollbar-track,.workbench ::-webkit-scrollbar-corner {background:transparent;}
+.workbench ::-webkit-scrollbar-thumb {background:color-mix(in srgb,var(--vscode-scrollbarSlider-background,#8996af55) 58%,transparent);border-radius:999px;}
+.workbench ::-webkit-scrollbar-thumb:hover {background:var(--vscode-scrollbarSlider-hoverBackground,var(--vscode-scrollbarSlider-background,#8996af88));}
+.workbench ::-webkit-scrollbar-thumb:active {background:var(--vscode-scrollbarSlider-activeBackground,var(--vscode-scrollbarSlider-hoverBackground,#8996afaa));}
+.workbench[data-theme^=hc-] ::-webkit-scrollbar-thumb {background:var(--vscode-scrollbarSlider-background,var(--muted));}
 :root {--graph-main:#f2f2f2;--graph-lane-0:#61a8ff;--graph-lane-1:#ff9b52;--graph-lane-2:#c58cff;--graph-lane-3:#45c7bd;--graph-lane-4:#f06fae;--graph-lane-5:#ff7373;--graph-lane-6:#d9b84e;--graph-lane-7:#59bde8;}
 .vscode-light,.vscode-high-contrast-light {color-scheme:light;--bg:var(--vscode-editor-background,#fff);--panel:var(--vscode-sideBar-background,#f3f3f3);--fg:var(--vscode-foreground,#292929);--muted:var(--vscode-descriptionForeground,#626262);--border:var(--vscode-panel-border,#c4c4c4);--section-border:#aeb3b8;--row-border:#d7d9dc;--hover:var(--vscode-list-hoverBackground,#e9f0f7);--selected:var(--vscode-list-activeSelectionBackground,#dceafa);--selected-fg:var(--vscode-list-activeSelectionForeground,#292929);--accent:var(--vscode-focusBorder,#225fa7);--input:var(--vscode-input-background,#fff);--green:var(--vscode-gitDecoration-addedResourceForeground,#26713f);--error:var(--vscode-errorForeground,#9c3036);--yellow:var(--vscode-gitDecoration-modifiedResourceForeground,#91631c);--diff-added:color-mix(in srgb,var(--vscode-diffEditor-insertedLineBackground,transparent) 35%,#bfe7c5);--diff-removed:color-mix(in srgb,var(--vscode-diffEditor-removedLineBackground,transparent) 35%,#f2bfc3);}
 .vscode-light,.vscode-high-contrast-light {--graph-main:#202020;--graph-lane-0:#1769d1;--graph-lane-1:#c45d00;--graph-lane-2:#7b45c7;--graph-lane-3:#007f78;--graph-lane-4:#bd2d7a;--graph-lane-5:#c83737;--graph-lane-6:#906a00;--graph-lane-7:#0077a8;}
