@@ -24,7 +24,7 @@ export function saveSession(state: SessionState) {
   if (demoMode) try { localStorage.setItem('alwaygit.demo-session', JSON.stringify(state)); } catch { /* The live session still keeps drafts. */ }
 }
 const listeners = new Set<(event: HostMessage) => void>();
-const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>();
+const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer?: ReturnType<typeof setTimeout> }>();
 let sequence = 0;
 window.addEventListener('message', event => {
   const message = event.data as HostMessage;
@@ -42,7 +42,8 @@ export async function rpc<T>(method: RpcRequest['method'], repoId?: string, payl
   if (!vscode) throw new Error('Open AlwayGit in VS Code to connect to your repositories.');
   const id = `webview-${++sequence}`;
   return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => { pending.delete(id); reject(new Error('The Git operation timed out. Refresh to check its result before retrying.')); }, 180_000);
+    // The folder picker and cancellable recursive discovery can outlive a Git request.
+    const timer = method === 'addRepository' ? undefined : setTimeout(() => { pending.delete(id); reject(new Error('The Git operation timed out. Refresh to check its result before retrying.')); }, 180_000);
     pending.set(id, { resolve: value => resolve(value as T), reject, timer });
     vscode.postMessage({ id, method, repoId, payload } satisfies RpcRequest);
   });

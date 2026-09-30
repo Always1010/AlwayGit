@@ -1,7 +1,10 @@
 import * as assert from 'node:assert/strict';
 import * as vscode from 'vscode';
-import { writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import path from 'node:path';
+import os from 'node:os';
 import type { DiffPreview, GitServiceContract, Repository, Snapshot, HistoryPage } from '../../src/protocol/types';
 import type { Workbench } from '../../src/extension/workbench';
 import type { RepositoryManager } from '../../src/repositories/manager';
@@ -84,5 +87,26 @@ export async function run(): Promise<void> {
   } finally { subscription.dispose(); }
   await assert.rejects(api.workbench.handle({ id: 'bad', method: 'openFile', repoId: repo.id, payload: { path: '../outside.ts' } }), /outside/);
   await assert.rejects(api.workbench.handle({ id: 'bad-action', method: 'action', repoId: repo.id, payload: { type: 'reset', target: 'HEAD', mode: 'bad' } }));
-  console.log('ALWAYGIT_EXTENSION_TESTS_PASSED: activation, discovery, session v2, graph queries, native/preview diffs, scoped file/Index watchers, clipboard, editing, path boundary, message validation');
+  const collection = await mkdtemp(path.join(os.tmpdir(), 'alwaygit-batch-'));
+  try {
+    for (const relative of ['A', 'category/deeper/B']) {
+      const directory = path.join(collection, relative); await mkdir(directory, { recursive: true });
+      await promisify(execFile)('git', ['-C', directory, 'init', '-b', 'main'], { windowsHide: true });
+    }
+    let listEvents = 0;
+    const listener = api.manager.onDidChangeRepositories(() => { listEvents++; });
+    try {
+      const added = await api.manager.addDirectory(collection);
+      assert.equal(added.added, 2); assert.equal(added.issues.length, 0); assert.equal(listEvents, 1);
+      const repeated = await api.manager.addDirectory(collection);
+      assert.equal(repeated.added, 0); assert.equal(repeated.existing, 2); assert.equal(listEvents, 1);
+      const after = await api.workbench.handle({ id: 'after-batch', method: 'repositories' }) as Repository[];
+      assert.equal(after.length, 3); assert.equal(after[0].id, repo.id, 'Batch registration retains active repository');
+      assert.equal(sentinel.isDirty, true);
+    } finally { listener.dispose(); }
+  } finally {
+    if (path.dirname(collection) !== path.resolve(os.tmpdir()) || !path.basename(collection).startsWith('alwaygit-batch-')) throw new Error('Unsafe cleanup target');
+    await rm(collection, { recursive: true, force: true, maxRetries: 5 });
+  }
+  console.log('ALWAYGIT_EXTENSION_TESTS_PASSED: activation, recursive batch discovery and deduplication, session v2, graph queries, native/preview diffs, scoped file/Index watchers, clipboard, editing, path boundary, message validation');
 }

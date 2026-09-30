@@ -1,6 +1,9 @@
 import * as vscode from 'vscode';
 import path from 'node:path';
 import type { GitServiceContract, Repository, RepositoryChanges } from '../protocol/types';
+import { discoverRepositories, type DiscoveryOptions, type DiscoveryResult } from './discovery';
+
+export interface AddDirectoryResult extends DiscoveryResult { added: number; existing: number }
 
 export class RepositoryManager implements vscode.Disposable {
   private readonly repositories = new Map<string, Repository>();
@@ -21,23 +24,49 @@ export class RepositoryManager implements vscode.Disposable {
   async add(root: string, remember = true): Promise<Repository> {
     if (!vscode.workspace.isTrusted) throw new Error('Trust this workspace before executing Git.');
     const repo = await this.git.discover(root);
+    if (this.register(repo)) this.listEmitter.fire();
+    if (remember) await this.context.workspaceState.update('alwaygit.roots', this.list().map(r => r.root));
+    return repo;
+  }
+  private register(repo: Repository): boolean {
     if (!this.repositories.has(repo.id)) {
-      this.repositories.set(repo.id, repo);
-      const worktreeWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(repo.root, '**/*'));
-      const gitWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(repo.commonDir, '{HEAD,index,packed-refs,refs/**,worktrees/**,MERGE_HEAD,CHERRY_PICK_HEAD,REVERT_HEAD,rebase-merge/**,rebase-apply/**,sequencer/**}'));
-      const listen = (watcher: vscode.FileSystemWatcher, worktree: boolean) => {
+      const disposables: vscode.Disposable[] = [];
+      const listen = (base: string, pattern: string, worktree: boolean) => {
+        const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(base, pattern));
+        disposables.push(watcher);
         const notify = (uri: vscode.Uri) => {
           if (worktree && /[\\/](node_modules|\.git)[\\/]/.test(uri.fsPath)) return;
           const relative = path.relative(worktree ? repo.root : repo.commonDir, uri.fsPath).replace(/\\/g, '/');
           this.notify(repo.id, { paths: worktree ? [relative] : [], index: !worktree && /(^|\/)index$/.test(relative) });
         };
-        return [watcher, watcher.onDidChange(notify), watcher.onDidCreate(notify), watcher.onDidDelete(notify)];
+        for (const event of [watcher.onDidChange, watcher.onDidCreate, watcher.onDidDelete]) disposables.push(event(notify));
       };
-      this.watchers.set(repo.id, [...listen(worktreeWatcher, true), ...listen(gitWatcher, false)]);
-      this.listEmitter.fire();
+      try {
+        listen(repo.root, '**/*', true);
+        listen(repo.commonDir, '{HEAD,index,packed-refs,refs/**,worktrees/**,MERGE_HEAD,CHERRY_PICK_HEAD,REVERT_HEAD,rebase-merge/**,rebase-apply/**,sequencer/**}', false);
+      } catch (error) { for (const disposable of disposables) disposable.dispose(); throw error; }
+      this.watchers.set(repo.id, disposables);
+      this.repositories.set(repo.id, repo);
+      return true;
     }
-    if (remember) await this.context.workspaceState.update('alwaygit.roots', this.list().map(r => r.root));
-    return repo;
+    return false;
+  }
+  async addDirectory(root: string, options: DiscoveryOptions = {}): Promise<AddDirectoryResult> {
+    if (!vscode.workspace.isTrusted) throw new Error('Trust this workspace before executing Git.');
+    const discovery = await discoverRepositories(root, this.git, options);
+    const result: AddDirectoryResult = { ...discovery, added: 0, existing: 0 };
+    if (result.cancelled || options.isCancelled?.()) { result.cancelled = true; return result; }
+    if (!vscode.workspace.isTrusted) throw new Error('Trust this workspace before executing Git.');
+    for (const repo of result.repositories) {
+      try { if (this.register(repo)) result.added++; else result.existing++; }
+      catch (error) { result.issues.push({ path: repo.root, message: error instanceof Error ? error.message : String(error) }); }
+    }
+    // Persist once and notify once, regardless of the number of discovered repositories.
+    if (result.repositories.length) {
+      try { await this.context.workspaceState.update('alwaygit.roots', this.list().map(r => r.root)); }
+      finally { if (result.added) this.listEmitter.fire(); }
+    }
+    return result;
   }
   async scan(): Promise<void> {
     if (!vscode.workspace.isTrusted) return;
