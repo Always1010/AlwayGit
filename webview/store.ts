@@ -7,7 +7,7 @@ import { folderKeys } from './refTree';
 import { affectsWorkingDiff, diffKey, historyKey, mergeChanges, workingTarget } from './refresh';
 import { actionTarget } from './actionFeedback';
 import type { ActionFeedback } from './actionFeedback';
-import { normalizeAppearance, type Appearance, type InterfaceSettings } from './appearance';
+import { normalizeAppearance, type Appearance, type InterfaceSettings, type InterfaceSettingsUpdate } from './appearance';
 
 let repositoryEpoch = 0, snapshotEpoch = 0, historyEpoch = 0, detailEpoch = 0;
 let refreshInvalidation: { epoch: number; changes?: RepositoryChanges; forceHistory: boolean } | undefined;
@@ -18,7 +18,7 @@ export const defaultLayout: LayoutState = { preset: 'workbench', sidebar: 210, d
 export interface CheckoutFailure { reason?: string; paths: string[]; target: string; worktreePath?: string; stashCreated?: boolean; stashOid?: string; detached?: boolean }
 interface WorkbenchState {
   appearance: Appearance; settingsBaseline?: InterfaceSettings;
-  beginSettings(): void; previewSettings(value: Partial<InterfaceSettings>): void; finishSettings(apply: boolean): void; restoreLayout(): void;
+  beginSettings(): void; previewSettings(value: InterfaceSettingsUpdate): void; finishSettings(apply: boolean): void; restoreLayout(): void;
   repositories: Repository[]; repoId?: string; snapshot?: Snapshot; commits: Commit[]; details?: CommitDetails; comparison?: CommitComparison; selectedOid?: string; selectedOids: string[]; selectionAnchor?: string; selectedParent?: string; selectedStashOid?: string; stashDetails?: CommitDetails; selectedFile?: string; diffTarget?: DiffTarget; diffRevision: number;
   ref?: string; checkedRefs?: string[]; expandedRefGroups?:string[]; collapsedSidebarGroups:string[]; search: string; language: Language; layout: LayoutState; checkoutFailure?: CheckoutFailure; actionFeedback?: ActionFeedback; locateToken:number;
   nextOffset: number; hasMore: boolean; tips: string[]; loading: boolean; historyLoading: boolean; detailsLoading: boolean; busy: boolean; activity: string; error?: string; notice?: string; tab: 'history' | 'changes'; drafts: Record<string, string>;

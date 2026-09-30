@@ -7,6 +7,14 @@ function commit(oid: string, ...parents: string[]): Commit {
   return { oid, parents, author: 'A', email: 'a@example.com', timestamp: 0, subject: oid };
 }
 
+function contrastRatio(foreground: string, background: string): number {
+  const luminance = (hex: string) => [1, 3, 5].map(offset => parseInt(hex.slice(offset, offset + 2), 16) / 255)
+    .map(value => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4)
+    .reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0);
+  const first = luminance(foreground), second = luminance(background);
+  return (Math.max(first, second) + .05) / (Math.min(first, second) + .05);
+}
+
 describe('Git history graph', () => {
   it('connects linear ancestry and terminates a root without phantom edges', () => {
     const graph = layoutGraph([commit('c', 'b'), commit('b', 'a'), commit('a')]);
@@ -171,6 +179,8 @@ describe('Git history graph', () => {
       expect(graph.endState.paletteId).toBe(palette.id);
       expect(graph.endState.paletteSize).toBe(parents.length);
       expect(palette.dark).toHaveLength(parents.length);
+      expect(palette.light.every(color => contrastRatio(color, '#FFFFFF') >= 3)).toBe(true);
+      expect(palette.dark.every(color => contrastRatio(color, '#1B222D') >= 3)).toBe(true);
     }
   });
 

@@ -10,25 +10,30 @@ export interface GraphPalette {
   dark: readonly string[];
 }
 
+export interface GraphPaletteColors {
+  light: readonly string[];
+  dark: readonly string[];
+}
+
 /** Matching positions keep each lineage's hue consistent across themes. */
 export const graphPalettes: readonly GraphPalette[] = [
   {
     id: 'vivid', label: 'Vivid · 12 colors', labelZh: '鲜明 · 12 色',
     description: 'Balanced colors for everyday branch history.', descriptionZh: '适合日常分支历史的均衡配色。',
-    light: ['#2563b8', '#b85b0b', '#8554bc', '#087e76', '#b5377c', '#c04444', '#88720b', '#087ca5', '#537b17', '#ac4f66', '#5865b9', '#916335'],
-    dark: ['#70acff', '#ffa45e', '#c69aff', '#52cbbb', '#f081ba', '#ff8585', '#dbc25b', '#64c7e7', '#a4cc65', '#e99baa', '#a0acff', '#cfa574'],
+    light: ['#005FCC', '#C24100', '#7C3AED', '#00856A', '#D00070', '#D62F2F', '#7A6500', '#007C9E', '#4F7D00', '#B23A67', '#3F51D7', '#9A5700'],
+    dark: ['#4DA3FF', '#FF8A3D', '#B983FF', '#24D1B3', '#FF5CAB', '#FF6268', '#E5C84A', '#35C7F0', '#9ADA45', '#FF91B1', '#8897FF', '#EAB05A'],
   },
   {
     id: 'distinct', label: 'Distinct · 8 colors', labelZh: '高区分 · 8 色',
     description: 'A smaller set with stronger hue separation.', descriptionZh: '较少颜色，优先提高相邻路径的区分度。',
-    light: ['#1767a8', '#b95600', '#8253a6', '#008274', '#b33476', '#a66c00', '#536d19', '#74604c'],
-    dark: ['#70b6f2', '#ffa65d', '#c3a0e8', '#51c7b4', '#ef8bbc', '#e9c261', '#adcb6c', '#cbb49a'],
+    light: ['#005FCC', '#C24100', '#7C3AED', '#00856A', '#D00070', '#D62F2F', '#6D7200', '#007C9E'],
+    dark: ['#4DA3FF', '#FF8A3D', '#B983FF', '#24D1B3', '#FF5CAB', '#FF6268', '#C8D94B', '#35C7F0'],
   },
   {
     id: 'extended', label: 'Extended · 16 colors', labelZh: '扩展 · 16 色',
     description: 'More colors for histories with many concurrent paths.', descriptionZh: '更多颜色，适合同时存在较多路径的历史。',
-    light: ['#2563b8', '#b85b0b', '#8554bc', '#087e76', '#b5377c', '#c04444', '#88720b', '#087ca5', '#537b17', '#ac4f66', '#5865b9', '#916335', '#637b2d', '#9c439e', '#33749a', '#9c552f'],
-    dark: ['#70acff', '#ffa45e', '#c69aff', '#52cbbb', '#f081ba', '#ff8585', '#dbc25b', '#64c7e7', '#a4cc65', '#e99baa', '#a0acff', '#cfa574', '#b4c885', '#dfa1e3', '#86bada', '#e6a482'],
+    light: ['#005FCC', '#C24100', '#7C3AED', '#00856A', '#D00070', '#D62F2F', '#7A6500', '#007C9E', '#4F7D00', '#B23A67', '#3F51D7', '#9A5700', '#397300', '#A62AB2', '#006FBA', '#B33D28'],
+    dark: ['#4DA3FF', '#FF8A3D', '#B983FF', '#24D1B3', '#FF5CAB', '#FF6268', '#E5C84A', '#35C7F0', '#9ADA45', '#FF91B1', '#8897FF', '#EAB05A', '#75D94A', '#ED79F4', '#5CBFFF', '#FF8067'],
   },
 ];
 
@@ -57,6 +62,8 @@ const distances = new Map(graphPalettes.map(palette => {
     Math.min(...themes.map(colors => Math.hypot(...colors[a].map((value, index) => value - colors[b][index]))))))] as const;
 }));
 
-export function paletteColorDistance(id: GraphPaletteId, a: number, b: number): number {
-  return distances.get(id)![a][b];
+export function paletteColorDistance(id: GraphPaletteId, a: number, b: number, colors?: GraphPaletteColors): number {
+  if (!colors) return distances.get(id)![a][b];
+  const pairs = [colors.light, colors.dark].map(theme => [oklab(theme[a]), oklab(theme[b])]);
+  return Math.min(...pairs.map(([first, second]) => Math.hypot(...first.map((value, index) => value - second[index]))));
 }

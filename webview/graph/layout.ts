@@ -1,5 +1,5 @@
 import type { Commit } from '../../src/protocol/types';
-import { getGraphPalette, paletteColorDistance, type GraphPaletteId } from './palettes';
+import { getGraphPalette, paletteColorDistance, type GraphPaletteColors, type GraphPaletteId } from './palettes';
 
 /** A lane reserves a path to a parent that has not been rendered yet. */
 export interface GraphLane {
@@ -14,6 +14,7 @@ export interface GraphState {
   nextColor: number;
   paletteId?: GraphPaletteId;
   paletteSize?: number;
+  paletteKey?: string;
 }
 
 export interface GraphSegment {
@@ -51,10 +52,12 @@ export interface GraphLayout {
  * Pass endState into the next page; an empty page keeps pending parents intact.
  * Neither commits nor a caller's state is mutated.
  */
-export function layoutGraph(commits: readonly Commit[], previousState?: GraphState, paletteId: GraphPaletteId = previousState?.paletteId ?? 'vivid'): GraphLayout {
-  const paletteSize = getGraphPalette(paletteId).light.length;
+export function layoutGraph(commits: readonly Commit[], previousState?: GraphState, paletteId: GraphPaletteId = previousState?.paletteId ?? 'vivid', colors?: GraphPaletteColors): GraphLayout {
+  const paletteSize = colors?.light.length ?? getGraphPalette(paletteId).light.length;
+  const paletteKey = colors ? `${colors.light.join(',')}|${colors.dark.join(',')}` : paletteId;
   const prior = previousState && (!previousState.paletteId || previousState.paletteId === paletteId)
-    && (!previousState.paletteSize || previousState.paletteSize === paletteSize) ? previousState : undefined;
+    && (!previousState.paletteSize || previousState.paletteSize === paletteSize)
+    && (!previousState.paletteKey || previousState.paletteKey === paletteKey) ? previousState : undefined;
   const lanes: (GraphLane | null)[] = prior
     ? prior.lanes.map(lane => lane ? { ...lane, color: lane.color % paletteSize, pathId: lane.pathId ?? lane.oid } : null)
     : [];
@@ -74,8 +77,8 @@ export function layoutGraph(commits: readonly Commit[], previousState?: GraphSta
     let best = nextColor, bestScore = -Infinity;
     for (let offset = 0; offset < paletteSize; offset++) {
       const candidate = (nextColor + offset) % paletteSize;
-      const separation = relevant.length ? Math.min(...relevant.map(lane => paletteColorDistance(paletteId, candidate, lane.color))) : 0;
-      const average = active.length ? active.reduce((sum, lane) => sum + paletteColorDistance(paletteId, candidate, lane.color), 0) / active.length : 0;
+      const separation = relevant.length ? Math.min(...relevant.map(lane => paletteColorDistance(paletteId, candidate, lane.color, colors))) : 0;
+      const average = active.length ? active.reduce((sum, lane) => sum + paletteColorDistance(paletteId, candidate, lane.color, colors), 0) / active.length : 0;
       // Unused colors win first. Once exhausted, avoid equal neighbors and
       // crossing paths before maximizing perceptual separation in both themes.
       const equalNeighbors = neighbors.filter(lane => lane.color === candidate).length;
@@ -159,5 +162,5 @@ export function layoutGraph(commits: readonly Commit[], previousState?: GraphSta
     while (lanes.length && lanes[lanes.length - 1] === null) lanes.pop();
   }
 
-  return { rows, endState: { lanes, nextColor, paletteId, paletteSize }, laneCount };
+  return { rows, endState: { lanes, nextColor, paletteId, paletteSize, paletteKey }, laneCount };
 }
