@@ -6,6 +6,9 @@ import { discoverRepositories, type DiscoveryOptions, type DiscoveryResult } fro
 
 export interface AddDirectoryResult extends DiscoveryResult { added: number; existing: number }
 
+const GLOBAL_ROOTS_KEY = 'alwaygit.repositoryRoots.v1';
+const LEGACY_WORKSPACE_ROOTS_KEY = 'alwaygit.roots';
+
 export class RepositoryManager implements vscode.Disposable {
   private readonly repositories = new Map<string, Repository>();
   private readonly watchers = new Map<string, vscode.Disposable[]>();
@@ -27,8 +30,20 @@ export class RepositoryManager implements vscode.Disposable {
     if (!vscode.workspace.isTrusted) throw new Error('Trust this workspace before executing Git.');
     const repo = await this.git.discover(root);
     if (this.register(repo)) this.listEmitter.fire();
-    if (remember) await this.context.workspaceState.update('alwaygit.roots', this.list().map(r => r.root));
+    if (remember) await this.remember([repo.root]);
     return repo;
+  }
+  private async rememberedRoots(): Promise<Set<string>> {
+    const global = this.context.globalState.get<string[]>(GLOBAL_ROOTS_KEY, []);
+    const legacy = this.context.workspaceState.get<string[]>(LEGACY_WORKSPACE_ROOTS_KEY, []);
+    const roots = new Set([...global, ...legacy]);
+    if (legacy.some(root => !global.includes(root))) await this.context.globalState.update(GLOBAL_ROOTS_KEY, [...roots]);
+    return roots;
+  }
+  private async remember(roots: Iterable<string>): Promise<void> {
+    const saved = new Set(this.context.globalState.get<string[]>(GLOBAL_ROOTS_KEY, []));
+    for (const root of roots) saved.add(root);
+    await this.context.globalState.update(GLOBAL_ROOTS_KEY, [...saved]);
   }
   private register(repo: Repository): boolean {
     if (!this.repositories.has(repo.id)) {
@@ -61,21 +76,22 @@ export class RepositoryManager implements vscode.Disposable {
     if (!vscode.workspace.isTrusted) throw new Error('Trust this workspace before executing Git.');
     const existingGroups = new Set(this.groups().map(group => group.key)), successfulGroups = new Set<string>();
     let registered = false;
+    const remembered: string[] = [];
     for (const repo of result.repositories) {
-      try { if (this.register(repo)) registered = true; successfulGroups.add(repositoryGroupKey(repo)); }
+      try { if (this.register(repo)) registered = true; successfulGroups.add(repositoryGroupKey(repo)); remembered.push(repo.root); }
       catch (error) { result.issues.push({ path: repo.root, message: error instanceof Error ? error.message : String(error) }); }
     }
     for (const key of successfulGroups) { if (existingGroups.has(key)) result.existing++; else result.added++; }
     // Persist once and notify once, regardless of the number of discovered repositories.
-    if (result.repositories.length) {
-      try { await this.context.workspaceState.update('alwaygit.roots', this.list().map(r => r.root)); }
+    if (remembered.length) {
+      try { await this.remember(remembered); }
       finally { if (registered) this.listEmitter.fire(); }
     }
     return result;
   }
   async scan(): Promise<void> {
     if (!vscode.workspace.isTrusted) return;
-    const roots = new Set<string>((this.context.workspaceState.get<string[]>('alwaygit.roots', [])));
+    const roots = await this.rememberedRoots();
     for (const folder of vscode.workspace.workspaceFolders ?? []) if (folder.uri.scheme === 'file') roots.add(folder.uri.fsPath);
     try {
       const ext = vscode.extensions.getExtension<{ getAPI(version: number): { repositories: { rootUri: vscode.Uri }[] } }>('vscode.git');

@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-014：手动添加的仓库在新窗口中丢失
+
+- 日期：2026-10-01
+- 状态：已解决
+- 现象：在一个 VS Code 窗口中手动添加仓库后，原窗口可以恢复列表，但新建窗口或打开另一工作区时列表为空。
+- 原因：仓库路径与 Workbench 会话一同保存在 `workspaceState`，每个工作区只能读取自己添加的路径；各窗口的 RepositoryManager 又使用独立内存注册表。
+- 解决方案：将用户主动添加的仓库路径改存为版本化的扩展 `globalState`，启动时合并旧工作区路径并恢复。仓库选择、布局和草稿继续保持工作区隔离，本地路径不开启跨机同步。
+- 验证方式：仓库管理回归验证两个独立工作区共享同一全局目录，并覆盖旧路径迁移、批量去重、取消扫描、监听注册失败和不受信任工作区。
+- 相关文件：`src/repositories/manager.ts`、`tests/repository-manager.test.ts`、`tests/repository-watch.test.ts`、`docs/ARCHITECTURE.md`、`docs/WORKBENCH_SPEC.md`。
+
 ## BUG-013：Working Tree 看似状态栏且脱离当前 HEAD
 
 - 日期：2026-10-01
