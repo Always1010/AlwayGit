@@ -160,11 +160,19 @@ h1,h2,p {margin:0;}
 .diff-word-added,.diff-word-removed {color:inherit;border-radius:2px;padding:0 1px;}
 .diff-word-added {background:var(--vscode-diffEditor-insertedTextBackground,color-mix(in srgb,var(--green) 48%,transparent));}
 .diff-word-removed {background:var(--vscode-diffEditor-removedTextBackground,color-mix(in srgb,var(--error) 48%,transparent));}
-.banner,.operation-banner {display:flex;align-items:center;gap:7px;padding:5px 9px;flex:none;font-size:12px;flex-wrap:wrap;}
+.banner {display:flex;align-items:center;gap:7px;padding:5px 9px;flex:none;font-size:12px;flex-wrap:wrap;}
 .banner.error {background:var(--vscode-inputValidation-errorBackground,#472b2d);color:var(--error);}
 .banner>span {flex:1;overflow-wrap:anywhere;}
-.operation-banner {background:var(--panel);border-bottom:1px solid var(--border);}
-.operation-banner>strong {color:var(--yellow);}
+.operation-notice {display:flex;align-items:center;gap:9px;flex:none;padding:7px 10px;border-bottom:1px solid var(--yellow);border-left:3px solid var(--yellow);background:color-mix(in srgb,var(--yellow) 15%,var(--bg));font-size:12px;flex-wrap:wrap;}
+.operation-notice>.codicon {font-size:19px;color:var(--yellow);}
+.operation-copy {flex:1;min-width:170px;}
+.operation-copy>div {display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.operation-count {border:1px solid color-mix(in srgb,var(--yellow) 60%,transparent);border-radius:9px;padding:0 6px;color:var(--yellow);font-size:11px;font-weight:600;}
+.operation-reason {display:block;color:var(--muted);font-size:11px;margin-top:1px;}
+.operation-actions {display:flex;gap:3px;flex-wrap:wrap;}
+.operation-ready {border-color:var(--accent);background:color-mix(in srgb,var(--accent) 11%,var(--bg));}
+.operation-ready>.codicon,.operation-ready .operation-count {color:var(--accent);}
+.operation-ready .operation-count {border-color:var(--accent);}
 .action-feedback {display:flex;align-items:flex-start;gap:8px;flex:none;padding:7px 10px;border-bottom:1px solid var(--border);border-left:3px solid var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--bg));font-size:12px;}
 .action-feedback>.codicon {margin-top:4px;color:var(--accent);font-size:16px;}
 .feedback-content {display:flex;align-items:center;gap:6px 12px;flex:1;min-width:0;flex-wrap:wrap;}
