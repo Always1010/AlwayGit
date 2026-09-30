@@ -22,7 +22,7 @@ npm run package
 ## 浏览器验收矩阵
 
 - 固定四区 Workbench、旧 Editor Focus 会话迁移、面板和列拖动、仅恢复几何尺寸的 Restore Layout、窄窗口和主题。
-- 设置浮窗分级导航、预览、取消、应用、刷新期间的持久化；宿主主题与手动主题优先级、字号和密度同步虚拟行高、Graph 预设及自定义浅色/深色色板的连续性与分页。
+- 设置浮窗分级导航、预览、取消、应用、刷新期间的持久化；宿主主题与主题卡片优先级、丰富明暗主题、可配置未推送角标、字号和密度同步虚拟行高、Graph 预设及自定义浅色/深色色板的连续性与分页。
 - Repository、Local Branch、Remote Branch、Remote、Tag、Stash、Worktree 及各分组的独立三点菜单；分组标题单击只折叠内容。Repository 和 Worktree 单击只聚焦、双击或 Enter 切换；当前 Repository、Worktree 和本地分支使用排头实心三角形及 `aria-current`，浅色背景为纯黑、深色背景为纯白，不显示 Current 文字徽标。
 - 菜单指针定位、视口边缘修正、竖向排列、键盘焦点、Escape 与点击外部关闭。
 - 右键对象与操作对话框目标一致；仓库切换后旧菜单和对话框关闭。
@@ -30,7 +30,7 @@ npm run package
 - Commit 整行悬停、指针、选择、已推送实心节点与粗体消息、本地未推送空心节点与常规消息、各列双击、键盘焦点、本地分支 Checkout 及 Detached HEAD 对话框；Working Tree 使用独立菱形虚拟节点紧邻当前 HEAD，显示变更、冲突和分支，并支持整行选择及上下方向键导航。
 - English / 简体中文切换，并验证 Git 命令、分支、路径和草稿保持不变。
 - 切换仓库或重载后恢复筛选、选择、布局和 Commit 草稿。
-- 文件完整多层父目录、Working Tree / Commit Details / Commit 比较的单击/Ctrl/Cmd/Shift 选择及无复选框交互、文件区域 Ctrl/Cmd+A、原生文本框全选、提交文件路径复制、Stage / Unstage 范围和显式 Discard。
+- 文件以 `./` 开头的完整多层相对父目录、Working Tree / Commit Details / Commit 比较的单击/Ctrl/Cmd/Shift 选择及无复选框交互、文件区域 Ctrl/Cmd+A、原生文本框全选、提交文件路径复制、Stage / Unstage 范围和显式 Discard。
 - Push 等操作进行中、成功、失败与目标；错误详情、日志；持久冲突条、查看冲突、Continue 禁用原因与已解决状态。
 - Diff 修改块外框、当前/总块数、箭头、手动滚动、刷新重映射、缩放、长行横向滚动和截断计数。
 - Stash、Commit、浅色/深色及两种高对比主题、减少动态效果、未推送数量角标，以及默认与自定义 Push 目标。
@@ -53,25 +53,29 @@ npm run package
 
 ## 本轮结果
 
-执行日期为 2026-10-01，版本为 0.9.4。检查范围覆盖仓库目录的全局持久化、旧工作区数据迁移、两个窗口共享恢复、窗口 IPC 的 Workbench 请求边界和生产构建。真实多窗口脚本已补充“新窗口直接显示 Workbench”验收，但遵循桌面焦点规则未在本轮自动启动可见 VS Code 窗口；也未重跑无关的完整 Vitest 和无头 UI 回归。
+执行日期为 2026-10-01，版本为 0.10.0。检查范围覆盖丰富主题的即时预览、取消、应用与重载，自定义未推送角标颜色，文件相对父目录显示，以及生产构建、固定包更新和本机安装。未重跑与本轮界面改动无关的仓库管理、Git 操作和窗口桥接测试。
 
 | 项目 | 结果 | 备注 |
 | --- | --- | --- |
-| `npm run typecheck` | 通过 | 全局状态、窗口路由回调、Workbench IPC 和 Webview 菜单类型一致 |
-| `npx vitest run tests/repository-manager.test.ts tests/repository-watch.test.ts` | 通过 | 2 个文件、15 项；覆盖全局目录共享、旧路径迁移、批量保存、取消、异常和文件监听 |
-| `npx vitest run tests/window-bridge.test.ts` | 通过 | 1 个文件、10 项；覆盖受限 `workbench` 请求的验证、传递、工作区边界和令牌校验 |
-| `node scripts/package.mjs` | 通过 | 扩展与 Webview 生产构建成功，生成固定包及 0.9.4 版本包 |
+| `npm run typecheck` | 通过 | 新主题、角标设置、会话校验与文件路径显示类型一致 |
+| `npx vitest run tests/ui-state.test.ts tests/file-selection.test.ts` | 通过 | 2 个文件、34 项；覆盖设置保存/回滚、角标颜色校验及根目录和多层目录标签 |
+| `npm run build` | 通过 | 扩展与 Webview 生产构建成功 |
+| `node scripts/test-ui.mjs --appearance-only` | 通过 | 无头专项覆盖主题卡片、附加主题、角标颜色预览/保存/重载、设置取消和布局恢复 |
+| `node scripts/test-ui.mjs --files-only` | 通过 | 无头专项覆盖 `./` 相对目录、文件选择、右键菜单和分组操作 |
+| `scripts/update-local.ps1` | 通过 | 生成固定包及 0.10.0 版本包，并使用已记录目标完成安装 |
 | `git diff --check` | 通过 | 修改文件无空白错误 |
-| `scripts/update-local.ps1 -InstallOnly` | 通过 | 沿用已记录的 `D:\vscode\Microsoft VS Code\bin\code.cmd` 和默认 Profile 安装，官方 CLI 核对为 `alwaygit-dev.alwaygit@0.9.4`，未关闭或重启用户窗口 |
+| 官方 VS Code CLI 安装核对 | 通过 | 沿用 `D:\vscode\Microsoft VS Code\bin\code.cmd` 和默认 Profile，已安装 `alwaygit-dev.alwaygit@0.10.0`，未关闭或重启用户窗口 |
 
 复现本轮定向单测：
 
 ```powershell
 npm run typecheck
-npx vitest run tests/repository-manager.test.ts tests/repository-watch.test.ts
-npx vitest run tests/window-bridge.test.ts
-node scripts/package.mjs
+npx vitest run tests/ui-state.test.ts tests/file-selection.test.ts
+npm run build
+node scripts/test-ui.mjs --appearance-only
+node scripts/test-ui.mjs --files-only
+scripts/update-local.ps1
 git diff --check
 ```
 
-本轮未运行会弹出并切换焦点的 `npm run test:windows`。真实 VS Code 多窗口自动显示 Workbench、远程宿主的全局状态范围、macOS、Linux 和最低支持版本仍需对应环境验收。
+本轮未运行会弹出并切换焦点的 `npm run test:windows`，也未重跑无关的完整 Vitest。主题在无头 Edge 中完成布局和交互验证；macOS、Linux、远程宿主和最低支持版本仍需对应环境验收。
