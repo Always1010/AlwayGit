@@ -108,7 +108,10 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     const repoEpoch = repositoryEpoch, repoId = get().repoId, same = oid === get().selectedOid;
     parent ??= same ? get().selectedParent : undefined;
     const selectedStashOid = stashOid ?? (same ? get().selectedStashOid : undefined);
-    if (same && get().tab === 'history' && get().details?.commit.oid === oid && get().details?.parent === parent && selectedStashOid === get().selectedStashOid) return;
+    if (same && get().tab === 'history' && get().details?.commit.oid === oid && get().details?.parent === parent && selectedStashOid === get().selectedStashOid) {
+      if (!preserveSelection) set({ selectedOids: [oid], selectionAnchor: oid });
+      return;
+    }
     const epoch = ++detailEpoch;
     set({ selectedOid: oid, selectedParent: parent, ...(!preserveSelection?{selectedOids:[oid],selectionAnchor:oid}:{}), selectedStashOid, comparison:undefined, details: undefined, detailsLoading: true, tab: 'history', diffTarget: undefined });
     try {

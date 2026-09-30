@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-016：普通单击活动 Commit 未必退出多选
+
+- 日期：2026-10-01
+- 状态：已解决
+- 现象：选中多个 Commit 后，如果右侧已经显示其中活动 Commit 的详情，再不按 Ctrl/Cmd 或 Shift 普通单击该 Commit，历史列表仍可能保留多选；单击其他 Commit 则能正常收敛为单选。双选自动比较会暂时绕开该路径，但三个及以上 Commit 仍可稳定复现。
+- 原因：`selectCommit` 在发现同一 Commit、Parent 和 Stash 详情已经加载后直接返回，普通单击本应执行的 `selectedOids` 与选择锚点更新位于该提前返回之后。
+- 解决方案：详情缓存命中时继续跳过重复请求，但在非保留选择模式下先将 Commit 选择收敛为当前 OID；修饰键选择继续通过 `preserveSelection` 保留多选。
+- 验证方式：状态回归覆盖缓存详情下的三项多选收敛、详情不重复请求和保留选择模式；无头 History 验证双选自动比较、追加第三项以及普通单击活动 Commit 后只保留一项。
+- 相关文件：`webview/store.ts`、`tests/ui-state.test.ts`、`scripts/test-history-ui.mjs`、`scripts/test-ui.mjs`。
+
 ## BUG-015：双选 Commit 不会自动显示两点差异
 
 - 日期：2026-10-01

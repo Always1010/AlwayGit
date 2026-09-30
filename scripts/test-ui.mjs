@@ -31,6 +31,13 @@ try {
   if (process.argv.includes('--remote-tracking-only')) {
     await verifyRemoteTracking(browser,url);
     console.log('ALWAYGIT_UI_TESTS_PASSED: remote-tracking-only');
+  } else if (process.argv.includes('--history-only')) {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    try {
+      await page.goto(url);
+      await verifyHistoryRows(page);
+      console.log('ALWAYGIT_UI_TESTS_PASSED: history-only');
+    } finally { await page.close(); }
   } else if (process.argv.includes('--worktrees-only')) {
     await verifyWorktrees(browser, url);
     console.log('ALWAYGIT_UI_TESTS_PASSED: worktrees-only');
