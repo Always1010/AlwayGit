@@ -23,7 +23,7 @@ npm run package
 
 - 固定四区 Workbench、旧 Editor Focus 会话迁移、面板和列拖动、仅恢复几何尺寸的 Restore Layout、窄窗口和主题。
 - 设置浮窗分级导航、预览、取消、应用、刷新期间的持久化；宿主主题与手动主题优先级、字号和密度同步虚拟行高、Graph 预设及自定义浅色/深色色板的连续性与分页。
-- Repository、Local Branch、Remote Branch、Remote、Tag、Stash、Worktree 及各分组的独立三点菜单；分组标题单击只折叠内容。
+- Repository、Local Branch、Remote Branch、Remote、Tag、Stash、Worktree 及各分组的独立三点菜单；分组标题单击只折叠内容。Repository 和 Worktree 单击只聚焦、双击或 Enter 切换；当前 Repository、Worktree 和本地分支使用排头播放三角形及 `aria-current`，不显示 Current 文字徽标。
 - 菜单指针定位、视口边缘修正、竖向排列、键盘焦点、Escape 与点击外部关闭。
 - 右键对象与操作对话框目标一致；仓库切换后旧菜单和对话框关闭。
 - 递归分支目录、目录展开、三态目录选择、多引用选择、共同提交去重、清空选择、分页、搜索、HEAD 标记及 Locate HEAD。
@@ -53,26 +53,25 @@ npm run package
 
 ## 本轮结果
 
-执行日期为 2026-10-01，版本为 0.9.0。检查范围覆盖文件与分支树右键菜单、Local / Remote 分支批量选择、本地分支批量删除和远程分支批量删除；没有重跑无关的完整 Vitest 集、Graph 性能基准或桌面集成测试，也没有启动可见 VS Code / 浏览器测试窗口。
+执行日期为 2026-10-01，版本为 0.9.1。检查范围覆盖 Repository 与 Worktree 的单击、双击和键盘切换，Repository、Worktree 与当前本地分支的排头标识，以及既有侧栏、菜单、History、Diff、布局和主题回归；没有重跑无关的完整 Vitest 集、Graph 性能基准或桌面集成测试，也没有启动可见 VS Code / 浏览器测试窗口。
 
 | 项目 | 结果 | 备注 |
 | --- | --- | --- |
-| `npm run typecheck` | 通过 | 文件菜单、分支选择、批量删除协议及对话框类型一致 |
-| `tests/file-selection.test.ts` | 通过 | 9 项用例覆盖文件普通单选、Ctrl/Cmd、Shift、Ctrl/Cmd+A、Escape 和路径处理 |
-| `tests/commit-selection.test.ts`、`tests/workbench-protocol.test.ts` | 通过 | 4 项用例覆盖通用范围选择语义、本地/远程删除协议和空选择拒绝 |
-| `tests/git-service.test.ts` 定向用例 | 通过 | 真实临时仓库验证两个本地分支批量删除；本地 Bare Remote 验证 `push --delete` 与远程引用刷新 |
-| `node scripts/test-ui.mjs` | 通过 | 无头浏览器覆盖分支 Ctrl 多选、目录菜单、本地/远程删除确认、文件菜单、文本框原生菜单及既有 UI 回归 |
+| `npm run typecheck` | 通过 | 侧栏事件、`aria-current` 和共享标识组件类型一致 |
 | `npm run build` | 通过 | 扩展与 Webview 生产构建成功 |
+| `node scripts/test-ui.mjs --worktrees-only` | 通过 | 无头浏览器验证 Repository / Worktree 单击不切换、双击切换、Enter 切换、当前标识迁移和草稿保持 |
+| `node scripts/test-ui.mjs` | 通过 | 无头浏览器验证当前分支三角标识和无 Current 徽标，并覆盖侧栏菜单、分支多选、History、Diff、布局及主题回归 |
 | `git diff --check` | 通过 | 修改文件无空白错误 |
-| `scripts/update-local.ps1` | 通过 | 构建固定包 `artifacts/alwaygit.vsix` 和 0.9.0 版本包，保留上一份为 `artifacts/alwaygit-previous.vsix`；沿用已记录的 VS Code 默认 Profile 安装，官方 CLI 核对为 `alwaygit-dev.alwaygit@0.9.0`，未关闭或重启用户窗口 |
+| `scripts/update-local.ps1` | 通过 | 构建固定包 `artifacts/alwaygit.vsix` 和 0.9.1 版本包，保留上一份为 `artifacts/alwaygit-previous.vsix`；沿用已记录的 VS Code 默认 Profile 安装，官方 CLI 核对为 `alwaygit-dev.alwaygit@0.9.1`，未关闭或重启用户窗口 |
 
 复现本轮定向单测：
 
 ```powershell
-npx vitest run tests/file-selection.test.ts tests/commit-selection.test.ts tests/workbench-protocol.test.ts
-npx vitest run tests/git-service.test.ts -t "implements branches"
-npx vitest run tests/git-service.test.ts -t "fetches, pushes and pulls"
+npm run typecheck
+npm run build
+node scripts/test-ui.mjs --worktrees-only
 node scripts/test-ui.mjs
+git diff --check
 ```
 
 本轮没有改动窗口路由，也没有启动 VS Code 桌面集成测试。真实 VS Code 内的人工视觉体验、真实网络远端的权限/保护规则、远程宿主、macOS、Linux 和最低支持版本仍需对应环境验收。
