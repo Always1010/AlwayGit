@@ -22,9 +22,9 @@ npm run build
 - 右侧显示 Commit 详情及文件；选择 Working Tree 时显示变更管理与 Commit 表单。
 - 底部显示选中文件的只读 Diff 预览。
 
-工作台固定使用四区 Workbench，面板和表格列可拖动调整；右上角恢复布局图标仅恢复尺寸。“界面设置”使用左侧分级导航，可调整主题、语言、界面与 Diff 字号、列表密度和 Graph 配色；Graph 色板支持浅色/深色逐色编辑、增删、恢复预设和独立主线颜色，并在真实分叉预览中即时显示。文件仍可在 VS Code 原生编辑器或原生 Diff 中打开。
+工作台固定使用四区 Workbench，面板和表格列可拖动调整；右上角恢复布局和齿轮图标分别负责恢复尺寸与打开界面设置。界面设置使用左侧分级导航，可调整主题、语言、界面与 Diff 字号、列表密度和 Graph 配色；Graph 色板支持浅色/深色逐色编辑、增删、恢复预设和独立主线颜色，并在真实分叉预览中即时显示。文件仍可在 VS Code 原生编辑器或原生 Diff 中打开。
 
-分支及分支目录前的复选框决定 Graph 中显示哪些引用，目录复选框支持全选、清空和半选状态。勾选多个分支时显示各分支可达提交的并集，共同祖先只出现一次；清空选择时显示空状态。单击分支名称定位并查看它，双击本地分支执行 Checkout。单击 Commit 显示详情，双击 Commit 可切换到关联的本地分支，或在确认后进入 Detached HEAD。当前 HEAD 始终有清晰标记，并可通过 `Locate HEAD` 重新定位。
+分支及分支目录前的复选框决定 Graph 中显示哪些引用，目录复选框支持全选、清空和半选状态。勾选多个分支时显示各分支可达提交的并集，共同祖先只出现一次；清空选择时显示空状态。单击分支名称定位并查看它，双击本地分支执行 Checkout。Graph 以实心节点和粗体消息表示已到达远端跟踪引用的提交，以较小空心节点和常规字重表示本地未推送提交。单击 Commit 显示详情，双击 Commit 可切换到关联的本地分支，或在确认后进入 Detached HEAD。当前 HEAD 始终有清晰标记，并可通过 `Locate HEAD` 重新定位。
 
 左侧分区标题用于展开或收起内容，标题右侧的三点按钮打开分区菜单；具体对象和 Graph 中的 Commit 支持右键操作。菜单是鼠标附近的竖向列表，可通过 Escape、点击菜单外部或键盘操作关闭。菜单命令针对实际点击的仓库和对象，不依赖此前选中的提交。
 
@@ -36,8 +36,8 @@ npm run build
 
 - 分类目录递归批量添加仓库、多仓库导航、拓扑提交图、分页、提交消息搜索、提交详情和 Merge Commit 父提交选择。
 - 本地与远端分支、Tag、Stash、Worktree 浏览和常用管理操作。
-- Staged、Unstaged、Conflicts 分组，整文件及批量 Stage、Unstage、Discard、Commit 和 Amend。
-- Fetch、Pull、Push、Merge、Rebase、Cherry-pick、Reset 和 Revert；Push 在执行前显示本地分支、远端和远端分支，并允许显式调整目标；识别未完成操作并提供 Continue、Abort 和 Skip。
+- Staged、Unstaged、Conflicts 分组；Working Tree 直接用单击、Ctrl/Cmd 和 Shift 选择文件，支持整文件及批量 Stage、Unstage、Discard、Commit 和 Amend。
+- Fetch、Pull、Push、Merge、Rebase、Cherry-pick、Reset 和 Revert；Push 与仓库导航以通知角标显示未推送提交数，Push 在执行前显示本地分支、远端和远端分支，并允许显式调整目标；识别未完成操作并提供 Continue、Abort 和 Skip。
 - Checkout 前识别未提交修改、冲突和被其他 Worktree 占用的分支；可在适用时执行 `Stash Changes & Checkout`。
 - VS Code 原生文件编辑和原生 Diff，以及工作台中的只读 Diff 预览。
 - 工具栏打开项目、复用项目窗口，并在目标窗口保留原生 Diff 和文件编辑标签。
