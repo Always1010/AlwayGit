@@ -17,16 +17,16 @@ npm run build
 
 默认的 `Workbench` 布局包含四个区域：
 
-- 左侧列出 Repositories、Local Branches、Remotes、Tags、Stashes 和 Worktrees。
+- 左侧以可折叠分区列出 Repositories、Local Branches、Remotes、Tags、Stashes 和 Worktrees；分支按 `/` 组成多级目录树。
 - 中间显示可筛选的提交 Graph 与 History，提交行包含作者和日期。
 - 右侧显示 Commit 详情及文件；选择 Working Tree 时显示变更管理与 Commit 表单。
 - 底部显示选中文件的只读 Diff 预览。
 
 `Editor Focus` 布局收起底部 Diff，把空间留给历史和详情；文件仍可在 VS Code 原生编辑器或原生 Diff 中打开。面板和表格列可以拖动调整，`Restore Layout` 恢复默认尺寸。
 
-分支前的复选框决定 Graph 中显示哪些引用。勾选多个分支时显示各分支可达提交的并集，共同祖先只出现一次；清空选择时显示空状态。单击分支名称定位并查看它，双击本地分支执行 Checkout。单击 Commit 显示详情，双击 Commit 可切换到关联的本地分支，或在确认后进入 Detached HEAD。当前 HEAD 始终有清晰标记，并可通过 `Locate HEAD` 重新定位。
+分支及分支目录前的复选框决定 Graph 中显示哪些引用，目录复选框支持全选、清空和半选状态。勾选多个分支时显示各分支可达提交的并集，共同祖先只出现一次；清空选择时显示空状态。单击分支名称定位并查看它，双击本地分支执行 Checkout。单击 Commit 显示详情，双击 Commit 可切换到关联的本地分支，或在确认后进入 Detached HEAD。当前 HEAD 始终有清晰标记，并可通过 `Locate HEAD` 重新定位。
 
-左侧对象和分组标题都支持右键菜单，Graph 中的 Commit 也支持右键操作。菜单是鼠标附近的竖向列表，可通过 Escape、点击菜单外部或键盘操作关闭。菜单命令针对实际右键点击的仓库和对象，不依赖此前选中的提交。
+左侧分区标题用于展开或收起内容，标题右侧的三点按钮打开分区菜单；具体对象和 Graph 中的 Commit 支持右键操作。菜单是鼠标附近的竖向列表，可通过 Escape、点击菜单外部或键盘操作关闭。菜单命令针对实际点击的仓库和对象，不依赖此前选中的提交。
 
 界面支持 English 和简体中文。Git 命令、Git 数据、分支名、路径和 Commit Message 保留原文；切换语言、仓库或布局时，各仓库的引用选择、当前项、搜索条件和 Commit 草稿会话继续保留。
 
@@ -37,7 +37,7 @@ npm run build
 - 多仓库导航、拓扑提交图、分页、提交消息搜索、提交详情和 Merge Commit 父提交选择。
 - 本地与远端分支、Tag、Stash、Worktree 浏览和常用管理操作。
 - Staged、Unstaged、Conflicts 分组，整文件及批量 Stage、Unstage、Discard、Commit 和 Amend。
-- Fetch、Pull、Push、Merge、Rebase、Cherry-pick、Reset 和 Revert；识别未完成操作并提供 Continue、Abort 和 Skip。
+- Fetch、Pull、Push、Merge、Rebase、Cherry-pick、Reset 和 Revert；Push 在执行前显示本地分支、远端和远端分支，并允许显式调整目标；识别未完成操作并提供 Continue、Abort 和 Skip。
 - Checkout 前识别未提交修改、冲突和被其他 Worktree 占用的分支；可在适用时执行 `Stash Changes & Checkout`。
 - VS Code 原生文件编辑和原生 Diff，以及工作台中的只读 Diff 预览。
 

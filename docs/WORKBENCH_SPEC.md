@@ -6,13 +6,14 @@
 
 `Workbench` 是默认预设：左侧为仓库和引用导航，中间为 Graph 与 History，右侧为 Commit 详情、文件或 Working Tree Commit 表单，底部为只读 Diff。`Editor Focus` 收起底部 Diff，并通过 VS Code 原生编辑器查看和修改文件。
 
-面板分隔线、作者列和日期列可拖动。`Restore Layout` 恢复默认尺寸。提交列表默认字号约 13 px、行高约 26 px，保留轻微交替底色和细分隔线。窄窗口不得造成整个工作台横向溢出；必要时各面板内部滚动或收起次要内容。
+面板分隔线、作者列和日期列可拖动。`Restore Layout` 恢复默认尺寸。提交列表默认字号约 13 px、行高约 26 px，保留交替底色和可辨认的细分隔线。面板标题、边界、可点击快捷项和选中状态必须与普通文字清楚区分。窄窗口不得造成整个工作台横向溢出；必要时各面板内部滚动或收起次要内容。
 
 ## 选择与打开
 
 | 输入 | 行为 |
 | --- | --- |
 | 勾选引用复选框 | 加入或移出 Graph 显示范围，不 Checkout |
+| 勾选分支目录复选框 | 选择或清除该目录下全部分支；部分选中时显示半选状态 |
 | 单击引用名称 | 选择并定位该引用，不改变其他引用的勾选状态 |
 | 双击本地分支 | Checkout 到该分支 |
 | 右键引用 | 打开该对象的菜单，不改变 Graph 筛选 |
@@ -23,11 +24,13 @@
 | 单击详情中的文件 | 在底部预览 Diff |
 | 双击文件 | 在 VS Code 打开；历史删除文件打开只读历史内容或原生 Diff |
 
-初次进入仓库时选择当前本地分支及其 upstream。多引用历史是所有已选引用可达提交的并集，共同祖先只出现一次。没有选中引用时显示说明性空状态。当前分支即使未被筛选也继续显示在顶部；`Locate HEAD` 恢复定位。HEAD 在 Graph 与 History 中应有清晰且可访问的标记。
+Local Branches 和 Remote Branches 按分支名中的 `/` 构成递归目录，例如 `feature/login/api` 显示为 `feature > login > api`。目录展开状态按仓库保存；首次进入或 Checkout 后自动展开当前分支所在目录。初次进入仓库时选择当前本地分支及其 upstream。多引用历史是所有已选引用可达提交的并集，共同祖先只出现一次。没有选中引用时显示说明性空状态。当前分支即使未被筛选也继续显示在顶部；`Locate HEAD` 恢复定位。HEAD 在 Graph 与 History 中应有清晰且可访问的标记。
 
 ## 右键菜单通则
 
 菜单在指针附近显示为无分组横线的竖向列表，限制在可视区域内。菜单具有 `menu` 和 `menuitem` 语义；打开时焦点进入菜单，方向键移动，Home/End 跳转，Enter 或 Space 执行，Escape、点击外部和仓库切换关闭。禁用项不可获得执行结果，并说明原因。
+
+分区标题的主区域只执行展开或收起，标题右侧独立三点按钮打开分区菜单。三点按钮必须具有悬停、焦点和可访问名称，不能用不可点击的装饰图标暗示菜单入口。对象菜单继续支持右键和键盘 Context Menu / Shift+F10。
 
 操作绑定被右键点击的仓库和对象。打开对话框后也不能改用之前选中的 Commit、当前筛选或变化后的 `stash@{n}`；执行前重新核对对象身份。
 
@@ -63,7 +66,7 @@ Graph 中 Commit 的菜单沿用详情操作，包括 `Create Branch…`、`Crea
 - 主 Worktree 和当前 Worktree不能移除；Locked Worktree 显示锁定原因。
 - Remote Branch 通过 `Create Tracking Branch…` 创建本地跟踪分支；当前范围不删除远端分支。
 - Tag 的 `Checkout…` 明确提示进入 Detached HEAD。
-- 无变更、无 Staged 文件或没有可用目标时禁用对应操作并说明原因。Push / Pull 缺少默认 remote、upstream 或 branch 时，可在参数框中显式填写；配置仍不足时显示 Git 的具体错误。
+- 无变更、无 Staged 文件或没有可用目标时禁用对应操作并说明原因。Detached HEAD 禁用工具栏 Push。Push 对话框先显示实际的 `Local Branch → Remote/Remote Branch`；当前 upstream、`branch.*.pushRemote`、`remote.pushDefault` 或唯一远端可确定目标时不得显示空白可选项。用户通过 `Change Target…` 显式修改目标；首次 Push 说明会建立 upstream。多远端且没有配置目标时要求选择远端。
 - Checkout 可能覆盖修改时显示受影响文件，并提供查看文件与 `Stash Changes & Checkout`。
 - 存在未解决冲突时，提示先解决冲突或 Abort 当前操作。
 
@@ -71,7 +74,7 @@ Graph 中 Commit 的菜单沿用详情操作，包括 `Create Branch…`、`Crea
 
 Working Tree 将文件分为 Conflicts、Unstaged 和 Staged。Stage、Unstage 与 Stash 是不同操作。`Discard Changes…` 只丢弃所选 Unstaged 修改，保留 Index 中同一文件的 Staged 修改；确认对话框必须准确描述受影响内容。
 
-Commit 表单保存每仓库草稿。Commit 只提交 Index；Amend 替换当前提交。底部预览显示选中文件和比较目标，并提供在 VS Code 原生 Diff 或编辑器中打开的入口。二进制、超限、缺失或非法编码内容显示具体说明。
+Commit 表单保存每仓库草稿。Commit 只提交 Index；Amend 替换当前提交。底部预览显示选中文件和比较目标，并提供在 VS Code 原生 Diff 或编辑器中打开的入口。删除与新增使用高辨识度的红色和绿色整行底色、边缘标记、`−` / `+` 标记及行内变化强调。二进制、超限、缺失或非法编码内容显示具体说明。
 
 ## 语言与文案
 
@@ -81,4 +84,4 @@ Commit 表单保存每仓库草稿。Commit 只提交 Index；Amend 替换当前
 
 ## 会话恢复
 
-保存全局语言、布局预设、面板尺寸和列宽；按仓库保存勾选引用、搜索、当前 Commit / Stash / 文件、活动区域和 Commit 草稿。恢复时若对象已不存在，清除该对象并给出稳定的回退选择，不对 Git 仓库执行写操作。
+保存全局语言、布局预设、面板尺寸和列宽；按仓库保存勾选引用、分支目录展开状态、侧栏分区折叠状态、搜索、当前 Commit / Stash / 文件、活动区域和 Commit 草稿。恢复时若对象已不存在，清除该对象并给出稳定的回退选择，不对 Git 仓库执行写操作。

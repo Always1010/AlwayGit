@@ -6,7 +6,7 @@
 
 AlwayGit 的目标是 VS Code 内的完整 Git 工作台：左侧仓库和引用树，中间 Graph / History，右侧详情或 Working Tree，底部只读 Diff。保留 `Workbench` 与 `Editor Focus` 两种布局，支持 English / 简体中文，Git 术语保持英文。
 
-本轮核心交付包括：多引用复选筛选、明确 HEAD、Commit 单击与双击行为、所有左侧对象及分组标题的右键菜单、Graph 菜单、Checkout 受阻反馈、只读 Diff、布局与语言会话恢复，以及相应的真实 Git、VS Code 和浏览器验收。
+当前核心交付包括：多引用复选筛选、递归分支目录、明确 HEAD、Commit 单击与双击行为、独立三点菜单、Graph 菜单、明确的 Push 目标、Checkout 受阻反馈、高对比只读 Diff、布局与语言会话恢复，以及相应的真实 Git、VS Code 和浏览器验收。
 
 当前范围不包括 Squash、Fixup、交互式 Rebase、提交重排、Format Patch、分块暂存、远程分支删除、远程 Tag 管理或自由浮动面板。
 
@@ -15,6 +15,8 @@ AlwayGit 的目标是 VS Code 内的完整 Git 工作台：左侧仓库和引用
 - Webview 只负责呈现与意图；文件、剪贴板、窗口和 Git 均由扩展宿主完成。
 - Git 写操作以完整仓库 ID 和稳定对象身份执行，并在宿主重新验证。
 - 多引用历史首次查询确定 tips，分页沿用 tips。
+- 分支目录由引用名按 `/` 派生，不改变真实 Git ref；目录选择归并为完整 ref 列表送入历史查询。
+- Push 必须显示并提交明确的本地分支、remote 和远端分支，首次跟踪与已有 upstream 使用不同的 `--set-upstream` 行为。
 - 菜单和工具栏共享动作定义；菜单目标不跟随当前选中项漂移。
 - 底部 Diff 只读；完整查看与编辑走 VS Code 原生能力。
 - 会话不得保存凭据、文件内容或 Git 输出。
@@ -31,6 +33,7 @@ AlwayGit 的目标是 VS Code 内的完整 Git 工作台：左侧仓库和引用
 | `webview/App.tsx` | 工作台组合和主要交互 |
 | `webview/store.ts` | 数据、选择、筛选、操作和会话状态 |
 | `webview/rpc.ts` | Webview 桥接及 Demo 数据 |
+| `webview/refTree.ts` | Local / Remote Branch 的递归目录派生与选择范围 |
 | `webview/graph/` | Graph 轨道与行渲染 |
 | `webview/styles.css` | 面板、菜单、主题与响应式布局 |
 | `scripts/test-ui.mjs` | 构建后浏览器验收 |
@@ -46,11 +49,11 @@ AlwayGit 的目标是 VS Code 内的完整 Git 工作台：左侧仓库和引用
 
 ## 当前实现和验证状态
 
-- 工作台四区布局、Editor Focus、面板与列尺寸、English / 简体中文及会话恢复已经实现。
-- Repository、分组、Local / Remote Branch、Remote、Tag、Stash、Worktree 和 Commit 菜单已经实现；浏览器验收覆盖项目、目标绑定、键盘、视口边缘定位及 Escape 后焦点恢复。
+- 工作台四区布局、Editor Focus、面板与列尺寸、English / 简体中文、清晰的面板层级及会话恢复已经实现。
+- Repository、分组、Local / Remote Branch、Remote、Tag、Stash、Worktree 和 Commit 菜单已经实现；分区标题负责折叠，独立三点按钮打开菜单。Local / Remote Branch 以递归目录显示并支持目录级三态选择。
 - 多引用历史、空选择、固定 tips 分页、HEAD 呈现及紧凑 Graph 已经接入；同一 OID 的 `Locate HEAD`、分页后定位以及表头与内容横向滚动同步都有回归测试。
-- Checkout / Detached HEAD、脏文件与 Worktree 阻塞、Stash 后 Checkout、Diff Preview、剪贴板和窗口接口已经接入宿主。
-- 2026-09-30 的类型检查、构建、71 项单元 / Git 测试、UI、VS Code 1.139.1 扩展集成及 0.2.0 VSIX 打包全部通过。
+- Checkout / Detached HEAD、脏文件与 Worktree 阻塞、Stash 后 Checkout、Push 目标解析、Diff Preview、剪贴板和窗口接口已经接入宿主。
+- 2026-09-30 的类型检查、构建、74 项单元 / Git 测试、UI、VS Code 1.139.1 扩展集成及 0.3.0 本机安装全部通过。
 
 开始工作前先检查工作树；若存在未提交改动，应确认其来源和用途，不要用 Git 清理命令覆盖。
 
