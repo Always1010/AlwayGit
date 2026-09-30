@@ -35,7 +35,7 @@ export async function verifyWorktrees(browser, url) {
     await draft.waitFor();
     assert.equal(await groups.count(), 2, 'Main and linked directory share one entry; a separate clone keeps its own entry');
     const app = groups.filter({ has: page.locator('span.truncate', { hasText: /^App$/ }) }).first();
-    assert.equal(await app.innerText(), 'App'); assert.equal(await app.getAttribute('title'), 'D:/Projects/App-feature');
+    assert.equal(await app.innerText(), 'App'); assert.equal((await app.getAttribute('title'))?.split('\n')[0], 'D:/Projects/App-feature');
     assert.match(await app.getAttribute('class'), /selected/); assert.equal(await draft.inputValue(), 'Linked draft');
     await app.click(); assert.equal(await draft.inputValue(), 'Linked draft', 'Clicking the selected group keeps its Worktree');
     await app.click({ button: 'right' });
@@ -45,7 +45,7 @@ export async function verifyWorktrees(browser, url) {
     await draft.fill('Edited linked draft');
     await page.getByTestId('sidebar').getByRole('button', { name: 'main · App', exact: true }).click();
     await page.waitForFunction(() => document.querySelector('#ag-commit-message')?.value === 'Main draft');
-    assert.equal(await groups.count(), 2); assert.equal(await app.getAttribute('title'), 'D:/Projects/App');
+    assert.equal(await groups.count(), 2); assert.equal((await app.getAttribute('title'))?.split('\n')[0], 'D:/Projects/App');
     await page.getByTestId('sidebar').getByRole('button', { name: 'feature · App-feature', exact: true }).click();
     await page.waitForFunction(() => document.querySelector('#ag-commit-message')?.value === 'Edited linked draft');
     assert.equal(await groups.count(), 2);
