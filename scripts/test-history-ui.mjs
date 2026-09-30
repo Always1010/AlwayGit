@@ -55,8 +55,11 @@ export async function verifyHistoryRows(page) {
   const details=page.getByTestId('details');
   await details.locator('.comparison-summary').waitFor();
   assert.ok(await details.locator('.detail-files .file-item').count(),'Selecting exactly two Commits must show their changed files without another action');
-  await first.locator('.history-author').click();
+  await third.locator('.history-author').click({ modifiers: ['Control'] });
+  assert.equal(await history.locator('[data-oid][aria-selected="true"]').count(),3);
+  await details.locator('.commit-metadata').waitFor();
+  await third.locator('.history-author').click();
   assert.equal(await history.locator('[data-oid][aria-selected="true"]').count(), 1);
   assert.equal(await details.locator('.comparison-summary').count(),0,'Returning to one Commit must leave comparison mode');
-  console.log('ALWAYGIT_HISTORY_UI_TESTS_PASSED: Working Tree affordance and adjacency; plain HEAD node and branch badge; commit row interactions; automatic two-Commit comparison');
+  console.log('ALWAYGIT_HISTORY_UI_TESTS_PASSED: Working Tree affordance and adjacency; plain HEAD node and branch badge; commit row interactions; automatic two-Commit comparison; plain-click multi-selection collapse');
 }

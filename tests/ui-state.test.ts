@@ -74,6 +74,17 @@ describe('repository UI consistency', () => {
     store.getState().setCommitSelection([left.oid],left.oid,left.oid);await vi.waitFor(()=>expect(store.getState().details?.commit.oid).toBe(left.oid));expect(store.getState().comparison).toBeUndefined();
     store.getState().setCommitSelection([]);expect(store.getState()).toMatchObject({selectedOids:[],selectedOid:undefined,details:undefined,comparison:undefined,diffTarget:undefined});
   });
+  it('collapses cached multi-selection when the active commit is clicked without modifiers',async()=>{
+    await store.getState().selectRepository('a');await vi.waitFor(()=>expect(store.getState().details?.commit.oid).toBe(commit.oid));
+    const details=store.getState().details;
+    store.setState({selectedOids:['older','middle',commit.oid],selectionAnchor:'older',selectedOid:commit.oid});bridge.rpc.mockClear();
+    await store.getState().selectCommit(commit.oid);
+    expect(store.getState()).toMatchObject({selectedOids:[commit.oid],selectionAnchor:commit.oid,selectedOid:commit.oid,details});
+    expect(bridge.rpc.mock.calls.filter(([method])=>method==='details')).toHaveLength(0);
+    store.setState({selectedOids:['older','middle',commit.oid],selectionAnchor:'older'});
+    await store.getState().selectCommit(commit.oid,undefined,undefined,true);
+    expect(store.getState().selectedOids).toEqual(['older','middle',commit.oid]);
+  });
   it('ignores operation success after switching during its refresh', async () => {
     await store.getState().selectRepository('a');const delayed=deferred<Snapshot>(),started=deferred<void>(),fallback=bridge.rpc.getMockImplementation()!;
     bridge.rpc.mockImplementation((method,repoId,payload)=>{if(method==='snapshot'&&repoId==='a'){started.resolve();return delayed.promise;}return fallback(method,repoId,payload);});
