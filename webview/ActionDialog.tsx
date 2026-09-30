@@ -56,7 +56,7 @@ export function ActionDialog({ dialog, onClose }: { dialog: DialogRequest; onClo
         action={type,path:v.path,branch:v.branch || undefined,newBranch:v.newBranch || undefined,start:v.start || undefined,detach:!!checks.detach}; break;
       case 'worktree.remove': action={type,path:v.path,force:!!checks.force}; break;
       case 'merge': case 'rebase': action={type,target:v.target}; break;
-      case 'cherry-pick': case 'revert': { const mainline=v.mainline?Number(v.mainline):undefined; if(mainline!==undefined && (!Number.isInteger(mainline)||mainline<1)){setValidation(t('Mainline parent must be a positive integer.','Mainline 父 Commit 序号必须为正整数。'));return;} action={type,commits:v.target.split(/[\s,]+/).filter(Boolean),mainline}; break; }
+      case 'cherry-pick': case 'revert': { const mainline=v.mainline?Number(v.mainline):undefined; if(mainline!==undefined && (!Number.isInteger(mainline)||mainline<1)){setValidation(t('Mainline parent must be a positive integer.','Mainline 父 Commit 序号必须为正整数。'));return;} action={type,commits:v.target.split(/[\s,]+/).filter(Boolean),mainline,expectedHead:snapshot.head,expectedBranch:snapshot.branch||undefined}; break; }
       case 'reset': action={type,target:v.target,mode:v.mode as 'soft'|'mixed'|'hard'}; break;
       case 'discard': action={type,paths:dialog.paths ?? []}; break;
       case 'operation.abort': if(!snapshot.operation.kind)return; action={type,kind:snapshot.operation.kind}; break;

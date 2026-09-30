@@ -82,6 +82,9 @@ h1,h2,p {margin:0;}
 .search {display:flex;align-items:center;gap:4px;min-width:0;max-width:175px;font-weight:400;}
 .search input {padding:3px 5px;width:100%;font-size:12px;}
 .history-caption {color:var(--muted);font-size:11px;padding:3px 8px;border-bottom:1px solid var(--border);flex:none;}
+.selection-summary {display:flex;align-items:center;gap:6px;min-height:25px;}
+.selection-summary>span {flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.selection-summary>.button {min-height:20px;padding:1px 5px;font-size:11px;}
 .history-table {display:flex;flex-direction:column;flex:1;min-height:0;min-width:0;}
 .history-header-scroll {overflow:hidden;flex:none;}
 .working-row-wrap {flex:none;}
