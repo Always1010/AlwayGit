@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { access, realpath, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { Change, CheckoutBlocker, Commit, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationState, Repository, Snapshot, Stash, Worktree } from '../protocol/types';
+import { inferDefaultBranch } from './default-branch';
 
 export interface GitServiceOptions {
   gitPath?: string;
@@ -119,13 +120,14 @@ export class GitService implements GitServiceContract {
       return { fullName, name: fullName.replace(/^refs\/(heads|remotes|tags)\//, ''), kind, oid, targetType, ...(upstream ? { upstream } : {}) };
     })) : [];
     const stashes: Stash[] = stashOutput ? stashOutput.split('\n').map(line => { const [selector, oid, subject] = line.split('\0'); return { selector, oid, subject }; }) : [];
+    const remotes = remoteOutput ? remoteOutput.split('\n') : [];
+    const defaultBranch=inferDefaultBranch(refs,remotes,status.upstream);
     const operation: OperationState = { conflicts: status.changes.filter(x => x.conflict).length, canContinue: false, canAbort: false, canSkip: false };
     const markers = await Promise.all(['rebase-merge', 'rebase-apply', 'MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'sequencer'].map(name => exists(path.join(gitDir, name))));
     if (markers[0] || markers[1]) operation.kind = 'rebase'; else if (markers[2]) operation.kind = 'merge'; else if (markers[3]) operation.kind = 'cherry-pick'; else if (markers[4]) operation.kind = 'revert'; else if (markers[5]) {
       const todo = await readFile(path.join(gitDir, 'sequencer', 'todo'), 'utf8'); if (/^pick /m.test(todo)) operation.kind = 'cherry-pick'; else if (/^revert /m.test(todo)) operation.kind = 'revert';
     }
     if (operation.kind) { operation.canContinue = operation.conflicts === 0; operation.canAbort = true; operation.canSkip = operation.kind !== 'merge'; }
-    const remotes = remoteOutput ? remoteOutput.split('\n') : [];
     let pushTarget: Snapshot['pushTarget'];
     if (status.branch) {
       const [branchPushRemote, defaultPushRemote, branchRemote, mergeRef] = await Promise.all([
@@ -142,7 +144,7 @@ export class GitService implements GitServiceContract {
       const remoteBranch = remote && remote === upstreamRemote && upstreamBranch ? upstreamBranch : remote && remote === branchRemote && configuredBranch ? configuredBranch : status.branch;
       pushTarget = { localBranch: status.branch, ...(remote ? { remote } : {}), remoteBranch, configured: !!upstream };
     }
-    return { repository: repo, ...status, refs, remotes, ...(pushTarget ? { pushTarget } : {}), stashes, worktrees, operation, version: ++this.version };
+    return { repository: repo, ...status, refs, remotes, ...(defaultBranch ? { defaultBranch } : {}), ...(pushTarget ? { pushTarget } : {}), stashes, worktrees, operation, version: ++this.version };
   }
   private async worktrees(repo: Repository): Promise<Worktree[]> {
     const records = decodePaths((await this.run(repo, ['worktree', 'list', '--porcelain', '-z'])).stdout).split('\0'); const result: Worktree[] = []; let current: Worktree | undefined;

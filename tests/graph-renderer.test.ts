@@ -59,4 +59,17 @@ describe('Git graph SVG rows', () => {
     expect(markup).toContain('width="120"');
     expect(markup).not.toContain('<path');
   });
+
+  it('renders the default branch as a heavier neutral path', () => {
+    const { rows } = layoutGraph([{
+      oid: 'main-tip', parents: ['main-parent'], author: 'A', email: 'a@example.com', timestamp: 0, subject: 'Main',
+    }]);
+    const mainTargets=new Set(['main-tip','main-parent']);
+    const markup=renderToStaticMarkup(React.createElement(GraphRow,{row:rows[0],main:true,mainTargets}));
+    expect(markup).toContain('data-main="true"');
+    expect(markup).toContain('Main branch.');
+    expect(markup).toContain('stroke="var(--graph-main, #f2f2f2)"');
+    expect(markup).toContain('stroke-width="3"');
+    expect(markup).toContain('fill="var(--graph-main, #f2f2f2)"');
+  });
 });
