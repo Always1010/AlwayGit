@@ -19,5 +19,7 @@ describe('Workbench protocol validation', () => {
     expect(requestSchema.parse({id:'statuses',method:'repositoryStatuses'}).method).toBe('repositoryStatuses');
     expect(actionSchema.parse({ type: 'push', remote: 'origin', branch: 'main', remoteBranch: 'release/main', setUpstream: true })).toMatchObject({ remoteBranch: 'release/main', setUpstream: true });
     expect(actionSchema.parse({type:'cherry-pick',commits:['abc'],expectedHead:'def',expectedBranch:'main'})).toMatchObject({expectedBranch:'main'});
+    expect(actionSchema.parse({type:'branch.delete',names:['topic','fix/a'],expectedOids:{topic:'a'.repeat(40)}})).toMatchObject({names:['topic','fix/a']});
+    expect(()=>actionSchema.parse({type:'branch.delete',names:[]})).toThrow();
   });
 });

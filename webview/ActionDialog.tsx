@@ -7,7 +7,7 @@ import { Button, Modal } from './ui';
 import { samePath } from './pathIdentity';
 
 export type ActionType = GitAction['type'];
-export interface DialogRequest { type: ActionType; target?: string; paths?: string[]; pop?: boolean; expectedOid?: string; remote?: string; branch?: string; checkout?: boolean; candidates?: string[] }
+export interface DialogRequest { type: ActionType; target?: string; paths?: string[]; names?:string[]; expectedOids?:Record<string,string>; pop?: boolean; expectedOid?: string; remote?: string; branch?: string; checkout?: boolean; candidates?: string[] }
 export const actionTitles: Partial<Record<ActionType, string>> = { 'branch.create': 'Create Branch', 'branch.checkout': 'Checkout', 'commit.checkout': 'Checkout', 'branch.delete': 'Delete Branch', 'tag.create': 'Create Tag', 'tag.delete': 'Delete Tag', 'stash.create': 'Stash Changes', 'stash.apply': 'Apply Stash', 'stash.drop': 'Drop Stash', 'worktree.add': 'Add Worktree', 'worktree.remove': 'Remove Worktree', merge: 'Merge', rebase: 'Rebase', 'cherry-pick': 'Cherry-pick', revert: 'Revert', reset: 'Reset', fetch: 'Fetch', pull: 'Pull', push: 'Push', discard: 'Discard Changes', 'operation.abort': 'Abort' };
 function pushDefaults(snapshot: Snapshot, dialog: DialogRequest) {
   const localBranch=dialog.branch??snapshot.branch,ref=snapshot.refs.find(item=>item.kind==='local'&&item.name===localBranch),upstream=ref?.upstream;
@@ -34,7 +34,7 @@ export function ActionDialog({ dialog, onClose }: { dialog: DialogRequest; onClo
   const set = (key: string, value: string) => setValues(old => ({ ...old, [key]: value }));
   const field = (key: string, en: string, zh: string = en, options?: { value: string; label: string }[], required = false, hint?: string) => <label className="form-field"><span>{t(en, zh)}</span>{options ? <select aria-label={en} required={required} disabled={state.busy} value={values[key]} onChange={e => set(key,e.target.value)}>{!options.length && <option value="">{t('None available','暂无可用项')}</option>}{options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select> : <input aria-label={en} required={required} disabled={state.busy} value={values[key]} onChange={e => set(key,e.target.value)} placeholder={hint} />}{hint && <small className="muted">{hint}</small>}</label>;
   const checkbox = (key: string, en: string, zh: string = en) => <label className="form-checkbox"><input type="checkbox" checked={!!checks[key]} disabled={state.busy} onChange={e => setChecks(old => ({ ...old,[key]:e.target.checked }))} />{t(en,zh)}</label>;
-  const title = type === 'stash.apply' && checks.pop ? 'Pop Stash' : actionTitles[type] ?? type;
+  const title = type === 'stash.apply' && checks.pop ? 'Pop Stash' : type==='branch.delete'&&(dialog.names?.length??0)>1?'Delete Branches':actionTitles[type] ?? type;
   const branch = snapshot.branch || 'Detached HEAD';
   const displayTarget = snapshot.refs.find(r => r.fullName === values.target)?.name ?? values.target;
   async function submit(event: React.FormEvent) {
@@ -46,7 +46,7 @@ export function ActionDialog({ dialog, onClose }: { dialog: DialogRequest; onClo
       case 'branch.create': action={type,name:v.name,start:v.start || undefined,checkout:!!checks.checkout}; break;
       case 'branch.checkout': action={type,name:v.name}; break;
       case 'commit.checkout': action={type,target:v.target}; break;
-      case 'branch.delete': action={type,name:v.name,force:!!checks.force}; break;
+      case 'branch.delete': action={type,names:dialog.names?.length?dialog.names:[v.name],force:!!checks.force,expectedOids:dialog.expectedOids}; break;
       case 'tag.create': action={type,name:v.name,target:v.target,message:v.message || undefined}; break;
       case 'tag.delete': action={type,name:v.name}; break;
       case 'stash.create': action={type,message:v.message || undefined,includeUntracked:!!checks.includeUntracked}; break;
@@ -68,7 +68,7 @@ export function ActionDialog({ dialog, onClose }: { dialog: DialogRequest; onClo
   return <Modal title={title} busy={state.busy} onClose={onClose} footer={<><Button onClick={onClose} disabled={state.busy}>{t('Cancel','取消')}</Button><Button type="submit" form="ag-action-form" className={destructive?'danger':'primary'} disabled={state.busy}>{state.busy?t('Working…','处理中…'):title}</Button></>}><form id="ag-action-form" className="action-form" onSubmit={event=>void submit(event)}>
     <p className="muted">{snapshot.repository.name} · {branch}</p>
     {type==='branch.create' && <>{field('name','Branch Name','分支名称',undefined,true,'feature/my-change')}{field('start','Start Point','起始位置',undefined,true)}{checkbox('checkout','Checkout new branch','Checkout 到新分支')}</>}
-    {(type==='branch.checkout'||type==='branch.delete') && <>{field('name','Branch','分支',(dialog.candidates ? local.filter(r=>dialog.candidates!.includes(r.name)) : local.filter(r=>type!=='branch.delete'||r.name!==snapshot.branch)).map(r=>({value:r.name,label:r.name})),true)}{type==='branch.delete'&&checkbox('force','Force deletion of unmerged branch','强制删除尚未合并的分支')}{type==='branch.checkout'&&<p>{t('Checkout preserves changes when possible; Git stops if they would be overwritten.','Checkout 会尽可能保留修改；可能覆盖修改时 Git 会停止操作。')}</p>}</>}
+    {(type==='branch.checkout'||type==='branch.delete') && <>{type==='branch.delete'&&dialog.names?.length?<div className="discard-paths">{dialog.names.map(name=><div key={name}>{name}</div>)}</div>:field('name','Branch','分支',(dialog.candidates ? local.filter(r=>dialog.candidates!.includes(r.name)) : local.filter(r=>type!=='branch.delete'||r.name!==snapshot.branch)).map(r=>({value:r.name,label:r.name})),true)}{type==='branch.delete'&&checkbox('force','Force deletion of unmerged branches','强制删除尚未合并的分支')}{type==='branch.checkout'&&<p>{t('Checkout preserves changes when possible; Git stops if they would be overwritten.','Checkout 会尽可能保留修改；可能覆盖修改时 Git 会停止操作。')}</p>}</>}
     {type==='commit.checkout'&&<><strong>Checkout {displayTarget}</strong><p>{t('No local branch was selected. This enters Detached HEAD. Create a branch to keep new commits.','此操作进入 Detached HEAD。可以创建分支来保留新的 Commit。')}</p></>}
     {type==='tag.create'&&<>{field('name','Tag Name','Tag 名称',undefined,true)}{field('target','Target Commit','目标 Commit',undefined,true)}{field('message','Annotation (optional)','说明（可选）')}</>}
     {type==='tag.delete'&&field('name','Tag','Tag',tags.map(r=>({value:r.name,label:r.name})),true)}

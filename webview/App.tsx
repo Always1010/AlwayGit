@@ -69,7 +69,7 @@ export function App() {
       </>}
     </main></div>
     <footer className="statusbar" role="status"><span>{state.busy?state.activity:state.historyLoading?t('Loading history…','正在读取历史…'):state.notice??t('Ready','就绪')}</span><span>{layout.font}px / {effectiveRowHeight(layout)}px · Workbench</span></footer>
-    {dialog&&snapshot&&!state.checkoutFailure&&<ActionDialog key={`${state.repoId}-${dialog.type}-${dialog.target}-${dialog.pop}`} dialog={dialog} onClose={()=>setDialog(undefined)}/>}
+    {dialog&&snapshot&&!state.checkoutFailure&&<ActionDialog key={`${state.repoId}-${dialog.type}-${dialog.target}-${dialog.names?.join('|')}-${dialog.pop}`} dialog={dialog} onClose={()=>setDialog(undefined)}/>}
     {context&&menu&&<ContextMenu x={context.x} y={context.y} caption={menu.caption} items={menu.items} close={closeMenu}/>}
     {state.checkoutFailure&&snapshot&&<CheckoutFailureDialog onClose={()=>{setDialog(undefined);useWorkbench.setState({checkoutFailure:undefined,error:undefined});}} host={host}/>}
     {state.settingsBaseline&&<SettingsDialog theme={theme}/>}

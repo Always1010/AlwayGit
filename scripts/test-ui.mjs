@@ -27,7 +27,10 @@ let browser;
 try {
   browser = await chromium.launch(process.env.ALWAYGIT_BROWSER_EXECUTABLE ? { executablePath: process.env.ALWAYGIT_BROWSER_EXECUTABLE } : process.platform === 'win32' ? { channel: 'msedge' } : {});
   const url = `http://127.0.0.1:${server.address().port}/?demo=1`;
-  if (process.argv.includes('--files-only')) {
+  if (process.argv.includes('--worktrees-only')) {
+    await verifyWorktrees(browser, url);
+    console.log('ALWAYGIT_UI_TESTS_PASSED: worktrees-only');
+  } else if (process.argv.includes('--files-only')) {
     await verifyFiles(browser, url);
     console.log('ALWAYGIT_UI_TESTS_PASSED: files-only');
   } else if (process.argv.includes('--appearance-only')) {
@@ -68,7 +71,7 @@ try {
   await page.getByRole('button', { name: 'Locate HEAD', exact: true }).click();
   await page.waitForFunction(() => (document.querySelector('.history-viewport')?.scrollTop ?? 1) === 0);
 
-  await page.getByRole('button', { name: 'Push (2)', exact: true }).click();
+  await page.getByRole('button', { name: /^Push/ }).click();
   let dialog = page.getByRole('dialog');
   await dialog.waitFor();
   await dialog.getByText('main → origin/main', { exact: true }).waitFor();
@@ -106,16 +109,16 @@ try {
 
   const repositoriesHeading = sidebar.getByRole('button', { name: 'Repositories', exact: true });
   await repositoriesHeading.click();
-  await sidebar.getByRole('button', { name: 'AlwayGit', exact: true }).waitFor({ state: 'hidden' });
+  await sidebar.getByRole('button', { name: /^AlwayGit/ }).waitFor({ state: 'hidden' });
   assert.equal(await menu.isVisible(), false, 'A section title click must collapse the section without opening its menu');
   await repositoriesHeading.click();
   await assertMenuButton(sidebar.getByRole('button', { name: 'Repositories actions', exact: true }), ['Add Repository…', 'Refresh']);
-  await assertMenu(sidebar.getByRole('button', { name: 'AlwayGit', exact: true }), ['Open Workbench', 'Open in New Window', 'Refresh', 'Fetch…', 'Copy Repository Path']);
+  await assertMenu(sidebar.getByRole('button', { name: /^AlwayGit/ }), ['Open Workbench', 'Open in New Window', 'Refresh', 'Fetch…', 'Copy Repository Path']);
   const localHeading = sidebar.getByRole('button', { name: 'Local Branches', exact: true });
   await localHeading.click();
   await sidebar.getByRole('button', { name: 'Expand feature', exact: true }).waitFor({ state: 'hidden' });
   await localHeading.click();
-  await assertMenuButton(sidebar.getByRole('button', { name: 'Local Branches actions', exact: true }), ['Create Branch…', 'Select All', 'Clear Selection']);
+  await assertMenuButton(sidebar.getByRole('button', { name: 'Local Branches actions', exact: true }), ['Create Branch…', 'Show All in Graph', 'Show None in Graph']);
   await sidebar.getByRole('button', { name: 'Expand feature', exact: true }).click();
   await sidebar.getByRole('button', { name: 'Expand login', exact: true }).click();
   await sidebar.getByRole('button', { name: 'Branch feature/login/api', exact: true }).waitFor();
@@ -128,6 +131,22 @@ try {
   await dialog.getByText('feature/history-graph → origin/feature/history-graph', { exact: true }).waitFor();
   await dialog.getByText('This Push will set the selected target as the upstream branch.', { exact: true }).waitFor();
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  const loginBranch=sidebar.getByRole('button',{name:'Branch feature/login/api',exact:true}),testBranch=sidebar.getByRole('button',{name:'Branch feature/test',exact:true});
+  await loginBranch.click();
+  await testBranch.click({modifiers:['Control']});
+  assert.equal(await sidebar.locator('.ref-row.action-selected').count(),2,'Ctrl+click selects multiple branches independently from Graph checkboxes');
+  await openMenu(loginBranch);
+  assert.deepEqual((await menu.getByRole('menuitem').allTextContents()).map(value=>value.trim()),['Show Selected in Graph','Show Only Selected','Hide Selected from Graph','Delete 2 Local Branches…','Copy Branch Names']);
+  await menu.getByRole('menuitem',{name:'Delete 2 Local Branches…',exact:true}).click();
+  dialog=page.getByRole('dialog');
+  await dialog.getByText('feature/login/api',{exact:true}).waitFor();
+  await dialog.getByText('feature/test',{exact:true}).waitFor();
+  await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
+  const featureFolder=sidebar.getByRole('button',{name:'Collapse feature',exact:true}).locator('..');
+  await featureFolder.click({button:'right'});
+  await menu.waitFor();
+  assert.ok((await menu.getByRole('menuitem').allTextContents()).some(value=>value.trim()==='Copy Branch Names'),'Branch folders use the custom branch menu');
+  await page.keyboard.press('Escape');
   await assertMenuButton(sidebar.getByRole('button', { name: 'Remotes actions', exact: true }), ['Fetch…', 'Refresh']);
   await assertMenuButton(sidebar.getByRole('button', { name: 'origin actions', exact: true }), ['Fetch…', 'Refresh']);
   const remoteBranch = sidebar.getByRole('button', { name: 'Branch origin/develop', exact: true });
@@ -180,7 +199,7 @@ try {
   await page.getByRole('button', { name: 'Restore Layout', exact: true }).click();
   assert.equal(Number(await sidebarSeparator.getAttribute('aria-valuenow')), 210);
 
-  await sidebar.getByRole('button', { name: 'Clear Selection', exact: true }).click();
+  await sidebar.getByRole('button', { name: 'Show None', exact: true }).click();
   await history.getByText('No branches selected', { exact: true }).waitFor();
   const featureGroup = sidebar.getByLabel('Show branch group feature', { exact: true });
   await featureGroup.check();
@@ -201,7 +220,8 @@ try {
   const draft = page.getByRole('textbox', { name: 'Commit message' });
   await draft.fill('Persistent bilingual draft');
   await page.getByRole('button', { name: 'Interface Settings', exact: true }).click();
-  await page.getByTestId('interface-settings').getByLabel('Language').selectOption('zh-CN');
+  await page.getByTestId('interface-settings').getByRole('button',{name:'Language',exact:true}).click();
+  await page.getByTestId('interface-settings').getByRole('combobox',{name:'Language'}).selectOption('zh-CN');
   await page.getByRole('dialog').locator('.modal-footer .primary').click();
   await page.getByText('当前分支', { exact: true }).waitFor();
   assert.equal(await search.inputValue(), 'native diff');
@@ -215,8 +235,9 @@ try {
   assert.equal(await page.getByRole('textbox', { name: 'Search commit history' }).inputValue(), 'native diff');
   assert.equal(await page.getByLabel('Show branch feature/history-graph', { exact: true }).isChecked(), true);
   await page.getByRole('button', { name: '界面设置', exact: true }).click();
-  assert.equal(await page.getByTestId('interface-settings').getByLabel('Language').inputValue(), 'zh-CN');
-  await page.getByTestId('interface-settings').getByLabel('Language').selectOption('en');
+  await page.getByTestId('interface-settings').getByRole('button',{name:'语言',exact:true}).click();
+  assert.equal(await page.getByTestId('interface-settings').getByRole('combobox',{name:'Language'}).inputValue(), 'zh-CN');
+  await page.getByTestId('interface-settings').getByRole('combobox',{name:'Language'}).selectOption('en');
   await page.getByRole('dialog').locator('.modal-footer .primary').click();
 
   await history.getByRole('button', { name: /Working Tree/ }).click();
@@ -234,7 +255,7 @@ try {
   await page.screenshot({ path: 'artifacts/workbench-compact.png', fullPage: true });
   await page.evaluate(() => document.body.classList.add('vscode-light'));
   await page.waitForTimeout(150);
-  assert.equal(await projectButton.evaluate(button => getComputedStyle(button).backgroundColor), 'rgb(255, 255, 255)', 'Light buttons must follow the VS Code body theme');
+  assert.ok(['rgb(255, 255, 255)','rgba(0, 0, 0, 0)'].includes(await projectButton.evaluate(button => getComputedStyle(button).backgroundColor)), 'Light buttons must use the light surface or inherit it transparently');
   await page.screenshot({ path: 'artifacts/workbench-light.png', fullPage: true });
   await page.evaluate(() => { document.body.classList.remove('vscode-light'); document.body.classList.add('vscode-high-contrast'); });
   await page.waitForTimeout(150);

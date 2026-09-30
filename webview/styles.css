@@ -60,6 +60,8 @@ h1,h2,p {margin:0;}
 .sidebar-item .notification-badge {margin-left:auto;flex:none;}
 .ref-row {display:flex;align-items:center;min-width:0;border-left:3px solid transparent;}
 .ref-row.is-current {border-left-color:var(--green);background:color-mix(in srgb,var(--green) 12%,var(--panel));}
+.ref-row.action-selected {background:color-mix(in srgb,var(--accent) 18%,var(--panel));outline:1px solid color-mix(in srgb,var(--accent) 52%,transparent);outline-offset:-1px;}
+.ref-row.is-current.action-selected {background:color-mix(in srgb,var(--accent) 15%,color-mix(in srgb,var(--green) 12%,var(--panel)));}
 .ref-row .sidebar-item {flex:1;min-width:0;padding-left:2px;}
 .branch-check {display:flex;align-items:center;justify-content:center;width:23px;min-height:var(--row-height,24px);flex:none;}
 .branch-shortcuts {display:flex;flex-wrap:wrap;gap:3px;padding:5px;font-size:11px;border-bottom:1px solid var(--row-border);}

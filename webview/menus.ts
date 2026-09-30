@@ -7,7 +7,7 @@ import { rpc } from './rpc';
 import { cherryPickOrder } from './commitSelection';
 
 export interface FileMenuEntry { path: string; target: DiffTarget }
-export type MenuTarget = { kind: 'repository'; repository: Repository } | { kind: 'ref'; ref: GitRef } | { kind: 'ref-folder'; label: string; refs: GitRef[] } | { kind: 'files'; primary: FileMenuEntry; files: FileMenuEntry[] } | { kind: 'commit'; oid: string; oids?: string[] } | { kind: 'stash'; stash: Stash } | { kind: 'worktree'; worktree: Worktree } | { kind: 'remote'; name: string } | { kind: 'group'; group: 'repositories' | 'local' | 'remote' | 'tag' | 'stash' | 'worktree' };
+export type MenuTarget = { kind: 'repository'; repository: Repository } | { kind: 'ref'; ref: GitRef; refs?:GitRef[] } | { kind: 'ref-folder'; label: string; refs: GitRef[] } | { kind: 'files'; primary: FileMenuEntry; files: FileMenuEntry[] } | { kind: 'commit'; oid: string; oids?: string[] } | { kind: 'stash'; stash: Stash } | { kind: 'worktree'; worktree: Worktree } | { kind: 'remote'; name: string } | { kind: 'group'; group: 'repositories' | 'local' | 'remote' | 'tag' | 'stash' | 'worktree' };
 export interface MenuApi { open(dialog: DialogRequest): void; checkout(oid: string): void; openDiff(target: DiffTarget): void; editFile(target: DiffTarget): void; host(method: 'copyText'|'openRepository'|'openWorktree', payload: unknown, repoId?: string): Promise<void>; addRepository(): Promise<void>; fetchRepository(repoId: string): Promise<void> }
 export function menuFor(target: MenuTarget, api: MenuApi): { caption: string; items: MenuItem[] } {
   const state=useWorkbench.getState(), snapshot=state.snapshot, busy=state.busy;
@@ -19,14 +19,18 @@ export function menuFor(target: MenuTarget, api: MenuApi): { caption: string; it
   if(target.kind==='repository')return {caption:target.repository.name,items:[item('Open Workbench',()=>state.selectRepository(target.repository.id),'repo'),item('Open in New Window',()=>api.host('openRepository',{newWindow:true},target.repository.id),'window'),item(t('Refresh','刷新'),()=>state.selectRepository(target.repository.id),'refresh'),item('Fetch…',()=>api.fetchRepository(target.repository.id),'cloud-download',busy),copy('Copy Repository Path',target.repository.root)]};
   if(target.kind==='group') {
     const name=target.group;
-    const items=name==='repositories'?[item('Add Repository…',api.addRepository,'add'),item(t('Refresh','刷新'),()=>state.initialize(),'refresh')]:name==='local'?[action('Create Branch…',{type:'branch.create'},'git-branch'),item(t('Select All','全选'),()=>state.setCheckedRefs([...(state.checkedRefs??[]),...(snapshot?.refs.filter(r=>r.kind==='local').map(r=>r.fullName)??[])]),'check-all'),item(t('Clear Selection','取消选择'),()=>state.setCheckedRefs((state.checkedRefs??[]).filter(r=>!r.startsWith('refs/heads/'))),'clear-all')]:name==='tag'?[action('Create Tag…',{type:'tag.create'},'tag'),refresh]:name==='stash'?[action('Stash Changes…',{type:'stash.create'},'archive',busy||!snapshot?.changes.length||!!snapshot.operation.kind),refresh]:name==='worktree'?[action('Add Worktree…',{type:'worktree.add'},'new-folder'),refresh]:[action('Fetch…',{type:'fetch'},'cloud-download'),refresh];
+    const items=name==='repositories'?[item('Add Repository…',api.addRepository,'add'),item(t('Refresh','刷新'),()=>state.initialize(),'refresh')]:name==='local'?[action('Create Branch…',{type:'branch.create'},'git-branch'),item(t('Show All in Graph','全部显示在 Graph'),()=>state.setCheckedRefs([...(state.checkedRefs??[]),...(snapshot?.refs.filter(r=>r.kind==='local').map(r=>r.fullName)??[])]),'check-all'),item(t('Show None in Graph','全部从 Graph 隐藏'),()=>state.setCheckedRefs((state.checkedRefs??[]).filter(r=>!r.startsWith('refs/heads/'))),'clear-all')]:name==='tag'?[action('Create Tag…',{type:'tag.create'},'tag'),refresh]:name==='stash'?[action('Stash Changes…',{type:'stash.create'},'archive',busy||!snapshot?.changes.length||!!snapshot.operation.kind),refresh]:name==='worktree'?[action('Add Worktree…',{type:'worktree.add'},'new-folder'),refresh]:[action('Fetch…',{type:'fetch'},'cloud-download'),refresh];
     return {caption:{repositories:t('Repositories','仓库'),local:t('Local Branches','本地分支'),remote:t('Remotes','远端'),tag:'Tags',stash:'Stashes',worktree:'Worktrees'}[name],items};
   }
   if(target.kind==='remote')return {caption:target.name,items:[action('Fetch…',{type:'fetch',remote:target.name},'cloud-download'),refresh]};
-  if(target.kind==='ref-folder') {
-    const refs=target.refs.filter(ref=>ref.targetType===undefined||ref.targetType==='commit'),names=refs.map(ref=>ref.fullName);
-    return {caption:`${target.label} · ${refs.length} ${t('branches','个分支')}`,items:[item(t('Show All in Graph','全部显示在 Graph'),()=>state.setCheckedRefs([...(state.checkedRefs??[]),...names]),'eye',!refs.length),item(t('Show Only This Folder','仅显示此目录'),()=>state.setCheckedRefs(names),'filter',!refs.length),item(t('Hide All from Graph','全部从 Graph 隐藏'),()=>state.setCheckedRefs((state.checkedRefs??[]).filter(name=>!names.includes(name))),'eye-closed',!refs.length),copy(t('Copy Branch Names','复制分支名称'),refs.map(ref=>ref.name).join('\n'))]};
-  }
+  const refBatch=(refs:GitRef[],caption:string)=>{
+    const valid=refs.filter(ref=>ref.targetType===undefined||ref.targetType==='commit'),names=valid.map(ref=>ref.fullName),local=valid.every(ref=>ref.kind==='local'),current=valid.find(ref=>ref.kind==='local'&&ref.name===snapshot?.branch),occupied=valid.find(ref=>ref.kind==='local'&&snapshot?.worktrees.some(tree=>tree.branch?.replace(/^refs\/heads\//,'')===ref.name&&!samePath(tree.path,snapshot.repository.root))),blocked=current?t('The current branch is selected.','选择中包含当前分支。'):occupied?t(`Used by another Worktree: ${occupied.name}`,`其他 Worktree 正在使用：${occupied.name}`):undefined;
+    const items:MenuItem[]=[item(t('Show Selected in Graph','在 Graph 中显示所选分支'),()=>state.setCheckedRefs([...(state.checkedRefs??[]),...names]),'eye',!valid.length),item(t('Show Only Selected','仅显示所选分支'),()=>state.setCheckedRefs(names),'filter',!valid.length),item(t('Hide Selected from Graph','从 Graph 隐藏所选分支'),()=>state.setCheckedRefs((state.checkedRefs??[]).filter(name=>!names.includes(name))),'eye-closed',!valid.length)];
+    if(local)items.push(action(t(`Delete ${valid.length} Local Branch${valid.length===1?'':'es'}…`,`Delete ${valid.length} 个本地分支…`),{type:'branch.delete',names:valid.map(ref=>ref.name),expectedOids:Object.fromEntries(valid.map(ref=>[ref.name,ref.oid]))},'trash',busy||!!blocked,blocked));
+    items.push(copy(t('Copy Branch Names','复制分支名称'),valid.map(ref=>ref.name).join('\n')));
+    return {caption,items};
+  };
+  if(target.kind==='ref-folder')return refBatch(target.refs,`${target.label} · ${target.refs.length} ${t('branches','个分支')}`);
   if(target.kind==='files') {
     const unique=[...new Map(target.files.map(file=>[`${file.target.kind}:${file.path}:${'area' in file.target?file.target.area:''}`,file])).values()],paths=[...new Set(unique.map(file=>file.path))];
     const changes=unique.filter((file):file is FileMenuEntry & {target:Extract<DiffTarget,{kind:'change'}>}=>file.target.kind==='change'),stage=changes.filter(file=>file.target.area!=='staged').map(file=>file.path),unstage=changes.filter(file=>file.target.area==='staged').map(file=>file.path),discard=changes.filter(file=>file.target.area==='unstaged').map(file=>file.path),conflicts=changes.filter(file=>file.target.area==='conflict').map(file=>file.path);
@@ -39,7 +43,9 @@ export function menuFor(target: MenuTarget, api: MenuApi): { caption: string; it
     return {caption:paths.length===1?paths[0]:t(`${paths.length} Files`,`${paths.length} 个文件`),items};
   }
   if(target.kind==='ref') {
-    const ref=target.ref, occupied=snapshot?.worktrees.find(w=>w.branch?.replace(/^refs\/heads\//,'')===ref.name&&!samePath(w.path,snapshot.repository.root));
+    const ref=target.ref,selected=target.refs?.length?target.refs:[ref];
+    if(selected.length>1)return refBatch(selected,t(`${selected.length} Branches`,`${selected.length} 个分支`));
+    const occupied=snapshot?.worktrees.find(w=>w.branch?.replace(/^refs\/heads\//,'')===ref.name&&!samePath(w.path,snapshot.repository.root));
     const commitTarget=ref.targetType===undefined||ref.targetType==='commit';
     const current=ref.kind==='local'&&ref.name===snapshot?.branch, noBranch=!snapshot?.branch, operation=!!snapshot?.operation.kind;
     const reason=current?t('This is the current branch.','这是当前分支。'):occupied?t(`Used by Worktree: ${occupied.path}`,`被 Worktree 使用：${occupied.path}`):undefined;
@@ -50,7 +56,7 @@ export function menuFor(target: MenuTarget, api: MenuApi): { caption: string; it
     items.push(action(ref.kind==='remote'?'Create Tracking Branch…':'Create Branch…',{type:'branch.create',target:ref.fullName},'git-branch',busy||!commitTarget));
     if(ref.kind==='local')items.push(action('Create Tag…',{type:'tag.create',target:ref.fullName},'tag'));
     if(ref.kind!=='tag')items.push(action('Merge…',{type:'merge',target:ref.fullName},'git-merge',busy||noBranch||current||operation),action('Rebase…',{type:'rebase',target:ref.fullName},'git-pull-request',busy||noBranch||current||operation));
-    if(ref.kind==='local')items.push(action('Push…',{type:'push',branch:ref.name},'arrow-up'),action('Delete Branch…',{type:'branch.delete',target:ref.name},'trash',busy||current||!!occupied,reason));
+    if(ref.kind==='local')items.push(action('Push…',{type:'push',branch:ref.name},'arrow-up'),action('Delete Branch…',{type:'branch.delete',target:ref.name,names:[ref.name],expectedOids:{[ref.name]:ref.oid}},'trash',busy||current||!!occupied,reason));
     if(ref.kind==='tag')items.push(action('Delete Tag…',{type:'tag.delete',target:ref.name},'trash'),copy('Copy Tag Name',ref.name),item('Copy Commit ID',()=>api.host('copyText',{text:ref.oid}),'copy',!commitTarget,t('This Tag does not point to a Commit.','此 Tag 不指向 Commit。')));else items.push(copy('Copy Branch Name',ref.name));
     if(occupied)items.push(item('Open Worktree',()=>api.host('openWorktree',{path:occupied.path,newWindow:false}),'folder-opened'));
     return {caption:ref.name,items};
