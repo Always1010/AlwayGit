@@ -9,11 +9,13 @@ import { verifyFiles } from './test-files-ui.mjs';
 import { verifyHistoryRows } from './test-history-ui.mjs';
 import { verifyDiffNavigation } from './test-diff-ui.mjs';
 import { verifyWorktrees } from './test-worktrees-ui.mjs';
+import { verifyAppearance } from './test-appearance-ui.mjs';
 
 const root = path.resolve('dist/webview');
 const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.ttf': 'font/ttf', '.woff2': 'font/woff2', '.svg': 'image/svg+xml' };
 const server = createServer(async (request, response) => {
   const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
+  if (pathname === '/favicon.ico') { response.writeHead(204); response.end(); return; }
   const filename = path.resolve(root, '.' + (pathname === '/' ? '/index.html' : pathname));
   if (path.relative(root, filename).startsWith('..')) { response.writeHead(403); response.end(); return; }
   try { const data = await readFile(filename); response.setHeader('Content-Type', mime[path.extname(filename)] ?? 'application/octet-stream'); response.end(data); }
@@ -24,10 +26,14 @@ await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 let browser;
 try {
   browser = await chromium.launch(process.env.ALWAYGIT_BROWSER_EXECUTABLE ? { executablePath: process.env.ALWAYGIT_BROWSER_EXECUTABLE } : process.platform === 'win32' ? { channel: 'msedge' } : {});
+  const url = `http://127.0.0.1:${server.address().port}/?demo=1`;
+  if (process.argv.includes('--appearance-only')) {
+    await verifyAppearance(browser, url);
+    console.log('ALWAYGIT_UI_TESTS_PASSED: appearance-only');
+  } else {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
-  const url = `http://127.0.0.1:${server.address().port}/?demo=1`;
   await page.goto(url);
   await page.evaluate(() => localStorage.clear());
   await page.reload();
@@ -170,10 +176,6 @@ try {
   assert.ok(Number(await sidebarSeparator.getAttribute('aria-valuenow')) > originalSidebar, 'Keyboard resizing must update the sidebar width');
   await page.getByRole('button', { name: 'Restore Layout', exact: true }).click();
   assert.equal(Number(await sidebarSeparator.getAttribute('aria-valuenow')), 210);
-  await page.getByLabel('Layout').selectOption('editor');
-  await page.getByTestId('diff-preview').waitFor({ state: 'hidden' });
-  await page.getByLabel('Layout').selectOption('workbench');
-  await page.getByTestId('diff-preview').waitFor();
 
   await sidebar.getByRole('button', { name: 'Clear Selection', exact: true }).click();
   await history.getByText('No branches selected', { exact: true }).waitFor();
@@ -195,23 +197,24 @@ try {
   await history.getByRole('button', { name: /Working Tree/ }).click();
   const draft = page.getByRole('textbox', { name: 'Commit message' });
   await draft.fill('Persistent bilingual draft');
-  await page.getByLabel('Language').selectOption('zh-CN');
+  await page.getByRole('button', { name: 'Interface Settings', exact: true }).click();
+  await page.getByTestId('interface-settings').getByLabel('Language').selectOption('zh-CN');
+  await page.getByRole('dialog').locator('.modal-footer .primary').click();
   await page.getByText('当前分支', { exact: true }).waitFor();
   assert.equal(await search.inputValue(), 'native diff');
   assert.equal(await draft.inputValue(), 'Persistent bilingual draft');
   assert.equal(await sidebar.getByLabel('Show branch main', { exact: true }).isChecked(), true);
   assert.equal(await sidebar.getByLabel('Show branch feature/history-graph', { exact: true }).isChecked(), true);
 
-  await page.getByLabel('Layout').selectOption('editor');
   await page.reload();
   await workbench.waitFor();
-  assert.equal(await page.getByLabel('Language').inputValue(), 'zh-CN');
-  assert.equal(await page.getByLabel('Layout').inputValue(), 'editor');
   assert.equal(await page.getByRole('textbox', { name: 'Commit message' }).inputValue(), 'Persistent bilingual draft');
   assert.equal(await page.getByRole('textbox', { name: 'Search commit history' }).inputValue(), 'native diff');
   assert.equal(await page.getByLabel('Show branch feature/history-graph', { exact: true }).isChecked(), true);
-  await page.getByLabel('Language').selectOption('en');
-  await page.getByLabel('Layout').selectOption('workbench');
+  await page.getByRole('button', { name: '界面设置', exact: true }).click();
+  assert.equal(await page.getByTestId('interface-settings').getByLabel('Language').inputValue(), 'zh-CN');
+  await page.getByTestId('interface-settings').getByLabel('Language').selectOption('en');
+  await page.getByRole('dialog').locator('.modal-footer .primary').click();
 
   await history.getByRole('button', { name: /Working Tree/ }).click();
   const file = details.getByRole('button', { name: 'webview/styles.css', exact: true });
@@ -262,6 +265,7 @@ try {
   await verifyDiffNavigation(browser, url);
   await verifyWorktrees(browser, url);
   console.log('ALWAYGIT_UI_TESTS_PASSED: four-pane layout, complete context menus, focus/viewport keyboard behavior, targeted dialogs, resizing and header scroll sync, Locate HEAD, multi-ref filtering, language/session, Diff preview, compact themes');
+  }
 } finally {
   await browser?.close();
   await new Promise(resolve => server.close(resolve));

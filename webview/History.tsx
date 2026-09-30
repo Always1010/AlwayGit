@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type React from 'react';
 import { GraphRow, layoutGraph } from './graph';
@@ -7,19 +7,29 @@ import { useTranslation } from './i18n';
 import { Button, Empty, Icon, ResizeHandle } from './ui';
 import type { ContextHandler } from './Sidebar';
 import { selectionForClick } from './commitSelection';
+import { effectiveRowHeight } from './appearance';
 
 export function History({ context, checkout, checkoutBranch }: { context: ContextHandler; checkout(oid:string):void; checkoutBranch(name:string):void }) {
-  const state=useWorkbench(),t=useTranslation(),viewport=useRef<HTMLDivElement>(null),header=useRef<HTMLDivElement>(null),pendingSelection=useRef<string|undefined>(undefined),pendingRowFocus=useRef<string|undefined>(undefined),cached=useRef<{commits:typeof state.commits;graph:ReturnType<typeof layoutGraph>}|undefined>(undefined);
+  const state=useWorkbench(),t=useTranslation(),viewport=useRef<HTMLDivElement>(null),header=useRef<HTMLDivElement>(null),pendingSelection=useRef<string|undefined>(undefined),pendingRowFocus=useRef<string|undefined>(undefined),cached=useRef<{commits:typeof state.commits;palette:typeof state.appearance.palette;graph:ReturnType<typeof layoutGraph>}|undefined>(undefined);
+  const [hoveredPath,setHoveredPath]=useState<string|undefined>(undefined);
   const graph=useMemo(()=>{
     const prior=cached.current; let result:ReturnType<typeof layoutGraph>;
-    if(prior&&state.commits.length>prior.commits.length&&prior.commits.every((c,i)=>state.commits[i]?.oid===c.oid)){const tail=layoutGraph(state.commits.slice(prior.commits.length),prior.graph.endState);result={rows:[...prior.graph.rows,...tail.rows],endState:tail.endState,laneCount:Math.max(prior.graph.laneCount,tail.laneCount)};}else result=layoutGraph(state.commits);
-    cached.current={commits:state.commits,graph:result};return result;
-  },[state.commits]);
-  const rowHeight=state.layout.row,width=Math.max(48,graph.laneCount*16+12);
+    if(prior&&prior.palette===state.appearance.palette&&state.commits.length>prior.commits.length&&prior.commits.every((c,i)=>state.commits[i]?.oid===c.oid)){const tail=layoutGraph(state.commits.slice(prior.commits.length),prior.graph.endState,state.appearance.palette);result={rows:[...prior.graph.rows,...tail.rows],endState:tail.endState,laneCount:Math.max(prior.graph.laneCount,tail.laneCount)};}else result=layoutGraph(state.commits,undefined,state.appearance.palette);
+    cached.current={commits:state.commits,palette:state.appearance.palette,graph:result};return result;
+  },[state.commits,state.appearance.palette]);
+  const rowHeight=effectiveRowHeight(state.layout),width=Math.max(48,graph.laneCount*16+12);
+  const previousRowHeight=useRef(rowHeight);
+  const lastScrollTop=useRef(0);
   const mainOids=useMemo(()=>{const result=new Set<string>(),byOid=new Map(state.commits.map(commit=>[commit.oid,commit])),name=state.snapshot?.defaultBranch;if(!name)return result;let oid=state.snapshot?.refs.find(ref=>ref.kind==='local'&&ref.name===name)?.oid??state.snapshot?.refs.find(ref=>ref.kind==='remote'&&ref.name.endsWith(`/${name}`))?.oid;while(oid&&!result.has(oid)){result.add(oid);oid=byOid.get(oid)?.parents[0];}return result;},[state.commits,state.snapshot?.defaultBranch,state.snapshot?.refs]);
   const virtual=useVirtualizer({count:state.commits.length,getScrollElement:()=>viewport.current,estimateSize:()=>rowHeight,overscan:10});
   const rows=virtual.getVirtualItems();
-  useEffect(()=>virtual.measure(),[rowHeight]);
+  useLayoutEffect(()=>{
+    const anchor=lastScrollTop.current/previousRowHeight.current;
+    virtual.measure();
+    if(previousRowHeight.current!==rowHeight){lastScrollTop.current=anchor*rowHeight;virtual.scrollToOffset(lastScrollTop.current);}
+    previousRowHeight.current=rowHeight;
+  },[rowHeight,state.layout.font]);
+  useEffect(()=>setHoveredPath(undefined),[state.repoId,state.appearance.palette,state.search]);
   useEffect(()=>{const last=rows.at(-1);if(last&&last.index>=state.commits.length-10&&state.hasMore&&!state.historyLoading)void state.loadHistory(true);},[rows.at(-1)?.index,state.hasMore,state.historyLoading]);
   const refsKey=(state.checkedRefs??[]).join('\0');
   useEffect(()=>{viewport.current?.scrollTo({top:0});},[state.repoId,refsKey,state.search]);
@@ -38,12 +48,12 @@ export function History({ context, checkout, checkoutBranch }: { context: Contex
     <div className="history-table" role="table" aria-label="Commit history" aria-multiselectable="true" aria-rowcount={state.commits.length+2}>
     <div ref={header} className="history-header-scroll"><div className="history-columns" style={{...columns,minWidth:width+180+state.layout.author+state.layout.date}} role="row"><span role="columnheader">Graph</span><span role="columnheader">{t('Message / Refs','提交信息 / 引用')}</span><span role="columnheader">{t('Author','作者')}<ResizeHandle axis="x" label="Resize author column" className="column-grip" value={state.layout.author} min={64} max={220} onChange={author=>state.setLayout({author})}/></span><span role="columnheader">{t('Date','日期')}<ResizeHandle axis="x" label="Resize date column" className="column-grip" value={state.layout.date} min={82} max={220} onChange={date=>state.setLayout({date})}/></span></div></div>
     <div role="row" className="working-row-wrap"><div role="cell"><button className={`working-row ${state.tab==='changes'?'selected':''}`} onClick={state.selectWorking}><Icon name="files"/><span>{t('Working Tree','工作区')} · {state.snapshot?.changes.length??0} {t('changes','项变更')}</span>{conflictCount>0&&<span className="working-conflict-badge" title={t('Unresolved conflicts','未解决的冲突')}>{conflictCount} {t('conflicts','个冲突')}</span>}<span className="muted">{t('Uncommitted','未提交')}</span></button></div></div>
-    <div className="history-viewport" ref={viewport} role="rowgroup" tabIndex={0} onScroll={event=>{if(header.current)header.current.scrollLeft=event.currentTarget.scrollLeft;}} onKeyDown={event=>{
+    <div className="history-viewport" ref={viewport} role="rowgroup" tabIndex={0} onMouseLeave={()=>setHoveredPath(undefined)} onScroll={event=>{lastScrollTop.current=event.currentTarget.scrollTop;if(header.current)header.current.scrollLeft=event.currentTarget.scrollLeft;}} onKeyDown={event=>{
       if(!['ArrowUp','ArrowDown'].includes(event.key))return;event.preventDefault();const index=state.commits.findIndex(c=>c.oid===state.selectedOid),next=Math.min(state.commits.length-1,Math.max(0,index+(event.key==='ArrowDown'?1:-1)));if(state.commits[next])void state.selectCommit(state.commits[next].oid);
     }}>
       {!state.commits.length?<Empty title={state.historyLoading?t('Loading history…','正在读取历史…'):!state.checkedRefs?.length?t('No branches selected','尚未选择分支'):t('No matching commits','没有匹配的 Commit')}>{t('Select branches on the left or adjust the filter.','勾选左侧分支，或调整过滤条件。')}</Empty>:<div className="history-rows" style={{height:virtual.getTotalSize(),minWidth:width+180+state.layout.author+state.layout.date}}>
         {rows.map(row=>{const commit=state.commits[row.index],refs=state.snapshot?.refs.filter(r=>r.oid===commit.oid)??[],selected=state.tab==='history'&&state.selectedOids.includes(commit.oid),head=commit.oid===state.snapshot?.head;return <div key={commit.oid} data-oid={commit.oid} role="row" tabIndex={0} aria-rowindex={row.index+3} aria-selected={selected} aria-label={`${commit.subject}, ${commit.author}`} className={`commit-row commit-row-interactive ${selected?'selected':''} ${head?'head-row':''} ${row.index%2?'alternate':''}`} style={{...columns,position:'absolute',transform:`translateY(${row.start}px)`,height:rowHeight,width:'100%'}} onClick={event=>{event.currentTarget.focus();choose(event,commit.oid);}} onDoubleClick={()=>checkout(commit.oid)} onContextMenu={event=>{event.currentTarget.focus();openContext(event,commit.oid);}} onKeyDown={event=>keyboard(event,commit.oid)}>
-          <div className="graph-cell" role="cell" aria-label={`Commit node ${commit.oid}`}><GraphRow row={graph.rows[row.index]} width={width} height={rowHeight} head={head} selected={selected} main={mainOids.has(commit.oid)} mainTargets={mainOids}/></div>
+          <div className="graph-cell" role="cell" aria-label={`Commit node ${commit.oid}`}><GraphRow row={graph.rows[row.index]} width={width} height={rowHeight} head={head} selected={selected} main={mainOids.has(commit.oid)} mainTargets={mainOids} paletteId={state.appearance.palette} hoveredPath={hoveredPath} onHoverPath={setHoveredPath}/></div>
           <div className="commit-subject" role="cell">{refs.map(ref=><button key={ref.fullName} className={`ref-badge ${ref.kind} ${ref.kind==='local'&&ref.name===state.snapshot?.branch?'current':''}`} title={ref.fullName} onClick={event=>{event.stopPropagation();void state.selectCommit(commit.oid);}} onDoubleClick={event=>{event.stopPropagation();if(ref.kind==='local')checkoutBranch(ref.name);}} onContextMenu={event=>{event.stopPropagation();context(event,{kind:'ref',ref});}} onKeyDown={event=>{event.stopPropagation();if(event.key==='ContextMenu'||event.shiftKey&&event.key==='F10'){event.preventDefault();context(event,{kind:'ref',ref});}}}>{ref.kind==='local'&&ref.name===state.snapshot?.branch?'HEAD · ':''}{ref.name}</button>)}{head&&!state.snapshot?.branch&&<span className="current-marker">HEAD</span>}<span className="commit-message-button truncate" title={`${commit.subject}\n${commit.oid}`}>{commit.subject}</span></div>
           <span role="cell" className="history-author truncate" title={`${commit.author} <${commit.email}>`}>{commit.author}</span><span role="cell" className="history-date truncate" title={new Date(commit.timestamp*1000).toLocaleString()}>{new Date(commit.timestamp*1000).toLocaleString(state.language,{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false})}</span>
         </div>;})}

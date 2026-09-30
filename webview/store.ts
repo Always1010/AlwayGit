@@ -7,15 +7,18 @@ import { folderKeys } from './refTree';
 import { affectsWorkingDiff, diffKey, historyKey, mergeChanges, workingTarget } from './refresh';
 import { actionTarget } from './actionFeedback';
 import type { ActionFeedback } from './actionFeedback';
+import { normalizeAppearance, type Appearance, type InterfaceSettings } from './appearance';
 
 let repositoryEpoch = 0, snapshotEpoch = 0, historyEpoch = 0, detailEpoch = 0;
 let refreshInvalidation: { epoch: number; changes?: RepositoryChanges; forceHistory: boolean } | undefined;
 const session = readSession(), views = session.views ?? {}, executingRepositories = new Set<string>(), hostBusyRepositories = new Set<string>();
 const actionFeedbacks = new Map<string, ActionFeedback>();
 let actionSequence = 0;
-export const defaultLayout: LayoutState = { preset: 'workbench', sidebar: 210, details: 300, diff: 220, author: 100, date: 120, font: 13, row: 26 };
+export const defaultLayout: LayoutState = { preset: 'workbench', sidebar: 210, details: 300, diff: 220, author: 100, date: 120, font: 13, row: 24 };
 export interface CheckoutFailure { reason?: string; paths: string[]; target: string; worktreePath?: string; stashCreated?: boolean; stashOid?: string; detached?: boolean }
 interface WorkbenchState {
+  appearance: Appearance; settingsBaseline?: InterfaceSettings;
+  beginSettings(): void; previewSettings(value: Partial<InterfaceSettings>): void; finishSettings(apply: boolean): void; restoreLayout(): void;
   repositories: Repository[]; repoId?: string; snapshot?: Snapshot; commits: Commit[]; details?: CommitDetails; comparison?: CommitComparison; selectedOid?: string; selectedOids: string[]; selectionAnchor?: string; selectedParent?: string; selectedStashOid?: string; stashDetails?: CommitDetails; selectedFile?: string; diffTarget?: DiffTarget; diffRevision: number;
   ref?: string; checkedRefs?: string[]; expandedRefGroups?:string[]; collapsedSidebarGroups:string[]; search: string; language: Language; layout: LayoutState; checkoutFailure?: CheckoutFailure; actionFeedback?: ActionFeedback; locateToken:number;
   nextOffset: number; hasMore: boolean; tips: string[]; loading: boolean; historyLoading: boolean; detailsLoading: boolean; busy: boolean; activity: string; error?: string; notice?: string; tab: 'history' | 'changes'; drafts: Record<string, string>;
@@ -27,10 +30,13 @@ const message = (error: unknown) => error instanceof Error ? error.message : Str
 const clamp = (n: number, min: number, max: number, fallback: number) => Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : fallback;
 function layout(value: Partial<LayoutState> = {}): LayoutState {
   const l = { ...defaultLayout, ...value };
-  return { preset: l.preset === 'editor' ? 'editor' : 'workbench', sidebar: clamp(l.sidebar, 160, 360, 210), details: clamp(l.details, 230, 480, 300), diff: clamp(l.diff, 130, 450, 220), author: clamp(l.author, 64, 220, 100), date: clamp(l.date, 82, 220, 120), font: clamp(l.font, 12, 16, 13), row: clamp(l.row, 24, 36, 26) };
+  return { preset: 'workbench', sidebar: clamp(l.sidebar, 160, 360, 210), details: clamp(l.details, 230, 480, 300), diff: clamp(l.diff, 130, 450, 220), author: clamp(l.author, 64, 220, 100), date: clamp(l.date, 82, 220, 120), font: Math.round(clamp(l.font, 12, 16, 13)), row: Math.round(clamp(l.row, 22, 36, 24)) };
 }
+const initialLayout = layout(session.layout);
+// Only the old default density migrates; custom dimensions and drafts are kept.
+if (!session.appearance && initialLayout.row === 26) initialLayout.row = 24;
 export const useWorkbench = create<WorkbenchState>((set, get) => ({
-  repositories: [], commits: [], selectedOids:[], search: '', language: session.language === 'zh-CN' ? 'zh-CN' : 'en', layout: layout(session.layout), locateToken:0,nextOffset: 0, tips: [], hasMore: false, loading: false, historyLoading: false, detailsLoading: false, diffRevision: 0, busy: false, activity: '', tab: 'history', drafts: session.drafts ?? {}, collapsedSidebarGroups:[],
+  repositories: [], commits: [], selectedOids:[], search: '', language: session.language === 'zh-CN' ? 'zh-CN' : 'en', layout: initialLayout, appearance: normalizeAppearance(session.appearance), locateToken:0,nextOffset: 0, tips: [], hasMore: false, loading: false, historyLoading: false, detailsLoading: false, diffRevision: 0, busy: false, activity: '', tab: 'history', drafts: session.drafts ?? {}, collapsedSidebarGroups:[],
   report(error) { set({ error: message(error) }); },
   async initialize() {
     set({ loading: true });
@@ -162,10 +168,25 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   setDraft(value) { const repoId = get().repoId; if (repoId) set({ drafts: { ...get().drafts, [repoId]: value } }); },
   setLanguage(language) { set({ language }); },
   setLayout(value) { set({ layout: layout({ ...get().layout, ...value }) }); },
+  restoreLayout() { const { font, row } = get().layout; set({ layout: { ...defaultLayout, font, row } }); },
+  beginSettings() {
+    const state = get(); if (state.settingsBaseline) return;
+    set({ settingsBaseline: { language: state.language, font: state.layout.font, row: state.layout.row, appearance: { ...state.appearance } } });
+  },
+  previewSettings(value) {
+    if (!get().settingsBaseline) return;
+    const state = get();
+    set({ language: value.language ?? state.language, appearance: normalizeAppearance(value.appearance ?? state.appearance), layout: layout({ ...state.layout, font: value.font ?? state.layout.font, row: value.row ?? state.layout.row }) });
+  },
+  finishSettings(apply) {
+    const baseline = get().settingsBaseline; if (!baseline) return;
+    set(apply ? { settingsBaseline: undefined } : { settingsBaseline: undefined, language: baseline.language, appearance: baseline.appearance, layout: layout({ ...get().layout, font: baseline.font, row: baseline.row }) });
+  },
 }));
 useWorkbench.subscribe(state => {
   if (state.repoId) views[state.repoId] = { ref: state.ref, checkedRefs: state.checkedRefs, expandedRefGroups:state.expandedRefGroups,collapsedSidebarGroups:state.collapsedSidebarGroups, search: state.search, selectedOid: state.selectedOid, selectedParent: state.selectedParent, selectedStashOid: state.selectedStashOid, selectedFile: state.selectedFile, tab: state.tab };
-  saveSession({ version: 2, repoId: state.repoId, drafts: state.drafts, views, language: state.language, layout: state.layout });
+  const baseline = state.settingsBaseline;
+  saveSession({ version: 2, repoId: state.repoId, drafts: state.drafts, views, language: baseline?.language ?? state.language, layout: baseline ? { ...state.layout, font: baseline.font, row: baseline.row } : state.layout, appearance: baseline?.appearance ?? state.appearance });
 });
 let changedTimer: ReturnType<typeof setTimeout>;
 let pendingChange: { repoId: string; changes?: RepositoryChanges } | undefined;
