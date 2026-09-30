@@ -31,7 +31,7 @@ export type GitAction =
   | { type: 'worktree.add'; path: string; branch?: string; newBranch?: string; start?: string; detach?: boolean }
   | { type: 'worktree.remove'; path: string; force?: boolean }
   | { type: 'merge' | 'rebase'; target: string }
-  | { type: 'cherry-pick' | 'revert'; commits: string[]; mainline?: number }
+  | { type: 'cherry-pick' | 'revert'; commits: string[]; mainline?: number; expectedHead?: string; expectedBranch?: string }
   | { type: 'reset'; target: string; mode: 'soft' | 'mixed' | 'hard' }
   | { type: 'operation.continue' | 'operation.abort' | 'operation.skip'; kind: OperationKind };
 export type ContentSource = { kind: 'revision'; revision: string; path: string } | { kind: 'index'; path: string; stage?: 0 | 1 | 2 | 3 } | { kind: 'empty' };
