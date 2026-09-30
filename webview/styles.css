@@ -172,6 +172,13 @@ h1,h2,p {margin:0;}
 .form-field input,.form-field select {padding:6px 8px;width:100%;}
 .form-field small {font-size:11px;}
 .form-checkbox {display:flex;align-items:center;gap:6px;}
+.push-target {display:flex;flex-direction:column;gap:6px;padding:10px 11px;border:1px solid var(--section-border);background:color-mix(in srgb,var(--panel) 76%,var(--bg));}
+.push-target>span {color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em;}
+.push-target>strong {font-family:var(--vscode-editor-font-family,Consolas,monospace);font-size:14px;overflow-wrap:anywhere;}
+.push-target dl {display:grid;gap:3px;margin:2px 0 0;font-size:12px;}
+.push-target dl>div {display:grid;grid-template-columns:110px minmax(0,1fr);gap:8px;}
+.push-target dt {color:var(--muted);}
+.push-target dd {margin:0;overflow-wrap:anywhere;}
 .modal-footer {display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap;padding:10px 13px;border-top:1px solid var(--border);}
 .warning-text,.form-error {color:var(--error);}
 .discard-paths {overflow:auto;max-height:150px;font:12px/1.7 var(--vscode-editor-font-family,Consolas,monospace);overflow-wrap:anywhere;}

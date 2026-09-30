@@ -85,6 +85,11 @@ export class GitService implements GitServiceContract {
     } finally { await wrapped?.dispose?.(); }
   }
   private async text(repo: Repository, args: string[]): Promise<string> { return (await this.run(repo, args)).stdout.toString('utf8').trim(); }
+  private async optionalConfig(repo: Repository, key: string): Promise<string | undefined> {
+    const result = await this.run(repo, ['config', '--get', key], true);
+    if (result.code > 1) throw new GitError(result.stderr.toString('utf8').trim() || `Cannot read Git configuration ${key}`, 'GIT_FAILED');
+    return result.stdout.toString('utf8').trim() || undefined;
+  }
   async discover(root: string): Promise<Repository> {
     const resolved = await realpath(path.resolve(root));
     const provisional: Repository = { id: '', root: resolved, commonDir: '', name: path.basename(resolved) };
@@ -120,7 +125,24 @@ export class GitService implements GitServiceContract {
       const todo = await readFile(path.join(gitDir, 'sequencer', 'todo'), 'utf8'); if (/^pick /m.test(todo)) operation.kind = 'cherry-pick'; else if (/^revert /m.test(todo)) operation.kind = 'revert';
     }
     if (operation.kind) { operation.canContinue = operation.conflicts === 0; operation.canAbort = true; operation.canSkip = operation.kind !== 'merge'; }
-    return { repository: repo, ...status, refs, remotes: remoteOutput ? remoteOutput.split('\n') : [], stashes, worktrees, operation, version: ++this.version };
+    const remotes = remoteOutput ? remoteOutput.split('\n') : [];
+    let pushTarget: Snapshot['pushTarget'];
+    if (status.branch) {
+      const [branchPushRemote, defaultPushRemote, branchRemote, mergeRef] = await Promise.all([
+        this.optionalConfig(repo, `branch.${status.branch}.pushRemote`),
+        this.optionalConfig(repo, 'remote.pushDefault'),
+        this.optionalConfig(repo, `branch.${status.branch}.remote`),
+        this.optionalConfig(repo, `branch.${status.branch}.merge`),
+      ]);
+      const upstream = refs.find(ref => ref.kind === 'local' && ref.name === status.branch)?.upstream ?? status.upstream;
+      const upstreamRemote = remotes.slice().sort((a,b)=>b.length-a.length).find(remote => upstream?.startsWith(`${remote}/`));
+      const remote = branchPushRemote ?? defaultPushRemote ?? branchRemote ?? upstreamRemote ?? (remotes.length === 1 ? remotes[0] : undefined);
+      const upstreamBranch = upstreamRemote ? upstream!.slice(upstreamRemote.length + 1) : undefined;
+      const configuredBranch = mergeRef?.replace(/^refs\/heads\//, '');
+      const remoteBranch = remote && remote === upstreamRemote && upstreamBranch ? upstreamBranch : remote && remote === branchRemote && configuredBranch ? configuredBranch : status.branch;
+      pushTarget = { localBranch: status.branch, ...(remote ? { remote } : {}), remoteBranch, configured: !!upstream };
+    }
+    return { repository: repo, ...status, refs, remotes, ...(pushTarget ? { pushTarget } : {}), stashes, worktrees, operation, version: ++this.version };
   }
   private async worktrees(repo: Repository): Promise<Worktree[]> {
     const records = decodePaths((await this.run(repo, ['worktree', 'list', '--porcelain', '-z'])).stdout).split('\0'); const result: Worktree[] = []; let current: Worktree | undefined;
@@ -238,8 +260,11 @@ export class GitService implements GitServiceContract {
       case 'pull': if (!['ff-only', 'merge', 'rebase'].includes(action.strategy)) throw new GitError('Invalid pull strategy', 'INVALID_ARGUMENT'); args = ['pull', ...(action.strategy === 'merge' ? ['--no-rebase', '--ff'] : [`--${action.strategy}`]), ...remote(action.remote)]; break;
       case 'push': {
         const branch = action.branch ? await this.refName(repo, action.branch) : undefined; let destination = action.remote;
+        if (action.remoteBranch && !branch) throw new GitError('Select a local branch before choosing a remote branch', 'INVALID_ARGUMENT');
         if (branch) { await this.oid(repo, `refs/heads/${branch}`); if (!destination) { const configured = await this.run(repo, ['config', '--get', `branch.${branch}.remote`], true); if (configured.code > 1) throw new GitError(configured.stderr.toString('utf8'), 'GIT_FAILED'); destination = configured.stdout.toString('utf8').trim(); if (!destination) { const remotes = (await this.text(repo, ['remote'])).split('\n').filter(Boolean); if (remotes.length !== 1) throw new GitError('Select a remote before pushing this branch', 'INVALID_ARGUMENT'); destination = remotes[0]; } } }
-        args = ['push', ...(branch ? ['--set-upstream'] : []), ...(action.forceWithLease ? ['--force-with-lease'] : []), ...remote(destination), ...(branch ? [`refs/heads/${branch}:refs/heads/${branch}`] : [])]; break;
+        const remoteBranch = branch ? await this.refName(repo, action.remoteBranch ?? branch) : undefined;
+        const setUpstream = branch && (action.setUpstream ?? true);
+        args = ['push', ...(setUpstream ? ['--set-upstream'] : []), ...(action.forceWithLease ? ['--force-with-lease'] : []), ...remote(destination), ...(branch ? [`refs/heads/${branch}:refs/heads/${remoteBranch}`] : [])]; break;
       }
       case 'branch.create': {
         const name = await this.refName(repo, action.name); const start = action.start ? await this.oid(repo, action.start) : undefined; const upstream = action.start?.startsWith('refs/remotes/') ? action.start : undefined;

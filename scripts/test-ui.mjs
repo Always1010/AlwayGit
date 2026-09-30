@@ -43,6 +43,16 @@ try {
   await page.getByRole('button', { name: 'Locate HEAD', exact: true }).click();
   await page.waitForFunction(() => (document.querySelector('.history-viewport')?.scrollTop ?? 1) === 0);
 
+  await page.getByRole('button', { name: 'Push (2)', exact: true }).click();
+  let dialog = page.getByRole('dialog');
+  await dialog.waitFor();
+  await dialog.getByText('main → origin/main', { exact: true }).waitFor();
+  assert.equal(await dialog.getByLabel('Remote', { exact: true }).count(), 0, 'Configured Push targets should be summarized before showing edit controls');
+  await dialog.getByRole('button', { name: 'Change Target…', exact: true }).click();
+  assert.equal(await dialog.getByLabel('Remote', { exact: true }).inputValue(), 'origin');
+  assert.equal(await dialog.getByLabel('Remote Branch', { exact: true }).inputValue(), 'main');
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+
   const menu = page.getByTestId('context-menu');
   async function openMenu(locator, keyboard = false) {
     if (keyboard) { await locator.focus(); await locator.press('Shift+F10'); }
@@ -87,6 +97,12 @@ try {
   const featureBranch = sidebar.getByRole('button', { name: 'Branch feature/history-graph', exact: true });
   await assertMenu(featureBranch, ['Checkout…', 'Show in Graph', 'Show Only This Branch', 'Create Branch…', 'Create Tag…', 'Merge…', 'Rebase…', 'Push…', 'Delete Branch…', 'Copy Branch Name'], true);
   assert.equal(await featureBranch.evaluate(element => element === document.activeElement), true, 'Escape must restore focus to the context-menu opener');
+  await openMenu(featureBranch);
+  await menu.getByRole('menuitem', { name: 'Push…', exact: true }).click();
+  await dialog.waitFor();
+  await dialog.getByText('feature/history-graph → origin/feature/history-graph', { exact: true }).waitFor();
+  await dialog.getByText('This Push will set the selected target as the upstream branch.', { exact: true }).waitFor();
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
   await assertMenuButton(sidebar.getByRole('button', { name: 'Remotes actions', exact: true }), ['Fetch…', 'Refresh']);
   await assertMenuButton(sidebar.getByRole('button', { name: 'origin actions', exact: true }), ['Fetch…', 'Refresh']);
   const remoteBranch = sidebar.getByRole('button', { name: 'Branch origin/develop', exact: true });
@@ -112,7 +128,7 @@ try {
 
   await openMenu(featureBranch);
   await menu.getByRole('menuitem', { name: 'Create Tag…', exact: true }).click();
-  let dialog = page.getByRole('dialog');
+  dialog = page.getByRole('dialog');
   await dialog.waitFor();
   assert.equal(await dialog.getByLabel('Target Commit', { exact: true }).inputValue(), 'refs/heads/feature/history-graph');
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();

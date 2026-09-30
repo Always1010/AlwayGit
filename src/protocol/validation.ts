@@ -7,7 +7,7 @@ export const actionSchema = z.union([
   z.object({ type: z.literal('commit'), message: z.string().min(1).max(100000), amend: z.boolean().optional() }),
   z.object({ type: z.literal('fetch'), remote: text.optional() }),
   z.object({ type: z.literal('pull'), strategy: z.enum(['ff-only', 'merge', 'rebase']), remote: text.optional() }),
-  z.object({ type: z.literal('push'), remote: text.optional(), branch: text.optional(), forceWithLease: z.boolean().optional() }),
+  z.object({ type: z.literal('push'), remote: text.optional(), branch: text.optional(), remoteBranch: text.optional(), setUpstream: z.boolean().optional(), forceWithLease: z.boolean().optional() }),
   z.object({ type: z.literal('branch.create'), name: text, start: text.optional(), checkout: z.boolean().optional() }),
   z.object({ type: z.literal('branch.checkout'), name: text }),
   z.object({ type: z.literal('commit.checkout'), target: text }),

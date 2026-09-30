@@ -53,7 +53,7 @@ const subjects = ['Polish repository workbench interactions', 'Add native diff i
 const authors = ['Alex Chen', 'Morgan Lee', 'Sam Rivera', 'Jamie Park'];
 const oid = (n: number) => (0x9a73ed + n * 98761).toString(16).padStart(8, '0') + 'c42d9918a6bc5e4791033ad7e6f202cc';
 const commits: Commit[] = Array.from({ length: 180 }, (_, n) => ({ oid: oid(n), parents: n === 179 ? [] : n % 12 === 2 ? [oid(n + 1), oid(n + 4)] : [oid(n + 1)], author: authors[n % 4], email: `${authors[n % 4].split(' ')[0].toLowerCase()}@example.com`, timestamp: 1790715600 - n * 13800, subject: subjects[n % subjects.length] }));
-let demoSnapshot: Snapshot = { repository: repo, branch: 'main', head: commits[0].oid, upstream: 'origin/main', ahead: 2, behind: 0, changes: [
+let demoSnapshot: Snapshot = { repository: repo, branch: 'main', head: commits[0].oid, upstream: 'origin/main', pushTarget: { localBranch: 'main', remote: 'origin', remoteBranch: 'main', configured: true }, ahead: 2, behind: 0, changes: [
   { path: 'webview/App.tsx', indexStatus: 'M', worktreeStatus: ' ', conflict: false, untracked: false },
   { path: 'webview/styles.css', indexStatus: ' ', worktreeStatus: 'M', conflict: false, untracked: false },
   { path: 'src/git/service.ts', indexStatus: ' ', worktreeStatus: 'M', conflict: false, untracked: false },

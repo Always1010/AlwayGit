@@ -5,7 +5,8 @@ export interface Stash { selector: string; oid: string; subject: string }
 export interface Worktree { path: string; head: string; branch?: string; bare: boolean; detached: boolean; locked?: string; prunable?: string }
 export type OperationKind = 'merge' | 'rebase' | 'cherry-pick' | 'revert';
 export interface OperationState { kind?: OperationKind; conflicts: number; canContinue: boolean; canAbort: boolean; canSkip: boolean }
-export interface Snapshot { repository: Repository; branch: string; head?: string; upstream?: string; ahead: number; behind: number; changes: Change[]; refs: GitRef[]; remotes?: string[]; stashes: Stash[]; worktrees: Worktree[]; operation: OperationState; version: number }
+export interface PushTarget { localBranch: string; remote?: string; remoteBranch: string; configured: boolean }
+export interface Snapshot { repository: Repository; branch: string; head?: string; upstream?: string; pushTarget?: PushTarget; ahead: number; behind: number; changes: Change[]; refs: GitRef[]; remotes?: string[]; stashes: Stash[]; worktrees: Worktree[]; operation: OperationState; version: number }
 export interface Commit { oid: string; parents: string[]; author: string; email: string; timestamp: number; subject: string }
 export interface HistoryQuery { offset?: number; limit?: number; tips?: string[]; ref?: string; search?: string }
 export interface HistoryPage { commits: Commit[]; nextOffset: number; hasMore: boolean; tips: string[] }
@@ -16,7 +17,7 @@ export type GitAction =
   | { type: 'commit'; message: string; amend?: boolean }
   | { type: 'fetch'; remote?: string }
   | { type: 'pull'; strategy: 'ff-only' | 'merge' | 'rebase'; remote?: string }
-  | { type: 'push'; remote?: string; branch?: string; forceWithLease?: boolean }
+  | { type: 'push'; remote?: string; branch?: string; remoteBranch?: string; setUpstream?: boolean; forceWithLease?: boolean }
   | { type: 'branch.create'; name: string; start?: string; checkout?: boolean }
   | { type: 'branch.checkout'; name: string }
   | { type: 'commit.checkout'; target: string }
