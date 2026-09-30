@@ -39,8 +39,10 @@ h1,h2,p {margin:0;}
 .sidebar {background:var(--panel);overflow:auto;min-width:0;box-shadow:inset -1px 0 var(--section-border);}
 .sidebar-heading {display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--section-border);border-bottom:1px solid var(--section-border);min-height:29px;padding:0 4px;font-weight:600;background:color-mix(in srgb,var(--panel) 91%,var(--fg));}
 .sidebar-heading:first-child {border-top:0;}
-.sidebar-heading>.button {font-weight:600;justify-content:flex-start;flex:1;}
-.sidebar-heading>.codicon {color:var(--muted);}
+.sidebar-heading>.button {font-weight:600;}
+.heading-toggle {justify-content:flex-start!important;flex:1;min-width:0;padding-left:3px;}
+.heading-menu {flex:none!important;width:27px;padding:3px!important;border:1px solid transparent;justify-content:center!important;color:var(--muted);}
+.heading-menu:hover,.heading-menu:focus-visible {border-color:var(--border);color:var(--fg);background:var(--hover);}
 .sidebar-list {padding:3px 4px 7px;}
 .sidebar-item {display:flex;align-items:center;gap:5px;text-align:left;width:100%;min-height:27px;padding:4px 5px;min-width:0;}
 .ref-row {display:flex;align-items:center;min-width:0;border-left:3px solid transparent;}
@@ -49,7 +51,17 @@ h1,h2,p {margin:0;}
 .branch-check {display:flex;align-items:center;justify-content:center;width:23px;min-height:28px;flex:none;}
 .branch-shortcuts {display:flex;flex-wrap:wrap;gap:3px;padding:5px;font-size:11px;border-bottom:1px solid var(--row-border);}
 .branch-shortcuts .button {padding:2px 6px;min-height:23px;border:1px solid var(--border);background:color-mix(in srgb,var(--panel) 84%,var(--bg));}
-.remote-heading {display:flex;align-items:center;gap:5px;text-align:left;padding:3px 8px;width:100%;color:var(--muted);}
+.branch-tree {padding:3px 3px 7px;}
+.tree-row {padding-left:calc(var(--tree-depth) * 13px);}
+.tree-spacer,.tree-chevron {width:22px;min-width:22px;min-height:27px;padding:0;display:flex;align-items:center;justify-content:center;}
+.tree-chevron {color:var(--muted);}
+.tree-folder {display:flex;align-items:center;min-width:0;}
+.tree-folder-name {display:flex;align-items:center;gap:5px;flex:1;min-width:0;min-height:27px;padding:3px 4px;text-align:left;}
+.tree-folder-name>.codicon {color:var(--yellow);}
+.tree-count {margin-left:auto;color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums;}
+.remote-group {border-bottom:1px solid var(--row-border);}
+.remote-heading {display:flex;align-items:center;gap:2px;padding:2px 4px;color:var(--muted);}
+.remote-toggle {flex:1;justify-content:flex-start!important;min-width:0;font-weight:500;}
 .sidebar-empty {color:var(--muted);padding:7px 8px;font-size:12px;}
 .resize-handle {padding:0;position:relative;background:var(--border);border:0;touch-action:none;min-width:0;}
 .resize-handle.resize-x {cursor:col-resize;width:6px;height:100%;}

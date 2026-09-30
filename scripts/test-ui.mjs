@@ -60,24 +60,44 @@ try {
     await page.keyboard.press('Escape');
     await menu.waitFor({ state: 'hidden' });
   }
+  async function assertMenuButton(locator, labels) {
+    await locator.click();
+    await menu.waitFor();
+    const actual = await menu.getByRole('menuitem').allTextContents();
+    for (const label of labels) assert.ok(actual.some(value => value.trim() === label), `Expected menu item "${label}" in ${JSON.stringify(actual)}`);
+    await page.keyboard.press('Escape');
+    await menu.waitFor({ state: 'hidden' });
+  }
 
-  await assertMenu(sidebar.getByRole('button', { name: 'Repositories', exact: true }), ['Add Repository…', 'Refresh']);
+  const repositoriesHeading = sidebar.getByRole('button', { name: 'Repositories', exact: true });
+  await repositoriesHeading.click();
+  await sidebar.getByRole('button', { name: 'AlwayGit', exact: true }).waitFor({ state: 'hidden' });
+  assert.equal(await menu.isVisible(), false, 'A section title click must collapse the section without opening its menu');
+  await repositoriesHeading.click();
+  await assertMenuButton(sidebar.getByRole('button', { name: 'Repositories actions', exact: true }), ['Add Repository…', 'Refresh']);
   await assertMenu(sidebar.getByRole('button', { name: 'AlwayGit', exact: true }), ['Open Workbench', 'Open in New Window', 'Refresh', 'Fetch…', 'Copy Repository Path']);
-  await assertMenu(sidebar.getByRole('button', { name: 'Local Branches', exact: true }), ['Create Branch…', 'Select All', 'Clear Selection']);
-  const featureBranch = sidebar.locator('.ref-row').filter({ hasText: 'feature/history-graph' }).getByRole('button');
+  const localHeading = sidebar.getByRole('button', { name: 'Local Branches', exact: true });
+  await localHeading.click();
+  await sidebar.getByRole('button', { name: 'Expand feature', exact: true }).waitFor({ state: 'hidden' });
+  await localHeading.click();
+  await assertMenuButton(sidebar.getByRole('button', { name: 'Local Branches actions', exact: true }), ['Create Branch…', 'Select All', 'Clear Selection']);
+  await sidebar.getByRole('button', { name: 'Expand feature', exact: true }).click();
+  await sidebar.getByRole('button', { name: 'Expand login', exact: true }).click();
+  await sidebar.getByRole('button', { name: 'Branch feature/login/api', exact: true }).waitFor();
+  const featureBranch = sidebar.getByRole('button', { name: 'Branch feature/history-graph', exact: true });
   await assertMenu(featureBranch, ['Checkout…', 'Show in Graph', 'Show Only This Branch', 'Create Branch…', 'Create Tag…', 'Merge…', 'Rebase…', 'Push…', 'Delete Branch…', 'Copy Branch Name'], true);
   assert.equal(await featureBranch.evaluate(element => element === document.activeElement), true, 'Escape must restore focus to the context-menu opener');
-  await assertMenu(sidebar.getByRole('button', { name: 'Remotes', exact: true }), ['Fetch…', 'Refresh']);
-  await assertMenu(sidebar.locator('.remote-heading').filter({ hasText: /^origin$/ }), ['Fetch…', 'Refresh']);
-  const remoteBranch = sidebar.locator('.ref-row').filter({ hasText: 'origin/develop' }).getByRole('button');
+  await assertMenuButton(sidebar.getByRole('button', { name: 'Remotes actions', exact: true }), ['Fetch…', 'Refresh']);
+  await assertMenuButton(sidebar.getByRole('button', { name: 'origin actions', exact: true }), ['Fetch…', 'Refresh']);
+  const remoteBranch = sidebar.getByRole('button', { name: 'Branch origin/develop', exact: true });
   await assertMenu(remoteBranch, ['Show in Graph', 'Show Only This Branch', 'Create Tracking Branch…', 'Merge…', 'Rebase…', 'Copy Branch Name']);
-  await assertMenu(sidebar.getByRole('button', { name: 'Tags', exact: true }), ['Create Tag…', 'Refresh']);
-  const tag = sidebar.locator('.ref-row').filter({ hasText: 'v0.1.0' }).getByRole('button');
+  await assertMenuButton(sidebar.getByRole('button', { name: 'Tags actions', exact: true }), ['Create Tag…', 'Refresh']);
+  const tag = sidebar.getByRole('button', { name: 'v0.1.0', exact: true });
   await assertMenu(tag, ['Checkout…', 'Show in Graph', 'Show Only This Tag', 'Create Branch…', 'Delete Tag…', 'Copy Tag Name', 'Copy Commit ID']);
-  await assertMenu(sidebar.getByRole('button', { name: 'Stashes', exact: true }), ['Stash Changes…', 'Refresh']);
+  await assertMenuButton(sidebar.getByRole('button', { name: 'Stashes actions', exact: true }), ['Stash Changes…', 'Refresh']);
   const stash = sidebar.getByRole('button').filter({ hasText: 'stash@{0}' });
   await assertMenu(stash, ['View Changes', 'Apply Stash', 'Pop Stash', 'Drop Stash…']);
-  await assertMenu(sidebar.getByRole('button', { name: 'Worktrees', exact: true }), ['Add Worktree…', 'Refresh']);
+  await assertMenuButton(sidebar.getByRole('button', { name: 'Worktrees actions', exact: true }), ['Add Worktree…', 'Refresh']);
   const secondaryWorktree = sidebar.getByRole('button').filter({ hasText: 'AlwayGit-graph' });
   await assertMenu(secondaryWorktree, ['Open Worktree', 'Open in New Window', 'Refresh', 'Remove Worktree…', 'Copy Worktree Path']);
 
@@ -124,6 +144,11 @@ try {
   await page.getByTestId('diff-preview').waitFor();
 
   await sidebar.getByRole('button', { name: 'Clear Selection', exact: true }).click();
+  await history.getByText('No branches selected', { exact: true }).waitFor();
+  const featureGroup = sidebar.getByLabel('Show branch group feature', { exact: true });
+  await featureGroup.check();
+  await history.getByText(/^3 refs/).waitFor();
+  await featureGroup.uncheck();
   await history.getByText('No branches selected', { exact: true }).waitFor();
   await sidebar.getByLabel('Show branch main', { exact: true }).check();
   await sidebar.getByLabel('Show branch feature/history-graph', { exact: true }).check();
