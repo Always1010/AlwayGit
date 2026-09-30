@@ -1,5 +1,5 @@
 import { describe,expect,it } from 'vitest';
-import { alignDiff } from '../webview/diff';
+import { alignDiff, changedParts } from '../webview/diff';
 import { samePath } from '../webview/pathIdentity';
 
 describe('workbench path identities',()=>{
@@ -20,5 +20,9 @@ describe('readonly Diff alignment',()=>{
   it('bounds work for long unrelated previews and does not classify repeated removed lines as unchanged',()=>{
     const left=Array.from({length:4000},(_,i)=>'left '+i).join('\n'),right=Array.from({length:4000},(_,i)=>'right '+i).join('\n');expect(alignDiff(left,right)).toHaveLength(4000);
     expect(alignDiff('a\na','a').filter(r=>r.changed)).toHaveLength(1);
+  });
+  it('isolates changed text while preserving shared prefixes and suffixes',()=>{
+    expect(changedParts('const version = "0.2.0";','const version = "0.3.0";')).toEqual({prefix:'const version = "0.',before:'2',after:'3',suffix:'.0";'});
+    expect(changedParts('old','new')).toEqual({prefix:'',before:'old',after:'new',suffix:''});
   });
 });
