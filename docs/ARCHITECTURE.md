@@ -36,7 +36,7 @@ Status 使用 porcelain v2 与 NUL 分隔，分别保存 Index 和工作区状�
 状态分为三类：
 
 - 仓库数据：Snapshot、History 页面、Commit 详情和 Diff 预览。
-- 每仓库视图：已勾选引用、搜索、当前 Commit、文件、Stash、活动区域和 Commit 草稿。
+- 每仓库视图：已勾选引用、引用目录展开状态、侧栏分区折叠状态、搜索、当前 Commit、文件、Stash、活动区域和 Commit 草稿。
 - 全局界面：语言、布局预设、面板尺寸和表格列宽。
 
 会话写入 VS Code Webview state，并由扩展宿主保存到 `workspaceState` 以支持面板重建。Demo 模式使用浏览器 localStorage。持久化的数据只包含界面状态，不包含凭据、Git 输出或文件内容。
@@ -56,6 +56,8 @@ Git 使用参数数组与 `shell: false`，引用和路径额外校验，文件�
 同一个 `commonDir` 同时只执行一个写操作，忙碌状态同步给该 Git 存储下所有已注册 Worktree。Checkout 在宿主检查当前分支、未提交修改、未解决冲突和 Worktree 占用。`Stash Changes & Checkout` 的 Stash 与 Checkout 分别报告结果；若 Stash 成功但 Checkout 失败，保留 Stash，不隐式恢复或删除。
 
 Fetch、Pull 和 Push 沿用系统 Git Credential Helper、SSH Agent 和配置。需要输入时，使用每条命令独立的回环 IPC AskPass 桥接到 VS Code 输入框。桥接使用随机令牌并在命令结束后关闭；凭据不持久化，也不传到 Webview。日志与前端错误隐藏 URL 中的认证信息。
+
+Snapshot 为当前分支解析 Push 目标，依次考虑 `branch.<name>.pushRemote`、`remote.pushDefault`、分支 remote、upstream 和唯一远端，并把本地分支、远端分支及 upstream 状态作为结构化数据交给 Webview。Push 对话框提交明确的本地与远端 refspec；远端分支名可以与本地分支名不同。首次建立跟踪时才请求 `--set-upstream`，已有 upstream 的普通 Push 不隐式改变跟踪关系。
 
 高风险操作由宿主执行明确确认。提交遇到未保存编辑器内容时说明 Git 提交的是 Index。Git hooks、签名、认证和网络错误反馈真实失败，不尝试绕过。
 
