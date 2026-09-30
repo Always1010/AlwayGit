@@ -223,8 +223,8 @@ try {
 
   const search = history.getByRole('textbox', { name: 'Search commit history' });
   await search.fill('native diff');
-  await page.waitForFunction(() => [...document.querySelectorAll('[data-oid]')].length > 0 && [...document.querySelectorAll('[data-oid]')].every(row => row.textContent?.includes('native diff')));
-  await history.getByRole('button', { name: /Working Tree/ }).click();
+  await page.waitForFunction(() => [...document.querySelectorAll('[data-oid]:not(.head-anchor-row)')].length > 0 && [...document.querySelectorAll('[data-oid]:not(.head-anchor-row)')].every(row => row.textContent?.includes('native diff')));
+  await history.locator('[data-working-tree]').click();
   const draft = page.getByRole('textbox', { name: 'Commit message' });
   await draft.fill('Persistent bilingual draft');
   await page.getByRole('button', { name: 'Interface Settings', exact: true }).click();
@@ -248,7 +248,7 @@ try {
   await page.getByTestId('interface-settings').getByRole('combobox',{name:'Language'}).selectOption('en');
   await page.getByRole('dialog').locator('.modal-footer .primary').click();
 
-  await history.getByRole('button', { name: /Working Tree/ }).click();
+  await history.locator('[data-working-tree]').click();
   const file = details.getByRole('button', { name: 'webview/styles.css', exact: true });
   await file.click();
   await page.getByTestId('diff-preview').locator('.diff-labels').getByText('Index', { exact: true }).waitFor();

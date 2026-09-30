@@ -18,6 +18,10 @@ Graph 提供鲜明 12 色（默认）、高区分 8 色、扩展 16 色，默认
 
 Graph 根据本机最近一次 Fetch 后已知的 `refs/remotes/*` 判断 Commit 是否存在于远端：远端可达的 Commit 使用实心节点和加粗消息，仅本地 Commit 使用较小空心节点和正常字重。Merge Commit 保留较大尺寸，HEAD 外圈、选择和悬停状态与推送状态叠加显示。路径结束后必须及时收拢内部空轨道，以过渡曲线保持相邻行端点一致；默认 Graph 列为 64 px，可在 48–180 px 之间持久化调整，轨道间距自适应，极端并行路径不得被裁掉。历史标题区提供紧凑图例；分页和搜索结果由 Git 层携带推送状态，不根据当前可见引用标签推测。
 
+Working Tree 作为只存在于前端的虚拟提交节点显示，不创建 Git Commit，也不计入历史数量、分页 offset 或 Commit 批量操作。它以当前 HEAD 为父节点，在新到旧的列表中紧邻 HEAD 上方，并随 Commit、Checkout、Reset 和分支切换移动。节点使用区别于实心/空心 Commit 圆点的强调色菱形，整行沿用 Commit 的悬停、焦点和选中反馈；Message 列显示变更数、冲突数和当前分支，Date 列显示 `Uncommitted`。没有首个 Commit 时显示独立的初始 Working Tree 节点；筛选未包含当前 HEAD 时，Working Tree 与只读 HEAD 锚点继续成对显示，锚点明确标记为筛选外。
+
+单击 Working Tree 显示工作区详情，Enter 等同单击；上下方向键可以在它与相邻 HEAD/Commit 间连续导航。Working Tree 不参加 Ctrl/Cmd 或 Shift Commit 多选，不响应 Checkout 双击，也不显示 Commit 右键菜单。辅助技术必须能够识别其虚拟节点、当前分支、变更数量、未提交状态和选中状态。
+
 分页携带路径、色板特征和分配游标；主题切换保留色位，预设、色值或颜色数量变化都会重建全图，不拼接旧色板的分页。相同历史顺序刷新与虚拟滚动保持颜色；筛选、引用范围变化可能重分配。悬停 Graph 路径强调所有可见片段，并淡化其他路径。有限色板不宣称适用于所有色觉情况。
 
 ## 选择与打开
@@ -54,6 +58,8 @@ Repository 和 Worktree 的名称行单击只取得焦点，双击才切换，�
 | `Ctrl` / `Cmd` + `Shift` + 单击 Commit | 在现有集合上追加连续区间 |
 | 右键已选 Commit | 保留当前多选集合并显示适用操作 |
 | 双击 Commit | 关联一个本地分支时 Checkout；关联多个时选择；没有时确认 Detached HEAD |
+| 单击 Working Tree 虚拟节点 | 单选 Working Tree 并显示工作区状态；不加入 Commit 多选 |
+| Working Tree / HEAD 获得焦点后按上下方向键 | 在虚拟节点与真实 Commit 间连续选择和移动焦点 |
 | 单击详情中的文件 | 在底部预览 Diff |
 | 双击文件 | 在 VS Code 打开；历史删除文件打开只读历史内容或原生 Diff |
 

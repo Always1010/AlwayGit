@@ -36,6 +36,22 @@ describe('Git graph SVG rows', () => {
     expect(markup.match(/<circle/g)).toHaveLength(2);
   });
 
+  it('renders the Working Tree as a distinct virtual node connected to HEAD', () => {
+    const { rows } = layoutGraph([
+      { oid: 'alwaygit:working-tree', parents: ['head123456'] },
+      { oid: 'head123456', parents: [] },
+    ]);
+    const markup = renderToStaticMarkup(React.createElement(GraphRow, {
+      row: rows[0], working: true, selected: true,
+    }));
+    expect(markup).toContain('Working Tree virtual node, lane 1. Selected.');
+    expect(markup).toContain('data-working="true"');
+    expect(markup).toContain('class="git-graph-working-node"');
+    expect(markup).toContain('<rect');
+    expect(markup).not.toContain('data-pushed');
+    expect(rows[0].segments).toEqual([expect.objectContaining({ kind: 'parent', target: 'head123456' })]);
+  });
+
   it('keeps merge curves within the compact row and leaves ordinary commits unmarked', () => {
     const { rows } = layoutGraph([{
       oid: 'merge', parents: ['first', 'second'], author: 'A', email: 'a@example.com', timestamp: 0, subject: 'Merge',

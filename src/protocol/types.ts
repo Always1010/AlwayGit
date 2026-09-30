@@ -9,8 +9,8 @@ export interface OperationState { kind?: OperationKind; conflicts: number; canCo
 export interface PushTarget { localBranch: string; remote?: string; remoteBranch: string; configured: boolean }
 export interface Snapshot { repository: Repository; branch: string; head?: string; upstream?: string; defaultBranch?: string; pushTarget?: PushTarget; ahead: number; behind: number; unpushed?: number; changes: Change[]; refs: GitRef[]; remotes?: string[]; stashes: Stash[]; worktrees: Worktree[]; operation: OperationState; version: number }
 export interface Commit { oid: string; parents: string[]; author: string; email: string; timestamp: number; subject: string; pushed?: boolean }
-export interface HistoryQuery { offset?: number; limit?: number; tips?: string[]; ref?: string; search?: string }
-export interface HistoryPage { commits: Commit[]; nextOffset: number; hasMore: boolean; tips: string[] }
+export interface HistoryQuery { offset?: number; limit?: number; tips?: string[]; ref?: string; search?: string; head?: string }
+export interface HistoryPage { commits: Commit[]; nextOffset: number; hasMore: boolean; tips: string[]; head?: Commit }
 export interface CommitFile { path: string; previousPath?: string; status: string }
 export interface CommitDetails { commit: Commit; body: string; files: CommitFile[]; parent?: string }
 export interface CommitComparison { left: Commit; right: Commit; files: CommitFile[] }

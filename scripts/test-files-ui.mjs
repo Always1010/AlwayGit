@@ -45,7 +45,7 @@ export async function verifyFiles(browser, url) {
     await menu.waitFor();
     assert.deepEqual((await menu.getByRole('menuitem').allTextContents()).map(value=>value.trim()), ['Open Diff in VS Code','Edit in VS Code','Copy Path']);
     await page.keyboard.press('Escape');
-    await page.getByTestId('history').getByRole('button', { name: /Working Tree/ }).click();
+    await page.getByTestId('history').locator('[data-working-tree]').click();
     const groups = details.locator('.change-groups'), unstaged = groups.locator('.change-group:has(.change-heading-unstaged)'), staged = groups.locator('.change-group:has(.change-heading-staged)');
     await unstaged.getByRole('button', { name: 'Stage All', exact: true }).waitFor();
     assert.equal(await unstaged.getByRole('button', { name: 'Discard selected files…', exact: true }).isDisabled(), true);

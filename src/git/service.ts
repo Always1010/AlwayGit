@@ -176,10 +176,10 @@ export class GitService implements GitServiceContract {
     if (query.tips) tips = await Promise.all(query.tips.map(ref => this.oid(repo, ref)));
     else if (query.ref) tips = [await this.oid(repo, query.ref)];
     else { const all = await this.text(repo, ['for-each-ref', '--format=%(refname)%00%(objecttype)%00%(*objecttype)', 'refs/heads', 'refs/remotes', 'refs/tags']); const candidates = all ? await Promise.all(all.split('\n').map(async line => { const [ref, type, peeledType] = line.split('\0'); return type === 'commit' || peeledType === 'commit' || peeledType === 'tag' && await this.text(repo, ['cat-file', '-t', `${ref}^{}`]) === 'commit' ? ref : undefined; })) : []; tips = await Promise.all(candidates.filter((ref): ref is string => !!ref).map(ref => this.oid(repo, ref))); const head = (await this.status(repo)).head; if (head) tips.push(head); }
-    tips = [...new Set(tips)]; if (!tips.length) return { commits: [], nextOffset: offset, hasMore: false, tips };
+    tips = [...new Set(tips)];
     const searchArgs = query.search ? ['--fixed-strings', '--regexp-ignore-case', `--grep=${query.search}`] : [];
     if (query.search?.includes('\0')) throw new GitError('Invalid search', 'INVALID_ARGUMENT');
-    const output = (await this.run(repo, ['log', '--topo-order', '-z', `--format=${commitFormat}`, `--skip=${offset}`, `--max-count=${limit + 1}`, ...searchArgs, ...tips, '--'])).stdout.toString('utf8').split('\0');
+    const output = tips.length ? (await this.run(repo, ['log', '--topo-order', '-z', `--format=${commitFormat}`, `--skip=${offset}`, `--max-count=${limit + 1}`, ...searchArgs, ...tips, '--'])).stdout.toString('utf8').split('\0') : [];
     const commits: Commit[] = []; for (let i = 0; i + 5 < output.length; i += 6) commits.push(parseCommit(output.slice(i, i + 6)));
     const visible = commits.slice(0, limit);
     if (visible.length) {
@@ -189,7 +189,15 @@ export class GitService implements GitServiceContract {
       const localOnly = new Set(localOnlyOutput ? localOnlyOutput.split('\n') : []);
       for (const commit of visible) commit.pushed = !localOnly.has(commit.oid);
     }
-    return { commits: visible, nextOffset: offset + Math.min(commits.length, limit), hasMore: commits.length > limit, tips };
+    let head = query.head ? visible.find(commit => commit.oid === query.head) : undefined;
+    if (query.head && !head) {
+      const oid = await this.oid(repo, query.head);
+      const data = await this.text(repo, ['show', '-s', `--format=${commitFormat}`, oid, '--']);
+      head = parseCommit(data.split('\0'));
+      const localOnly = await this.text(repo, ['rev-list', '--max-count=1', oid, '--not', '--remotes']);
+      head.pushed = localOnly !== oid;
+    }
+    return { commits: visible, nextOffset: offset + Math.min(commits.length, limit), hasMore: commits.length > limit, tips, ...(head ? { head } : {}) };
   }
   async details(repo: Repository, revision: string, parent?: string): Promise<CommitDetails> {
     await this.verify(repo); const oid = await this.oid(repo, revision); const data = (await this.run(repo, ['show', '-s', `--format=${commitFormat}%x00%B`, oid, '--'])).stdout.toString('utf8').split('\0'); const commit = parseCommit(data);

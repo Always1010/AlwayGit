@@ -62,7 +62,7 @@ export async function verifyDiffNavigation(browser, url) {
     await page.getByTestId('details').getByRole('button', { name: 'same.txt', exact: true }).click();
     await count.getByText('0/0', { exact: true }).waitFor();
     assert.equal(await viewport.evaluate(element => element.scrollLeft), 0);
-    await page.getByTestId('history').getByRole('button', { name: /Working Tree/ }).click();
+    await page.getByTestId('history').locator('[data-working-tree]').click();
     await count.getByText('1/3', { exact: true }).waitFor();
     await diff.getByRole('button', { name: 'Next change' }).click();
     await diff.getByRole('button', { name: 'Next change' }).click();

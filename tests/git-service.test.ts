@@ -68,6 +68,12 @@ describe('Git service integration', () => {
     const detail = await service.details(repo, merge, side); expect(detail.parent).toBe(side); expect(detail.files.map(x => x.path)).toEqual(['main.txt']); await expect(service.details(repo, merge, first)).rejects.toThrow('not a parent');
     const mainDetail = await service.details(repo, merge, main); expect(mainDetail.files.map(x => x.path)).toEqual(['side.txt']);
   });
+  it('returns the current HEAD summary when filters omit it from history', async () => {
+    const { root, service, repo } = await setup(); const parent=await commit(root,'root.txt','root','root'); const head=await commit(root,'head.txt','head','current head');
+    const page=await service.history(repo,{tips:[],search:'does not match',head:'HEAD'});
+    expect(page.commits).toEqual([]);
+    expect(page.head).toMatchObject({oid:head,parents:[parent],subject:'current head',pushed:false});
+  });
   it('compares arbitrary commits and normalizes ancestor direction',async()=>{
     const {root,service,repo}=await setup();await writeFile(path.join(root,'old.txt'),'common\nbefore');const base=await commit(root,'old.txt','common\nbefore','base');
     await rename(path.join(root,'old.txt'),path.join(root,'new.txt'));await writeFile(path.join(root,'new.txt'),'common\nafter');await git(root,'add','-A');await git(root,'commit','-m','rename and edit');const latest=await git(root,'rev-parse','HEAD');

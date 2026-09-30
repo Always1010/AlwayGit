@@ -57,7 +57,7 @@ export async function verifyRefresh(browser, url) {
     assert.ok(await viewport.evaluate(element => element.scrollTop) >= 590);
     assert.equal(await page.evaluate(() => window.__refreshFixture.detailsCleared || window.__refreshFixture.loadingShown), false);
 
-    await page.getByTestId('history').getByRole('button', { name: /Working Tree/ }).click();
+    await page.getByTestId('history').locator('[data-working-tree]').click();
     await diff.locator('.diff-labels').getByText('Working Tree', { exact: true }).waitFor();
     await viewport.evaluate(element => { element.scrollTop = 600; element.dispatchEvent(new Event('scroll')); });
     await page.evaluate(() => { const fixture = window.__refreshFixture; fixture.calls.length = 0; fixture.loadingShown = false; fixture.diffDelay = 600; fixture.right += '\nupdated selected file'; fixture.emit({ paths: ['a.txt'] }); });
