@@ -2,13 +2,25 @@ import { useEffect, useState } from 'react';
 import { useWorkbench } from './store';
 import { useTranslation } from './i18n';
 import type { Language } from './i18n';
-import { effectiveRowHeight, presetColors, type ResolvedTheme, type ThemePreference } from './appearance';
+import { effectiveRowHeight, isLightTheme, presetColors, type ResolvedTheme, type ThemePreference } from './appearance';
 import { graphPalettes, type GraphPaletteId } from './graph/palettes';
 import { Button, Icon, Modal } from './ui';
 
 type SettingsPage = 'language' | 'theme' | 'density' | 'colors';
 type ColorTheme = 'light' | 'dark';
 const defaultMainColors = { light: '#283447', dark: '#EDF3FF' } as const;
+const themes: { id: ThemePreference; label: string; labelZh: string; colors: readonly [string, string, string] }[] = [
+  { id: 'system', label: 'Follow VS Code', labelZh: '跟随 VS Code', colors: ['#F4F6FA', '#2463C5', '#1B222D'] },
+  { id: 'light', label: 'Clear Light', labelZh: '清透亮色', colors: ['#FFFFFF', '#2463C5', '#DBEAFE'] },
+  { id: 'paper', label: 'Warm Paper', labelZh: '暖纸', colors: ['#FFF9ED', '#B45309', '#F5E6C8'] },
+  { id: 'mist', label: 'Mist Blue', labelZh: '雾蓝', colors: ['#F3F8FC', '#176B87', '#D7EAF3'] },
+  { id: 'dark', label: 'Deep Night', labelZh: '深夜', colors: ['#1B222D', '#83B8FF', '#244E78'] },
+  { id: 'midnight', label: 'Midnight Blue', labelZh: '午夜蓝', colors: ['#0D1B2A', '#4CC9F0', '#173B57'] },
+  { id: 'graphite', label: 'Graphite', labelZh: '石墨', colors: ['#202124', '#E8A838', '#3A3B40'] },
+  { id: 'forest', label: 'Forest', labelZh: '森林', colors: ['#14251E', '#65D48B', '#244B38'] },
+  { id: 'berry', label: 'Berry Purple', labelZh: '莓紫', colors: ['#27172F', '#E879F9', '#57306B'] },
+  { id: 'contrast', label: 'High Contrast', labelZh: '高对比', colors: ['#0C1016', '#FFE875', '#153F6B'] },
+];
 
 function ColorField({ value, label, removable, onChange, onRemove }: { value: string; label: string; removable?: boolean; onChange(value: string): void; onRemove?(): void }) {
   const t = useTranslation();
@@ -58,7 +70,7 @@ function GraphPreview({ colors, main, mode }: { colors: readonly string[]; main:
 export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
   const state = useWorkbench(), t = useTranslation(), { appearance, layout } = state;
   const [page, setPage] = useState<SettingsPage>('theme');
-  const [colorTheme, setColorTheme] = useState<ColorTheme>(theme.includes('light') ? 'light' : 'dark');
+  const [colorTheme, setColorTheme] = useState<ColorTheme>(isLightTheme(theme) ? 'light' : 'dark');
   const close = () => state.finishSettings(false);
   const densityOptions = [22, 24, 28];
   if (!densityOptions.includes(layout.row)) densityOptions.push(layout.row);
@@ -98,9 +110,12 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
         {page === 'theme' && <section className="settings-page" aria-labelledby="theme-heading">
           <h3 id="theme-heading">{t('Theme', '主题')}</h3>
           <p className="settings-page-copy">{t('Use the VS Code theme or choose a fixed workbench appearance.', '跟随 VS Code，或为工作台选择固定外观。')}</p>
-          <label className="settings-control">{t('Color theme', '颜色主题')}<select aria-label={t('Theme', '主题')} value={appearance.theme} onChange={event => updateAppearance({ ...appearance, theme: event.target.value as ThemePreference })}>
-            <option value="system">{t('Follow VS Code', '跟随 VS Code')}</option><option value="light">{t('Light', '浅色')}</option><option value="dark">{t('Dark', '深色')}</option><option value="contrast">{t('High contrast', '高对比')}</option>
-          </select></label>
+          <div className="theme-gallery" role="radiogroup" aria-label={t('Color theme', '颜色主题')}>
+            {themes.map(item => <button key={item.id} type="button" role="radio" aria-checked={appearance.theme === item.id} className={`theme-card ${appearance.theme === item.id ? 'is-chosen' : ''}`} onClick={() => updateAppearance({ ...appearance, theme: item.id })}>
+              <span className="theme-preview" style={{ '--theme-preview-bg': item.colors[0], '--theme-preview-accent': item.colors[1], '--theme-preview-selected': item.colors[2] } as React.CSSProperties}><i/><i/><i/></span>
+              <span>{t(item.label, item.labelZh)}</span>
+            </button>)}
+          </div>
         </section>}
 
         {page === 'density' && <section className="settings-page" aria-labelledby="density-heading">

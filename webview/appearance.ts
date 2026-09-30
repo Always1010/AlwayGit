@@ -3,8 +3,9 @@ import type { LayoutState } from './rpc';
 import type { Language } from './i18n';
 import { getGraphPalette, type GraphPaletteColors, type GraphPaletteId } from './graph/palettes';
 
-export type ThemePreference = 'system' | 'light' | 'dark' | 'contrast';
-export type ResolvedTheme = 'light' | 'dark' | 'hc-light' | 'hc-dark';
+export const themePreferences = ['system', 'light', 'paper', 'mist', 'dark', 'midnight', 'graphite', 'forest', 'berry', 'contrast'] as const;
+export type ThemePreference = typeof themePreferences[number];
+export type ResolvedTheme = Exclude<ThemePreference, 'system' | 'contrast'> | 'hc-light' | 'hc-dark';
 export interface Appearance {
   theme: ThemePreference;
   palette: GraphPaletteId;
@@ -36,7 +37,7 @@ function normalizeColors(value: Partial<GraphPaletteColors> | undefined, palette
 export function normalizeAppearance(value: Partial<Appearance> = {}): Appearance {
   const palette = ['vivid', 'distinct', 'extended'].includes(value.palette ?? '') ? value.palette! : 'vivid';
   return {
-    theme: ['system', 'light', 'dark', 'contrast'].includes(value.theme ?? '') ? value.theme! : 'system',
+    theme: themePreferences.includes(value.theme as ThemePreference) ? value.theme! : 'system',
     palette,
     codeFont: Number.isFinite(value.codeFont) ? Math.round(Math.max(11, Math.min(18, value.codeFont!))) : 12,
     colors: normalizeColors(value.colors, palette),
@@ -48,6 +49,7 @@ export function normalizeAppearance(value: Partial<Appearance> = {}): Appearance
 }
 export const effectiveRowHeight = (layout: Pick<LayoutState, 'font' | 'row'>) => Math.max(layout.row, Math.round(layout.font * 1.35) + 6);
 export const diffRowHeight = (font: number) => Math.max(22, Math.round(font * 1.6) + 3);
+export const isLightTheme = (theme: ResolvedTheme) => ['light', 'paper', 'mist', 'hc-light'].includes(theme);
 
 function hostTheme(): ResolvedTheme {
   const kind = document.body.dataset.vscodeThemeKind;
