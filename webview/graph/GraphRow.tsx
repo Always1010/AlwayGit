@@ -1,5 +1,6 @@
 import React, { useId } from 'react';
 import type { GraphLayoutRow, GraphSegment } from './layout';
+import { getGraphPalette, type GraphPaletteId } from './palettes';
 
 export interface GraphRowProps {
   row: GraphLayoutRow;
@@ -11,20 +12,10 @@ export interface GraphRowProps {
   selected?: boolean;
   main?: boolean;
   mainTargets?: ReadonlySet<string>;
+  paletteId?: GraphPaletteId;
+  hoveredPath?: string;
+  onHoverPath?(pathId?: string): void;
 }
-
-const colors = [
-  'var(--graph-lane-0, #61a8ff)',
-  'var(--graph-lane-1, #ff9b52)',
-  'var(--graph-lane-2, #c58cff)',
-  'var(--graph-lane-3, #45c7bd)',
-  'var(--graph-lane-4, #f06fae)',
-  'var(--graph-lane-5, #ff7373)',
-  'var(--graph-lane-6, #d9b84e)',
-  'var(--graph-lane-7, #59bde8)',
-];
-
-const colorFor = (index: number) => colors[index % colors.length];
 
 function pathFor(segment: GraphSegment, height: number, laneWidth: number): string {
   const x1 = (segment.fromLane + 0.5) * laneWidth;
@@ -37,8 +28,13 @@ function pathFor(segment: GraphSegment, height: number, laneWidth: number): stri
 }
 
 /** A complete, independently renderable row for a fixed-height history table. */
-export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false, selected = false, main = false, mainTargets }: GraphRowProps) {
+export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false, selected = false, main = false, mainTargets, paletteId = 'vivid', hoveredPath, onHoverPath }: GraphRowProps) {
   const titleId = useId();
+  const palette = getGraphPalette(paletteId);
+  const colorFor = (index: number) => {
+    const slot = index % palette.light.length;
+    return `var(--graph-lane-${slot}, ${palette.dark[slot]})`;
+  };
   const svgWidth = Math.max(width ?? 0, row.laneCount * laneWidth, laneWidth);
   const parentLabel = row.parents.length
     ? `${row.parents.length > 1 ? 'Merge commit; ' : ''}parents ${row.parents.map(oid => oid.slice(0, 8)).join(', ')}`
@@ -63,13 +59,19 @@ export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false
       <title id={titleId}>{label}</title>
       {row.segments.map((segment, index) => {
         const mainSegment=mainTargets?.has(segment.target)??false;
+        const highlighted=!!hoveredPath&&segment.pathId===hoveredPath;
         return (
         <path
           key={`${segment.kind}-${segment.target}-${index}`}
           d={pathFor(segment, height, laneWidth)}
           fill="none"
           stroke={mainSegment?'var(--graph-main, #f2f2f2)':colorFor(segment.color)}
-          strokeWidth={mainSegment?3:2.5}
+          strokeWidth={highlighted?4:mainSegment?3:2.5}
+          opacity={hoveredPath && !highlighted ? .35 : 1}
+          data-path-id={segment.pathId}
+          onMouseEnter={()=>onHoverPath?.(segment.pathId)}
+          onMouseLeave={()=>onHoverPath?.()}
+          pointerEvents="stroke"
           vectorEffect="non-scaling-stroke"
           strokeLinecap="round"
           aria-hidden="true"
@@ -81,8 +83,8 @@ export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false
           cx={nodeX}
           cy={nodeY}
           r={6.5}
-          fill="var(--vscode-editor-background, Canvas)"
-          stroke="var(--vscode-focusBorder, currentColor)"
+          fill="var(--bg, var(--vscode-editor-background, Canvas))"
+          stroke="var(--accent, var(--vscode-focusBorder, currentColor))"
           strokeWidth={2}
           vectorEffect="non-scaling-stroke"
           aria-hidden="true"
@@ -94,8 +96,12 @@ export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false
         cy={nodeY}
         r={row.parents.length > 1 ? 4.5 : 3.5}
         fill={main?'var(--graph-main, #f2f2f2)':colorFor(row.color)}
-        stroke={selected ? 'var(--vscode-list-activeSelectionForeground, currentColor)' : 'var(--vscode-foreground, currentColor)'}
+        stroke={selected ? 'var(--selected-fg, var(--vscode-list-activeSelectionForeground, currentColor))' : 'var(--fg, var(--vscode-foreground, currentColor))'}
         strokeWidth={selected ? 2 : 1}
+        opacity={hoveredPath && row.pathId !== hoveredPath ? .35 : 1}
+        data-path-id={row.pathId}
+        onMouseEnter={()=>onHoverPath?.(row.pathId)}
+        onMouseLeave={()=>onHoverPath?.()}
         vectorEffect="non-scaling-stroke"
         aria-hidden="true"
       />
@@ -104,7 +110,7 @@ export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false
           cx={nodeX}
           cy={nodeY}
           r={1.5}
-          fill="var(--vscode-editor-background, Canvas)"
+          fill="var(--bg, var(--vscode-editor-background, Canvas))"
           aria-hidden="true"
         />
       )}

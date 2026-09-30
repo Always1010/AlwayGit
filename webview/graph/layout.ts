@@ -1,14 +1,19 @@
 import type { Commit } from '../../src/protocol/types';
+import { getGraphPalette, paletteColorDistance, type GraphPaletteId } from './palettes';
 
 /** A lane reserves a path to a parent that has not been rendered yet. */
 export interface GraphLane {
   oid: string;
   color: number;
+  /** Stable across first-parent ancestry, independently of reusable colors. */
+  pathId?: string;
 }
 
 export interface GraphState {
   lanes: readonly (GraphLane | null)[];
   nextColor: number;
+  paletteId?: GraphPaletteId;
+  paletteSize?: number;
 }
 
 export interface GraphSegment {
@@ -20,6 +25,7 @@ export interface GraphSegment {
   kind: 'incoming' | 'parent' | 'through';
   /** The eventual commit at the end of this path. */
   target: string;
+  pathId?: string;
 }
 
 export interface GraphLayoutRow {
@@ -30,6 +36,7 @@ export interface GraphLayoutRow {
   parents: readonly string[];
   hasIncoming: boolean;
   segments: readonly GraphSegment[];
+  pathId?: string;
 }
 
 export interface GraphLayout {
@@ -44,13 +51,40 @@ export interface GraphLayout {
  * Pass endState into the next page; an empty page keeps pending parents intact.
  * Neither commits nor a caller's state is mutated.
  */
-export function layoutGraph(commits: readonly Commit[], previousState?: GraphState): GraphLayout {
-  const lanes: (GraphLane | null)[] = previousState
-    ? previousState.lanes.map(lane => lane ? { ...lane } : null)
+export function layoutGraph(commits: readonly Commit[], previousState?: GraphState, paletteId: GraphPaletteId = previousState?.paletteId ?? 'vivid'): GraphLayout {
+  const paletteSize = getGraphPalette(paletteId).light.length;
+  const prior = previousState && (!previousState.paletteId || previousState.paletteId === paletteId)
+    && (!previousState.paletteSize || previousState.paletteSize === paletteSize) ? previousState : undefined;
+  const lanes: (GraphLane | null)[] = prior
+    ? prior.lanes.map(lane => lane ? { ...lane, color: lane.color % paletteSize, pathId: lane.pathId ?? lane.oid } : null)
     : [];
-  let nextColor = previousState?.nextColor ?? 0;
+  let nextColor = (prior?.nextColor ?? 0) % paletteSize;
   let laneCount = lanes.length;
   const rows: GraphLayoutRow[] = [];
+
+  const allocateColor = (slot: number, source?: { lane: number; color: number }): number => {
+    const active = lanes.flatMap((lane, index) => lane ? [{ lane: index, color: lane.color }] : []);
+    if (source) active.push(source);
+    const used = new Set(active.map(lane => lane.color));
+    const left = active.filter(lane => lane.lane < slot).sort((a, b) => b.lane - a.lane)[0];
+    const right = active.filter(lane => lane.lane > slot).sort((a, b) => a.lane - b.lane)[0];
+    const neighbors = [left, right, source].filter((lane): lane is { lane: number; color: number } => !!lane);
+    const crossing = source ? active.filter(lane => lane.lane >= Math.min(slot, source.lane) && lane.lane <= Math.max(slot, source.lane)) : [];
+    const relevant = [...neighbors, ...crossing];
+    let best = nextColor, bestScore = -Infinity;
+    for (let offset = 0; offset < paletteSize; offset++) {
+      const candidate = (nextColor + offset) % paletteSize;
+      const separation = relevant.length ? Math.min(...relevant.map(lane => paletteColorDistance(paletteId, candidate, lane.color))) : 0;
+      const average = active.length ? active.reduce((sum, lane) => sum + paletteColorDistance(paletteId, candidate, lane.color), 0) / active.length : 0;
+      // Unused colors win first. Once exhausted, avoid equal neighbors and
+      // crossing paths before maximizing perceptual separation in both themes.
+      const equalNeighbors = neighbors.filter(lane => lane.color === candidate).length;
+      const score = (used.has(candidate) ? 0 : 1000) - equalNeighbors * 100 + separation * 10 + average;
+      if (score > bestScore) { bestScore = score; best = candidate; }
+    }
+    nextColor = (best + 1) % paletteSize;
+    return best;
+  };
 
   for (const commit of commits) {
     const top = lanes.slice();
@@ -62,9 +96,10 @@ export function layoutGraph(commits: readonly Commit[], previousState?: GraphSta
     if (nodeLane === -1) {
       nodeLane = lanes.indexOf(null);
       if (nodeLane === -1) nodeLane = lanes.length;
-      lanes[nodeLane] = { oid: commit.oid, color: nextColor++ };
+      lanes[nodeLane] = { oid: commit.oid, color: allocateColor(nodeLane), pathId: commit.oid };
     }
     const nodeColor = lanes[nodeLane]!.color;
+    const nodePathId = lanes[nodeLane]!.pathId ?? commit.oid;
     lanes[nodeLane] = null;
     targetLanes.delete(commit.oid);
     const freeSlots: number[] = [];
@@ -86,13 +121,15 @@ export function layoutGraph(commits: readonly Commit[], previousState?: GraphSta
         }
         lanes[parentLane] = {
           oid: parent,
-          color: parentIndex === 0 ? nodeColor : nextColor++,
+          color: parentIndex === 0 ? nodeColor : allocateColor(parentLane, { lane: nodeLane, color: nodeColor }),
+          pathId: parentIndex === 0 ? nodePathId : parent,
         };
         targetLanes.set(parent, parentLane);
       }
       parentSegments.push({
         fromLane: nodeLane, toLane: parentLane, from: 'middle', to: 'bottom',
         color: lanes[parentLane]!.color, kind: 'parent', target: parent,
+        pathId: lanes[parentLane]!.pathId,
       });
     }
 
@@ -105,6 +142,7 @@ export function layoutGraph(commits: readonly Commit[], previousState?: GraphSta
         to: lane === nodeLane ? 'middle' : 'bottom',
         color: pending.color, kind: lane === nodeLane ? 'incoming' : 'through',
         target: pending.oid,
+        pathId: pending.pathId,
       });
     }
     segments.push(...parentSegments);
@@ -114,11 +152,12 @@ export function layoutGraph(commits: readonly Commit[], previousState?: GraphSta
     rows.push({
       oid: commit.oid, lane: nodeLane, color: nodeColor,
       laneCount: rowLaneCount, parents, hasIncoming, segments,
+      pathId: nodePathId,
     });
     // Only remove trailing vacant slots: retained lane positions must agree
     // exactly across row and page boundaries.
     while (lanes.length && lanes[lanes.length - 1] === null) lanes.pop();
   }
 
-  return { rows, endState: { lanes, nextColor }, laneCount };
+  return { rows, endState: { lanes, nextColor, paletteId, paletteSize }, laneCount };
 }

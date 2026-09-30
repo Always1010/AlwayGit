@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Commit } from '../src/protocol/types';
 import { layoutGraph } from '../webview/graph/layout';
+import { graphPalettes } from '../webview/graph/palettes';
 
 function commit(oid: string, ...parents: string[]): Commit {
   return { oid, parents, author: 'A', email: 'a@example.com', timestamp: 0, subject: oid };
@@ -12,8 +13,8 @@ describe('Git history graph', () => {
     expect(graph.rows.map(row => row.lane)).toEqual([0, 0, 0]);
     expect(graph.rows.map(row => row.hasIncoming)).toEqual([false, true, true]);
     expect(graph.rows[1].segments).toEqual([
-      { fromLane: 0, toLane: 0, from: 'top', to: 'middle', color: 0, kind: 'incoming', target: 'b' },
-      { fromLane: 0, toLane: 0, from: 'middle', to: 'bottom', color: 0, kind: 'parent', target: 'a' },
+      { fromLane: 0, toLane: 0, from: 'top', to: 'middle', color: 0, kind: 'incoming', target: 'b', pathId: 'c' },
+      { fromLane: 0, toLane: 0, from: 'middle', to: 'bottom', color: 0, kind: 'parent', target: 'a', pathId: 'c' },
     ]);
     expect(graph.rows[2].segments.map(segment => segment.kind)).toEqual(['incoming']);
     expect(graph.endState.lanes).toEqual([]);
@@ -55,10 +56,13 @@ describe('Git history graph', () => {
     const graph = layoutGraph([
       commit('m', 'a', 'b'), commit('a', 'b', 'c'), commit('b', 'c'), commit('c'),
     ]);
-    expect(graph.rows[1].segments.filter(segment => segment.kind === 'parent')).toEqual([
-      { fromLane: 0, toLane: 1, from: 'middle', to: 'bottom', color: 1, kind: 'parent', target: 'b' },
-      { fromLane: 0, toLane: 0, from: 'middle', to: 'bottom', color: 2, kind: 'parent', target: 'c' },
+    const bColor = graph.rows[0].segments.find(segment => segment.target === 'b')!.color;
+    const parents = graph.rows[1].segments.filter(segment => segment.kind === 'parent');
+    expect(parents).toMatchObject([
+      { fromLane: 0, toLane: 1, from: 'middle', to: 'bottom', color: bColor, kind: 'parent', target: 'b', pathId: 'b' },
+      { fromLane: 0, toLane: 0, from: 'middle', to: 'bottom', kind: 'parent', target: 'c', pathId: 'c' },
     ]);
+    expect(parents[1].color).not.toBe(bColor);
     expect(graph.endState.lanes).toEqual([]);
   });
 
@@ -123,9 +127,9 @@ describe('Git history graph', () => {
     expect(second.rows[0].lane).toBe(1);
     expect(second.rows[0].segments).toEqual([
       { fromLane: 0, toLane: 0, from: 'top', to: 'bottom', color: 0,
-        kind: 'through', target: 'omitted-parent' },
+        kind: 'through', target: 'omitted-parent', pathId: 'match-one' },
     ]);
-    expect(second.endState.lanes).toEqual([{ oid: 'omitted-parent', color: 0 }]);
+    expect(second.endState.lanes).toEqual([{ oid: 'omitted-parent', color: 0, pathId: 'match-one' }]);
   });
 
   it('matches every outgoing endpoint to the next row in a complex interleaved DAG', () => {
@@ -157,5 +161,43 @@ describe('Git history graph', () => {
     expect(new Set(graph.rows[0].segments.map(segment => segment.toLane)).size).toBe(100);
     expect(graph.rows.slice(1).map(row => row.lane)).toEqual(parents.map((_, index) => index));
     expect(graph.endState.lanes).toEqual([]);
+  });
+
+  it('gives every simultaneous path a unique color until each palette fills', () => {
+    for (const palette of graphPalettes) {
+      const parents = palette.light.map((_, index) => `p${index}`);
+      const graph = layoutGraph([commit('merge', ...parents)], undefined, palette.id);
+      expect(new Set(graph.rows[0].segments.map(segment => segment.color)).size).toBe(parents.length);
+      expect(graph.endState.paletteId).toBe(palette.id);
+      expect(graph.endState.paletteSize).toBe(parents.length);
+      expect(palette.dark).toHaveLength(parents.length);
+    }
+  });
+
+  it('reuses retired colors and avoids equal neighboring lanes after capacity', () => {
+    const parents = Array.from({ length: 8 }, (_, index) => `p${index}`);
+    const first = layoutGraph([commit('merge', ...parents)], undefined, 'distinct');
+    const retired = first.endState.lanes.slice(1).map(lane => lane!.color);
+    const next = layoutGraph([...parents.slice(1).map(parent => commit(parent)), commit('new-tip', 'new-parent')], first.endState);
+    const newColor = next.rows.at(-1)!.color;
+    expect(retired).toContain(newColor);
+    expect(newColor).not.toBe(first.endState.lanes[0]!.color);
+    const wide = layoutGraph([commit('wide', ...Array.from({ length: 24 }, (_, index) => `w${index}`))], undefined, 'distinct');
+    const colors = wide.endState.lanes.map(lane => lane!.color);
+    expect(colors.every(color => color >= 0 && color < 8)).toBe(true);
+    for (let index = 1; index < colors.length; index++) expect(colors[index]).not.toBe(colors[index - 1]);
+  });
+
+  it('preserves lineage, cursor and colors across pages and resets for a new palette', () => {
+    const history = [commit('merge', 'left', 'right'), commit('left', 'base'), commit('right', 'base'), commit('base')];
+    const whole = layoutGraph(history, undefined, 'extended');
+    const first = layoutGraph(history.slice(0, 2), undefined, 'extended');
+    const second = layoutGraph(history.slice(2), first.endState);
+    expect([...first.rows, ...second.rows]).toEqual(whole.rows);
+    expect(second.endState).toEqual(whole.endState);
+    expect(whole.rows[1].pathId).toBe(whole.rows[0].pathId);
+    expect(whole.rows[2].segments.find(segment => segment.kind === 'parent')!.pathId).toBe(whole.rows[3].pathId);
+    const switched = layoutGraph(history, first.endState, 'distinct');
+    expect(switched).toEqual(layoutGraph(history, undefined, 'distinct'));
   });
 });

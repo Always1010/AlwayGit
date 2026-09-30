@@ -72,4 +72,20 @@ describe('Git graph SVG rows', () => {
     expect(markup).toContain('stroke-width="3"');
     expect(markup).toContain('fill="var(--graph-main, #f2f2f2)"');
   });
+
+  it('uses extended palette slots and highlights a lineage without losing HEAD', () => {
+    const { rows } = layoutGraph([{
+      oid: 'merge', parents: Array.from({ length: 16 }, (_, index) => `parent${index}`),
+      author: 'A', email: 'a@example.com', timestamp: 0, subject: 'Wide merge',
+    }], undefined, 'extended');
+    const highlighted = rows[0].segments.find(segment => segment.color === 15)!;
+    const markup = renderToStaticMarkup(React.createElement(GraphRow, {
+      row: rows[0], paletteId: 'extended', hoveredPath: highlighted.pathId, head: true,
+    }));
+    expect(markup).toContain('var(--graph-lane-15,');
+    expect(markup).toContain(`data-path-id="${highlighted.pathId}"`);
+    expect(markup).toContain('stroke-width="4"');
+    expect(markup).toContain('opacity="0.35"');
+    expect(markup).toContain('git-graph-head-ring');
+  });
 });
