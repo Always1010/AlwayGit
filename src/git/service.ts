@@ -110,15 +110,15 @@ export class GitService implements GitServiceContract {
   private async status(repo: Repository) { return parseStatus((await this.run(repo, ['status', '--porcelain=v2', '-z', '--branch', '--untracked-files=all'])).stdout); }
   async snapshot(repo: Repository): Promise<Snapshot> {
     await this.verify(repo);
-    const [status, refsOutput, stashOutput, worktrees, gitDir, remoteOutput] = await Promise.all([this.status(repo), this.text(repo, ['for-each-ref', '--format=%(refname)%00%(objectname)%00%(upstream:short)%00%(*objectname)%00%(*objecttype)%00%(objecttype)', 'refs/heads', 'refs/remotes', 'refs/tags']), this.text(repo, ['stash', 'list', '--format=%gd%x00%H%x00%s']), this.worktrees(repo), this.text(repo, ['rev-parse', '--path-format=absolute', '--git-dir']), this.text(repo, ['remote'])]);
+    const [status, refsOutput, stashOutput, worktrees, gitDir, remoteOutput] = await Promise.all([this.status(repo), this.text(repo, ['for-each-ref', '--format=%(refname)%00%(objectname)%00%(upstream:short)%00%(*objectname)%00%(*objecttype)%00%(objecttype)%00%(symref)', 'refs/heads', 'refs/remotes', 'refs/tags']), this.text(repo, ['stash', 'list', '--format=%gd%x00%H%x00%s']), this.worktrees(repo), this.text(repo, ['rev-parse', '--path-format=absolute', '--git-dir']), this.text(repo, ['remote'])]);
     const refs: GitRef[] = refsOutput ? await Promise.all(refsOutput.split('\n').map(async line => {
-      const [fullName, objectOid, upstream, peeledOid, peeledType, objectType] = line.split('\0');
+      const [fullName, objectOid, upstream, peeledOid, peeledType, objectType, symbolicTarget] = line.split('\0');
       const kind: GitRef['kind'] = fullName.startsWith('refs/heads/') ? 'local' : fullName.startsWith('refs/remotes/') ? 'remote' : 'tag';
       // for-each-ref's starred fields peel one annotated-tag layer. Dereference
       // nested tags fully before deciding whether Commit actions are meaningful.
       const targetType = (peeledType === 'tag' ? await this.text(repo, ['cat-file', '-t', `${fullName}^{}`]) : peeledType || objectType) as GitRef['targetType'];
       const oid = targetType === 'commit' ? peeledType === 'commit' ? peeledOid : peeledType === 'tag' ? await this.oid(repo, fullName) : objectOid : objectOid;
-      return { fullName, name: fullName.replace(/^refs\/(heads|remotes|tags)\//, ''), kind, oid, targetType, ...(upstream ? { upstream } : {}) };
+      return { fullName, name: fullName.replace(/^refs\/(heads|remotes|tags)\//, ''), kind, oid, targetType, ...(upstream ? { upstream } : {}), ...(symbolicTarget ? { symbolicTarget } : {}) };
     })) : [];
     const stashes: Stash[] = stashOutput ? stashOutput.split('\n').map(line => { const [selector, oid, subject] = line.split('\0'); return { selector, oid, subject }; }) : [];
     const remotes = remoteOutput ? remoteOutput.split('\n') : [];

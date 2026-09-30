@@ -1,6 +1,6 @@
 export interface Repository { id: string; root: string; commonDir: string; name: string }
 export interface Change { path: string; originalPath?: string; indexStatus: string; worktreeStatus: string; conflict: boolean; untracked: boolean }
-export interface GitRef { name: string; fullName: string; kind: 'local' | 'remote' | 'tag'; oid: string; targetType?: 'commit' | 'tree' | 'blob' | 'tag'; upstream?: string }
+export interface GitRef { name: string; fullName: string; kind: 'local' | 'remote' | 'tag'; oid: string; targetType?: 'commit' | 'tree' | 'blob' | 'tag'; upstream?: string; symbolicTarget?: string }
 export interface Stash { selector: string; oid: string; subject: string }
 export interface Worktree { path: string; head: string; branch?: string; bare: boolean; detached: boolean; locked?: string; prunable?: string }
 export type OperationKind = 'merge' | 'rebase' | 'cherry-pick' | 'revert';
