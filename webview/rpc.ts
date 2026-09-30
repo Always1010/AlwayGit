@@ -54,7 +54,7 @@ const repo: Repository = { id: 'demo-alwaygit', root: 'D:\\Projects\\AlwayGit', 
 const subjects = ['Polish repository workbench interactions', 'Add native diff integration', 'Merge branch feature/history-graph', 'Render commit graph with stable lanes', 'Keep commit drafts when switching repositories', 'Handle renamed files in changes', 'Improve keyboard navigation', 'Add worktree discovery', 'Show upstream tracking status', 'Update development dependencies', 'Fix status refresh after checkout', 'Introduce Git operation progress'];
 const authors = ['Alex Chen', 'Morgan Lee', 'Sam Rivera', 'Jamie Park'];
 const oid = (n: number) => (0x9a73ed + n * 98761).toString(16).padStart(8, '0') + 'c42d9918a6bc5e4791033ad7e6f202cc';
-const commits: Commit[] = Array.from({ length: 180 }, (_, n) => ({ oid: oid(n), parents: n === 179 ? [] : n % 12 === 2 ? [oid(n + 1), oid(n + 4)] : [oid(n + 1)], author: authors[n % 4], email: `${authors[n % 4].split(' ')[0].toLowerCase()}@example.com`, timestamp: 1790715600 - n * 13800, subject: subjects[n % subjects.length] }));
+const commits: Commit[] = Array.from({ length: 180 }, (_, n) => ({ oid: oid(n), parents: n === 179 ? [] : n % 12 === 2 ? [oid(n + 1), oid(n + 4)] : [oid(n + 1)], author: authors[n % 4], email: `${authors[n % 4].split(' ')[0].toLowerCase()}@example.com`, timestamp: 1790715600 - n * 13800, subject: subjects[n % subjects.length], pushed: n >= 2 }));
 let demoSnapshot: Snapshot = { repository: repo, branch: 'main', head: commits[0].oid, upstream: 'origin/main', defaultBranch: 'main', pushTarget: { localBranch: 'main', remote: 'origin', remoteBranch: 'main', configured: true }, ahead: 2, behind: 0, changes: [
   { path: 'webview/App.tsx', indexStatus: 'M', worktreeStatus: ' ', conflict: false, untracked: false },
   { path: 'webview/styles.css', indexStatus: ' ', worktreeStatus: 'M', conflict: false, untracked: false },
@@ -103,7 +103,7 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
         return [{ ...change, indexStatus: action.type === 'stage' ? 'M' : ' ', worktreeStatus: action.type === 'stage' ? ' ' : 'M', conflict: false, untracked: false }];
       });
     } else if (action.type === 'commit') {
-      const commit = { ...commits[0], oid: oid(999 + demoSnapshot.version), parents: action.amend ? commits[0].parents : [commits[0].oid], subject: action.message.split('\n')[0], timestamp: Math.floor(Date.now() / 1000) }; if (action.amend) commits.shift(); commits.unshift(commit);
+      const commit = { ...commits[0], oid: oid(999 + demoSnapshot.version), parents: action.amend ? commits[0].parents : [commits[0].oid], subject: action.message.split('\n')[0], timestamp: Math.floor(Date.now() / 1000), pushed: false }; if (action.amend) commits.shift(); commits.unshift(commit);
       demoSnapshot.head = commit.oid;const branch=demoSnapshot.refs.find(r=>r.kind==='local'&&r.name===demoSnapshot.branch);if(branch)branch.oid=commit.oid; demoSnapshot.changes = demoSnapshot.changes.filter(c => c.worktreeStatus !== ' ' || c.untracked).map(c => ({ ...c, indexStatus: ' ' })); demoSnapshot.ahead++;
     } else if (action.type === 'branch.checkout'||action.type==='commit.checkout'||action.type==='checkout.stash') {
       const detached=action.type==='commit.checkout'||action.type==='checkout.stash'&&action.detached,target=action.type==='branch.checkout'?action.name:action.target;
@@ -120,7 +120,7 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
     else if(action.type==='stash.apply'||action.type==='stash.drop'){const stash=demoSnapshot.stashes.find(s=>s.selector===action.selector);if(!stash||action.expectedOid&&stash.oid!==action.expectedOid)throw new RpcError('Stash changed. Refresh and retry.','STASH_CHANGED');if(action.type==='stash.apply'){const saved=data.saved.get(stash.oid)??[{path:'webview/styles.css',indexStatus:' ',worktreeStatus:'M',conflict:false,untracked:false}];if(saved.some(f=>demoSnapshot.changes.some(c=>c.path===f.path)))throw new Error('Stash overlaps with local changes; entry preserved.');demoSnapshot.changes.push(...saved.map(c=>({...c,indexStatus:' ',worktreeStatus:'M'})));}if(action.type==='stash.drop'||action.pop)demoSnapshot.stashes=demoSnapshot.stashes.filter(s=>s.oid!==stash.oid);}
     else if (action.type === 'worktree.add') demoSnapshot.worktrees.push({ path: action.path, head: commits[0].oid, branch: action.branch || action.newBranch, bare: false, detached: !!action.detach });
     else if (action.type === 'worktree.remove') demoSnapshot.worktrees = demoSnapshot.worktrees.filter(w => w.path !== action.path);
-    else if (action.type === 'push') demoSnapshot.ahead = 0;
+    else if (action.type === 'push') { demoSnapshot.ahead = 0; commits.forEach(commit => { commit.pushed = true; }); }
     else if (action.type === 'pull') demoSnapshot.behind = 0;
     demoSnapshot.stashes.forEach((stash,index)=>stash.selector=`stash@{${index}}`);
     demoSnapshot.version++; return undefined;
