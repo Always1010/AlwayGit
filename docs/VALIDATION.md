@@ -30,7 +30,7 @@ npm run package
 - Commit 整行悬停、指针、选择、已推送实心节点与粗体消息、本地未推送空心节点与常规消息、各列双击、键盘焦点、本地分支 Checkout 及 Detached HEAD 对话框。
 - English / 简体中文切换，并验证 Git 命令、分支、路径和草稿保持不变。
 - 切换仓库或重载后恢复筛选、选择、布局和 Commit 草稿。
-- 文件完整多层父目录、Working Tree 单击/Ctrl/Cmd/Shift 选择及无复选框交互、文件区域 Ctrl/Cmd+A、原生文本框全选、提交文件路径复制、Stage / Unstage 范围和显式 Discard。
+- 文件完整多层父目录、Working Tree / Commit Details / Commit 比较的单击/Ctrl/Cmd/Shift 选择及无复选框交互、文件区域 Ctrl/Cmd+A、原生文本框全选、提交文件路径复制、Stage / Unstage 范围和显式 Discard。
 - Push 等操作进行中、成功、失败与目标；错误详情、日志；持久冲突条、查看冲突、Continue 禁用原因与已解决状态。
 - Diff 修改块外框、当前/总块数、箭头、手动滚动、刷新重映射、缩放、长行横向滚动和截断计数。
 - Stash、Commit、浅色/深色及两种高对比主题、减少动态效果、未推送数量角标，以及默认与自定义 Push 目标。
@@ -53,22 +53,20 @@ npm run package
 
 ## 本轮结果
 
-执行日期为 2026-10-01，版本为 0.8.2。检查集中在两项实现完成后执行，范围限定为列分隔拖动、Graph 轨道布局、会话列宽迁移和恢复。没有重跑无关单测、Graph 性能基准或桌面集成测试，也没有启动可见 VS Code / 浏览器测试窗口。
+执行日期为 2026-10-01，版本为 0.8.3。检查范围限定为 Commit Details 与 Commit 比较文件列表的无复选框选择交互，没有重跑无关单测、Graph 性能基准或桌面集成测试，也没有启动可见 VS Code / 浏览器测试窗口。
 
 | 项目 | 结果 | 备注 |
 | --- | --- | --- |
-| `npm run typecheck` | 通过 | Graph 宽度会话字段、布局算法和 Webview 类型一致 |
-| 相关 Vitest 用例 | 通过 | 49 项 Graph 布局与渲染、状态管理和会话协议用例；覆盖空轨道收拢、复杂 DAG 端点连续性、分页一致性、百父节点 Merge 和旧会话兼容 |
-| appearance-only 无头界面测试 | 通过 | 实际拖动 Graph、作者和日期分隔线，验证边界跟随、方向换算、旧会话默认宽度、持久化及 Restore Layout |
+| `npm run typecheck` | 通过 | Commit Details、Commit 比较与 Working Tree 共用的文件选择类型一致 |
+| `tests/file-selection.test.ts` | 通过 | 9 项用例覆盖普通单选、Ctrl/Cmd 切换、Shift 范围、Ctrl/Cmd+A、Escape 和路径处理 |
 | `npm run build` | 通过 | 扩展与 Webview 生产构建成功 |
 | `git diff --check` | 通过 | 修改文件无空白错误 |
-| `scripts/update-local.ps1` | 通过 | 构建固定包 `artifacts/alwaygit.vsix`，保留 0.8.1 为 previous 并生成 0.8.2 版本包；沿用已记录的 VS Code 默认 Profile 安装。官方 CLI 核对为 `alwaygit-dev.alwaygit@0.8.2`，未关闭或重启用户窗口 |
+| `scripts/update-local.ps1` | 通过 | 构建固定包 `artifacts/alwaygit.vsix`，保留 0.8.2 为 previous 并生成 0.8.3 版本包；沿用已记录的 VS Code 默认 Profile 安装。官方 CLI 核对为 `alwaygit-dev.alwaygit@0.8.3`，未关闭或重启用户窗口 |
 
 复现本轮定向单测：
 
 ```powershell
-npx vitest run tests/graph.test.ts tests/graph-renderer.test.ts tests/workbench-protocol.test.ts tests/ui-state.test.ts
-node scripts/test-ui.mjs --appearance-only
+npx vitest run tests/file-selection.test.ts
 ```
 
-本轮未改动写入型 Git 操作或窗口路由，没有启动对应桌面集成测试。无头截图已核对 Graph 紧凑布局和表头列边界；真实 VS Code 内的人工拖动体验、远程宿主、macOS、Linux 和最低支持版本仍需对应环境验收。
+本轮未改动 Git 操作、协议或窗口路由，没有启动对应桌面集成测试。真实 VS Code 内的人工视觉体验、远程宿主、macOS、Linux 和最低支持版本仍需对应环境验收。

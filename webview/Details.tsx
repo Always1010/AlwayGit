@@ -18,8 +18,6 @@ function useFileSelection(scope: string, order: string[]) {
   useEffect(() => { setSaved(old => ({ scope, selection: reconcileFileSelection(order, old.scope === scope ? old.selection : { paths: [] }) })); }, [scope, signature]);
   const update = (change: (current: FileSelection) => FileSelection) => setSaved(old => ({ scope, selection: change(reconcileFileSelection(order, old.scope === scope ? old.selection : { paths: [] })) }));
   const click = (path: string, event: Pick<MouseEvent, 'ctrlKey' | 'metaKey' | 'shiftKey'>, replace = false) => update(current => fileSelectionForClick(order, current, path, { toggle: event.ctrlKey || event.metaKey, range: event.shiftKey, replace }));
-  const check = (path: string, checked: boolean) => update(current => reconcileFileSelection(order, { paths: checked ? [...current.paths, path] : current.paths.filter(item => item !== path), anchor: path }));
-  const all = (paths: string[], checked: boolean) => update(current => reconcileFileSelection(order, { ...current, paths: checked ? [...current.paths, ...paths] : current.paths.filter(path => !paths.includes(path)) }));
   const keyDown = (event: KeyboardEvent<HTMLElement>) => {
     const target = event.target as HTMLElement, input = target.closest('input');
     const editable = !!target.closest('textarea,[contenteditable]:not([contenteditable="false"])') || !!input && !['checkbox', 'radio', 'button', 'submit', 'reset'].includes(input.type);
@@ -28,7 +26,7 @@ function useFileSelection(scope: string, order: string[]) {
     event.preventDefault(); event.stopPropagation();
     update(() => ({ paths: command === 'all' ? [...order] : [] }));
   };
-  return { selection, click, check, all, keyDown };
+  return { selection, click, keyDown };
 }
 
 function FileSelectionHint({ count, clickSelect = false }: { count: number; clickSelect?: boolean }) {
@@ -38,11 +36,11 @@ function FileSelectionHint({ count, clickSelect = false }: { count: number; clic
 
 function CommitFiles({ files, scope, target, empty, edit }: { files: CommitFile[]; scope: string; target(file: CommitFile): DiffTarget; empty: string; edit(): void }) {
   const state = useWorkbench(), t = useTranslation(), batch = useFileSelection(`${state.repoId}:${scope}`, files.map(file => file.path));
-  return <div className="file-selection-panel" tabIndex={0} role="group" aria-label={t('Changed files', '变更文件')} onKeyDown={batch.keyDown}>
-    <div className="file-selection-toolbar"><label><input type="checkbox" ref={input => { if (input) input.indeterminate = batch.selection.paths.length > 0 && batch.selection.paths.length < files.length; }} aria-label={t('Select all changed files', '选择全部变更文件')} checked={!!files.length && batch.selection.paths.length === files.length} disabled={!files.length} onChange={event => batch.all(files.map(file => file.path), event.target.checked)}/>{t('Select all', '全选')}</label><Button icon="copy" disabled={!batch.selection.paths.length} onClick={() => void rpc('copyText', state.repoId, { text: batch.selection.paths.join('\n') }).catch(state.report)}>{t('Copy Paths', '复制路径')}{batch.selection.paths.length ? ` (${batch.selection.paths.length})` : ''}</Button></div>
-    <FileSelectionHint count={batch.selection.paths.length}/>
-    <div className="detail-files">{files.map(file => { const diff = target(file), preview = state.diffTarget?.kind === diff.kind && state.selectedFile === file.path, checked = batch.selection.paths.includes(file.path); return <div key={file.path} className={`file-item ${preview ? 'selected' : ''} ${checked ? 'batch-selected' : ''}`}>
-      <input type="checkbox" aria-label={`Select ${file.path}`} checked={checked} onChange={event => batch.check(file.path, event.target.checked)}/><span className={`file-status status-${file.status[0]}`}>{file.status}</span><Icon name="file-code"/><button className="file-name" aria-label={file.path} title={file.previousPath ? `${file.previousPath} → ${file.path}` : file.path} onClick={event => { batch.click(file.path, event); state.selectFile(diff); }} onDoubleClick={edit}><FileLabel path={file.path}/></button>
+  return <div className="file-selection-panel" tabIndex={0} role="listbox" aria-multiselectable="true" aria-label={t('Changed files', '变更文件')} onKeyDown={batch.keyDown}>
+    <div className="file-selection-toolbar"><Button icon="copy" disabled={!batch.selection.paths.length} onClick={() => void rpc('copyText', state.repoId, { text: batch.selection.paths.join('\n') }).catch(state.report)}>{t('Copy Paths', '复制路径')}{batch.selection.paths.length ? ` (${batch.selection.paths.length})` : ''}</Button></div>
+    <FileSelectionHint clickSelect count={batch.selection.paths.length}/>
+    <div className="detail-files">{files.map(file => { const diff = target(file), preview = state.diffTarget?.kind === diff.kind && state.selectedFile === file.path, checked = batch.selection.paths.includes(file.path); return <div key={file.path} role="option" aria-selected={checked} className={`file-item ${preview ? 'selected' : ''} ${checked ? 'batch-selected' : ''}`}>
+      <span className={`file-status status-${file.status[0]}`}>{file.status}</span><Icon name="file-code"/><button className="file-name" aria-label={file.path} title={file.previousPath ? `${file.previousPath} → ${file.path}` : file.path} onClick={event => { batch.click(file.path, event, true); state.selectFile(diff); }} onDoubleClick={edit}><FileLabel path={file.path}/></button>
     </div>; })}{!files.length && <Empty title={empty}/>}</div>
   </div>;
 }
