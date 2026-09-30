@@ -8,6 +8,8 @@
 
 面板分隔线、作者列和日期列可拖动。`Restore Layout` 恢复默认尺寸。提交列表默认字号约 13 px、行高约 26 px，保留交替底色和可辨认的细分隔线。面板标题、边界、可点击快捷项和选中状态必须与普通文字清楚区分。窄窗口不得造成整个工作台横向溢出；必要时各面板内部滚动或收起次要内容。
 
+Graph 使用独立于终端主题色的高区分度色板。远端默认分支（缺失时回退 `main`、`master`）使用加粗的中性色主线；浅色主题为近黑色，深色主题为近白色。其他路径使用蓝、橙、紫、青绿、玫红等颜色，并在分页、刷新和虚拟滚动时保持路径颜色稳定。
+
 ## 选择与打开
 
 | 输入 | 行为 |
@@ -19,7 +21,11 @@
 | 右键引用 | 打开该对象的菜单，不改变 Graph 筛选 |
 | `Show in Graph` | 把目标加入现有筛选 |
 | `Show Only This Branch/Tag` | 仅显示目标，不 Checkout |
-| 单击 Commit | 显示提交详情和文件列表 |
+| 单击 Commit | 单选该 Commit，显示提交详情和文件列表 |
+| `Ctrl` / `Cmd` + 单击 Commit | 加入或移出多选集合 |
+| `Shift` + 单击 Commit | 从选择锚点到目标 Commit 按当前列表顺序选择连续区间 |
+| `Ctrl` / `Cmd` + `Shift` + 单击 Commit | 在现有集合上追加连续区间 |
+| 右键已选 Commit | 保留当前多选集合并显示适用操作 |
 | 双击 Commit | 关联一个本地分支时 Checkout；关联多个时选择；没有时确认 Detached HEAD |
 | 单击详情中的文件 | 在底部预览 Diff |
 | 双击文件 | 在 VS Code 打开；历史删除文件打开只读历史内容或原生 Diff |
@@ -61,7 +67,9 @@ Local Branches 和 Remote Branches 按分支名中的 `/` 构成递归目录，�
 | Stashes | `Stash Changes…`、`Refresh` |
 | Worktrees | `Add Worktree…`、`Refresh` |
 
-Graph 中 Commit 的菜单沿用详情操作，包括 `Create Branch…`、`Create Tag…`、`Cherry-pick…`、`Revert…`、`Reset…`、Checkout / Detached HEAD、`Copy Commit ID` 和 `Copy Commit Message`；具体项目根据提交和仓库状态禁用。
+Graph 中 Commit 的菜单集中提供 `Create Branch…`、`Create Tag…`、Cherry-pick、`Revert…`、`Reset…`、Checkout / Detached HEAD、`Copy Commit ID` 和 `Copy Commit Message`；顶部工具栏和 Commit Details 标题不重复提供这些入口。普通 Commit 的 Cherry-pick 点击后直接执行；Merge Commit 单独选择 Mainline Parent。多选 Commit 按当前拓扑列表从旧到新执行批量 Cherry-pick，且只处理明确选中的 Commit；包含 Merge Commit 时禁用批量操作并要求单独处理。具体项目根据提交、当前分支和仓库操作状态禁用。
+
+恰好选择两个 Commit 时提供 `Compare Commits`。存在祖先关系时祖先位于左侧；没有祖先关系时保持选择顺序。右侧显示两个 Commit 和差异文件列表，交换按钮可反转比较方向，文件 Diff 支持新增、删除和重命名。
 
 ## 禁用与受阻规则
 
@@ -78,7 +86,7 @@ Graph 中 Commit 的菜单沿用详情操作，包括 `Create Branch…`、`Crea
 
 Working Tree 将文件分为 Conflicts、Unstaged 和 Staged。Stage、Unstage 与 Stash 是不同操作。`Discard Changes…` 只丢弃所选 Unstaged 修改，保留 Index 中同一文件的 Staged 修改；确认对话框必须准确描述受影响内容。
 
-Commit 表单保存每仓库草稿。Commit 只提交 Index；Amend 替换当前提交。底部预览显示选中文件和比较目标，并提供在 VS Code 原生 Diff 或编辑器中打开的入口。删除与新增使用高辨识度的红色和绿色整行底色、边缘标记、`−` / `+` 标记及行内变化强调。二进制、超限、缺失或非法编码内容显示具体说明。
+Commit 表单保存每仓库草稿。Commit 只提交 Index；Amend 替换当前提交。底部预览显示选中文件和比较目标，并提供在 VS Code 原生 Diff 或编辑器中打开的图标入口，文字通过悬浮提示和无障碍标签提供。上一处、下一处按钮在当前文件的连续修改块之间移动，到达首尾后禁用而不循环。删除与新增使用高辨识度的红色和绿色整行底色、边缘标记、`−` / `+` 标记及行内变化强调。二进制、超限、缺失或非法编码内容显示具体说明。
 
 `Open Diff` 与 `Edit in VS Code` 沿用项目按钮的窗口定位规则，在目标窗口的当前主编辑器组打开保留的标签（非 Preview），不向右新建分屏，也不关闭已有标签或未保存文档。Diff 请求在目标宿主重新读取原有比较类型，不把当前窗口的内存文档 URI 跨窗口搬运。已打开的工作区文件复用其标签；历史中已删除的文件仍回退到原生 Diff。
 
