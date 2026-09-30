@@ -34,19 +34,44 @@ export async function verifyWorktrees(browser, url) {
     const groups = page.locator('[data-repository-group]'), draft = page.getByRole('textbox', { name: 'Commit message', exact: true });
     await draft.waitFor();
     assert.equal(await groups.count(), 2, 'Main and linked directory share one entry; a separate clone keeps its own entry');
+    const sidebar = page.getByTestId('sidebar');
     const app = groups.filter({ has: page.locator('span.truncate', { hasText: /^App$/ }) }).first();
+    const clone = page.locator('[data-repository-group][title^="D:/Other/App"]');
     assert.equal(await app.innerText(), 'App'); assert.equal((await app.getAttribute('title'))?.split('\n')[0], 'D:/Projects/App-feature');
-    assert.match(await app.getAttribute('class'), /selected/); assert.equal(await draft.inputValue(), 'Linked draft');
-    await app.click(); assert.equal(await draft.inputValue(), 'Linked draft', 'Clicking the selected group keeps its Worktree');
+    assert.equal(await app.getAttribute('aria-current'), 'true'); assert.equal(await app.locator('.current-indicator .codicon-play').count(), 1);
+    assert.equal(await sidebar.getByRole('button', { name: 'Branch feature', exact: true }).getAttribute('aria-current'), 'true');
+    assert.equal(await sidebar.getByRole('button', { name: 'Branch feature', exact: true }).innerText(), 'feature', 'The current branch uses an icon instead of a Current label');
+    assert.equal(await sidebar.getByRole('button', { name: 'feature · App-feature', exact: true }).getAttribute('aria-current'), 'true');
+    assert.equal(await draft.inputValue(), 'Linked draft');
     await app.click({ button: 'right' });
     await page.getByRole('menuitem', { name: 'Copy Repository Path', exact: true }).click();
     await page.waitForFunction(() => window.__worktreeFixture.calls.some(call => call.method === 'copyText'));
     assert.equal(await page.evaluate(() => window.__worktreeFixture.calls.find(call => call.method === 'copyText').payload.text), 'D:/Projects/App-feature');
     await draft.fill('Edited linked draft');
-    await page.getByTestId('sidebar').getByRole('button', { name: 'main · App', exact: true }).click();
+    await clone.click();
+    await page.waitForTimeout(30);
+    assert.equal(await page.evaluate(() => window.__worktreeFixture.session.repoId), 'linked', 'Single-clicking a repository must not switch it');
+    assert.equal(await draft.inputValue(), 'Edited linked draft');
+    await clone.dblclick();
+    await page.waitForFunction(() => window.__worktreeFixture.session.repoId === 'clone');
+    assert.equal(await clone.getAttribute('aria-current'), 'true', 'The current repository marker follows a double-click switch');
+    await app.dblclick();
     await page.waitForFunction(() => document.querySelector('#ag-commit-message')?.value === 'Main draft');
     assert.equal(await groups.count(), 2); assert.equal((await app.getAttribute('title'))?.split('\n')[0], 'D:/Projects/App');
-    await page.getByTestId('sidebar').getByRole('button', { name: 'feature · App-feature', exact: true }).click();
+    const mainWorktree = sidebar.getByRole('button', { name: 'main · App', exact: true });
+    const featureWorktree = sidebar.getByRole('button', { name: 'feature · App-feature', exact: true });
+    assert.equal(await mainWorktree.getAttribute('aria-current'), 'true');
+    await featureWorktree.click();
+    await page.waitForTimeout(30);
+    assert.equal(await page.evaluate(() => window.__worktreeFixture.session.repoId), 'main', 'Single-clicking a Worktree must not switch it');
+    assert.equal(await draft.inputValue(), 'Main draft');
+    await featureWorktree.dblclick();
+    await page.waitForFunction(() => document.querySelector('#ag-commit-message')?.value === 'Edited linked draft');
+    assert.equal(await featureWorktree.getAttribute('aria-current'), 'true', 'The current Worktree marker follows a double-click switch');
+    await mainWorktree.press('Enter');
+    await page.waitForFunction(() => document.querySelector('#ag-commit-message')?.value === 'Main draft');
+    assert.equal(await page.evaluate(() => window.__worktreeFixture.session.repoId), 'main', 'Enter is the keyboard equivalent for switching Worktrees');
+    await featureWorktree.dblclick();
     await page.waitForFunction(() => document.querySelector('#ag-commit-message')?.value === 'Edited linked draft');
     assert.equal(await groups.count(), 2);
     // Refreshing registered paths must not reset the selected Worktree.
@@ -56,6 +81,6 @@ export async function verifyWorktrees(browser, url) {
     assert.equal(await page.evaluate(() => window.__worktreeFixture.session.repoId), 'linked');
     assert.equal(await page.evaluate(() => window.__worktreeFixture.session.drafts.main), 'Main draft');
     assert.deepEqual(errors, []);
-    console.log('ALWAYGIT_WORKTREES_UI_TESTS_PASSED: grouped repository entries, legacy active Worktree/drafts, separate clone, current path menu, Worktree switching and repository refresh');
+    console.log('ALWAYGIT_WORKTREES_UI_TESTS_PASSED: grouped repository entries, double-click switching, keyboard switching, current markers, legacy Worktree drafts and repository refresh');
   } finally { await page.close(); }
 }

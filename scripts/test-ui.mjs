@@ -122,6 +122,10 @@ try {
   await sidebar.getByRole('button', { name: 'Expand feature', exact: true }).click();
   await sidebar.getByRole('button', { name: 'Expand login', exact: true }).click();
   await sidebar.getByRole('button', { name: 'Branch feature/login/api', exact: true }).waitFor();
+  const currentBranch = sidebar.getByRole('button', { name: 'Branch main', exact: true });
+  assert.equal(await currentBranch.getAttribute('aria-current'), 'true', 'The current local branch exposes aria-current');
+  assert.equal(await currentBranch.locator('.current-indicator .codicon-play').count(), 1, 'The current local branch starts with a play marker');
+  assert.equal(await currentBranch.innerText(), 'main', 'The current branch does not repeat its state as a text badge');
   const featureBranch = sidebar.getByRole('button', { name: 'Branch feature/history-graph', exact: true });
   await assertMenu(featureBranch, ['Checkout…', 'Show in Graph', 'Show Only This Branch', 'Create Branch…', 'Create Tag…', 'Merge…', 'Rebase…', 'Push…', 'Delete Branch…', 'Copy Branch Name'], true);
   assert.equal(await featureBranch.evaluate(element => element === document.activeElement), true, 'Escape must restore focus to the context-menu opener');
