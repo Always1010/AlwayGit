@@ -9,8 +9,8 @@ import { filePathLabel, fileSelectionForClick, fileSelectionKeyboardCommand, fil
 import type { ContextHandler } from './Sidebar';
 
 function FileLabel({ path }: { path: string }) {
-  const t = useTranslation(), label = filePathLabel(path);
-  return <span className="file-label"><span className="file-basename">{label.name}</span><span className="file-parent-path">{label.parent || t('Repository root', '仓库根目录')}</span></span>;
+  const label = filePathLabel(path);
+  return <span className="file-label"><span className="file-basename">{label.name}</span><span className="file-parent-path">{label.parent}</span></span>;
 }
 
 function useFileSelection(scope: string, order: string[]) {
