@@ -5,19 +5,23 @@ import type { LayoutState } from './rpc';
 import type { Language } from './i18n';
 import { folderKeys } from './refTree';
 import { affectsWorkingDiff, diffKey, historyKey, mergeChanges, workingTarget } from './refresh';
+import { actionTarget } from './actionFeedback';
+import type { ActionFeedback } from './actionFeedback';
 
 let repositoryEpoch = 0, snapshotEpoch = 0, historyEpoch = 0, detailEpoch = 0;
 let refreshInvalidation: { epoch: number; changes?: RepositoryChanges; forceHistory: boolean } | undefined;
 const session = readSession(), views = session.views ?? {}, executingRepositories = new Set<string>(), hostBusyRepositories = new Set<string>();
+const actionFeedbacks = new Map<string, ActionFeedback>();
+let actionSequence = 0;
 export const defaultLayout: LayoutState = { preset: 'workbench', sidebar: 210, details: 300, diff: 220, author: 100, date: 120, font: 13, row: 26 };
 export interface CheckoutFailure { reason?: string; paths: string[]; target: string; worktreePath?: string; stashCreated?: boolean; stashOid?: string; detached?: boolean }
 interface WorkbenchState {
   repositories: Repository[]; repoId?: string; snapshot?: Snapshot; commits: Commit[]; details?: CommitDetails; comparison?: CommitComparison; selectedOid?: string; selectedOids: string[]; selectionAnchor?: string; selectedParent?: string; selectedStashOid?: string; stashDetails?: CommitDetails; selectedFile?: string; diffTarget?: DiffTarget; diffRevision: number;
-  ref?: string; checkedRefs?: string[]; expandedRefGroups?:string[]; collapsedSidebarGroups:string[]; search: string; language: Language; layout: LayoutState; checkoutFailure?: CheckoutFailure; locateToken:number;
+  ref?: string; checkedRefs?: string[]; expandedRefGroups?:string[]; collapsedSidebarGroups:string[]; search: string; language: Language; layout: LayoutState; checkoutFailure?: CheckoutFailure; actionFeedback?: ActionFeedback; locateToken:number;
   nextOffset: number; hasMore: boolean; tips: string[]; loading: boolean; historyLoading: boolean; detailsLoading: boolean; busy: boolean; activity: string; error?: string; notice?: string; tab: 'history' | 'changes'; drafts: Record<string, string>;
   initialize(): Promise<void>; selectRepository(id: string): Promise<void>; refresh(options?: { background?: boolean; changes?: RepositoryChanges }): Promise<void>; loadHistory(append?: boolean): Promise<void>; selectCommit(oid: string, parent?: string, stashOid?: string, preserveSelection?: boolean): Promise<void>; compareCommits(left:string,right:string,preserveOrder?:boolean):Promise<void>; setCommitSelection(oids:string[],anchor?:string):void;
   setFilter(ref?: string, search?: string): void; setCheckedRefs(refs: string[]): void; setExpandedRefGroup(key:string,expanded:boolean):void; toggleSidebarGroup(key:string):void; setSearch(value: string): void; selectWorking(): void; selectFile(target: DiffTarget): void; locateHead():void;
-  execute(action: GitAction): Promise<boolean>; setDraft(value: string): void; setLanguage(value: Language): void; setLayout(value: Partial<LayoutState>): void; report(error: unknown): void;
+  execute(action: GitAction): Promise<boolean>; dismissFeedback(): void; setDraft(value: string): void; setLanguage(value: Language): void; setLayout(value: Partial<LayoutState>): void; report(error: unknown): void;
 }
 const message = (error: unknown) => error instanceof Error ? error.message : String(error);
 const clamp = (n: number, min: number, max: number, fallback: number) => Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : fallback;
@@ -35,7 +39,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   },
   async selectRepository(id) {
     ++repositoryEpoch; ++historyEpoch; ++detailEpoch; const view = views[id];
-    set({ repoId: id, snapshot: undefined, commits: [], selectedOids:[], selectionAnchor:undefined, tips: [], details: undefined, comparison:undefined, stashDetails: undefined, diffTarget: undefined, diffRevision:0, selectedFile: view?.selectedFile, selectedOid: view?.selectedOid, selectedParent: view?.selectedParent, selectedStashOid: view?.selectedStashOid, ref: view?.ref, checkedRefs: view?.checkedRefs ? [...view.checkedRefs] : view?.ref ? [view.ref] : undefined, expandedRefGroups:view?.expandedRefGroups?[...view.expandedRefGroups]:undefined,collapsedSidebarGroups:[...(view?.collapsedSidebarGroups??[])], search: view?.search ?? '', tab: view?.tab ?? 'history', checkoutFailure: undefined, error: undefined, notice: undefined, loading: true, busy: executingRepositories.has(id), activity: '', detailsLoading: false, historyLoading: false });
+    set({ repoId: id, snapshot: undefined, commits: [], selectedOids:[], selectionAnchor:undefined, tips: [], details: undefined, comparison:undefined, stashDetails: undefined, diffTarget: undefined, diffRevision:0, selectedFile: view?.selectedFile, selectedOid: view?.selectedOid, selectedParent: view?.selectedParent, selectedStashOid: view?.selectedStashOid, ref: view?.ref, checkedRefs: view?.checkedRefs ? [...view.checkedRefs] : view?.ref ? [view.ref] : undefined, expandedRefGroups:view?.expandedRefGroups?[...view.expandedRefGroups]:undefined,collapsedSidebarGroups:[...(view?.collapsedSidebarGroups??[])], search: view?.search ?? '', tab: view?.tab ?? 'history', checkoutFailure: undefined, error: undefined, notice: undefined, actionFeedback: actionFeedbacks.get(id), loading: true, busy: executingRepositories.has(id) || hostBusyRepositories.has(id), activity: '', detailsLoading: false, historyLoading: false });
     await get().refresh();
   },
   async refresh(options = {}) {
@@ -116,25 +120,44 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   locateHead(){const snapshot=get().snapshot;if(!snapshot?.head)return;const ref=snapshot.refs.find(r=>r.kind==='local'&&r.name===snapshot.branch)?.fullName??'HEAD';set({checkedRefs:[...new Set([...(get().checkedRefs??[]),ref])],search:'',locateToken:get().locateToken+1,selectedStashOid:undefined});void get().loadHistory();void get().selectCommit(snapshot.head);},
   async execute(action) {
     const repoId = get().repoId, epoch = repositoryEpoch; if (!repoId || get().busy) return false;
-    executingRepositories.add(repoId); set({ busy: true, activity: action.type, error: undefined, notice: undefined, checkoutFailure: undefined });
+    const feedback: ActionFeedback = { id: ++actionSequence, repoId, action, status: 'running', target: actionTarget(action, get().snapshot) };
+    const finish = (status: 'success' | 'error', error?: string) => {
+      if (actionFeedbacks.get(repoId)?.id !== feedback.id) return;
+      const completed = { ...feedback, status, error };
+      actionFeedbacks.set(repoId, completed);
+      if (get().repoId === repoId) set({ actionFeedback: completed });
+    };
+    actionFeedbacks.set(repoId, feedback);
+    executingRepositories.add(repoId); set({ busy: true, activity: action.type, actionFeedback: feedback, error: undefined, notice: undefined, checkoutFailure: undefined });
     try {
       await rpc('action', repoId, action);
       if (epoch === repositoryEpoch) {
         await get().refresh();
-        if(epoch!==repositoryEpoch)return true;
-        const checkout = ['branch.checkout', 'commit.checkout', 'checkout.stash'].includes(action.type) || action.type === 'branch.create' && action.checkout;
-        if (checkout) { const snap = get().snapshot; const ref = snap?.refs.find(r => r.kind === 'local' && r.name === snap.branch)?.fullName ?? (snap?.head ? 'HEAD' : undefined); if (ref && !get().checkedRefs?.includes(ref)) get().setCheckedRefs([...(get().checkedRefs ?? []), ref]); }
-        set({ notice: demoMode ? (get().language === 'zh-CN' ? `模拟操作：${action.type}；未修改实际仓库。` : `Demo: ${action.type} completed. No disk changes.`) : `${action.type} ✓` });
+        if(epoch===repositoryEpoch) {
+          const checkout = ['branch.checkout', 'commit.checkout', 'checkout.stash'].includes(action.type) || action.type === 'branch.create' && action.checkout;
+          if (checkout) { const snap = get().snapshot; const ref = snap?.refs.find(r => r.kind === 'local' && r.name === snap.branch)?.fullName ?? (snap?.head ? 'HEAD' : undefined); if (ref && !get().checkedRefs?.includes(ref)) get().setCheckedRefs([...(get().checkedRefs ?? []), ref]); }
+          set({ notice: demoMode ? (get().language === 'zh-CN' ? `模拟操作：${action.type}；未修改实际仓库。` : `Demo: ${action.type} completed. No disk changes.`) : `${action.type} ✓` });
+        }
       }
+      finish('success');
       return true;
     } catch (error) {
-      if (epoch === repositoryEpoch) {
+      if (get().repoId === repoId) {
         const structured = error as { code?: string; details?: CheckoutFailure };
+        // Failed Merge / Cherry-pick can leave a new operation and conflicts on disk.
+        await get().refresh({ background: true });
+        if (get().repoId !== repoId) { finish('error', message(error)); return false; }
         set({ error: message(error), checkoutFailure: structured.details?.target ? { ...structured.details, detached: action.type === 'commit.checkout' || action.type === 'checkout.stash' && action.detached } : undefined });
-        if (structured.details?.stashCreated) await get().refresh();
       }
+      finish('error', message(error));
       return false;
     } finally { executingRepositories.delete(repoId); if (get().repoId===repoId) set({ busy: hostBusyRepositories.has(repoId), activity: hostBusyRepositories.has(repoId)?get().activity:'' }); }
+  },
+  dismissFeedback() {
+    const feedback = get().actionFeedback;
+    if (!feedback || feedback.status === 'running') return;
+    actionFeedbacks.delete(feedback.repoId);
+    set({ actionFeedback: undefined, ...(get().error === feedback.error ? { error: undefined } : {}) });
   },
   setDraft(value) { const repoId = get().repoId; if (repoId) set({ drafts: { ...get().drafts, [repoId]: value } }); },
   setLanguage(language) { set({ language }); },
