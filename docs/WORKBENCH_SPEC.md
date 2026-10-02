@@ -134,7 +134,7 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 | --- | --- |
 | Repositories | `Add Repository…`、`Create Repository Group`、`Refresh` |
 | Local Branches | 标题：`Create Branch…`；Graph 预设：`Show All Local Branches in Graph`、`Show Current Branch Only in Graph` |
-| Remotes | `Add Remote…`、`Fetch…`、`Create Local Tracking Branches…`、`Refresh`；没有远端时正文说明尚未连接并保留文字入口 |
+| Remotes | 标题行仅显示 `＋` 添加远端图标，悬浮提示与无障碍名称为 `Add Remote…`；右键菜单提供 `Add Remote…`、`Create Local Tracking Branches…`、`Refresh`。Fetch 位于各 Remote 行；没有远端时正文说明尚未连接并保留文字入口 |
 | Tags | `Create Tag…`、`Refresh` |
 | Stashes | `Stash Changes…`、`Refresh` |
 | Worktrees | `Add Worktree…`、`Refresh` |
