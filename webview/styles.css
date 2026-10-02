@@ -125,6 +125,7 @@ h1,h2,p {margin:0;}
 .push-node {width:8px;height:8px;border:1.5px solid var(--muted);border-radius:50%;}
 .push-node.pushed {background:var(--muted);}
 .push-node.local {width:7px;height:7px;background:var(--bg);}
+.search-push-state {flex:none;margin:0 3px;}
 .history-table {display:flex;flex-direction:column;flex:1;min-height:0;min-width:0;}
 .history-header-scroll {overflow:hidden;flex:none;}
 .history-columns {display:grid;height:24px;flex:none;background:var(--surface-toolbar);color:var(--muted);font-size:11px;font-weight:600;border-bottom:1px solid var(--border);overflow:hidden;}

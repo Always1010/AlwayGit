@@ -188,6 +188,39 @@ describe('repository UI consistency', () => {
     const calls = bridge.rpc.mock.calls.filter(([method]) => method === 'history');
     expect(calls.at(-1)?.[2]).toMatchObject({ offset: 1, tips: ['fixed-tip'] });
   });
+  it('clears filtered rows immediately and locates an older result across full history pages', async () => {
+    await store.getState().selectRepository('a');
+    const old={...commit,oid:'old'}, fallback=bridge.rpc.getMockImplementation()!;
+    const first=deferred<{commits:Commit[];tips:string[];nextOffset:number;hasMore:boolean}>();
+    bridge.rpc.mockImplementation((method,repoId,payload)=>{
+      if(method!=='history')return fallback(method,repoId,payload);
+      if(payload.search)return {commits:[old],tips:['filtered-tip'],nextOffset:1,hasMore:false};
+      if(!payload.offset)return first.promise;
+      return {commits:[old],tips:['full-tip'],nextOffset:2,hasMore:false};
+    });
+    store.getState().setSearch('older');
+    expect(store.getState().commits).toEqual([]);
+    await vi.waitFor(()=>expect(store.getState().commits).toEqual([old]));
+    await store.getState().selectCommit(old.oid);
+    const locating=store.getState().locateCommit(old.oid);
+    expect(store.getState()).toMatchObject({search:'',commits:[],locatingOid:old.oid,selectedOid:old.oid});
+    first.resolve({commits:[commit],tips:['full-tip'],nextOffset:1,hasMore:true});
+    await locating;
+    expect(store.getState()).toMatchObject({search:'',selectedOids:[old.oid],locatingOid:undefined,commits:[commit,old]});
+    expect(bridge.rpc.mock.calls.filter(([method])=>method==='history').at(-1)?.[2]).toMatchObject({offset:1,tips:['full-tip']});
+  });
+  it('stops locating when a new search replaces the pending history request', async () => {
+    await store.getState().selectRepository('a');
+    const delayed=deferred<{commits:Commit[];tips:string[];nextOffset:number;hasMore:boolean}>(),fallback=bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method,repoId,payload)=>method==='history'&&!payload.search?delayed.promise:fallback(method,repoId,payload));
+    const locating=store.getState().locateCommit('old');
+    store.getState().setSearch('new');
+    await vi.waitFor(()=>expect(store.getState().historyLoading).toBe(false));
+    delayed.resolve({commits:[{...commit,oid:'stale'}],tips:['old-tip'],nextOffset:1,hasMore:true});
+    await locating;
+    expect(store.getState()).toMatchObject({search:'new',commits:[commit],locatingOid:undefined});
+    expect(bridge.rpc.mock.calls.filter(([method,,payload])=>method==='history'&&payload.offset>0)).toHaveLength(0);
+  });
   it('preserves independent drafts and view state across repository switches', async () => {
     await store.getState().selectRepository('a'); store.getState().setDraft('Draft A'); store.setState({ tab: 'changes' });
     await store.getState().selectRepository('b'); store.getState().setDraft('Draft B');
