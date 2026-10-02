@@ -125,7 +125,7 @@ export class Workbench implements vscode.Disposable {
   async handle(request: RpcRequest): Promise<unknown> { return this.handleRequest(request); }
   private async handleRequest(request: RpcRequest, source?:WorkbenchPanel): Promise<unknown> {
     if (request.method === 'showLog') { this.output.show(true); return null; }
-    if (request.method === 'saveSession') { await this.context.workspaceState.update('alwaygit.session', sessionSchema.parse(request.payload)); return null; }
+    if (request.method === 'saveSession') { const session=sessionSchema.parse(request.payload);await this.context.workspaceState.update('alwaygit.session',session);if(source){source.activeRepository=session.repoId;this.updatePanelTitle(source);}return null; }
     if (request.method === 'copyText') { await vscode.env.clipboard.writeText(copySchema.parse(request.payload).text); return null; }
     if (!vscode.workspace.isTrusted) throw new Error(this.text('Git execution requires a trusted workspace.', '请先信任工作区，再执行 Git 操作。'));
     if (request.method === 'repositories') { const list = this.repositories.list(),active=source?.activeRepository??this.activeRepository; return active ? list.sort((a, b) => Number(b.id === active) - Number(a.id === active)) : list; }
