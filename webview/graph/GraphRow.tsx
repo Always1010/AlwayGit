@@ -49,6 +49,7 @@ export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false
   const nodeX = (row.lane + 0.5) * laneWidth;
   const nodeY = height / 2;
   const nodeColor = main ? 'var(--graph-main, #f2f2f2)' : colorFor(row.color);
+  const workingColor = 'var(--working-tree-accent, var(--green, currentColor))';
 
   return (
     <svg
@@ -73,7 +74,7 @@ export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false
           key={`${segment.kind}-${segment.target}-${index}`}
           d={pathFor(segment, height, laneWidth)}
           fill="none"
-          stroke={mainSegment?'var(--graph-main, #f2f2f2)':colorFor(segment.color)}
+          stroke={working && segment.kind==='parent'?workingColor:mainSegment?'var(--graph-main, #f2f2f2)':colorFor(segment.color)}
           strokeWidth={highlighted?4:mainSegment?3:2.5}
           opacity={hoveredPath && !highlighted ? .35 : 1}
           data-path-id={segment.pathId}
@@ -85,7 +86,16 @@ export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false
           aria-hidden="true"
         />
       );})}
-      {working ? <rect
+      {working ? <><circle
+        className="git-graph-working-halo"
+        cx={nodeX}
+        cy={nodeY}
+        r={7.5}
+        fill={workingColor}
+        opacity={.16}
+        pointerEvents="none"
+        aria-hidden="true"
+      /><rect
         className="git-graph-working-node"
         x={nodeX-4.5}
         y={nodeY-4.5}
@@ -93,7 +103,7 @@ export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false
         height={9}
         rx={1}
         transform={`rotate(45 ${nodeX} ${nodeY})`}
-        fill={selected?'var(--selected-fg, var(--vscode-list-activeSelectionForeground, currentColor))':'var(--accent, var(--vscode-focusBorder, currentColor))'}
+        fill={workingColor}
         stroke="var(--bg, var(--vscode-editor-background, Canvas))"
         strokeWidth={1.5}
         data-path-id={row.pathId}
@@ -101,7 +111,7 @@ export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false
         onMouseLeave={()=>onHoverPath?.()}
         vectorEffect="non-scaling-stroke"
         aria-hidden="true"
-      />:<circle
+      /></>:<circle
           className="git-graph-node"
           cx={nodeX}
           cy={nodeY}
