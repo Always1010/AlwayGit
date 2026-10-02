@@ -74,7 +74,7 @@ export function App() {
       </>}
     </main></div>
     <footer className="statusbar" role="status"><span>{state.busy?state.activity:state.historyLoading?t('Loading history…','正在读取历史…'):state.notice??t('Ready','就绪')}</span><span>{layout.font}px / {effectiveRowHeight(layout)}px · Workbench</span></footer>
-    {dialog&&snapshot&&!state.checkoutFailure&&!state.operationReview&&<ActionDialog key={`${state.repoId}-${dialog.type}-${dialog.target}-${dialog.sources?.join('|')}-${dialog.names?.join('|')}-${dialog.remoteBranches?.join('|')}-${dialog.pop}`} dialog={dialog} onClose={()=>setDialog(undefined)}/>}
+    {dialog&&snapshot&&!state.checkoutFailure&&!state.operationReview&&<ActionDialog key={`${state.repoId}-${dialog.type}-${dialog.target}-${dialog.sources?.join('|')}-${dialog.names?.join('|')}-${dialog.remoteBranches?.join('|')}-${dialog.pop}`} dialog={dialog} onClose={()=>setDialog(undefined)} openAbort={()=>open({type:'operation.abort'})}/>}
     {state.operationReview&&snapshot&&<OperationReviewDialog key={state.operationReview.review.token} edit={path=>void edit({kind:'change',path,area:'staged'})}/>}
     {context&&menu&&<ContextMenu x={context.x} y={context.y} caption={menu.caption} items={menu.items} close={closeMenu}/>}
     {repositoryFetch&&<RepositoryFetchDialog repositories={repositoryFetch} onClose={()=>setRepositoryFetch(undefined)}/>}
