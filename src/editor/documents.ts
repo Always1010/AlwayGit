@@ -1,30 +1,31 @@
 import * as vscode from 'vscode';
 import path from 'node:path';
-import { open, stat } from 'node:fs/promises';
+import { open, lstat, readlink } from 'node:fs/promises';
 import type { ContentSource, DiffPreview, DiffTarget, GitServiceContract, Repository } from '../protocol/types';
 import { safeWorkingPath } from './paths';
 
 const MAX_DOCUMENT = 8 * 1024 * 1024;
 const MAX_PREVIEW_BYTES = 256 * 1024;
 const MAX_PREVIEW_LINES = 4000;
-type Side = { source: ContentSource; label: string; path: string } | { workingPath: string; label: string; path: string };
+type Side = { source: ContentSource; label: string; path: string } | { workingPath: string; label: string; path: string } | { text: string; label: string; path: string };
 type Comparison = { left: Side; right: Side; label: string; path: string };
 export class GitDocuments implements vscode.TextDocumentContentProvider {
-  private readonly entries = new Map<string, { repo: Repository; source: ContentSource }>();
+  private readonly entries = new Map<string, { repo: Repository; source: ContentSource } | { text: string }>();
   private sequence = 0;
   constructor(private readonly git: GitServiceContract) {}
   async provideTextDocumentContent(uri: vscode.Uri): Promise<string> {
     const entry = this.entries.get(uri.toString());
     if (!entry) throw new Error('This comparison has expired. Open it again from AlwayGit.');
+    if ('text' in entry) return entry.text;
     const data = await this.git.content(entry.repo, entry.source, MAX_DOCUMENT + 1);
     if (data.length > MAX_DOCUMENT) return '[AlwayGit: file exceeds the 8 MB text preview limit.]';
     if (data.includes(0)) return '[AlwayGit: binary file. Text comparison is unavailable.]';
     return data.toString('utf8');
   }
   release(uri: vscode.Uri): void { this.entries.delete(uri.toString()); }
-  private uri(repo: Repository, source: ContentSource, label: string, filename: string): vscode.Uri {
+  private uri(repo: Repository, source: ContentSource | string, label: string, filename: string): vscode.Uri {
     const uri = vscode.Uri.from({ scheme: 'alwaygit-content', path: `/${filename.replace(/\\/g, '/')}`, query: `version=${++this.sequence}&label=${encodeURIComponent(label)}` });
-    this.entries.set(uri.toString(), { repo, source });
+    this.entries.set(uri.toString(), typeof source === 'string' ? { text: source } : { repo, source });
     return uri;
   }
   async openFile(repo: Repository, filename: string): Promise<void> {
@@ -33,12 +34,13 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
   }
   async diff(repo: Repository, target: DiffTarget): Promise<void> {
     const comparison = await this.comparison(repo, target);
-    const uri = (side: Side) => 'workingPath' in side ? vscode.Uri.file(side.workingPath) : this.uri(repo, side.source, side.label, side.path);
+    const uri = (side: Side) => 'workingPath' in side ? vscode.Uri.file(side.workingPath) : this.uri(repo, 'text' in side ? side.text : side.source, side.label, side.path);
     await vscode.commands.executeCommand('vscode.diff', uri(comparison.left), uri(comparison.right), comparison.label, { viewColumn: vscode.ViewColumn.Active, preview: false, preserveFocus: false });
   }
   async preview(repo: Repository, target: DiffTarget): Promise<DiffPreview> {
     const comparison = await this.comparison(repo, target);
     const read = async (side: Side) => {
+      if ('text' in side) return Buffer.from(side.text, 'utf8');
       if ('source' in side) return this.git.content(repo, side.source, MAX_PREVIEW_BYTES + 1);
       const file = await open(side.workingPath, 'r');
       try { const buffer = Buffer.alloc(MAX_PREVIEW_BYTES + 1); let total = 0; while (total < buffer.length) { const { bytesRead } = await file.read(buffer, total, buffer.length - total, total); if (!bytesRead) break; total += bytesRead; } return buffer.subarray(0, total); }
@@ -59,6 +61,14 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
     if (truncated) result.truncated = true;
     return result;
   }
+  private async workingSide(repo: Repository, filename: string): Promise<Side> {
+    // Validate the parent without following the leaf: Git stores a link's target text.
+    const candidate = await safeWorkingPath(repo.root, filename, false);
+    const metadata = await lstat(candidate);
+    if (metadata.isSymbolicLink()) return { text: await readlink(candidate), label: 'Working Tree · Symbolic Link', path: filename };
+    if (!metadata.isFile()) throw new Error('This path is a directory or submodule, not a text file.');
+    return { workingPath: await safeWorkingPath(repo.root, filename), label: 'Working Tree', path: filename };
+  }
   private async comparison(repo: Repository, target: DiffTarget): Promise<Comparison> {
     let left: Side;
     let right: Side;
@@ -71,8 +81,7 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
       // The Stash tree contains the complete tracked working state, including
       // files with Index-only changes; untracked files live in the third parent.
       left = { source: { kind: 'revision', revision: savedUntracked ? untracked!.commit.oid : details.commit.oid, path: target.path }, label: 'Stash', path: target.path };
-      const workingPath = await safeWorkingPath(repo.root, target.path);
-      try { await stat(workingPath); right = { workingPath, label: 'Working Tree', path: target.path }; }
+      try { right = await this.workingSide(repo, target.path); }
       catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; right = { source: { kind: 'empty' }, label: 'Working Tree', path: target.path }; }
       label = `${path.basename(target.path)} · Stash ↔ Working Tree`;
     } else if (target.kind === 'commit') {
@@ -110,7 +119,7 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
         if (!change.untracked && change.worktreeStatus === ' ') throw new Error('This file has no Unstaged Changes. Refresh its comparison.');
         const indexPath = change.worktreeStatus === 'R' ? before : change.path;
         left = { source: change.untracked ? { kind: 'empty' } : { kind: 'index', path: indexPath }, label: 'Index', path: indexPath };
-        right = change.worktreeStatus === 'D' ? { source: { kind: 'empty' }, label: 'Working Tree', path: change.path } : { workingPath: await safeWorkingPath(repo.root, change.path), label: 'Working Tree', path: change.path };
+        right = change.worktreeStatus === 'D' ? { source: { kind: 'empty' }, label: 'Working Tree', path: change.path } : await this.workingSide(repo, change.path);
         label = `${path.basename(change.path)} · Index ↔ Working Tree`;
       }
     }
