@@ -22,15 +22,15 @@
 - 验证方式：快照协调与宿主生命周期 9 项相关回归通过；覆盖旧版本号更大仍不得覆盖、连续失效及旧错误、Worktree 隔离、关闭前未开始读取不启动 Git，类型检查通过。
 - 相关文件：`src/application/snapshot-coordinator.ts`、`src/extension/workbench.ts`、`tests/snapshot-coordinator.test.ts`。
 
-## BUG-045：长提交说明和大量文件路径超过命令行长度边界
+## BUG-045：长说明和大批量目标超过命令行长度边界
 
 - 日期：2026-10-03
 - 状态：已解决
-- 现象：协议允许的长说明或批量文件路径直接拼入 Git 参数，可能超过 Windows 命令行长度，操作在启动阶段失败；分批清理也需要明确说明已经完成的范围。
+- 现象：协议允许的长说明、批量文件路径或历史引用直接拼入 Git 参数，可能超过 Windows 命令行长度，操作在启动阶段失败；分批清理也需要明确说明已经完成的范围。
 - 原因：消息和路径没有区分可通过标准输入传递的命令，缺少统一参数预算与清理分批预检。
-- 解决方案：Commit/Tag 消息使用标准输入，Add/Restore/Rm 使用 NUL 分隔的 pathspec 标准输入；Clean 在执行前确定全部批次并检查预算，失败报告已经完成的批次。其他超长参数在启动前明确拒绝，Stash 消息在可能修改现场前检查，消息中的 NUL 字符拒绝执行。
-- 验证方式：长 Unicode 消息、大于原 Windows 参数上限的文件集合、部分 Clean 失败与残留状态的真实 Git 回归，以及相关 runner 和 Stash 定向检查通过。
-- 相关文件：`src/git/arguments.ts`、`src/git/service.ts`、`tests/git-arguments.test.ts`。
+- 解决方案：Commit/Tag 消息使用标准输入，Add/Restore/Rm 使用 NUL 分隔的 pathspec 标准输入，历史查询把已解析的 Commit ID 通过标准输入传入；Clean 在执行前确定全部批次并检查预算，失败报告已经完成的批次。其他超长参数在启动前明确拒绝，Stash 消息在可能修改现场前检查，消息中的 NUL 字符拒绝执行。
+- 验证方式：长 Unicode 消息、大于原 Windows 参数上限的文件集合、部分 Clean 失败与残留状态的真实 Git 回归，以及相关 runner 和 Stash 定向检查通过；310 个真实分支的历史读取、固定分页、HEAD、推送标记及嵌套 Tag 回归通过。
+- 相关文件：`src/git/arguments.ts`、`src/git/service.ts`、`src/git/query-map.ts`、`tests/git-arguments.test.ts`、`tests/git-history-scale.test.ts`。
 
 ## BUG-044：工作区符号链接 Diff 读取目标文件内容
 
