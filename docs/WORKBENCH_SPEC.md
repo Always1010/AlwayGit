@@ -54,7 +54,7 @@ Repository 和 Worktree 名称行单击只改变操作选择，不切换当前�
 
 当焦点位于可多选区域或其标题、行内控件时，Ctrl/Cmd+A 只全选焦点所属作用域，Escape 只清除该作用域的操作选择；快捷键由区域容器捕获，不能落到整页文本选择。Repository 的范围是全部逻辑仓库；Local Branches 的范围是全部本地分支；每个 Remote 是独立范围，只包含该 Remote 下的分支；Worktrees 的范围是当前仓库的全部 Worktree。分支 action selection 与 Graph 筛选复选框相互独立，Ctrl/Cmd+A 和 Escape 都不改变 `checkedRefs`。History 的范围是当前已经加载的真实 Commit，不为全选隐式加载下一页，并排除 Working Tree 虚拟 Commit。Working Tree、Commit Details 和 Commit 比较的文件区域只处理当前面板可见文件。输入框、文本域和可编辑内容保留 Ctrl/Cmd+A 与 Escape 的原生行为。
 
-Working Tree、Commit Details 和 Commit 比较的文件列表统一使用中性的文件图标，右下角以彩色角标显示 Git 状态：黄色 M 修改、绿色 A 新增、红色 D 删除、紫色 R 重命名，未跟踪显示 ?、冲突显示 !，复制和类型变更分别显示 C 和 T。悬停角标或文件名可查看完整含义；列表不常驻显示状态图例。分组按钮始终显示 `Stage All` 或 `Unstage All`，点击后先显示整组实际文件数量的确认浮窗，不随批量选择改变范围；确认按钮默认获得焦点，可按 Enter 快速执行，Escape、点击遮罩或 Cancel 取消。文件右键菜单中的 Stage / Unstage 作用于所选范围，不重复确认。
+Working Tree、Commit Details 和 Commit 比较的文件列表统一使用中性的文件图标，右下角以彩色角标显示 Git 状态：黄色 M 修改、绿色 A 新增、红色 D 删除、紫色 R 重命名，未跟踪显示 ?、冲突显示 !，复制和类型变更分别显示 C 和 T。悬停角标或文件名可查看完整含义；列表不常驻显示状态图例。Working Tree 在摘要下面按文件名或完整相对路径实时筛选，忽略大小写，同时覆盖 Staged、Unstaged 和冲突分组；搜索词按工作目录保留在当前工作台内存中，刷新或切换视图不清除，重新打开工作台时清空。筛选时显示匹配数与总数，保留没有匹配文件的分组标题，提示被筛选隐藏的冲突和当前 Diff；摘要和提交范围始终使用完整仓库状态。分组按钮无筛选时处理 `Stage All` / `Unstage All` / `Discard All`，有筛选时提示匹配文件数量并只处理匹配路径，不随批量选择改变范围；Stage / Unstage 点击后先确认本次实际文件数量，确认按钮默认获得焦点，可按 Enter 快速执行，Escape、点击遮罩或 Cancel 取消。A/U 沿用同一筛选范围。文件右键菜单中的 Stage / Unstage 作用于所选可见范围，不重复确认。
 
 分组应用于全部添加、恢复和自动发现入口。已有保存路径无需清除，工作目录 ID、各自的 Commit 草稿与视图继续保留；不将多个 Worktree 的文件或暂存区状态合并。
 

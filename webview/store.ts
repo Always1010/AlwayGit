@@ -30,6 +30,7 @@ interface WorkbenchState {
   nextOffset: number; hasMore: boolean; tips: string[]; loading: boolean; historyLoading: boolean; locatingOid?: string; locateCommit(oid: string, append?: boolean): Promise<void>; detailsLoading: boolean; busy: boolean; activity: string; error?: string; notice?: string; tab: 'history' | 'changes'; drafts: Record<string, string>;
   initialize(): Promise<void>; loadRepositoryStatuses(): Promise<void>; selectRepository(id: string): Promise<void>; refresh(options?: { background?: boolean; changes?: RepositoryChanges; snapshot?: Snapshot }): Promise<void>; loadHistory(append?: boolean): Promise<void>; selectCommit(oid: string, parent?: string, stashOid?: string, preserveSelection?: boolean): Promise<void>; selectStashSection(section:StashSection):void; compareCommits(left:string,right:string,preserveOrder?:boolean):Promise<void>; setCommitSelection(oids:string[],anchor?:string,primary?:string):void; setRefSelection(refs:string[],anchor?:string):void; setRepositorySelection(keys:string[],anchor?:string):void;
   setFilter(ref?: string, search?: string): void; setCheckedRefs(refs: string[]): void; setExpandedRefGroup(key:string,expanded:boolean):void; toggleSidebarGroup(key:string):void; setSearch(value: string): void; selectWorking(): void; selectFile(target: DiffTarget): void; locateHead():void;
+  workingFilters: Record<string, string>; setWorkingFilter(value: string): void;
   execute(action: GitAction): Promise<boolean>; dismissFeedback(): void; setDraft(value: string): void; setLanguage(value: Language): void; setLayout(value: Partial<LayoutState>): void; report(error: unknown): void;
 }
 const message = (error: unknown) => error instanceof Error ? error.message : String(error);
@@ -42,6 +43,8 @@ const initialLayout = layout(session.layout);
 // Only the old default density migrates; custom dimensions and drafts are kept.
 if (!session.appearance && initialLayout.row === 26) initialLayout.row = 24;
 export const useWorkbench = create<WorkbenchState>((set, get) => ({
+  workingFilters: {},
+  setWorkingFilter(value) { const repoId = get().repoId; if (repoId) set({ workingFilters: { ...get().workingFilters, [repoId]: value } }); },
   diffNavigationScope: session.diffNavigationScope === 'file' ? 'file' : 'commit',
   singleKeyShortcuts: session.singleKeyShortcuts !== false,
   operationSettings: { allowDetachedHead: false, scope: 'workspace' },
