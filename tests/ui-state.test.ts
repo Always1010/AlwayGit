@@ -21,6 +21,21 @@ beforeEach(async () => {
 });
 afterEach(() => { vi.useRealTimers(); });
 describe('repository UI consistency', () => {
+  it('keeps multi-Tag and mixed reference menus out of branch-only actions', async () => {
+    const { menuFor } = await import('../webview/menus');
+    const noop=vi.fn(),api={open:noop,checkout:noop,openDiff:noop,editFile:noop,host:vi.fn().mockResolvedValue(undefined),addRepository:vi.fn().mockResolvedValue(undefined),removeRepositories:noop,fetchRepositories:noop};
+    const tags=[1,2].map(index=>({name:`v${index}`,fullName:`refs/tags/v${index}`,kind:'tag' as const,oid:String(index).repeat(40),refOid:String(index).repeat(40)}));
+    const local={name:'main',fullName:'refs/heads/main',kind:'local' as const,oid:'a'.repeat(40)};
+    store.setState({snapshot:{...snapshot(a),refs:[...tags,local]},language:'en'});
+    const tagMenu=menuFor({kind:'ref',ref:tags[0],refs:tags},api).items;
+    expect(tagMenu.some(item=>item.label.includes('Remote Branch'))).toBe(false);
+    expect(tagMenu.some(item=>item.label.includes('Delete'))).toBe(false);
+    expect(tagMenu.at(-1)?.label).toBe('Copy Tag Names');
+    const mixed=menuFor({kind:'ref',ref:tags[0],refs:[tags[0],local]},api).items;
+    expect(mixed.some(item=>item.label.includes('Delete'))).toBe(false);
+    expect(mixed.at(-1)?.label).toBe('Copy Reference Names');
+  });
+
   it('disables direct Detached Checkout in both menus while preserving branch creation and local branch switching', async () => {
     await store.getState().selectRepository('a');
     const { menuFor } = await import('../webview/menus');

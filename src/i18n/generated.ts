@@ -2294,6 +2294,14 @@ export const catalog = {
     "en": "Copy Branch Names",
     "zh-CN": "复制分支名称"
   },
+  "menus.copyTagNames": {
+    "en": "Copy Tag Names",
+    "zh-CN": "复制标签名称"
+  },
+  "menus.copyReferenceNames": {
+    "en": "Copy Reference Names",
+    "zh-CN": "复制引用名称"
+  },
   "menus.branches": {
     "en": "branches",
     "zh-CN": "个分支"
@@ -2350,6 +2358,14 @@ export const catalog = {
   "menus.branchesVariant2": {
     "en": "{{count}} Branches",
     "zh-CN": "{{count}} 个分支"
+  },
+  "menus.tagsSelected": {
+    "en": "{{count}} Tags",
+    "zh-CN": "{{count}} 个标签"
+  },
+  "menus.referencesSelected": {
+    "en": "{{count}} References",
+    "zh-CN": "{{count}} 个引用"
   },
   "menus.thisIsTheCurrentBranch": {
     "en": "This is the current branch.",
@@ -5298,6 +5314,8 @@ export interface MessageParameters {
   "menus.symbolicRemoteReferencesCannotBeDeleted": {  };
   "menus.selectBranchesFromOneRemote": {  };
   "menus.copyBranchNames": {  };
+  "menus.copyTagNames": {  };
+  "menus.copyReferenceNames": {  };
   "menus.branches": {  };
   "menus.openDiffInVSCode": {  };
   "menus.editInVSCode": {  };
@@ -5310,6 +5328,8 @@ export interface MessageParameters {
   "menus.copyPaths": { count: number };
   "menus.files": { count: number };
   "menus.branchesVariant2": { count: number };
+  "menus.tagsSelected": { count: number };
+  "menus.referencesSelected": { count: number };
   "menus.thisIsTheCurrentBranch": {  };
   "menus.usedByWorktree": { path: ParameterValue };
   "menus.createBranchAndCheckout": {  };
