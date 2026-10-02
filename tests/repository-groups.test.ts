@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { groupRepositories } from '../src/protocol/repositories';
-import type { Repository } from '../src/protocol/types';
+import type { Repository, RepositoryCollection } from '../src/protocol/types';
+import { repositoryDisplayEntries, visibleRepositoryKeys } from '../webview/repositoryOrder';
 
 const main: Repository = { id: 'main', root: 'D:/Projects/App', commonDir: 'D:/Projects/App/.git', name: 'App', mainRoot: 'D:/Projects/App' };
 const linked: Repository = { ...main, id: 'linked', root: 'D:/Projects/App-feature', name: 'App-feature' };
@@ -31,5 +32,19 @@ describe('logical repository display groups', () => {
     const group=groupRepositories([{...linked,collectionId:'client-project'},main])[0];
     expect(group.collectionId).toBe('client-project');
     expect(group.repository.id).toBe(main.id);
+  });
+  it('uses rendered repository order when registration order differs', () => {
+    const repo = (name:string, collectionId?:string):Repository => ({ id:name, root:`D:/Projects/${name}`, commonDir:`D:/Projects/${name}/.git`, name, ...(collectionId?{collectionId}:{}) });
+    const groups=groupRepositories([repo('llvm-project'),repo('MySkill'),repo('SchedulePin'),repo('BreakReminder'),repo('CaptionRoll'),repo('NotesAnywhere'),repo('LibreCAD'),repo('SwiftResume')]);
+    const entries=repositoryDisplayEntries(groups,[]);
+    expect(entries.map(entry=>entry.label)).toEqual(['BreakReminder','CaptionRoll','LibreCAD','llvm-project','MySkill','NotesAnywhere','SchedulePin','SwiftResume']);
+    expect(visibleRepositoryKeys(entries,groups,[]).map(key=>groups.find(group=>group.key===key)?.name)).toEqual(entries.map(entry=>entry.label));
+  });
+  it('excludes collapsed collection members from the visible repository range', () => {
+    const collections:RepositoryCollection[]=[{id:'client',name:'Client'}];
+    const groups=groupRepositories([{...main,collectionId:'client'},linked]);
+    const entries=repositoryDisplayEntries(groups,collections);
+    expect(visibleRepositoryKeys(entries,groups,[])).toEqual([groups[0].key]);
+    expect(visibleRepositoryKeys(entries,groups,['client'])).toEqual([]);
   });
 });
