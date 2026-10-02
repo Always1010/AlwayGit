@@ -41,6 +41,76 @@ afterEach(async () => {
 });
 
 describe('Git safety regressions', () => {
+  it.each([false, true])('rejects stale branch names without changing HEAD, refs, Index or files (dirty: %s)', async dirty => {
+    const { root, service, repo } = await setup();
+    const old = await commit(root, 'a.txt', 'old');
+    await commit(root, 'a.txt', 'current');
+    await commit(root, 'new.txt', 'only in current');
+    // The UI snapshot predates the conflicting branch; packed refs must also be checked.
+    await service.snapshot(repo);
+    await git(root, 'branch', 'test/b1');
+    await git(root, 'pack-refs', '--all');
+    if (dirty) {
+      await writeFile(path.join(root, 'a.txt'), 'staged edit');
+      await git(root, 'add', '--', 'a.txt');
+      await writeFile(path.join(root, 'a.txt'), 'unstaged edit');
+      await writeFile(path.join(root, 'notes.txt'), 'untracked edit');
+    }
+    const state = async () => ({
+      head: await git(root, 'rev-parse', 'HEAD'), branch: await git(root, 'symbolic-ref', 'HEAD'),
+      refs: await git(root, 'for-each-ref', '--format=%(refname) %(objectname)'),
+      status: await git(root, 'status', '--porcelain=v1'), index: await git(root, 'ls-files', '--stage'),
+      a: await readFile(path.join(root, 'a.txt'), 'utf8'), current: await readFile(path.join(root, 'new.txt'), 'utf8'),
+      ...(dirty ? { notes: await readFile(path.join(root, 'notes.txt'), 'utf8') } : {}),
+    });
+    const before = await state();
+    for (const name of ['test', 'test/b1', 'test/b1/nested']) {
+      for (const checkout of [false, true]) {
+        await expect(service.execute(repo, { type: 'branch.create', name, start: old, checkout })).rejects.toMatchObject({ code: 'BRANCH_EXISTS', message: expect.stringContaining('test/b1') });
+        expect(await state()).toEqual(before);
+      }
+    }
+  });
+
+  it('does not touch the Index or Working Tree when an external branch creation races preflight', async () => {
+    const { root, repo } = await setup();
+    const old = await commit(root, 'a.txt', 'old');
+    const current = await commit(root, 'a.txt', 'current');
+    let raced = false;
+    const service = new GitService({ environment: async (_repo, args) => {
+      if (!raced && args[0] === 'branch' && args.includes('--no-track')) {
+        raced = true;
+        await git(root, 'branch', 'race/b1');
+      }
+      return {};
+    } });
+    await expect(service.execute(repo, { type: 'branch.create', name: 'race', start: old, checkout: true })).rejects.toThrow('cannot lock ref');
+    expect(raced).toBe(true);
+    expect(await service.snapshot(repo)).toMatchObject({ branch: 'main', head: current, changes: [] });
+    expect(await git(root, 'show', ':a.txt')).toBe('current');
+    expect(await readFile(path.join(root, 'a.txt'), 'utf8')).toBe('current');
+    await expect(git(root, 'show-ref', '--verify', 'refs/heads/race')).rejects.toThrow();
+  });
+
+  it('retains a created branch and reports a blocked Checkout while preserving local edits', async () => {
+    const { root, service, repo } = await setup();
+    const old = await commit(root, 'a.txt', 'old');
+    const current = await commit(root, 'a.txt', 'current');
+    await writeFile(path.join(root, 'a.txt'), 'local edit');
+    const before = await git(root, 'status', '--porcelain=v1');
+    await expect(service.execute(repo, { type: 'branch.create', name: 'new-branch', start: old, checkout: true })).rejects.toMatchObject({
+      code: 'CHECKOUT_BLOCKED', message: expect.stringContaining('created and retained'),
+      details: { reason: 'local-changes', target: 'new-branch', paths: ['a.txt'], branchCreated: true },
+    });
+    expect(await service.snapshot(repo)).toMatchObject({ branch: 'main', head: current });
+    expect(await git(root, 'rev-parse', 'refs/heads/new-branch')).toBe(old);
+    expect(await git(root, 'status', '--porcelain=v1')).toBe(before);
+    expect(await git(root, 'show', ':a.txt')).toBe('current');
+    expect(await readFile(path.join(root, 'a.txt'), 'utf8')).toBe('local edit');
+    await service.execute(repo, { type: 'checkout.stash', target: 'new-branch', includeUntracked: true });
+    expect(await service.snapshot(repo)).toMatchObject({ branch: 'new-branch', head: old, changes: [] });
+  });
+
   it('checks out a commit in Detached HEAD and returns to a local branch without moving its tip', async () => {
     const { root, service, repo } = await setup();
     const first = await commit(root, 'a.txt', 'first');

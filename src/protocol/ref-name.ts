@@ -1,5 +1,21 @@
 export type BranchNameProblem = 'empty' | 'leading-hyphen' | 'space' | 'control' | 'invalid-character' | 'double-dot' | 'reflog' | 'slash' | 'dot-component' | 'lock-suffix' | 'trailing-dot' | 'single-at';
 
+export interface BranchNameConflict { kind: 'exists' | 'ancestor' | 'descendant'; name: string }
+
+/** Only names in refs/heads belong to the local branch namespace. */
+export function branchNameConflict(name: string, localNames: readonly string[]): BranchNameConflict | undefined {
+  if (localNames.includes(name)) return { kind: 'exists', name };
+  for (const other of localNames) {
+    if (name.startsWith(`${other}/`)) return { kind: 'ancestor', name: other };
+    if (other.startsWith(`${name}/`)) return { kind: 'descendant', name: other };
+  }
+  return undefined;
+}
+
+export function branchNameConflictMessage(name: string, conflict: BranchNameConflict): string {
+  return conflict.kind === 'exists' ? `Local branch ${name} already exists. Choose another branch name.` : `Local branch names conflict: ${name} and ${conflict.name}. Choose another branch name.`;
+}
+
 export function branchNameProblem(value: string): BranchNameProblem | undefined {
   if (!value) return 'empty';
   if (value.startsWith('-')) return 'leading-hyphen';

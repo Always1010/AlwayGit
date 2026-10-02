@@ -12,6 +12,16 @@
 - 验证方式：类型检查、生产构建、状态/历史项/Diff 导航单测 47 项通过；刷新、History、文件和 Diff 四个无头专项通过。回归复现 600 ms 延迟预览自动定位第 150 行后菜单保留，其他区域滚动不关闭，来源滚动/Escape/点击外部正常关闭；验证暂存后不重读历史、未勾选远端移动和 HEAD 变化更新历史、Parent/文件/滚动及多选保持。未启动真实 VS Code 桌面集成测试。
 - 相关文件：`webview/ContextMenu.tsx`、`webview/subscriptions.ts`、`webview/App.tsx`、`webview/History.tsx`、`webview/Sidebar.tsx`、`webview/Details.tsx`、`webview/DiffPreview.tsx`、`webview/store.ts`、`webview/refresh.ts`、`tests/ui-state.test.ts`、`scripts/test-refresh-ui.mjs`、`scripts/test-ui.mjs`、`docs/ARCHITECTURE.md`。
 
+## BUG-034：创建分支未阻止已有名称与路径冲突，失败可能改动工作区
+
+- 日期：2026-10-02
+- 状态：已解决
+- 现象：已有 `test/b1` 时，Create Branch 仍允许输入 `test` 并提交；创建报引用锁冲突。在从旧 Commit 创建并切换时，即使分支创建失败，当前分支和 HEAD 未变，Index 与 Working Tree 也可能被切到旧版本，出现额外修改和删除。
+- 原因：普通创建流程只有名称格式校验，未复用远程转本地流程的命名空间冲突检查；`git switch -c` 可能先更新文件再因分支引用冲突失败。
+- 解决方案：前后端共享同名与双向斜杠路径冲突规则；前端实时提示具体分支并禁用两个创建按钮，提交路径再次拦截；后端在写操作队列内重读所有本地引用，覆盖 packed refs 和过期界面状态。先仅创建分支引用，再执行已有分支 Checkout，防止外部创建竞态导致文件提前切换；后续 Checkout 受阻时保留分支并明确提示已创建、尚未切换。
+- 验证方式：名称校验和真实 Git 安全回归 26 项、正常分支创建与远端 upstream 回归 2 项、类型检查与生产构建通过；无头分支弹窗及远程跟踪专项通过。验证同名、双向路径冲突、packed refs、过期快照、干净及含暂存/未暂存/未跟踪修改时 HEAD、引用、Index 和文件内容不变，外部创建竞态不触及文件，Checkout 受阻保留分支且可通过 Stash & Checkout 重试；两个按钮及直接表单提交均拦截非法名称，合法相邻名称和仅有远程引用的名称恢复可用。未启动真实 VS Code 桌面集成测试。
+- 相关文件：`src/protocol/ref-name.ts`、`src/protocol/types.ts`、`src/git/service.ts`、`webview/ActionDialog.tsx`、`webview/App.tsx`、`webview/remoteTracking.ts`、`webview/rpc.ts`、`tests/ref-name.test.ts`、`tests/git-safety.test.ts`、`scripts/test-branch-ui.mjs`、`scripts/test-ui.mjs`、`docs/WORKBENCH_SPEC.md`。
+
 ## BUG-033：Commit 搜索结果的 Graph 累积悬空轨道
 
 - 日期：2026-10-02
