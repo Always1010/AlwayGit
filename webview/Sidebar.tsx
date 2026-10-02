@@ -7,6 +7,7 @@ import { useSnapshotFields, useWorkbenchFields } from './subscriptions';
 import { useTranslation } from './i18n';
 import { BranchIcon, Button, Icon } from './ui';
 import { RepositoryCollectionIcon, RepositoryIcon } from './RepositoryIcon';
+import { textColorForBackground } from './appearance';
 import { samePath } from './pathIdentity';
 import { buildRefTree, refsUnder, visibleRefs, type RefTreeNode } from './refTree';
 import { groupRepositories, type RepositoryGroup } from '../src/protocol/repositories';
@@ -65,7 +66,7 @@ function BranchTree({refs,keyPrefix,stripPrefix='',context,checkoutBranch}:{refs
 }
 
 function SidebarPanel({ context, actions, checkoutBranch, openWorktree }: { context: ContextHandler; actions:SidebarActionProvider; checkoutBranch(name:string,remote?:boolean):void; openWorktree(path:string):void }) {
-  const state={ ...useWorkbenchFields('busy', 'checkedRefs', 'collapsedSidebarGroups', 'reorderRepository', 'repoId', 'repositories', 'repositoryCollections', 'repositoryOrder', 'repositorySelectionAnchor', 'repositoryStatuses', 'selectCommit', 'selectRepository', 'selectedRepositoryKeys', 'setRefSelection', 'setRepositorySelection', 'toggleSidebarGroup'), snapshot: useSnapshotFields('branch', 'changes', 'operation', 'refs', 'remotes', 'repository', 'stashes', 'worktrees') },snapshot=state.snapshot,t=useTranslation();
+  const state={ ...useWorkbenchFields('appearance', 'busy', 'checkedRefs', 'collapsedSidebarGroups', 'reorderRepository', 'repoId', 'repositories', 'repositoryCollections', 'repositoryOrder', 'repositorySelectionAnchor', 'repositoryStatuses', 'selectCommit', 'selectRepository', 'selectedRepositoryKeys', 'setRefSelection', 'setRepositorySelection', 'toggleSidebarGroup'), snapshot: useSnapshotFields('branch', 'changes', 'operation', 'refs', 'remotes', 'repository', 'stashes', 'worktrees') },snapshot=state.snapshot,t=useTranslation();
   const [worktreeSelection,setWorktreeSelection]=useState<{repoId?:string;paths:string[];anchor?:string}>({paths:[]});
   const [collapsedRepositoryCollections,setCollapsedRepositoryCollections]=useState<string[]>([]);
   const dragging=useRef<{key:string;parent?:string}>(undefined),[dropTarget,setDropTarget]=useState<{key:string;position:'before'|'after'}>(),[ordering,setOrdering]=useState(false);
@@ -115,7 +116,7 @@ function SidebarPanel({ context, actions, checkoutBranch, openWorktree }: { cont
       {dragHandle(key,group.name,parent)}<button type="button" className="sidebar-item repository-item" aria-label={label} aria-current={current?'true':undefined} title={`${repo.root}${status?.branch?`\n${status.branch}${unpushed?` · ${unpushed} unpushed`:''}`:''}\n${t('Double-click or press Enter to switch repository.','双击或按 Enter 切换仓库。')}`} onClick={choose} onDoubleClick={activate} onKeyDown={event=>{if(event.key==='ContextMenu'||event.shiftKey&&event.key==='F10'){event.preventDefault();openContext(event);}else keyboard(event,target,activate);}}><RepositoryIcon current={current}/><span className="truncate">{group.name}</span>{unpushed?<span className="notification-badge" aria-hidden="true">{unpushed>99?'99+':unpushed}</span>:null}</button>
     </div>;
   };
-  return <aside data-testid="sidebar" className="sidebar" onKeyDownCapture={selectionKeys}>
+  return <aside data-testid="sidebar" className="sidebar" onKeyDownCapture={selectionKeys} style={{'--current-branch-color':state.appearance.currentBranchColor,'--current-branch-fg':textColorForBackground(state.appearance.currentBranchColor),'--current-repository-color':state.appearance.currentRepositoryColor} as React.CSSProperties}>
     {heading(t('Repositories','仓库'),'repositories')}{groupOpen('repositories')&&<div className="sidebar-list repository-list" data-selection-scope="repositories" tabIndex={0} role="listbox" aria-label={t('Repositories','仓库')} aria-multiselectable="true">{repositoryEntries.map(entry=>{
       if(entry.kind==='repository')return repositoryButton(entry.group);
       const groups=repositoryCollectionGroups(repositoryGroups,entry.collection.id,state.repositoryOrder),collapsed=collapsedRepositoryCollections.includes(entry.collection.id),target:MenuTarget={kind:'repository-collection',collection:entry.collection},key=collectionOrderKey(entry.collection.id),toggle=()=>setCollapsedRepositoryCollections(current=>collapsed?current.filter(id=>id!==entry.collection.id):[...current,entry.collection.id]);
