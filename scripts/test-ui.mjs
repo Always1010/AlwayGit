@@ -13,6 +13,7 @@ import { verifyAppearance } from './test-appearance-ui.mjs';
 import { verifyRemoteTracking } from './test-remote-tracking-ui.mjs';
 import { verifyStash } from './test-stash-ui.mjs';
 import { verifyBranchCreation } from './test-branch-ui.mjs';
+import { verifyHelp } from './test-help-ui.mjs';
 
 // Full and targeted runs share one registry, so a new suite cannot be omitted from full runs.
 const suites = new Map([
@@ -27,6 +28,7 @@ const suites = new Map([
   ['stash', verifyStash],
   ['branch', verifyBranchCreation],
   ['appearance', verifyAppearance],
+  ['help', verifyHelp],
 ]);
 const args = process.argv.slice(2);
 if (args.length > 1) throw new Error('Choose one UI suite flag per run.');
@@ -39,7 +41,7 @@ if (flag && !suites.has(selected)) {
 const scheduled = selected ? [[selected, suites.get(selected)]] : [...suites];
 
 const root = path.resolve('dist/webview');
-const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.ttf': 'font/ttf', '.woff2': 'font/woff2', '.svg': 'image/svg+xml' };
+const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.ttf': 'font/ttf', '.woff2': 'font/woff2', '.svg': 'image/svg+xml', '.png': 'image/png' };
 const server = createServer(async (request, response) => {
   const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
   if (pathname === '/favicon.ico') { response.writeHead(204); response.end(); return; }
