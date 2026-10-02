@@ -149,7 +149,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
         <div className="settings-nav-group"><strong>{t('General', '常规')}</strong>{navItem('language', 'globe', 'Language', '语言')}</div>
         <div className="settings-nav-group"><strong>{t('Interface', '界面')}</strong>{navItem('theme', 'color-mode', 'Theme', '主题')}{navItem('density', 'text-size', 'Text & density', '字号与密度')}{navItem('diff', 'diff', 'Diff', 'Diff')}{navItem('status', 'bell-dot', 'Status indicators', '状态提醒')}</div>
         <div className="settings-nav-group"><strong>{t('Commit graph', '提交图')}</strong>{navItem('colors', 'git-merge', 'Colors', '配色')}</div>
-        <div className="settings-nav-group">{navItem('advanced', 'tools', 'Advanced', '高级')}</div>
+        <div className="settings-nav-group"><strong>{t('Advanced', '高级')}</strong>{navItem('advanced', 'tools', 'Git operations', 'Git 操作')}</div>
       </nav>
       <main className="settings-content">
         <header className="settings-page-heading"><span>{page === 'advanced' ? t('Advanced', '高级') : page === 'language' ? t('General', '常规') : page === 'colors' ? t('Commit graph', '提交图') : t('Interface', '界面')} › {pageLabel}</span><small>{page === 'advanced' ? t('Git options take effect only after Apply.', 'Git 操作选项在应用后生效。') : t('Changes preview immediately. Apply to save.', '调整会立即预览，应用后保存。')}</small></header>
