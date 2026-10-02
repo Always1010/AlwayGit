@@ -6,7 +6,7 @@ This manual explains how to inspect changes, save revisions, and collaborate wit
 
 Select the question-mark icon in the upper-right corner of the Workbench to open the offline Help & Guide. It includes quick start instructions, common tasks, common questions, and the full chapters of this manual. Its language follows the workbench setting.
 
-**About the screenshots:** Most screenshots come from version 0.29.0; Figure 34 shows the settings interface in 0.34.0. They illustrate where to find the controls. Icons, spacing, and messages may differ slightly in the current version. Follow the instructions here and verify the names, targets, and counts shown by the current controls.
+**About the screenshots:** Figures 07 and 08 show the Working Tree and Commit dialog in 0.36.0; Figure 34 shows settings in 0.34.0. Other screenshots mainly come from 0.29.0. Outdated screenshots of the permanent Commit form have been removed. Follow the instructions here and verify current control names, targets and counts.
 
 ## Read by task
 
@@ -28,7 +28,7 @@ Use a practice repository with existing Git history. Confirm the current branch 
 1. Open the AlwayGit launch sidebar and select **Show Git Workbench**. Use **Add…** in Repositories to add a repository, then double-click it or press Enter to enter it.
 2. Edit and save a file in VS Code. Return to the workbench, select **Working Tree**, then select the file under Unstaged to inspect its Diff.
 3. Right-click the file you want to commit and choose **Stage**. Select it under Staged and check the actual content prepared for the commit.
-4. Enter a Commit Message and select **Commit**. Only Staged content is committed; other unstaged changes remain in the Working Tree.
+4. Select **Commit…** to the right of Unstage in the Staged heading (or Commit in the toolbar), enter a Commit Message in the dialog, then select **Commit**. Only Staged content is committed; other unstaged changes remain in the Working Tree.
 5. Select **View Commit** in the result banner, or open the new commit in History. Verify its message, file list, and any remaining changes.
 
 **Result:** History contains a new commit with the Staged content you reviewed. To share your local commit, follow [Remote collaboration](#chapter-08) and Push it to a remote.
@@ -134,7 +134,7 @@ Staged is the most important place to check before committing. A file appearing 
 
 **Troubleshooting:** If the content has not updated, first confirm that you saved it in the editor, then use Refresh. If the problem persists, check the output and error details.
 
-![Figure 07 The same README in both Staged and Unstaged, with a Diff comparing Index and Working Tree](images/user-manual/figure-07.png)
+![Figure 07 Working Tree path search and the Staged Commit entry, available for drafting with zero Staged files](images/user-manual/figure-07.png)
 
 <a id="section-03-02"></a>
 
@@ -151,10 +151,6 @@ Staged is the most important place to check before committing. A file appearing 
 
 **Caution:** This version operates on whole files. Search file names or relative paths below the Working Tree summary, ignoring case; use the clear icon to restore all files. Group actions apply to the entire group without a filter, or only matching paths with a filter. Tooltips and confirmations show the scope, independently of the current selection. Use a file’s context menu to act on selected items. Ctrl/Cmd+A selects only visible files. Filtering does not change the actual Index; Commit still includes all Staged content.
 
-![Figure 08 File context menu showing Stage 1 File, distinct from the group-wide Stage All action](images/user-manual/figure-08.png)
-
-![Figure 09 Stage All confirmation applying to all four files in the group despite a single selected item](images/user-manual/figure-09.png)
-
 <a id="section-03-03"></a>
 
 ### Commit additions, deletions, and renames
@@ -170,8 +166,6 @@ Staged is the most important place to check before committing. A file appearing 
 
 **Caution:** Rename detection depends on content similarity. Do not assume that a file has been lost solely because you see D and a question mark before committing.
 
-![Figure 10 Two staged paths recognized as a single R rename entry](images/user-manual/figure-10.png)
-
 <a id="section-03-04"></a>
 
 ### Commit while keeping unfinished changes
@@ -179,15 +173,17 @@ Staged is the most important place to check before committing. A file appearing 
 **Prerequisite:** At least one file is Staged, and you have prepared a commit message.
 
 1. Check each Staged file, including deletions and renames.
-2. Fill in Commit Message. Confirm the current repository, branch, and commit scope, then run Commit.
+2. Select Commit… to the right of Unstage in the Staged heading and enter a Commit Message in the dialog. Confirm the repository, branch, and complete Staged scope, then select Commit or press Ctrl/Cmd+Enter. Enter inserts a new line.
 3. Click the new commit in History to verify the actual file list. Then return to Working Tree and check the remaining uncommitted changes.
 4. If Unstaged changes remain, continue editing or staging them for a separate commit.
 
 **Result:** History contains one new commit, and only the content in the Index is included in it.
 
-**Caution:** Commit drafts are saved per repository. View Commit in the success banner opens the new commit returned by this operation. Check its actual file content.
+**Caution:** Drafts save automatically per repository. Cancel, Close, Escape and the backdrop preserve the complete message for the next opening, including after reopening the workbench. Failures also keep drafts; a successful Commit clears the draft used by that action. You can open the dialog to write a draft before staging; the submission button reflects the prerequisites. View Commit in the success banner opens the new commit returned by this operation. Check its actual file content.
 
 **Troubleshooting:** If the commit fails, expand the Git error. Keep the draft, address the cause first, then recheck the scope of Staged changes.
+
+![Figure 08 Commit dialog with a restored multiline draft, Cancel preserving the message, and the full Staged scope](images/user-manual/figure-08.png)
 
 <a id="section-03-05"></a>
 
@@ -198,7 +194,7 @@ Staged is the most important place to check before committing. A file appearing 
 **Prerequisite:** You have confirmed that the current HEAD is the commit you want to replace. Ideally, it has not yet been shared with others.
 
 1. If you only need to change the commit message, you can leave Staged at 0. To add file content, first edit, save, and Stage the relevant files.
-2. Select Amend in the Commit form. The current commit message fills the form. Verify the HEAD that will be replaced, then edit the message.
+2. Open the Commit dialog and select Amend. An empty draft loads the current commit message; existing text is preserved. Verify the HEAD that will be replaced, then edit the message. Amend defaults off each time you reopen the dialog.
 3. Check the staged content and message, then click Amend Commit when you are sure. This local operation can run immediately, so complete all checks before clicking.
 4. Check history to verify the replacement and the new commit ID.
 
@@ -224,8 +220,6 @@ Staged is the most important place to check before committing. A file appearing 
 **Result:** The confirmed unstaged changes have been discarded. Content from the same file that was already in the Index should remain intact.
 
 **Troubleshooting:** If you discard something by mistake, stop further writes immediately and check the editor’s local history, backups, or existing Stashes. Do not proceed with Reset or cleanup operations.
-
-![Figure 12 Discard confirmation listing affected paths and explaining that Staged content remains in the Index](images/user-manual/figure-12.png)
 
 <a id="chapter-04"></a>
 
@@ -619,8 +613,6 @@ The goal of conflict resolution is to produce the correct final file contents. M
 
 **Troubleshooting:** If you chose the wrong contents, continue editing, save, then stage again and review. Do not treat a conflict count of zero as proof that validation passed. If the native editing flow prompts you to Trust the project workspace, follow Chapter 11 to handle the trust status of the target window.
 
-![Persistent operation bar, manual conflict-handling control, and read-only Ours and Theirs comparison](images/user-manual/figure-18.png)
-
 <a id="section-06-03"></a>
 
 ### Review the staged result and continue
@@ -637,8 +629,6 @@ The goal of conflict resolution is to produce the correct final file contents. M
 **Result:** The in-progress operation has actually finished, and you have reviewed the resulting contents.
 
 **Caution:** The review has limits involving size, binary files, encoding, and submodules. An absence of suspected markers does not guarantee semantic correctness. Changes to the Index or branch after the review require another review.
-
-![Pre-continuation review of the actual Index contents](images/user-manual/figure-19.png)
 
 <a id="section-06-04"></a>
 
@@ -992,7 +982,7 @@ Single-key shortcuts are enabled by default throughout the focused AlwayGit work
 | F | Fetch | Same as the toolbar button |
 | L | Pull | Open the Pull dialog |
 | P | Push | Open the Push target confirmation |
-| C | Prepare Commit | Open Working Tree and focus the message; does not submit |
+| C | Prepare Commit | Open the Commit dialog and focus the message; does not submit |
 | S | Stash All Changes | Open the dialog for saving all changes |
 | W | View Working Tree | Inspect uncommitted changes without focusing a text input |
 | H | Locate HEAD | Follow the existing HEAD location and history scope rules |
@@ -1004,7 +994,7 @@ Single-key shortcuts are enabled by default throughout the focused AlwayGit work
 | / | Search commits | Focus and select the Commit search text |
 | , | Settings | Open Settings |
 | ? (Shift+/) | Help | Open Help & Guide |
-| A; U | Stage All; Unstage All | Available in Working Tree; confirm before acting on the entire group |
+| A; U | Stage All; Unstage All | Working Tree only; confirm the entire group without a filter, or matching files with a filter |
 
 Global actions target the currently open repository and preview file. Temporary sidebar selection and pointer hover do not change their targets. Disabled buttons have disabled shortcuts. A/U include all Unstaged/Staged files regardless of batch selection or collapsed groups; use the existing context menu for selected-file actions.
 

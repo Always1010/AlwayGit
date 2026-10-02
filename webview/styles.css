@@ -280,12 +280,15 @@ h1,h2,p {margin:0;}
 .batch-selected {background:color-mix(in srgb,var(--accent) 10%,var(--bg));}
 .selected .file-parent-path {color:inherit;opacity:.82;}
 .change-empty {color:var(--muted);font-size:11px;padding:3px 8px;line-height:18px;}
-.commit-form {border-top:1px solid var(--border);padding:8px;flex:none;background:var(--panel);font-size:12px;}
-.commit-form textarea {width:100%;min-height:60px;max-height:150px;padding:5px;display:block;margin-top:4px;}
-.commit-options {display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:5px;}
-.commit-options label {display:flex;align-items:center;gap:4px;}
-.commit-options>.button {margin-left:auto;}
-.commit-note {font-size:11px;margin-top:4px;}
+.change-commit-trigger {white-space:nowrap;gap:4px;}
+.commit-draft-dot {width:5px;height:5px;border-radius:50%;background:currentColor;flex:none;}
+.modal.commit-dialog {width:580px;}
+.commit-repository {font-weight:600;}
+.commit-form {display:flex;flex-direction:column;gap:5px;}
+.commit-form textarea {width:100%;min-height:160px;max-height:45vh;padding:8px;resize:vertical;}
+.commit-amend {margin-top:6px;}
+.commit-draft-note {font-size:12px;}
+.commit-shortcut {margin-right:auto;font-size:11px;}
 .diff-labels,.diff-line {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
 .diff-labels {background:var(--panel);font-size:11px;color:var(--muted);border-bottom:1px solid var(--row-border);}
 .diff-labels>span {padding:3px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}

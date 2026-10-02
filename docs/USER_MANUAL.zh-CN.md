@@ -6,7 +6,7 @@
 
 在 Workbench 右上角点击问号，可打开离线“帮助与指南”，阅读快速开始、常见任务、常见问题和本手册的完整章节。帮助语言跟随工作台设置。
 
-**截图说明：** 截图主要来自 0.29.0，图 34 已更新为 0.34.0 的设置界面，继续用于说明操作位置。当前版本的图标、间距和提示文字可能略有不同，请按正文及当前按钮的名称、对象和数量操作。
+**截图说明：** 图 07、08 来自 0.36.0 的工作区与 Commit 浮窗，图 34 为 0.34.0 的设置界面；其他截图主要来自 0.29.0。失效的常驻 Commit 表单截图已移除。请按正文及当前按钮的名称、对象和数量操作。
 
 ## 按任务阅读
 
@@ -28,7 +28,7 @@
 1. 打开 AlwayGit 启动侧栏，点击 **Show Git Workbench**。在 Repositories 的 **Add…** 中添加仓库，然后双击仓库或按 Enter 进入。
 2. 在 VS Code 中编辑并保存文件。回到工作台，单击中间的 **Working Tree**，在 Unstaged 中单击文件检查底部 Diff。
 3. 右键准备提交的文件并执行 **Stage**。在 Staged 中再次检查将提交的实际内容。
-4. 填写 Commit Message，点击 **Commit**。Commit 只保存 Staged 内容，其他未暂存修改会留在工作区。
+4. 点击 Staged 标题中 Unstage 右侧的 **Commit…**（也可点击顶部 Commit），在浮窗填写 Commit Message，再点击 **Commit**。Commit 只保存 Staged 内容，其他未暂存修改会留在工作区。
 5. 在结果栏点击 **View Commit**，或从 History 打开新提交，核对提交说明、文件清单与剩余修改。
 
 **结果：** 新提交出现在历史中，内容与检查过的 Staged 一致。本地 Commit 后，可按 [远程协作](#chapter-08) 将提交 Push 到远端。
@@ -134,7 +134,7 @@ Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区�
 
 **排错：** 内容未更新时先确认编辑器已保存，再 Refresh；仍异常则查看输出与错误详情。
 
-![图 07  同一 README 同时存在 Staged 与 Unstaged 此处比较 Index 和 Working Tree](images/user-manual/figure-07.png)
+![图 07 工作区文件搜索与 Staged 标题中的 Commit 入口，零暂存时也可写草稿](images/user-manual/figure-07.png)
 
 <a id="section-03-02"></a>
 
@@ -151,10 +151,6 @@ Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区�
 
 **注意：** 本版本按整个文件操作。可在工作区摘要下面搜索文件名或相对路径，忽略大小写；点击清除图标恢复全部文件。标题按钮无筛选时处理全部对应分组，有筛选时只处理匹配文件，并在悬浮提示和确认中显示范围，不代表当前选中的几项；局部选择使用文件右键菜单。Ctrl/Cmd+A 只全选可见文件。搜索不改变实际 Staged 范围，Commit 仍包含全部已暂存内容。
 
-![图 08  单个文件右键菜单中的 Stage 1 File 与整组 Stage All 不同](images/user-manual/figure-08.png)
-
-![图 09  Stage All 对当前组全部 4 个文件操作 不是仅处理当前选中的 1 项](images/user-manual/figure-09.png)
-
 <a id="section-03-03"></a>
 
 ### 提交新增 删除和重命名
@@ -170,8 +166,6 @@ Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区�
 
 **注意：** 重命名识别取决于内容相似性。不要只根据提交前的 D 和问号就误判文件丢失。
 
-![图 10  两个路径暂存后识别为一个 R 重命名条目](images/user-manual/figure-10.png)
-
 <a id="section-03-04"></a>
 
 ### 提交并保留未完成修改
@@ -179,15 +173,17 @@ Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区�
 **前提：** 至少有一个 Staged 文件，提交说明已准备好。
 
 1. 逐个检查 Staged 文件，包括删除和重命名。
-2. 填写 Commit Message。确认当前仓库、分支和提交范围，执行 Commit。
+2. 点击 Staged 标题中 Unstage 右侧的 Commit…，在浮窗填写 Commit Message。确认当前仓库、分支和全部 Staged 范围，点击 Commit 或按 Ctrl/Cmd+Enter；Enter 用于换行。
 3. 在 History 中单击新提交，核对实际文件列表；再回到 Working Tree 检查剩余未提交变更。
 4. 若还存在 Unstaged 修改，可继续编辑或暂存，另作一次提交。
 
 **结果：** 历史新增一条提交；仅 Index 中的内容进入该提交。
 
-**注意：** Commit 草稿按仓库保存。成功结果中的 View Commit 打开本次操作返回的新提交；仍应检查实际文件内容。
+**注意：** Commit 草稿按仓库自动保存，Cancel、关闭、Esc 或点击遮罩均保留完整 Message，下次打开或重开工作台时恢复；提交失败也保留。提交成功后清空本次使用的草稿。尚未 Stage 也可打开浮窗写草稿，实际提交按钮会提示前置条件。成功结果中的 View Commit 打开本次操作返回的新提交；仍应检查实际文件内容。
 
 **排错：** 失败时展开 Git 错误；保留草稿，先处理原因，再重新核对 Staged 范围。
+
+![图 08 Commit 浮窗恢复多行草稿，Cancel 保留信息，Commit 使用全部 Staged 内容](images/user-manual/figure-08.png)
 
 <a id="section-03-05"></a>
 
@@ -198,7 +194,7 @@ Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区�
 **前提：** 已确定当前 HEAD 就是要替换的提交；最好尚未分享给其他人。
 
 1. 仅修改提交说明时可保持 Staged 为 0；需要补充文件内容时，先编辑、保存并 Stage 对应文件。
-2. 在 Commit 表单勾选 Amend，当前提交说明会填入表单。核对将替换的 HEAD，修改提交说明。
+2. 打开 Commit 浮窗并勾选 Amend；草稿为空时载入当前提交说明，已有草稿不会被覆盖。核对将替换的 HEAD，修改提交说明。每次重新打开浮窗时 Amend 默认关闭。
 3. 检查暂存内容与说明，确认后点击 Amend Commit；本地操作可以直接执行，点击前就要核对完整。
 4. 到历史中确认替换结果与新的提交 ID。
 
@@ -224,8 +220,6 @@ Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区�
 **结果：** 被确认的未暂存修改被丢弃；同一文件已经在 Index 中的内容仍应保留。
 
 **排错：** 若误操作，立即停止进一步写入，检查编辑器本地历史、备份或已有 Stash；不要继续做 Reset 或清理。
-
-![图 12  Discard 列出影响路径并说明 Staged 内容保留在 Index](images/user-manual/figure-12.png)
 
 <a id="chapter-04"></a>
 
@@ -619,8 +613,6 @@ Stash 用于暂时保存尚未提交的修改。它与 Stage 完全不同：Stag
 
 **排错：** 若选错内容，先继续编辑并保存，再次暂存并检查；不要把“冲突数为零”当成验证通过。原生编辑提示 Trust the project workspace 时，按第 11 章处理目标窗口的信任状态。
 
-![图 18  冲突时显示持续操作条 右侧手工处理后标记 底部 Ours 与 Theirs 只读比较](images/user-manual/figure-18.png)
-
 <a id="section-06-03"></a>
 
 ### 检查暂存结果并继续
@@ -637,8 +629,6 @@ Stash 用于暂时保存尚未提交的修改。它与 Stage 完全不同：Stag
 **结果：** 进行中的操作真正完成，结果内容经过你的检查。
 
 **注意：** 检查有大小、二进制、编码和子模块边界。没有疑似标记也不保证语义正确；检查后 Index 或分支变化会要求重新检查。
-
-![图 19  继续前检查实际 Index 内容 未找到常见标记仍需人工确认](images/user-manual/figure-19.png)
 
 <a id="section-06-04"></a>
 
@@ -992,7 +982,7 @@ Git 在仓库所在的 VS Code 扩展宿主中执行。产品架构面向本地�
 | F | Fetch | 与顶部按钮一致 |
 | L | Pull | 打开 Pull 窗口 |
 | P | Push | 打开 Push 目标确认窗口 |
-| C | 准备 Commit | 进入 Working Tree 并聚焦提交信息，不直接提交 |
+| C | 准备 Commit | 打开 Commit 浮窗并聚焦提交信息，不直接提交 |
 | S | Stash All Changes | 打开保存全部修改的窗口 |
 | W | 查看 Working Tree | 查看未提交修改，不聚焦输入框 |
 | H | 定位 HEAD | 沿用当前 HEAD 定位和历史范围规则 |
@@ -1004,7 +994,7 @@ Git 在仓库所在的 VS Code 扩展宿主中执行。产品架构面向本地�
 | / | 搜索提交 | 聚焦并选中 Commit 搜索框内容 |
 | , | 设置 | 打开 Settings |
 | ?（Shift+/） | 帮助 | 打开帮助与指南 |
-| A；U | Stage All；Unstage All | 仅在 Working Tree 视图可用，确认后操作整组文件 |
+| A；U | Stage All；Unstage All | 仅在 Working Tree 可用；无筛选时确认整组，有筛选时确认匹配文件 |
 
 全局操作以顶部当前打开的仓库和当前预览文件为目标，不随侧栏临时选择或鼠标悬停改变目标。按钮禁用时对应快捷键也不执行。A/U 操作全部未暂存／已暂存文件，不随批量选择或分组折叠改变范围；所选文件操作使用原有右键菜单。
 

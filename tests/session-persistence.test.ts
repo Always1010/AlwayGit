@@ -20,6 +20,18 @@ it('saves local state immediately and sends only the latest pending state after 
   expect(host.mock.calls.map(([state]) => state.draft)).toEqual(['a', 'c']);
 });
 
+it('flushes a closing editor immediately and preserves newer drafts while a host write is pending', async () => {
+  vi.useFakeTimers();
+  const first = deferred(), host = vi.fn().mockImplementationOnce(() => first.promise).mockResolvedValue(undefined);
+  const persistence = new SessionPersistence(vi.fn(), host);
+  persistence.save({ draft: 'first' }); persistence.flushNow();
+  expect(host).toHaveBeenCalledWith({ draft: 'first' });
+  persistence.save({ draft: 'latest' }); persistence.flushNow();
+  expect(host).toHaveBeenCalledTimes(1);
+  first.resolve(); await vi.advanceTimersByTimeAsync(1);
+  expect(host.mock.calls.map(([value]) => value.draft)).toEqual(['first', 'latest']);
+});
+
 it('retries a rejected host save without losing the local copy and reports a bounded failure', async () => {
   vi.useFakeTimers();
   const local = vi.fn(), host = vi.fn().mockRejectedValue(new Error('storage full')), error = vi.fn();

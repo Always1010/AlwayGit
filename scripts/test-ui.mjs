@@ -372,20 +372,26 @@ async function verifyWorkbench(browser, url) {
     await page.waitForFunction(() => [...document.querySelectorAll('[data-oid]')].length > 0 && [...document.querySelectorAll('[data-oid]')].every(row => row.textContent?.includes('native diff')));
     await history.locator('[data-working-tree]').click();
     const draft = page.getByRole('textbox', { name: 'Commit message' });
+    await page.locator('.toolbar .commit-trigger').click();
     await draft.fill('Persistent bilingual draft');
+    await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page.getByTestId('interface-settings').getByRole('button',{name:'Language',exact:true}).click();
     await page.getByTestId('interface-settings').getByRole('combobox',{name:'Language'}).selectOption('zh-CN');
     await page.getByRole('dialog').locator('.modal-footer .primary').click();
     await page.waitForFunction(()=>document.querySelector('[data-testid="current-branch"]')?.parentElement?.getAttribute('title')?.includes('当前分支：main'));
     assert.equal(await search.inputValue(), 'native diff');
+    await page.locator('.toolbar .commit-trigger').click();
     assert.equal(await draft.inputValue(), 'Persistent bilingual draft');
+    await page.keyboard.press('Escape');
     assert.equal(await sidebar.getByLabel('Show branch main', { exact: true }).isChecked(), true);
     assert.equal(await sidebar.getByLabel('Show branch feature/history-graph', { exact: true }).isChecked(), true);
 
     await page.reload();
     await workbench.waitFor();
+    await page.locator('.toolbar .commit-trigger').click();
     assert.equal(await page.getByRole('textbox', { name: 'Commit message' }).inputValue(), 'Persistent bilingual draft');
+    await page.keyboard.press('Escape');
     assert.equal(await page.getByRole('textbox', { name: 'Search commit history' }).inputValue(), 'native diff');
     assert.equal(await page.getByLabel('Show branch feature/history-graph', { exact: true }).isChecked(), true);
     await page.getByRole('button', { name: '设置', exact: true }).click();

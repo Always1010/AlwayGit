@@ -40,7 +40,7 @@ export async function verifyHelp(browser, url) {
       await page.goto(url);
       await page.getByTestId('workbench').waitFor();
       if (active) {
-        await page.getByRole('textbox', { name: 'Commit message' }).waitFor();
+        await page.getByTestId('details').locator('.change-heading-staged').waitFor();
         await page.getByRole('button', { name: 'notes.txt', exact: true }).click();
         await page.getByTestId('diff-preview').waitFor();
       } else await page.getByText('No repositories added', { exact: true }).waitFor();
@@ -68,7 +68,7 @@ export async function verifyHelp(browser, url) {
       await search.fill('');
       await dialog.getByRole('button', { name: language === 'en' ? 'Quick start' : '快速开始', exact: true }).click();
       await dialog.locator('.help-topic').last().click();
-      await dialog.locator('table').waitFor();
+      await dialog.locator('table').first().waitFor();
       for (const width of [600, 380]) {
         await page.setViewportSize({ width, height: 820 });
         assert.ok(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth + 1), 'Dialog fits narrow windows');
@@ -86,7 +86,7 @@ export async function verifyHelp(browser, url) {
       await dialog.waitFor({ state: 'hidden' });
       assert.equal(await trigger.evaluate(element => element === document.activeElement), true);
       if (active) {
-        assert.equal(await page.getByRole('textbox', { name: 'Commit message' }).inputValue(), 'Keep this draft');
+        assert.equal(await page.evaluate(() => { const session = window.__helpFixture.session; return session.drafts[session.repoId]; }), 'Keep this draft');
         assert.ok(await page.getByTestId('diff-preview').getByText('after', { exact: true }).count() > 0);
       }
       const after = await page.evaluate(() => structuredClone(window.__helpFixture.session));

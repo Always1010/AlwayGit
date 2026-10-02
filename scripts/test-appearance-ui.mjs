@@ -109,7 +109,9 @@ export async function verifyAppearance(browser, url) {
     }
 
     await history.locator('[data-working-tree]').click();
-    assert.equal(await details.getByRole('textbox', { name: 'Commit message' }).inputValue(), 'Legacy draft survives migration', 'Legacy drafts survive appearance migration');
+    await page.locator('.toolbar .commit-trigger').click();
+    assert.equal(await page.getByRole('textbox', { name: 'Commit message' }).inputValue(), 'Legacy draft survives migration', 'Legacy drafts survive appearance migration');
+    await page.keyboard.press('Escape');
     await history.locator('[data-head-commit="true"]').click();
     const migrated = await readSession(page);
     assert.equal(migrated.layout.preset, 'workbench');
