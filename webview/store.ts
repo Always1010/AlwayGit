@@ -25,7 +25,7 @@ interface WorkbenchState {
   repositories: Repository[]; repositoryCollections:RepositoryCollection[]; repositoryOrder?:RepositoryOrder; reorderRepository(payload:ReorderRepository):Promise<void>; repositoryStatuses: Record<string, RepositoryStatus>; selectedRepositoryKeys:string[]; repositorySelectionAnchor?:string; repoId?: string; snapshot?: Snapshot; commits: Commit[]; historyHead?: Commit; details?: CommitDetails; comparison?: CommitComparison; selectedOid?: string; selectedOids: string[]; selectionAnchor?: string; selectedRefs:string[]; refSelectionAnchor?:string; selectedParent?: string; selectedStashOid?: string; selectedStashSection?:StashSection; stashDetails?: StashDetails; selectedFile?: string; diffTarget?: DiffTarget; diffRevision: number;
   ref?: string; checkedRefs?: string[]; expandedRefGroups?:string[]; collapsedSidebarGroups:string[]; search: string; language: Language; layout: LayoutState; checkoutFailure?: CheckoutFailure; stashApplyFailure?: StashApplyBlocker; actionFeedback?: ActionFeedback; locateToken:number;
   nextOffset: number; hasMore: boolean; tips: string[]; loading: boolean; historyLoading: boolean; locatingOid?: string; locateCommit(oid: string): Promise<void>; detailsLoading: boolean; busy: boolean; activity: string; error?: string; notice?: string; tab: 'history' | 'changes'; drafts: Record<string, string>;
-  initialize(): Promise<void>; loadRepositoryStatuses(): Promise<void>; selectRepository(id: string): Promise<void>; refresh(options?: { background?: boolean; changes?: RepositoryChanges }): Promise<void>; loadHistory(append?: boolean): Promise<void>; selectCommit(oid: string, parent?: string, stashOid?: string, preserveSelection?: boolean): Promise<void>; selectStashSection(section:StashSection):void; compareCommits(left:string,right:string,preserveOrder?:boolean):Promise<void>; setCommitSelection(oids:string[],anchor?:string,primary?:string):void; setRefSelection(refs:string[],anchor?:string):void; setRepositorySelection(keys:string[],anchor?:string):void;
+  initialize(): Promise<void>; loadRepositoryStatuses(): Promise<void>; selectRepository(id: string): Promise<void>; refresh(options?: { background?: boolean; changes?: RepositoryChanges; snapshot?: Snapshot }): Promise<void>; loadHistory(append?: boolean): Promise<void>; selectCommit(oid: string, parent?: string, stashOid?: string, preserveSelection?: boolean): Promise<void>; selectStashSection(section:StashSection):void; compareCommits(left:string,right:string,preserveOrder?:boolean):Promise<void>; setCommitSelection(oids:string[],anchor?:string,primary?:string):void; setRefSelection(refs:string[],anchor?:string):void; setRepositorySelection(keys:string[],anchor?:string):void;
   setFilter(ref?: string, search?: string): void; setCheckedRefs(refs: string[]): void; setExpandedRefGroup(key:string,expanded:boolean):void; toggleSidebarGroup(key:string):void; setSearch(value: string): void; selectWorking(): void; selectFile(target: DiffTarget): void; locateHead():void;
   execute(action: GitAction): Promise<boolean>; dismissFeedback(): void; setDraft(value: string): void; setLanguage(value: Language): void; setLayout(value: Partial<LayoutState>): void; report(error: unknown): void;
 }
@@ -107,7 +107,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       forceHistory: !options.background || (refreshInvalidation?.epoch === epoch && refreshInvalidation.forceHistory),
     };
     try {
-      const incoming = await rpc<Snapshot>('snapshot', repoId); if (epoch !== repositoryEpoch || request !== snapshotEpoch || incoming.version < (get().snapshot?.version ?? -1)) return;
+      const incoming = options.snapshot ?? await rpc<Snapshot>('snapshot', repoId); if (epoch !== repositoryEpoch || request !== snapshotEpoch || incoming.repository.id !== repoId || incoming.version < (get().snapshot?.version ?? -1)) return;
       const snapshot = shareSnapshot(get().snapshot, incoming);
       const invalidation = refreshInvalidation!; refreshInvalidation = undefined;
       const previous = get().snapshot, previousRefs = get().checkedRefs ?? [], previousTarget = get().diffTarget;
@@ -263,9 +263,9 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     actionFeedbacks.set(repoId, feedback);
     executingRepositories.add(repoId); set({ busy: true, activity: action.type, actionFeedback: feedback, error: undefined, notice: undefined, checkoutFailure: undefined, stashApplyFailure: undefined });
     try {
-      await rpc('action', repoId, action);
+      const result = await rpc<Snapshot | undefined>('action', repoId, action);
       if (epoch === repositoryEpoch) {
-        await get().refresh({ background: true });
+        await get().refresh({ background: true, snapshot: result });
         if(epoch===repositoryEpoch) {
           const checkout = ['branch.checkout', 'commit.checkout', 'checkout.stash'].includes(action.type) || (action.type === 'branch.create' || action.type === 'branch.track') && action.checkout;
           if (checkout) { const snap = get().snapshot; const ref = snap?.refs.find(r => r.kind === 'local' && r.name === snap.branch)?.fullName ?? (snap?.head ? 'HEAD' : undefined); if (ref && !get().checkedRefs?.includes(ref)) get().setCheckedRefs([...(get().checkedRefs ?? []), ref]); }
@@ -322,16 +322,16 @@ useWorkbench.subscribe(state => {
   saveSession({ version: 2, repoId: state.repoId, drafts: state.drafts, views, language: baseline?.language ?? state.language, layout: baseline ? { ...state.layout, font: baseline.font, row: baseline.row } : state.layout, appearance: baseline?.appearance ?? state.appearance }, error => useWorkbench.getState().report(new Error(`${state.language === 'zh-CN' ? '恢复状态未能保存；当前标签仍保留草稿。' : 'Could not save the recovery baseline; drafts remain in this panel.'} ${error.message}`)));
 });
 let changedTimer: ReturnType<typeof setTimeout>;
-let pendingChange: { repoId: string; changes?: RepositoryChanges } | undefined;
+let pendingChange: { repoId: string; changes?: RepositoryChanges; snapshot?: Snapshot } | undefined;
 subscribe(event => {
   const state = useWorkbench.getState(); if (event.type === 'operationSettingsChanged') useWorkbench.setState({ operationSettings: event.settings });
   if (event.type === 'repositoriesChanged') void state.initialize();
   if (event.type === 'changed' && event.repoId === state.repoId) {
     clearTimeout(changedTimer);
-    pendingChange = { repoId: event.repoId, changes: pendingChange?.repoId === event.repoId ? mergeChanges(pendingChange.changes, event.changes) : event.changes };
+    pendingChange = { repoId: event.repoId, snapshot: event.snapshot, changes: pendingChange?.repoId === event.repoId ? mergeChanges(pendingChange.changes, event.changes) : event.changes };
     changedTimer = setTimeout(() => {
       const pending = pendingChange; pendingChange = undefined;
-      if (pending && pending.repoId === useWorkbench.getState().repoId) void useWorkbench.getState().refresh({ background: true, changes: pending.changes });
+      if (pending && pending.repoId === useWorkbench.getState().repoId) void useWorkbench.getState().refresh({ background: true, changes: pending.changes, snapshot: pending.snapshot });
     }, 160);
   }
   if(event.type==='activity'){if(event.busy)hostBusyRepositories.add(event.repoId);else hostBusyRepositories.delete(event.repoId);if(event.repoId===state.repoId)useWorkbench.setState({busy:event.busy||executingRepositories.has(event.repoId),activity:event.label});}
