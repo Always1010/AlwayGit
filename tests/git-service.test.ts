@@ -16,6 +16,14 @@ async function setup() {
 async function commit(root: string, name: string, text: string | Buffer, message = name) { await writeFile(path.join(root, name), text); await git(root, 'add', '--', name); await git(root, 'commit', '-m', message); return git(root, 'rev-parse', 'HEAD'); }
 afterEach(async () => { for (const root of roots.splice(0)) { if (path.dirname(root) !== os.tmpdir() || !path.basename(root).startsWith('alwaygit-test-')) throw new Error('Unsafe cleanup target'); await rm(root, { recursive: true, force: true, maxRetries: 5 }); } });
 describe('Git service integration', () => {
+  it('adds a remote only after validating its name and URL',async()=>{
+    const {service,repo}=await setup();
+    await expect(service.execute(repo,{type:'remote.add',name:'bad name',url:'https://example.com/acme/repo.git'})).rejects.toThrow('without spaces');
+    await expect(service.execute(repo,{type:'remote.add',name:'origin',url:' '})).rejects.toThrow('repository URL');
+    await service.execute(repo,{type:'remote.add',name:'origin',url:'https://example.com/acme/repo.git'});
+    expect((await service.snapshot(repo)).remotes).toEqual(['origin']);
+    await expect(service.execute(repo,{type:'remote.add',name:'origin',url:'https://example.com/other.git'})).rejects.toThrow('already exists');
+  });
   it('handles unborn status and binary index/revision content, literal pathspecs, and missing files', async () => {
     const { root, service, repo } = await setup();
     expect((await service.snapshot(repo)).head).toBeUndefined(); expect((await service.history(repo)).commits).toEqual([]);

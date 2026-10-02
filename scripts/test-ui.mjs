@@ -103,7 +103,35 @@ try {
   await dialog.getByRole('button', { name: 'Change Target…', exact: true }).click();
   assert.equal(await dialog.getByLabel('Remote', { exact: true }).inputValue(), 'origin');
   assert.equal(await dialog.getByLabel('Remote Branch', { exact: true }).inputValue(), 'main');
+  assert.equal(await dialog.getByText('Force-with-lease', { exact: true }).isVisible(), false, 'Force-with-lease stays inside collapsed Advanced Options');
+  await dialog.getByText('Advanced Options', { exact: true }).click();
+  await dialog.getByText('Force-with-lease', { exact: true }).waitFor();
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+
+  const noRemotePage=await browser.newPage({viewport:{width:1440,height:900}});
+  try {
+    await noRemotePage.goto(`${url}&noRemote=1`);
+    await noRemotePage.evaluate(()=>localStorage.clear());
+    await noRemotePage.reload();
+    const noRemoteSidebar=noRemotePage.getByTestId('sidebar');
+    await noRemoteSidebar.getByRole('option',{name:/^AlwayGit/}).dblclick();
+    await noRemoteSidebar.getByText('No remote repository connected.',{exact:true}).waitFor();
+    await noRemoteSidebar.locator('.remote-empty').getByRole('button',{name:'Add Remote…',exact:true}).waitFor();
+    await noRemotePage.getByRole('button',{name:/^Push/}).click();
+    let noRemoteDialog=noRemotePage.getByRole('dialog',{name:'Push',exact:true});
+    await noRemoteDialog.getByText('No remote repository is connected yet.',{exact:true}).waitFor();
+    await noRemoteDialog.getByText('Your commits are saved locally. Add a remote address before sending them with Push.',{exact:true}).waitFor();
+    assert.equal(await noRemoteDialog.getByLabel('Remote',{exact:true}).count(),0,'Push does not show an impossible empty selector');
+    assert.equal(await noRemoteDialog.getByText('Force-with-lease',{exact:true}).count(),0,'Advanced Push options stay hidden until prerequisites exist');
+    await noRemoteDialog.getByRole('button',{name:'Add Remote…',exact:true}).click();
+    noRemoteDialog=noRemotePage.getByRole('dialog',{name:'Add Remote',exact:true});
+    assert.equal(await noRemoteDialog.getByLabel('Remote Name',{exact:true}).inputValue(),'origin');
+    await noRemoteDialog.getByLabel('Repository URL',{exact:true}).fill('https://example.com/acme/repo.git');
+    await noRemoteDialog.getByRole('button',{name:'Add Remote',exact:true}).click();
+    noRemoteDialog=noRemotePage.getByRole('dialog',{name:'Push',exact:true});
+    await noRemoteDialog.getByText('main → origin/main',{exact:true}).waitFor();
+    await noRemoteDialog.getByRole('button',{name:'Cancel',exact:true}).click();
+  } finally { await noRemotePage.close(); }
 
   const menu = page.getByTestId('context-menu');
   async function openMenu(locator, keyboard = false) {
@@ -205,7 +233,7 @@ try {
   await menu.waitFor();
   assert.ok((await menu.getByRole('menuitem').allTextContents()).some(value=>value.trim()==='Copy Branch Names'),'Branch folders use the custom branch menu');
   await page.keyboard.press('Escape');
-  await assertIconActions(sidebar.getByRole('button', { name: 'Remotes', exact: true }).locator('..'), ['Fetch…', 'Refresh']);
+  await assertIconActions(sidebar.getByRole('button', { name: 'Remotes', exact: true }).locator('..'), ['Add Remote…', 'Fetch…', 'Create Local Tracking Branches…', 'Refresh']);
   await assertIconActions(sidebar.getByRole('button', { name: 'origin', exact: true }).locator('..'), ['Fetch…', 'Refresh']);
   const remoteBranch = sidebar.getByRole('button', { name: 'Branch origin/develop', exact: true });
   await assertMenu(remoteBranch, ['Show in Graph', 'Show Only This Branch', 'Checkout as Local Branch…', 'Merge…', 'Rebase…', 'Delete Branch from origin…', 'Copy Branch Name']);

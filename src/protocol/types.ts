@@ -24,6 +24,7 @@ export type GitAction =
   | { type: 'fetch'; remote?: string }
   | { type: 'pull'; strategy: 'ff-only' | 'merge' | 'rebase'; remote?: string }
   | { type: 'push'; remote?: string; branch?: string; remoteBranch?: string; setUpstream?: boolean; forceWithLease?: boolean }
+  | { type: 'remote.add'; name: string; url: string }
   | { type: 'branch.create'; name: string; start?: string; checkout?: boolean }
   | { type: 'branch.track'; branches: { source: string; name: string; expectedOid?: string }[]; checkout?: boolean; stashFirst?: boolean; includeUntracked?: boolean }
   | { type: 'branch.checkout'; name: string }
