@@ -293,16 +293,20 @@ describe('Git safety regressions', () => {
     expect(await readFile(path.join(root, 'same.txt'), 'utf8')).toBe('base');
   });
 
-  it('retains the captured Stash when Pop cannot apply without a conflict', async () => {
+  it('retains the captured Stash and real project state when Pop preflight detects a conflict', async () => {
     const { root, service, repo } = await setup();
     await commit(root, 'same.txt', 'base');
     await writeFile(path.join(root, 'same.txt'), 'saved edit');
     await service.execute(repo, { type: 'stash.create' });
     const saved = (await service.snapshot(repo)).stashes[0];
-    await commit(root, 'same.txt', 'new base');
-    await expect(service.execute(repo, { type: 'stash.apply', selector: saved.selector, expectedOid: saved.oid, pop: true })).rejects.toThrow();
+    const head = await commit(root, 'same.txt', 'new base');
+    const index = await git(root, 'ls-files', '--stage');
+    await expect(service.execute(repo, { type: 'stash.apply', selector: saved.selector, expectedOid: saved.oid, pop: true })).rejects.toMatchObject({ code: 'STASH_RESTORE_BLOCKED', details: { reason: 'restore-conflict', workingTreeUnchanged: true, stashRetained: true } });
     expect((await service.snapshot(repo)).stashes).toEqual([saved]);
-    expect((await service.snapshot(repo)).changes[0].conflict).toBe(true);
+    expect((await service.snapshot(repo)).changes).toEqual([]);
+    expect(await git(root, 'rev-parse', 'HEAD')).toBe(head);
+    expect(await git(root, 'ls-files', '--stage')).toBe(index);
+    expect(await readFile(path.join(root, 'same.txt'), 'utf8')).toBe('new base');
   });
 
   it('blocks a repeated untracked-file restore before mutation and keeps both copies', async () => {

@@ -14,7 +14,7 @@ AlwayGit 是 Workspace 类型的 VS Code 扩展。每个 React WebviewPanel 提�
 | --- | --- | --- |
 | `src/extension` | `extension.ts`、`workbench.ts`、`workbench-launcher.ts`、`project-windows.ts` | 扩展激活、活动栏入口、面板集合、RPC 路由、VS Code 命令和生命周期 |
 | `src/application` | `confirm.ts`、`credentials.ts`、`window-bridge.ts`、`operation-lock.ts`、`logging.ts` | 操作确认、认证与窗口 IPC、跨宿主写操作租约、日志脱敏和用例协调 |
-| `src/git` | `service.ts`、`default-branch.ts` | 系统 Git 执行、结构化解析、查询、操作及共享仓库队列 |
+| `src/git` | `service.ts`、`stash.ts`、`default-branch.ts` | 系统 Git 执行、结构化解析、查询、操作、Stash 隔离及共享仓库队列 |
 | `src/repositories` | `manager.ts`、`discovery.ts` | 仓库注册、递归发现、文件监听和持久化 |
 | `src/editor` | `paths.ts`、`documents.ts` | 安全路径解析、Git 内容文档、只读预览和 VS Code 原生 Diff |
 | `src/protocol` | `types.ts`、`validation.ts`、`repositories.ts` | 数据模型、RPC 请求响应、运行时校验和仓库展示分组 |
@@ -80,7 +80,16 @@ Diff 的加载依赖比较目标的语义身份。历史比较不依赖 Snapshot
 
 Git 使用参数数组与 `shell: false`，引用和路径额外校验，文件操作使用 literal pathspec。子进程有输出限制、超时和非交互编辑器；超时终止子进程树。外部 Git 不受内存队列控制，因此 Git 锁和实际返回结果仍是最终依据。
 
-同一个 `commonDir` 同时只执行一个写操作。单宿主仍使用内存忙碌状态；跨宿主使用隔离临时目录中的原子文件租约，租约按规范化共享 Git 目录散列、定期续期、结束时核对随机 token 后释放，崩溃遗留项超时后可恢复。活动开始与结束通过窗口桥同步给其他宿主，并映射到该 Git 存储下所有已注册 Worktree；广播只负责界面反馈，租约才是执行互斥边界，外部 Git 仍由 Git 自身锁保护。GitService 在写队列内动态读取宿主提供的 Detached HEAD 策略，显式 Commit/Tag Checkout、Detached Stash 重试及显式或隐式 Detached Worktree 默认拒绝；Stash 创建和实际切换前再次校验，避免配置在预检期间变化。Rebase 内部操作保持原有流程。Checkout 在宿主检查当前分支、未提交修改、未解决冲突和 Worktree 占用。远程分支本地化使用完整 `refs/remotes/*` 来源和预期 OID；批量创建在任何写入前验证全部本地名称、upstream、符号引用与层级冲突，单项创建并切换通过带 `--track` 的 `switch -c` 原子建立本地分支和跟踪关系。`Stash Changes & Checkout` 的 Stash 与 Checkout 分别报告结果；若远程分支 Checkout 受阻，重试保留原来源、名称和 OID；若 Stash 成功但 Checkout 失败，保留 Stash，不隐式恢复或删除。Apply / Pop 在进入 Git 写操作前解析 Stash 的未跟踪文件树，并检查目标路径及每层父路径；已存在文件、非目录父级或符号链接会产生结构化安全阻塞，不执行 Apply。只有该预检路径可以承诺工作区未改变，普通 Git Apply 失败仍按实际输出处理。
+同一个 `commonDir` 同时只执行一个写操作。单宿主仍使用内存忙碌状态；跨宿主使用隔离临时目录中的原子文件租约，租约按规范化共享 Git 目录散列、定期续期、结束时核对随机 token 后释放，崩溃遗留项超时后可恢复。活动开始与结束通过窗口桥同步给其他宿主，并映射到该 Git 存储下所有已注册 Worktree；广播只负责界面反馈，租约才是执行互斥边界，外部 Git 仍由 Git 自身锁保护。GitService 在写队列内动态读取宿主提供的 Detached HEAD 策略，显式 Commit/Tag Checkout、Detached Stash 重试及显式或隐式 Detached Worktree 默认拒绝；Stash 创建和实际切换前再次校验，避免配置在预检期间变化。Rebase 内部操作保持原有流程。Checkout 在宿主检查当前分支、未提交修改、未解决冲突和 Worktree 占用。远程分支本地化使用完整 `refs/remotes/*` 来源和预期 OID；批量创建在任何写入前验证全部本地名称、upstream、符号引用与层级冲突，单项创建并切换通过带 `--track` 的 `switch -c` 原子建立本地分支和跟踪关系。`Stash Changes & Checkout` 的 Stash 与 Checkout 分别报告结果；若远程分支 Checkout 受阻，重试保留原来源、名称和 OID；若 Stash 成功但 Checkout 失败，保留 Stash，不隐式恢复或删除。Stash 保存与恢复由 `stash.ts` 提供隔离状态支持，恢复的结构化阻塞结果交由 Webview 展示；具体流程见下节。
+
+### Stash 保存与隔离恢复
+
+
+恢复先解析固定 Stash OID，检查未跟踪路径占用，再捕获 HEAD、原始 Index 字节、split Index 的共享文件、相关本地文件、有效配置与属性来源。在临时独立 Git 目录中复制原始 Index 和文件内容，以只读 object alternates 读取源仓库对象；副本的 Index、工作树和新对象写入均留在临时目录。隔离命令抑制全局配置、hooks 和外部程序执行，保留受支持的 Git 合并与属性语义。在副本运行 `stash apply --index`，读取冲突或错误；失败返回包含原因、路径、Stash 身份、存档保留及本次未改动真实现场的结构化 blocker。
+
+试恢复成功后重新捕获并比较 fingerprint，覆盖 HEAD、Index、本地文件、配置、属性与 split Index 共享内容；发现变化则停止。随后真实仓库执行 `stash apply --index`；默认保留存档，显式 Pop 仅在 Apply 成功及身份重新校验后 Drop。外部进程仍可能在最后核对后修改现场，正式写入也可能失败，因此预检不提供真实 Apply 的原子回滚保证。临时目录在结束时清理，清理前校验它属于预定系统临时目录。
+
+隔离依赖 Git 2.43 或更新版本读取系统/全局属性来源。支持范围按能否准确复现现场判断：sparse checkout、受影响的 gitlink/submodule、活动的外部 filter、自定义 merge driver 或默认外部 merge driver 均拒绝隔离；单文件超过 32 MiB 或本地文件快照累计超过 128 MiB 也拒绝。非普通且无法受支持地复制的文件类型、无法完整复制的占位目录，以及路径父级的符号链接会阻止操作；可完整复制的普通文件与受支持的叶子符号链接按实际状态复制。这些边界限定 AlwayGit 的隔离试验能力，不是 Git Stash 本身的限制；遇到不支持的现场不会退回真实仓库试运行。
 
 Fetch、Pull 和 Push 沿用系统 Git Credential Helper、SSH Agent 和配置。需要输入时，使用每条命令独立的回环 IPC AskPass 桥接到 VS Code 输入框。桥接使用随机令牌并在命令结束后关闭；凭据不持久化，也不传到 Webview。日志与前端错误隐藏 URL 中的认证信息。
 
