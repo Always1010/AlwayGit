@@ -14,7 +14,7 @@ vi.mock('vscode', () => {
   }
   return {
     EventEmitter, ViewColumn: { Active: -1 }, Uri: { joinPath: vi.fn(() => ({})) },
-    workspace: { isTrusted: true, getConfiguration: () => ({ get: (_key: string, fallback: unknown) => fallback }) },
+    workspace: { isTrusted: true, onDidChangeConfiguration: () => ({ dispose() {} }), getConfiguration: () => ({ get: (_key: string, fallback: unknown) => fallback }) },
     window: { createTreeView: vi.fn(), createWebviewPanel: vi.fn() },
     commands: { executeCommand: vi.fn(), registerCommand: vi.fn() },
   };
@@ -36,7 +36,7 @@ afterEach(() => { for (const workbench of workbenches.splice(0)) workbench.dispo
 
 function workbenchFixture() {
   const repositories = { scan: vi.fn(async () => {}), list: () => [], onDidChange: () => ({ dispose() {} }), onDidChangeRepositories: () => ({ dispose() {} }) };
-  const workbench = new Workbench({ extensionUri: {} } as vscode.ExtensionContext, {} as never, repositories as never, {} as never, {} as never, {} as never);
+  const workbench = new Workbench({ extensionUri: {}, workspaceState: { get: (_key: string, fallback: unknown) => fallback, update: async () => {} } } as unknown as vscode.ExtensionContext, {} as never, repositories as never, {} as never, {} as never, {} as never);
   vi.spyOn(workbench as unknown as { html(): Promise<string> }, 'html').mockResolvedValue('<html></html>');
   workbenches.push(workbench);
   return workbench;
