@@ -8,7 +8,7 @@ import { graphPalettes, type GraphPaletteId } from './graph/palettes';
 import { BranchIcon, Button, Icon, Modal } from './ui';
 import { RepositoryIcon } from './RepositoryIcon';
 
-type SettingsPage = 'language' | 'theme' | 'density' | 'diff' | 'status' | 'colors' | 'advanced';
+type SettingsPage = 'language' | 'keyboard' | 'theme' | 'density' | 'diff' | 'status' | 'colors' | 'advanced';
 type ColorTheme = 'light' | 'dark';
 const defaultMainColors = { light: '#283447', dark: '#EDF3FF' } as const;
 const themes: { id: ThemePreference; label: string; labelZh: string; colors: readonly [string, string, string] }[] = [
@@ -138,7 +138,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
   };
   const presetBase = presetColors(appearance.palette);
   const customized = appearance.colors.light.some((color, index) => color !== presetBase.light[index]) || appearance.colors.dark.some((color, index) => color !== presetBase.dark[index]) || appearance.colors.light.length !== presetBase.light.length;
-  const pageLabel = page === 'advanced' ? t('Git operations', 'Git 操作') : page === 'language' ? t('Language', '语言') : page === 'theme' ? t('Theme', '主题') : page === 'density' ? t('Text & density', '字号与密度') : page === 'diff' ? 'Diff' : page === 'status' ? t('Status indicators', '状态提醒') : t('Graph colors', '提交图配色');
+  const pageLabel = page === 'advanced' ? t('Git operations', 'Git 操作') : page === 'keyboard' ? t('Keyboard shortcuts', '快捷键') : page === 'language' ? t('Language', '语言') : page === 'theme' ? t('Theme', '主题') : page === 'density' ? t('Text & density', '字号与密度') : page === 'diff' ? 'Diff' : page === 'status' ? t('Status indicators', '状态提醒') : t('Graph colors', '提交图配色');
   const navItem = (id: SettingsPage, icon: string, en: string, zh: string) => <button type="button" className={`settings-nav-item ${page === id ? 'is-active' : ''}`} aria-current={page === id ? 'page' : undefined} onClick={() => setPage(id)}><Icon name={icon}/><span>{t(en, zh)}</span></button>;
 
   return <Modal title={t('Settings', '设置')} busy={saving} onClose={close} footer={
@@ -146,15 +146,21 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
   }>
     <div className="interface-settings" data-testid="interface-settings">
       <nav className="settings-nav" aria-label={t('Settings categories', '设置分类')}>
-        <div className="settings-nav-group"><strong>{t('General', '常规')}</strong>{navItem('language', 'globe', 'Language', '语言')}</div>
+        <div className="settings-nav-group"><strong>{t('General', '常规')}</strong>{navItem('language', 'globe', 'Language', '语言')}{navItem('keyboard', 'keyboard', 'Keyboard shortcuts', '快捷键')}</div>
         <div className="settings-nav-group"><strong>{t('Interface', '界面')}</strong>{navItem('theme', 'color-mode', 'Theme', '主题')}{navItem('density', 'text-size', 'Text & density', '字号与密度')}{navItem('diff', 'diff', 'Diff', 'Diff')}{navItem('status', 'bell-dot', 'Status indicators', '状态提醒')}</div>
         <div className="settings-nav-group"><strong>{t('Commit graph', '提交图')}</strong>{navItem('colors', 'git-merge', 'Colors', '配色')}</div>
         <div className="settings-nav-group"><strong>{t('Advanced', '高级')}</strong>{navItem('advanced', 'tools', 'Git operations', 'Git 操作')}</div>
       </nav>
       <main className="settings-content">
-        <header className="settings-page-heading"><span>{page === 'advanced' ? t('Advanced', '高级') : page === 'language' ? t('General', '常规') : page === 'colors' ? t('Commit graph', '提交图') : t('Interface', '界面')} › {pageLabel}</span><small>{page === 'advanced' ? t('Git options take effect only after Apply.', 'Git 操作选项在应用后生效。') : t('Changes preview immediately. Apply to save.', '调整会立即预览，应用后保存。')}</small></header>
+        <header className="settings-page-heading"><span>{page === 'advanced' ? t('Advanced', '高级') : page === 'language' || page === 'keyboard' ? t('General', '常规') : page === 'colors' ? t('Commit graph', '提交图') : t('Interface', '界面')} › {pageLabel}</span><small>{page === 'advanced' ? t('Git options take effect only after Apply.', 'Git 操作选项在应用后生效。') : t('Changes preview immediately. Apply to save.', '调整会立即预览，应用后保存。')}</small></header>
 
         {saveError&&<p role="alert" className="form-error">{saveError}</p>}
+        {page === 'keyboard' && <section className="settings-page" aria-labelledby="keyboard-heading">
+          <h3 id="keyboard-heading">{t('Keyboard shortcuts', '快捷键')}</h3>
+          <label className="form-checkbox"><input type="checkbox" aria-label={t('Enable single-key shortcuts', '启用单键快捷键')} checked={state.singleKeyShortcuts} onChange={event=>state.previewSettings({singleKeyShortcuts:event.target.checked})}/>{t('Enable single-key shortcuts', '启用单键快捷键')}</label>
+          <p className="settings-page-copy">{t('Enabled by default. Shortcuts work throughout the focused workbench, except text inputs, selectors, input-method composition, dialogs and menus.', '默认开启。焦点位于工作台内时，各区域均可使用；文字输入框、选择控件、输入法组合、弹窗和菜单中暂停。')}</p>
+          <p className="settings-note">{t('Hover over an action to see its key. Help & Guide → Selection and keyboard shortcuts contains the full reference. Ctrl/Cmd+R and existing selection keys remain available when single-key shortcuts are disabled.', '悬停操作按钮可查看按键；帮助与指南 → 选择和快捷键提供完整速查。关闭单键后，Ctrl/Cmd+R 和原有选择快捷键仍可使用。')}</p>
+        </section>}
         {page === 'diff' && <section className="settings-page settings-diff-page" aria-label="Diff">
           <section className="settings-section" aria-labelledby="diff-display-heading">
             <h3 id="diff-display-heading">{t('Display', '显示')}</h3>

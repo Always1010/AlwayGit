@@ -1,11 +1,17 @@
 import React, { useEffect, useRef } from 'react';
 import { useTranslation } from './i18n';
+import { useWorkbench } from './store';
+import { shortcutAria, shortcutTitle, type WorkbenchShortcut } from './shortcutKeys';
 
 export function Icon({ name, className = '' }: { name: string; className?: string }) {
   if (name === 'stage-inbox') return <svg aria-hidden="true" className={`stage-inbox-icon ${className}`} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></svg>;
   return <i aria-hidden="true" className={`codicon codicon-${name} ${className}`} />;
 }
-export function Button({ children, icon, className = '', ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { icon?: string }) { return <button className={`button ${className}`} {...props}>{icon && <Icon name={icon} />}{children}</button>; }
+export function Button({ children, icon, shortcut, className = '', ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { icon?: string; shortcut?: WorkbenchShortcut }) {
+  const singleKeys = useWorkbench(state => state.singleKeyShortcuts);
+  const title = props.title ?? props['aria-label'] ?? (typeof children === 'string' ? children : undefined);
+  return <button className={`button ${className}`} {...props} title={shortcut ? shortcutTitle(title, shortcut, singleKeys) : props.title} aria-keyshortcuts={shortcut ? shortcutAria(shortcut, singleKeys) : props['aria-keyshortcuts']}>{icon && <Icon name={icon} />}{children}</button>;
+}
 export function BranchIcon({remote=false}:{remote?:boolean}) { return <span className="branch-icon" aria-hidden="true"><Icon name={remote?'cloud':'git-branch'}/></span>; }
 export function Empty({ title, children }: { title: string; children?: React.ReactNode }) { return <div className="empty"><Icon name="git-commit" /><strong>{title}</strong>{children && <p>{children}</p>}</div>; }
 

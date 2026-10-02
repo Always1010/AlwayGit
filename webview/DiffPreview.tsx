@@ -8,6 +8,7 @@ import { adjacentDiffFile, alignDiff, changeAtRow, changedParts, changedRanges, 
 import { Button, Empty } from './ui';
 import { diffKey } from './refresh';
 import { diffRowHeight } from './appearance';
+import { useShortcuts } from './shortcuts';
 
 interface Preview {path:string;leftLabel:string;rightLabel:string;left:string;right:string;binary?:boolean;truncated?:boolean}
 interface Selection {key:string;rows:readonly DiffRow[];index:number}
@@ -22,6 +23,7 @@ function DiffPreviewPanel({ native, edit }: { native():void; edit():void }) {
   const state=useWorkbenchFields('appearance', 'diffNavigationScope', 'details', 'selectedStashOid', 'tab', 'diffRevision', 'diffTarget', 'layout', 'repoId', 'selectedFile', 'selectFile', 'setLayout'),t=useTranslation(),[preview,setPreview]=useState<Preview>(),[error,setError]=useState<string>(),[loading,setLoading]=useState(false),[selection,setSelection]=useState<Selection>(),[horizontalScroll,setHorizontalScroll]=useState(0),[viewportWidth,setViewportWidth]=useState(0),viewport=useRef<HTMLDivElement>(null),displayedKey=useRef(''),lastScrollTop=useRef(0),navigationScroll=useRef<number|undefined>(undefined);
   const [navigating,setNavigating]=useState(false),[navigationError,setNavigationError]=useState<string>(),[noNavigableFiles,setNoNavigableFiles]=useState(false),navigationRequest=useRef<AbortController|undefined>(undefined),preloaded=useRef<{key:string;preview:Preview}|undefined>(undefined),landing=useRef<{key:string;index:number}|undefined>(undefined);
   const collapsed=state.layout.diffCollapsed;
+  const pendingNavigation=useRef<{key:string;direction:DiffDirection}|undefined>(undefined);
   const initiallyPositioned=useRef(false);
   useLayoutEffect(()=>{
     const element=viewport.current;if(!element)return;
@@ -149,8 +151,24 @@ function DiffPreviewPanel({ native, edit }: { native():void; edit():void }) {
   const previousHint=commitMode?t('Previous change across Commit files (wraps to the last)','上一处修改（跨 Commit 文件，首处循环到末处）'):changes.length===1?t('Locate the only change','定位唯一修改'):t('Previous change (wraps to the last)','上一处修改（从首处循环到末处）'),nextHint=commitMode?t('Next change across Commit files (wraps to the first)','下一处修改（跨 Commit 文件，末处循环到首处）'):changes.length===1?t('Locate the only change','定位唯一修改'):t('Next change (wraps to the first)','下一处修改（从末处循环到首处）');
   const countLabel=t('Change blocks','修改块'),blockCount=`${activeChange<0?0:activeChange+1}/${changes.length}${preview?.truncated?t(' (preview)','（预览）'):''}`,countText=commitMode?`${t('File','文件')} ${fileIndex+1}/${commitFiles!.length} · ${t('Change','修改')} ${blockCount}`:blockCount,addedLabel=t('Added blocks','新增块'),modifiedLabel=t('Modified blocks','修改块'),removedLabel=t('Removed blocks','删除块');
   const navigationDisabled=loading||navigating||noNavigableFiles||(!changes.length&&(!commitMode||commitFiles!.length<2));
+  const moveChange=(direction:DiffDirection)=>{
+    if(collapsed){pendingNavigation.current={key:targetKey,direction};state.setLayout({diffCollapsed:false});}
+    else void navigate(direction);
+  };
+  useEffect(()=>{
+    const pending=pendingNavigation.current;if(!pending)return;
+    if(pending.key!==targetKey){pendingNavigation.current=undefined;return;}
+    if(collapsed||navigationDisabled||!viewportWidth||!viewport.current?.clientHeight)return;
+    pendingNavigation.current=undefined;void navigate(pending.direction);
+  },[collapsed,targetKey,navigationDisabled,viewportWidth]);
+  useShortcuts({
+    diff:{enabled:!!state.diffTarget,run:native},edit:{enabled:!!state.selectedFile,run:edit},
+    previousChange:{enabled:!!preview&&displayedKey.current===targetKey&&!navigationDisabled,run:()=>moveChange(-1)},
+    nextChange:{enabled:!!preview&&displayedKey.current===targetKey&&!navigationDisabled,run:()=>moveChange(1)},
+    toggleDiff:{enabled:true,run:()=>state.setLayout({diffCollapsed:!collapsed})},
+  });
   const statusLabel=`${addedLabel}: ${summary.added}; ${modifiedLabel}: ${summary.modified}; ${removedLabel}: ${summary.removed}; ${countLabel}: ${countText}`;
-  return <section className="diff-preview" data-testid="diff-preview"><div className="pane-heading"><span className="truncate">Diff · {state.selectedFile||t('No file selected','未选择文件')}</span><div className="inline-actions"><Button className="icon-only" icon="diff" title={openLabel} aria-label={openLabel} onClick={native} disabled={!state.diffTarget}/><Button className="icon-only" icon="go-to-file" title={editLabel} aria-label={editLabel} onClick={edit} disabled={!state.selectedFile}/><span className="diff-change-summary" data-testid="diff-change-summary" role="status" aria-label={statusLabel}><span className="diff-change-kind diff-change-added" title={addedLabel} aria-hidden="true">+{summary.added}</span><span className="diff-change-kind diff-change-modified" title={modifiedLabel} aria-hidden="true">~{summary.modified}</span><span className="diff-change-kind diff-change-removed" title={removedLabel} aria-hidden="true">−{summary.removed}</span></span>{!collapsed&&<><Button className="icon-only" icon="arrow-up" title={previousHint} aria-label={previousLabel} onClick={()=>void navigate(-1)} disabled={navigationDisabled}/><Button className="icon-only" icon="arrow-down" title={nextHint} aria-label={nextLabel} onClick={()=>void navigate(1)} disabled={navigationDisabled}/></>}<span className="diff-change-count" data-testid="diff-change-count" aria-hidden="true" title={preview?.truncated?t('Change blocks in the truncated preview','截断预览中的修改块'):countLabel}>{countText}</span><span className="diff-toolbar-divider"/><Button className="icon-only diff-panel-toggle" icon={collapsed?'chevron-up':'chevron-down'} title={toggleLabel} aria-label={toggleLabel} onClick={()=>state.setLayout({diffCollapsed:!collapsed})}/></div></div>
+  return <section className="diff-preview" data-testid="diff-preview"><div className="pane-heading"><span className="truncate">Diff · {state.selectedFile||t('No file selected','未选择文件')}</span><div className="inline-actions"><Button className="icon-only" icon="diff" shortcut="diff" title={openLabel} aria-label={openLabel} onClick={native} disabled={!state.diffTarget}/><Button className="icon-only" icon="go-to-file" shortcut="edit" title={editLabel} aria-label={editLabel} onClick={edit} disabled={!state.selectedFile}/><span className="diff-change-summary" data-testid="diff-change-summary" role="status" aria-label={statusLabel}><span className="diff-change-kind diff-change-added" title={addedLabel} aria-hidden="true">+{summary.added}</span><span className="diff-change-kind diff-change-modified" title={modifiedLabel} aria-hidden="true">~{summary.modified}</span><span className="diff-change-kind diff-change-removed" title={removedLabel} aria-hidden="true">−{summary.removed}</span></span>{!collapsed&&<><Button className="icon-only" icon="arrow-up" shortcut="previousChange" title={previousHint} aria-label={previousLabel} onClick={()=>moveChange(-1)} disabled={navigationDisabled}/><Button className="icon-only" icon="arrow-down" shortcut="nextChange" title={nextHint} aria-label={nextLabel} onClick={()=>moveChange(1)} disabled={navigationDisabled}/></>}<span className="diff-change-count" data-testid="diff-change-count" aria-hidden="true" title={preview?.truncated?t('Change blocks in the truncated preview','截断预览中的修改块'):countLabel}>{countText}</span><span className="diff-toolbar-divider"/><Button className="icon-only diff-panel-toggle" shortcut="toggleDiff" icon={collapsed?'chevron-up':'chevron-down'} title={toggleLabel} aria-label={toggleLabel} onClick={()=>state.setLayout({diffCollapsed:!collapsed})}/></div></div>
     {!collapsed&&<>{preview&&<div className="diff-labels"><span>{preview.leftLabel}</span><span>{preview.rightLabel}</span></div>}
     {preview?.truncated&&<div className="history-caption">{t('Preview is truncated. Open Diff to inspect the full comparison.','预览已截断；可以 Open Diff 查看完整比较。')}</div>}
     <div className="diff-viewport" ref={viewport} onScroll={trackScroll}>

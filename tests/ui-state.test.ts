@@ -118,29 +118,32 @@ describe('repository UI consistency', () => {
     const original = store.getState(), target = original.diffTarget;
     original.beginSettings();
     expect(original.diffNavigationScope).toBe('commit');
-    store.getState().previewSettings({ diffNavigationScope: 'file', language: 'zh-CN', font: 16, row: 28, appearance: { theme: 'light', palette: 'extended', codeFont: 18, codeRowHeight: 24, fileSpacing: 5, currentBranchColor: '#00ff99', currentRepositoryColor: '#ff4ad4' } });
+    expect(original.singleKeyShortcuts).toBe(true);
+    store.getState().previewSettings({ singleKeyShortcuts: false, diffNavigationScope: 'file', language: 'zh-CN', font: 16, row: 28, appearance: { theme: 'light', palette: 'extended', codeFont: 18, codeRowHeight: 24, fileSpacing: 5, currentBranchColor: '#00ff99', currentRepositoryColor: '#ff4ad4' } });
     expect(store.getState().diffNavigationScope).toBe('file');
+    expect(store.getState().singleKeyShortcuts).toBe(false);
     expect(store.getState().appearance.palette).toBe('extended');
     expect(store.getState().appearance).toMatchObject({currentBranchColor:'#00FF99',currentRepositoryColor:'#FF4AD4'});
-    expect(bridge.save.mock.calls.at(-1)?.[0]).toMatchObject({ diffNavigationScope: 'commit', language: original.language, layout: original.layout, appearance: original.appearance });
+    expect(bridge.save.mock.calls.at(-1)?.[0]).toMatchObject({ singleKeyShortcuts: true, diffNavigationScope: 'commit', language: original.language, layout: original.layout, appearance: original.appearance });
     // A background refresh/save during preview must still persist committed settings.
     await store.getState().refresh();
     expect(bridge.save.mock.calls.at(-1)?.[0].appearance).toEqual(original.appearance);
     store.getState().finishSettings(false);
-    expect(store.getState()).toMatchObject({ diffNavigationScope: 'commit', language: original.language, layout: original.layout, appearance: original.appearance, drafts: { a: 'keep my draft' }, diffTarget: target });
+    expect(store.getState()).toMatchObject({ singleKeyShortcuts: true, diffNavigationScope: 'commit', language: original.language, layout: original.layout, appearance: original.appearance, drafts: { a: 'keep my draft' }, diffTarget: target });
   });
   it('applies settings through host session validation and restores only panel geometry', async () => {
     const { sessionSchema } = await import('../src/protocol/validation');
     store.getState().beginSettings();
-    store.getState().previewSettings({ diffNavigationScope: 'file', language: 'zh-CN', font: 15, row: 28, appearance: { theme: 'contrast', palette: 'distinct', codeFont: 17, codeRowHeight: 23, fileSpacing: 6, badgeColor: '#006BFF', currentBranchColor:'#00FF99', currentRepositoryColor:'#FF4AD4' } });
+    store.getState().previewSettings({ singleKeyShortcuts: false, diffNavigationScope: 'file', language: 'zh-CN', font: 15, row: 28, appearance: { theme: 'contrast', palette: 'distinct', codeFont: 17, codeRowHeight: 23, fileSpacing: 6, badgeColor: '#006BFF', currentBranchColor:'#00FF99', currentRepositoryColor:'#FF4AD4' } });
     store.getState().finishSettings(true);
     const saved = bridge.save.mock.calls.at(-1)?.[0];
     expect(sessionSchema.parse(saved).diffNavigationScope).toBe('file');
+    expect(sessionSchema.parse(saved).singleKeyShortcuts).toBe(false);
     expect(sessionSchema.parse(saved).appearance).toMatchObject({ theme: 'contrast', palette: 'distinct', codeFont: 17, codeRowHeight: 23, fileSpacing: 6, badgeColor: '#006BFF', currentBranchColor:'#00FF99', currentRepositoryColor:'#FF4AD4' });
     expect(saved.appearance.colors.light).toHaveLength(8);
     expect(saved.appearance.colors.dark).toHaveLength(8);
     store.getState().setLayout({ sidebar: 260, details: 350, diff: 900, diffCollapsed: true }); store.getState().restoreLayout();
-    expect(store.getState()).toMatchObject({ diffNavigationScope: 'file', language: 'zh-CN', layout: { sidebar: 210, details: 300, diff: 220, diffCollapsed: false, font: 15, row: 28 }, appearance: saved.appearance });
+    expect(store.getState()).toMatchObject({ singleKeyShortcuts: false, diffNavigationScope: 'file', language: 'zh-CN', layout: { sidebar: 210, details: 300, diff: 220, diffCollapsed: false, font: 15, row: 28 }, appearance: saved.appearance });
     expect(store.getState().settingsBaseline).toBeUndefined();
   });
   it('restores legacy Diff settings without losing the font and validates custom line heights', async () => {

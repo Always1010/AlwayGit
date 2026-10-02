@@ -984,6 +984,32 @@ Reload the VS Code window after changing the Git path or refresh interval. Theme
 
 ### Selection and keyboard shortcuts
 
+Single-key shortcuts are enabled by default throughout the focused AlwayGit workbench, including repositories, History, file lists, Diff, buttons and blank areas. Global shortcuts pause in text inputs, textareas, editable content, selectors, input-method composition, dialogs and context menus. When focus moves to a VS Code editor or terminal, that view handles the keyboard. Holding a key does not repeat an operation.
+
+| Key | Action | Scope and behavior |
+| --- | --- | --- |
+| R; Ctrl/Cmd+R | Refresh | Refresh the repository currently open in the toolbar |
+| F | Fetch | Same as the toolbar button |
+| L | Pull | Open the Pull dialog |
+| P | Push | Open the Push target confirmation |
+| C | Prepare Commit | Open Working Tree and focus the message; does not submit |
+| S | Stash All Changes | Open the dialog for saving all changes |
+| W | View Working Tree | Inspect uncommitted changes without focusing a text input |
+| H | Locate HEAD | Follow the existing HEAD location and history scope rules |
+| O | Open repository folder | Open or switch to the current repository's VS Code window |
+| D | Open Diff | Open the native Diff for the current preview file |
+| E | Edit file | Same as Edit in VS Code; Commit comparisons open native Diff |
+| [; ] | Previous; next change | Follow the Diff navigation scope; expand a collapsed Diff before navigating |
+| \ | Minimize/expand Diff | Preserve the reading position |
+| / | Search commits | Focus and select the Commit search text |
+| , | Settings | Open Settings |
+| ? (Shift+/) | Help | Open Help & Guide |
+| A; U | Stage All; Unstage All | Available in Working Tree; confirm before acting on the entire group |
+
+Global actions target the currently open repository and preview file. Temporary sidebar selection and pointer hover do not change their targets. Disabled buttons have disabled shortcuts. A/U include all Unstaged/Staged files regardless of batch selection or collapsed groups; use the existing context menu for selected-file actions.
+
+Hover over supported actions to see their keys. Settings → General → Keyboard shortcuts can disable single-key shortcuts. Apply saves the preference; Cancel restores it. Ctrl/Cmd+R and the existing selection controls below remain available. Drafts, repository selection and layout are preserved.
+
 | Action | Meaning | Scope reminder |
 | --- | --- | --- |
 | Single-click a repository or Worktree | Select the target for an operation | Does not switch the current working directory |
