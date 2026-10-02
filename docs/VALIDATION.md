@@ -21,6 +21,10 @@
 
 | 参数 | 主要范围 |
 | --- | --- |
+| `--workbench-only` | 整体布局、基础导航和宿主入口 |
+| `--branch-only` | 分支创建、Detached HEAD 策略与 Push 引导 |
+| `--stash-only` | Stash 详情、保存范围及恢复受阻 |
+| `--refresh-only` | 后台刷新、选择保留和 Diff 更新 |
 | `--appearance-only` | 设置、主题、配色、字体、尺寸与恢复布局 |
 | `--files-only` | 文件状态图标、选择、目录显示、菜单、分组图标和 Stage All / Unstage All / Discard All 确认 |
 | `--history-only` | Commit / Working Tree 行、选择、比较和键盘操作 |
@@ -29,7 +33,7 @@
 | `--remote-tracking-only` | 远程来源、本地跟踪分支与批量创建 |
 | `--feedback-only` | 操作反馈、Commit 结果摘要与查看入口、冲突后关闭与中止、标记暂存、结果检查、继续确认和 Commit 入口保护 |
 
-每次选择一个专项参数；脚本使用互斥分支，不会把多个参数组合执行。刷新专项包含在完整 UI 流程中，目前没有独立命令行参数。
+每次选择一个专项参数；脚本通过统一注册表选择对应检查，无参数时执行注册表中的全部专项。未知或多个参数会明确报错。
 
 浏览器脚本以 `?demo=1` 加载产物，默认无头运行。Windows 默认使用 Microsoft Edge，其他平台使用 Playwright Chromium；可用 `ALWAYGIT_BROWSER_EXECUTABLE` 指定路径。Demo 只操作示例数据；即使使用受控宿主验证消息，也不能据此确认真实 Git、原生编辑器、剪贴板或窗口动作通过。
 
@@ -41,7 +45,7 @@
 
 - 固定四区 Workbench、旧 Editor Focus 会话迁移、面板和列拖动、Diff 动态最大高度与收起恢复、仅恢复布局而不重置界面设置的 Restore Layout、窄窗口和主题。
 - 设置浮窗分级导航、预览、取消、应用、刷新期间的持久化；宿主主题与主题卡片优先级、丰富明暗主题、可配置未推送角标、字号、列表密度及独立 Diff 行高同步虚拟行高、Diff 自定义行高边界和旧设置兼容、Graph 预设及自定义浅色/深色色板的连续性与分页。
-- Repository、Local Branch、Remote Branch、Remote、Tag、Stash、Worktree 的对象菜单；仓库行和仓库分组标题通过右键打开管理菜单；分区标题单击只折叠内容，右侧图标执行分组操作，Local Branches 的 Graph 预设具有激活状态。Repository 单击、Ctrl/Cmd、Shift、Ctrl/Cmd+A 与 Escape 管理独立的批量操作选择，不切换仓库，范围严格按当前显示顺序计算；双击或 Enter 切换仓库，右键遵循所选范围。Worktree 单击只聚焦、双击或 Enter 切换。当前 Repository、Worktree 和本地分支使用排头实心三角形及 `aria-current`，与 Repository 蓝色操作选择相互独立；浅色背景为纯黑、深色背景为纯白，不显示 Current 文字徽标。
+- Repository、Local Branch、Remote Branch、Remote、Tag、Stash、Worktree 的对象菜单；仓库行和仓库分组标题通过右键打开管理菜单；分区标题单击只折叠内容，右侧图标执行分组操作，Local Branches 的 Graph 预设具有激活状态。Repository 单击、Ctrl/Cmd、Shift、Ctrl/Cmd+A 与 Escape 管理独立的批量操作选择，不切换仓库，范围严格按当前显示顺序计算；双击或 Enter 切换仓库，右键遵循所选范围。Worktree 单击只聚焦、双击或 Enter 切换。当前 Repository 使用强调色仓库图标，Worktree 和本地分支保留排头实心三角形；三者均使用 `aria-current`，与 Repository 蓝色操作选择相互独立。三角形在浅色背景为纯黑、深色背景为纯白，不显示 Current 文字徽标。
 - 菜单指针定位、视口边缘修正、竖向排列、键盘焦点、Escape 与点击外部关闭。
 - 右键对象与操作对话框目标一致；仓库切换后旧菜单和对话框关闭。
 - 递归分支目录、目录展开、三态目录选择、多引用选择及只按可见分支计算的 Shift 范围、共同提交去重、清空选择、分页、搜索、HEAD 标记及 Locate HEAD。
@@ -106,7 +110,7 @@ scripts/update-local.ps1 -InstallOnly
 
 ## 验证证据与覆盖边界
 
-2026-10-01 文档整理时，源码版本为 0.16.0。此前本文件可追溯的功能执行记录对应 0.10.0；它只支持下表的既有结论，不代表 0.16.0 已完成同范围复测，也不能据此推断后续版本未经过检查。问题级回归摘要见 [问题日志](ISSUES.md)。
+下表保留不同版本实际执行过的检查范围，不把旧版本结果视为当前版本的全量验证。问题级回归摘要见 [问题日志](ISSUES.md)。
 
 | 证据范围 | 日期 / 版本 | 已记录结果与限制 |
 | --- | --- | --- |
@@ -124,8 +128,8 @@ scripts/update-local.ps1 -InstallOnly
 | 可见顺序范围选择与仓库内嵌管理 | 2026-10-02 / 0.21.0 | 完成 Repository、Local / Remote Branch、History Commit、Details / Working Tree 文件、Worktree 及新增候选仓库列表的 Shift 范围审计，修复仓库排序和折叠分支两处与可见顺序不一致的问题。类型检查、6 个相关 Vitest 文件 39 项、生产构建及无头 `--worktrees-only` 通过；后者覆盖内嵌扫描添加、候选 Shift 范围、新建目标分组和内嵌移除确认。固定 VSIX 已打包并通过官方 CLI 安装及 `alwaygit-dev.alwaygit@0.21.0` 核对；未启动会弹窗的真实 VS Code 桌面集成测试 |
 | Diff 定位、循环跳转与独立行高 | 2026-10-02 / 0.23.0 | 类型检查、Diff 导航/对齐及状态/设置单测共 47 项、生产构建、Diff 和外观两个无头界面专项通过。覆盖首处自动定位、单处重复定位、首尾循环、超高块与收起恢复；默认 18 px 行高、自定义边界、字号安全下限、预览/取消/保存重载、旧设置兼容与改变行高保留阅读行。固定 VSIX 已通过官方 CLI 安装并核对 `alwaygit-dev.alwaygit@0.23.0`；未启动真实 VS Code 桌面集成测试 |
 | 工作台入口与仓库交互勘误 | 2026-10-02 / 0.25.1 | 类型检查、入口回归 8 项、生产构建与无头 `--worktrees-only` 通过；覆盖两个原生按钮的命令配置、视图可见性无自动动作、Show 标签新建与复用、活动/最近使用标签、关闭后重建，以及恢复仓库单击选择、双击/Enter 切换与右键管理。固定 VSIX 已通过官方 CLI 安装并核对 `alwaygit-dev.alwaygit@0.25.1`；真实 VS Code 桌面按钮外观与跨窗口集成未运行 |
-
 | Detached HEAD 高级开关与历史分支引导 | 2026-10-02 / 0.28.0 | 类型检查、Git 安全/状态/协议三个文件 67 项单测、生产构建与无头 History、Appearance、Branch 三个专项通过；覆盖默认拒绝 Commit/Tag、显式及隐式 Detached Worktree、Stash 前预检策略变化和文件保留、关闭后返回分支、设置取消/应用/重载及历史创建并切换。固定 VSIX 已通过官方 CLI 安装并核对 `alwaygit-dev.alwaygit@0.28.0`；未启动真实 VS Code 桌面集成测试 |
 | 整文件 Stash 与安全恢复 | 2026-10-02 / 0.29.0 | 类型检查、13 项真实 Git Stash 状态用例、48 项既有 Git 服务/安全回归、46 项 UI/Demo 用例、3 项定向文件比较及 1 项新协议用例通过；受影响失败修复后仅重跑对应检查。覆盖所选范围隔离、同文件 Index/工作树不同、重命名、未跟踪、缺失 Index、编码属性、整次冲突停止及 Git 环境变量隔离。生产构建与固定 VSIX 打包通过，官方 CLI 已安装并核对 `alwaygit-dev.alwaygit@0.29.0`；未启动真实 VS Code 桌面集成测试 |
+| 并发边界、持久化和查询治理 | 2026-10-03 / 0.30.0 | 类型检查、相关 Git/宿主/协议/状态定向回归通过，覆盖进程终止与写保护、锁恢复、远端版本约束、旧快照失效、多标签草稿合并、只读取消、共享监听、符号链接及长参数；真实 Git 检查包括本地 Bare Remote 与两个 Clone 的并发变更、310 个分支的历史查询。11 个无头界面专项分批通过，失败修复后只重跑受影响专项；没有执行全量 Vitest 或真实 VS Code 多窗口桌面集成。0.30.0 生产构建与固定 VSIX 打包通过；随后当前工作区合入仓库行样式改动并由其更新流程重新构建安装，本轮再次核对官方 CLI、安装记录与固定包哈希一致。六份长期文档的本地链接及标题锚点检查通过 |
 
 macOS、Linux、WSL、Remote SSH、Dev Containers 和最低支持版本仍需相应环境的专项证据。验收矩阵、架构兼容性和测试文件的存在都不等同于这些环境已通过验收。
