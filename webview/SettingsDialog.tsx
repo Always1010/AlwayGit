@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useWorkbench } from './store';
 import { useTranslation } from './i18n';
 import type { Language } from './i18n';
-import { defaultBadgeColor, diffRowHeight, effectiveRowHeight, isLightTheme, presetColors, textColorForBackground, type ResolvedTheme, type ThemePreference } from './appearance';
+import { defaultBadgeColor, diffRowHeight, effectiveRowHeight, fileRowHeight, isLightTheme, presetColors, textColorForBackground, type ResolvedTheme, type ThemePreference } from './appearance';
 import { graphPalettes, type GraphPaletteId } from './graph/palettes';
 import { Button, Icon, Modal } from './ui';
 
@@ -40,6 +40,27 @@ function DiffHeightField({ value, onChange }: { value: number; onChange(value: n
       setDraft(event.target.value);
       const next = Number(event.target.value);
       if (event.target.value && Number.isInteger(next) && next >= 16 && next <= 36) onChange(next);
+    }} onBlur={commit} onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); }}/>}</label>;
+}
+
+function FileSpacingField({ value, onChange }: { value: number; onChange(value: number): void }) {
+  const t = useTranslation(), presets = [0, 1, 3, 5];
+  const [custom, setCustom] = useState(!presets.includes(value)), [draft, setDraft] = useState(String(value));
+  useEffect(() => setDraft(String(value)), [value]);
+  const commit = () => {
+    const next = draft.trim() ? Math.round(Math.max(0, Math.min(8, Number(draft)))) : value;
+    const valid = Number.isFinite(next) ? next : value;
+    setDraft(String(valid)); onChange(valid);
+  };
+  const names = [t('Dense', '密集'), t('Compact · Default', '紧凑 · 默认'), t('Balanced', '适中'), t('Comfortable', '宽松')];
+  return <label className="settings-full-width">{t('File list spacing', '文件列表间距')}<select aria-label={t('File list spacing', '文件列表间距')} value={custom ? 'custom' : value} onChange={event => {
+    const isCustom = event.target.value === 'custom'; setCustom(isCustom);
+    if (!isCustom) onChange(Number(event.target.value));
+  }}>{presets.map((size, i) => <option key={size} value={size}>{names[i]} · {size}px</option>)}<option value="custom">{t('Custom', '自定义')}</option></select>
+    {custom && <input type="number" aria-label={t('Custom file list spacing', '自定义文件列表间距')} min={0} max={8} step={1} value={draft} onChange={event => {
+      setDraft(event.target.value);
+      const next = Number(event.target.value);
+      if (event.target.value && Number.isInteger(next) && next >= 0 && next <= 8) onChange(next);
     }} onBlur={commit} onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); }}/>}</label>;
 }
 
@@ -146,8 +167,11 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
             <label>{t('Diff font', 'Diff 字号')}<select aria-label={t('Diff font', 'Diff 字号')} value={appearance.codeFont} onChange={event => updateAppearance({ ...appearance, codeFont: Number(event.target.value) })}>{[11,12,13,14,15,16,17,18].map(size => <option key={size} value={size}>{size}px</option>)}</select></label>
             <label>{t('List density', '列表密度')}<select aria-label={t('List density', '列表密度')} value={layout.row} onChange={event => state.previewSettings({ row: Number(event.target.value) })}>{densityOptions.map(size => <option key={size} value={size}>{size === 22 ? t('Dense', '密集') : size === 24 ? t('Compact · Default', '紧凑 · 默认') : size === 28 ? t('Comfortable', '舒适') : t('Custom', '自定义')} · {size}px</option>)}</select></label>
             <DiffHeightField value={appearance.codeRowHeight} onChange={codeRowHeight => updateAppearance({ ...appearance, codeRowHeight })}/>
+            <FileSpacingField value={appearance.fileSpacing} onChange={fileSpacing => updateAppearance({ ...appearance, fileSpacing })}/>
           </div>
           <div className="settings-row-preview" style={{ minHeight: effectiveRowHeight(layout) }}><Icon name="git-commit"/><span className="ref-badge local" aria-current="true">main</span><span className="truncate">feat: {t('Refine the workbench', '优化工作台体验')}</span><span className="muted">{effectiveRowHeight(layout)}px</span></div>
+          <div className="file-item settings-file-preview"><span className="file-status status-M" title={t('Modified', '已修改')} role="img" aria-label={t('Modified', '已修改')}><Icon name="file-code"/><span className="file-status-badge" aria-hidden="true">M</span></span><span className="file-label"><span className="file-basename">App.tsx</span><span className="file-parent-path">./webview</span></span><span className="muted">{fileRowHeight(layout.font, appearance.fileSpacing)}px</span></div>
+          <p className="settings-note">{t('File spacing sets the padding above and below each file in Commit Details, comparisons and Working Tree. The filename and path remain on two lines; long paths expand as needed.', '文件间距控制 Commit 详情、比较和 Working Tree 文件行的上下留白。保留文件名与路径两行，长路径自动增高。')}</p>
           <p className="settings-note">{t('Row height grows with larger text to keep every line readable.', '大字号会自动增加最小行高，避免文字被裁切。')}</p>
           <p className="settings-note">{t('Diff line height', 'Diff 行高')}: {diffRowHeight(appearance.codeFont, appearance.codeRowHeight)}px · {t('Custom range: 16–36px; at least font size + 4px.', '自定义范围 16–36px；实际行高至少为字号 + 4px。')}</p>
         </section>}

@@ -88,6 +88,8 @@
 .settings-row-preview {display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--panel);border-radius:4px;margin-top:9px;padding:0 6px;font-size:var(--workbench-font);}
 .settings-row-preview>.truncate {flex:1;}
 .settings-row-preview>.muted {font-size:11px;}
+.settings-file-preview {margin-top:9px;border:1px solid var(--border);background:var(--panel);font-size:var(--workbench-font);}
+.settings-file-preview>.muted {font-size:11px;}
 .settings-save-hint {display:flex;align-items:center;gap:4px;flex:1;color:var(--muted);font-size:11px;}
 .settings-cancel {border-color:var(--border);}
 .settings-title-row,.color-mode-row,.color-editor-heading,.main-color-row {display:flex;align-items:center;justify-content:space-between;gap:8px;}
