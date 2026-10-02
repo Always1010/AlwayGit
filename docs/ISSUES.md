@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-028：仓库 Shift 范围选择与可见顺序不一致
+
+- 日期：2026-10-02
+- 状态：已解决
+- 现象：仓库列表按名称显示时，从 `BreakReminder` Shift 单击到 `SwiftResume` 会漏选视觉上位于两者之间的 `llvm-project`、`MySkill` 和 `SchedulePin`，结果呈现为不连续蓝色选择。
+- 原因：仓库行渲染前按名称排序，Shift 范围计算却使用 RepositoryManager 的注册顺序；先注册的旧仓库和后追加的新仓库在内部数组中的位置与屏幕顺序不同。
+- 解决方案：集中派生仓库展示条目和当前可见仓库键序列，渲染与 Shift 范围选择共用该序列；折叠分组中的隐藏仓库不进入可见范围，既有 Ctrl/Cmd+A 全选全部逻辑仓库的行为保持不变。
+- 验证方式：单元回归故意以旧仓库在前、新仓库在后的顺序注册八个仓库，确认显示按名称排序且范围顺序与渲染一致；另覆盖展开与折叠分组的可见范围。
+- 相关文件：`webview/repositoryOrder.ts`、`webview/Sidebar.tsx`、`tests/repository-groups.test.ts`。
+
 ## BUG-027：无远端时 Push 进入无法完成的表单
 
 - 日期：2026-10-02
