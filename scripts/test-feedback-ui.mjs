@@ -12,7 +12,7 @@ export async function verifyFeedback(browser, url) {
       const fixture = window.__feedbackFixture = {
         pending: undefined, calls: [], cleanReview: false,
         snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 1, behind: 0, pushTarget: { localBranch: 'main', remote: 'origin', remoteBranch: 'release', configured: true }, remotes: ['origin'], changes: [], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
-        complete(error) { window.postMessage({ type: 'response', id: this.pending.id, error: error ? { message: error } : undefined }, '*'); this.pending = undefined; },
+        complete(error) { window.postMessage({ type: 'response', id: this.pending.id, result: error ? undefined : structuredClone({ ...this.snapshot, version: ++this.snapshot.version }), error: error ? { message: error } : undefined }, '*'); this.pending = undefined; },
       };
       window.acquireVsCodeApi = () => ({ getState: () => ({}), setState: () => {}, postMessage(request) {
         if (request.method === 'saveSession') { setTimeout(() => window.postMessage({ type: 'response', id: request.id, result: null }, '*'), 0); return; }

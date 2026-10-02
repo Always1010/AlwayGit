@@ -139,7 +139,7 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
     else if (action.type === 'push') { demoSnapshot.ahead = 0; commits.forEach(commit => { commit.pushed = true; }); }
     else if (action.type === 'pull') demoSnapshot.behind = 0;
     demoSnapshot.stashes.forEach((stash,index)=>stash.selector=`stash@{${index}}`);
-    demoSnapshot.version++; return undefined;
+    demoSnapshot.version++; return structuredClone(demoSnapshot);
   }
   return undefined;
 }
