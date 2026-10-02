@@ -11,6 +11,8 @@ import { normalizeAppearance, type Appearance, type InterfaceSettings, type Inte
 import { groupRepositories } from '../src/protocol/repositories';
 
 let catalogEpoch = 0, repositoryEpoch = 0, repositoryStatusEpoch = 0, snapshotEpoch = 0, historyEpoch = 0, detailEpoch = 0;
+let searchTimer: ReturnType<typeof setTimeout> | undefined;
+function cancelSearchTimer() { clearTimeout(searchTimer); searchTimer = undefined; }
 let refreshInvalidation: { epoch: number; changes?: RepositoryChanges; forceHistory: boolean } | undefined;
 const session = readSession(), views = session.views ?? {}, executingRepositories = new Set<string>(), hostBusyRepositories = new Set<string>();
 const actionFeedbacks = new Map<string, ActionFeedback>();
@@ -58,7 +60,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       const selectedRepositoryKeys = get().selectedRepositoryKeys.filter(key => keys.has(key));
       const repositorySelectionAnchor = selectedRepositoryKeys.includes(get().repositorySelectionAnchor ?? '') ? get().repositorySelectionAnchor : undefined;
       const removed = !!currentId && !repositories.some(repo => repo.id === currentId);
-      if (removed) { ++repositoryEpoch; ++historyEpoch; ++detailEpoch; }
+      if (removed) { cancelSearchTimer(); ++repositoryEpoch; ++historyEpoch; ++detailEpoch; }
       set({
         repositories, repositoryCollections, repositoryOrder: orderResult?.root ? orderResult : undefined,
         selectedRepositoryKeys, repositorySelectionAnchor,
@@ -94,6 +96,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     } catch { /* Repository badges are supplementary; the selected repository still refreshes normally. */ }
   },
   async selectRepository(id) {
+    cancelSearchTimer();
     ++repositoryEpoch; ++historyEpoch; ++detailEpoch; const view = views[id];
     set({ operationReview: undefined });
     set({ repoId: id, locatingOid: undefined, snapshot: undefined, commits: [], historyHead: undefined, selectedOids:[], selectionAnchor:undefined, selectedRefs:[],refSelectionAnchor:undefined, tips: [], details: undefined, comparison:undefined, stashDetails: undefined, selectedStashSection:undefined, diffTarget: undefined, diffRevision:0, selectedFile: view?.selectedFile, selectedOid: view?.selectedOid, selectedParent: view?.selectedParent, selectedStashOid: view?.selectedStashOid, ref: view?.ref, checkedRefs: view?.checkedRefs ? [...view.checkedRefs] : view?.ref ? [view.ref] : undefined, expandedRefGroups:view?.expandedRefGroups?[...view.expandedRefGroups]:undefined,collapsedSidebarGroups:[...(view?.collapsedSidebarGroups??[])], search: view?.search ?? '', tab: view?.tab ?? 'history', checkoutFailure: undefined, stashApplyFailure: undefined, error: undefined, notice: undefined, actionFeedback: actionFeedbacks.get(id), loading: true, busy: executingRepositories.has(id) || hostBusyRepositories.has(id), activity: '', detailsLoading: false, historyLoading: false });
@@ -129,6 +132,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   },
   async loadHistory(append = false) {
     const { repoId, search, nextOffset, historyLoading, checkedRefs } = get(); if (!repoId || append && historyLoading) return;
+    cancelSearchTimer();
     const epoch = ++historyEpoch, repoEpoch = repositoryEpoch; set({ historyLoading: true });
     try {
       const query: HistoryQuery = { offset: append ? nextOffset : 0, tips: append ? get().tips : checkedRefs ?? [], ...(search ? { search } : {}), ...(get().snapshot?.head ? { head: get().snapshot!.head } : {}) };
@@ -205,7 +209,11 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   setCheckedRefs(refs) { set({ locatingOid: undefined, checkedRefs: [...new Set(refs)], ref: undefined, tips: [], selectedOids:[], selectionAnchor:undefined, comparison:undefined }); void get().loadHistory(); },
   setExpandedRefGroup(key,expanded){set({expandedRefGroups:expanded?[...new Set([...(get().expandedRefGroups??[]),key])]:(get().expandedRefGroups??[]).filter(item=>item!==key)});},
   toggleSidebarGroup(key){set({collapsedSidebarGroups:get().collapsedSidebarGroups.includes(key)?get().collapsedSidebarGroups.filter(item=>item!==key):[...get().collapsedSidebarGroups,key]});},
-  setSearch(search) { set({ search, commits: [], historyHead: undefined, tips: [], nextOffset: 0, hasMore: false, locatingOid: undefined, selectedOids:[], selectionAnchor:undefined, comparison:undefined }); void get().loadHistory(); },
+  setSearch(search) {
+    cancelSearchTimer(); ++historyEpoch;
+    set({ search, commits: [], historyHead: undefined, tips: [], nextOffset: 0, hasMore: false, locatingOid: undefined, selectedOids:[], selectionAnchor:undefined, comparison:undefined, historyLoading: !!get().repoId });
+    if (get().repoId) searchTimer = setTimeout(() => { searchTimer = undefined; void get().loadHistory(); }, 200);
+  },
   selectWorking() {
     ++detailEpoch; const snapshot = get().snapshot, target = snapshot && workingTarget(snapshot, get().diffTarget, get().selectedFile); set({ tab: 'changes', locatingOid:undefined, selectedOids:[], selectionAnchor:undefined, comparison:undefined, detailsLoading: false });
     if (target) get().selectFile(target); else set({ selectedFile: undefined, diffTarget: undefined });
@@ -219,7 +227,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     void get().selectCommit(oid);
     const current=()=>repositoryEpoch===repoEpoch&&get().locateToken===token&&get().locatingOid===oid&&get().selectedOid===oid&&!get().search&&get().tab==='history';
     try {
-      let append=false;
+      let append=false, pages=0;
       while(current()) {
         const offset=get().nextOffset,expectedEpoch=historyEpoch+1;
         await get().loadHistory(append);
@@ -227,6 +235,10 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         if(get().commits.some(commit=>commit.oid===oid))return;
         if(!get().hasMore||get().nextOffset<=offset) {
           set({notice:get().language==='zh-CN'?'无法在当前引用的完整历史中定位该 Commit。':'Could not locate this Commit in the full history of the selected refs.'});
+          return;
+        }
+        if (++pages >= 20 || get().commits.length >= 10_000) {
+          set({notice:get().language==='zh-CN'?'已达到自动定位的读取上限，保留当前历史和 Commit 详情。可使用 Load More 继续加载，或缩小引用范围后再定位。':'Automatic locate reached its read limit. History and Commit details are preserved. Use Load More to continue, or narrow the selected refs and locate again.'});
           return;
         }
         append=true;
