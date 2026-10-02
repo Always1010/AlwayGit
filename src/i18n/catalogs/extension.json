@@ -1,26 +1,26 @@
 {
   "extension.alwayGitGitAuthentication": {
     "en": "AlwayGit · Git Authentication",
-    "zh-CN": "AlwayGit · Git Authentication",
-    "review": "pending",
+    "zh-CN": "AlwayGit · Git 身份验证",
+    "review": "translated",
     "context": "src/extension/extension.ts / activate / git"
   },
   "extension.gitMergeAlwayGit": {
     "en": "$(git-merge) AlwayGit",
     "zh-CN": "$(git-merge) AlwayGit",
-    "review": "pending",
+    "review": "keep",
     "context": "src/extension/extension.ts / activate"
   },
   "extension.reloadTheVSCodeWindowToApplyAlwayGitRuntime": {
     "en": "Reload the VS Code window to apply AlwayGit runtime configuration changes.",
-    "zh-CN": "Reload the VS Code window to apply AlwayGit runtime configuration changes.",
-    "review": "pending",
+    "zh-CN": "请重新加载 VS Code 窗口，以应用 AlwayGit 运行时配置更改。",
+    "review": "translated",
     "context": "src/extension/extension.ts / activate"
   },
   "extension.alwayGitActivatedGitOperationsRunInTheWorkspaceExtension": {
     "en": "AlwayGit activated. Git operations run in the workspace extension host.",
-    "zh-CN": "AlwayGit activated. Git operations run in the workspace extension host.",
-    "review": "pending",
+    "zh-CN": "AlwayGit 已激活。Git 操作在工作区扩展宿主中运行。",
+    "review": "translated",
     "context": "src/extension/extension.ts / activate"
   }
 }

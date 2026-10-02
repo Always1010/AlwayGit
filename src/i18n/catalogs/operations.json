@@ -1,7 +1,7 @@
 {
   "operations.resolveAndStageConflictingFilesBeforeContinue": {
     "en": "Resolve and Stage conflicting files before Continue.",
-    "zh-CN": "请先解决冲突并 Stage 文件，再 Continue。",
+    "zh-CN": "请先解决冲突并暂存文件，再继续。",
     "review": "translated",
     "context": "webview/OperationNotice.tsx / OperationNotice / reason"
   },
@@ -61,7 +61,7 @@
   },
   "operations.skipTheCurrentCommitInThisOperation": {
     "en": "Skip the current commit in this operation",
-    "zh-CN": "跳过当前操作中的 Commit",
+    "zh-CN": "跳过当前操作中的提交",
     "review": "translated",
     "context": "webview/OperationNotice.tsx / OperationNotice"
   },
@@ -73,14 +73,14 @@
   },
   "operations.continue": {
     "en": "Continue",
-    "zh-CN": "Continue",
-    "review": "pending",
+    "zh-CN": "继续",
+    "review": "translated",
     "context": "webview/OperationNotice.tsx / OperationNotice"
   },
   "operations.skip": {
     "en": "Skip",
-    "zh-CN": "Skip",
-    "review": "pending",
+    "zh-CN": "跳过",
+    "review": "translated",
     "context": "webview/OperationNotice.tsx / OperationNotice"
   }
 }

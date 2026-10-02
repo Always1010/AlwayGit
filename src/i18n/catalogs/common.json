@@ -25,8 +25,8 @@
   },
   "common.reset": {
     "en": "Reset",
-    "zh-CN": "Reset",
-    "review": "keep",
+    "zh-CN": "重置",
+    "review": "translated",
     "context": "webview/ActionDialog.tsx / actionTitles"
   },
   "common.settings": {
@@ -55,8 +55,8 @@
   },
   "common.languageVariant2": {
     "en": "Language",
-    "zh-CN": "Language",
-    "review": "pending",
+    "zh-CN": "语言",
+    "review": "translated",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
   "common.refresh": {

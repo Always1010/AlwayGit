@@ -19,7 +19,7 @@
   },
   "history.filterCommitMessages": {
     "en": "Filter commit messages…",
-    "zh-CN": "过滤 Commit 信息…",
+    "zh-CN": "筛选提交消息…",
     "review": "translated",
     "context": "webview/History.tsx / HistoryPanel"
   },
@@ -37,7 +37,7 @@
   },
   "history.matchingCommits": {
     "en": "matching Commits",
-    "zh-CN": "个匹配 Commit",
+    "zh-CN": "个匹配提交",
     "review": "translated",
     "context": "webview/History.tsx / HistoryPanel"
   },
@@ -49,19 +49,19 @@
   },
   "history.locatingCommit": {
     "en": "Locating Commit…",
-    "zh-CN": "正在定位 Commit…",
+    "zh-CN": "正在定位提交…",
     "review": "translated",
     "context": "webview/History.tsx / HistoryPanel"
   },
   "history.commitsSelected": {
     "en": "Commits selected",
-    "zh-CN": "个 Commit 已选择",
+    "zh-CN": "已选择提交",
     "review": "translated",
     "context": "webview/History.tsx / HistoryPanel"
   },
   "history.commitPushStatusLegend": {
     "en": "Commit push status legend",
-    "zh-CN": "Commit 推送状态图例",
+    "zh-CN": "提交推送状态图例",
     "review": "translated",
     "context": "webview/History.tsx / HistoryPanel"
   },
@@ -181,7 +181,7 @@
   },
   "history.noMatchingCommits": {
     "en": "No matching commits",
-    "zh-CN": "没有匹配的 Commit",
+    "zh-CN": "没有匹配的提交",
     "review": "translated",
     "context": "webview/History.tsx / HistoryPanel"
   },
@@ -205,56 +205,56 @@
   },
   "history.searchCommitHistoryVariant2": {
     "en": "Search commit history",
-    "zh-CN": "Search commit history",
-    "review": "pending",
+    "zh-CN": "搜索提交历史",
+    "review": "translated",
     "context": "webview/History.tsx / HistoryPanel"
   },
   "history.commit": {
     "en": "Commit",
-    "zh-CN": "Commit",
-    "review": "keep",
+    "zh-CN": "提交",
+    "review": "translated",
     "context": "webview/History.tsx / HistoryPanel"
   },
   "history.commitHistoryVariant2": {
     "en": "Commit history",
-    "zh-CN": "Commit history",
-    "review": "pending",
+    "zh-CN": "提交历史",
+    "review": "translated",
     "context": "webview/History.tsx / HistoryPanel"
   },
   "history.graph": {
     "en": "Graph",
     "zh-CN": "Graph",
-    "review": "pending",
+    "review": "keep",
     "context": "webview/History.tsx / HistoryPanel"
   },
   "history.resizeGraphColumn": {
     "en": "Resize graph column",
-    "zh-CN": "Resize graph column",
-    "review": "pending",
+    "zh-CN": "调整 Graph 列宽",
+    "review": "translated",
     "context": "webview/History.tsx / HistoryPanel"
   },
   "history.resizeAuthorColumn": {
     "en": "Resize author column",
-    "zh-CN": "Resize author column",
-    "review": "pending",
+    "zh-CN": "调整作者列宽",
+    "review": "translated",
     "context": "webview/History.tsx / HistoryPanel"
   },
   "history.resizeDateColumn": {
     "en": "Resize date column",
-    "zh-CN": "Resize date column",
-    "review": "pending",
+    "zh-CN": "调整日期列宽",
+    "review": "translated",
     "context": "webview/History.tsx / HistoryPanel"
   },
   "history.commitNode": {
     "en": "Commit node {{oid}}",
-    "zh-CN": "Commit node {{oid}}",
-    "review": "pending",
+    "zh-CN": "提交节点 {{oid}}",
+    "review": "translated",
     "context": "webview/History.tsx / HistoryPanel"
   },
   "history.graphHeading": {
     "en": "Graph · {{heading}}",
     "zh-CN": "Graph · {{heading}}",
-    "review": "pending",
+    "review": "keep",
     "context": "webview/History.tsx"
   }
 }

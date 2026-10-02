@@ -79,13 +79,13 @@
   },
   "details.compareCommits": {
     "en": "Compare Commits",
-    "zh-CN": "比较 Commit",
+    "zh-CN": "比较提交",
     "review": "translated",
     "context": "webview/Details.tsx / DetailsPanel"
   },
   "details.commitDetails": {
     "en": "Commit Details",
-    "zh-CN": "Commit 详情",
+    "zh-CN": "提交详情",
     "review": "translated",
     "context": "webview/Details.tsx / DetailsPanel"
   },
@@ -103,7 +103,7 @@
   },
   "details.selectACommit": {
     "en": "Select a Commit",
-    "zh-CN": "选择 Commit",
+    "zh-CN": "选择一个提交",
     "review": "translated",
     "context": "webview/Details.tsx / DetailsPanel"
   },
@@ -154,7 +154,7 @@
   },
   "details.theSelectedCommitsHaveIdenticalFileContents": {
     "en": "The selected Commits have identical file contents",
-    "zh-CN": "所选 Commit 的文件内容相同",
+    "zh-CN": "所选提交的文件内容相同",
     "review": "translated",
     "context": "webview/Details.tsx / ComparisonDetails"
   },
@@ -208,13 +208,13 @@
   },
   "details.openCommitSavedDraftAvailable": {
     "en": "Open Commit — saved draft available",
-    "zh-CN": "打开 Commit · 有未提交草稿",
+    "zh-CN": "打开提交 — 有已保存的草稿",
     "review": "translated",
     "context": "webview/Details.tsx / WorkingTree / group"
   },
   "details.openCommit": {
     "en": "Open Commit",
-    "zh-CN": "打开 Commit",
+    "zh-CN": "打开提交",
     "review": "translated",
     "context": "webview/Details.tsx / WorkingTree / group"
   },
@@ -268,7 +268,7 @@
   },
   "details.conflictsAreHiddenByTheFilterResolveAllConflicts": {
     "en": "{{count}} conflicts are hidden by the filter. Resolve all conflicts before Commit.",
-    "zh-CN": "筛选隐藏了 {{count}} 个冲突文件；Commit 前仍须处理全部冲突。",
+    "zh-CN": "筛选隐藏了 {{count}} 个冲突文件；提交前仍须解决全部冲突。",
     "review": "translated",
     "context": "webview/Details.tsx / WorkingTree"
   },
@@ -362,8 +362,8 @@
   },
   "details.workingTree": {
     "en": "Working Tree",
-    "zh-CN": "Working Tree",
-    "review": "pending",
+    "zh-CN": "工作区",
+    "review": "translated",
     "context": "webview/Details.tsx / DetailsPanel / sectionLabel"
   },
   "details.index": {
@@ -374,44 +374,44 @@
   },
   "details.compareParent": {
     "en": "Compare parent",
-    "zh-CN": "Compare parent",
-    "review": "pending",
+    "zh-CN": "与父提交比较",
+    "review": "translated",
     "context": "webview/Details.tsx / DetailsPanel"
   },
   "details.parent": {
     "en": "Parent ",
-    "zh-CN": "Parent ",
-    "review": "pending",
+    "zh-CN": "父提交 ",
+    "review": "translated",
     "context": "webview/Details.tsx / DetailsPanel"
   },
   "details.staged": {
     "en": "Staged",
-    "zh-CN": "Staged",
-    "review": "pending",
+    "zh-CN": "已暂存",
+    "review": "translated",
     "context": "webview/Details.tsx / group / label"
   },
   "details.unstaged": {
     "en": "Unstaged",
-    "zh-CN": "Unstaged",
-    "review": "pending",
+    "zh-CN": "未暂存",
+    "review": "translated",
     "context": "webview/Details.tsx / group / label"
   },
   "details.unstage": {
     "en": "Unstage",
-    "zh-CN": "Unstage",
-    "review": "keep",
+    "zh-CN": "取消暂存",
+    "review": "translated",
     "context": "webview/Details.tsx / group / verb"
   },
   "details.stage": {
     "en": "Stage",
-    "zh-CN": "Stage",
-    "review": "keep",
+    "zh-CN": "暂存",
+    "review": "translated",
     "context": "webview/Details.tsx / group / verb"
   },
   "details.commit": {
     "en": "Commit…",
-    "zh-CN": "Commit…",
-    "review": "pending",
+    "zh-CN": "提交…",
+    "review": "translated",
     "context": "webview/Details.tsx / WorkingTree / group"
   },
   "details.detachedHEAD": {
@@ -422,26 +422,26 @@
   },
   "details.stagedVariant2": {
     "en": "Staged ",
-    "zh-CN": "Staged ",
-    "review": "pending",
+    "zh-CN": "已暂存 ",
+    "review": "translated",
     "context": "webview/Details.tsx / WorkingTree"
   },
   "details.unstagedVariant2": {
     "en": " · Unstaged ",
-    "zh-CN": " · Unstaged ",
-    "review": "pending",
+    "zh-CN": " · 未暂存 ",
+    "review": "translated",
     "context": "webview/Details.tsx / WorkingTree"
   },
   "details.stageAll": {
     "en": "Stage All",
-    "zh-CN": "Stage All",
-    "review": "pending",
+    "zh-CN": "全部暂存",
+    "review": "translated",
     "context": "webview/Details.tsx / WorkingTree"
   },
   "details.unstageAll": {
     "en": "Unstage All",
-    "zh-CN": "Unstage All",
-    "review": "pending",
+    "zh-CN": "全部取消暂存",
+    "review": "translated",
     "context": "webview/Details.tsx / WorkingTree"
   }
 }

@@ -1,14 +1,14 @@
 {
   "queryCoordinator.theReadRequestWasCancelled": {
     "en": "The read request was cancelled.",
-    "zh-CN": "The read request was cancelled.",
-    "review": "pending",
+    "zh-CN": "读取请求已取消。",
+    "review": "translated",
     "context": "src/application/query-coordinator.ts / constructor"
   },
   "queryCoordinator.queryConcurrencyMustBePositive": {
     "en": "Query concurrency must be positive.",
-    "zh-CN": "Query concurrency must be positive.",
-    "review": "pending",
+    "zh-CN": "查询并发数必须为正数。",
+    "review": "translated",
     "context": "src/application/query-coordinator.ts / constructor"
   }
 }

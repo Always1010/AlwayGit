@@ -1,32 +1,32 @@
 {
   "validation.checkoutRequiresExactlyOneBranch": {
     "en": "Checkout requires exactly one branch",
-    "zh-CN": "Checkout requires exactly one branch",
-    "review": "pending",
+    "zh-CN": "切换操作只能选择一个分支",
+    "review": "translated",
     "context": "src/protocol/validation.ts / actionSchema"
   },
   "validation.stashRequiresCheckout": {
     "en": "Stash requires Checkout",
-    "zh-CN": "Stash requires Checkout",
-    "review": "pending",
+    "zh-CN": "Stash 要求同时执行切换",
+    "review": "translated",
     "context": "src/protocol/validation.ts / actionSchema"
   },
   "validation.chooseAnExistingGroupOrCreateANewOne": {
     "en": "Choose an existing group or create a new one, not both.",
-    "zh-CN": "Choose an existing group or create a new one, not both.",
-    "review": "pending",
+    "zh-CN": "请选择现有分组或创建新分组，不能同时执行两者。",
+    "review": "translated",
     "context": "src/protocol/validation.ts / addRepositoriesSchema"
   },
   "validation.chooseEitherANewTabOrANewWindow": {
     "en": "Choose either a new tab or a new window.",
-    "zh-CN": "Choose either a new tab or a new window.",
-    "review": "pending",
+    "zh-CN": "请选择新标签页或新窗口，不能同时选择。",
+    "review": "translated",
     "context": "src/protocol/validation.ts / openRepositorySchema"
   },
   "validation.chooseOneWorkbenchDestination": {
     "en": "Choose one Workbench destination.",
-    "zh-CN": "Choose one Workbench destination.",
-    "review": "pending",
+    "zh-CN": "请选择一个 Workbench 目标。",
+    "review": "translated",
     "context": "src/protocol/validation.ts / openWorkbenchSchema"
   }
 }

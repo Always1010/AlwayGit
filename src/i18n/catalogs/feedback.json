@@ -13,13 +13,13 @@
   },
   "feedback.commitAmended": {
     "en": "Commit {{value}} amended",
-    "zh-CN": "Commit {{value}} 已修订",
+    "zh-CN": "已修订提交 {{value}}",
     "review": "translated",
     "context": "webview/ActionFeedbackBar.tsx / ActionFeedbackBar / title"
   },
   "feedback.commitCreated": {
     "en": "Commit {{value}} created",
-    "zh-CN": "Commit {{value}} 已创建",
+    "zh-CN": "已创建提交 {{value}}",
     "review": "translated",
     "context": "webview/ActionFeedbackBar.tsx / ActionFeedbackBar / title"
   },
@@ -100,7 +100,7 @@
   },
   "feedback.viewCommit": {
     "en": "View Commit",
-    "zh-CN": "查看 Commit",
+    "zh-CN": "查看提交",
     "review": "translated",
     "context": "webview/ActionFeedbackBar.tsx / ActionFeedbackBar"
   },

@@ -91,19 +91,19 @@
   },
   "workbench.pushUnpushedCommits": {
     "en": "Push, {{unpushed}} unpushed commits",
-    "zh-CN": "Push，{{unpushed}} 个未推送提交",
+    "zh-CN": "推送，{{unpushed}} 个未推送提交",
     "review": "translated",
     "context": "webview/App.tsx / App"
   },
   "workbench.pushRequiresALocalBranch": {
     "en": "Push requires a local branch.",
-    "zh-CN": "Push 需要当前处于本地分支。",
+    "zh-CN": "推送要求当前位于本地分支。",
     "review": "translated",
     "context": "webview/App.tsx / App"
   },
   "workbench.addARemoteBeforePush": {
     "en": "Add a remote before Push.",
-    "zh-CN": "Push 前需要先添加远端。",
+    "zh-CN": "推送前需要先添加远程仓库。",
     "review": "translated",
     "context": "webview/App.tsx / App"
   },
@@ -199,49 +199,49 @@
   },
   "workbench.fetchCompleted": {
     "en": "Fetch completed.",
-    "zh-CN": "Fetch 完成。",
+    "zh-CN": "获取完成。",
     "review": "translated",
     "context": "webview/App.tsx / RepositoryFetchDialog / run"
   },
   "workbench.fetchedRepositories": {
     "en": "Fetched {{count}} repositories.",
-    "zh-CN": "已 Fetch {{count}} 个仓库。",
+    "zh-CN": "已获取 {{count}} 个仓库。",
     "review": "translated",
     "context": "webview/App.tsx / RepositoryFetchDialog / run"
   },
   "workbench.fetchRepository": {
     "en": "Fetch Repository",
-    "zh-CN": "Fetch 仓库",
+    "zh-CN": "获取仓库",
     "review": "translated",
     "context": "webview/App.tsx / RepositoryFetchDialog"
   },
   "workbench.fetchRepositories": {
     "en": "Fetch {{count}} Repositories",
-    "zh-CN": "Fetch {{count}} 个仓库",
+    "zh-CN": "获取 {{count}} 个仓库",
     "review": "translated",
     "context": "webview/App.tsx / RepositoryFetchDialog"
   },
   "workbench.fetching": {
     "en": "Fetching…",
-    "zh-CN": "正在 Fetch…",
+    "zh-CN": "正在获取…",
     "review": "translated",
     "context": "webview/App.tsx / RepositoryFetchDialog"
   },
   "workbench.fetchTheSelectedRepositoriesWithoutChangingTheRepositoryOpen": {
     "en": "Fetch the selected repositories without changing the repository open in this tab.",
-    "zh-CN": "Fetch 所选仓库，不切换当前标签页中打开的仓库。",
+    "zh-CN": "获取所选仓库，不切换当前标签页中打开的仓库。",
     "review": "translated",
     "context": "webview/App.tsx / RepositoryFetchDialog"
   },
   "workbench.theBranchIsInUseByAnotherWorktree": {
     "en": "The branch is in use by another Worktree.",
-    "zh-CN": "分支正在被其他 Worktree 使用。",
+    "zh-CN": "该分支正被另一个工作树使用。",
     "review": "translated",
     "context": "webview/App.tsx / CheckoutFailureDialog / reason"
   },
   "workbench.resolveConflictsBeforeCheckout": {
     "en": "Resolve conflicts before Checkout.",
-    "zh-CN": "请先解决冲突，再 Checkout。",
+    "zh-CN": "请先解决冲突，再切换。",
     "review": "translated",
     "context": "webview/App.tsx / CheckoutFailureDialog / reason"
   },
@@ -253,25 +253,25 @@
   },
   "workbench.stashWasSavedButCheckoutFailedTheStashIs": {
     "en": "Stash was saved, but Checkout failed. The Stash is preserved.",
-    "zh-CN": "Stash 已保存，但 Checkout 失败；保存内容已保留。",
+    "zh-CN": "Stash 已保存，但切换失败；保存内容已保留。",
     "review": "translated",
     "context": "webview/App.tsx / CheckoutFailureDialog / reason"
   },
   "workbench.checkoutWouldOverwriteLocalChanges": {
     "en": "Checkout would overwrite local changes.",
-    "zh-CN": "Checkout 可能覆盖未提交修改。",
+    "zh-CN": "切换可能覆盖本地更改。",
     "review": "translated",
     "context": "webview/App.tsx / CheckoutFailureDialog / reason"
   },
   "workbench.gitCouldNotCompleteCheckoutSeeTheDetailsBelow": {
     "en": "Git could not complete Checkout. See the details below.",
-    "zh-CN": "Git 无法完成 Checkout，请查看下方详情。",
+    "zh-CN": "Git 无法完成切换，请查看下方详情。",
     "review": "translated",
     "context": "webview/App.tsx / CheckoutFailureDialog / reason"
   },
   "workbench.checkoutBlocked": {
     "en": "Checkout Blocked",
-    "zh-CN": "无法 Checkout",
+    "zh-CN": "无法切换",
     "review": "translated",
     "context": "webview/App.tsx / CheckoutFailureDialog"
   },
@@ -308,7 +308,7 @@
   "workbench.detached": {
     "en": "Detached",
     "zh-CN": "Detached",
-    "review": "pending",
+    "review": "keep",
     "context": "webview/App.tsx / App / branchLabel"
   },
   "workbench.detachedHEAD": {
@@ -326,79 +326,79 @@
   "workbench.px": {
     "en": "{{value}}px",
     "zh-CN": "{{value}}px",
-    "review": "pending",
+    "review": "keep",
     "context": "webview/App.tsx / App"
   },
   "workbench.fetch": {
     "en": "Fetch",
-    "zh-CN": "Fetch",
-    "review": "keep",
+    "zh-CN": "获取",
+    "review": "translated",
     "context": "webview/App.tsx / App"
   },
   "workbench.pull": {
     "en": "Pull",
-    "zh-CN": "Pull",
-    "review": "keep",
+    "zh-CN": "拉取",
+    "review": "translated",
     "context": "webview/App.tsx / App"
   },
   "workbench.push": {
     "en": "Push",
-    "zh-CN": "Push",
-    "review": "keep",
+    "zh-CN": "推送",
+    "review": "translated",
     "context": "webview/App.tsx / App"
   },
   "workbench.commit": {
     "en": "Commit",
-    "zh-CN": "Commit",
-    "review": "keep",
+    "zh-CN": "提交",
+    "review": "translated",
     "context": "webview/App.tsx / App"
   },
   "workbench.stashAllChanges": {
     "en": "Stash All Changes…",
-    "zh-CN": "Stash All Changes…",
-    "review": "pending",
+    "zh-CN": "Stash 所有更改…",
+    "review": "translated",
     "context": "webview/App.tsx / App"
   },
   "workbench.dismissError": {
     "en": "Dismiss error",
-    "zh-CN": "Dismiss error",
-    "review": "pending",
+    "zh-CN": "关闭错误",
+    "review": "translated",
     "context": "webview/App.tsx / App"
   },
   "workbench.resizeRepositorySidebar": {
     "en": "Resize repository sidebar",
-    "zh-CN": "Resize repository sidebar",
-    "review": "pending",
+    "zh-CN": "调整仓库侧栏大小",
+    "review": "translated",
     "context": "webview/App.tsx / App"
   },
   "workbench.resizeDetailsPanel": {
     "en": "Resize details panel",
-    "zh-CN": "Resize details panel",
-    "review": "pending",
+    "zh-CN": "调整详情面板大小",
+    "review": "translated",
     "context": "webview/App.tsx / App"
   },
   "workbench.resizeDiffPanel": {
     "en": "Resize Diff panel",
-    "zh-CN": "Resize Diff panel",
-    "review": "pending",
+    "zh-CN": "调整 Diff 面板大小",
+    "review": "translated",
     "context": "webview/App.tsx / App"
   },
   "workbench.stashChangesCheckout": {
     "en": "Stash Changes & Checkout",
-    "zh-CN": "Stash Changes & Checkout",
-    "review": "pending",
+    "zh-CN": "Stash 更改并切换",
+    "review": "translated",
     "context": "webview/App.tsx / CheckoutFailureDialog"
   },
   "workbench.checkout": {
     "en": "Checkout ",
-    "zh-CN": "Checkout ",
-    "review": "pending",
+    "zh-CN": "切换到 ",
+    "review": "translated",
     "context": "webview/App.tsx / CheckoutFailureDialog"
   },
   "workbench.openWorktree": {
     "en": "Open Worktree",
-    "zh-CN": "Open Worktree",
-    "review": "pending",
+    "zh-CN": "打开工作树",
+    "review": "translated",
     "context": "webview/App.tsx / CheckoutFailureDialog"
   }
 }

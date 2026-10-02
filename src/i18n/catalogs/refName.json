@@ -1,86 +1,86 @@
 {
   "refName.localBranchAlreadyExistsChooseAnotherBranchName": {
     "en": "Local branch {{name}} already exists. Choose another branch name.",
-    "zh-CN": "Local branch {{name}} already exists. Choose another branch name.",
-    "review": "pending",
+    "zh-CN": "本地分支 {{name}} 已存在，请选择其他分支名称。",
+    "review": "translated",
     "context": "src/protocol/ref-name.ts / branchNameConflictMessage"
   },
   "refName.localBranchNamesConflictAndChooseAnotherBranchName": {
     "en": "Local branch names conflict: {{name}} and {{name2}}. Choose another branch name.",
-    "zh-CN": "Local branch names conflict: {{name}} and {{name2}}. Choose another branch name.",
-    "review": "pending",
+    "zh-CN": "本地分支名称 {{name}} 与 {{name2}} 冲突，请选择其他分支名称。",
+    "review": "translated",
     "context": "src/protocol/ref-name.ts / branchNameConflictMessage"
   },
   "refName.enterABranchName": {
     "en": "Enter a branch name.",
-    "zh-CN": "Enter a branch name.",
-    "review": "pending",
+    "zh-CN": "请输入分支名称。",
+    "review": "translated",
     "context": "src/protocol/ref-name.ts / branchNameProblemMessage"
   },
   "refName.branchNamesCannotStartWithAHyphen": {
     "en": "Branch names cannot start with a hyphen.",
-    "zh-CN": "Branch names cannot start with a hyphen.",
-    "review": "pending",
+    "zh-CN": "分支名称不能以连字符开头。",
+    "review": "translated",
     "context": "src/protocol/ref-name.ts / branchNameProblemMessage"
   },
   "refName.branchNamesCannotContainSpacesTryFeatureUxFlow": {
     "en": "Branch names cannot contain spaces. Try feature/ux-flow.",
-    "zh-CN": "Branch names cannot contain spaces. Try feature/ux-flow.",
-    "review": "pending",
+    "zh-CN": "分支名称不能包含空格，可尝试 feature/ux-flow。",
+    "review": "translated",
     "context": "src/protocol/ref-name.ts / branchNameProblemMessage"
   },
   "refName.branchNamesCannotContainControlCharacters": {
     "en": "Branch names cannot contain control characters.",
-    "zh-CN": "Branch names cannot contain control characters.",
-    "review": "pending",
+    "zh-CN": "分支名称不能包含控制字符。",
+    "review": "translated",
     "context": "src/protocol/ref-name.ts / branchNameProblemMessage"
   },
   "refName.branchNamesCannotContainOrBackslash": {
     "en": "Branch names cannot contain ~, ^, :, ?, *, [, or backslash.",
-    "zh-CN": "Branch names cannot contain ~, ^, :, ?, *, [, or backslash.",
-    "review": "pending",
+    "zh-CN": "分支名称不能包含 ~、^、:、?、*、[ 或反斜杠。",
+    "review": "translated",
     "context": "src/protocol/ref-name.ts / branchNameProblemMessage"
   },
   "refName.branchNamesCannotContainTwoConsecutiveDots": {
     "en": "Branch names cannot contain two consecutive dots.",
-    "zh-CN": "Branch names cannot contain two consecutive dots.",
-    "review": "pending",
+    "zh-CN": "分支名称不能包含两个连续的点。",
+    "review": "translated",
     "context": "src/protocol/ref-name.ts / branchNameProblemMessage"
   },
   "refName.branchNamesCannotContain": {
     "en": "Branch names cannot contain @{.",
-    "zh-CN": "Branch names cannot contain @{.",
-    "review": "pending",
+    "zh-CN": "分支名称不能包含 @{。",
+    "review": "translated",
     "context": "src/protocol/ref-name.ts / branchNameProblemMessage"
   },
   "refName.branchNamesCannotStartOrEndWithASlash": {
     "en": "Branch names cannot start or end with a slash, or contain consecutive slashes.",
-    "zh-CN": "Branch names cannot start or end with a slash, or contain consecutive slashes.",
-    "review": "pending",
+    "zh-CN": "分支名称不能以斜杠开头或结尾，也不能包含连续斜杠。",
+    "review": "translated",
     "context": "src/protocol/ref-name.ts / branchNameProblemMessage"
   },
   "refName.branchNameSegmentsCannotStartWithADot": {
     "en": "Branch name segments cannot start with a dot.",
-    "zh-CN": "Branch name segments cannot start with a dot.",
-    "review": "pending",
+    "zh-CN": "分支名称的路径段不能以点开头。",
+    "review": "translated",
     "context": "src/protocol/ref-name.ts / branchNameProblemMessage"
   },
   "refName.branchNameSegmentsCannotEndWithLock": {
     "en": "Branch name segments cannot end with .lock.",
-    "zh-CN": "Branch name segments cannot end with .lock.",
-    "review": "pending",
+    "zh-CN": "分支名称的路径段不能以 .lock 结尾。",
+    "review": "translated",
     "context": "src/protocol/ref-name.ts / branchNameProblemMessage"
   },
   "refName.branchNamesCannotEndWithADot": {
     "en": "Branch names cannot end with a dot.",
-    "zh-CN": "Branch names cannot end with a dot.",
-    "review": "pending",
+    "zh-CN": "分支名称不能以点结尾。",
+    "review": "translated",
     "context": "src/protocol/ref-name.ts / branchNameProblemMessage"
   },
   "refName.aBranchNameCannotBeOnly": {
     "en": "A branch name cannot be only @.",
-    "zh-CN": "A branch name cannot be only @.",
-    "review": "pending",
+    "zh-CN": "分支名称不能只有 @。",
+    "review": "translated",
     "context": "src/protocol/ref-name.ts / branchNameProblemMessage"
   }
 }

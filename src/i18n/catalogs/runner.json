@@ -1,80 +1,80 @@
 {
   "runner.gitOperationWasCancelled": {
     "en": "Git operation was cancelled",
-    "zh-CN": "Git operation was cancelled",
-    "review": "pending",
+    "zh-CN": "Git 操作已取消",
+    "review": "translated",
     "context": "src/git/runner.ts / runGitProcess"
   },
   "runner.theReadOnlyQueryDidNotConfirmProcessTree": {
     "en": "{{value}}. {{message}}; the read-only query did not confirm process-tree termination.",
-    "zh-CN": "{{value}}. {{message}}; the read-only query did not confirm process-tree termination.",
-    "review": "pending",
+    "zh-CN": "{{value}}。{{message}}；只读查询未能确认进程树已终止。",
+    "review": "translated",
     "context": "src/git/runner.ts / runGitProcess / unconfirmed"
   },
   "runner.gitQueryFailed": {
     "en": "Git query failed",
-    "zh-CN": "Git query failed",
-    "review": "pending",
+    "zh-CN": "Git 查询失败",
+    "review": "translated",
     "context": "src/git/runner.ts / runGitProcess / unconfirmed"
   },
   "runner.furtherWritesAreBlockedPendingManualVerification": {
     "en": "{{value}}. {{message}}; further writes are blocked pending manual verification.",
-    "zh-CN": "{{value}}. {{message}}; further writes are blocked pending manual verification.",
-    "review": "pending",
+    "zh-CN": "{{value}}。{{message}}；完成手动核验前将阻止后续写入。",
+    "review": "translated",
     "context": "src/git/runner.ts / runGitProcess / unconfirmed"
   },
   "runner.cannotStopGit": {
     "en": "Cannot stop Git",
-    "zh-CN": "Cannot stop Git",
-    "review": "pending",
+    "zh-CN": "无法停止 Git",
+    "review": "translated",
     "context": "src/git/runner.ts / runGitProcess / unconfirmed"
   },
   "runner.processTreeTerminationFailed": {
     "en": "Process-tree termination failed: {{terminationFailure}}",
-    "zh-CN": "Process-tree termination failed: {{terminationFailure}}",
-    "review": "pending",
+    "zh-CN": "终止进程树失败：{{terminationFailure}}",
+    "review": "translated",
     "context": "src/git/runner.ts / runGitProcess / finish"
   },
   "runner.theGitTerminationRequestWasNotAccepted": {
     "en": "the Git termination request was not accepted",
-    "zh-CN": "the Git termination request was not accepted",
-    "review": "pending",
+    "zh-CN": "Git 终止请求未被接受",
+    "review": "translated",
     "context": "src/git/runner.ts / runGitProcess / killRoot"
   },
   "runner.gitProcessTreeTerminationDidNotFinishWithin5": {
     "en": "Git process-tree termination did not finish within 5 seconds{{value}}",
-    "zh-CN": "Git process-tree termination did not finish within 5 seconds{{value}}",
-    "review": "pending",
+    "zh-CN": "Git 进程树未能在 5 秒内终止{{value}}",
+    "review": "translated",
     "context": "src/git/runner.ts / runGitProcess / stop"
   },
   "runner.taskkillExitedWithStatus": {
     "en": "taskkill exited with status {{value}}",
-    "zh-CN": "taskkill exited with status {{value}}",
-    "review": "pending",
+    "zh-CN": "taskkill 退出，状态为 {{value}}",
+    "review": "translated",
     "context": "src/git/runner.ts / runGitProcess / stop"
   },
   "runner.unknown": {
     "en": "unknown",
-    "zh-CN": "unknown",
-    "review": "pending",
+    "zh-CN": "未知错误",
+    "review": "translated",
     "context": "src/git/runner.ts / runGitProcess / stop"
   },
   "runner.gitTimedOutCheckCredentialsHooksOrAnotherGit": {
     "en": "Git timed out. Check credentials, hooks, or another Git process, then retry.",
-    "zh-CN": "Git timed out. Check credentials, hooks, or another Git process, then retry.",
-    "review": "pending",
+    "zh-CN": "Git 操作超时。请检查凭据、钩子或是否有其他 Git 进程正在运行。",
+    "review": "translated",
     "context": "src/git/runner.ts / runGitProcess / timer"
   },
   "runner.gitOutputExceededTheConfiguredLimit": {
     "en": "Git output exceeded the configured limit",
-    "zh-CN": "Git output exceeded the configured limit",
-    "review": "pending",
+    "zh-CN": "Git 输出超过配置的限制。",
+    "review": "translated",
     "context": "src/git/runner.ts / runGitProcess / collect"
   },
   "runner.cannotRunGit": {
     "en": "Cannot run Git: {{message}}",
-    "zh-CN": "Cannot run Git: {{message}}",
-    "review": "pending",
+    "zh-CN": "无法运行 Git：{{message}}",
+    "review": "translated",
     "context": "src/git/runner.ts / runGitProcess"
   }
 }

@@ -1,7 +1,7 @@
 {
   "commit.commitDidNotCompleteYourDraftIsPreserved": {
     "en": "Commit did not complete. Your draft is preserved.",
-    "zh-CN": "Commit 未完成，草稿已保留。",
+    "zh-CN": "提交未完成，草稿已保留。",
     "review": "translated",
     "context": "webview/CommitDialog.tsx / CommitDialog / submit"
   },
@@ -13,13 +13,13 @@
   },
   "commit.commitIncludesAllStagedFilesIncludingFilesHiddenBy": {
     "en": "Commit includes all {{staged}} Staged files, including files hidden by a path filter.",
-    "zh-CN": "Commit 包含全部 {{staged}} 个 Staged 文件，包括被路径筛选隐藏的文件。",
+    "zh-CN": "提交包含全部 {{staged}} 个已暂存文件，包括被路径筛选隐藏的文件。",
     "review": "translated",
     "context": "webview/CommitDialog.tsx / CommitDialog"
   },
   "commit.commitMessage": {
     "en": "Commit Message",
-    "zh-CN": "Commit 信息",
+    "zh-CN": "提交消息",
     "review": "translated",
     "context": "webview/CommitDialog.tsx / CommitDialog"
   },
@@ -37,13 +37,13 @@
   },
   "commit.resolveAllConflictsBeforeCommit": {
     "en": "Resolve all {{conflicts}} conflicts before Commit.",
-    "zh-CN": "Commit 前须处理全部 {{conflicts}} 个冲突文件。",
+    "zh-CN": "请先解决全部 {{conflicts}} 个冲突，再提交。",
     "review": "translated",
     "context": "webview/CommitDialog.tsx / CommitDialog"
   },
   "commit.stageChangesBeforeCommittingOrUseAmendToEdit": {
     "en": "Stage changes before committing, or use Amend to edit the last Commit message.",
-    "zh-CN": "先 Stage 所需变更，或使用 Amend 修改上一次提交说明。",
+    "zh-CN": "请先暂存更改再提交，或使用“修订提交”编辑上一次提交消息。",
     "review": "translated",
     "context": "webview/CommitDialog.tsx / CommitDialog"
   },
@@ -55,14 +55,14 @@
   },
   "commit.commit": {
     "en": "Commit",
-    "zh-CN": "Commit",
-    "review": "keep",
+    "zh-CN": "提交",
+    "review": "translated",
     "context": "webview/CommitDialog.tsx / CommitDialog"
   },
   "commit.amendCommit": {
     "en": "Amend Commit",
-    "zh-CN": "Amend Commit",
-    "review": "pending",
+    "zh-CN": "修订提交",
+    "review": "translated",
     "context": "webview/CommitDialog.tsx / CommitDialog"
   },
   "commit.detachedHEAD": {
@@ -73,8 +73,8 @@
   },
   "commit.commitMessageVariant2": {
     "en": "Commit message",
-    "zh-CN": "Commit message",
-    "review": "pending",
+    "zh-CN": "提交消息",
+    "review": "translated",
     "context": "webview/CommitDialog.tsx / CommitDialog"
   }
 }

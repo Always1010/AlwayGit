@@ -1,18 +1,18 @@
 {
   "manifest.displayName": "AlwayGit",
-  "manifest.description": "A professional Git workbench inside Visual Studio Code.",
-  "manifest.capabilities.untrustedWorkspaces.description": "Git execution requires a trusted workspace.",
-  "manifest.contributes.commands.item0.title": "Show Workbench",
+  "manifest.description": "Visual Studio Code 中的专业 Git 工作台。",
+  "manifest.capabilities.untrustedWorkspaces.description": "Git 操作需要受信任的工作区。",
+  "manifest.contributes.commands.item0.title": "显示 Workbench",
   "manifest.contributes.commands.item0.category": "AlwayGit",
-  "manifest.contributes.commands.item1.title": "Open Workbench in New Window",
+  "manifest.contributes.commands.item1.title": "在新窗口中打开 Workbench",
   "manifest.contributes.commands.item1.category": "AlwayGit",
   "manifest.contributes.viewsContainers.activitybar.item0.title": "AlwayGit",
   "manifest.contributes.views.alwaygit.item0.name": "Workbench",
-  "manifest.contributes.viewsWelcome.item0.contents": "[Show Git Workbench](command:alwaygit.showWorkbench)\n[Open Workbench in New Window](command:alwaygit.openWorkbenchInNewWindow)",
+  "manifest.contributes.viewsWelcome.item0.contents": "[显示 Git Workbench](command:alwaygit.showWorkbench)\n[在新窗口中打开 Workbench](command:alwaygit.openWorkbenchInNewWindow)",
   "manifest.contributes.configuration.title": "AlwayGit",
-  "manifest.contributes.configuration.properties.alwaygit.language.description": "Workbench language. Git operation names remain in English. The in-workbench language selector is remembered for this workspace.",
-  "manifest.contributes.configuration.properties.alwaygit.gitPath.description": "Git executable path. Empty uses the built-in Git extension path or PATH.",
-  "manifest.contributes.configuration.properties.alwaygit.historyPageSize.description": "Commits loaded per history page.",
-  "manifest.contributes.configuration.properties.alwaygit.refreshInterval.description": "Visible workbench refresh interval in seconds.",
-  "manifest.contributes.configuration.properties.alwaygit.allowDetachedHead.description": "Allow direct Detached HEAD Checkout. Disabled by default; create and switch to a local branch when inspecting historical versions."
+  "manifest.contributes.configuration.properties.alwaygit.language.description": "Workbench 显示语言。界面中的语言选择会为当前工作区保存。",
+  "manifest.contributes.configuration.properties.alwaygit.gitPath.description": "Git 可执行文件路径。留空时使用内置 Git 扩展的路径或 PATH。",
+  "manifest.contributes.configuration.properties.alwaygit.historyPageSize.description": "每页历史记录加载的提交数。",
+  "manifest.contributes.configuration.properties.alwaygit.refreshInterval.description": "可见 Workbench 的刷新间隔（秒）。",
+  "manifest.contributes.configuration.properties.alwaygit.allowDetachedHead.description": "允许直接切换到 Detached HEAD。默认关闭；查看历史版本时请创建并切换到本地分支。"
 }

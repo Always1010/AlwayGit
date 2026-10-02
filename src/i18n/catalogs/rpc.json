@@ -1,26 +1,26 @@
 {
   "rpc.theReadRequestWasCancelled": {
     "en": "The read request was cancelled.",
-    "zh-CN": "The read request was cancelled.",
-    "review": "pending",
+    "zh-CN": "读取请求已取消。",
+    "review": "translated",
     "context": "webview/rpc.ts / cancelRead"
   },
   "rpc.openAlwayGitInVSCodeToConnectToYour": {
     "en": "Open AlwayGit in VS Code to connect to your repositories.",
-    "zh-CN": "Open AlwayGit in VS Code to connect to your repositories.",
-    "review": "pending",
+    "zh-CN": "请在 VS Code 中打开 AlwayGit 以连接仓库。",
+    "review": "translated",
     "context": "webview/rpc.ts / rpc"
   },
   "rpc.theReadRequestTimedOut": {
     "en": "The read request timed out.",
-    "zh-CN": "The read request timed out.",
-    "review": "pending",
+    "zh-CN": "读取请求超时。",
+    "review": "translated",
     "context": "webview/rpc.ts / rpc / timer"
   },
   "rpc.theGitOperationTimedOutRefreshToCheckIts": {
     "en": "The Git operation timed out. Refresh to check its result before retrying.",
-    "zh-CN": "The Git operation timed out. Refresh to check its result before retrying.",
-    "review": "pending",
+    "zh-CN": "Git 操作超时。重试前请刷新以检查操作结果。",
+    "review": "translated",
     "context": "webview/rpc.ts / rpc / timer"
   }
 }
