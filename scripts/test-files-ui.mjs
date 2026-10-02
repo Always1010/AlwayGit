@@ -10,7 +10,7 @@ export async function verifyFiles(browser, url) {
       const commit = { oid: 'a'.repeat(40), parents: [], author: 'Fixture', email: 'test@example.com', timestamp: 0, subject: 'File selection' };
       const paths = ['src/features/auth/login.ts', 'src/services/auth/login.ts', 'README.md'];
       const fixture = window.__filesFixture = { calls: [], paths,
-        snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 0, behind: 0, changes: paths.map((path, i) => ({ path, indexStatus: i === 2 ? '?' : 'M', worktreeStatus: i === 2 ? '?' : 'M', conflict: false, untracked: i === 2 })), refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
+        holdDetails: false, heldDetails: [], snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 0, behind: 0, changes: paths.map((path, i) => ({ path, indexStatus: i === 2 ? '?' : 'M', worktreeStatus: i === 2 ? '?' : 'M', conflict: false, untracked: i === 2 })), refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
       };
       window.acquireVsCodeApi = () => ({ getState: () => ({}), setState: () => {}, postMessage(request) {
         if (request.method === 'saveSession') return;
@@ -21,6 +21,7 @@ export async function verifyFiles(browser, url) {
         if (request.method === 'history') result = { commits: [commit], tips: [commit.oid], nextOffset: 1, hasMore: false };
         if (request.method === 'details') result = { commit, body: '', files: paths.map(path => ({ path, status: 'M' })) };
         if (request.method === 'diffPreview') result = { path: request.payload.path, leftLabel: 'Before', rightLabel: 'After', left: 'before', right: 'after' };
+        if (request.method === 'details' && fixture.holdDetails) { fixture.heldDetails.push({ type: 'response', id: request.id, result }); return; }
         setTimeout(() => window.postMessage({ type: 'response', id: request.id, result }, '*'), 10);
       } });
     });
@@ -148,10 +149,27 @@ export async function verifyFiles(browser, url) {
     const draft = details.getByRole('textbox', { name: 'Commit message' });
     await draft.fill('draft stays editable'); await draft.press('Control+a'); await draft.press('Backspace');
     assert.equal(await draft.inputValue(), '', 'Text area keeps native Select All');
+    await page.evaluate(() => { window.__filesFixture.holdDetails = true; });
+    const amend = details.getByRole('checkbox', { name: 'Amend', exact: true });
+    await amend.check();
+    await page.waitForFunction(() => window.__filesFixture.heldDetails.length === 1);
+    await amend.uncheck();
+    await page.evaluate(() => { for (const response of window.__filesFixture.heldDetails.splice(0)) window.postMessage(response, '*'); });
+    await page.waitForTimeout(50);
+    assert.equal(await draft.inputValue(), '', 'Cancelled Amend must ignore a delayed HEAD message');
+    await amend.check();
+    await page.waitForFunction(() => window.__filesFixture.heldDetails.length === 1);
+    await draft.fill('my newer message');
+    await page.evaluate(() => { for (const response of window.__filesFixture.heldDetails.splice(0)) window.postMessage(response, '*'); });
+    await page.waitForTimeout(50);
+    assert.equal(await draft.inputValue(), 'my newer message', 'Amend must preserve text entered while details load');
+    await amend.uncheck(); await draft.fill('');
+    await page.evaluate(() => { window.__filesFixture.holdDetails = false; });
+
     assert.equal(await groups.locator('.change-file[aria-selected="true"]').count(), 1, 'Editing Ctrl+A must not change file selection');
     await unstaged.getByRole('button', { name: 'README.md', exact: true }).click({ button: 'right' });
     await menu.waitFor();
-    assert.deepEqual((await menu.getByRole('menuitem').allTextContents()).map(value=>value.trim()), ['Open Diff in VS Code','Edit in VS Code','Stage 1 File','Discard 1 File…','Copy Path']);
+    assert.deepEqual((await menu.getByRole('menuitem').allTextContents()).map(value=>value.trim()), ['Open Diff in VS Code','Edit in VS Code','Stage 1 File','Stash Selected Files…','Discard 1 File…','Copy Path']);
     await page.keyboard.press('Escape');
     await draft.click({ button: 'right' });
     assert.equal(await menu.isVisible(), false, 'Editable text keeps the native context menu');

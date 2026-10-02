@@ -1,4 +1,4 @@
-import { memo, useEffect, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
+import { memo, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
 import type { Change, CommitDetails, CommitFile, DiffTarget } from '../src/protocol/types';
 import type { DialogRequest } from './ActionDialog';
 import { useWorkbench } from './store';
@@ -83,6 +83,18 @@ function ComparisonDetails({filter,onFilterChange,edit,context}:{filter:string;o
 function WorkingTree({ open, edit, context }: { open(dialog:DialogRequest):void; edit():void; context:ContextHandler }) {
   const state={ ...useWorkbenchFields('busy', 'diffTarget', 'drafts', 'execute', 'repoId', 'report', 'selectFile', 'selectedFile', 'setDraft'), snapshot: useSnapshotFields('branch', 'head', 'changes', 'operation') },snapshot=state.snapshot!,t=useTranslation(),[amend,setAmend]=useState(false),[bulkAction,setBulkAction]=useState<{type:'stage'|'unstage';paths:string[]}>();
   const [collapsed, setCollapsed] = useState({ conflict: false, unstaged: false, staged: false });
+  const amendRequest = useRef(0);
+  useEffect(() => {
+    const request = ++amendRequest.current, repoId = state.repoId, head = snapshot.head;
+    if (!amend || !repoId || !head || snapshot.operation.kind || useWorkbench.getState().drafts[repoId]) return;
+    void rpc<CommitDetails>('details', repoId, { oid: head }).then(detail => {
+      const current = useWorkbench.getState();
+      if (request === amendRequest.current && current.repoId === repoId && current.snapshot?.head === head && !current.drafts[repoId]) {
+        current.setDraft(detail.body || detail.commit.subject);
+      }
+    }).catch(error => { if (request === amendRequest.current) useWorkbench.getState().report(error); });
+    return () => { ++amendRequest.current; };
+  }, [amend, state.repoId, snapshot.head, snapshot.operation.kind]);
   useEffect(()=>{if(snapshot.operation.kind)setAmend(false);},[snapshot.operation.kind]);
   useEffect(()=>{setAmend(false);setBulkAction(undefined);setCollapsed({conflict:false,unstaged:false,staged:false});},[state.repoId]);
   const staged=snapshot.changes.filter(c=>!c.conflict&&c.indexStatus!==' '&&c.indexStatus!=='?'&&!!c.indexStatus),unstaged=snapshot.changes.filter(c=>!c.conflict&&(c.untracked||c.worktreeStatus!==' '&&!!c.worktreeStatus)),conflicts=snapshot.changes.filter(c=>c.conflict);
@@ -104,7 +116,7 @@ function WorkingTree({ open, edit, context }: { open(dialog:DialogRequest):void;
   return <><div className="working-summary"><span>{snapshot.branch||'Detached HEAD'}</span><span className="muted">Staged {staged.length} · Unstaged {unstaged.length}</span></div><div className="change-groups" tabIndex={0} role="listbox" aria-multiselectable="true" aria-label={t('Working tree files','工作区文件')} onKeyDownCapture={batch.keyDown}><FileSelectionHint clickSelect count={new Set(batch.selection.paths.map(key=>(JSON.parse(key) as string[])[1])).size}/>{!!conflicts.length&&group('conflict',conflicts)}{group('unstaged',unstaged)}{group('staged',staged)}</div>
     <form className="commit-form" onSubmit={event=>{event.preventDefault();const repoId=state.repoId;void state.execute({type:'commit',message:(state.drafts[repoId!]??'').trim(),amend}).then(success=>{if(success&&useWorkbench.getState().repoId===repoId){state.setDraft('');setAmend(false);}});}}>
       <label htmlFor="ag-commit-message">{t('Commit Message','Commit 信息')}</label><textarea id="ag-commit-message" aria-label="Commit message" placeholder={t('Describe your changes…','描述这次变更…')} value={state.drafts[state.repoId!]??''} onChange={event=>state.setDraft(event.target.value)} disabled={state.busy}/>
-      <div className="commit-options"><label><input type="checkbox" checked={amend} disabled={!snapshot.head||state.busy||!!snapshot.operation.kind} onChange={event=>{setAmend(event.target.checked);if(event.target.checked&&!state.drafts[state.repoId!]){const repoId=state.repoId;void rpc<{body:string;commit:{subject:string}}>('details',repoId,{oid:snapshot.head}).then(detail=>{if(useWorkbench.getState().repoId===repoId&&!useWorkbench.getState().drafts[repoId!])state.setDraft(detail.body||detail.commit.subject);}).catch(state.report);}}}/>Amend</label><span className="muted">{staged.length} Staged</span><Button type="submit" className="primary" disabled={state.busy||!state.drafts[state.repoId!]?.trim()||!!conflicts.length||!amend&&!staged.length}>{amend?'Amend Commit':'Commit'}</Button></div><p className="muted commit-note">{t('Only Staged Changes are committed.','Commit 仅包含 Staged Changes。')}</p>
+      <div className="commit-options"><label><input type="checkbox" checked={amend} disabled={!snapshot.head||state.busy||!!snapshot.operation.kind} onChange={event=>{++amendRequest.current;setAmend(event.target.checked);}}/>Amend</label><span className="muted">{staged.length} Staged</span><Button type="submit" className="primary" disabled={state.busy||!state.drafts[state.repoId!]?.trim()||!!conflicts.length||!amend&&!staged.length}>{amend?'Amend Commit':'Commit'}</Button></div><p className="muted commit-note">{t('Only Staged Changes are committed.','Commit 仅包含 Staged Changes。')}</p>
     </form>
     {bulkAction&&<Modal title={bulkAction.type==='stage'?t(`Stage all ${bulkAction.paths.length} file${bulkAction.paths.length===1?'':'s'}?`,`Stage 全部 ${bulkAction.paths.length} 个文件？`):t(`Unstage all ${bulkAction.paths.length} file${bulkAction.paths.length===1?'':'s'}?`,`Unstage 全部 ${bulkAction.paths.length} 个文件？`)} onClose={()=>setBulkAction(undefined)} footer={<><Button onClick={()=>setBulkAction(undefined)}>{t('Cancel','取消')}</Button><Button data-autofocus="true" className="primary" onClick={()=>{const action=bulkAction;setBulkAction(undefined);void state.execute(action);}}>{bulkAction.type==='stage'?'Stage All':'Unstage All'}</Button></>}>{null}</Modal>}
   </>;
