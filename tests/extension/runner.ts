@@ -47,16 +47,18 @@ export async function run(): Promise<void> {
   assert.ok(vscode.workspace.textDocuments.some(d => d.uri.scheme === 'alwaygit-content' && d.getText().includes('value = 1')));
   assert.ok(vscode.workspace.textDocuments.some(d => d.uri.scheme === 'alwaygit-content' && d.getText().includes('value = 2')));
   const stagedPreview = await api.workbench.handle({ id: 'staged-preview', method: 'diffPreview', repoId: repo.id, payload: { kind: 'change', area: 'staged', path: 'sample.ts' } }) as DiffPreview;
+  assert.equal(stagedPreview.kind, 'text'); if (stagedPreview.kind !== 'text') throw new Error('Expected a text preview');
   assert.equal(stagedPreview.path, 'sample.ts');
   assert.equal(stagedPreview.leftLabel, 'HEAD'); assert.equal(stagedPreview.rightLabel, 'Index');
   assert.match(stagedPreview.left, /value = 1/); assert.match(stagedPreview.right, /value = 2/);
-  assert.equal(stagedPreview.binary, undefined); assert.equal(stagedPreview.truncated, undefined);
+  assert.equal(stagedPreview.truncated, undefined);
   await api.workbench.handle({ id: 'unstaged', method: 'diff', repoId: repo.id, payload: { kind: 'change', area: 'unstaged', path: 'sample.ts' } });
   const diffTabs = vscode.window.tabGroups.all.flatMap(group => group.tabs).filter(tab => tab.input instanceof vscode.TabInputTextDiff);
   assert.ok(diffTabs.length >= 2, 'Opening another comparison must retain the previous Diff tab');
   assert.ok(diffTabs.every(tab => !tab.isPreview), 'Native Diff tabs must be pinned');
   assert.ok(vscode.workspace.textDocuments.some(d => d.uri.scheme === 'file' && d.getText().includes('value = 3')));
   const unstagedPreview = await api.workbench.handle({ id: 'unstaged-preview', method: 'diffPreview', repoId: repo.id, payload: { kind: 'change', area: 'unstaged', path: 'sample.ts' } }) as DiffPreview;
+  assert.equal(unstagedPreview.kind, 'text'); if (unstagedPreview.kind !== 'text') throw new Error('Expected a text preview');
   assert.equal(unstagedPreview.leftLabel, 'Index'); assert.equal(unstagedPreview.rightLabel, 'Working Tree');
   assert.match(unstagedPreview.left, /value = 2/); assert.match(unstagedPreview.right, /value = 3/);
   await api.workbench.handle({ id: 'copy', method: 'copyText', payload: { text: 'AlwayGit clipboard fixture' } });
@@ -78,6 +80,7 @@ export async function run(): Promise<void> {
     while (!changes.some(change => change.paths?.includes('sample.ts')) && Date.now() < fileDeadline) await new Promise(resolve => setTimeout(resolve, 100));
     assert.ok(changes.some(change => change.paths?.includes('sample.ts')), 'Real file watcher must report the changed relative path');
     const updated = await api.workbench.handle({ id: 'updated-preview', method: 'diffPreview', repoId: repo.id, payload: { kind: 'change', area: 'unstaged', path: 'sample.ts' } }) as DiffPreview;
+    assert.equal(updated.kind, 'text'); if (updated.kind !== 'text') throw new Error('Expected a text preview');
     assert.match(updated.right, /value = 4/);
     changes.length = 0;
     await api.git.execute(repo, { type: 'stage', paths: ['sample.ts'] });

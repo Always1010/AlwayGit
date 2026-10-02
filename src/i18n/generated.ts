@@ -1416,6 +1416,54 @@ export const catalog = {
     "en": "Binary file: text preview unavailable",
     "zh-CN": "二进制文件：无法提供文本预览"
   },
+  "diff.imageExceedsThe4MiBPreviewLimit": {
+    "en": "Image exceeds the 4 MiB preview limit",
+    "zh-CN": "图片超过 4 MiB 预览限制"
+  },
+  "diff.imageDimensionsExceedThePreviewLimit": {
+    "en": "Image dimensions exceed the safe preview limit",
+    "zh-CN": "图片尺寸超过安全预览限制"
+  },
+  "diff.imageChanges": {
+    "en": "Image changes",
+    "zh-CN": "图片更改"
+  },
+  "diff.vsCodeOpenUnavailableForImagesAndBinaryFiles": {
+    "en": "VS Code editing and native Diff are unavailable for images and binary files",
+    "zh-CN": "图片和二进制文件不可在 VS Code 中编辑或打开原生 Diff"
+  },
+  "diff.zoomOutImages": {
+    "en": "Zoom out images",
+    "zh-CN": "缩小图片"
+  },
+  "diff.showImagesAtActualSize": {
+    "en": "Show images at actual size",
+    "zh-CN": "以原始尺寸显示图片"
+  },
+  "diff.fitImagesToPanes": {
+    "en": "Fit images to panes",
+    "zh-CN": "使图片适应面板"
+  },
+  "diff.zoomInImages": {
+    "en": "Zoom in images",
+    "zh-CN": "放大图片"
+  },
+  "diff.maximizeImagePreview": {
+    "en": "Maximize image preview",
+    "zh-CN": "最大化图片预览"
+  },
+  "diff.restoreImagePreview": {
+    "en": "Restore image preview",
+    "zh-CN": "还原图片预览"
+  },
+  "diff.emptyImageSide": {
+    "en": "No image",
+    "zh-CN": "无图片"
+  },
+  "diff.imagePreviewFor": {
+    "en": "Image preview for {{label}}",
+    "zh-CN": "{{label}} 的图片预览"
+  },
   "diff.selectAFileToPreviewItsDiff": {
     "en": "Select a file to preview its Diff",
     "zh-CN": "选择文件以预览 Diff"
@@ -1503,6 +1551,10 @@ export const catalog = {
   "documents.indexWorkingTree": {
     "en": "{{value}} · Index ↔ Working Tree",
     "zh-CN": "{{value}} · Index ↔ 工作区"
+  },
+  "documents.imagesAndBinaryFilesCanOnlyBeViewedInTheAlwayGitDiffPreview": {
+    "en": "Images and binary files can only be viewed in the AlwayGit Diff preview.",
+    "zh-CN": "图片和二进制文件只能在 AlwayGit Diff 预览中查看。"
   },
   "extension.alwayGitGitAuthentication": {
     "en": "AlwayGit · Git Authentication",
@@ -5027,6 +5079,18 @@ export interface MessageParameters {
   "diff.loadingTheNextDiffFile": {  };
   "diff.loadingDiff": {  };
   "diff.binaryFileTextPreviewUnavailable": {  };
+  "diff.imageExceedsThe4MiBPreviewLimit": {  };
+  "diff.imageDimensionsExceedThePreviewLimit": {  };
+  "diff.imageChanges": {  };
+  "diff.vsCodeOpenUnavailableForImagesAndBinaryFiles": {  };
+  "diff.zoomOutImages": {  };
+  "diff.showImagesAtActualSize": {  };
+  "diff.fitImagesToPanes": {  };
+  "diff.zoomInImages": {  };
+  "diff.maximizeImagePreview": {  };
+  "diff.restoreImagePreview": {  };
+  "diff.emptyImageSide": {  };
+  "diff.imagePreviewFor": { label: ParameterValue };
   "diff.selectAFileToPreviewItsDiff": {  };
   "diff.diff": {  };
   "documents.thisComparisonHasExpiredOpenItAgainFromAlwayGit": {  };
@@ -5049,6 +5113,7 @@ export interface MessageParameters {
   "documents.oursTheirsEditWorkingFileToResolve": { value: ParameterValue };
   "documents.thisFileHasNoUnstagedChangesRefreshItsComparison": {  };
   "documents.indexWorkingTree": { value: ParameterValue };
+  "documents.imagesAndBinaryFilesCanOnlyBeViewedInTheAlwayGitDiffPreview": {  };
   "extension.alwayGitGitAuthentication": {  };
   "extension.gitMergeAlwayGit": {  };
   "extension.reloadTheVSCodeWindowToApplyAlwayGitRuntime": {  };

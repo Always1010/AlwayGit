@@ -33,7 +33,7 @@ export async function verifyHelp(browser, url) {
           if (request.method === 'snapshot') result = { repository: repo, branch: 'main', head: commit.oid, ahead: 0, behind: 0, remotes: [], changes: [{ path: 'notes.txt', indexStatus: ' ', worktreeStatus: 'M', untracked: false }], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 1 };
           if (request.method === 'history') result = { commits: [commit], tips: [commit.oid], nextOffset: 1, hasMore: false };
           if (request.method === 'details') result = { commit, body: '', files: [] };
-          if (request.method === 'diffPreview') result = { path: 'notes.txt', leftLabel: 'Index', rightLabel: 'Working Tree', left: 'before', right: 'after' };
+          if (request.method === 'diffPreview') result = { kind: 'text', path: 'notes.txt', leftLabel: 'Index', rightLabel: 'Working Tree', left: 'before', right: 'after' };
           setTimeout(() => window.postMessage({ type: 'response', id: request.id, result }, '*'), 0);
         } });
       }, { language, active });

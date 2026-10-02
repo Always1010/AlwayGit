@@ -28,7 +28,7 @@ export async function verifyFiles(browser, url) {
         if (request.method === 'snapshot') result = structuredClone({ ...fixture.snapshot, version: ++fixture.snapshot.version });
         if (request.method === 'history') result = { commits: [commit], tips: [commit.oid], nextOffset: 1, hasMore: false };
         if (request.method === 'details') result = { commit, body: '', files: paths.map(path => ({ path, status: 'M' })) };
-        if (request.method === 'diffPreview') result = { path: request.payload.path, leftLabel: 'Before', rightLabel: 'After', left: 'before', right: 'after' };
+        if (request.method === 'diffPreview') result = { kind: 'text', path: request.payload.path, leftLabel: 'Before', rightLabel: 'After', left: 'before', right: 'after' };
         if (request.method === 'details' && fixture.holdDetails) { fixture.heldDetails.push({ type: 'response', id: request.id, result }); return; }
         setTimeout(() => window.postMessage({ type: 'response', id: request.id, result }, '*'), 10);
       } });

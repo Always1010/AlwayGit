@@ -126,11 +126,11 @@ Staged is the most important place to check before committing. A file appearing 
 1. Click Working Tree, then click the file in the appropriate group.
 2. Check the file and comparison targets in the Diff title at the bottom. In particular, confirm whether you are viewing Staged or Unstaged changes.
 3. Use the previous and next arrows to review each change block, noting the counts of additions, modifications, and deletions.
-4. To edit the full file, use Edit in VS Code. Save it, then return to the workbench and check again.
+4. To edit the full contents of a text file, use Edit in VS Code. Save it, then return to the workbench and check again. Images and other binary files are view-only in the AlwayGit preview.
 
 **Result:** You can explain each block of changes you intend to keep and confirm that the comparison sources are correct.
 
-**Caution:** The bottom Diff pane is read-only; you cannot edit files directly in it. Binary files, oversized files, or content with invalid encoding may not be fully previewable.
+**Caution:** The bottom Diff pane is read-only. PNG, JPEG and WebP changes appear side by side with zoom, synchronized scrolling, fit, 100% and maximize controls. Other binary files, oversized images and invalid text encodings show an explanation. VS Code editing and native Diff are disabled for images and other binary files.
 
 **Troubleshooting:** If the content has not updated, first confirm that you saved it in the editor, then use Refresh. If the problem persists, check the output and error details.
 
@@ -270,7 +270,7 @@ Ref checkboxes control which history you see; branch names and row selections co
 1. Click a Commit row to read its message, author, timestamp, and changed files.
 2. Use the file-path filter field to narrow Changed Files. Matching is case-insensitive and uses the full repository-relative path.
 3. Click a file to view its Diff. For a Merge Commit, use the Parent selector to choose the parent commit to compare against.
-4. To view the full content, use the native Open Diff action. To edit the file in the current Working Tree, use Edit in VS Code.
+4. For text files, use native Open Diff to view the full content or Edit in VS Code to change the current Working Tree file. Use the bottom preview only for images and other binary files.
 
 **Result:** The Diff corresponds to the currently selected Commit, Parent, and file.
 
@@ -987,8 +987,8 @@ Single-key shortcuts are enabled by default throughout the focused AlwayGit work
 | W | View Working Tree | Inspect uncommitted changes without focusing a text input |
 | H | Locate HEAD | Follow the existing HEAD location and history scope rules |
 | O | Open repository folder | Open or switch to the current repository's VS Code window |
-| D | Open Diff | Open the native Diff for the current preview file |
-| E | Edit file | Same as Edit in VS Code; Commit comparisons open native Diff |
+| D | Open Diff | Open native Diff for the current text preview; disabled for images and binary files |
+| E | Edit file | Same as Edit in VS Code; text Commit comparisons open native Diff; disabled for images and binary files |
 | [; ] | Previous; next change | Follow the Diff navigation scope; expand a collapsed Diff before navigating |
 | \ | Minimize/expand Diff | Preserve the reading position |
 | / | Search commits | Focus and select the Commit search text |

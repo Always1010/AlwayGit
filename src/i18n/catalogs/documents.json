@@ -118,5 +118,11 @@
     "zh-CN": "{{value}} · Index ↔ 工作区",
     "review": "translated",
     "context": "src/editor/documents.ts / comparison"
+  },
+  "documents.imagesAndBinaryFilesCanOnlyBeViewedInTheAlwayGitDiffPreview": {
+    "en": "Images and binary files can only be viewed in the AlwayGit Diff preview.",
+    "zh-CN": "图片和二进制文件只能在 AlwayGit Diff 预览中查看。",
+    "review": "translated",
+    "context": "src/editor/documents.ts / openFile / diff"
   }
 }

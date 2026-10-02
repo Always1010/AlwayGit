@@ -24,7 +24,7 @@ export async function verifyRefresh(browser, url) {
         if (request.method === 'snapshot') result = structuredClone({ ...fixture.snapshot, version: ++fixture.snapshot.version });
         if (request.method === 'history') result = { commits: [commit, other], tips: [fixture.snapshot.head], nextOffset: 2, hasMore: false };
         if (request.method === 'details') result = { commit: request.payload.oid === other.oid ? other : commit, body: 'Historical merge body', parent: request.payload.parent ?? commit.parents[0], files: [{ path: 'a.txt', status: 'M' }] };
-        if (request.method === 'diffPreview') result = { path: request.payload.path, leftLabel: request.payload.kind === 'commit' ? request.payload.parent.slice(0, 8) : request.payload.area === 'staged' ? 'HEAD' : 'Index', rightLabel: request.payload.kind === 'commit' ? 'Commit' : request.payload.area === 'staged' ? 'Index' : 'Working Tree', left: content, right: fixture.right };
+        if (request.method === 'diffPreview') result = { kind: 'text', path: request.payload.path, leftLabel: request.payload.kind === 'commit' ? request.payload.parent.slice(0, 8) : request.payload.area === 'staged' ? 'HEAD' : 'Index', rightLabel: request.payload.kind === 'commit' ? 'Commit' : request.payload.area === 'staged' ? 'Index' : 'Working Tree', left: content, right: fixture.right };
         setTimeout(() => window.postMessage({ type: 'response', id: request.id, result }, '*'), request.method === 'diffPreview' ? fixture.diffDelay : 30);
       } });
     });

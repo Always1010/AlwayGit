@@ -32,7 +32,7 @@ export async function verifyWorktrees(browser, url) {
         if (request.method === 'removeRepositories') result = request.payload.keys.length;
         if (request.method === 'snapshot') result = { repository: repo, branch, head: undefined, ahead: 0, behind: 0, changes: [{ path: `${repo.id}.txt`, indexStatus: ' ', worktreeStatus: 'M', untracked: false, conflict: false }], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: 'a'.repeat(40) }, { name: 'feature', fullName: 'refs/heads/feature', kind: 'local', oid: 'b'.repeat(40) }], stashes: [], worktrees, operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: ++fixture.version };
         if (request.method === 'history') result = { commits: [], tips: [], nextOffset: 0, hasMore: false };
-        if (request.method === 'diffPreview') result = { path: request.payload.path, leftLabel: 'Index', rightLabel: 'Working Tree', left: 'before', right: repo.id };
+        if (request.method === 'diffPreview') result = { kind: 'text', path: request.payload.path, leftLabel: 'Index', rightLabel: 'Working Tree', left: 'before', right: repo.id };
         if (request.method === 'openWorktree') {
           const target = repositories.find(repo => repo.root === request.payload.path);
           setTimeout(() => window.postMessage({ type: 'selectRepository', repoId: target.id }, '*'), 5);
