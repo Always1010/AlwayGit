@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-022：未选择仓库时误显示 Detached HEAD
+
+- 日期：2026-10-02
+- 状态：已解决
+- 现象：首次打开 Workbench 或当前没有选择仓库时，顶部分支栏显示 `Detached HEAD`，将“还没有开始”误表达为仓库的特殊 Git 状态。
+- 原因：分支标题只判断 `snapshot.branch`；`snapshot` 不存在时也落入同一个 `Detached HEAD` 分支，空状态同时将“没有仓库”与“尚未选择”合并。
+- 解决方案：建立未选择、正在打开、普通分支与真实 Detached HEAD 四种显式界面状态；仅已加载仓库且没有分支时显示 `Detached HEAD`，并为无仓库与未选择仓库提供不同引导。
+- 验证方式：状态回归覆盖无仓库、打开中、普通分支与真实 Detached HEAD；类型检查通过。
+- 相关文件：`webview/App.tsx`、`webview/repositoryState.ts`、`tests/repository-state.test.ts`、`docs/WORKBENCH_SPEC.md`。
+
 ## BUG-021：批量暂存可误触且提交结果缺少范围反馈
 
 - 日期：2026-10-02
