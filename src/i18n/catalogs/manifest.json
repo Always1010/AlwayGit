@@ -106,5 +106,11 @@
     "zh-CN": "默认把新建标签推送到所选远端；创建标签对话框可以单次覆盖并记住该选择。",
     "review": "translated",
     "context": "package.json / contributes.configuration.properties.alwaygit.pushTagAfterCreate.description"
+  },
+  "manifest.contributes.configuration.properties.alwaygit.defaultResetMode.description": {
+    "en": "Default mode selected when opening Reset. The dialog can override and remember Soft, Mixed, or Hard.",
+    "zh-CN": "打开重置对话框时默认选择的模式；可在对话框中覆盖并记住 Soft、Mixed 或 Hard。",
+    "review": "translated",
+    "context": "package.json / contributes.configuration.properties.alwaygit.defaultResetMode.description"
   }
 }

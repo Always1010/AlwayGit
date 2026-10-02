@@ -173,6 +173,7 @@ Merge 等操作暂停后，原发起对话框改为处理状态，主入口是�
 - Remote Branch 的 `Checkout as Local Branch…` 列出远程来源与本地名称，默认剥除 Remote 前缀并保持完整目录（`origin/feature/login/api` → `feature/login/api`），自动选择已有跟踪分支，允许改名。多个已有本地跟踪分支时提示用户选择名称。单项默认 Checkout，可取消切换；Remote 父级、Remotes 分组、分支目录和远程多选通过 `Create Local Tracking Branches…` 创建或复用全部后代，保持当前分支。对话框逐项显示将创建、已跟踪、同名 upstream 冲突、路径冲突与成功结果；名称冲突阻止执行，不覆盖已有分支或改写 upstream。使用最近 Fetch 的引用，不自动 Fetch/Pull；后端重新校验来源与 OID。`origin/HEAD` 等符号引用不可检出为本地分支，批量范围自动排除。
 - Local 与 Remote 的批量选择互相隔离；同一 Remote 下的普通分支可以批量 `Delete … from <remote>…`，操作明确显示远端和分支清单并二次确认，以确认时的远端 Commit 版本为执行条件逐项 Push 删除并汇总部分失败；远端版本或 Push 地址变化时拒绝执行，刷新后重新确认。`origin/HEAD` 等符号引用不可删除。
 - Create Tag 提供“创建后推送此标签”和 Remote 选择；初始值来自 Git 操作设置，可单次覆盖，只有明确勾选“记住为默认”并提交时才回写。没有 Remote 且需要推送时进入 Add Remote，返回后保留标签名称、目标、注解和选择。先在本地创建，再使用完整标签 refspec 只推送新标签；推送失败保留本地 Tag 并报告部分失败。单个或多选本地 Tag 提供 `Push Tag…` / `Push N Tags…`，明确列出全部 Tag 与目标 Remote。执行前复核打开菜单时捕获的原始 Tag 对象 OID；轻量和注解 Tag 均可推送，不附带未选择的 Tag，也不覆盖远端身份不同的同名 Tag。多选逐项执行并明确报告部分完成；Tag 与分支混合选择不提供写操作。
+- Reset 对话框的 Soft、Mixed、Hard 初始值来自 Git 操作设置，可单次覆盖；只有明确勾选“记住为默认”并提交时才回写，取消或设置保存失败不执行 Reset。Hard 无论是否为默认值，始终保留破坏性样式、工作区影响说明和原生确认。
 - 默认禁止主动进入 Detached HEAD。旧 Commit 的分支感知 Checkout 与 Tag 的 `Create Branch and Checkout…` 进入固定起点的新建分支浮窗，仅提供取消和创建并切换；普通 Create Branch 保留仅创建。设置 → 高级 → Git 操作中的“允许直接进入 Detached HEAD”默认关闭，应用保存成功后即时生效；开启后 Commit 和 Tag 菜单的 `Checkout to Detached HEAD…` 操作可用，确认说明原分支位置不变、后续提交需要分支承接。关闭时 Commit 和 Tag 的直接 Detached HEAD 菜单置灰，并解释需要创建分支；历史 Commit 菜单紧邻提供创建并切换分支。Commit 顶端有本地分支直接指向时，普通切换入口显示分支名称或分支选择，不借用 Detached HEAD 文案；当前分支和被其他工作树占用的单一分支禁用。工作树 不显示 Detached 选项；工作树 要求已有或新建分支。宿主执行前重新检查策略，Stash 重试在保存 Stash 前拦截，禁止显式和隐式 Detached 工作树。外部造成的已有 Detached HEAD 可以正常读取、返回分支和创建分支；Rebase 内部临时 Detached 状态不受此限制。
 - 无变更、无 Staged 文件或没有可用目标时禁用对应操作并说明原因。Detached HEAD 禁用工具栏 Push。仓库没有远端时，Push 不显示无法完成的空选择器，而是说明本地 Commit 已保存、发送前需要连接远端，并直接进入 `Add Remote…`；添加成功后返回 Push。Push 对话框先显示实际的 `Local Branch → Remote/Remote Branch`；当前 upstream、`branch.*.pushRemote`、`remote.pushDefault` 或唯一远端可确定目标时不得显示空白可选项。用户通过 `Change Target…` 显式修改目标；首次 Push 说明会建立 upstream。多远端且没有配置目标时要求选择远端。高级选项中的“同时推送相关的注解 Tag”由 Git 操作设置初始化，可单次覆盖；只有明确勾选“记住为默认”并提交时才回写，取消不保存。关闭时使用 `--no-follow-tags`，开启时使用 `--follow-tags`，不包含轻量或无关 Tag。`Force-with-lease` 始终默认关闭且不可持久化，启用后显示确认的远端 Commit，远端仍与该版本一致才执行；目标在本地尚不存在时，仅允许远端也仍不存在。后台 Fetch 不改变已打开窗口的确认版本。Push 地址变化或配置多个 Push 地址时拒绝此危险操作，刷新并重新选择单一目标后确认。
 - 当前分支存在未推送提交时，工具栏 Push 与仓库导航项使用高饱和通知角标显示数量；用户可以在“界面 / 状态提醒”中选用预设色或输入 HEX，文字自动在黑白之间选择以保持对比，并使用亮色边缘增强辨识度。数量为零时不显示角标。仓库列表先显示，角标状态随后在后台加载，当前仓库的角标随状态刷新即时更新。
@@ -233,6 +234,7 @@ Diff 标题栏平铺显示当前文件的新增、修改、删除数量，当前
 | `alwaygit.allowDetachedHead` | `false`；布尔值 | 高级设置的唯一配置来源；有工作区时保存到工作区，无工作区时保存到用户设置；应用后同步各工作台，禁止未应用预览放开操作 |
 | `alwaygit.pushFollowTags` | `false`；布尔值 | 普通 Push 是否默认附带相关注解 Tag；对话框可单次覆盖并明确记住 |
 | `alwaygit.pushTagAfterCreate` | `false`；布尔值 | Create Tag 是否默认在本地创建后把新标签推送到所选 Remote；对话框可单次覆盖并明确记住 |
+| `alwaygit.defaultResetMode` | `mixed`；`soft` / `mixed` / `hard` | Reset 对话框的默认模式；可在设置页修改，也可在执行时明确记住本次选择 |
 | `alwaygit.language` | `en`；`en` / `zh-CN` / `auto` | 初始语言；`auto` 跟随 VS Code，界面设置中的工作区语言选择优先 |
 
 修改 Git 路径或刷新间隔后需要重新加载 VS Code 窗口。界面设置中的主题、配色、字号、密度和语言应用后即时生效。

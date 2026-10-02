@@ -56,13 +56,13 @@ describe('repository UI consistency', () => {
       expect(tagMenu.find(item=>item.label.includes('Detached HEAD'))).toMatchObject({disabled:true});
       tagMenu[0].run();expect(open).toHaveBeenLastCalledWith({type:'branch.create',target:tag.fullName,checkout:true,requireCheckout:true});
     }
-    store.setState({language:'en',operationSettings:{allowDetachedHead:true,pushFollowTags:false,pushTagAfterCreate:false,scope:'workspace'}});
+    store.setState({language:'en',operationSettings:{allowDetachedHead:true,pushFollowTags:false,pushTagAfterCreate:false,defaultResetMode:'mixed',scope:'workspace'}});
     const enabled=menuFor(target,api).items;
     expect(enabled.filter(item=>item.label.includes('Detached HEAD'))).toHaveLength(1);
     expect(enabled[0].disabled).toBe(false);enabled[0].run();
     expect(open).toHaveBeenLastCalledWith({type:'commit.checkout',target:'old'});
     expect(checkout).not.toHaveBeenCalled();
-    store.setState({operationSettings:{allowDetachedHead:false,pushFollowTags:false,pushTagAfterCreate:false,scope:'workspace'},snapshot:{...snapshot(a),refs:[{name:'topic',fullName:'refs/heads/topic',kind:'local',oid:'old'}]}});
+    store.setState({operationSettings:{allowDetachedHead:false,pushFollowTags:false,pushTagAfterCreate:false,defaultResetMode:'mixed',scope:'workspace'},snapshot:{...snapshot(a),refs:[{name:'topic',fullName:'refs/heads/topic',kind:'local',oid:'old'}]}});
     const branch=menuFor(target,api).items[0];expect(branch).toMatchObject({label:'Switch to Branch "topic"…',disabled:false});branch.run();expect(checkout).toHaveBeenCalledWith('old');
     store.setState({snapshot:{...store.getState().snapshot!,branch:'topic'}});
     expect(menuFor(target,api).items[0]).toMatchObject({disabled:true,reason:'This is the current branch.'});
@@ -172,17 +172,19 @@ describe('repository UI consistency', () => {
   it('uses host operation settings and keeps failed saves from enabling Detached Checkout', async () => {
     expect(store.getState().operationSettings.allowDetachedHead).toBe(false);
     bridge.rpc.mockImplementation(async (method: string) => {
-      if (method === 'operationSettings') return { allowDetachedHead: true, pushFollowTags: true, pushTagAfterCreate: true, scope: 'workspace' };
+      if (method === 'operationSettings') return { allowDetachedHead: true, pushFollowTags: true, pushTagAfterCreate: true, defaultResetMode: 'soft', scope: 'workspace' };
       throw new Error('Settings write failed');
     });
     await store.getState().loadOperationSettings();
     expect(store.getState().operationSettings.allowDetachedHead).toBe(true);
-    bridge.event?.({ type: 'operationSettingsChanged', settings: { allowDetachedHead: false, pushFollowTags: false, pushTagAfterCreate: false, scope: 'workspace' } });
-    await expect(store.getState().saveOperationSettings({allowDetachedHead:true,pushFollowTags:true,pushTagAfterCreate:true})).rejects.toThrow('Settings write failed');
+    expect(store.getState().operationSettings.defaultResetMode).toBe('soft');
+    bridge.event?.({ type: 'operationSettingsChanged', settings: { allowDetachedHead: false, pushFollowTags: false, pushTagAfterCreate: false, defaultResetMode: 'mixed', scope: 'workspace' } });
+    await expect(store.getState().saveOperationSettings({allowDetachedHead:true,pushFollowTags:true,pushTagAfterCreate:true,defaultResetMode:'hard'})).rejects.toThrow('Settings write failed');
     expect(store.getState().operationSettings.allowDetachedHead).toBe(false);
-    bridge.rpc.mockResolvedValue({ allowDetachedHead: true, pushFollowTags: true, pushTagAfterCreate: true, scope: 'workspace' });
-    await store.getState().saveOperationSettings({allowDetachedHead:true,pushFollowTags:true,pushTagAfterCreate:true});
+    bridge.rpc.mockResolvedValue({ allowDetachedHead: true, pushFollowTags: true, pushTagAfterCreate: true, defaultResetMode: 'hard', scope: 'workspace' });
+    await store.getState().saveOperationSettings({allowDetachedHead:true,pushFollowTags:true,pushTagAfterCreate:true,defaultResetMode:'hard'});
     expect(store.getState().operationSettings.allowDetachedHead).toBe(true);
+    expect(store.getState().operationSettings.defaultResetMode).toBe('hard');
     expect(bridge.save.mock.calls.at(-1)?.[0]).not.toHaveProperty('allowDetachedHead');
   });
   it('previews settings without persisting them and rolls back while preserving live data', async () => {

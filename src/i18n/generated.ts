@@ -860,6 +860,10 @@ export const catalog = {
     "en": "Select a remote for the new Tag.",
     "zh-CN": "请选择新标签要推送到的远端。"
   },
+  "actions.rememberResetModeAsDefault": {
+    "en": "Remember this Reset mode as default",
+    "zh-CN": "将此重置模式记为默认"
+  },
   "arguments.gitCommandArgumentsAreTooLongSelectFewerItems": {
     "en": "Git command arguments are too long. Select fewer items or shorten the description and retry.",
     "zh-CN": "Git 命令参数过长。请选择更少的项目或缩短说明后重试。"
@@ -2207,6 +2211,10 @@ export const catalog = {
   "manifest.contributes.configuration.properties.alwaygit.pushTagAfterCreate.description": {
     "en": "Push a newly created Tag to the selected remote by default. The Create Tag dialog can override and remember this choice.",
     "zh-CN": "默认把新建标签推送到所选远端；创建标签对话框可以单次覆盖并记住该选择。"
+  },
+  "manifest.contributes.configuration.properties.alwaygit.defaultResetMode.description": {
+    "en": "Default mode selected when opening Reset. The dialog can override and remember Soft, Mixed, or Hard.",
+    "zh-CN": "打开重置对话框时默认选择的模式；可在对话框中覆盖并记住 Soft、Mixed 或 Hard。"
   },
   "menus.createLocalTrackingBranches": {
     "en": "Create Local Tracking Branches…",
@@ -4215,6 +4223,14 @@ export const catalog = {
     "en": "Create Tag selects a remote and pushes only the new Tag. If the push fails, the local Tag is retained.",
     "zh-CN": "创建标签时选择远端，并且只推送新标签；如果推送失败，本地标签会保留。"
   },
+  "settings.defaultResetMode": {
+    "en": "Default Reset mode",
+    "zh-CN": "默认重置模式"
+  },
+  "settings.resetDialogStartsWithThisModeHardStillRequires": {
+    "en": "The Reset dialog starts with this mode. Hard remains a destructive action and is still confirmed each time.",
+    "zh-CN": "重置对话框会默认选中此模式；Hard 仍属于破坏性操作，每次执行前都会保留确认。"
+  },
   "sidebar.refreshRepositoryListAndStatusBadges": {
     "en": "Refresh repository list and status badges",
     "zh-CN": "刷新仓库列表和状态角标"
@@ -5071,6 +5087,7 @@ export interface MessageParameters {
   "actions.rememberTagCreatePushChoiceAsDefault": {  };
   "actions.theTagRemainsLocalIfTheRemotePushFails": {  };
   "actions.selectARemoteForTheNewTag": {  };
+  "actions.rememberResetModeAsDefault": {  };
   "arguments.gitCommandArgumentsAreTooLongSelectFewerItems": {  };
   "arguments.messagesCannotContainNULCharacters": {  };
   "catalogStore.theSharedRepositoryCatalogIsDamagedOrUsesAn": {  };
@@ -5402,6 +5419,7 @@ export interface MessageParameters {
   "manifest.contributes.configuration.properties.alwaygit.allowDetachedHead.description": {  };
   "manifest.contributes.configuration.properties.alwaygit.pushFollowTags.description": {  };
   "manifest.contributes.configuration.properties.alwaygit.pushTagAfterCreate.description": {  };
+  "manifest.contributes.configuration.properties.alwaygit.defaultResetMode.description": {  };
   "menus.createLocalTrackingBranches": {  };
   "menus.checkoutAsLocalBranch": {  };
   "menus.repositoriesSelected": { count: number };
@@ -5900,6 +5918,8 @@ export interface MessageParameters {
   "settings.branchPushUsesFollowTagsWhenEnabled": {  };
   "settings.pushNewTagsAfterCreationByDefault": {  };
   "settings.tagCreationOffersTheSelectedRemoteAndKeepsThe": {  };
+  "settings.defaultResetMode": {  };
+  "settings.resetDialogStartsWithThisModeHardStillRequires": {  };
   "sidebar.refreshRepositoryListAndStatusBadges": {  };
   "sidebar.collapse": {  };
   "sidebar.expand": {  };

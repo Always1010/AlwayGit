@@ -784,5 +784,17 @@
     "zh-CN": "创建标签时选择远端，并且只推送新标签；如果推送失败，本地标签会保留。",
     "review": "translated",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.defaultResetMode": {
+    "en": "Default Reset mode",
+    "zh-CN": "默认重置模式",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.resetDialogStartsWithThisModeHardStillRequires": {
+    "en": "The Reset dialog starts with this mode. Hard remains a destructive action and is still confirmed each time.",
+    "zh-CN": "重置对话框会默认选中此模式；Hard 仍属于破坏性操作，每次执行前都会保留确认。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
   }
 }

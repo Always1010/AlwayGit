@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { actionSchema, createRepositoryCollectionSchema, reorderRepositorySchema, diffSchema, openRepositorySchema, openWorkbenchSchema, requestSchema, sessionSchema } from '../src/protocol/validation';
+import { actionSchema, createRepositoryCollectionSchema, reorderRepositorySchema, diffSchema, openRepositorySchema, openWorkbenchSchema, operationSettingsSchema, requestSchema, sessionSchema } from '../src/protocol/validation';
 
 describe('Workbench protocol validation', () => {
   it('requires the raw Tag identity before deletion', () => {
@@ -15,6 +15,11 @@ describe('Workbench protocol validation', () => {
   it('accepts an explicit remote for create-and-push Tag', () => {
     const action={type:'tag.create' as const,name:'v1',target:'HEAD',message:'release',pushRemote:'origin'};
     expect(actionSchema.parse(action)).toEqual(action);
+  });
+  it('requires a valid persisted Reset default', () => {
+    const settings={allowDetachedHead:false,pushFollowTags:false,pushTagAfterCreate:false,defaultResetMode:'hard' as const};
+    expect(operationSettingsSchema.parse(settings)).toEqual(settings);
+    expect(operationSettingsSchema.safeParse({...settings,defaultResetMode:'keep'}).success).toBe(false);
   });
   it.each(['merge', 'rebase', 'reset'])('requires a captured branch and HEAD for %s', type => {
     const action = { type, target: 'HEAD', ...(type === 'reset' ? { mode: 'hard' } : {}) };

@@ -717,7 +717,7 @@ Stash 用于暂时保存尚未提交的修改。它与 Stage 完全不同：Stag
 
 1. 确认当前分支确实是要重置的分支。
 2. 右键目标 Commit 选择 Reset…。
-3. 在对话框中核对目标与模式：Soft 保留 Index 与工作文件；Mixed 重置 Index 并保留工作文件；Hard 同时重置工作文件。
+3. 在对话框中核对目标与模式：Soft 保留 Index 与工作文件；Mixed 重置 Index 并保留工作文件；Hard 同时重置工作文件。需要以后默认使用当前模式时，勾选“将此重置模式记为默认”；也可在设置 → 高级 → Git 操作中修改默认值。
 4. 阅读全部警告，只有模式与意图完全一致时才执行 Reset；若出现 VS Code 原生 Proceed 确认，再核对目标后继续。
 5. 检查当前分支指向、Staged 和 Unstaged，确认实际结果。
 
@@ -965,6 +965,7 @@ Git 在仓库所在的 VS Code 扩展宿主中执行。产品架构面向本地�
 | alwaygit.allowDetachedHead | false | 直接进入 Detached HEAD 的高级策略 |
 | alwaygit.pushFollowTags | false | 普通 Push 默认是否附带相关注解 Tag |
 | alwaygit.pushTagAfterCreate | false | 新建 Tag 后默认是否推送到所选 Remote |
+| alwaygit.defaultResetMode | mixed | Reset 对话框默认选中的 Soft、Mixed 或 Hard 模式 |
 | alwaygit.language | en / zh-CN / auto | 初始语言，工作台保存的选择优先 |
 
 修改 Git 路径或刷新间隔后重新加载 VS Code 窗口。工作台内的主题、配色、字号、密度和语言在应用后即时生效。

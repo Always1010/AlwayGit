@@ -1075,5 +1075,11 @@
     "zh-CN": "请选择新标签要推送到的远端。",
     "review": "translated",
     "context": "webview/ActionDialog.tsx"
+  },
+  "actions.rememberResetModeAsDefault": {
+    "en": "Remember this Reset mode as default",
+    "zh-CN": "将此重置模式记为默认",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx"
   }
 }
