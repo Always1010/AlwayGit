@@ -1051,5 +1051,29 @@
     "zh-CN": "此选项对应 Git --follow-tags，不包含轻量标签或与本分支无关的标签。",
     "review": "translated",
     "context": "webview/ActionDialog.tsx"
+  },
+  "actions.pushThisTagAfterCreation": {
+    "en": "Push this Tag after creation",
+    "zh-CN": "创建后推送此标签",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx"
+  },
+  "actions.rememberTagCreatePushChoiceAsDefault": {
+    "en": "Remember this create-and-push choice as default",
+    "zh-CN": "将本次创建后推送选择记为默认",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx"
+  },
+  "actions.theTagRemainsLocalIfTheRemotePushFails": {
+    "en": "If the remote push fails, the Tag remains available locally so you can retry it with Push Tag.",
+    "zh-CN": "如果远端推送失败，标签仍会保留在本地，可稍后通过推送标签重试。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx"
+  },
+  "actions.selectARemoteForTheNewTag": {
+    "en": "Select a remote for the new Tag.",
+    "zh-CN": "请选择新标签要推送到的远端。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx"
   }
 }

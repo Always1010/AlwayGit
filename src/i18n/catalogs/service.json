@@ -586,5 +586,11 @@
     "zh-CN": "已推送 {{pushed}} 个标签；{{count}} 个失败：\n{{value}}",
     "review": "translated",
     "context": "src/git/service.ts / executeNow"
+  },
+  "service.tagWasCreatedLocallyButCouldNotBePushed": {
+    "en": "Tag {{name}} was created locally but could not be pushed to {{destination}}. The local Tag was retained.\n{{value}}",
+    "zh-CN": "标签 {{name}} 已在本地创建，但无法推送到 {{destination}}。本地标签已保留。\n{{value}}",
+    "review": "translated",
+    "context": "src/git/service.ts / executeNow"
   }
 }

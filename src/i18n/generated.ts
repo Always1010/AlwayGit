@@ -844,6 +844,22 @@ export const catalog = {
     "en": "This follows Git --follow-tags: lightweight and unrelated Tags are not included.",
     "zh-CN": "此选项对应 Git --follow-tags，不包含轻量标签或与本分支无关的标签。"
   },
+  "actions.pushThisTagAfterCreation": {
+    "en": "Push this Tag after creation",
+    "zh-CN": "创建后推送此标签"
+  },
+  "actions.rememberTagCreatePushChoiceAsDefault": {
+    "en": "Remember this create-and-push choice as default",
+    "zh-CN": "将本次创建后推送选择记为默认"
+  },
+  "actions.theTagRemainsLocalIfTheRemotePushFails": {
+    "en": "If the remote push fails, the Tag remains available locally so you can retry it with Push Tag.",
+    "zh-CN": "如果远端推送失败，标签仍会保留在本地，可稍后通过推送标签重试。"
+  },
+  "actions.selectARemoteForTheNewTag": {
+    "en": "Select a remote for the new Tag.",
+    "zh-CN": "请选择新标签要推送到的远端。"
+  },
   "arguments.gitCommandArgumentsAreTooLongSelectFewerItems": {
     "en": "Git command arguments are too long. Select fewer items or shorten the description and retry.",
     "zh-CN": "Git 命令参数过长。请选择更少的项目或缩短说明后重试。"
@@ -2187,6 +2203,10 @@ export const catalog = {
   "manifest.contributes.configuration.properties.alwaygit.pushFollowTags.description": {
     "en": "Default to pushing missing annotated Tags reachable from the selected branch during Push. The Push dialog can override and remember this choice.",
     "zh-CN": "分支 Push 时默认同时推送该分支可达且远端缺少的注解标签。可在 Push 对话框中临时覆盖并记住选择。"
+  },
+  "manifest.contributes.configuration.properties.alwaygit.pushTagAfterCreate.description": {
+    "en": "Push a newly created Tag to the selected remote by default. The Create Tag dialog can override and remember this choice.",
+    "zh-CN": "默认把新建标签推送到所选远端；创建标签对话框可以单次覆盖并记住该选择。"
   },
   "menus.createLocalTrackingBranches": {
     "en": "Create Local Tracking Branches…",
@@ -3655,6 +3675,10 @@ export const catalog = {
     "en": "{{pushed}} Tag(s) pushed; {{count}} failed:\n{{value}}",
     "zh-CN": "已推送 {{pushed}} 个标签；{{count}} 个失败：\n{{value}}"
   },
+  "service.tagWasCreatedLocallyButCouldNotBePushed": {
+    "en": "Tag {{name}} was created locally but could not be pushed to {{destination}}. The local Tag was retained.\n{{value}}",
+    "zh-CN": "标签 {{name}} 已在本地创建，但无法推送到 {{destination}}。本地标签已保留。\n{{value}}"
+  },
   "session.lightAndDarkGraphPalettesMustHaveTheSame": {
     "en": "Light and dark graph palettes must have the same size",
     "zh-CN": "浅色和深色 Graph 调色板的大小必须相同"
@@ -4182,6 +4206,14 @@ export const catalog = {
   "settings.branchPushUsesFollowTagsWhenEnabled": {
     "en": "When enabled, branch Push includes missing annotated Tags reachable from that branch. Lightweight and unrelated Tags still require Push Tag.",
     "zh-CN": "开启后，分支 Push 会附带该分支可达且远端缺少的注解标签；轻量标签和无关标签仍需使用“推送标签”。"
+  },
+  "settings.pushNewTagsAfterCreationByDefault": {
+    "en": "Push newly created Tags by default",
+    "zh-CN": "默认推送新建标签"
+  },
+  "settings.tagCreationOffersTheSelectedRemoteAndKeepsThe": {
+    "en": "Create Tag selects a remote and pushes only the new Tag. If the push fails, the local Tag is retained.",
+    "zh-CN": "创建标签时选择远端，并且只推送新标签；如果推送失败，本地标签会保留。"
   },
   "sidebar.refreshRepositoryListAndStatusBadges": {
     "en": "Refresh repository list and status badges",
@@ -5035,6 +5067,10 @@ export interface MessageParameters {
   "actions.pushRelatedAnnotatedTags": {  };
   "actions.rememberPushTagChoiceAsDefault": {  };
   "actions.followTagsDoesNotPushLightweightOrUnrelatedTags": {  };
+  "actions.pushThisTagAfterCreation": {  };
+  "actions.rememberTagCreatePushChoiceAsDefault": {  };
+  "actions.theTagRemainsLocalIfTheRemotePushFails": {  };
+  "actions.selectARemoteForTheNewTag": {  };
   "arguments.gitCommandArgumentsAreTooLongSelectFewerItems": {  };
   "arguments.messagesCannotContainNULCharacters": {  };
   "catalogStore.theSharedRepositoryCatalogIsDamagedOrUsesAn": {  };
@@ -5365,6 +5401,7 @@ export interface MessageParameters {
   "manifest.contributes.configuration.properties.alwaygit.refreshInterval.description": {  };
   "manifest.contributes.configuration.properties.alwaygit.allowDetachedHead.description": {  };
   "manifest.contributes.configuration.properties.alwaygit.pushFollowTags.description": {  };
+  "manifest.contributes.configuration.properties.alwaygit.pushTagAfterCreate.description": {  };
   "menus.createLocalTrackingBranches": {  };
   "menus.checkoutAsLocalBranch": {  };
   "menus.repositoriesSelected": { count: number };
@@ -5728,6 +5765,7 @@ export interface MessageParameters {
   "service.selectAtLeastOneTag": {  };
   "service.theTagChangedRefreshAndReopenThePushDialog": { name: ParameterValue };
   "service.tagEsPushedFailed": { pushed: ParameterValue; count: number; value: ParameterValue };
+  "service.tagWasCreatedLocallyButCouldNotBePushed": { name: ParameterValue; destination: ParameterValue; value: ParameterValue };
   "session.lightAndDarkGraphPalettesMustHaveTheSame": {  };
   "session.zhCN": {  };
   "session.sessionExceedsTheStorageLimit": {  };
@@ -5860,6 +5898,8 @@ export interface MessageParameters {
   "settings.webview": {  };
   "settings.pushRelatedAnnotatedTagsByDefault": {  };
   "settings.branchPushUsesFollowTagsWhenEnabled": {  };
+  "settings.pushNewTagsAfterCreationByDefault": {  };
+  "settings.tagCreationOffersTheSelectedRemoteAndKeepsThe": {  };
   "sidebar.refreshRepositoryListAndStatusBadges": {  };
   "sidebar.collapse": {  };
   "sidebar.expand": {  };
