@@ -100,7 +100,7 @@ Git 使用参数数组与 `shell: false`，引用和路径额外校验，文件�
 
 隔离依赖 Git 2.43 或更新版本读取系统/全局属性来源。支持范围按能否准确复现现场判断：sparse checkout、受影响的 gitlink/submodule、活动的外部 filter、自定义 merge driver 或默认外部 merge driver 均拒绝隔离；单文件超过 32 MiB 或本地文件快照累计超过 128 MiB 也拒绝。非普通且无法受支持地复制的文件类型、无法完整复制的占位目录，以及路径父级的符号链接会阻止操作；可完整复制的普通文件与受支持的叶子符号链接按实际状态复制。这些边界限定 AlwayGit 的隔离试验能力，不是 Git Stash 本身的限制；遇到不支持的现场不会退回真实仓库试运行。
 
-Fetch、Pull 和 Push 沿用系统 Git Credential Helper、SSH Agent 和配置。需要输入时，使用每条命令独立的回环 IPC AskPass 桥接到 VS Code 输入框。桥接使用随机令牌并在命令结束后关闭；凭据不持久化，也不传到 Webview。日志与前端错误隐藏 URL 中的认证信息。
+Fetch、Pull 和 Push 沿用系统 Git Credential Helper、SSH Agent 和配置。需要输入时，使用每条命令独立的回环 IPC AskPass 桥接到 VS Code 输入框。桥接使用随机令牌；Git 超时、取消或输出超限立即取消输入框，连接关闭也取消对应输入。认证桥资源在进程及终止句柄关闭后释放，终止未确认时继续保留写隔离。Fetch、Pull、Push 默认有 10 分钟宿主命令预算，普通查询默认 60 秒；Webview 的 action 等待宿主结果，不以读请求的 180 秒超时提前报告失败，原生确认等待不消耗 Git 命令预算。凭据不持久化，也不传到 Webview。日志与前端错误隐藏 URL 中的认证信息。
 
 Snapshot 为当前分支解析 Push 目标，依次考虑 `branch.<name>.pushRemote`、`remote.pushDefault`、分支 remote、upstream 和唯一远端，并把本地分支、远端分支及 upstream 状态作为结构化数据交给 Webview。Push 对话框提交明确的本地与远端 refspec；远端分支名可以与本地分支名不同。首次建立跟踪时才请求 `--set-upstream`，已有 upstream 的普通 Push 不隐式改变跟踪关系。
 

@@ -25,7 +25,13 @@ export async function activate(context: vscode.ExtensionContext) {
     environment: async (_repo, args) => {
       if (!['fetch', 'pull', 'push'].includes(args[0])) return {};
       return credentialEnvironment(vscode.Uri.joinPath(context.extensionUri, 'dist', 'askpass.cjs').fsPath,
-        async (message, password) => vscode.window.showInputBox({ title: 'AlwayGit · Git Authentication', prompt: message, password, ignoreFocusOut: true }));
+        async (message, password, signal) => {
+          const cancellation = new vscode.CancellationTokenSource(), cancel = () => cancellation.cancel();
+          signal.addEventListener('abort', cancel, { once: true });
+          if (signal.aborted) cancel();
+          try { return await vscode.window.showInputBox({ title: 'AlwayGit · Git Authentication', prompt: message, password, ignoreFocusOut: true }, cancellation.token); }
+          finally { signal.removeEventListener('abort', cancel); cancellation.dispose(); }
+        });
     },
   });
   const manager = new RepositoryManager(git, context, output);

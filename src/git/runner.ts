@@ -10,6 +10,7 @@ export interface GitRunOptions {
   maxOutputBytes?: number;
   captureBytes?: number;
   onStderr?: (chunk: Buffer) => void;
+  onStop?: () => void;
   signal?: AbortSignal;
   readOnly?: boolean;
 }
@@ -56,6 +57,7 @@ export function runGitProcess(options: GitRunOptions): Promise<GitResult> {
     const stop = (error: GitError) => {
       if (failure || closed) return;
       failure = error;
+      try { options.onStop?.(); } catch { /* Prompt cleanup must not interrupt process termination. */ }
       clearTimeout(timer);
       terminationTimer = setTimeout(() => {
         if (settled) return;

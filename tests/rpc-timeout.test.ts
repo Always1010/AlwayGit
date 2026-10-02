@@ -13,6 +13,14 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('host request timeouts', () => {
+  it('waits for the host result while an action exceeds the frontend query deadline', async () => {
+    const { rpc } = await import('../webview/rpc');
+    const pending = rpc('action', 'repo', { type: 'fetch' });
+    await vi.advanceTimersByTimeAsync(600_001);
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    receive({ data: { type: 'response', id: postMessage.mock.calls[0][0].id, error: { code: 'TIMEOUT', message: 'Host network deadline exceeded' } } });
+    await expect(pending).rejects.toMatchObject({ code: 'TIMEOUT', message: 'Host network deadline exceeded' });
+  });
   it('lets the cancellable directory scan finish after the normal Git timeout', async () => {
     const { rpc } = await import('../webview/rpc');
     const pending = rpc('addRepository');

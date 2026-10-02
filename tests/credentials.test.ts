@@ -5,6 +5,22 @@ import { chmod } from 'node:fs/promises';
 import { credentialEnvironment } from '../src/application/credentials';
 
 describe('Git AskPass bridge', () => {
+  it.each(['cancelPrompts', 'dispose'] as const)('closes pending input when the command calls %s', async stop => {
+    let ready!: () => void;
+    const entered = new Promise<void>(resolve => { ready = resolve; });
+    let promptSignal: AbortSignal | undefined;
+    const adapter = await credentialEnvironment(path.resolve('src/extension/askpass.cjs'), async (_message, _password, signal) => {
+      promptSignal = signal; ready();
+      return new Promise<undefined>(resolve => signal.addEventListener('abort', () => resolve(undefined), { once: true }));
+    });
+    try {
+      const child = spawn(process.execPath, ['src/extension/askpass.cjs', 'Password:'], { env: { ...process.env, ...adapter.env }, windowsHide: true });
+      const finished = new Promise<number>((resolve, reject) => { child.once('error', reject); child.once('close', code => resolve(code ?? -1)); });
+      await entered; adapter[stop]();
+      expect(promptSignal?.aborted).toBe(true);
+      expect(await finished).toBe(1);
+    } finally { adapter.dispose(); }
+  });
   it('answers actual Git prompts without persisting credentials', async () => {
     if (process.platform !== 'win32') await chmod(path.resolve('src/extension/askpass.sh'), 0o755);
     const prompts: { message: string; password: boolean }[] = [];
