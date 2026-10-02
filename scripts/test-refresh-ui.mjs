@@ -17,7 +17,7 @@ export async function verifyRefresh(browser, url) {
         emit(changes) { window.postMessage({ type: 'changed', repoId: repo.id, changes }, '*'); },
       };
       window.acquireVsCodeApi = () => ({ getState: () => ({}), setState: () => {}, postMessage(request) {
-        if (request.method === 'saveSession') return;
+        if (request.method === 'saveSession') { setTimeout(() => window.postMessage({ type: 'response', id: request.id, result: null }, '*'), 0); return; }
         fixture.calls.push(request.method);
         let result;
         if (request.method === 'repositories') result = [repo];

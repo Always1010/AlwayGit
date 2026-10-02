@@ -16,7 +16,7 @@ export async function verifyDiffNavigation(browser, url) {
         emit() { window.postMessage({ type: 'changed', repoId: repo.id, changes: { paths: ['diff.txt'] } }, '*'); },
       };
       window.acquireVsCodeApi = () => ({ getState: () => ({}), setState: () => {}, postMessage(request) {
-        if (request.method === 'saveSession') return;
+        if (request.method === 'saveSession') { setTimeout(() => window.postMessage({ type: 'response', id: request.id, result: null }, '*'), 0); return; }
         fixture.calls.push(request.method);
         let result;
         if (request.method === 'repositories') result = [repo];
@@ -119,8 +119,8 @@ export async function verifyDiffNavigation(browser, url) {
     const largeStart = await diff.locator('.active-change-start').boundingBox(), largeViewport = await viewport.boundingBox();
     assert.ok(Math.abs(largeStart.y - largeViewport.y) < 2, 'A block taller than the viewport is revealed from its beginning');
     const topRow = await viewport.evaluate(element => element.scrollTop / document.querySelector('.diff-line').getBoundingClientRect().height);
-    await page.getByRole('button', { name: 'Interface Settings', exact: true }).click();
-    const settings = page.getByTestId('interface-settings'), dialog = page.getByRole('dialog', { name: 'Interface Settings' });
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    const settings = page.getByTestId('interface-settings'), dialog = page.getByRole('dialog', { name: 'Settings' });
     await settings.getByRole('button', { name: 'Text & density', exact: true }).click();
     await settings.getByLabel('Diff line height', { exact: true }).selectOption('24');
     await page.waitForFunction(() => document.querySelector('.diff-line')?.getBoundingClientRect().height === 24);
