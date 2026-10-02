@@ -21,6 +21,18 @@ beforeEach(async () => {
 });
 afterEach(() => { vi.useRealTimers(); });
 describe('repository UI consistency', () => {
+  it('starts without choosing the first repository and clears a removed active repository', async()=>{
+    await store.getState().initialize();
+    expect(store.getState().repoId).toBeUndefined();
+    expect(bridge.rpc.mock.calls.some(([method])=>method==='snapshot')).toBe(false);
+    await store.getState().selectRepository('a');
+    const fallback=bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method,...args)=>method==='repositories'?Promise.resolve([b]):fallback(method,...args));
+    await store.getState().initialize();
+    expect(store.getState().repoId).toBeUndefined();
+    expect(store.getState().snapshot).toBeUndefined();
+    expect(store.getState().notice).toContain('removed');
+  });
   it('inspects before Continue or an operation Commit and sends only the confirmed action',async()=>{
     await store.getState().selectRepository('a');
     store.setState({snapshot:{...snapshot(a),operation:{kind:'merge',conflicts:0,canContinue:true,canAbort:true,canSkip:false}}});

@@ -8,6 +8,7 @@ describe('repository view state', () => {
   it('does not describe an empty or loading workbench as Detached HEAD', () => {
     expect(repositoryViewState(undefined, false, false)).toBe('unselected');
     expect(repositoryViewState(undefined, true, true)).toBe('opening');
+    expect(repositoryViewState(undefined, true, false)).toBe('unavailable');
   });
 
   it('uses Detached HEAD only for a loaded repository without a branch', () => {
