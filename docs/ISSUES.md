@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-057：Cherry-pick 普通入口允许重复应用当前分支已有提交
+
+- 日期：2026-10-03
+- 状态：已解决
+- 现象：在 main 上右键当前 HEAD 或当前分支已有提交时，Cherry-pick to main 仍可点击，执行后才报告失败，可能留下需要处理的 Git 操作状态。
+- 原因：Commit 菜单只检查本地分支、活动操作和 Merge Commit，没有查询真实祖先关系；执行入口也没有重复应用预检。
+- 解决方案：菜单用独立可取消查询检查完整 Git 历史，当前 HEAD 即时禁用；已有提交、混合多选、检查中和查询失败时禁用普通入口。保留带勾选确认的历史重新应用，禁止当前 HEAD 自应用；宿主在任何写入前预检全部选择并复核目标上下文，保持 Revert 原有行为。
+- 验证方式：双语资源检查、类型检查、84 项定向单元测试、生产构建和 Cherry-pick 无头界面专项通过。真实临时仓库覆盖 HEAD、历史祖先、Merge 纳入的提交、批量预检无部分写入、其他分支独有提交、Revert 后明确重新应用、目标 HEAD/分支变化和 Detached HEAD；界面覆盖查询期间/失败禁用、过期响应取消、确认前禁止提交、编辑后重新确认与对话框目标绑定。未启动真实 VS Code 桌面集成测试。
+- 相关文件：`src/git/service.ts`、`src/protocol/types.ts`、`src/protocol/validation.ts`、`src/protocol/queries.ts`、`src/extension/workbench.ts`、`webview/useCherryPickCheck.ts`、`webview/menus.ts`、`webview/App.tsx`、`webview/ActionDialog.tsx`、`webview/demo.ts`、`src/i18n/catalogs/`、相关测试和工作台规格、用户手册。
+
 ## BUG-056：定位 HEAD 无条件清空并重载 Graph
 
 - 日期：2026-10-03

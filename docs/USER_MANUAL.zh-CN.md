@@ -685,7 +685,7 @@ Stash 用于暂时保存尚未提交的修改。它与 Stage 完全不同：Stag
 
 **结果：** 目标改动以新的提交进入当前分支，或明确暂停等待处理。
 
-**注意：** 普通 Commit 的 Cherry-pick 可直接执行，点击前就要确认目标。包含 Merge Commit 的批量选择不支持批量 Cherry-pick。
+**注意：** 当前 HEAD 和当前分支历史中已有的提交会将普通 Cherry-pick 入口置灰，并显示原因；多选中包含这些提交时整体禁用，请先取消选择。其他普通 Commit 在关系检查通过后可直接执行，点击前就要确认目标。包含 Merge Commit 的批量选择不支持批量 Cherry-pick。若历史提交的改动曾被撤销或移除，可选择 `重新应用历史提交…`（英文界面为 `Reapply Historical Commits…`），勾选明确确认后执行；当前 HEAD 不提供此入口，重新应用仍可能产生冲突或空结果。
 
 ![图 29  Commit 菜单明确 Cherry-pick to main 此动作会应用到当前分支](images/user-manual/figure-29.png)
 

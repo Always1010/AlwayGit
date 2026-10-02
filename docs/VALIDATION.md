@@ -25,6 +25,7 @@
 | --- | --- |
 | `--workbench-only` | 整体布局、基础导航和宿主入口 |
 | `--branch-only` | 分支创建、Detached HEAD 策略与 Push 引导 |
+| `--cherry-pick-only` | Commit 菜单祖先关系禁用、过期查询取消与历史重新应用确认 |
 | `--stash-only` | Stash 详情、保存范围及恢复受阻 |
 | `--refresh-only` | 后台刷新、选择保留和 Diff 更新 |
 | `--appearance-only` | 设置、主题、配色、字体、尺寸与恢复布局 |

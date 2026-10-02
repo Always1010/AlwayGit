@@ -21,6 +21,29 @@ beforeEach(async () => {
 });
 afterEach(() => { vi.useRealTimers(); });
 describe('repository UI consistency', () => {
+  it('disables already-included cherry-picks, waits for ancestry and keeps deliberate historical reapplication separate', async () => {
+    await store.getState().selectRepository('a');
+    store.setState({commits:[commit,...['topic','old'].map(oid=>({...commit,oid}))]});
+    const { menuFor } = await import('../webview/menus');
+    const open=vi.fn(),noop=vi.fn(),api={open,checkout:noop,openDiff:noop,editFile:noop,host:vi.fn().mockResolvedValue(undefined),addRepository:vi.fn().mockResolvedValue(undefined),removeRepositories:noop,fetchRepositories:noop};
+    const cherry=(oid:string,check?:{included:string[];failed?:boolean},oids?:string[])=>menuFor({kind:'commit',oid,oids},api,check).items.find(item=>item.label.startsWith('Cherry-pick'))!;
+    expect(cherry('abc',{included:[]})).toMatchObject({disabled:true,reason:'This commit is the current branch HEAD.'});
+    expect(menuFor({kind:'commit',oid:'abc'},api,{included:['abc']}).items.some(item=>item.label==='Reapply Historical Commits…')).toBe(false);
+    expect(cherry('old')).toMatchObject({disabled:true,reason:'Checking whether this branch already includes the selected commits…'});
+    expect(cherry('old',{included:[],failed:true}).disabled).toBe(true);
+    expect(cherry('old',{included:['old']}).disabled).toBe(true);
+    const reapply=menuFor({kind:'commit',oid:'old'},api,{included:['old']}).items.find(item=>item.label==='Reapply Historical Commits…')!;
+    expect(reapply.disabled).toBe(false);reapply.run();
+    expect(open).toHaveBeenCalledWith({type:'cherry-pick',target:'old',reapply:true});
+    expect(cherry('topic',{included:[]}).disabled).toBe(false);
+    expect(cherry('topic',{included:['old']},['topic','old']).disabled).toBe(true);
+    expect(cherry('topic',{included:[]},['topic','abc']).disabled).toBe(true);
+    store.setState({commits:[...store.getState().commits,{...commit,oid:'merged',parents:['abc','other']}]});
+    expect(cherry('merged',{included:['merged']}).disabled).toBe(true);
+    expect(cherry('merged',{included:[]}).disabled).toBe(false);
+    expect(cherry('topic',{included:[]},['topic','merged']).disabled).toBe(true);
+    expect(cherry('missing',{included:[]}).disabled).toBe(true);
+  });
   it('keeps the newest catalog and active repository when an older initialization finishes late', async () => {
     await store.getState().selectRepository('b');
     const old = deferred<Repository[]>(), latest = deferred<Repository[]>(), fallback = bridge.rpc.getMockImplementation()!;

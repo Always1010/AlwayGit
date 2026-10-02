@@ -685,7 +685,7 @@ Use the operations in this chapter only after you understand the relationships i
 
 **Result:** The target changes have been added to the current branch as new commits, or the operation is explicitly paused and awaiting resolution.
 
-**Caution:** Cherry-pick for an ordinary Commit can execute immediately, so verify the target before clicking. Batch Cherry-pick is not supported for a selection that includes a Merge Commit.
+**Caution:** Ordinary Cherry-pick is disabled for the current HEAD and commits already in the current branch history, with an explanation. A batch containing any such commit is disabled as a whole; deselect those commits first. Other ordinary Commits can execute immediately after ancestry checks pass, so verify the target before clicking. Batch Cherry-pick is not supported for a selection that includes a Merge Commit. If changes from a historical commit were reverted or removed, use `Reapply Historical Commits…` and explicitly check the confirmation before submitting. This entry is unavailable for the current HEAD, and reapplication can still produce conflicts or an empty result.
 
 ![Commit context menu showing Cherry-pick to main](images/user-manual/figure-29.png)
 
