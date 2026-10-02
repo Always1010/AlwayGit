@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { actionSchema, openRepositorySchema, requestSchema, sessionSchema } from '../src/protocol/validation';
+import { actionSchema, openRepositorySchema, openWorkbenchSchema, requestSchema, sessionSchema } from '../src/protocol/validation';
 
 describe('Workbench protocol validation', () => {
   it('preserves operation review tokens and the explicit conflict staging action',()=>{
@@ -24,6 +24,8 @@ describe('Workbench protocol validation', () => {
     expect(requestSchema.parse({id:'compare',method:'compare',repoId:'fixture',payload:{left:'abc',right:'def'}}).method).toBe('compare');
     expect(requestSchema.parse({id:'statuses',method:'repositoryStatuses'}).method).toBe('repositoryStatuses');
     expect(openRepositorySchema.parse({newTab:true})).toEqual({newTab:true});
+    expect(openWorkbenchSchema.parse({newTab:true})).toEqual({newTab:true});
+    expect(()=>openWorkbenchSchema.parse({})).toThrow();
     expect(()=>openRepositorySchema.parse({newTab:true,newWindow:true})).toThrow();
     expect(actionSchema.parse({ type: 'push', remote: 'origin', branch: 'main', remoteBranch: 'release/main', setUpstream: true })).toMatchObject({ remoteBranch: 'release/main', setUpstream: true });
     expect(actionSchema.parse({type:'cherry-pick',commits:['abc'],expectedHead:'def',expectedBranch:'main'})).toMatchObject({expectedBranch:'main'});

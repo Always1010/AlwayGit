@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { CheckoutBlocker, GitServiceContract, HostMessage, RepositoryCollection, RepositoryStatus, RpcRequest, Snapshot } from '../protocol/types';
-import { actionSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema } from '../protocol/validation';
+import { actionSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema } from '../protocol/validation';
 import type { RepositoryManager } from '../repositories/manager';
 import type { GitDocuments } from '../editor/documents';
 import { confirmAction } from '../application/confirm';
@@ -11,8 +11,9 @@ import { redactSecrets } from '../application/logging';
 import { hostText, preferredLanguage, type Language } from '../application/language';
 import type { ProjectWindows } from './project-windows';
 import { groupRepositories } from '../protocol/repositories';
+import { panelSession } from './workbench-entry';
 
-interface WorkbenchPanel { panel: vscode.WebviewPanel; activeRepository?: string }
+interface WorkbenchPanel { panel: vscode.WebviewPanel; activeRepository?: string; blank: boolean }
 export interface WorkbenchPresence { open: boolean; active: boolean }
 
 export class Workbench implements vscode.Disposable {
@@ -38,7 +39,7 @@ export class Workbench implements vscode.Disposable {
     const seconds = vscode.workspace.getConfiguration('alwaygit').get<number>('refreshInterval', 15);
     this.interval = setInterval(() => void this.poll(), seconds * 1000);
   }
-  async open(repoId?: string, restoredPanel?: vscode.WebviewPanel, newTab = false): Promise<void> {
+  async open(repoId?: string, restoredPanel?: vscode.WebviewPanel, newTab = false, blank = false): Promise<void> {
     if (!vscode.workspace.isTrusted) { await vscode.window.showWarningMessage(this.text('Trust this workspace using VS Code Workspace Trust, then reopen AlwayGit.', '请在 VS Code 中信任此工作区，然后重新打开 AlwayGit。')); return; }
     await this.repositories.scan();
     if (repoId) this.activeRepository = repoId;
@@ -47,7 +48,7 @@ export class Workbench implements vscode.Disposable {
     const options = { enableScripts: true, localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview')] };
     const panel = restoredPanel ?? vscode.window.createWebviewPanel('alwaygit.workbench', 'AlwayGit', vscode.ViewColumn.Active, options);
     panel.webview.options = options;
-    const entry:WorkbenchPanel={panel,activeRepository:repoId};
+    const entry:WorkbenchPanel={panel,activeRepository:repoId,blank};
     this.panels.set(panel,entry);this.lastPanel=entry;this.updatePanelTitle(entry);this.presenceEmitter.fire(this.presence);
     panel.iconPath = vscode.Uri.joinPath(this.context.extensionUri, 'media', 'alwaygit.svg');
     panel.onDidDispose(() => { this.panels.delete(panel);if(this.lastPanel===entry)this.lastPanel=[...this.panels.values()].at(-1);this.presenceEmitter.fire(this.presence); });
@@ -64,7 +65,7 @@ export class Workbench implements vscode.Disposable {
       }
     });
     panel.onDidChangeViewState(event => { if (event.webviewPanel.visible) { this.lastPanel=entry;this.post({ type: 'repositoriesChanged' },entry); if (entry.activeRepository) this.post({ type: 'changed', repoId: entry.activeRepository },entry); } this.presenceEmitter.fire(this.presence); });
-    panel.webview.html = await this.html(panel.webview,repoId);
+    panel.webview.html = await this.html(panel.webview,repoId,blank);
   }
   async addRepository(): Promise<unknown> {
     if (!vscode.workspace.isTrusted) throw new Error(this.text('Git execution requires a trusted workspace.', '请先信任工作区，再执行 Git 操作。'));
@@ -125,7 +126,7 @@ export class Workbench implements vscode.Disposable {
   async handle(request: RpcRequest): Promise<unknown> { return this.handleRequest(request); }
   private async handleRequest(request: RpcRequest, source?:WorkbenchPanel): Promise<unknown> {
     if (request.method === 'showLog') { this.output.show(true); return null; }
-    if (request.method === 'saveSession') { const session=sessionSchema.parse(request.payload);await this.context.workspaceState.update('alwaygit.session',session);if(source){source.activeRepository=session.repoId;this.updatePanelTitle(source);}return null; }
+    if (request.method === 'saveSession') { const session=sessionSchema.parse(request.payload),previous=this.context.workspaceState.get<Record<string,unknown>>('alwaygit.session',{}),persisted=source?.blank&&!session.repoId&&typeof previous.repoId==='string'?{...session,repoId:previous.repoId}:session;await this.context.workspaceState.update('alwaygit.session',persisted);if(source){source.activeRepository=session.repoId;source.blank=source.blank&&!session.repoId;this.updatePanelTitle(source);}return null; }
     if (request.method === 'copyText') { await vscode.env.clipboard.writeText(copySchema.parse(request.payload).text); return null; }
     if (!vscode.workspace.isTrusted) throw new Error(this.text('Git execution requires a trusted workspace.', '请先信任工作区，再执行 Git 操作。'));
     if (request.method === 'repositories') { const list = this.repositories.list(),active=source?.activeRepository??this.activeRepository; return active ? list.sort((a, b) => Number(b.id === active) - Number(a.id === active)) : list; }
@@ -137,6 +138,7 @@ export class Workbench implements vscode.Disposable {
     if (request.method === 'renameRepositoryCollection') { await this.renameRepositoryCollection(repositoryCollectionSchema.parse(request.payload).id); return null; }
     if (request.method === 'deleteRepositoryCollection') { await this.deleteRepositoryCollection(repositoryCollectionSchema.parse(request.payload).id); return null; }
     if (request.method === 'moveRepositories') { const data=moveRepositoriesSchema.parse(request.payload); return data.collectionId===undefined?this.moveRepositories(data.keys):this.repositories.move(data.keys,data.collectionId); }
+    if(request.method==='openWorkbench'){const data=openWorkbenchSchema.parse(request.payload??{});if(data.newTab)await this.open(undefined,undefined,true,true);else throw new Error(this.text('Opening a new Workbench window is not available yet.','暂时无法在新窗口打开 Workbench。'));return null;}
     if (request.method === 'pickWorktree') {
       const value = await vscode.window.showSaveDialog({ title: 'New Worktree Directory', saveLabel: 'Use Directory', defaultUri: vscode.Uri.file(path.join(path.dirname(this.repositories.get(request.repoId).root), 'new-worktree')) });
       return value?.fsPath;
@@ -219,14 +221,14 @@ export class Workbench implements vscode.Disposable {
   private selectPanelRepository(entry:WorkbenchPanel,repoId:string):void {entry.activeRepository=repoId;this.activeRepository=repoId;this.lastPanel=entry;this.updatePanelTitle(entry);entry.panel.reveal();this.post({type:'selectRepository',repoId},entry);}
   private updatePanelTitle(entry:WorkbenchPanel):void {let name:string|undefined;try{name=entry.activeRepository?groupRepositories(this.repositories.list(),entry.activeRepository).find(group=>group.members.some(repo=>repo.id===entry.activeRepository))?.name:undefined;}catch{/* Repository discovery can remove a stale restored ID. */}entry.panel.title=name?`AlwayGit — ${name}`:'AlwayGit';}
   private post(message: HostMessage,target?:WorkbenchPanel): void {if(target){void target.panel.webview.postMessage(message);return;}for(const entry of this.panels.values())void entry.panel.webview.postMessage(message);}
-  private async html(webview: vscode.Webview,activeRepository?:string): Promise<string> {
+  private async html(webview: vscode.Webview,activeRepository?:string,blank=false): Promise<string> {
     const root = vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview');
     let html = await readFile(vscode.Uri.joinPath(root, 'index.html').fsPath, 'utf8');
     const nonce = randomBytes(20).toString('base64');
     html = html.replace(/(src|href)="\.\/([^"\s]+)"/g, (_match, attr, resource: string) => `${attr}="${webview.asWebviewUri(vscode.Uri.joinPath(root, resource))}"`);
     html = html.replace(/<script /g, `<script nonce="${nonce}" `);
     const saved = this.context.workspaceState.get<Record<string, unknown>>('alwaygit.session', {});
-    const session = JSON.stringify({ ...saved, ...(activeRepository?{repoId:activeRepository}:{}), language: saved.language ?? preferredLanguage() }).replace(/</g, '\\u003c');
+    const session = JSON.stringify({ ...panelSession(saved,activeRepository,blank), language: saved.language ?? preferredLanguage() }).replace(/</g, '\\u003c');
     html = html.replace('</head>', `<script nonce="${nonce}">window.__ALWAYGIT_SESSION__=${session};</script></head>`);
     return html.replace('<head>', `<head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">`);
   }
