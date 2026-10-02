@@ -6,7 +6,7 @@ This manual explains how to inspect changes, save revisions, and collaborate wit
 
 Select the question-mark icon in the upper-right corner of the Workbench to open the offline Help & Guide. It includes quick start instructions, common tasks, common questions, and the full chapters of this manual. Its language follows the workbench setting.
 
-**About the screenshots:** Screenshots come from version 0.29.0 and illustrate where to find the controls. Icons, spacing, and messages may differ slightly in the current version. Follow the instructions here and verify the names, targets, and counts shown by the current controls.
+**About the screenshots:** Most screenshots come from version 0.29.0; Figure 34 shows the settings interface in 0.34.0. They illustrate where to find the controls. Icons, spacing, and messages may differ slightly in the current version. Follow the instructions here and verify the names, targets, and counts shown by the current controls.
 
 ## Read by task
 
@@ -902,14 +902,14 @@ Worktree lets a single repository have multiple working directories so you can w
 
 1. Click the gear in the upper-right corner to open settings.
 2. Choose a page in the General, Interface, Commit Graph, or Advanced category.
-3. Adjust the language, theme, font size, list density, file spacing, Diff line height, or Diff navigation scope as needed, and observe the preview.
+3. Interface → Text & density controls the interface font size, list density, and file spacing. Interface → Diff groups the Diff font size, line height, and navigation scope with a code preview. Expand Detailed rules for navigation exceptions.
 4. Click Apply to save. To discard unapplied changes, click Cancel, close settings, or press Esc.
 
 **Result:** Applied settings take effect immediately. Cancel only rolls back previews that have not yet been applied.
 
 **Caution:** The Simplified Chinese interface retains Git action names such as Stage, Commit, and Fetch. Paths, branch names, and Git errors remain in their original form.
 
-![Settings in Chinese showing font size, density, file spacing, and Diff line height](images/user-manual/figure-34.png)
+![Settings in Chinese showing interface font size, list density, and file spacing](images/user-manual/figure-34.png)
 
 <a id="section-11-02"></a>
 

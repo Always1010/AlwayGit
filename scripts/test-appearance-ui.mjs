@@ -149,6 +149,7 @@ export async function verifyAppearance(browser, url) {
     await settings.getByLabel('Interface font', { exact: true }).selectOption('15');
     await settings.getByLabel('File list spacing', { exact: true }).selectOption('5');
     assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--file-row-padding').trim()), '5px', 'File spacing previews immediately');
+    await settings.getByRole('button', { name: 'Diff', exact: true }).click();
     await settings.getByLabel('Diff line height', { exact: true }).selectOption('22');
     assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--diff-row-height').trim()), '22px', 'Diff height previews immediately');
     await settings.getByRole('button', { name: 'Colors', exact: true }).click();
@@ -183,6 +184,7 @@ export async function verifyAppearance(browser, url) {
     await settings.getByRole('radio', { name: 'Berry Purple', exact: true }).click();
     await settings.getByRole('button', { name: 'Text & density', exact: true }).click();
     await settings.getByLabel('Interface font', { exact: true }).selectOption('16');
+    await settings.getByRole('button', { name: 'Diff', exact: true }).click();
     await settings.getByLabel('Diff font', { exact: true }).selectOption('15');
     await settings.getByLabel('Diff line height', { exact: true }).selectOption('custom');
     const customHeight = settings.getByRole('spinbutton', { name: 'Custom Diff line height', exact: true });
@@ -193,6 +195,7 @@ export async function verifyAppearance(browser, url) {
     await customHeight.press('Tab');
     assert.equal(await customHeight.inputValue(), '36', 'Custom input is clamped to its supported range');
     await customHeight.fill('23');
+    await settings.getByRole('button', { name: 'Text & density', exact: true }).click();
     await settings.getByLabel('List density', { exact: true }).selectOption('22');
     await settings.getByLabel('File list spacing', { exact: true }).selectOption('custom');
     const customSpacing = settings.getByRole('spinbutton', { name: 'Custom file list spacing', exact: true });

@@ -98,7 +98,7 @@ export async function verifyDiffNavigation(browser, url) {
     const topRow = await viewport.evaluate(element => element.scrollTop / document.querySelector('.diff-line').getBoundingClientRect().height);
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     const settings = page.getByTestId('interface-settings'), dialog = page.getByRole('dialog', { name: 'Settings' });
-    await settings.getByRole('button', { name: 'Text & density', exact: true }).click();
+    await settings.getByRole('button', { name: 'Diff', exact: true }).click();
     await settings.getByLabel('Diff line height', { exact: true }).selectOption('24');
     await page.waitForFunction(() => document.querySelector('.diff-line')?.getBoundingClientRect().height === 24);
     const resizedTopRow = await viewport.evaluate(element => element.scrollTop / 24);
