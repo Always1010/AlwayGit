@@ -202,5 +202,11 @@
     "zh-CN": "{{value}} 跳过",
     "review": "translated",
     "context": "webview/actionFeedback.ts / actionName"
+  },
+  "actionNames.pushTags": {
+    "en": "Push Tags",
+    "zh-CN": "推送标签",
+    "review": "translated",
+    "context": "webview/actionFeedback.ts / actionName"
   }
 }

@@ -40,6 +40,7 @@ export type GitAction =
   | { type: 'branch.delete'; names: string[]; force?: boolean; expectedOids?: Record<string,string> }
   | { type: 'remote.delete'; remote:string; branches:string[]; expectedOids?:Record<string,string>; expectedDestination?: string }
   | { type: 'tag.create'; name: string; target?: string; message?: string }
+  | { type: 'tag.push'; remote: string; names: string[]; expectedOids: Record<string, string> }
   | { type: 'tag.delete'; name: string; expectedOid: string }
   | { type: 'stash.create'; message?: string; includeUntracked?: boolean; paths?: string[] }
   | { type: 'stash.apply'; selector: string; pop?: boolean; expectedOid?: string }

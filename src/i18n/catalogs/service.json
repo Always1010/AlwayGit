@@ -568,5 +568,23 @@
     "zh-CN": "无法检查当前分支是否已包含所选提交。",
     "review": "translated",
     "context": "Cherry-pick eligibility and explicit historical reapplication"
+  },
+  "service.selectAtLeastOneTag": {
+    "en": "Select at least one Tag.",
+    "zh-CN": "请至少选择一个标签。",
+    "review": "translated",
+    "context": "src/git/service.ts / executeNow"
+  },
+  "service.theTagChangedRefreshAndReopenThePushDialog": {
+    "en": "Tag {{name}} changed. Refresh and reopen the Push Tag dialog.",
+    "zh-CN": "标签 {{name}} 已发生变化。请刷新并重新打开推送标签对话框。",
+    "review": "translated",
+    "context": "src/git/service.ts / executeNow"
+  },
+  "service.tagEsPushedFailed": {
+    "en": "{{pushed}} Tag(s) pushed; {{count}} failed:\n{{value}}",
+    "zh-CN": "已推送 {{pushed}} 个标签；{{count}} 个失败：\n{{value}}",
+    "review": "translated",
+    "context": "src/git/service.ts / executeNow"
   }
 }

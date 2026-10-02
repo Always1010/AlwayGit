@@ -137,6 +137,10 @@ export const catalog = {
     "en": "{{value}} Skip",
     "zh-CN": "{{value}} 跳过"
   },
+  "actionNames.pushTags": {
+    "en": "Push Tags",
+    "zh-CN": "推送标签"
+  },
   "actions.currentBranchCurrentVersion": {
     "en": "Current branch {{name}} · current version",
     "zh-CN": "当前分支 {{name}} · 当前版本"
@@ -807,6 +811,26 @@ export const catalog = {
   "actions.cherryPickReapplyConfirm": {
     "en": "I confirm that I want to reapply changes from commits already in this branch.",
     "zh-CN": "我确认要重新应用当前分支历史中已有提交的改动。"
+  },
+  "actions.pushTag": {
+    "en": "Push Tag",
+    "zh-CN": "推送标签"
+  },
+  "actions.pushTags": {
+    "en": "Push {{count}} Tags",
+    "zh-CN": "推送 {{count}} 个标签"
+  },
+  "actions.selectTagsAndRemote": {
+    "en": "Select at least one Tag and a Remote.",
+    "zh-CN": "请选择至少一个标签和一个远程仓库。"
+  },
+  "actions.selectedTags": {
+    "en": "Selected Tags · {{count}}",
+    "zh-CN": "所选标签 · {{count}}"
+  },
+  "actions.pushesOnlyTheListedTags": {
+    "en": "Only the listed Tags will be pushed. Existing remote Tags with different identities are not overwritten.",
+    "zh-CN": "只会推送上面列出的标签；不会覆盖远端已有但身份不同的同名标签。"
   },
   "arguments.gitCommandArgumentsAreTooLongSelectFewerItems": {
     "en": "Git command arguments are too long. Select fewer items or shorten the description and retry.",
@@ -2607,6 +2631,22 @@ export const catalog = {
     "en": "Choose Branch to Checkout…",
     "zh-CN": "选择分支并切换…"
   },
+  "menus.pushTag": {
+    "en": "Push Tag…",
+    "zh-CN": "推送标签…"
+  },
+  "menus.pushTags": {
+    "en": "Push {{count}} Tags…",
+    "zh-CN": "推送 {{count}} 个标签…"
+  },
+  "menus.refreshToCaptureThisTagBeforePush": {
+    "en": "Refresh to capture this Tag before pushing.",
+    "zh-CN": "请刷新后再推送此标签。"
+  },
+  "menus.refreshToCaptureTagsBeforePush": {
+    "en": "Refresh to capture all selected Tags before pushing.",
+    "zh-CN": "请刷新后再推送全部所选标签。"
+  },
   "notices.theRepositoryWasRemovedFromAlwayGit": {
     "en": "The repository was removed from AlwayGit.",
     "zh-CN": "该仓库已从 AlwayGit 移除。"
@@ -3586,6 +3626,18 @@ export const catalog = {
   "service.cherryPickCheckFailed": {
     "en": "Could not check whether this branch already includes the selected commits.",
     "zh-CN": "无法检查当前分支是否已包含所选提交。"
+  },
+  "service.selectAtLeastOneTag": {
+    "en": "Select at least one Tag.",
+    "zh-CN": "请至少选择一个标签。"
+  },
+  "service.theTagChangedRefreshAndReopenThePushDialog": {
+    "en": "Tag {{name}} changed. Refresh and reopen the Push Tag dialog.",
+    "zh-CN": "标签 {{name}} 已发生变化。请刷新并重新打开推送标签对话框。"
+  },
+  "service.tagEsPushedFailed": {
+    "en": "{{pushed}} Tag(s) pushed; {{count}} failed:\n{{value}}",
+    "zh-CN": "已推送 {{pushed}} 个标签；{{count}} 个失败：\n{{value}}"
   },
   "session.lightAndDarkGraphPalettesMustHaveTheSame": {
     "en": "Light and dark graph palettes must have the same size",
@@ -4783,6 +4835,7 @@ export interface MessageParameters {
   "actionNames.continue": { value: ParameterValue };
   "actionNames.abort": { value: ParameterValue };
   "actionNames.skip": { value: ParameterValue };
+  "actionNames.pushTags": {  };
   "actions.currentBranchCurrentVersion": { name: ParameterValue };
   "actions.branch": { name: ParameterValue };
   "actions.remoteBranch": { name: ParameterValue };
@@ -4950,6 +5003,11 @@ export interface MessageParameters {
   "actions.cherryPickOnto": { target: ParameterValue; branch: ParameterValue };
   "actions.cherryPickReapplyWarning": {  };
   "actions.cherryPickReapplyConfirm": {  };
+  "actions.pushTag": {  };
+  "actions.pushTags": { count: number };
+  "actions.selectTagsAndRemote": {  };
+  "actions.selectedTags": { count: number };
+  "actions.pushesOnlyTheListedTags": {  };
   "arguments.gitCommandArgumentsAreTooLongSelectFewerItems": {  };
   "arguments.messagesCannotContainNULCharacters": {  };
   "catalogStore.theSharedRepositoryCatalogIsDamagedOrUsesAn": {  };
@@ -5390,6 +5448,10 @@ export interface MessageParameters {
   "menus.cherryPickSelectionChanged": {  };
   "menus.switchToNamedBranch": { name: ParameterValue };
   "menus.chooseBranchToCheckout": {  };
+  "menus.pushTag": {  };
+  "menus.pushTags": { count: number };
+  "menus.refreshToCaptureThisTagBeforePush": {  };
+  "menus.refreshToCaptureTagsBeforePush": {  };
   "notices.theRepositoryWasRemovedFromAlwayGit": {  };
   "notices.couldNotLocateThisCommitInTheFullHistory": {  };
   "notices.automaticLocateReachedItsReadLimitHistoryAndCommit": {  };
@@ -5635,6 +5697,9 @@ export interface MessageParameters {
   "service.cherryPickCurrentHead": {  };
   "service.cherryPickAlreadyIncluded": {  };
   "service.cherryPickCheckFailed": {  };
+  "service.selectAtLeastOneTag": {  };
+  "service.theTagChangedRefreshAndReopenThePushDialog": { name: ParameterValue };
+  "service.tagEsPushedFailed": { pushed: ParameterValue; count: number; value: ParameterValue };
   "session.lightAndDarkGraphPalettesMustHaveTheSame": {  };
   "session.zhCN": {  };
   "session.sessionExceedsTheStorageLimit": {  };
