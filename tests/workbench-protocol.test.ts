@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { actionSchema, createRepositoryCollectionSchema, reorderRepositorySchema, diffSchema, openRepositorySchema, openWorkbenchSchema, requestSchema, sessionSchema } from '../src/protocol/validation';
 
 describe('Workbench protocol validation', () => {
+  it('accepts selected Stash paths and rejects an empty selection', () => {
+    const action = { type: 'stash.create', paths: ['selected [1].txt', 'notes.txt'], includeUntracked: true, message: 'selected files' };
+    expect(actionSchema.parse(action)).toEqual(action);
+    expect(() => actionSchema.parse({ type: 'stash.create', paths: [] })).toThrow();
+  });
   it('preserves operation review tokens and the explicit conflict staging action',()=>{
     expect(actionSchema.parse({type:'resolve-and-stage',paths:['same.txt']})).toEqual({type:'resolve-and-stage',paths:['same.txt']});
     expect(actionSchema.parse({type:'operation.continue',kind:'merge',reviewToken:'reviewed'})).toEqual({type:'operation.continue',kind:'merge',reviewToken:'reviewed'});

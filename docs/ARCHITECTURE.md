@@ -84,6 +84,7 @@ Git 使用参数数组与 `shell: false`，引用和路径额外校验，文件�
 
 ### Stash 保存与隔离恢复
 
+`stash.create` 不带 paths 表示全局范围；非空 paths 表示精确所选文件范围，空数组拒绝执行。选中一侧仍以文件为单位保存完整 Index 与 Working Tree，所选未跟踪文件随该范围保存。所选暂存 Tree 以 HEAD 为基线，仅覆盖选中路径；不能直接把整个 Index 当作存档的暂存 parent，否则未选中的暂存修改也会进入存档。清理只作用于所选范围，其他文件状态保持。交互规则由 [工作台规格](WORKBENCH_SPEC.md#working-tree-与-diff) 维护。
 
 恢复先解析固定 Stash OID，检查未跟踪路径占用，再捕获 HEAD、原始 Index 字节、split Index 的共享文件、相关本地文件、有效配置与属性来源。在临时独立 Git 目录中复制原始 Index 和文件内容，以只读 object alternates 读取源仓库对象；副本的 Index、工作树和新对象写入均留在临时目录。隔离命令抑制全局配置、hooks 和外部程序执行，保留受支持的 Git 合并与属性语义。在副本运行 `stash apply --index`，读取冲突或错误；失败返回包含原因、路径、Stash 身份、存档保留及本次未改动真实现场的结构化 blocker。
 

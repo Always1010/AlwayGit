@@ -15,7 +15,7 @@ export function actionName(action: GitAction): string {
     stage: 'Stage', 'resolve-and-stage': 'Mark & Stage', unstage: 'Unstage', discard: 'Discard', commit: action.type === 'commit' && action.amend ? 'Amend' : 'Commit',
     fetch: 'Fetch', pull: 'Pull', push: 'Push', 'remote.add':'Add Remote', 'branch.create': 'Create Branch', 'branch.checkout': 'Checkout', 'commit.checkout': 'Checkout',
     'checkout.stash': 'Stash & Checkout', 'branch.track': action.type==='branch.track'&&action.checkout?'Checkout Remote Branch':'Create Tracking Branches', 'branch.delete': action.type==='branch.delete'&&action.names.length>1?'Delete Branches':'Delete Branch', 'remote.delete':'Delete Remote Branches', 'tag.create': 'Create Tag', 'tag.delete': 'Delete Tag',
-    'stash.create': 'Stash', 'stash.apply': action.type === 'stash.apply' && action.pop ? 'Pop Stash' : 'Apply Stash', 'stash.drop': 'Drop Stash',
+    'stash.create': action.type==='stash.create'&&action.paths?'Stash Selected Files':'Stash All Changes', 'stash.apply': action.type === 'stash.apply' && action.pop ? 'Pop Stash' : 'Apply Stash', 'stash.drop': 'Drop Stash',
     'worktree.add': 'Add Worktree', 'worktree.remove': 'Remove Worktree', merge: 'Merge', rebase: 'Rebase', 'cherry-pick': 'Cherry-pick', revert: 'Revert', reset: 'Reset',
   };
   if (action.type === 'operation.continue') return `${operationName(action.kind)} Continue`;

@@ -20,7 +20,7 @@ export const actionSchema = z.union([
   z.object({ type:z.literal('remote.delete'), remote:text, branches:z.array(text).min(1).max(1000), expectedOids:z.record(text,text).optional() }),
   z.object({ type: z.literal('tag.create'), name: text, target: text.optional(), message: z.string().max(100000).optional() }),
   z.object({ type: z.literal('tag.delete'), name: text }),
-  z.object({ type: z.literal('stash.create'), message: z.string().max(10000).optional(), includeUntracked: z.boolean().optional() }),
+  z.object({ type: z.literal('stash.create'), message: z.string().max(10000).optional(), includeUntracked: z.boolean().optional(), paths: paths.optional() }),
   z.object({ type: z.literal('stash.apply'), selector: text, pop: z.boolean().optional(), expectedOid: text.optional() }),
   z.object({ type: z.literal('stash.drop'), selector: text, expectedOid: text.optional() }),
   z.object({ type: z.literal('worktree.add'), path: text, branch: text.optional(), newBranch: text.optional(), start: text.optional(), detach: z.boolean().optional() }),

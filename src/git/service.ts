@@ -6,7 +6,7 @@ import type { ActionBlocker, Change, CheckoutBlocker, Commit, CommitComparison, 
 import { branchNameConflict, branchNameConflictMessage, branchNameProblem, branchNameProblemMessage } from '../protocol/ref-name';
 import { remoteNameProblem, remoteUrlProblem } from '../protocol/remote';
 import { inferDefaultBranch } from './default-branch';
-import { preflightStash, StashStateError, type StashExecution } from './stash';
+import { createSelectedStash, preflightStash, StashStateError, type StashExecution } from './stash';
 
 export interface GitServiceOptions {
   allowDetachedHead?: () => boolean;
@@ -531,7 +531,17 @@ export class GitService implements GitServiceContract {
       }
       case 'tag.create': await this.run(repo, ['check-ref-format', `refs/tags/${token(action.name, 'tag name')}`]); args = ['tag', ...(action.message ? ['-a', '-m', action.message] : []), action.name, await this.oid(repo, action.target ?? 'HEAD')]; break;
       case 'tag.delete': await this.run(repo, ['check-ref-format', `refs/tags/${token(action.name, 'tag name')}`]); args = ['tag', '-d', '--', action.name]; break;
-      case 'stash.create': args = ['stash', 'push', ...(action.includeUntracked ? ['--include-untracked'] : []), ...(action.message ? ['-m', action.message] : [])]; break;
+      case 'stash.create': {
+        if (action.paths) {
+          if (!action.paths.length) throw new GitError('Select at least one file', 'INVALID_ARGUMENT');
+          const snapshot = await this.snapshot(repo);
+          if (snapshot.operation.kind || snapshot.operation.conflicts) throw new GitError('Finish the active operation or resolve conflicts before saving selected files.', 'CONFLICTS');
+          try { await createSelectedStash(repo, action.paths.map(validateFilePath), action.message, snapshot.changes, (args, execution) => this.run(repo, args, false, undefined, execution)); }
+          catch (error) { if (error instanceof StashStateError) throw new GitError(error.message, error.code, error.stdout, error.stderr, error.details); throw error; }
+          return;
+        }
+        args = ['stash', 'push', ...(action.includeUntracked ? ['--include-untracked'] : []), ...(action.message ? ['-m', action.message] : [])]; break;
+      }
       case 'stash.apply': {
         const selector = await this.validateStash(repo, action.selector, action.expectedOid);
         const stashOid = action.expectedOid ?? await this.oid(repo, selector);

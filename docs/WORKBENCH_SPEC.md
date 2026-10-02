@@ -125,6 +125,7 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 | Stash | `View Changes`、`Apply Stash`、`Pop Stash`、`Drop Stash…` |
 | Worktree | `Open Worktree`、`Open Worktree in New Project Window`、`Refresh`、`Remove Worktree…`、`Copy Worktree Path` |
 | Worktree（多选） | `Refresh`、`Copy N Worktree Paths` |
+| Working Tree 文件（Staged / Unstaged） | Stage / Unstage、`Stash Selected Files…`、适用的 `Discard…`、路径复制；单文件额外提供 Diff 与编辑入口 |
 
 ## 左侧分组操作
 
@@ -136,7 +137,7 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 | Local Branches | 标题：`Create Branch…`；Graph 预设：`Show All Local Branches in Graph`、`Show Current Branch Only in Graph` |
 | Remotes | 标题行仅显示 `＋` 添加远端图标，悬浮提示与无障碍名称为 `Add Remote…`；右键菜单提供 `Add Remote…`、`Create Local Tracking Branches…`、`Refresh`。Fetch 位于各 Remote 行；没有远端时正文说明尚未连接并保留文字入口 |
 | Tags | `Create Tag…`、`Refresh` |
-| Stashes | `Stash Changes…`、`Refresh` |
+| Stashes | `Stash All Changes…`、`Refresh` |
 | Worktrees | `Add Worktree…`、`Refresh` |
 
 Graph 中 Commit 的菜单集中提供 `Create Branch…`、`Create Tag…`、Cherry-pick、`Revert…`、`Reset…`、分支感知的 Checkout、条件显示的 `Checkout to Detached HEAD…`、`Copy Commit ID` 和 `Copy Commit Message`；顶部工具栏和 Commit Details 标题不重复提供这些入口。普通 Commit 的 Cherry-pick 点击后直接执行；Merge Commit 单独选择 Mainline Parent。多选 Commit 按当前拓扑列表从旧到新执行批量 Cherry-pick，且只处理明确选中的 Commit；包含 Merge Commit 时禁用批量操作并要求单独处理。具体项目根据提交、当前分支和仓库操作状态禁用。
@@ -171,6 +172,7 @@ Merge 等操作暂停后，原发起对话框改为处理状态，主入口是�
 
 Working Tree 将文件分为 Conflicts、Unstaged 和 Staged。Stage、Unstage 与 Stash 是不同操作。分组标题的 `Discard All…` 丢弃全部 Unstaged 修改，文件右键菜单的 `Discard` 只处理所选文件；两者均保留 Index 中同一文件的 Staged 修改，确认对话框必须准确列出受影响路径并描述内容。
 
+文件菜单的 `Stash Selected Files…` 按路径去重，只保存明确选中的整个文件。无论从 Staged 还是 Unstaged 选择，都同时保存该文件完整的 Index 与 Working Tree 状态，所选未跟踪文件一并保存；同一文件同时出现在两侧只计一次。未选中文件的暂存与未暂存修改不进入存档，也不被清理。对话框显示所选文件数量、完整路径和可选说明，并解释整文件保存范围。顶部工具栏及 Stashes 分组的 `Stash All Changes…` 保存全部已跟踪修改，并通过勾选项决定是否包含未跟踪文件。
 
 Stash 详情按 Working Tree、Index 和 Untracked Files 分类展示并在页签标明数量；顶部按路径去重显示保存文件总数和未跟踪文件数。首次打开选择第一个非空分类。用户主动进入空分类时，空状态指出包含内容的分类及数量，并提供直接跳转。Stash 成功反馈同时说明保存文件数、未跟踪文件数和操作后的工作区状态。
 
