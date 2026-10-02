@@ -295,7 +295,7 @@ export class Workbench implements vscode.Disposable {
     const saved = this.context.workspaceState.get<Record<string, unknown>>('alwaygit.session', {});
     const session = JSON.stringify({ ...panelSession(saved,activeRepository,blank), language: saved.language ?? preferredLanguage() }).replace(/</g, '\\u003c');
     html = html.replace('</head>', `<script nonce="${nonce}">window.__ALWAYGIT_SESSION__=${session};</script></head>`);
-    return html.replace('<head>', `<head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">`);
+    return html.replace('<head>', `<head><meta property="csp-nonce" nonce="${nonce}"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">`);
   }
   dispose(): void { this.snapshots.dispose();this.queries.dispose();clearInterval(this.interval);for(const scan of this.repositoryDiscoveries.values())scan.cancelled=true;this.repositoryDiscoveries.clear();const panels=[...this.panels.keys()];this.panels.clear();this.lastPanel=undefined;for(const panel of panels)panel.dispose();this.presenceEmitter.dispose();for (const disposable of this.disposables) disposable.dispose(); }
 }

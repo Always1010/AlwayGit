@@ -23,6 +23,7 @@ npm run build
 - Working Tree 的冲突、Unstaged 和 Staged 管理，整文件及批量操作、Commit、Amend 与每仓库草稿。
 - 分支、远程分支、Tag、Stash 和 Worktree 管理，以及 Fetch、Pull、Push、Merge、Rebase、Cherry-pick、Reset、Revert 与进行中操作处理。
 - 四区 Workbench 布局、可调面板与列宽、明暗主题、Graph 配色、字号、密度、English / 简体中文和会话恢复。
+- 工作台内离线帮助与指南，包含快速开始、常见任务、排错和完整中英文手册，支持主题筛选与章节跳转。
 - VS Code 原生文件编辑与 Diff，项目窗口复用及跨窗口打开。
 
 完整交互、配置和功能边界见 [工作台规格](docs/WORKBENCH_SPEC.md)。

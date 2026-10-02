@@ -13,7 +13,7 @@ vi.mock('vscode', () => {
     dispose() { this.listeners.clear(); }
   }
   return {
-    EventEmitter, ViewColumn: { Active: -1 }, Uri: { joinPath: vi.fn(() => ({})) },
+    EventEmitter, ViewColumn: { Active: -1 }, Uri: { joinPath: vi.fn(() => ({})) }, env: { language: 'en' },
     workspace: { isTrusted: true, onDidChangeConfiguration: () => ({ dispose() {} }), getConfiguration: () => ({ get: (_key: string, fallback: unknown) => fallback }) },
     window: { createTreeView: vi.fn(), createWebviewPanel: vi.fn() },
     commands: { executeCommand: vi.fn(), registerCommand: vi.fn() },
@@ -44,6 +44,29 @@ function workbenchFixture(output = { appendLine: vi.fn() }) {
 }
 
 describe('Workbench entry presentation', () => {
+  it('shares the script nonce with deferred Webview resource preloads without widening the CSP', async () => {
+    const { mkdtemp, writeFile, unlink, rmdir } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const directory = await mkdtemp(join(tmpdir(), 'alwaygit-help-csp-'));
+    const filename = join(directory, 'index.html');
+    try {
+      await writeFile(filename, '<html><head><script type="module" src="./assets/app.js"></script></head><body></body></html>');
+      vi.mocked(vscode.Uri.joinPath).mockReturnValue({ fsPath: filename } as vscode.Uri);
+      const workbench = workbenchFixture() as unknown as { html(webview: vscode.Webview): Promise<string> };
+      vi.mocked(workbench.html).mockRestore();
+      const markup = await workbench.html({ cspSource: 'vscode-webview://fixture', asWebviewUri: () => 'vscode-webview://fixture/assets/app.js' } as unknown as vscode.Webview);
+      const nonce = markup.match(/<meta property="csp-nonce" nonce="([^"]+)"/)?.[1];
+      expect(nonce).toBeTruthy();
+      expect(markup).toContain(`script-src 'nonce-${nonce}'`);
+      expect(markup).toContain(`<script nonce="${nonce}" type="module"`);
+      expect(markup).not.toMatch(/script-src[^;"<>]*'unsafe-(?:inline|eval)'/);
+    } finally {
+      await unlink(filename);
+      await rmdir(directory);
+      vi.mocked(vscode.Uri.joinPath).mockReturnValue({} as vscode.Uri);
+    }
+  });
   it('sends and logs the same sanitized underlying Stash failure through the actual message bridge', async () => {
     const fixture = panelFixture(), output = { appendLine: vi.fn() }, workbench = workbenchFixture(output);
     vi.mocked(vscode.window.createWebviewPanel).mockReturnValue(fixture.panel as unknown as vscode.WebviewPanel);

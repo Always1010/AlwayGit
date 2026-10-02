@@ -4,6 +4,8 @@
 
 This manual explains how to inspect changes, save revisions, and collaborate with AlwayGit. Instructions and support boundaries describe the current version. Product behavior is specified in the [Workbench specification](WORKBENCH_SPEC.md).
 
+Select the question-mark icon in the upper-right corner of the Workbench to open the offline Help & Guide. It includes quick start instructions, common tasks, common questions, and the full chapters of this manual. Its language follows the workbench setting.
+
 **About the screenshots:** Screenshots come from version 0.29.0 and illustrate where to find the controls. Icons, spacing, and messages may differ slightly in the current version. Follow the instructions here and verify the names, targets, and counts shown by the current controls.
 
 ## Read by task

@@ -21,10 +21,13 @@ AlwayGit 是 Workspace 类型的 VS Code 扩展。每个 React WebviewPanel 提�
 | `webview` | `App.tsx`、`store.ts`、`rpc.ts`、`demo.ts` | React 组合、Zustand 状态、生产宿主桥接及独立的 Demo 适配器 |
 | `webview` | `Sidebar.tsx`、`History.tsx`、`Details.tsx`、`DiffPreview.tsx` | 四区呈现、对象选择和只读比较 |
 | `webview` | `menus.ts`、`SettingsDialog.tsx`、`appearance.ts`、`i18n.ts` | 动作定义、界面设置、外观和语言 |
+| `webview` | `HelpDialog.tsx`、`help-content.ts`、`help-manuals.ts` | 离线帮助、双语手册的章节提取与打包图片映射 |
 | `webview` | `refresh.ts`、`refIndex.ts`、`session-persistence.ts`、`fileSelection.ts`、`diff.ts` | 刷新失效范围、选择规则和修改块导航 |
 | `webview/graph` | `layout.ts`、`GraphRow.tsx`、`palettes.ts` | 可分页的轨道布局、SVG 行渲染和配色 |
 
 共享协议先于两端实现修改。新增宿主能力时，应依次维护共享类型与校验、宿主路由、Git 或编辑器实现、Webview 调用和真实仓库测试。Webview 菜单及工具栏应复用相同的动作描述和执行入口，避免同一 Git 操作出现不同参数或禁用规则。
+
+帮助正文使用双语用户手册的固定章节 ID，Markdown 按手册所用的标题、段落、列表、表格、图片及行内格式提取为结构化内容，由 React 渲染为文本，不注入原始 HTML。HelpDialog 独立延迟加载；Vite 将手册文本及图片 URL 纳入 Webview 构建，图片资源位于现有 `dist/webview` 允许范围内。宿主页通过 `csp-nonce` 元标记将脚本 nonce 传给 Vite 的资源预加载逻辑，保持原有 CSP，不增加外部资源或 Git RPC。
 
 ## 仓库、引用和历史
 
