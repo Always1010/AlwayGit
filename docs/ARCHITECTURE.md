@@ -4,7 +4,7 @@
 
 ## 运行结构
 
-AlwayGit 是 Workspace 类型的 VS Code 扩展。每个 React WebviewPanel 提供一个独立工作台标签，Node.js 扩展宿主管理面板集合，并共享 Git 子进程、仓库发现、剪贴板、窗口和文件操作。Webview 不直接读取磁盘，也不执行 Git。
+AlwayGit 是 Workspace 类型的 VS Code 扩展。每个 React WebviewPanel 提供一个独立工作台标签，Node.js 扩展宿主管理面板集合，并共享 Git 子进程、仓库发现、剪贴板、窗口和文件操作。活动栏 View Container 只用于提供稳定主图标：其 TreeView 可见时由 `workbench-launcher.ts` 唤起 Workbench 并关闭临时侧栏，不承载仓库状态或切换动作；状态栏与命令面板复用当前窗口的 Workbench 显示命令。Webview 不直接读取磁盘，也不执行 Git。
 
 `src/protocol` 是 Webview 和宿主的共享边界。请求以 `id` 关联响应，Zod 在宿主入口验证方法与参数；宿主主动发布仓库变更、操作活动和仓库选择事件。宿主只接受已经注册的仓库及预定义方法，不暴露任意命令执行接口。
 
@@ -12,7 +12,7 @@ AlwayGit 是 Workspace 类型的 VS Code 扩展。每个 React WebviewPanel 提�
 
 | 目录 | 主要入口 | 职责 |
 | --- | --- | --- |
-| `src/extension` | `extension.ts`、`workbench.ts`、`project-windows.ts` | 扩展激活、面板集合、RPC 路由、VS Code 命令和生命周期 |
+| `src/extension` | `extension.ts`、`workbench.ts`、`workbench-launcher.ts`、`project-windows.ts` | 扩展激活、活动栏入口、面板集合、RPC 路由、VS Code 命令和生命周期 |
 | `src/application` | `confirm.ts`、`credentials.ts`、`window-bridge.ts`、`operation-lock.ts`、`logging.ts` | 操作确认、认证与窗口 IPC、跨宿主写操作租约、日志脱敏和用例协调 |
 | `src/git` | `service.ts`、`default-branch.ts` | 系统 Git 执行、结构化解析、查询、操作及共享仓库队列 |
 | `src/repositories` | `manager.ts`、`discovery.ts` | 仓库注册、递归发现、文件监听和持久化 |

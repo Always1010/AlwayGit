@@ -28,7 +28,7 @@ export async function verifyDiffNavigation(browser, url) {
       } });
     });
     await page.goto(url);
-    await page.getByRole('option', { name: 'Diff fixture' }).dblclick();
+    await page.getByRole('option', { name: 'Diff fixture' }).click();
     const diff = page.getByTestId('diff-preview'), count = diff.getByTestId('diff-change-count'), summary = diff.getByTestId('diff-change-summary'), viewport = diff.locator('.diff-viewport');
     await count.getByText('1/3', { exact: true }).waitFor();
     assert.equal(await summary.locator('.diff-change-added').innerText(), '+0');

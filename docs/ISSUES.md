@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-030：移除侧栏仓库树时同时丢失主入口
+
+- 日期：2026-10-02
+- 状态：已解决
+- 现象：为了把仓库选择集中到 Workbench，原活动栏仓库树和它所属的 View Container 被一起移除，导致 AlwayGit 活动栏图标消失；状态栏入口又在 Workbench 位于前台时隐藏。Workbench 内仓库需要双击才切换，移除和分组管理仅依赖右键，入口不够稳定和可发现。
+- 原因：实现把“不在侧栏管理仓库”错误等同于“不再需要活动栏入口”；状态栏显隐沿用了避免重复入口的假设。仓库行还把普通单击全部留给批量选择，没有区分普通点击的主动作与修饰键多选，管理动作也没有可见控件。
+- 解决方案：恢复只承担启动职责的活动栏 View Container，点击主图标后直接创建或聚焦 Workbench 并收起临时侧栏，不恢复仓库树；状态栏入口保持可见。仓库普通单击和 Enter 直接切换，Ctrl/Cmd 或 Shift 单击继续只做批量选择；仓库行与分组标题增加带 Tooltip 和无障碍名称的省略号菜单，复用既有移除、分组和批量动作。
+- 验证方式：清单回归确认活动栏容器和启动 View 持续贡献；入口呈现单测确认状态栏在 Workbench 活动时仍可用；类型检查、生产构建及完整无头界面套件通过，其中仓库专项覆盖单击切换、修饰键多选、可见管理菜单和内嵌移除。0.22.0 固定 VSIX 已打包并通过官方 CLI 安装及 `alwaygit-dev.alwaygit@0.22.0` 核对；未启动会弹窗的真实 VS Code 桌面集成测试。
+- 相关文件：`package.json`、`src/extension/extension.ts`、`src/extension/workbench-launcher.ts`、`src/extension/workbench-entry.ts`、`webview/Sidebar.tsx`、`webview/styles.css`、`tests/workbench-entry.test.ts`、`scripts/test-ui.mjs`、`scripts/test-worktrees-ui.mjs`、`README.md`、`docs/WORKBENCH_SPEC.md`、`docs/ARCHITECTURE.md`、`docs/VALIDATION.md`。
+
 ## BUG-029：折叠分支仍会进入 Shift 范围选择
 
 - 日期：2026-10-02

@@ -29,7 +29,7 @@ export async function verifyFeedback(browser, url) {
       } });
     });
     await page.goto(url);
-    await page.getByRole('option', { name: 'Feedback fixture' }).dblclick();
+    await page.getByRole('option', { name: 'Feedback fixture' }).click();
     const bar = page.getByTestId('action-feedback');
     await page.evaluate(()=>{const fixture=window.__feedbackFixture;fixture.snapshot.changes=[{path:'notes.txt',indexStatus:'?',worktreeStatus:'?',conflict:false,untracked:true}];window.postMessage({type:'changed',repoId:'feedback'},'*');});
     await page.locator('.toolbar').getByRole('button',{name:'Stash Changes…',exact:true}).click();

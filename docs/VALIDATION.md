@@ -41,7 +41,7 @@
 
 - 固定四区 Workbench、旧 Editor Focus 会话迁移、面板和列拖动、Diff 动态最大高度与收起恢复、仅恢复布局而不重置界面设置的 Restore Layout、窄窗口和主题。
 - 设置浮窗分级导航、预览、取消、应用、刷新期间的持久化；宿主主题与主题卡片优先级、丰富明暗主题、可配置未推送角标、字号和密度同步虚拟行高、Graph 预设及自定义浅色/深色色板的连续性与分页。
-- Repository、Local Branch、Remote Branch、Remote、Tag、Stash、Worktree 的对象菜单；分组标题单击只折叠内容，右侧图标执行分组操作，右键标题打开相同操作菜单，Local Branches 的 Graph 预设具有激活状态。Repository 单击、Ctrl/Cmd、Shift、Ctrl/Cmd+A 与 Escape 管理独立的批量操作选择，范围严格按当前显示顺序计算；右键遵循所选范围，双击或 Enter 才切换。Worktree 单击只聚焦、双击或 Enter 切换。当前 Repository、Worktree 和本地分支使用排头实心三角形及 `aria-current`，与 Repository 蓝色操作选择相互独立；浅色背景为纯黑、深色背景为纯白，不显示 Current 文字徽标。
+- Repository、Local Branch、Remote Branch、Remote、Tag、Stash、Worktree 的对象菜单；仓库行和仓库分组标题具有可见的省略号管理入口，右键打开相同菜单；分区标题单击只折叠内容，右侧图标执行分组操作，Local Branches 的 Graph 预设具有激活状态。Repository 普通单击或 Enter 切换仓库并单选，Ctrl/Cmd、Shift、Ctrl/Cmd+A 与 Escape 管理独立的批量操作选择且不触发切换，范围严格按当前显示顺序计算；右键遵循所选范围。Worktree 单击只聚焦、双击或 Enter 切换。当前 Repository、Worktree 和本地分支使用排头实心三角形及 `aria-current`，与 Repository 蓝色操作选择相互独立；浅色背景为纯黑、深色背景为纯白，不显示 Current 文字徽标。
 - 菜单指针定位、视口边缘修正、竖向排列、键盘焦点、Escape 与点击外部关闭。
 - 右键对象与操作对话框目标一致；仓库切换后旧菜单和对话框关闭。
 - 递归分支目录、目录展开、三态目录选择、多引用选择及只按可见分支计算的 Shift 范围、共同提交去重、清空选择、分页、搜索、HEAD 标记及 Locate HEAD。
@@ -111,5 +111,6 @@ scripts/update-local.ps1 -InstallOnly
 | Stash 内容可见性与重复恢复安全 | 2026-10-02 / 0.19.1 | 类型检查、状态与协议 35 项、两项真实 Git 定向回归、生产构建及无头 `--stash-only` 通过；固定 VSIX 打包并通过官方 CLI 安装及 `alwaygit-dev.alwaygit@0.19.1` 核对。未启动会弹窗的真实 VS Code 桌面集成测试 |
 | 分支创建意图与无远端 Push 引导 | 2026-10-02 / 0.20.0 | 类型检查、协议与真实 Git 定向测试 26 项、生产构建及完整无头界面套件通过；覆盖分支名就近说明、仅创建/创建并切换、Remotes 空状态、添加远端后返回 Push 和折叠高级选项。固定 VSIX 已打包并通过官方 CLI 安装及 `alwaygit-dev.alwaygit@0.20.0` 核对；未启动会弹窗的真实 VS Code 桌面集成测试 |
 | 可见顺序范围选择与仓库内嵌管理 | 2026-10-02 / 0.21.0 | 完成 Repository、Local / Remote Branch、History Commit、Details / Working Tree 文件、Worktree 及新增候选仓库列表的 Shift 范围审计，修复仓库排序和折叠分支两处与可见顺序不一致的问题。类型检查、6 个相关 Vitest 文件 39 项、生产构建及无头 `--worktrees-only` 通过；后者覆盖内嵌扫描添加、候选 Shift 范围、新建目标分组和内嵌移除确认。固定 VSIX 已打包并通过官方 CLI 安装及 `alwaygit-dev.alwaygit@0.21.0` 核对；未启动会弹窗的真实 VS Code 桌面集成测试 |
+| Workbench 入口与仓库管理可发现性 | 2026-10-02 / 0.22.0 | 恢复只承担启动职责的活动栏图标，状态栏入口常驻；Repository 普通单击切换，修饰键保留批量选择，仓库行与分组标题增加可见管理菜单。类型检查、入口相关 Vitest、生产构建和完整无头界面套件通过；固定 VSIX 已打包并通过官方 CLI 安装及 `alwaygit-dev.alwaygit@0.22.0` 核对。未启动会弹窗的真实 VS Code 桌面集成测试 |
 
 macOS、Linux、WSL、Remote SSH、Dev Containers 和最低支持版本仍需相应环境的专项证据。验收矩阵、架构兼容性和测试文件的存在都不等同于这些环境已通过验收。
