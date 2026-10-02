@@ -41,10 +41,10 @@
 
 - 固定四区 Workbench、旧 Editor Focus 会话迁移、面板和列拖动、Diff 动态最大高度与收起恢复、仅恢复布局而不重置界面设置的 Restore Layout、窄窗口和主题。
 - 设置浮窗分级导航、预览、取消、应用、刷新期间的持久化；宿主主题与主题卡片优先级、丰富明暗主题、可配置未推送角标、字号和密度同步虚拟行高、Graph 预设及自定义浅色/深色色板的连续性与分页。
-- Repository、Local Branch、Remote Branch、Remote、Tag、Stash、Worktree 的对象菜单；分组标题单击只折叠内容，右侧图标执行分组操作，右键标题打开相同操作菜单，Local Branches 的 Graph 预设具有激活状态。Repository 单击、Ctrl/Cmd、Shift、Ctrl/Cmd+A 与 Escape 管理独立的批量操作选择，右键遵循所选范围，双击或 Enter 才切换；Worktree 单击只聚焦、双击或 Enter 切换。当前 Repository、Worktree 和本地分支使用排头实心三角形及 `aria-current`，与 Repository 蓝色操作选择相互独立；浅色背景为纯黑、深色背景为纯白，不显示 Current 文字徽标。
+- Repository、Local Branch、Remote Branch、Remote、Tag、Stash、Worktree 的对象菜单；分组标题单击只折叠内容，右侧图标执行分组操作，右键标题打开相同操作菜单，Local Branches 的 Graph 预设具有激活状态。Repository 单击、Ctrl/Cmd、Shift、Ctrl/Cmd+A 与 Escape 管理独立的批量操作选择，范围严格按当前显示顺序计算；右键遵循所选范围，双击或 Enter 才切换。Worktree 单击只聚焦、双击或 Enter 切换。当前 Repository、Worktree 和本地分支使用排头实心三角形及 `aria-current`，与 Repository 蓝色操作选择相互独立；浅色背景为纯黑、深色背景为纯白，不显示 Current 文字徽标。
 - 菜单指针定位、视口边缘修正、竖向排列、键盘焦点、Escape 与点击外部关闭。
 - 右键对象与操作对话框目标一致；仓库切换后旧菜单和对话框关闭。
-- 递归分支目录、目录展开、三态目录选择、多引用选择、共同提交去重、清空选择、分页、搜索、HEAD 标记及 Locate HEAD。
+- 递归分支目录、目录展开、三态目录选择、多引用选择及只按可见分支计算的 Shift 范围、共同提交去重、清空选择、分页、搜索、HEAD 标记及 Locate HEAD。
 - Commit 整行悬停、指针、选择、已推送实心节点与粗体消息、本地未推送空心节点与常规消息、各列双击、键盘焦点、本地分支 Checkout 及 Detached HEAD 对话框；Working Tree 使用独立菱形虚拟节点紧邻当前 HEAD，显示变更、冲突和分支，并支持整行选择及上下方向键导航。
 - English / 简体中文切换，并验证 Git 命令、分支、路径和草稿保持不变。
 - 切换仓库或重载后恢复筛选、选择、布局和 Commit 草稿。
@@ -56,7 +56,7 @@
 
 ## Git 与宿主验收矩阵
 
-- 添加分类目录递归发现多层仓库、`.git` 文件 Worktree、已有仓库去重、一次保存与列表通知、取消不产生部分添加；损坏仓库与无法访问目录跳过，目录链接和 junction 不跟随，已有会话保持。
+- 内嵌添加仓库浮窗的目录选择、可取消扫描、候选筛选、可见顺序 Shift 范围、已有仓库禁用、目标分组与内联新建分组；分类目录递归发现多层仓库、`.git` 文件 Worktree、已有仓库去重、一次保存与列表通知、取消不产生部分添加；损坏仓库与无法访问目录跳过，目录链接和 junction 不跟随，已有会话保持。内嵌移除确认列出目标仓库并保留磁盘文件，宿主在执行前重新校验。
 - 同一共享 Git 存储的工作目录在顶层只显示一次；独立克隆与独立 Git 存储保持正确身份。覆盖旧保存路径恢复、直接添加 Worktree、VS Code 自动发现、主目录优先选择、活动 Worktree / 菜单目标、各工作目录草稿与文件状态隔离。
 - 多引用历史首次查询与分页使用相同 tips，共同祖先无重复。
 - Checkout 成功、当前分支、脏文件可能被覆盖、未解决冲突和 Worktree 占用；单个远程分支创建并 Checkout、本地跟踪分支复用和 Stash 重试。
@@ -110,5 +110,6 @@ scripts/update-local.ps1 -InstallOnly
 | Workbench 唯一入口、多标签/窗口与跨窗口安全 | 2026-10-02 / 0.19.0 | 类型检查、6 个相关 Vitest 文件 40 项、生产构建与完整无头界面套件通过；界面脚本显式验证新 Workbench 初始不选择仓库，并适配各受控宿主在 Workbench 内选择仓库。固定 VSIX 打包并通过官方 CLI 安装及 `alwaygit-dev.alwaygit@0.19.0` 核对；按规则未启动会弹窗的真实多窗口 VS Code 集成测试 |
 | Stash 内容可见性与重复恢复安全 | 2026-10-02 / 0.19.1 | 类型检查、状态与协议 35 项、两项真实 Git 定向回归、生产构建及无头 `--stash-only` 通过；固定 VSIX 打包并通过官方 CLI 安装及 `alwaygit-dev.alwaygit@0.19.1` 核对。未启动会弹窗的真实 VS Code 桌面集成测试 |
 | 分支创建意图与无远端 Push 引导 | 2026-10-02 / 0.20.0 | 类型检查、协议与真实 Git 定向测试 26 项、生产构建及完整无头界面套件通过；覆盖分支名就近说明、仅创建/创建并切换、Remotes 空状态、添加远端后返回 Push 和折叠高级选项。固定 VSIX 已打包并通过官方 CLI 安装及 `alwaygit-dev.alwaygit@0.20.0` 核对；未启动会弹窗的真实 VS Code 桌面集成测试 |
+| 可见顺序范围选择与仓库内嵌管理 | 2026-10-02 / 0.21.0 | 完成 Repository、Local / Remote Branch、History Commit、Details / Working Tree 文件、Worktree 及新增候选仓库列表的 Shift 范围审计，修复仓库排序和折叠分支两处与可见顺序不一致的问题。类型检查、6 个相关 Vitest 文件 39 项、生产构建及无头 `--worktrees-only` 通过；后者覆盖内嵌扫描添加、候选 Shift 范围、新建目标分组和内嵌移除确认。固定 VSIX 已打包并通过官方 CLI 安装及 `alwaygit-dev.alwaygit@0.21.0` 核对；未启动会弹窗的真实 VS Code 桌面集成测试 |
 
 macOS、Linux、WSL、Remote SSH、Dev Containers 和最低支持版本仍需相应环境的专项证据。验收矩阵、架构兼容性和测试文件的存在都不等同于这些环境已通过验收。
