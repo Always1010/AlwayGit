@@ -9,6 +9,7 @@ import { inferDefaultBranch } from './default-branch';
 import { GitError, GitReadTerminationError, GitTerminationError } from './error';
 import { isReadOnlyGitCommand } from './command-kind';
 import { assertGitArgumentBudget, prepareGitArguments, splitCleanArguments } from './arguments';
+import { mapGitQueries } from './query-map';
 import { runGitProcess, type GitResult } from './runner';
 export { GitError } from './error';
 import { createSelectedStash, preflightStash, StashStateError, type StashExecution } from './stash';
@@ -253,19 +254,35 @@ export class GitService implements GitServiceContract {
     await this.verify(repo); const offset = query.offset ?? 0; const limit = query.limit ?? 100;
     if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 1000) throw new GitError('Invalid history page', 'INVALID_ARGUMENT');
     let tips: string[];
-    if (query.tips) tips = await Promise.all(query.tips.map(ref => this.oid(repo, ref)));
+    if (query.tips) tips = await mapGitQueries([...new Set(query.tips)], ref => this.oid(repo, ref));
     else if (query.ref) tips = [await this.oid(repo, query.ref)];
-    else { const all = await this.text(repo, ['for-each-ref', '--format=%(refname)%00%(objecttype)%00%(*objecttype)', 'refs/heads', 'refs/remotes', 'refs/tags']); const candidates = all ? await Promise.all(all.split('\n').map(async line => { const [ref, type, peeledType] = line.split('\0'); return type === 'commit' || peeledType === 'commit' || peeledType === 'tag' && await this.text(repo, ['cat-file', '-t', `${ref}^{}`]) === 'commit' ? ref : undefined; })) : []; tips = await Promise.all(candidates.filter((ref): ref is string => !!ref).map(ref => this.oid(repo, ref))); const head = (await this.status(repo)).head; if (head) tips.push(head); }
+    else {
+      const all = await this.text(repo, ['for-each-ref', '--format=%(refname)%00%(objecttype)%00%(*objecttype)%00%(objectname)%00%(*objectname)', 'refs/heads', 'refs/remotes', 'refs/tags']);
+      const candidates = await mapGitQueries(all ? all.split('\n') : [], async line => {
+        const [ref, type, peeledType, oid, peeledOid] = line.split('\0');
+        // Git already provides immutable commit IDs for ordinary refs and tags.
+        // Only nested annotated tags require another query to peel completely.
+        if (type === 'commit') return oid;
+        if (peeledType === 'commit') return peeledOid;
+        if (peeledType === 'tag' && await this.text(repo, ['cat-file', '-t', `${ref}^{}`]) === 'commit') return this.oid(repo, ref);
+        return undefined;
+      });
+      tips = candidates.filter((oid): oid is string => !!oid);
+      const head = (await this.status(repo)).head; if (head) tips.push(head);
+    }
     tips = [...new Set(tips)];
     const searchArgs = query.search ? ['--fixed-strings', '--regexp-ignore-case', `--grep=${query.search}`] : [];
     if (query.search?.includes('\0')) throw new GitError('Invalid search', 'INVALID_ARGUMENT');
-    const output = tips.length ? (await this.run(repo, ['log', '--topo-order', '-z', `--format=${commitFormat}`, `--skip=${offset}`, `--max-count=${limit + 1}`, ...searchArgs, ...tips, '--'])).stdout.toString('utf8').split('\0') : [];
+    // Only resolved commit IDs enter stdin; raw revisions cannot inject flags or
+    // negative tips. Keep --not/--remotes on argv to preserve remote exclusion.
+    const tipInput = Buffer.from(`${tips.join('\n')}\n`, 'utf8');
+    const output = tips.length ? (await this.run(repo, ['log', '--topo-order', '-z', `--format=${commitFormat}`, `--skip=${offset}`, `--max-count=${limit + 1}`, ...searchArgs, '--stdin', '--'], false, undefined, { input: tipInput })).stdout.toString('utf8').split('\0') : [];
     const commits: Commit[] = []; for (let i = 0; i + 5 < output.length; i += 6) commits.push(parseCommit(output.slice(i, i + 6)));
     const visible = commits.slice(0, limit);
     if (visible.length) {
       // Remote availability is based on locally known remote-tracking refs. The
       // same search filter keeps the bounded query aligned with history paging.
-      const localOnlyOutput = await this.text(repo, ['rev-list', '--topo-order', `--max-count=${offset + limit + 1}`, ...searchArgs, ...tips, '--not', '--remotes', '--']);
+      const localOnlyOutput = (await this.run(repo, ['rev-list', '--topo-order', `--max-count=${offset + limit + 1}`, ...searchArgs, '--stdin', '--not', '--remotes', '--'], false, undefined, { input: tipInput })).stdout.toString('utf8').trim();
       const localOnly = new Set(localOnlyOutput ? localOnlyOutput.split('\n') : []);
       for (const commit of visible) commit.pushed = !localOnly.has(commit.oid);
     }
