@@ -1,3 +1,4 @@
+import { message as localizeMessage } from '../i18n/index';
 import { GitError } from './error';
 
 // Leave room below Windows' 32,767 UTF-16 command-line limit. This deliberately
@@ -7,7 +8,7 @@ function estimatedLength(executable: string, args: readonly string[]): number {
   return [executable, ...args].reduce((size, argument) => size + argument.length * 2 + 3, 1);
 }
 export function assertGitArgumentBudget(executable: string, args: readonly string[]): void {
-  if (estimatedLength(executable, args) > gitArgumentBudget) throw new GitError('Git command arguments are too long. Select fewer items or shorten the description and retry.', 'ARGUMENT_LIMIT');
+  if (estimatedLength(executable, args) > gitArgumentBudget) throw new GitError(localizeMessage("arguments.gitCommandArgumentsAreTooLongSelectFewerItems"), 'ARGUMENT_LIMIT');
 }
 
 export function prepareGitArguments(args: string[], input?: Buffer): { args: string[]; input?: Buffer } {
@@ -21,7 +22,7 @@ export function prepareGitArguments(args: string[], input?: Buffer): { args: str
   if (['commit', 'tag'].includes(args[0])) {
     const message = args.indexOf('-m');
     if (message !== -1 && message + 1 < args.length) {
-      if (args[message + 1].includes('\0')) throw new GitError('Messages cannot contain NUL characters', 'INVALID_ARGUMENT');
+      if (args[message + 1].includes('\0')) throw new GitError(localizeMessage("arguments.messagesCannotContainNULCharacters"), 'INVALID_ARGUMENT');
       return { args: [...args.slice(0, message), '--file=-', ...args.slice(message + 2)], input: Buffer.from(args[message + 1], 'utf8') };
     }
   }

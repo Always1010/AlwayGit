@@ -1,0 +1,26 @@
+{
+  "extension.alwayGitGitAuthentication": {
+    "en": "AlwayGit · Git Authentication",
+    "zh-CN": "AlwayGit · Git Authentication",
+    "review": "pending",
+    "context": "src/extension/extension.ts / activate / git"
+  },
+  "extension.gitMergeAlwayGit": {
+    "en": "$(git-merge) AlwayGit",
+    "zh-CN": "$(git-merge) AlwayGit",
+    "review": "pending",
+    "context": "src/extension/extension.ts / activate"
+  },
+  "extension.reloadTheVSCodeWindowToApplyAlwayGitRuntime": {
+    "en": "Reload the VS Code window to apply AlwayGit runtime configuration changes.",
+    "zh-CN": "Reload the VS Code window to apply AlwayGit runtime configuration changes.",
+    "review": "pending",
+    "context": "src/extension/extension.ts / activate"
+  },
+  "extension.alwayGitActivatedGitOperationsRunInTheWorkspaceExtension": {
+    "en": "AlwayGit activated. Git operations run in the workspace extension host.",
+    "zh-CN": "AlwayGit activated. Git operations run in the workspace extension host.",
+    "review": "pending",
+    "context": "src/extension/extension.ts / activate"
+  }
+}

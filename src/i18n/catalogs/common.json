@@ -1,0 +1,68 @@
+{
+  "common.gitDetails": {
+    "en": "Git details",
+    "zh-CN": "Git 详情",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "common.cancel": {
+    "en": "Cancel",
+    "zh-CN": "取消",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "common.working": {
+    "en": "Working…",
+    "zh-CN": "处理中…",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "common.none": {
+    "en": "None",
+    "zh-CN": "无",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "common.reset": {
+    "en": "Reset",
+    "zh-CN": "Reset",
+    "review": "keep",
+    "context": "webview/ActionDialog.tsx / actionTitles"
+  },
+  "common.settings": {
+    "en": "Settings",
+    "zh-CN": "设置",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "common.close": {
+    "en": "Close",
+    "zh-CN": "关闭",
+    "review": "translated",
+    "context": "webview/HelpDialog.tsx / HelpDialog"
+  },
+  "common.language": {
+    "en": "Language",
+    "zh-CN": "语言",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog / pageLabel"
+  },
+  "common.apply": {
+    "en": "Apply",
+    "zh-CN": "应用",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "common.languageVariant2": {
+    "en": "Language",
+    "zh-CN": "Language",
+    "review": "pending",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "common.refresh": {
+    "en": "Refresh",
+    "zh-CN": "刷新",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor / refresh"
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "repositoriesRemove.removed1RepositoryFromAlwayGit": {
+    "en": "Removed 1 repository from AlwayGit.",
+    "zh-CN": "已从 AlwayGit 移除 1 个仓库。",
+    "review": "translated",
+    "context": "webview/RepositoryRemoveDialog.tsx / RepositoryRemoveDialog / remove"
+  },
+  "repositoriesRemove.removedRepositoriesFromAlwayGit": {
+    "en": "Removed {{removed}} repositories from AlwayGit.",
+    "zh-CN": "已从 AlwayGit 移除 {{removed}} 个仓库。",
+    "review": "translated",
+    "context": "webview/RepositoryRemoveDialog.tsx / RepositoryRemoveDialog / remove"
+  },
+  "repositoriesRemove.removeRepository": {
+    "en": "Remove Repository",
+    "zh-CN": "移除仓库",
+    "review": "translated",
+    "context": "webview/RepositoryRemoveDialog.tsx / RepositoryRemoveDialog"
+  },
+  "repositoriesRemove.removeRepositories": {
+    "en": "Remove {{count}} Repositories",
+    "zh-CN": "移除 {{count}} 个仓库",
+    "review": "translated",
+    "context": "webview/RepositoryRemoveDialog.tsx / RepositoryRemoveDialog"
+  },
+  "repositoriesRemove.removing": {
+    "en": "Removing…",
+    "zh-CN": "正在移除…",
+    "review": "translated",
+    "context": "webview/RepositoryRemoveDialog.tsx / RepositoryRemoveDialog"
+  },
+  "repositoriesRemove.removeFromAlwayGitOnly": {
+    "en": "Remove from AlwayGit only",
+    "zh-CN": "仅从 AlwayGit 中移除",
+    "review": "translated",
+    "context": "webview/RepositoryRemoveDialog.tsx / RepositoryRemoveDialog"
+  },
+  "repositoriesRemove.filesOnDiskAndGitHistoryWillNotBe": {
+    "en": "Files on disk and Git history will not be deleted. You can add these repositories again later.",
+    "zh-CN": "不会删除磁盘上的文件或 Git 历史，之后仍可重新添加这些仓库。",
+    "review": "translated",
+    "context": "webview/RepositoryRemoveDialog.tsx / RepositoryRemoveDialog"
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "operations.resolveAndStageConflictingFilesBeforeContinue": {
+    "en": "Resolve and Stage conflicting files before Continue.",
+    "zh-CN": "请先解决冲突并 Stage 文件，再 Continue。",
+    "review": "translated",
+    "context": "webview/OperationNotice.tsx / OperationNotice / reason"
+  },
+  "operations.noUnmergedFilesInGitInspectTheStagedResult": {
+    "en": "No unmerged files in Git. Inspect the staged result before Continue; content correctness has not been verified.",
+    "zh-CN": "Git 中已无未标记的冲突文件。继续前请检查暂存结果；内容正确性尚未验证。",
+    "review": "translated",
+    "context": "webview/OperationNotice.tsx / OperationNotice / reason"
+  },
+  "operations.reviewTheActiveOperationBeforeContinuing": {
+    "en": "Review the active operation before continuing.",
+    "zh-CN": "请检查当前操作后继续。",
+    "review": "translated",
+    "context": "webview/OperationNotice.tsx / OperationNotice / reason"
+  },
+  "operations.paused": {
+    "en": "{{name}} paused",
+    "zh-CN": "{{name}} 已暂停",
+    "review": "translated",
+    "context": "webview/OperationNotice.tsx / OperationNotice"
+  },
+  "operations.unresolvedConflicts": {
+    "en": "Unresolved conflicts",
+    "zh-CN": "存在未解决的冲突",
+    "review": "translated",
+    "context": "webview/OperationNotice.tsx / OperationNotice"
+  },
+  "operations.conflicts": {
+    "en": "{{count}} conflicts",
+    "zh-CN": "{{count}} 个冲突",
+    "review": "translated",
+    "context": "webview/OperationNotice.tsx / OperationNotice"
+  },
+  "operations.awaitingResultReview": {
+    "en": "Awaiting result review",
+    "zh-CN": "待检查结果",
+    "review": "translated",
+    "context": "webview/OperationNotice.tsx / OperationNotice"
+  },
+  "operations.viewConflicts": {
+    "en": "View Conflicts",
+    "zh-CN": "查看冲突",
+    "review": "translated",
+    "context": "webview/OperationNotice.tsx / OperationNotice"
+  },
+  "operations.reviewStagedResult": {
+    "en": "Review Staged Result",
+    "zh-CN": "检查暂存结果",
+    "review": "translated",
+    "context": "webview/OperationNotice.tsx / OperationNotice"
+  },
+  "operations.waitForTheRunningAction": {
+    "en": "Wait for the running action.",
+    "zh-CN": "请等待当前操作完成。",
+    "review": "translated",
+    "context": "webview/OperationNotice.tsx / OperationNotice"
+  },
+  "operations.skipTheCurrentCommitInThisOperation": {
+    "en": "Skip the current commit in this operation",
+    "zh-CN": "跳过当前操作中的 Commit",
+    "review": "translated",
+    "context": "webview/OperationNotice.tsx / OperationNotice"
+  },
+  "operations.abort": {
+    "en": "Abort {{name}}…",
+    "zh-CN": "中止本次 {{name}}…",
+    "review": "translated",
+    "context": "webview/OperationNotice.tsx / OperationNotice"
+  },
+  "operations.continue": {
+    "en": "Continue",
+    "zh-CN": "Continue",
+    "review": "pending",
+    "context": "webview/OperationNotice.tsx / OperationNotice"
+  },
+  "operations.skip": {
+    "en": "Skip",
+    "zh-CN": "Skip",
+    "review": "pending",
+    "context": "webview/OperationNotice.tsx / OperationNotice"
+  }
+}

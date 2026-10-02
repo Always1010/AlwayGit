@@ -1,0 +1,56 @@
+{
+  "windowBridge.filePathIsOutsideTheRepository": {
+    "en": "File path is outside the repository.",
+    "zh-CN": "File path is outside the repository.",
+    "review": "pending",
+    "context": "src/application/window-bridge.ts / projectRequestSchema"
+  },
+  "windowBridge.theProjectIsNoLongerOpenInThisWindow": {
+    "en": "The project is no longer open in this window.",
+    "zh-CN": "The project is no longer open in this window.",
+    "review": "pending",
+    "context": "src/application/window-bridge.ts / constructor"
+  },
+  "windowBridge.cannotRegisterTheProjectWindow": {
+    "en": "Cannot register the project window.",
+    "zh-CN": "Cannot register the project window.",
+    "review": "pending",
+    "context": "src/application/window-bridge.ts / start"
+  },
+  "windowBridge.broadcastToFailed": {
+    "en": "Broadcast to {{id}} failed: {{value}}",
+    "zh-CN": "Broadcast to {{id}} failed: {{value}}",
+    "review": "pending",
+    "context": "src/application/window-bridge.ts / broadcast"
+  },
+  "windowBridge.theProjectWindowDidNotRespond": {
+    "en": "The project window did not respond.",
+    "zh-CN": "The project window did not respond.",
+    "review": "pending",
+    "context": "src/application/window-bridge.ts / send"
+  },
+  "windowBridge.theProjectWindowIsUnavailable": {
+    "en": "The project window is unavailable.",
+    "zh-CN": "The project window is unavailable.",
+    "review": "pending",
+    "context": "src/application/window-bridge.ts / send"
+  },
+  "windowBridge.theProjectWindowClosedBeforeResponding": {
+    "en": "The project window closed before responding.",
+    "zh-CN": "The project window closed before responding.",
+    "review": "pending",
+    "context": "src/application/window-bridge.ts / send"
+  },
+  "windowBridge.invalidProjectWindowResponse": {
+    "en": "Invalid project window response.",
+    "zh-CN": "Invalid project window response.",
+    "review": "pending",
+    "context": "src/application/window-bridge.ts / send"
+  },
+  "windowBridge.theProjectWindowRejectedTheRequest": {
+    "en": "The project window rejected the request.",
+    "zh-CN": "The project window rejected the request.",
+    "review": "pending",
+    "context": "src/application/window-bridge.ts / send"
+  }
+}

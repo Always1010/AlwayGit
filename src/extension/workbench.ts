@@ -1,13 +1,15 @@
+import { translate, type MessageKey, type MessageArgs } from '../i18n/index';
 import { SnapshotCoordinator } from '../application/snapshot-coordinator';
 import { QueryCoordinator } from '../application/query-coordinator';
 import { readQueryCategory } from '../protocol/queries';
-import { cancelQuerySchema } from '../protocol/validation';
+import { cancelQuerySchema, actionSchema, operationSettingsSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema, repositoryDiscoverySchema, cancelRepositoryDiscoverySchema, addRepositoriesSchema, reorderRepositorySchema, createRepositoryCollectionSchema } from '../protocol/validation';
 import * as vscode from 'vscode';
 import { randomBytes } from 'node:crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { AddRepositoriesResult, GitAction, GitServiceContract, HostMessage, RepositoryCollection, RepositoryDiscoveryPreview, RepositoryStatus, RpcRequest, Snapshot, OperationSettings } from '../protocol/types';
-import { actionSchema, operationSettingsSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema, repositoryDiscoverySchema, cancelRepositoryDiscoverySchema, addRepositoriesSchema, reorderRepositorySchema, createRepositoryCollectionSchema } from '../protocol/validation';
+
 import type { RepositoryManager } from '../repositories/manager';
 import type { DiscoveryResult } from '../repositories/discovery';
 import type { GitDocuments } from '../editor/documents';
@@ -46,8 +48,10 @@ export class Workbench implements vscode.Disposable {
   private readonly interval: ReturnType<typeof setInterval>;
   private readonly sessions = new SessionWriter(session => this.context.workspaceState.update('alwaygit.session', session));
   private operationSettings(): OperationSettings { return { allowDetachedHead: vscode.workspace.getConfiguration('alwaygit').get<boolean>('allowDetachedHead', false) === true, scope: vscode.workspace.workspaceFile || vscode.workspace.workspaceFolders?.length ? 'workspace' : 'user' }; }
-  private language(): Language { return this.context.workspaceState.get<{ language?: Language }>('alwaygit.session', {}).language ?? preferredLanguage(); }
-  private text(english: string, chinese: string): string { return hostText(english, chinese, this.language()); }
+  private readonly requestLanguage = new AsyncLocalStorage<Language>();
+  private panelLanguage(source?: WorkbenchPanel): Language { const language = source?.session?.language ?? source?.savedSession?.language ?? this.context.workspaceState.get<{ language?: Language }>('alwaygit.session', {}).language ?? preferredLanguage(); return language === 'zh-CN' ? 'zh-CN' : 'en'; }
+  private language(): Language { return this.requestLanguage.getStore() ?? this.panelLanguage(); }
+  private text<K extends MessageKey>(key: K, ...args: MessageArgs<K>): string { return hostText(this.language(), key, ...args); }
   private repositoryKey(commonDir: string): string { const resolved=path.resolve(commonDir);return process.platform==='win32'?resolved.toLowerCase():resolved; }
   private isBusy(commonDir: string): boolean { const key=this.repositoryKey(commonDir);return this.busy.has(key)||this.externalBusy.has(key); }
   constructor(private readonly context: vscode.ExtensionContext, private readonly git: GitServiceContract, private readonly repositories: RepositoryManager, private readonly documents: GitDocuments, private readonly output: vscode.OutputChannel, private readonly projects: ProjectWindows) {
@@ -57,7 +61,7 @@ export class Workbench implements vscode.Disposable {
     this.interval = setInterval(() => void this.poll(), seconds * 1000);
   }
   async open(repoId?: string, restoredPanel?: vscode.WebviewPanel, newTab = false, blank = false): Promise<void> {
-    if (!vscode.workspace.isTrusted) { await vscode.window.showWarningMessage(this.text('Trust this workspace using VS Code Workspace Trust, then reopen AlwayGit.', '请在 VS Code 中信任此工作区，然后重新打开 AlwayGit。')); return; }
+    if (!vscode.workspace.isTrusted) { await vscode.window.showWarningMessage(this.text("host.trustThisWorkspaceUsingVSCodeWorkspaceTrustThen")); return; }
     await this.repositories.scan();
     if (repoId) this.activeRepository = repoId;
     const existing=!restoredPanel&&!newTab?([...this.panels.values()].find(entry=>entry.panel.active)??this.lastPanel??[...this.panels.values()].at(-1)):undefined;
@@ -75,7 +79,7 @@ export class Workbench implements vscode.Disposable {
       this.requestCount++;
       try { const result = await this.handleRequest(parsed.data,entry); this.post({ type: 'response', id: parsed.data.id, result },entry); }
       catch (error) {
-        const failure = serializeRequestError(error);
+        const failure = serializeRequestError(error, this.panelLanguage(entry));
         this.output.appendLine(`[request:${parsed.data.method}] ${requestErrorText(failure)}`);
         this.post({ type: 'response', id: parsed.data.id, error: failure },entry);
       }
@@ -84,7 +88,7 @@ export class Workbench implements vscode.Disposable {
     panel.webview.html = await this.html(panel.webview,repoId,blank);
   }
   async pickRepositoryDirectory():Promise<string|undefined>{
-    const selected=await vscode.window.showOpenDialog({canSelectFolders:true,canSelectFiles:false,canSelectMany:false,title:this.text('Select a repository or a folder containing repositories','选择仓库或存放多个仓库的目录'),openLabel:this.text('Scan Folder','扫描文件夹')});
+    const selected=await vscode.window.showOpenDialog({canSelectFolders:true,canSelectFiles:false,canSelectMany:false,title:this.text("host.selectARepositoryOrAFolderContainingRepositories"),openLabel:this.text("host.scanFolder")});
     return selected?.[0]?.fsPath;
   }
   async discoverRepositories(scanId:string,root:string,source?:WorkbenchPanel):Promise<RepositoryDiscoveryPreview>{
@@ -103,11 +107,11 @@ export class Workbench implements vscode.Disposable {
   }
   cancelRepositoryDiscovery(scanId:string,source?:WorkbenchPanel):void{const session=this.repositoryDiscoveries.get(scanId);if(!session||session.source!==source)return;session.cancelled=true;if(session.discovery)this.repositoryDiscoveries.delete(scanId);}
   async addRepository(scanId:string,keys:string[],collectionId:string|undefined,newCollectionName:string|undefined,source?:WorkbenchPanel):Promise<AddRepositoriesResult>{
-    const session=this.repositoryDiscoveries.get(scanId);if(!session||session.source!==source||!session.discovery||session.discovery.cancelled)throw new Error(this.text('The repository scan has expired. Scan the folder again.','仓库扫描结果已失效，请重新扫描文件夹。'));
+    const session=this.repositoryDiscoveries.get(scanId);if(!session||session.source!==source||!session.discovery||session.discovery.cancelled)throw new Error(this.text("host.theRepositoryScanHasExpiredScanTheFolderAgain"));
     this.repositoryDiscoveries.delete(scanId);
     const discoveredGroups=groupRepositories(session.discovery.repositories),availableKeys=new Set(discoveredGroups.map(group=>group.key)),selectedKeys=new Set(keys.filter(key=>availableKeys.has(key)));
-    if(!selectedKeys.size)throw new Error(this.text('Select at least one available repository.','请至少选择一个可添加的仓库。'));
-    if(collectionId&&!this.repositories.collections().some(collection=>collection.id===collectionId))throw new Error(this.text('The selected repository group no longer exists.','所选仓库分组已不存在。'));
+    if(!selectedKeys.size)throw new Error(this.text("host.selectAtLeastOneAvailableRepository"));
+    if(collectionId&&!this.repositories.collections().some(collection=>collection.id===collectionId))throw new Error(this.text("host.theSelectedRepositoryGroupNoLongerExists"));
     if(newCollectionName){const problem=this.collectionNameProblem(newCollectionName);if(problem)throw new Error(problem);}
     const repositories=discoveredGroups.filter(group=>selectedKeys.has(group.key)).flatMap(group=>group.members);
     const result=await this.repositories.registerDiscovered({...session.discovery,repositories,found:selectedKeys.size},{},{collectionId,newCollectionName});
@@ -118,20 +122,23 @@ export class Workbench implements vscode.Disposable {
   async removeRepositories(keys: string[]): Promise<number> {
     const groups=this.repositories.groups().filter(group=>keys.includes(group.key));
     if(!groups.length)return 0;
-    if(groups.some(group=>group.members.some(repo=>this.isBusy(repo.commonDir))))throw new Error(this.text('Wait for the running Git operation before removing this repository.','请等待正在执行的 Git 操作完成后再移除仓库。'));
+    if(groups.some(group=>group.members.some(repo=>this.isBusy(repo.commonDir))))throw new Error(this.text("host.waitForTheRunningGitOperationBeforeRemovingThis"));
     const removed=await this.repositories.remove(groups.map(group=>group.key));if(removed)await this.projects.notifyCatalogChanged();return removed;
   }
   async createRepositoryCollection(name:string): Promise<RepositoryCollection> {
     const problem=this.collectionNameProblem(name);if(problem)throw new Error(problem);
     const collection=await this.repositories.createCollection(name);await this.projects.notifyCatalogChanged();return collection;
   }
-  async renameRepositoryCollection(id:string):Promise<void>{const collection=this.repositories.collections().find(item=>item.id===id);if(!collection)return;const name=await vscode.window.showInputBox({title:this.text('Rename Repository Group','重命名仓库分组'),value:collection.name,validateInput:value=>this.collectionNameProblem(value,id)});if(name!==undefined){await this.repositories.renameCollection(id,name);await this.projects.notifyCatalogChanged();}}
-  async deleteRepositoryCollection(id:string):Promise<void>{const collection=this.repositories.collections().find(item=>item.id===id);if(!collection)return;const remove=this.text('Delete Group','删除分组'),confirmed=await vscode.window.showWarningMessage(this.text(`Delete repository group "${collection.name}"? Its repositories will remain at the repository root.`,`删除仓库分组“${collection.name}”？其中的仓库会保留在仓库根层。`),{modal:true},remove);if(confirmed===remove){await this.repositories.deleteCollection(id);await this.projects.notifyCatalogChanged();}}
-  async moveRepositories(keys:string[]):Promise<number>{const collections=this.repositories.collections();type Destination=vscode.QuickPickItem&{collectionId?:string};const choices:Destination[]=[{label:this.text('Repository root','仓库根目录'),description:this.text('Place alongside repository groups','与仓库分组目录同级')},...collections.map(collection=>({label:collection.name,collectionId:collection.id}))];const destination=await vscode.window.showQuickPick(choices,{title:this.text(`Move ${keys.length} ${keys.length===1?'repository':'repositories'}`,`移动 ${keys.length} 个仓库`),placeHolder:this.text('Choose a repository group or the repository root','选择仓库分组或仓库根目录')});if(!destination)return 0;const moved=await this.repositories.move(keys,destination.collectionId);if(moved)await this.projects.notifyCatalogChanged();return moved;}
-  private collectionNameProblem(value:string,currentId?:string):string|undefined{const name=value.trim();if(!name)return this.text('Enter a group name.','请输入分组名称。');if(name.length>80)return this.text('Use no more than 80 characters.','分组名称不能超过 80 个字符。');if(this.repositories.collections().some(item=>item.id!==currentId&&item.name.localeCompare(name,undefined,{sensitivity:'accent'})===0))return this.text('A group with this name already exists.','已存在同名分组。');return undefined;}
+  async renameRepositoryCollection(id:string):Promise<void>{const collection=this.repositories.collections().find(item=>item.id===id);if(!collection)return;const name=await vscode.window.showInputBox({title:this.text("host.renameRepositoryGroup"),value:collection.name,validateInput:value=>this.collectionNameProblem(value,id)});if(name!==undefined){await this.repositories.renameCollection(id,name);await this.projects.notifyCatalogChanged();}}
+  async deleteRepositoryCollection(id:string):Promise<void>{const collection=this.repositories.collections().find(item=>item.id===id);if(!collection)return;const remove=this.text("host.deleteGroup"),confirmed=await vscode.window.showWarningMessage(this.text("host.deleteRepositoryGroupItsRepositoriesWillRemainAtThe", { name: (collection.name) }),{modal:true},remove);if(confirmed===remove){await this.repositories.deleteCollection(id);await this.projects.notifyCatalogChanged();}}
+  async moveRepositories(keys:string[]):Promise<number>{const collections=this.repositories.collections();type Destination=vscode.QuickPickItem&{collectionId?:string};const choices:Destination[]=[{label:this.text("host.repositoryRoot"),description:this.text("host.placeAlongsideRepositoryGroups")},...collections.map(collection=>({label:collection.name,collectionId:collection.id}))];const destination=await vscode.window.showQuickPick(choices,{title:this.text("host.moveRepositories", { count: (keys.length) }),placeHolder:this.text("host.chooseARepositoryGroupOrTheRepositoryRoot")});if(!destination)return 0;const moved=await this.repositories.move(keys,destination.collectionId);if(moved)await this.projects.notifyCatalogChanged();return moved;}
+  private collectionNameProblem(value:string,currentId?:string):string|undefined{const name=value.trim();if(!name)return this.text("host.enterAGroupName");if(name.length>80)return this.text("host.useNoMoreThan80Characters");if(this.repositories.collections().some(item=>item.id!==currentId&&item.name.localeCompare(name,undefined,{sensitivity:'accent'})===0))return this.text("host.aGroupWithThisNameAlreadyExists");return undefined;}
   /** All UI requests go through the same validated, trusted application boundary. */
   async handle(request: RpcRequest): Promise<unknown> { return this.handleRequest(request); }
   private async handleRequest(request: RpcRequest, source?:WorkbenchPanel): Promise<unknown> {
+    return this.requestLanguage.run(this.panelLanguage(source), () => this.routeRequest(request, source));
+  }
+  private async routeRequest(request: RpcRequest, source?:WorkbenchPanel): Promise<unknown> {
     if(request.method==='cancelQuery'){this.queries.cancelOwner(source??this,cancelQuerySchema.parse(request.payload).requestId);return null;}
     const category=readQueryCategory(request.method);
     if(category)return this.queries.run(source??this,category,request.id,signal=>this.git.withReadSignal?this.git.withReadSignal(signal,()=>this.executeRequest(request,source)):this.executeRequest(request,source));
@@ -159,7 +166,7 @@ export class Workbench implements vscode.Disposable {
       return null;
     }
     if (request.method === 'copyText') { await vscode.env.clipboard.writeText(copySchema.parse(request.payload).text); return null; }
-    if (!vscode.workspace.isTrusted) throw new Error(this.text('Git execution requires a trusted workspace.', '请先信任工作区，再执行 Git 操作。'));
+    if (!vscode.workspace.isTrusted) throw new Error(this.text("host.gitExecutionRequiresATrustedWorkspace"));
     if (request.method === 'repositories') { const list = this.repositories.list(),active=source?.activeRepository??this.activeRepository; return active ? list.sort((a, b) => Number(b.id === active) - Number(a.id === active)) : list; }
     if (request.method === 'repositoryCollections') return this.repositories.collections();
     if (request.method === 'repositoryOrder') return this.repositories.order();
@@ -176,7 +183,7 @@ export class Workbench implements vscode.Disposable {
     if (request.method === 'moveRepositories') { const data=moveRepositoriesSchema.parse(request.payload);if(data.collectionId===undefined)return this.moveRepositories(data.keys);const moved=await this.repositories.move(data.keys,data.collectionId);if(moved)await this.projects.notifyCatalogChanged();return moved; }
     if(request.method==='openWorkbench'){const data=openWorkbenchSchema.parse(request.payload??{});if(data.newTab)await this.open(undefined,undefined,true,true);else await this.projects.openBlankWorkbenchInNewWindow();return null;}
     if (request.method === 'pickWorktree') {
-      const value = await vscode.window.showSaveDialog({ title: 'New Worktree Directory', saveLabel: 'Use Directory', defaultUri: vscode.Uri.file(path.join(path.dirname(this.repositories.get(request.repoId).root), 'new-worktree')) });
+      const value = await vscode.window.showSaveDialog({ title: this.text("host.newWorktreeDirectory"), saveLabel: this.text("host.useDirectory"), defaultUri: vscode.Uri.file(path.join(path.dirname(this.repositories.get(request.repoId).root), 'new-worktree')) });
       return value?.fsPath;
     }
     const repo = this.repositories.get(request.repoId);
@@ -208,7 +215,7 @@ export class Workbench implements vscode.Disposable {
         const snapshot = await this.snapshots.read(repo.id, () => this.git.snapshot(repo));
         const normalized = (value: string) => process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
         const worktree = snapshot.worktrees.find(w => normalized(w.path) === normalized(data.path));
-        if (!worktree || worktree.bare) throw new Error(this.text('Select a registered non-bare Worktree.', '请选择已注册的非 bare Worktree。'));
+        if (!worktree || worktree.bare) throw new Error(this.text("host.selectARegisteredNonBareWorktree"));
         if (normalized(worktree.path) === normalized(repo.root) && !data.newWindow) { if(source)this.selectPanelRepository(source,repo.id);else await this.open(repo.id); return null; }
         const registered = await this.repositories.add(worktree.path);
         await this.projects.notifyCatalogChanged();
@@ -219,12 +226,12 @@ export class Workbench implements vscode.Disposable {
       case 'action': {
         let action: GitAction = actionSchema.parse(request.payload);
         await this.refreshExternalActivity(repo.commonDir);
-        if (this.isBusy(repo.commonDir)) throw new Error(this.text('An operation is already running in this repository.', '此仓库已有正在执行的操作。'));
+        if (this.isBusy(repo.commonDir)) throw new Error(this.text("host.anOperationIsAlreadyRunningInThisRepository"));
         if (action.type === 'merge' || action.type === 'rebase' || action.type === 'reset') action = await this.git.prepareAction(repo, action);
         const operation = action.type === 'operation.abort' ? (await this.snapshots.read(repo.id, () => this.git.snapshot(repo))).operation : undefined;
-        if (!await confirmAction(repo, action, this.language(), operation)) throw new Error(this.text('Operation cancelled.', '操作已取消。'));
+        if (!await confirmAction(repo, action, this.language(), operation)) throw new Error(this.text("host.operationCancelled"));
         await this.refreshExternalActivity(repo.commonDir);
-        if (this.isBusy(repo.commonDir)) throw new Error(this.text('An operation is already running in this repository.', '此仓库已有正在执行的操作。'));
+        if (this.isBusy(repo.commonDir)) throw new Error(this.text("host.anOperationIsAlreadyRunningInThisRepository"));
         const operationKey=this.repositoryKey(repo.commonDir);this.busy.add(operationKey);
         for (const member of this.repositories.list().filter(member => member.commonDir === repo.commonDir)) this.snapshots.invalidate(member.id);
         for (const r of this.repositories.list().filter(r => r.commonDir === repo.commonDir)) this.post({ type: 'activity', repoId: r.id, busy: true, label: action.type });
@@ -232,12 +239,12 @@ export class Workbench implements vscode.Disposable {
         catch(error){
           if((error as {terminationUnconfirmed?:unknown})?.terminationUnconfirmed===true)this.externalBusy.set(operationKey,{label:action.type});
           if(error instanceof RepositoryOperationRecoveryRequiredError){
-            const recover=this.text('Remove protection','解除保护');
-            const chosen=await vscode.window.showWarningMessage(this.text('The previous Git operation was interrupted.','上次 Git 操作中断，仓库保护仍保留。'),{modal:true,detail:this.text('Confirm that the previous AlwayGit window and all of its Git processes have ended, then inspect the repository status. Removing protection will not repeat the interrupted operation.','请先确认上次 AlwayGit 窗口及其 Git 进程均已结束，并检查仓库状态。解除保护后需重新发起操作。')},recover);
-            if(chosen===recover){await this.projects.recoverRepositoryOperation(repo.commonDir,error.token);throw new Error(this.text('Protection removed. Refresh the repository and retry the operation.','已解除保护，请刷新仓库并重新发起操作。'));}
+            const recover=this.text("host.removeProtection");
+            const chosen=await vscode.window.showWarningMessage(this.text("host.thePreviousGitOperationWasInterrupted"),{modal:true,detail:this.text("host.confirmThatThePreviousAlwayGitWindowAndAllOf")},recover);
+            if(chosen===recover){await this.projects.recoverRepositoryOperation(repo.commonDir,error.token);throw new Error(this.text("host.protectionRemovedRefreshTheRepositoryAndRetryTheOperation"));}
             throw error;
           }
-          if(error instanceof RepositoryOperationBusyError)throw new Error(this.text('A Git operation is already running for this repository in another AlwayGit window.','另一个 AlwayGit 窗口正在对该仓库执行 Git 操作。'));throw error;
+          if(error instanceof RepositoryOperationBusyError)throw new Error(this.text("host.aGitOperationIsAlreadyRunningForThisRepository"));throw error;
         }
         finally {
           this.busy.delete(operationKey);
@@ -259,7 +266,7 @@ export class Workbench implements vscode.Disposable {
       while (next < repositories.length) {
         const index = next++, repo = repositories[index];
         try { results[index] = await this.git.repositoryStatus(repo); }
-        catch (error) { this.output.appendLine(redactSecrets(`[repository-status:${repo.name}] ${error instanceof Error ? error.message : String(error)}`)); }
+        catch (error) { this.output.appendLine(redactSecrets(translate('en', "host.repositoryStatus", { name: (repo.name), value: (error instanceof Error ? error.message : String(error)) }))); }
       }
     }));
     return results.filter((result): result is RepositoryStatus => !!result);
@@ -272,8 +279,8 @@ export class Workbench implements vscode.Disposable {
     if (!ids.length || this.polling || !vscode.workspace.isTrusted) return;
     this.polling = true;
     try {
-      await Promise.all([...this.externalBusy.keys()].map(key=>this.refreshExternalActivity(key).catch(error=>this.output.appendLine(redactSecrets(`[activity-refresh] ${error instanceof Error?error.message:String(error)}`)))));
-      for(const id of ids){try{const repo=this.repositories.get(id);if(this.isBusy(repo.commonDir))continue;const previous=this.fingerprints.get(repo.id),snapshot=await this.snapshots.read(repo.id, () => this.git.snapshot(repo));if(this.recordFingerprint(snapshot)!==previous)this.post({type:'changed',repoId:repo.id,changes:{paths:[]},snapshot});}catch(error){this.output.appendLine(redactSecrets(`[refresh] ${error instanceof Error?error.message:String(error)}`));}}
+      await Promise.all([...this.externalBusy.keys()].map(key=>this.refreshExternalActivity(key).catch(error=>this.output.appendLine(redactSecrets(translate('en', "host.activityRefresh", { value: (error instanceof Error?error.message:String(error)) }))))));
+      for(const id of ids){try{const repo=this.repositories.get(id);if(this.isBusy(repo.commonDir))continue;const previous=this.fingerprints.get(repo.id),snapshot=await this.snapshots.read(repo.id, () => this.git.snapshot(repo));if(this.recordFingerprint(snapshot)!==previous)this.post({type:'changed',repoId:repo.id,changes:{paths:[]},snapshot});}catch(error){this.output.appendLine(redactSecrets(translate('en', "host.refresh", { value: (error instanceof Error?error.message:String(error)) })));}}
     }
     finally { this.polling = false; }
   }
@@ -284,7 +291,7 @@ export class Workbench implements vscode.Disposable {
     this.externalRepositoryActivity(commonDir,false,activity.label);
   }
   externalRepositoryActivity(commonDir:string,busy:boolean,label:string):void {const key=this.repositoryKey(commonDir);if(busy)this.externalBusy.set(key,{label});else this.externalBusy.delete(key);for(const repo of this.repositories.list().filter(repo=>this.repositoryKey(repo.commonDir)===key)){this.post({type:'activity',repoId:repo.id,busy:this.isBusy(commonDir),label});if(!busy)this.post({type:'changed',repoId:repo.id});}}
-  private updatePanelTitle(entry:WorkbenchPanel):void {let name:string|undefined;try{name=entry.activeRepository?groupRepositories(this.repositories.list(),entry.activeRepository).find(group=>group.members.some(repo=>repo.id===entry.activeRepository))?.name:undefined;}catch{/* Repository discovery can remove a stale restored ID. */}entry.panel.title=name?`AlwayGit — ${name}`:'AlwayGit';}
+  private updatePanelTitle(entry:WorkbenchPanel):void {let name:string|undefined;try{name=entry.activeRepository?groupRepositories(this.repositories.list(),entry.activeRepository).find(group=>group.members.some(repo=>repo.id===entry.activeRepository))?.name:undefined;}catch{/* Repository discovery can remove a stale restored ID. */}entry.panel.title=name?translate('en', "host.alwayGit", { name: (name) }):'AlwayGit';}
   private post(message: HostMessage,target?:WorkbenchPanel): void {if(target){void target.panel.webview.postMessage(message);return;}for(const entry of this.panels.values())void entry.panel.webview.postMessage(message);}
   private async html(webview: vscode.Webview,activeRepository?:string,blank=false): Promise<string> {
     const root = vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview');

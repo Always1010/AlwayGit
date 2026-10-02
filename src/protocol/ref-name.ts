@@ -1,3 +1,4 @@
+import { translate } from '../i18n/index';
 export type BranchNameProblem = 'empty' | 'leading-hyphen' | 'space' | 'control' | 'invalid-character' | 'double-dot' | 'reflog' | 'slash' | 'dot-component' | 'lock-suffix' | 'trailing-dot' | 'single-at';
 
 export interface BranchNameConflict { kind: 'exists' | 'ancestor' | 'descendant'; name: string }
@@ -13,7 +14,7 @@ export function branchNameConflict(name: string, localNames: readonly string[]):
 }
 
 export function branchNameConflictMessage(name: string, conflict: BranchNameConflict): string {
-  return conflict.kind === 'exists' ? `Local branch ${name} already exists. Choose another branch name.` : `Local branch names conflict: ${name} and ${conflict.name}. Choose another branch name.`;
+  return conflict.kind === 'exists' ? translate('en', "refName.localBranchAlreadyExistsChooseAnotherBranchName", { name: (name) }) : translate('en', "refName.localBranchNamesConflictAndChooseAnotherBranchName", { name: (name), name2: (conflict.name) });
 }
 
 export function branchNameProblem(value: string): BranchNameProblem | undefined {
@@ -34,17 +35,17 @@ export function branchNameProblem(value: string): BranchNameProblem | undefined 
 
 export function branchNameProblemMessage(problem: BranchNameProblem): string {
   switch (problem) {
-    case 'empty': return 'Enter a branch name.';
-    case 'leading-hyphen': return 'Branch names cannot start with a hyphen.';
-    case 'space': return 'Branch names cannot contain spaces. Try feature/ux-flow.';
-    case 'control': return 'Branch names cannot contain control characters.';
-    case 'invalid-character': return 'Branch names cannot contain ~, ^, :, ?, *, [, or backslash.';
-    case 'double-dot': return 'Branch names cannot contain two consecutive dots.';
-    case 'reflog': return 'Branch names cannot contain @{.';
-    case 'slash': return 'Branch names cannot start or end with a slash, or contain consecutive slashes.';
-    case 'dot-component': return 'Branch name segments cannot start with a dot.';
-    case 'lock-suffix': return 'Branch name segments cannot end with .lock.';
-    case 'trailing-dot': return 'Branch names cannot end with a dot.';
-    case 'single-at': return 'A branch name cannot be only @.';
+    case 'empty': return translate('en', "refName.enterABranchName");
+    case 'leading-hyphen': return translate('en', "refName.branchNamesCannotStartWithAHyphen");
+    case 'space': return translate('en', "refName.branchNamesCannotContainSpacesTryFeatureUxFlow");
+    case 'control': return translate('en', "refName.branchNamesCannotContainControlCharacters");
+    case 'invalid-character': return translate('en', "refName.branchNamesCannotContainOrBackslash");
+    case 'double-dot': return translate('en', "refName.branchNamesCannotContainTwoConsecutiveDots");
+    case 'reflog': return translate('en', "refName.branchNamesCannotContain");
+    case 'slash': return translate('en', "refName.branchNamesCannotStartOrEndWithASlash");
+    case 'dot-component': return translate('en', "refName.branchNameSegmentsCannotStartWithADot");
+    case 'lock-suffix': return translate('en', "refName.branchNameSegmentsCannotEndWithLock");
+    case 'trailing-dot': return translate('en', "refName.branchNamesCannotEndWithADot");
+    case 'single-at': return translate('en', "refName.aBranchNameCannotBeOnly");
   }
 }

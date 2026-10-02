@@ -1,0 +1,122 @@
+{
+  "documents.thisComparisonHasExpiredOpenItAgainFromAlwayGit": {
+    "en": "This comparison has expired. Open it again from AlwayGit.",
+    "zh-CN": "This comparison has expired. Open it again from AlwayGit.",
+    "review": "pending",
+    "context": "src/editor/documents.ts / provideTextDocumentContent"
+  },
+  "documents.alwayGitFileExceedsThe8MBTextPreviewLimit": {
+    "en": "[AlwayGit: file exceeds the 8 MB text preview limit.]",
+    "zh-CN": "[AlwayGit: file exceeds the 8 MB text preview limit.]",
+    "review": "pending",
+    "context": "src/editor/documents.ts / provideTextDocumentContent"
+  },
+  "documents.alwayGitBinaryFileTextComparisonIsUnavailable": {
+    "en": "[AlwayGit: binary file. Text comparison is unavailable.]",
+    "zh-CN": "[AlwayGit: binary file. Text comparison is unavailable.]",
+    "review": "pending",
+    "context": "src/editor/documents.ts / provideTextDocumentContent"
+  },
+  "documents.workingTreeSymbolicLink": {
+    "en": "Working Tree · Symbolic Link",
+    "zh-CN": "Working Tree · Symbolic Link",
+    "review": "pending",
+    "context": "src/editor/documents.ts / workingSide"
+  },
+  "documents.thisPathIsADirectoryOrSubmoduleNotA": {
+    "en": "This path is a directory or submodule, not a text file.",
+    "zh-CN": "This path is a directory or submodule, not a text file.",
+    "review": "pending",
+    "context": "src/editor/documents.ts / workingSide"
+  },
+  "documents.workingTree": {
+    "en": "Working Tree",
+    "zh-CN": "Working Tree",
+    "review": "pending",
+    "context": "src/editor/documents.ts / workingSide"
+  },
+  "documents.thisFileIsNotPartOfTheSavedStash": {
+    "en": "This file is not part of the saved Stash files.",
+    "zh-CN": "This file is not part of the saved Stash files.",
+    "review": "pending",
+    "context": "src/editor/documents.ts / comparison"
+  },
+  "documents.stash": {
+    "en": "Stash",
+    "zh-CN": "Stash",
+    "review": "keep",
+    "context": "src/editor/documents.ts / comparison"
+  },
+  "documents.stashWorkingTree": {
+    "en": "{{value}} · Stash ↔ Working Tree",
+    "zh-CN": "{{value}} · Stash ↔ Working Tree",
+    "review": "pending",
+    "context": "src/editor/documents.ts / comparison"
+  },
+  "documents.thisFileIsNotPartOfTheSelectedComparison": {
+    "en": "This file is not part of the selected comparison.",
+    "zh-CN": "This file is not part of the selected comparison.",
+    "review": "pending",
+    "context": "src/editor/documents.ts / comparison"
+  },
+  "documents.empty": {
+    "en": "Empty",
+    "zh-CN": "Empty",
+    "review": "pending",
+    "context": "src/editor/documents.ts / comparison"
+  },
+  "documents.theFileStatusChangedRefreshAndOpenItsComparison": {
+    "en": "The file status changed. Refresh and open its comparison again.",
+    "zh-CN": "The file status changed. Refresh and open its comparison again.",
+    "review": "pending",
+    "context": "src/editor/documents.ts / comparison"
+  },
+  "documents.thisFileHasNoStagedChangesRefreshItsComparison": {
+    "en": "This file has no Staged Changes. Refresh its comparison.",
+    "zh-CN": "This file has no Staged Changes. Refresh its comparison.",
+    "review": "pending",
+    "context": "src/editor/documents.ts / comparison"
+  },
+  "documents.index": {
+    "en": "Index",
+    "zh-CN": "Index",
+    "review": "keep",
+    "context": "src/editor/documents.ts / comparison"
+  },
+  "documents.thisFileNoLongerHasAConflictRefreshIts": {
+    "en": "This file no longer has a conflict. Refresh its comparison.",
+    "zh-CN": "This file no longer has a conflict. Refresh its comparison.",
+    "review": "pending",
+    "context": "src/editor/documents.ts / comparison"
+  },
+  "documents.ours": {
+    "en": "Ours",
+    "zh-CN": "Ours",
+    "review": "pending",
+    "context": "src/editor/documents.ts / comparison"
+  },
+  "documents.theirs": {
+    "en": "Theirs",
+    "zh-CN": "Theirs",
+    "review": "pending",
+    "context": "src/editor/documents.ts / comparison"
+  },
+  "documents.oursTheirsEditWorkingFileToResolve": {
+    "en": "{{value}} · Ours ↔ Theirs (edit working file to resolve)",
+    "zh-CN": "{{value}} · Ours ↔ Theirs (edit working file to resolve)",
+    "review": "pending",
+    "context": "src/editor/documents.ts / comparison"
+  },
+  "documents.thisFileHasNoUnstagedChangesRefreshItsComparison": {
+    "en": "This file has no Unstaged Changes. Refresh its comparison.",
+    "zh-CN": "This file has no Unstaged Changes. Refresh its comparison.",
+    "review": "pending",
+    "context": "src/editor/documents.ts / comparison"
+  },
+  "documents.indexWorkingTree": {
+    "en": "{{value}} · Index ↔ Working Tree",
+    "zh-CN": "{{value}} · Index ↔ Working Tree",
+    "review": "pending",
+    "context": "src/editor/documents.ts / comparison"
+  }
+}

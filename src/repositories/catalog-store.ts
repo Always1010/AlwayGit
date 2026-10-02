@@ -1,3 +1,4 @@
+import { message as localizeMessage, MessageError } from '../i18n/index';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
@@ -34,7 +35,7 @@ export class CatalogStore {
     try { content = await readFile(this.filename, 'utf8'); }
     catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return; throw error; }
     try { return schema.parse(JSON.parse(content)); }
-    catch { throw new Error('The shared repository catalog is damaged or uses an unsupported schema. Its contents were preserved.'); }
+    catch { throw new MessageError(localizeMessage("catalogStore.theSharedRepositoryCatalogIsDamagedOrUsesAn")); }
   }
   private async write(catalog: RepositoryCatalog): Promise<void> {
     const temporary = this.filename + '.' + randomUUID() + '.tmp';
@@ -60,7 +61,7 @@ export class CatalogStore {
         gate.unref();
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== 'EADDRINUSE') throw error;
-        if (Date.now() >= deadline) throw new Error('The shared repository catalog is busy. Try again.');
+        if (Date.now() >= deadline) throw new MessageError(localizeMessage("catalogStore.theSharedRepositoryCatalogIsBusyTryAgain"));
         await new Promise(resolve => setTimeout(resolve, 20)); continue;
       }
       try { return await task(); }

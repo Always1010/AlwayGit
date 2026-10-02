@@ -9,6 +9,8 @@
 | 改动范围 | 检查入口 | 说明 |
 | --- | --- | --- |
 | TypeScript 类型与跨层协议 | `npm run typecheck` | 无界面，不生成产物 |
+| 中英文资源和文案调用 | `npm run i18n:check` | 检查重复 / 未知 / 未使用 key、语言与单复数回退、参数一致性、核对状态、生成文件同步，以及界面展示位置和常见自然语言硬编码；动态数据与 Demo 示例不作为文案 |
+| 资源生成与文案核对表 | `npm run i18n:generate` / `npm run i18n:export` | 前者更新派生类型与静态清单资源；后者生成忽略的 CSV，不把导出表提交到 Git |
 | 明确模块的逻辑或 Git 行为 | `npx vitest run tests/<相关文件>.test.ts` | 选择实际相关文件；Git 测试使用临时真实仓库及本地 Bare Remote |
 | 影响范围无法可靠缩小的核心变更 | `npm test` | 全量 Vitest；说明为何需要扩大范围 |
 | 构建或扩展实现 | `npm run build` | 生成扩展和 Webview 产物，构建本身不证明行为正确 |
@@ -145,5 +147,6 @@ scripts/update-local.ps1 -InstallOnly
 | Git 操作身份、Stash 属性、目录事务与网络生命周期 | 2026-10-03 / 0.31.1 | 类型检查通过；远程跟踪 6 项、Stash 状态 20 项、操作上下文/协议/确认 46 项及 Checkout 冲突保护 1 项、目录事务相关 39 项及受影响复合添加/宿主入口 7 项、Tag 定向 7 项、Runner/AskPass/RPC 20 项通过（受影响复测含重叠范围，不按总数叠加）。真实 Git 覆盖属性编码、分支/HEAD/目标变化与 Tag 重建及删除竞态；独立目录 Store 与陈旧 Memento 模拟跨宿主争用。生产构建、固定 VSIX 打包及无头 `--feedback-only` 通过，包含三种操作对话框刷新后保留打开时身份。官方 CLI 已安装并核对 `alwaygit-dev.alwaygit@0.31.1`，固定包哈希与本机记录一致；未执行全量 Vitest、真实多 VS Code 窗口或原生认证输入框集成。UI 优化计划暂缓 |
 | 报告 B01/B02：提交反馈与 Stash 底层诊断 | 2026-10-03 / 0.31.2 | 类型检查、UI 状态/Demo 两文件 55 项及 Stash 状态/日志/宿主入口/Demo 四文件 34 项通过（Demo 范围重叠，不累加）；无头 `--feedback-only` 与 `--stash-only` 通过。真实 Git 覆盖实际冲突与无关新增暂存文件的 Index 阻碍，消息桥验证响应与日志使用同一脱敏诊断。生产构建和固定 VSIX 打包通过，临时 TMP 资料排除；官方 CLI 已在既有默认 Profile 安装并核对 `alwaygit-dev.alwaygit@0.31.2`，安装记录与固定包哈希一致，上一已安装版本 0.31.1 保留在 previous 包。Markdown 本地文件与图片引用及差异格式检查通过；未运行全量 Vitest 或真实 VS Code 桌面集成 |
 | 设置分类与 Diff 显示集中管理 | 2026-10-03 / 0.34.0 | 类型检查、UI 状态与帮助内容两文件 55 项、生产构建及无头 Appearance、Diff、History 专项通过；另检查中英文入口、预览字号与实际行高、默认折叠规则、浅色/深色及窄窗口布局。更新双语手册与设置截图，固定 VSIX 已通过官方 CLI 安装并核对 alwaygit-dev.alwaygit@0.34.0；未启动真实 VS Code 桌面集成测试 |
+| 中英文文案资源与翻译接口迁移 | 2026-10-03 / 0.37.0 | 1,145 条资源、生成文件同步、硬编码检查与类型检查通过；15 个相关 Vitest 文件的 142 项检查通过，包含独立语言、原文参数、错误脱敏、协议、取消、确认、跨进程锁及文件展示。跨进程夹具改为打包依赖后只重跑该模块。无头 Workbench、Appearance、Branch、Feedback 专项通过；新旧构建的中英文菜单、设置页和 Push 弹窗共 26 组可见文字 / 提示 / 无障碍标签快照一致。未运行全量 Vitest 或真实 VS Code 桌面集成；既有措辞保持，后续文案核对单独处理 |
 
 macOS、Linux、WSL、Remote SSH、Dev Containers 和最低支持版本仍需相应环境的专项证据。验收矩阵、架构兼容性和测试文件的存在都不等同于这些环境已通过验收。

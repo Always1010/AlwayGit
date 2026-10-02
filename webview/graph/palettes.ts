@@ -1,11 +1,10 @@
+import type { StaticMessageKey } from '../../src/i18n';
 export type GraphPaletteId = 'vivid' | 'distinct' | 'extended';
 
 export interface GraphPalette {
   id: GraphPaletteId;
-  label: string;
-  labelZh: string;
-  description: string;
-  descriptionZh: string;
+  labelKey: StaticMessageKey;
+  descriptionKey: StaticMessageKey;
   light: readonly string[];
   dark: readonly string[];
 }
@@ -18,21 +17,15 @@ export interface GraphPaletteColors {
 /** Matching positions keep each lineage's hue consistent across themes. */
 export const graphPalettes: readonly GraphPalette[] = [
   {
-    id: 'vivid', label: 'Vivid · 12 colors', labelZh: '鲜明 · 12 色',
-    description: 'Balanced colors for everyday branch history.', descriptionZh: '适合日常分支历史的均衡配色。',
-    light: ['#005FCC', '#C24100', '#7C3AED', '#00856A', '#D00070', '#D62F2F', '#7A6500', '#007C9E', '#4F7D00', '#B23A67', '#3F51D7', '#9A5700'],
+    id: 'vivid', labelKey: "palettes.vivid12Colors", descriptionKey: "palettes.balancedColorsForEverydayBranchHistory", light: ['#005FCC', '#C24100', '#7C3AED', '#00856A', '#D00070', '#D62F2F', '#7A6500', '#007C9E', '#4F7D00', '#B23A67', '#3F51D7', '#9A5700'],
     dark: ['#4DA3FF', '#FF8A3D', '#B983FF', '#24D1B3', '#FF5CAB', '#FF6268', '#E5C84A', '#35C7F0', '#9ADA45', '#FF91B1', '#8897FF', '#EAB05A'],
   },
   {
-    id: 'distinct', label: 'Distinct · 8 colors', labelZh: '高区分 · 8 色',
-    description: 'A smaller set with stronger hue separation.', descriptionZh: '较少颜色，优先提高相邻路径的区分度。',
-    light: ['#005FCC', '#C24100', '#7C3AED', '#00856A', '#D00070', '#D62F2F', '#6D7200', '#007C9E'],
+    id: 'distinct', labelKey: "palettes.distinct8Colors", descriptionKey: "palettes.aSmallerSetWithStrongerHueSeparation", light: ['#005FCC', '#C24100', '#7C3AED', '#00856A', '#D00070', '#D62F2F', '#6D7200', '#007C9E'],
     dark: ['#4DA3FF', '#FF8A3D', '#B983FF', '#24D1B3', '#FF5CAB', '#FF6268', '#C8D94B', '#35C7F0'],
   },
   {
-    id: 'extended', label: 'Extended · 16 colors', labelZh: '扩展 · 16 色',
-    description: 'More colors for histories with many concurrent paths.', descriptionZh: '更多颜色，适合同时存在较多路径的历史。',
-    light: ['#005FCC', '#C24100', '#7C3AED', '#00856A', '#D00070', '#D62F2F', '#7A6500', '#007C9E', '#4F7D00', '#B23A67', '#3F51D7', '#9A5700', '#397300', '#A62AB2', '#006FBA', '#B33D28'],
+    id: 'extended', labelKey: "palettes.extended16Colors", descriptionKey: "palettes.moreColorsForHistoriesWithManyConcurrentPaths", light: ['#005FCC', '#C24100', '#7C3AED', '#00856A', '#D00070', '#D62F2F', '#7A6500', '#007C9E', '#4F7D00', '#B23A67', '#3F51D7', '#9A5700', '#397300', '#A62AB2', '#006FBA', '#B33D28'],
     dark: ['#4DA3FF', '#FF8A3D', '#B983FF', '#24D1B3', '#FF5CAB', '#FF6268', '#E5C84A', '#35C7F0', '#9ADA45', '#FF91B1', '#8897FF', '#EAB05A', '#75D94A', '#ED79F4', '#5CBFFF', '#FF8067'],
   },
 ];

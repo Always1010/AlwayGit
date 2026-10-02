@@ -1,3 +1,4 @@
+import { message, MessageError } from '../src/i18n';
 import type { HostMessage, RpcRequest } from '../src/protocol/types';
 import { createDemoRequest } from './demo';
 import { RpcError } from './rpc-error';
@@ -28,7 +29,7 @@ const listeners = new Set<(event: HostMessage) => void>();
 const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer?: ReturnType<typeof setTimeout>; category?: ReadQueryCategory; repoId?: string; cleanup?(): void }>();
 let sequence = 0;
 let demoRequest: ReturnType<typeof createDemoRequest> | undefined;
-function cancelRead(id:string,error:Error=new RpcError('The read request was cancelled.','ABORTED')):void{
+function cancelRead(id:string,error:Error=new RpcError(message("rpc.theReadRequestWasCancelled"),'ABORTED')):void{
   const request=pending.get(id);if(!request?.category)return;
   pending.delete(id);clearTimeout(request.timer);request.cleanup?.();request.reject(error);
   vscode?.postMessage({id:`webview-${++sequence}`,method:'cancelQuery',payload:{requestId:id}} satisfies RpcRequest);
@@ -40,20 +41,20 @@ window.addEventListener('message', event => {
     const request = pending.get(message.id);
     if (!request) return;
     pending.delete(message.id); clearTimeout(request.timer);request.cleanup?.();
-    if (message.error) request.reject(new RpcError(message.error.message, message.error.code, message.error.details)); else request.resolve(message.result);
+    if (message.error) request.reject(new RpcError(message.error.message, message.error.code, message.error.details, message.error.localizedMessage)); else request.resolve(message.result);
   } else listeners.forEach(listener => listener(message));
 });
 export function subscribe(listener: (event: HostMessage) => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }
 export async function rpc<T>(method: RpcRequest['method'], repoId?: string, payload?: unknown, options?:{signal?:AbortSignal}): Promise<T> {
   const category=readQueryCategory(method),signal=category?options?.signal:undefined;
-  if(signal?.aborted)throw new RpcError('The read request was cancelled.','ABORTED');
-  if (demoMode) {demoRequest ??= createDemoRequest(event=>listeners.forEach(listener=>listener(event)));const result=await demoRequest(method,payload,repoId);if(signal?.aborted)throw new RpcError('The read request was cancelled.','ABORTED');return result as T;}
-  if (!vscode) throw new Error('Open AlwayGit in VS Code to connect to your repositories.');
+  if(signal?.aborted)throw new RpcError(message("rpc.theReadRequestWasCancelled"),'ABORTED');
+  if (demoMode) {demoRequest ??= createDemoRequest(event=>listeners.forEach(listener=>listener(event)));const result=await demoRequest(method,payload,repoId);if(signal?.aborted)throw new RpcError(message("rpc.theReadRequestWasCancelled"),'ABORTED');return result as T;}
+  if (!vscode) throw new MessageError(message("rpc.openAlwayGitInVSCodeToConnectToYour"));
   for(const [previousId,request] of [...pending])if(category&&request.category===category||method==='snapshot'&&request.category&&request.repoId!==repoId)cancelRead(previousId);
   const id = `webview-${++sequence}`;
   return new Promise<T>((resolve, reject) => {
     // The host owns mutation deadlines, including time spent in native confirmation.
-    const timer = ['action','pickRepositoryDirectory','discoverRepositories','addRepository'].includes(method) ? undefined : setTimeout(() => { if(category)cancelRead(id,new RpcError('The read request timed out.','TIMEOUT'));else{pending.delete(id);reject(new Error('The Git operation timed out. Refresh to check its result before retrying.'));} }, method === 'saveSession' ? 10_000 : 180_000);
+    const timer = ['action','pickRepositoryDirectory','discoverRepositories','addRepository'].includes(method) ? undefined : setTimeout(() => { if(category)cancelRead(id,new RpcError(message("rpc.theReadRequestTimedOut"),'TIMEOUT'));else{pending.delete(id);reject(new MessageError(message("rpc.theGitOperationTimedOutRefreshToCheckIts")));} }, method === 'saveSession' ? 10_000 : 180_000);
     const abort=()=>cancelRead(id);
     pending.set(id, { resolve: value => resolve(value as T), reject, timer, category, repoId, cleanup:signal?()=>signal.removeEventListener('abort',abort):undefined });
     signal?.addEventListener('abort',abort,{once:true});

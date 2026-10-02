@@ -1,0 +1,14 @@
+{
+  "catalogStore.theSharedRepositoryCatalogIsDamagedOrUsesAn": {
+    "en": "The shared repository catalog is damaged or uses an unsupported schema. Its contents were preserved.",
+    "zh-CN": "The shared repository catalog is damaged or uses an unsupported schema. Its contents were preserved.",
+    "review": "pending",
+    "context": "src/repositories/catalog-store.ts / read"
+  },
+  "catalogStore.theSharedRepositoryCatalogIsBusyTryAgain": {
+    "en": "The shared repository catalog is busy. Try again.",
+    "zh-CN": "The shared repository catalog is busy. Try again.",
+    "review": "pending",
+    "context": "src/repositories/catalog-store.ts / locked"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "queryCoordinator.theReadRequestWasCancelled": {
+    "en": "The read request was cancelled.",
+    "zh-CN": "The read request was cancelled.",
+    "review": "pending",
+    "context": "src/application/query-coordinator.ts / constructor"
+  },
+  "queryCoordinator.queryConcurrencyMustBePositive": {
+    "en": "Query concurrency must be positive.",
+    "zh-CN": "Query concurrency must be positive.",
+    "review": "pending",
+    "context": "src/application/query-coordinator.ts / constructor"
+  }
+}

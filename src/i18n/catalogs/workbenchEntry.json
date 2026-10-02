@@ -1,0 +1,14 @@
+{
+  "workbenchEntry.showAlwayGitWorkbench": {
+    "en": "Show AlwayGit Workbench",
+    "zh-CN": "Show AlwayGit Workbench",
+    "review": "pending",
+    "context": "src/extension/workbench-entry.ts / statusBarPresentation"
+  },
+  "workbenchEntry.openAlwayGitWorkbench": {
+    "en": "Open AlwayGit Workbench",
+    "zh-CN": "Open AlwayGit Workbench",
+    "review": "pending",
+    "context": "src/extension/workbench-entry.ts / statusBarPresentation"
+  }
+}

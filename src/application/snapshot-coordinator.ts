@@ -1,10 +1,11 @@
+import { translate } from '../i18n/index';
 import type { Snapshot } from '../protocol/types';
 
 interface Flight { generation: number; raw: Promise<Snapshot>; result: Promise<Snapshot> }
 interface Reads { generation: number; query: () => Promise<Snapshot>; pending?: Flight }
 class SnapshotCancelledError extends Error {
   readonly code = 'ABORTED';
-  constructor() { super('The snapshot request was cancelled.'); }
+  constructor() { super(translate('en', "snapshotCoordinator.theSnapshotRequestWasCancelled")); }
 }
 
 /** Shares only in-flight reads for the exact work directory, never across Worktrees. */

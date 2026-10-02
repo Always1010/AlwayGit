@@ -1,0 +1,404 @@
+{
+  "workbench.opening": {
+    "en": "Opening…",
+    "zh-CN": "正在打开…",
+    "review": "translated",
+    "context": "webview/App.tsx / App / branchLabel"
+  },
+  "workbench.unavailable": {
+    "en": "Unavailable",
+    "zh-CN": "不可用",
+    "review": "translated",
+    "context": "webview/App.tsx / App / branchLabel"
+  },
+  "workbench.currentBranch": {
+    "en": "Current branch: {{branch}}",
+    "zh-CN": "当前分支：{{branch}}",
+    "review": "translated",
+    "context": "webview/App.tsx / App / branchState"
+  },
+  "workbench.openingRepository": {
+    "en": "Opening repository…",
+    "zh-CN": "正在打开仓库…",
+    "review": "translated",
+    "context": "webview/App.tsx / App / branchState"
+  },
+  "workbench.repositoryUnavailable": {
+    "en": "Repository unavailable",
+    "zh-CN": "仓库不可用",
+    "review": "translated",
+    "context": "webview/App.tsx / App / branchState"
+  },
+  "workbench.noRepositorySelected": {
+    "en": "No repository selected",
+    "zh-CN": "尚未选择仓库",
+    "review": "translated",
+    "context": "webview/App.tsx / App / branchState"
+  },
+  "workbench.upstream": {
+    "en": "Upstream: {{upstream}}",
+    "zh-CN": "上游分支：{{upstream}}",
+    "review": "translated",
+    "context": "webview/App.tsx / App / branchTitle"
+  },
+  "workbench.yourGitWorkbenchInsideVSCode": {
+    "en": "Your Git workbench, inside VS Code.",
+    "zh-CN": "VS Code 中的 Git 工作台。",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.exploreDemo": {
+    "en": "Explore Demo",
+    "zh-CN": "查看示例",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.gitWorkbench": {
+    "en": "Git Workbench",
+    "zh-CN": "Git 工作台",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.demoRepository": {
+    "en": "Demo Repository",
+    "zh-CN": "模拟仓库",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.newWorkbenchTab": {
+    "en": "New Workbench Tab",
+    "zh-CN": "新建 Workbench 标签页",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.openWorkbenchInNewWindow": {
+    "en": "Open Workbench in New Window",
+    "zh-CN": "在新窗口打开 Workbench",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.restoreLayout": {
+    "en": "Restore Layout",
+    "zh-CN": "恢复布局",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.helpGuide": {
+    "en": "Help & Guide",
+    "zh-CN": "帮助与指南",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.pushUnpushedCommits": {
+    "en": "Push, {{unpushed}} unpushed commits",
+    "zh-CN": "Push，{{unpushed}} 个未推送提交",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.pushRequiresALocalBranch": {
+    "en": "Push requires a local branch.",
+    "zh-CN": "Push 需要当前处于本地分支。",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.addARemoteBeforePush": {
+    "en": "Add a remote before Push.",
+    "zh-CN": "Push 前需要先添加远端。",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.refreshCurrentRepositoryStatusAndHistory": {
+    "en": "Refresh current repository status and history",
+    "zh-CN": "刷新当前仓库状态和提交历史",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.locateTheCurrentCommitHEAD": {
+    "en": "Locate the current commit (HEAD)",
+    "zh-CN": "定位当前提交（HEAD）",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.locateHEAD": {
+    "en": "Locate HEAD",
+    "zh-CN": "定位 HEAD",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.openRepositoryFolder": {
+    "en": "Open Repository Folder",
+    "zh-CN": "打开当前仓库文件夹",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.switchesToItsVSCodeWindowWhenAlreadyOpen": {
+    "en": "Switches to its VS Code window when already open.",
+    "zh-CN": "如果已经打开，则切换到对应的 VS Code 窗口。",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.selectARepositoryFirst": {
+    "en": "Select a repository first",
+    "zh-CN": "请先选择仓库",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.dismissNotification": {
+    "en": "Dismiss notification",
+    "zh-CN": "关闭提醒",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.showLog": {
+    "en": "Show Log",
+    "zh-CN": "查看日志",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.noRepositoriesAdded": {
+    "en": "No repositories added",
+    "zh-CN": "尚未添加仓库",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.theRepositoryFolderNoLongerExistsOrCannotBe": {
+    "en": "The repository folder no longer exists or cannot be accessed. Choose another repository from the Workbench sidebar.",
+    "zh-CN": "仓库目录不存在或暂时无法访问。请从 Workbench 左侧选择其他仓库。",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.chooseARepositoryFromTheWorkbenchSidebarToBegin": {
+    "en": "Choose a repository from the Workbench sidebar to begin.",
+    "zh-CN": "请从 Workbench 左侧选择一个仓库开始。",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.scanAFolderAndChooseWhichGitRepositoriesAlwayGit": {
+    "en": "Scan a folder and choose which Git repositories AlwayGit should manage. Scanning does not add them automatically.",
+    "zh-CN": "扫描文件夹并选择要由 AlwayGit 管理的 Git 仓库。扫描不会自动添加。",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.addRepositories": {
+    "en": "Add Repositories…",
+    "zh-CN": "添加仓库…",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.findAndAddRepositories": {
+    "en": "Find and Add Repositories…",
+    "zh-CN": "查找并添加仓库…",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.quickStart": {
+    "en": "Quick start",
+    "zh-CN": "快速开始",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.fetchCompleted": {
+    "en": "Fetch completed.",
+    "zh-CN": "Fetch 完成。",
+    "review": "translated",
+    "context": "webview/App.tsx / RepositoryFetchDialog / run"
+  },
+  "workbench.fetchedRepositories": {
+    "en": "Fetched {{count}} repositories.",
+    "zh-CN": "已 Fetch {{count}} 个仓库。",
+    "review": "translated",
+    "context": "webview/App.tsx / RepositoryFetchDialog / run"
+  },
+  "workbench.fetchRepository": {
+    "en": "Fetch Repository",
+    "zh-CN": "Fetch 仓库",
+    "review": "translated",
+    "context": "webview/App.tsx / RepositoryFetchDialog"
+  },
+  "workbench.fetchRepositories": {
+    "en": "Fetch {{count}} Repositories",
+    "zh-CN": "Fetch {{count}} 个仓库",
+    "review": "translated",
+    "context": "webview/App.tsx / RepositoryFetchDialog"
+  },
+  "workbench.fetching": {
+    "en": "Fetching…",
+    "zh-CN": "正在 Fetch…",
+    "review": "translated",
+    "context": "webview/App.tsx / RepositoryFetchDialog"
+  },
+  "workbench.fetchTheSelectedRepositoriesWithoutChangingTheRepositoryOpen": {
+    "en": "Fetch the selected repositories without changing the repository open in this tab.",
+    "zh-CN": "Fetch 所选仓库，不切换当前标签页中打开的仓库。",
+    "review": "translated",
+    "context": "webview/App.tsx / RepositoryFetchDialog"
+  },
+  "workbench.theBranchIsInUseByAnotherWorktree": {
+    "en": "The branch is in use by another Worktree.",
+    "zh-CN": "分支正在被其他 Worktree 使用。",
+    "review": "translated",
+    "context": "webview/App.tsx / CheckoutFailureDialog / reason"
+  },
+  "workbench.resolveConflictsBeforeCheckout": {
+    "en": "Resolve conflicts before Checkout.",
+    "zh-CN": "请先解决冲突，再 Checkout。",
+    "review": "translated",
+    "context": "webview/App.tsx / CheckoutFailureDialog / reason"
+  },
+  "workbench.completeOrAbortTheActiveGitOperationBeforeCheckout": {
+    "en": "Complete or Abort the active Git operation before Checkout.",
+    "zh-CN": "请先完成或 Abort 当前 Git 操作。",
+    "review": "translated",
+    "context": "webview/App.tsx / CheckoutFailureDialog / reason"
+  },
+  "workbench.stashWasSavedButCheckoutFailedTheStashIs": {
+    "en": "Stash was saved, but Checkout failed. The Stash is preserved.",
+    "zh-CN": "Stash 已保存，但 Checkout 失败；保存内容已保留。",
+    "review": "translated",
+    "context": "webview/App.tsx / CheckoutFailureDialog / reason"
+  },
+  "workbench.checkoutWouldOverwriteLocalChanges": {
+    "en": "Checkout would overwrite local changes.",
+    "zh-CN": "Checkout 可能覆盖未提交修改。",
+    "review": "translated",
+    "context": "webview/App.tsx / CheckoutFailureDialog / reason"
+  },
+  "workbench.gitCouldNotCompleteCheckoutSeeTheDetailsBelow": {
+    "en": "Git could not complete Checkout. See the details below.",
+    "zh-CN": "Git 无法完成 Checkout，请查看下方详情。",
+    "review": "translated",
+    "context": "webview/App.tsx / CheckoutFailureDialog / reason"
+  },
+  "workbench.checkoutBlocked": {
+    "en": "Checkout Blocked",
+    "zh-CN": "无法 Checkout",
+    "review": "translated",
+    "context": "webview/App.tsx / CheckoutFailureDialog"
+  },
+  "workbench.branchWasCreatedAndRetainedYouHaveNotSwitched": {
+    "en": "Branch {{target}} was created and retained. You have not switched to it.",
+    "zh-CN": "分支 {{target}} 已创建并保留，尚未切换到该分支。",
+    "review": "translated",
+    "context": "webview/App.tsx / CheckoutFailureDialog"
+  },
+  "workbench.viewAffectedFiles": {
+    "en": "View Affected Files",
+    "zh-CN": "查看受影响文件",
+    "review": "translated",
+    "context": "webview/App.tsx / CheckoutFailureDialog"
+  },
+  "workbench.demoNativeVSCodeCommandPreview": {
+    "en": "Demo: native VS Code command preview.",
+    "zh-CN": "模拟原生 VS Code 操作；未修改实际文件。",
+    "review": "translated",
+    "context": "webview/App.tsx / App / host"
+  },
+  "workbench.copied": {
+    "en": "Copied.",
+    "zh-CN": "已复制。",
+    "review": "translated",
+    "context": "webview/App.tsx / App / host"
+  },
+  "workbench.demoEditInVSCode": {
+    "en": "Demo: edit in VS Code.",
+    "zh-CN": "模拟：在 VS Code 中编辑。",
+    "review": "translated",
+    "context": "webview/App.tsx / App / edit"
+  },
+  "workbench.detached": {
+    "en": "Detached",
+    "zh-CN": "Detached",
+    "review": "pending",
+    "context": "webview/App.tsx / App / branchLabel"
+  },
+  "workbench.detachedHEAD": {
+    "en": "Detached HEAD",
+    "zh-CN": "Detached HEAD",
+    "review": "keep",
+    "context": "webview/App.tsx / App / branchState"
+  },
+  "workbench.alwayGit": {
+    "en": "AlwayGit",
+    "zh-CN": "AlwayGit",
+    "review": "keep",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.px": {
+    "en": "{{value}}px",
+    "zh-CN": "{{value}}px",
+    "review": "pending",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.fetch": {
+    "en": "Fetch",
+    "zh-CN": "Fetch",
+    "review": "keep",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.pull": {
+    "en": "Pull",
+    "zh-CN": "Pull",
+    "review": "keep",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.push": {
+    "en": "Push",
+    "zh-CN": "Push",
+    "review": "keep",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.commit": {
+    "en": "Commit",
+    "zh-CN": "Commit",
+    "review": "keep",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.stashAllChanges": {
+    "en": "Stash All Changes…",
+    "zh-CN": "Stash All Changes…",
+    "review": "pending",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.dismissError": {
+    "en": "Dismiss error",
+    "zh-CN": "Dismiss error",
+    "review": "pending",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.resizeRepositorySidebar": {
+    "en": "Resize repository sidebar",
+    "zh-CN": "Resize repository sidebar",
+    "review": "pending",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.resizeDetailsPanel": {
+    "en": "Resize details panel",
+    "zh-CN": "Resize details panel",
+    "review": "pending",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.resizeDiffPanel": {
+    "en": "Resize Diff panel",
+    "zh-CN": "Resize Diff panel",
+    "review": "pending",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.stashChangesCheckout": {
+    "en": "Stash Changes & Checkout",
+    "zh-CN": "Stash Changes & Checkout",
+    "review": "pending",
+    "context": "webview/App.tsx / CheckoutFailureDialog"
+  },
+  "workbench.checkout": {
+    "en": "Checkout ",
+    "zh-CN": "Checkout ",
+    "review": "pending",
+    "context": "webview/App.tsx / CheckoutFailureDialog"
+  },
+  "workbench.openWorktree": {
+    "en": "Open Worktree",
+    "zh-CN": "Open Worktree",
+    "review": "pending",
+    "context": "webview/App.tsx / CheckoutFailureDialog"
+  }
+}

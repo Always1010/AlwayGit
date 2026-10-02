@@ -1,0 +1,447 @@
+{
+  "details.ctrlCmdClickTogglesShiftClickSelectsRangeEsc": {
+    "en": "Ctrl/Cmd+click toggles · Shift+click selects range · Esc clears",
+    "zh-CN": "Ctrl/Cmd+单击切换选择 · Shift+单击范围选择 · Esc 清空",
+    "review": "translated",
+    "context": "webview/Details.tsx / FileSelectionHint"
+  },
+  "details.clickSelectsCtrlASelectsVisibleFiles": {
+    "en": "Click selects · Ctrl+A selects visible files",
+    "zh-CN": "单击选择 · Ctrl+A 全选可见文件",
+    "review": "translated",
+    "context": "webview/Details.tsx / FileSelectionHint"
+  },
+  "details.clickSelectsCtrlASelectsAllFiles": {
+    "en": "Click selects · Ctrl+A selects all files",
+    "zh-CN": "单击选择 · Ctrl+A 全选文件",
+    "review": "translated",
+    "context": "webview/Details.tsx / FileSelectionHint"
+  },
+  "details.clickToPreviewCtrlASelectsFiles": {
+    "en": "Click to preview · Ctrl+A selects files",
+    "zh-CN": "单击预览 · Ctrl+A 全选文件",
+    "review": "translated",
+    "context": "webview/Details.tsx / FileSelectionHint"
+  },
+  "details.selected": {
+    "en": "{{count}} selected",
+    "zh-CN": "已选 {{count}} 个",
+    "review": "translated",
+    "context": "webview/Details.tsx / FileSelectionHint"
+  },
+  "details.filterChangedFilePaths": {
+    "en": "Filter changed file paths",
+    "zh-CN": "筛选变更文件路径",
+    "review": "translated",
+    "context": "webview/Details.tsx / CommitFiles"
+  },
+  "details.filterPaths": {
+    "en": "Filter paths…",
+    "zh-CN": "筛选相对路径…",
+    "review": "translated",
+    "context": "webview/Details.tsx / CommitFiles"
+  },
+  "details.copyPaths": {
+    "en": "Copy Paths",
+    "zh-CN": "复制路径",
+    "review": "translated",
+    "context": "webview/Details.tsx / CommitFiles"
+  },
+  "details.currentDiffIsOutsideThePathFilter": {
+    "en": "Current Diff is outside the path filter: ",
+    "zh-CN": "当前 Diff 文件被路径筛选隐藏：",
+    "review": "translated",
+    "context": "webview/Details.tsx / CommitFiles"
+  },
+  "details.changedFiles": {
+    "en": "Changed files",
+    "zh-CN": "变更文件",
+    "review": "translated",
+    "context": "webview/Details.tsx / CommitFiles"
+  },
+  "details.noFilesMatchThisPathFilter": {
+    "en": "No files match this path filter",
+    "zh-CN": "没有符合路径筛选的文件",
+    "review": "translated",
+    "context": "webview/Details.tsx / CommitFiles"
+  },
+  "details.untrackedFiles": {
+    "en": "Untracked Files",
+    "zh-CN": "未跟踪文件",
+    "review": "translated",
+    "context": "webview/Details.tsx / DetailsPanel / sectionLabel"
+  },
+  "details.workingTreeStatus": {
+    "en": "Working Tree Status",
+    "zh-CN": "工作区状态",
+    "review": "translated",
+    "context": "webview/Details.tsx / DetailsPanel"
+  },
+  "details.compareCommits": {
+    "en": "Compare Commits",
+    "zh-CN": "比较 Commit",
+    "review": "translated",
+    "context": "webview/Details.tsx / DetailsPanel"
+  },
+  "details.commitDetails": {
+    "en": "Commit Details",
+    "zh-CN": "Commit 详情",
+    "review": "translated",
+    "context": "webview/Details.tsx / DetailsPanel"
+  },
+  "details.swapComparisonSides": {
+    "en": "Swap comparison sides",
+    "zh-CN": "交换比较方向",
+    "review": "translated",
+    "context": "webview/Details.tsx / DetailsPanel"
+  },
+  "details.loadingDetails": {
+    "en": "Loading details…",
+    "zh-CN": "正在读取详情…",
+    "review": "translated",
+    "context": "webview/Details.tsx / DetailsPanel"
+  },
+  "details.selectACommit": {
+    "en": "Select a Commit",
+    "zh-CN": "选择 Commit",
+    "review": "translated",
+    "context": "webview/Details.tsx / DetailsPanel"
+  },
+  "details.savedFiles": {
+    "en": {
+      "one": "{{count}} saved file",
+      "other": "{{count}} saved files"
+    },
+    "zh-CN": "已保存 {{count}} 个文件",
+    "review": "translated",
+    "context": "webview/Details.tsx / DetailsPanel"
+  },
+  "details.untracked": {
+    "en": "{{value}} untracked",
+    "zh-CN": "未跟踪文件 {{value}} 个",
+    "review": "translated",
+    "context": "webview/Details.tsx / DetailsPanel"
+  },
+  "details.stashFileCategories": {
+    "en": "Stash file categories",
+    "zh-CN": "Stash 文件分类",
+    "review": "translated",
+    "context": "webview/Details.tsx / DetailsPanel"
+  },
+  "details.changedFilesVariant2": {
+    "en": "Changed Files",
+    "zh-CN": "变更文件",
+    "review": "translated",
+    "context": "webview/Details.tsx / DetailsPanel"
+  },
+  "details.thisCategoryHasNoFilesHas": {
+    "en": "This category has no files; {{value}} has {{count}}.",
+    "zh-CN": "此分类没有内容；{{value}}中有 {{count}} 个文件。",
+    "review": "translated",
+    "context": "webview/Details.tsx / DetailsPanel"
+  },
+  "details.noChangedFiles": {
+    "en": "No changed files",
+    "zh-CN": "没有变更文件",
+    "review": "translated",
+    "context": "webview/Details.tsx / DetailsPanel"
+  },
+  "details.open": {
+    "en": "Open {{value}}",
+    "zh-CN": "打开{{value}}",
+    "review": "translated",
+    "context": "webview/Details.tsx / DetailsPanel"
+  },
+  "details.theSelectedCommitsHaveIdenticalFileContents": {
+    "en": "The selected Commits have identical file contents",
+    "zh-CN": "所选 Commit 的文件内容相同",
+    "review": "translated",
+    "context": "webview/Details.tsx / ComparisonDetails"
+  },
+  "details.conflicts": {
+    "en": "Conflicts",
+    "zh-CN": "冲突",
+    "review": "translated",
+    "context": "webview/Details.tsx / group / label"
+  },
+  "details.manuallyHandledMarkStage": {
+    "en": "Manually handled: Mark & Stage",
+    "zh-CN": "已手动处理，标记并暂存",
+    "review": "translated",
+    "context": "webview/Details.tsx / group / verb"
+  },
+  "details.expand": {
+    "en": "Expand {{label}}",
+    "zh-CN": "展开 {{label}}",
+    "review": "translated",
+    "context": "webview/Details.tsx / group / toggleLabel"
+  },
+  "details.collapse": {
+    "en": "Collapse {{label}}",
+    "zh-CN": "收起 {{label}}",
+    "review": "translated",
+    "context": "webview/Details.tsx / group / toggleLabel"
+  },
+  "details.matching": {
+    "en": "Matching",
+    "zh-CN": "匹配文件",
+    "review": "translated",
+    "context": "webview/Details.tsx / group / actionLabel"
+  },
+  "details.discardMatching": {
+    "en": "Discard Matching ({{count}})…",
+    "zh-CN": "Discard 匹配的 {{count}} 个文件…",
+    "review": "translated",
+    "context": "webview/Details.tsx / group / discardLabel"
+  },
+  "details.discardAll": {
+    "en": "Discard All…",
+    "zh-CN": "Discard All · 丢弃全部未暂存更改…",
+    "review": "translated",
+    "context": "webview/Details.tsx / group / discardLabel"
+  },
+  "details.ofFiles": {
+    "en": "{{count}} of {{count2}} files",
+    "zh-CN": "{{count2}} 个文件中匹配 {{count}} 个",
+    "review": "translated",
+    "context": "webview/Details.tsx / WorkingTree / group"
+  },
+  "details.openCommitSavedDraftAvailable": {
+    "en": "Open Commit — saved draft available",
+    "zh-CN": "打开 Commit · 有未提交草稿",
+    "review": "translated",
+    "context": "webview/Details.tsx / WorkingTree / group"
+  },
+  "details.openCommit": {
+    "en": "Open Commit",
+    "zh-CN": "打开 Commit",
+    "review": "translated",
+    "context": "webview/Details.tsx / WorkingTree / group"
+  },
+  "details.editAndSaveInVSCodeThenReturnTo": {
+    "en": "Edit and save in VS Code, then return to mark and stage",
+    "zh-CN": "在 VS Code 中编辑保存，再返回这里标记并暂存",
+    "review": "translated",
+    "context": "webview/Details.tsx / WorkingTree / group"
+  },
+  "details.editConflictFileInVSCode": {
+    "en": "Edit conflict file in VS Code",
+    "zh-CN": "在 VS Code 中编辑冲突文件",
+    "review": "translated",
+    "context": "webview/Details.tsx / WorkingTree / group"
+  },
+  "details.viewTheConflictEditAndSaveTheFileThen": {
+    "en": "View the conflict, edit and save the file, then mark and stage it. This does not choose the correct content or verify your resolution.",
+    "zh-CN": "先查看冲突，再编辑保存文件，最后标记并暂存。此操作不会自动选择正确内容，也不验证处理结果。",
+    "review": "translated",
+    "context": "webview/Details.tsx / WorkingTree / group"
+  },
+  "details.noMatchingFiles": {
+    "en": "No matching files",
+    "zh-CN": "没有匹配的文件",
+    "review": "translated",
+    "context": "webview/Details.tsx / WorkingTree / group"
+  },
+  "details.noChanges": {
+    "en": "No changes",
+    "zh-CN": "没有变更",
+    "review": "translated",
+    "context": "webview/Details.tsx / WorkingTree / group"
+  },
+  "details.filterWorkingTreeFilePaths": {
+    "en": "Filter working tree file paths",
+    "zh-CN": "筛选工作区文件路径",
+    "review": "translated",
+    "context": "webview/Details.tsx / WorkingTree"
+  },
+  "details.filterFilesOrPaths": {
+    "en": "Filter files or paths…",
+    "zh-CN": "搜索文件或路径…",
+    "review": "translated",
+    "context": "webview/Details.tsx / WorkingTree"
+  },
+  "details.clearFileFilter": {
+    "en": "Clear file filter",
+    "zh-CN": "清除文件筛选",
+    "review": "translated",
+    "context": "webview/Details.tsx / WorkingTree"
+  },
+  "details.conflictsAreHiddenByTheFilterResolveAllConflicts": {
+    "en": "{{count}} conflicts are hidden by the filter. Resolve all conflicts before Commit.",
+    "zh-CN": "筛选隐藏了 {{count}} 个冲突文件；Commit 前仍须处理全部冲突。",
+    "review": "translated",
+    "context": "webview/Details.tsx / WorkingTree"
+  },
+  "details.workingTreeFiles": {
+    "en": "Working tree files",
+    "zh-CN": "工作区文件",
+    "review": "translated",
+    "context": "webview/Details.tsx / WorkingTree"
+  },
+  "details.text": {
+    "en": "",
+    "zh-CN": "匹配的",
+    "review": "translated",
+    "context": "webview/Details.tsx / WorkingTree",
+    "allowEmpty": true
+  },
+  "details.all": {
+    "en": "all ",
+    "zh-CN": "全部",
+    "review": "translated",
+    "context": "webview/Details.tsx / WorkingTree"
+  },
+  "details.files": {
+    "en": {
+      "one": "{{value}} {{value2}}{{count}} {{value3}}file?",
+      "other": "{{value}} {{value2}}{{count}} {{value3}}files?"
+    },
+    "zh-CN": "{{value}} {{value2}} {{count}} 个文件？",
+    "review": "translated",
+    "context": "webview/Details.tsx / WorkingTree",
+    "omitParameters": {
+      "en": [],
+      "zh-CN": [
+        "value3"
+      ]
+    }
+  },
+  "details.untrackedVariant2": {
+    "en": "Untracked",
+    "zh-CN": "未跟踪",
+    "review": "translated",
+    "context": "webview/Details.tsx / fileStatusLabel / labels"
+  },
+  "details.added": {
+    "en": "Added",
+    "zh-CN": "新增",
+    "review": "translated",
+    "context": "webview/Details.tsx / fileStatusLabel / labels"
+  },
+  "details.modified": {
+    "en": "Modified",
+    "zh-CN": "已修改",
+    "review": "translated",
+    "context": "webview/Details.tsx / fileStatusLabel / labels"
+  },
+  "details.deleted": {
+    "en": "Deleted",
+    "zh-CN": "已删除",
+    "review": "translated",
+    "context": "webview/Details.tsx / fileStatusLabel / labels"
+  },
+  "details.renamed": {
+    "en": "Renamed",
+    "zh-CN": "已重命名",
+    "review": "translated",
+    "context": "webview/Details.tsx / fileStatusLabel / labels"
+  },
+  "details.copied": {
+    "en": "Copied",
+    "zh-CN": "已复制",
+    "review": "translated",
+    "context": "webview/Details.tsx / fileStatusLabel / labels"
+  },
+  "details.conflict": {
+    "en": "Conflict",
+    "zh-CN": "冲突",
+    "review": "translated",
+    "context": "webview/Details.tsx / fileStatusLabel / labels"
+  },
+  "details.typeChanged": {
+    "en": "Type changed",
+    "zh-CN": "类型已更改",
+    "review": "translated",
+    "context": "webview/Details.tsx / fileStatusLabel / labels"
+  },
+  "details.changed": {
+    "en": "Changed",
+    "zh-CN": "已更改",
+    "review": "translated",
+    "context": "webview/Details.tsx / fileStatusLabel"
+  },
+  "details.workingTree": {
+    "en": "Working Tree",
+    "zh-CN": "Working Tree",
+    "review": "pending",
+    "context": "webview/Details.tsx / DetailsPanel / sectionLabel"
+  },
+  "details.index": {
+    "en": "Index",
+    "zh-CN": "Index",
+    "review": "keep",
+    "context": "webview/Details.tsx / DetailsPanel / sectionLabel"
+  },
+  "details.compareParent": {
+    "en": "Compare parent",
+    "zh-CN": "Compare parent",
+    "review": "pending",
+    "context": "webview/Details.tsx / DetailsPanel"
+  },
+  "details.parent": {
+    "en": "Parent ",
+    "zh-CN": "Parent ",
+    "review": "pending",
+    "context": "webview/Details.tsx / DetailsPanel"
+  },
+  "details.staged": {
+    "en": "Staged",
+    "zh-CN": "Staged",
+    "review": "pending",
+    "context": "webview/Details.tsx / group / label"
+  },
+  "details.unstaged": {
+    "en": "Unstaged",
+    "zh-CN": "Unstaged",
+    "review": "pending",
+    "context": "webview/Details.tsx / group / label"
+  },
+  "details.unstage": {
+    "en": "Unstage",
+    "zh-CN": "Unstage",
+    "review": "keep",
+    "context": "webview/Details.tsx / group / verb"
+  },
+  "details.stage": {
+    "en": "Stage",
+    "zh-CN": "Stage",
+    "review": "keep",
+    "context": "webview/Details.tsx / group / verb"
+  },
+  "details.commit": {
+    "en": "Commit…",
+    "zh-CN": "Commit…",
+    "review": "pending",
+    "context": "webview/Details.tsx / WorkingTree / group"
+  },
+  "details.detachedHEAD": {
+    "en": "Detached HEAD",
+    "zh-CN": "Detached HEAD",
+    "review": "keep",
+    "context": "webview/Details.tsx / WorkingTree"
+  },
+  "details.stagedVariant2": {
+    "en": "Staged ",
+    "zh-CN": "Staged ",
+    "review": "pending",
+    "context": "webview/Details.tsx / WorkingTree"
+  },
+  "details.unstagedVariant2": {
+    "en": " · Unstaged ",
+    "zh-CN": " · Unstaged ",
+    "review": "pending",
+    "context": "webview/Details.tsx / WorkingTree"
+  },
+  "details.stageAll": {
+    "en": "Stage All",
+    "zh-CN": "Stage All",
+    "review": "pending",
+    "context": "webview/Details.tsx / WorkingTree"
+  },
+  "details.unstageAll": {
+    "en": "Unstage All",
+    "zh-CN": "Unstage All",
+    "review": "pending",
+    "context": "webview/Details.tsx / WorkingTree"
+  }
+}

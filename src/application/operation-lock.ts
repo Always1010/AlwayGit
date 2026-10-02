@@ -1,16 +1,17 @@
+import { translate, message as localizeMessage, MessageError } from '../i18n/index';
 import { createHash, randomBytes } from 'node:crypto';
 import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { createConnection, createServer, type Server, type Socket } from 'node:net';
 import path from 'node:path';
 
 const LEGACY_STALE_AFTER = 60_000;
-const BUSY_MESSAGE = 'A Git operation is already running for this repository in another AlwayGit window.';
+const BUSY_MESSAGE = translate('en', "operationLock.aGitOperationIsAlreadyRunningForThisRepository");
 const LEASE_PROTOCOL = 'alwaygit-operation-lease-v1';
 
 export class RepositoryOperationBusyError extends Error {}
 export class RepositoryOperationRecoveryRequiredError extends Error {
   readonly code = 'REPOSITORY_RECOVERY_REQUIRED';
-  constructor(readonly token: string, readonly label: string, readonly pid?: number) { super('The previous Git operation was interrupted. Confirm that its Git processes have ended and inspect the repository before removing its protection.'); }
+  constructor(readonly token: string, readonly label: string, readonly pid?: number) { super(translate('en', "operationLock.thePreviousGitOperationWasInterruptedConfirmThatIts")); }
 }
 export interface OperationLease { release(): Promise<void>; markRunning(): Promise<void>; quarantine(pid?: number): Promise<void> }
 interface LeaseRecord { owner: string; ownerPid?: number; token: string; label: string; acquiredAt: number; port: number; running?: boolean; quarantined?: boolean; pid?: number }
@@ -88,7 +89,7 @@ export class RepositoryOperationLock {
       if (typeof record.port === 'number' && Number.isInteger(record.port) && record.port > 0 && record.port <= 65535 && typeof record.token === 'string') {
         if (await this.live(record as LeaseRecord)) return true;
         if (record.running || record.quarantined) {
-          if (requireRecovery) throw new RepositoryOperationRecoveryRequiredError(record.token, record.label ?? 'Git', record.pid);
+          if (requireRecovery) throw new RepositoryOperationRecoveryRequiredError(record.token, record.label ?? translate('en', "operationLock.git"), record.pid);
           return false;
         }
         return false;
@@ -116,10 +117,10 @@ export class RepositoryOperationLock {
     });
   }
   async acquire(key: string, label: string): Promise<OperationLease> {
-    if (this.closed) throw new Error('Repository operation lock is closed.');
+    if (this.closed) throw new MessageError(localizeMessage("operationLock.repositoryOperationLockIsClosed"));
     await mkdir(this.directory, { recursive: true, mode: 0o700 });
     return this.transaction(async () => {
-      if (this.closed) throw new Error('Repository operation lock is closed.');
+      if (this.closed) throw new MessageError(localizeMessage("operationLock.repositoryOperationLockIsClosed"));
       const filename = this.filename(key);
       if (await this.occupied(filename, true)) throw new RepositoryOperationBusyError(BUSY_MESSAGE);
       const token = randomBytes(32).toString('hex'), sockets = new Set<Socket>();

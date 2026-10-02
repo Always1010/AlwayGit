@@ -1,0 +1,98 @@
+{
+  "manifest.displayName": {
+    "en": "AlwayGit",
+    "zh-CN": "AlwayGit",
+    "review": "keep",
+    "context": "package.json / displayName"
+  },
+  "manifest.description": {
+    "en": "A professional Git workbench inside Visual Studio Code.",
+    "zh-CN": "A professional Git workbench inside Visual Studio Code.",
+    "review": "pending",
+    "context": "package.json / description"
+  },
+  "manifest.capabilities.untrustedWorkspaces.description": {
+    "en": "Git execution requires a trusted workspace.",
+    "zh-CN": "Git execution requires a trusted workspace.",
+    "review": "pending",
+    "context": "package.json / capabilities.untrustedWorkspaces.description"
+  },
+  "manifest.contributes.commands.item0.title": {
+    "en": "Show Workbench",
+    "zh-CN": "Show Workbench",
+    "review": "pending",
+    "context": "package.json / contributes.commands.0.title"
+  },
+  "manifest.contributes.commands.item0.category": {
+    "en": "AlwayGit",
+    "zh-CN": "AlwayGit",
+    "review": "keep",
+    "context": "package.json / contributes.commands.0.category"
+  },
+  "manifest.contributes.commands.item1.title": {
+    "en": "Open Workbench in New Window",
+    "zh-CN": "Open Workbench in New Window",
+    "review": "pending",
+    "context": "package.json / contributes.commands.1.title"
+  },
+  "manifest.contributes.commands.item1.category": {
+    "en": "AlwayGit",
+    "zh-CN": "AlwayGit",
+    "review": "keep",
+    "context": "package.json / contributes.commands.1.category"
+  },
+  "manifest.contributes.viewsContainers.activitybar.item0.title": {
+    "en": "AlwayGit",
+    "zh-CN": "AlwayGit",
+    "review": "keep",
+    "context": "package.json / contributes.viewsContainers.activitybar.0.title"
+  },
+  "manifest.contributes.views.alwaygit.item0.name": {
+    "en": "Workbench",
+    "zh-CN": "Workbench",
+    "review": "pending",
+    "context": "package.json / contributes.views.alwaygit.0.name"
+  },
+  "manifest.contributes.viewsWelcome.item0.contents": {
+    "en": "[Show Git Workbench](command:alwaygit.showWorkbench)\n[Open Workbench in New Window](command:alwaygit.openWorkbenchInNewWindow)",
+    "zh-CN": "[Show Git Workbench](command:alwaygit.showWorkbench)\n[Open Workbench in New Window](command:alwaygit.openWorkbenchInNewWindow)",
+    "review": "pending",
+    "context": "package.json / contributes.viewsWelcome.0.contents"
+  },
+  "manifest.contributes.configuration.title": {
+    "en": "AlwayGit",
+    "zh-CN": "AlwayGit",
+    "review": "keep",
+    "context": "package.json / contributes.configuration.title"
+  },
+  "manifest.contributes.configuration.properties.alwaygit.language.description": {
+    "en": "Workbench language. Git operation names remain in English. The in-workbench language selector is remembered for this workspace.",
+    "zh-CN": "Workbench language. Git operation names remain in English. The in-workbench language selector is remembered for this workspace.",
+    "review": "pending",
+    "context": "package.json / contributes.configuration.properties.alwaygit.language.description"
+  },
+  "manifest.contributes.configuration.properties.alwaygit.gitPath.description": {
+    "en": "Git executable path. Empty uses the built-in Git extension path or PATH.",
+    "zh-CN": "Git executable path. Empty uses the built-in Git extension path or PATH.",
+    "review": "pending",
+    "context": "package.json / contributes.configuration.properties.alwaygit.gitPath.description"
+  },
+  "manifest.contributes.configuration.properties.alwaygit.historyPageSize.description": {
+    "en": "Commits loaded per history page.",
+    "zh-CN": "Commits loaded per history page.",
+    "review": "pending",
+    "context": "package.json / contributes.configuration.properties.alwaygit.historyPageSize.description"
+  },
+  "manifest.contributes.configuration.properties.alwaygit.refreshInterval.description": {
+    "en": "Visible workbench refresh interval in seconds.",
+    "zh-CN": "Visible workbench refresh interval in seconds.",
+    "review": "pending",
+    "context": "package.json / contributes.configuration.properties.alwaygit.refreshInterval.description"
+  },
+  "manifest.contributes.configuration.properties.alwaygit.allowDetachedHead.description": {
+    "en": "Allow direct Detached HEAD Checkout. Disabled by default; create and switch to a local branch when inspecting historical versions.",
+    "zh-CN": "Allow direct Detached HEAD Checkout. Disabled by default; create and switch to a local branch when inspecting historical versions.",
+    "review": "pending",
+    "context": "package.json / contributes.configuration.properties.alwaygit.allowDetachedHead.description"
+  }
+}

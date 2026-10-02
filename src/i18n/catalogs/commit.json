@@ -1,0 +1,80 @@
+{
+  "commit.commitDidNotCompleteYourDraftIsPreserved": {
+    "en": "Commit did not complete. Your draft is preserved.",
+    "zh-CN": "Commit 未完成，草稿已保留。",
+    "review": "translated",
+    "context": "webview/CommitDialog.tsx / CommitDialog / submit"
+  },
+  "commit.ctrlCmdEnterToCommit": {
+    "en": "Ctrl/Cmd+Enter to commit",
+    "zh-CN": "Ctrl/Cmd+Enter 提交",
+    "review": "translated",
+    "context": "webview/CommitDialog.tsx / CommitDialog"
+  },
+  "commit.commitIncludesAllStagedFilesIncludingFilesHiddenBy": {
+    "en": "Commit includes all {{staged}} Staged files, including files hidden by a path filter.",
+    "zh-CN": "Commit 包含全部 {{staged}} 个 Staged 文件，包括被路径筛选隐藏的文件。",
+    "review": "translated",
+    "context": "webview/CommitDialog.tsx / CommitDialog"
+  },
+  "commit.commitMessage": {
+    "en": "Commit Message",
+    "zh-CN": "Commit 信息",
+    "review": "translated",
+    "context": "webview/CommitDialog.tsx / CommitDialog"
+  },
+  "commit.describeYourChanges": {
+    "en": "Describe your changes…",
+    "zh-CN": "描述这次变更…",
+    "review": "translated",
+    "context": "webview/CommitDialog.tsx / CommitDialog"
+  },
+  "commit.amendLastCommit": {
+    "en": "Amend last Commit",
+    "zh-CN": "Amend 上一次提交",
+    "review": "translated",
+    "context": "webview/CommitDialog.tsx / CommitDialog"
+  },
+  "commit.resolveAllConflictsBeforeCommit": {
+    "en": "Resolve all {{conflicts}} conflicts before Commit.",
+    "zh-CN": "Commit 前须处理全部 {{conflicts}} 个冲突文件。",
+    "review": "translated",
+    "context": "webview/CommitDialog.tsx / CommitDialog"
+  },
+  "commit.stageChangesBeforeCommittingOrUseAmendToEdit": {
+    "en": "Stage changes before committing, or use Amend to edit the last Commit message.",
+    "zh-CN": "先 Stage 所需变更，或使用 Amend 修改上一次提交说明。",
+    "review": "translated",
+    "context": "webview/CommitDialog.tsx / CommitDialog"
+  },
+  "commit.draftsSaveAutomaticallyCancelEscapeAndCloseKeepYour": {
+    "en": "Drafts save automatically. Cancel, Escape and Close keep your message.",
+    "zh-CN": "草稿自动保存，取消、Esc 和关闭均保留 Message。",
+    "review": "translated",
+    "context": "webview/CommitDialog.tsx / CommitDialog"
+  },
+  "commit.commit": {
+    "en": "Commit",
+    "zh-CN": "Commit",
+    "review": "keep",
+    "context": "webview/CommitDialog.tsx / CommitDialog"
+  },
+  "commit.amendCommit": {
+    "en": "Amend Commit",
+    "zh-CN": "Amend Commit",
+    "review": "pending",
+    "context": "webview/CommitDialog.tsx / CommitDialog"
+  },
+  "commit.detachedHEAD": {
+    "en": "Detached HEAD",
+    "zh-CN": "Detached HEAD",
+    "review": "keep",
+    "context": "webview/CommitDialog.tsx / CommitDialog"
+  },
+  "commit.commitMessageVariant2": {
+    "en": "Commit message",
+    "zh-CN": "Commit message",
+    "review": "pending",
+    "context": "webview/CommitDialog.tsx / CommitDialog"
+  }
+}

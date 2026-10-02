@@ -1,0 +1,152 @@
+{
+  "confirm.detachedHead": {
+    "en": "Detached HEAD",
+    "zh-CN": "Detached HEAD",
+    "review": "keep",
+    "context": "src/application/confirm.ts / confirmAction / branch fallback"
+  },
+  "confirm.discard": {
+    "en": "Discard Unstaged Changes in {{count}} file(s)? Untracked files will be deleted; Index content and Staged Changes remain.",
+    "zh-CN": "Discard {{count}} 个文件的 Unstaged Changes？未跟踪文件将被删除；Index 中的 Staged Changes 保留。",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.reset": {
+    "en": "Reset {{name}} to {{target}} ({{mode}})? {{effect}}",
+    "zh-CN": "Reset {{name}} 到 {{target}}（{{mode}}）？{{effect}}",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.resetHard": {
+    "en": "HEAD, Index and working files will change; uncommitted content can be lost.",
+    "zh-CN": "HEAD、Index 和工作区文件都将改变，未提交内容可能丢失。",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.resetMixed": {
+    "en": "HEAD and Index will change; working files remain.",
+    "zh-CN": "HEAD 和 Index 将改变，工作区文件保留。",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.resetSoft": {
+    "en": "HEAD will change; Index and working files remain.",
+    "zh-CN": "HEAD 将改变，Index 和工作区文件保留。",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.forcePush": {
+    "en": "Push with force-with-lease? Published branch history may be replaced.",
+    "zh-CN": "Push with force-with-lease？已发布的分支历史可能被替换。",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.deleteBranches": {
+    "en": {
+      "one": "Delete {{count}} local branch?\n{{names}}{{effect}}",
+      "other": "Delete {{count}} local branches?\n{{names}}{{effect}}"
+    },
+    "zh-CN": "Delete {{count}} 个本地分支？\n{{names}}{{effect}}",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.forceDeleteBranches": {
+    "en": "\nForce deletion may remove the last branch referencing unmerged commits.",
+    "zh-CN": "\n强制删除可能使未合并提交失去分支引用。",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.deleteRemoteBranches": {
+    "en": {
+      "one": "Delete {{count}} branch from remote {{remote}}?\n{{names}}\nThis changes the shared remote repository.",
+      "other": "Delete {{count}} branches from remote {{remote}}?\n{{names}}\nThis changes the shared remote repository."
+    },
+    "zh-CN": "从远端 {{remote}} Delete {{count}} 个分支？\n{{names}}\n此操作会修改共享远端仓库。",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.deleteTag": {
+    "en": "Delete local tag {{name}}?",
+    "zh-CN": "Delete 本地 Tag {{name}}？",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.dropStash": {
+    "en": "Drop {{selector}}? Its saved uncommitted changes may become unreachable.",
+    "zh-CN": "Drop {{selector}}？保存的未提交修改可能无法再恢复。",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.removeWorktree": {
+    "en": "Remove worktree {{path}}?{{effect}}",
+    "zh-CN": "Remove Worktree {{path}}？{{effect}}",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.forceRemoveWorktree": {
+    "en": " Forced removal may delete uncommitted files.",
+    "zh-CN": "强制移除可能删除未提交的文件。",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.abort": {
+    "en": "Abort the current {{kind}}? Conflict-resolution changes can be discarded.",
+    "zh-CN": "Abort 当前 {{kind}}？解决冲突时的修改可能被丢弃。",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.detachedCheckout": {
+    "en": "Checkout {{target}} as Detached HEAD? New commits will not belong to a branch until you create one.",
+    "zh-CN": "Checkout {{target}} 并进入 Detached HEAD？新提交不会属于分支，请及时创建分支保存。",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.stashDetachedCheckout": {
+    "en": "Stash Changes and Checkout {{target}} as Detached HEAD? The Stash will be retained for you to apply.",
+    "zh-CN": "Stash Changes 后 Checkout {{target}} 并进入 Detached HEAD？Stash 将保留，供你之后 Apply。",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.proceed": {
+    "en": "Proceed",
+    "zh-CN": "继续",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.currentHead": {
+    "en": "\nCurrent branch: {{branch}} · HEAD: {{head}}",
+    "zh-CN": "\n当前分支：{{branch}} · HEAD：{{head}}",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.unborn": {
+    "en": "(unborn)",
+    "zh-CN": "（尚无提交）",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.restoreOriginalHead": {
+    "en": "\nGit will attempt to restore the operation start state at {{head}}. Pre-existing local changes may prevent full restoration.",
+    "zh-CN": "\nGit 将尝试恢复到操作开始时的 {{head}}；操作前已有的本地修改可能影响完整恢复。",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.repository": {
+    "en": "Repository: {{root}}",
+    "zh-CN": "仓库：{{root}}",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.useStagedContent": {
+    "en": "Use Staged Content",
+    "zh-CN": "使用暂存内容",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.unsavedFiles": {
+    "en": "{{count}} file(s) have unsaved editor changes. Git commits the staged disk content.",
+    "zh-CN": "{{count}} 个文件在编辑器中有未保存修改。Git 提交的是磁盘上已暂存的内容。",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  }
+}

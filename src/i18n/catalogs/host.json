@@ -1,0 +1,197 @@
+{
+  "host.trustThisWorkspaceUsingVSCodeWorkspaceTrustThen": {
+    "en": "Trust this workspace using VS Code Workspace Trust, then reopen AlwayGit.",
+    "zh-CN": "请在 VS Code 中信任此工作区，然后重新打开 AlwayGit。",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / open"
+  },
+  "host.selectARepositoryOrAFolderContainingRepositories": {
+    "en": "Select a repository or a folder containing repositories",
+    "zh-CN": "选择仓库或存放多个仓库的目录",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / pickRepositoryDirectory / selected"
+  },
+  "host.scanFolder": {
+    "en": "Scan Folder",
+    "zh-CN": "扫描文件夹",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / pickRepositoryDirectory / selected"
+  },
+  "host.theRepositoryScanHasExpiredScanTheFolderAgain": {
+    "en": "The repository scan has expired. Scan the folder again.",
+    "zh-CN": "仓库扫描结果已失效，请重新扫描文件夹。",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / addRepository"
+  },
+  "host.selectAtLeastOneAvailableRepository": {
+    "en": "Select at least one available repository.",
+    "zh-CN": "请至少选择一个可添加的仓库。",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / addRepository"
+  },
+  "host.theSelectedRepositoryGroupNoLongerExists": {
+    "en": "The selected repository group no longer exists.",
+    "zh-CN": "所选仓库分组已不存在。",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / addRepository"
+  },
+  "host.waitForTheRunningGitOperationBeforeRemovingThis": {
+    "en": "Wait for the running Git operation before removing this repository.",
+    "zh-CN": "请等待正在执行的 Git 操作完成后再移除仓库。",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / removeRepositories"
+  },
+  "host.renameRepositoryGroup": {
+    "en": "Rename Repository Group",
+    "zh-CN": "重命名仓库分组",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / renameRepositoryCollection / name"
+  },
+  "host.deleteGroup": {
+    "en": "Delete Group",
+    "zh-CN": "删除分组",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / deleteRepositoryCollection / remove"
+  },
+  "host.deleteRepositoryGroupItsRepositoriesWillRemainAtThe": {
+    "en": "Delete repository group \"{{name}}\"? Its repositories will remain at the repository root.",
+    "zh-CN": "删除仓库分组“{{name}}”？其中的仓库会保留在仓库根层。",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / deleteRepositoryCollection / confirmed"
+  },
+  "host.repositoryRoot": {
+    "en": "Repository root",
+    "zh-CN": "仓库根目录",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / moveRepositories / choices"
+  },
+  "host.placeAlongsideRepositoryGroups": {
+    "en": "Place alongside repository groups",
+    "zh-CN": "与仓库分组目录同级",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / moveRepositories / choices"
+  },
+  "host.moveRepositories": {
+    "en": {
+      "one": "Move {{count}} repository",
+      "other": "Move {{count}} repositories"
+    },
+    "zh-CN": "移动 {{count}} 个仓库",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / moveRepositories / destination"
+  },
+  "host.chooseARepositoryGroupOrTheRepositoryRoot": {
+    "en": "Choose a repository group or the repository root",
+    "zh-CN": "选择仓库分组或仓库根目录",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / moveRepositories / destination"
+  },
+  "host.enterAGroupName": {
+    "en": "Enter a group name.",
+    "zh-CN": "请输入分组名称。",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / collectionNameProblem"
+  },
+  "host.useNoMoreThan80Characters": {
+    "en": "Use no more than 80 characters.",
+    "zh-CN": "分组名称不能超过 80 个字符。",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / collectionNameProblem"
+  },
+  "host.aGroupWithThisNameAlreadyExists": {
+    "en": "A group with this name already exists.",
+    "zh-CN": "已存在同名分组。",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / collectionNameProblem"
+  },
+  "host.gitExecutionRequiresATrustedWorkspace": {
+    "en": "Git execution requires a trusted workspace.",
+    "zh-CN": "请先信任工作区，再执行 Git 操作。",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / executeRequest"
+  },
+  "host.selectARegisteredNonBareWorktree": {
+    "en": "Select a registered non-bare Worktree.",
+    "zh-CN": "请选择已注册的非 bare Worktree。",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / executeRequest"
+  },
+  "host.anOperationIsAlreadyRunningInThisRepository": {
+    "en": "An operation is already running in this repository.",
+    "zh-CN": "此仓库已有正在执行的操作。",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / executeRequest"
+  },
+  "host.operationCancelled": {
+    "en": "Operation cancelled.",
+    "zh-CN": "操作已取消。",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / executeRequest"
+  },
+  "host.removeProtection": {
+    "en": "Remove protection",
+    "zh-CN": "解除保护",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / executeRequest / recover"
+  },
+  "host.thePreviousGitOperationWasInterrupted": {
+    "en": "The previous Git operation was interrupted.",
+    "zh-CN": "上次 Git 操作中断，仓库保护仍保留。",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / executeRequest / chosen"
+  },
+  "host.confirmThatThePreviousAlwayGitWindowAndAllOf": {
+    "en": "Confirm that the previous AlwayGit window and all of its Git processes have ended, then inspect the repository status. Removing protection will not repeat the interrupted operation.",
+    "zh-CN": "请先确认上次 AlwayGit 窗口及其 Git 进程均已结束，并检查仓库状态。解除保护后需重新发起操作。",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / executeRequest / chosen"
+  },
+  "host.protectionRemovedRefreshTheRepositoryAndRetryTheOperation": {
+    "en": "Protection removed. Refresh the repository and retry the operation.",
+    "zh-CN": "已解除保护，请刷新仓库并重新发起操作。",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / executeRequest"
+  },
+  "host.aGitOperationIsAlreadyRunningForThisRepository": {
+    "en": "A Git operation is already running for this repository in another AlwayGit window.",
+    "zh-CN": "另一个 AlwayGit 窗口正在对该仓库执行 Git 操作。",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / executeRequest"
+  },
+  "host.newWorktreeDirectory": {
+    "en": "New Worktree Directory",
+    "zh-CN": "New Worktree Directory",
+    "review": "pending",
+    "context": "src/extension/workbench.ts / executeRequest / value"
+  },
+  "host.useDirectory": {
+    "en": "Use Directory",
+    "zh-CN": "Use Directory",
+    "review": "pending",
+    "context": "src/extension/workbench.ts / executeRequest / value"
+  },
+  "host.repositoryStatus": {
+    "en": "[repository-status:{{name}}] {{value}}",
+    "zh-CN": "[repository-status:{{name}}] {{value}}",
+    "review": "pending",
+    "context": "src/extension/workbench.ts / repositoryStatuses"
+  },
+  "host.activityRefresh": {
+    "en": "[activity-refresh] {{value}}",
+    "zh-CN": "[activity-refresh] {{value}}",
+    "review": "pending",
+    "context": "src/extension/workbench.ts / poll"
+  },
+  "host.refresh": {
+    "en": "[refresh] {{value}}",
+    "zh-CN": "[refresh] {{value}}",
+    "review": "pending",
+    "context": "src/extension/workbench.ts / poll"
+  },
+  "host.alwayGit": {
+    "en": "AlwayGit — {{name}}",
+    "zh-CN": "AlwayGit — {{name}}",
+    "review": "pending",
+    "context": "src/extension/workbench.ts / updatePanelTitle"
+  }
+}

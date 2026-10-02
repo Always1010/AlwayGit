@@ -1,0 +1,158 @@
+{
+  "diff.openDiff": {
+    "en": "Open Diff",
+    "zh-CN": "打开 Diff",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel / openLabel"
+  },
+  "diff.editInVSCode": {
+    "en": "Edit in VS Code",
+    "zh-CN": "在 VS Code 中编辑",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel / editLabel"
+  },
+  "diff.previousChange": {
+    "en": "Previous change",
+    "zh-CN": "上一处修改",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel / previousLabel"
+  },
+  "diff.nextChange": {
+    "en": "Next change",
+    "zh-CN": "下一处修改",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel / nextLabel"
+  },
+  "diff.expandDiffPanel": {
+    "en": "Expand Diff panel",
+    "zh-CN": "展开 Diff 面板",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel / toggleLabel"
+  },
+  "diff.minimizeDiffPanel": {
+    "en": "Minimize Diff panel",
+    "zh-CN": "最小化 Diff 面板",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel / toggleLabel"
+  },
+  "diff.previousChangeAcrossCommitFilesWrapsToTheLast": {
+    "en": "Previous change across Commit files (wraps to the last)",
+    "zh-CN": "上一处修改（跨 Commit 文件，首处循环到末处）",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel / previousHint"
+  },
+  "diff.locateTheOnlyChange": {
+    "en": "Locate the only change",
+    "zh-CN": "定位唯一修改",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel / previousHint"
+  },
+  "diff.previousChangeWrapsToTheLast": {
+    "en": "Previous change (wraps to the last)",
+    "zh-CN": "上一处修改（从首处循环到末处）",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel / previousHint"
+  },
+  "diff.nextChangeAcrossCommitFilesWrapsToTheFirst": {
+    "en": "Next change across Commit files (wraps to the first)",
+    "zh-CN": "下一处修改（跨 Commit 文件，末处循环到首处）",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel / nextHint"
+  },
+  "diff.nextChangeWrapsToTheFirst": {
+    "en": "Next change (wraps to the first)",
+    "zh-CN": "下一处修改（从末处循环到首处）",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel / nextHint"
+  },
+  "diff.changeBlocks": {
+    "en": "Change blocks",
+    "zh-CN": "修改块",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel / countLabel"
+  },
+  "diff.preview": {
+    "en": " (preview)",
+    "zh-CN": "（预览）",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel / blockCount"
+  },
+  "diff.file": {
+    "en": "File",
+    "zh-CN": "文件",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel / countText"
+  },
+  "diff.change": {
+    "en": "Change",
+    "zh-CN": "修改",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel / countText"
+  },
+  "diff.addedBlocks": {
+    "en": "Added blocks",
+    "zh-CN": "新增块",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel / addedLabel"
+  },
+  "diff.modifiedBlocks": {
+    "en": "Modified blocks",
+    "zh-CN": "修改块",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel / modifiedLabel"
+  },
+  "diff.removedBlocks": {
+    "en": "Removed blocks",
+    "zh-CN": "删除块",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel / removedLabel"
+  },
+  "diff.noFileSelected": {
+    "en": "No file selected",
+    "zh-CN": "未选择文件",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel"
+  },
+  "diff.changeBlocksInTheTruncatedPreview": {
+    "en": "Change blocks in the truncated preview",
+    "zh-CN": "截断预览中的修改块",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel"
+  },
+  "diff.previewIsTruncatedOpenDiffToInspectTheFull": {
+    "en": "Preview is truncated. Open Diff to inspect the full comparison.",
+    "zh-CN": "预览已截断；可以 Open Diff 查看完整比较。",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel"
+  },
+  "diff.loadingTheNextDiffFile": {
+    "en": "Loading the next Diff file…",
+    "zh-CN": "正在读取目标 Diff 文件…",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel"
+  },
+  "diff.loadingDiff": {
+    "en": "Loading Diff…",
+    "zh-CN": "正在读取 Diff…",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel"
+  },
+  "diff.binaryFileTextPreviewUnavailable": {
+    "en": "Binary file: text preview unavailable",
+    "zh-CN": "二进制文件：无法提供文本预览",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel"
+  },
+  "diff.selectAFileToPreviewItsDiff": {
+    "en": "Select a file to preview its Diff",
+    "zh-CN": "选择文件以预览 Diff",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel"
+  },
+  "diff.diff": {
+    "en": "Diff · ",
+    "zh-CN": "Diff · ",
+    "review": "pending",
+    "context": "webview/DiffPreview.tsx / DiffPreviewPanel"
+  }
+}

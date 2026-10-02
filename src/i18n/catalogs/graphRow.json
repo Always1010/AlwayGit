@@ -1,0 +1,56 @@
+{
+  "graphRow.parents": {
+    "en": "{{value}}parents {{value2}}",
+    "zh-CN": "{{value}}parents {{value2}}",
+    "review": "pending",
+    "context": "webview/graph/GraphRow.tsx / GraphRow / parentLabel"
+  },
+  "graphRow.mergeCommit": {
+    "en": "Merge commit; ",
+    "zh-CN": "Merge commit; ",
+    "review": "pending",
+    "context": "webview/graph/GraphRow.tsx / GraphRow / parentLabel"
+  },
+  "graphRow.rootCommitNoParents": {
+    "en": "Root commit; no parents",
+    "zh-CN": "Root commit; no parents",
+    "review": "pending",
+    "context": "webview/graph/GraphRow.tsx / GraphRow / parentLabel"
+  },
+  "graphRow.workingTreeVirtualNodeLane": {
+    "en": "Working Tree virtual node, lane {{value}}.{{value2}}",
+    "zh-CN": "Working Tree virtual node, lane {{value}}.{{value2}}",
+    "review": "pending",
+    "context": "webview/graph/GraphRow.tsx / GraphRow / label"
+  },
+  "graphRow.selected": {
+    "en": " Selected.",
+    "zh-CN": " Selected.",
+    "review": "pending",
+    "context": "webview/graph/GraphRow.tsx / GraphRow / label"
+  },
+  "graphRow.commitLane": {
+    "en": "Commit {{value}}, lane {{value2}}. {{parentLabel}}.{{value3}}{{value4}}{{value5}}",
+    "zh-CN": "Commit {{value}}, lane {{value2}}. {{parentLabel}}.{{value3}}{{value4}}{{value5}}",
+    "review": "pending",
+    "context": "webview/graph/GraphRow.tsx / GraphRow / label"
+  },
+  "graphRow.mainBranch": {
+    "en": " Main branch.",
+    "zh-CN": " Main branch.",
+    "review": "pending",
+    "context": "webview/graph/GraphRow.tsx / GraphRow / label"
+  },
+  "graphRow.currentHEAD": {
+    "en": " Current HEAD.",
+    "zh-CN": " Current HEAD.",
+    "review": "pending",
+    "context": "webview/graph/GraphRow.tsx / GraphRow / label"
+  },
+  "graphRow.selectedCommit": {
+    "en": " Selected commit.",
+    "zh-CN": " Selected commit.",
+    "review": "pending",
+    "context": "webview/graph/GraphRow.tsx / GraphRow / label"
+  }
+}

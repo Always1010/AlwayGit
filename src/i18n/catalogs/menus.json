@@ -1,0 +1,611 @@
+{
+  "menus.createLocalTrackingBranches": {
+    "en": "Create Local Tracking Branches…",
+    "zh-CN": "创建本地跟踪分支…",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor / track"
+  },
+  "menus.checkoutAsLocalBranch": {
+    "en": "Checkout as Local Branch…",
+    "zh-CN": "Checkout 到本地分支…",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor / track"
+  },
+  "menus.repositoriesSelected": {
+    "en": "{{count}} Repositories selected",
+    "zh-CN": "已选择 {{count}} 个仓库",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.fetchRepositories": {
+    "en": "Fetch {{count}} Repositories…",
+    "zh-CN": "Fetch {{count}} 个仓库…",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.refreshStatusForRepositories": {
+    "en": "Refresh Status for {{count}} Repositories",
+    "zh-CN": "刷新 {{count}} 个仓库的状态",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.copyRepositoryPaths": {
+    "en": "Copy {{count}} Repository Paths",
+    "zh-CN": "复制 {{count}} 个仓库路径",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.moveToRepositoryGroup": {
+    "en": "Move to Repository Group…",
+    "zh-CN": "移动到仓库分组…",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.removeFromAlwayGit": {
+    "en": "Remove from AlwayGit…",
+    "zh-CN": "从 AlwayGit 移除…",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.switchToRepository": {
+    "en": "Switch to Repository",
+    "zh-CN": "切换到此仓库",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.thisRepositoryIsAlreadyOpen": {
+    "en": "This repository is already open.",
+    "zh-CN": "此仓库已打开。",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.openInNewAlwayGitTab": {
+    "en": "Open in New AlwayGit Tab",
+    "zh-CN": "在新的 AlwayGit 标签页中打开",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.openRepositoryInNewProjectWindow": {
+    "en": "Open Repository in New Project Window",
+    "zh-CN": "在新的项目窗口中打开仓库",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.refreshStatus": {
+    "en": "Refresh Status",
+    "zh-CN": "刷新状态",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.copyRepositoryPath": {
+    "en": "Copy Repository Path",
+    "zh-CN": "复制仓库路径",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.renameRepositoryGroup": {
+    "en": "Rename Repository Group…",
+    "zh-CN": "重命名仓库分组…",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.deleteRepositoryGroup": {
+    "en": "Delete Repository Group…",
+    "zh-CN": "删除仓库分组…",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.add": {
+    "en": "Add…",
+    "zh-CN": "添加…",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor / items"
+  },
+  "menus.showAllLocalBranchesInGraph": {
+    "en": "Show All Local Branches in Graph",
+    "zh-CN": "在 Graph 中显示全部本地分支",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor / items"
+  },
+  "menus.showCurrentBranchOnlyInGraph": {
+    "en": "Show Current Branch Only in Graph",
+    "zh-CN": "在 Graph 中仅显示当前分支",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor / items"
+  },
+  "menus.noCurrentLocalBranch": {
+    "en": "No current local branch.",
+    "zh-CN": "当前没有本地分支。",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor / items"
+  },
+  "menus.addRemote": {
+    "en": "Add Remote…",
+    "zh-CN": "添加远端…",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor / items"
+  },
+  "menus.repositories": {
+    "en": "Repositories",
+    "zh-CN": "仓库",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.localBranches": {
+    "en": "Local Branches",
+    "zh-CN": "本地分支",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.remotes": {
+    "en": "Remotes",
+    "zh-CN": "远端",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.theCurrentBranchIsSelected": {
+    "en": "The current branch is selected.",
+    "zh-CN": "选择中包含当前分支。",
+    "review": "translated",
+    "context": "webview/menus.ts / refBatch / blocked"
+  },
+  "menus.usedByAnotherWorktree": {
+    "en": "Used by another Worktree: {{name}}",
+    "zh-CN": "其他 Worktree 正在使用：{{name}}",
+    "review": "translated",
+    "context": "webview/menus.ts / refBatch / blocked"
+  },
+  "menus.showSelectedInGraph": {
+    "en": "Show Selected in Graph",
+    "zh-CN": "在 Graph 中显示所选分支",
+    "review": "translated",
+    "context": "webview/menus.ts / refBatch / items"
+  },
+  "menus.showOnlySelected": {
+    "en": "Show Only Selected",
+    "zh-CN": "仅显示所选分支",
+    "review": "translated",
+    "context": "webview/menus.ts / refBatch / items"
+  },
+  "menus.hideSelectedFromGraph": {
+    "en": "Hide Selected from Graph",
+    "zh-CN": "从 Graph 隐藏所选分支",
+    "review": "translated",
+    "context": "webview/menus.ts / refBatch / items"
+  },
+  "menus.deleteLocalBranches": {
+    "en": {
+      "one": "Delete {{count}} Local Branch…",
+      "other": "Delete {{count}} Local Branches…"
+    },
+    "zh-CN": "Delete {{count}} 个本地分支…",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor / refBatch"
+  },
+  "menus.deleteBranchesFrom": {
+    "en": {
+      "one": "Delete {{count}} Branch from {{remote}}…",
+      "other": "Delete {{count}} Branches from {{remote}}…"
+    },
+    "zh-CN": "从 {{remote}} Delete {{count}} 个分支…",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor / refBatch"
+  },
+  "menus.deleteRemoteBranches": {
+    "en": "Delete Remote Branches…",
+    "zh-CN": "Delete 远程分支…",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor / refBatch"
+  },
+  "menus.symbolicRemoteReferencesCannotBeDeleted": {
+    "en": "Symbolic remote references cannot be deleted.",
+    "zh-CN": "不能删除远端符号引用。",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor / refBatch"
+  },
+  "menus.selectBranchesFromOneRemote": {
+    "en": "Select branches from one Remote.",
+    "zh-CN": "请选择同一个 Remote 下的分支。",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor / refBatch"
+  },
+  "menus.copyBranchNames": {
+    "en": "Copy Branch Names",
+    "zh-CN": "复制分支名称",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor / refBatch"
+  },
+  "menus.branches": {
+    "en": "branches",
+    "zh-CN": "个分支",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.openDiffInVSCode": {
+    "en": "Open Diff in VS Code",
+    "zh-CN": "在 VS Code 中打开 Diff",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.editInVSCode": {
+    "en": "Edit in VS Code",
+    "zh-CN": "在 VS Code 中编辑",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.manuallyHandledMarkStage": {
+    "en": "Manually handled: Mark & Stage {{count}}",
+    "zh-CN": "已手动处理，标记并暂存 {{count}} 个文件",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.stageFiles": {
+    "en": {
+      "one": "Stage {{count}} File",
+      "other": "Stage {{count}} Files"
+    },
+    "zh-CN": "Stage {{count}} 个文件",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.unstageFiles": {
+    "en": {
+      "one": "Unstage {{count}} File",
+      "other": "Unstage {{count}} Files"
+    },
+    "zh-CN": "Unstage {{count}} 个文件",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.stashSelectedFiles": {
+    "en": "Stash Selected Files…",
+    "zh-CN": "Stash 所选文件…",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.discardFiles": {
+    "en": {
+      "one": "Discard {{count}} File…",
+      "other": "Discard {{count}} Files…"
+    },
+    "zh-CN": "Discard {{count}} 个文件…",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.copyPath": {
+    "en": "Copy Path",
+    "zh-CN": "复制路径",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.copyPaths": {
+    "en": "Copy {{count}} Paths",
+    "zh-CN": "复制 {{count}} 个路径",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.files": {
+    "en": "{{count}} Files",
+    "zh-CN": "{{count}} 个文件",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.branchesVariant2": {
+    "en": "{{count}} Branches",
+    "zh-CN": "{{count}} 个分支",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.thisIsTheCurrentBranch": {
+    "en": "This is the current branch.",
+    "zh-CN": "这是当前分支。",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor / reason"
+  },
+  "menus.usedByWorktree": {
+    "en": "Used by Worktree: {{path}}",
+    "zh-CN": "被 Worktree 使用：{{path}}",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor / reason"
+  },
+  "menus.createBranchAndCheckout": {
+    "en": "Create Branch and Checkout…",
+    "zh-CN": "创建分支并切换…",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.checkoutToDetachedHEAD": {
+    "en": "Checkout to Detached HEAD…",
+    "zh-CN": "Checkout 到 Detached HEAD…",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.deleteBranchFrom": {
+    "en": "Delete Branch from {{remote}}…",
+    "zh-CN": "从 {{remote}} Delete 分支…",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.refreshToCaptureThisTagBeforeDeletion": {
+    "en": "Refresh to capture this Tag before deletion.",
+    "zh-CN": "请刷新后再删除此 Tag。",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.thisTagDoesNotPointToACommit": {
+    "en": "This Tag does not point to a Commit.",
+    "zh-CN": "此 Tag 不指向 Commit。",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.worktreesSelected": {
+    "en": "{{count}} Worktrees selected",
+    "zh-CN": "已选择 {{count}} 个 Worktree",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.copyWorktreePaths": {
+    "en": "Copy {{count}} Worktree Paths",
+    "zh-CN": "复制 {{count}} 个 Worktree 路径",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.theMainOrCurrentWorktreeCannotBeRemoved": {
+    "en": "The main or current Worktree cannot be removed.",
+    "zh-CN": "主 Worktree 或当前 Worktree 无法移除。",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.selectMergeCommitsIndividuallyAndChooseTheirMainlineParent": {
+    "en": "Select merge commits individually and choose their Mainline Parent.",
+    "zh-CN": "请单独选择 Merge Commit 并指定 Mainline Parent。",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor / cherry"
+  },
+  "menus.cherryPickRequiresALocalBranch": {
+    "en": "Cherry-pick requires a local branch.",
+    "zh-CN": "Cherry-pick 需要当前处于本地分支。",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor / cherry"
+  },
+  "menus.fetch": {
+    "en": "Fetch…",
+    "zh-CN": "Fetch…",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.createBranch": {
+    "en": "Create Branch…",
+    "zh-CN": "Create Branch…",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor / items"
+  },
+  "menus.createTag": {
+    "en": "Create Tag…",
+    "zh-CN": "Create Tag…",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor / items"
+  },
+  "menus.stashAllChanges": {
+    "en": "Stash All Changes…",
+    "zh-CN": "Stash All Changes…",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor / items"
+  },
+  "menus.addWorktree": {
+    "en": "Add Worktree…",
+    "zh-CN": "Add Worktree…",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor / items"
+  },
+  "menus.tags": {
+    "en": "Tags",
+    "zh-CN": "Tags",
+    "review": "keep",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.stashes": {
+    "en": "Stashes",
+    "zh-CN": "Stashes",
+    "review": "keep",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.worktrees": {
+    "en": "Worktrees",
+    "zh-CN": "Worktrees",
+    "review": "keep",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.checkout": {
+    "en": "Checkout…",
+    "zh-CN": "Checkout…",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.showInGraph": {
+    "en": "Show in Graph",
+    "zh-CN": "Show in Graph",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.showOnlyThisTag": {
+    "en": "Show Only This Tag",
+    "zh-CN": "Show Only This Tag",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.showOnlyThisBranch": {
+    "en": "Show Only This Branch",
+    "zh-CN": "Show Only This Branch",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.merge": {
+    "en": "Merge…",
+    "zh-CN": "Merge…",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.rebase": {
+    "en": "Rebase…",
+    "zh-CN": "Rebase…",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.push": {
+    "en": "Push…",
+    "zh-CN": "Push…",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.deleteBranch": {
+    "en": "Delete Branch…",
+    "zh-CN": "Delete Branch…",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.deleteRemoteBranch": {
+    "en": "Delete Remote Branch…",
+    "zh-CN": "Delete Remote Branch…",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.deleteTag": {
+    "en": "Delete Tag…",
+    "zh-CN": "Delete Tag…",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.copyTagName": {
+    "en": "Copy Tag Name",
+    "zh-CN": "Copy Tag Name",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.copyCommitID": {
+    "en": "Copy Commit ID",
+    "zh-CN": "Copy Commit ID",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.copyBranchName": {
+    "en": "Copy Branch Name",
+    "zh-CN": "Copy Branch Name",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.openWorktree": {
+    "en": "Open Worktree",
+    "zh-CN": "Open Worktree",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.viewChanges": {
+    "en": "View Changes",
+    "zh-CN": "View Changes",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.applyStash": {
+    "en": "Apply Stash",
+    "zh-CN": "Apply Stash",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.popStash": {
+    "en": "Pop Stash",
+    "zh-CN": "Pop Stash",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.dropStash": {
+    "en": "Drop Stash…",
+    "zh-CN": "Drop Stash…",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.openWorktreeInNewProjectWindow": {
+    "en": "Open Worktree in New Project Window",
+    "zh-CN": "Open Worktree in New Project Window",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.removeWorktree": {
+    "en": "Remove Worktree…",
+    "zh-CN": "Remove Worktree…",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.copyWorktreePath": {
+    "en": "Copy Worktree Path",
+    "zh-CN": "Copy Worktree Path",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.cherryPickCommitsTo": {
+    "en": "Cherry-pick {{count}} Commits to {{value}}",
+    "zh-CN": "Cherry-pick {{count}} Commits to {{value}}",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor / cherry"
+  },
+  "menus.detachedHEAD": {
+    "en": "Detached HEAD",
+    "zh-CN": "Detached HEAD",
+    "review": "keep",
+    "context": "webview/menus.ts / menuFor / cherry"
+  },
+  "menus.cherryPickTo": {
+    "en": "Cherry-pick to {{value}}",
+    "zh-CN": "Cherry-pick to {{value}}",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor / cherry"
+  },
+  "menus.commits": {
+    "en": "{{count}} Commits",
+    "zh-CN": "{{count}} Commits",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.compareCommits": {
+    "en": "Compare Commits",
+    "zh-CN": "Compare Commits",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.copyCommitIDs": {
+    "en": "Copy Commit IDs",
+    "zh-CN": "Copy Commit IDs",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.cherryPickMerge": {
+    "en": "Cherry-pick Merge…",
+    "zh-CN": "Cherry-pick Merge…",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor / items"
+  },
+  "menus.revert": {
+    "en": "Revert…",
+    "zh-CN": "Revert…",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor / items"
+  },
+  "menus.reset": {
+    "en": "Reset…",
+    "zh-CN": "Reset…",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor / items"
+  },
+  "menus.copyCommitMessage": {
+    "en": "Copy Commit Message",
+    "zh-CN": "Copy Commit Message",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor / items"
+  },
+  "menus.commit": {
+    "en": "Commit {{value}}",
+    "zh-CN": "Commit {{value}}",
+    "review": "pending",
+    "context": "webview/menus.ts / menuFor"
+  }
+}

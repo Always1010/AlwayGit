@@ -1,0 +1,206 @@
+{
+  "actionNames.stage": {
+    "en": "Stage",
+    "zh-CN": "Stage",
+    "review": "keep",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.markStage": {
+    "en": "Mark & Stage",
+    "zh-CN": "Mark & Stage",
+    "review": "pending",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.unstage": {
+    "en": "Unstage",
+    "zh-CN": "Unstage",
+    "review": "keep",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.discard": {
+    "en": "Discard",
+    "zh-CN": "Discard",
+    "review": "pending",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.amend": {
+    "en": "Amend",
+    "zh-CN": "Amend",
+    "review": "pending",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.commit": {
+    "en": "Commit",
+    "zh-CN": "Commit",
+    "review": "keep",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.fetch": {
+    "en": "Fetch",
+    "zh-CN": "Fetch",
+    "review": "keep",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.pull": {
+    "en": "Pull",
+    "zh-CN": "Pull",
+    "review": "keep",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.push": {
+    "en": "Push",
+    "zh-CN": "Push",
+    "review": "keep",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.addRemote": {
+    "en": "Add Remote",
+    "zh-CN": "Add Remote",
+    "review": "pending",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.createBranch": {
+    "en": "Create Branch",
+    "zh-CN": "Create Branch",
+    "review": "pending",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.checkout": {
+    "en": "Checkout",
+    "zh-CN": "Checkout",
+    "review": "keep",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.stashCheckout": {
+    "en": "Stash & Checkout",
+    "zh-CN": "Stash & Checkout",
+    "review": "pending",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.checkoutRemoteBranch": {
+    "en": "Checkout Remote Branch",
+    "zh-CN": "Checkout Remote Branch",
+    "review": "pending",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.createTrackingBranches": {
+    "en": "Create Tracking Branches",
+    "zh-CN": "Create Tracking Branches",
+    "review": "pending",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.deleteBranches": {
+    "en": "Delete Branches",
+    "zh-CN": "Delete Branches",
+    "review": "pending",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.deleteBranch": {
+    "en": "Delete Branch",
+    "zh-CN": "Delete Branch",
+    "review": "pending",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.deleteRemoteBranches": {
+    "en": "Delete Remote Branches",
+    "zh-CN": "Delete Remote Branches",
+    "review": "pending",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.createTag": {
+    "en": "Create Tag",
+    "zh-CN": "Create Tag",
+    "review": "pending",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.deleteTag": {
+    "en": "Delete Tag",
+    "zh-CN": "Delete Tag",
+    "review": "pending",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.stashSelectedFiles": {
+    "en": "Stash Selected Files",
+    "zh-CN": "Stash Selected Files",
+    "review": "pending",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.stashAllChanges": {
+    "en": "Stash All Changes",
+    "zh-CN": "Stash All Changes",
+    "review": "pending",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.popStash": {
+    "en": "Pop Stash",
+    "zh-CN": "Pop Stash",
+    "review": "pending",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.applyStash": {
+    "en": "Apply Stash",
+    "zh-CN": "Apply Stash",
+    "review": "pending",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.dropStash": {
+    "en": "Drop Stash",
+    "zh-CN": "Drop Stash",
+    "review": "pending",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.addWorktree": {
+    "en": "Add Worktree",
+    "zh-CN": "Add Worktree",
+    "review": "pending",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.removeWorktree": {
+    "en": "Remove Worktree",
+    "zh-CN": "Remove Worktree",
+    "review": "pending",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.merge": {
+    "en": "Merge",
+    "zh-CN": "Merge",
+    "review": "keep",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.rebase": {
+    "en": "Rebase",
+    "zh-CN": "Rebase",
+    "review": "keep",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.cherryPick": {
+    "en": "Cherry-pick",
+    "zh-CN": "Cherry-pick",
+    "review": "keep",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.revert": {
+    "en": "Revert",
+    "zh-CN": "Revert",
+    "review": "keep",
+    "context": "webview/actionFeedback.ts / actionName / names"
+  },
+  "actionNames.continue": {
+    "en": "{{value}} Continue",
+    "zh-CN": "{{value}} Continue",
+    "review": "pending",
+    "context": "webview/actionFeedback.ts / actionName"
+  },
+  "actionNames.abort": {
+    "en": "{{value}} Abort",
+    "zh-CN": "{{value}} Abort",
+    "review": "pending",
+    "context": "webview/actionFeedback.ts / actionName"
+  },
+  "actionNames.skip": {
+    "en": "{{value}} Skip",
+    "zh-CN": "{{value}} Skip",
+    "review": "pending",
+    "context": "webview/actionFeedback.ts / actionName"
+  }
+}

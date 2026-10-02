@@ -1,0 +1,20 @@
+{
+  "session.lightAndDarkGraphPalettesMustHaveTheSame": {
+    "en": "Light and dark graph palettes must have the same size",
+    "zh-CN": "Light and dark graph palettes must have the same size",
+    "review": "pending",
+    "context": "src/protocol/session.ts / graphColors"
+  },
+  "session.zhCN": {
+    "en": "zh-CN",
+    "zh-CN": "zh-CN",
+    "review": "pending",
+    "context": "src/protocol/session.ts / sessionSchema"
+  },
+  "session.sessionExceedsTheStorageLimit": {
+    "en": "Session exceeds the storage limit",
+    "zh-CN": "Session exceeds the storage limit",
+    "review": "pending",
+    "context": "src/protocol/session.ts / sessionSchema"
+  }
+}

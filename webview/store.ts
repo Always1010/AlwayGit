@@ -1,4 +1,6 @@
+import { translate, uiText, setLanguageReader } from './text';
 import { create } from 'zustand';
+import { errorMessage } from './rpc-error';
 import type { CheckoutBlocker, Commit, CommitComparison, CommitDetails, DiffTarget, GitAction, HistoryPage, HistoryQuery, OperationReview, OperationSettings, Repository, RepositoryChanges, RepositoryCollection, RepositoryOrder, ReorderRepository, RepositoryStatus, Snapshot, StashApplyBlocker, StashDetails, StashSection } from '../src/protocol/types';
 import { demoMode, readSession, rpc, saveSession, subscribe } from './rpc';
 import type { LayoutState } from './rpc';
@@ -33,7 +35,7 @@ interface WorkbenchState {
   workingFilters: Record<string, string>; setWorkingFilter(value: string): void;
   execute(action: GitAction): Promise<boolean>; dismissFeedback(): void; setDraft(value: string): void; setLanguage(value: Language): void; setLayout(value: Partial<LayoutState>): void; report(error: unknown): void;
 }
-const message = (error: unknown) => error instanceof Error ? error.message : String(error);
+const message = (error: unknown) => errorMessage(error, useWorkbench.getState().language);
 const clamp = (n: number, min: number, max: number, fallback: number) => Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : fallback;
 function layout(value: Partial<LayoutState> = {}): LayoutState {
   const l = { ...defaultLayout, ...value };
@@ -49,7 +51,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   singleKeyShortcuts: session.singleKeyShortcuts !== false,
   operationSettings: { allowDetachedHead: false, scope: 'workspace' },
   async loadOperationSettings() { const settings = await rpc<OperationSettings>('operationSettings'); if (typeof settings?.allowDetachedHead === 'boolean') set({ operationSettings: settings }); },
-  async saveOperationSettings(allowDetachedHead) { const settings = await rpc<OperationSettings>('saveOperationSettings', undefined, { allowDetachedHead }); if (typeof settings?.allowDetachedHead !== 'boolean' || settings.allowDetachedHead !== allowDetachedHead) throw new Error('Could not save Git operation settings.'); set({ operationSettings: settings }); },
+  async saveOperationSettings(allowDetachedHead) { const settings = await rpc<OperationSettings>('saveOperationSettings', undefined, { allowDetachedHead }); if (typeof settings?.allowDetachedHead !== 'boolean' || settings.allowDetachedHead !== allowDetachedHead) throw new Error(uiText("notices.couldNotSaveGitOperationSettings")); set({ operationSettings: settings }); },
   repositories: [], repositoryCollections:[], repositoryStatuses: {}, selectedRepositoryKeys:[], commits: [], selectedOids:[], selectedRefs:[], search: '', language: session.language === 'zh-CN' ? 'zh-CN' : 'en', layout: initialLayout, appearance: normalizeAppearance(session.appearance), locateToken:0,nextOffset: 0, tips: [], hasMore: false, loading: false, historyLoading: false, detailsLoading: false, diffRevision: 0, busy: false, activity: '', tab: 'history', drafts: session.drafts ?? {}, collapsedSidebarGroups:[],
   report(error) { set({ error: message(error) }); },
   async initialize() {
@@ -75,7 +77,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
           comparison: undefined, stashDetails: undefined, selectedStashOid: undefined, selectedStashSection: undefined,
           selectedOid: undefined, selectedOids: [], selectedFile: undefined, diffTarget: undefined,
           operationReview: undefined, busy: false, activity: '',
-          notice: get().language === 'zh-CN' ? '该仓库已从 AlwayGit 移除。' : 'The repository was removed from AlwayGit.',
+          notice: translate(get().language, "notices.theRepositoryWasRemovedFromAlwayGit"),
         } : {}),
       });
       void get().loadRepositoryStatuses();
@@ -167,7 +169,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         const entries=(Object.entries(stashDetails.sections) as [StashSection,CommitDetails][]).filter((entry):entry is [StashSection,CommitDetails]=>!!entry[1]);
         const requested=oid===selectedStashOid&&parent===undefined?undefined:entries.find(([,value])=>value.commit.oid===oid&&(!parent||value.parent===parent));
         const chosen=requested??entries.find(([,value])=>value.files.length>0)??entries[0];
-        if(!chosen)throw new Error('The selected Stash has no readable sections.');
+        if(!chosen)throw new Error(uiText("notices.theSelectedStashHasNoReadableSections"));
         const [selectedStashSection,details]=chosen;
         set({details,stashDetails,selectedStashSection,selectedOid:details.commit.oid,selectedParent:details.parent});
         const file=(same?details.files.find(candidate=>candidate.path===get().selectedFile):undefined)??details.files[0];
@@ -252,11 +254,11 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         if(!current()||historyEpoch!==expectedEpoch)return;
         if(get().commits.some(commit=>commit.oid===oid))return;
         if(!get().hasMore||get().nextOffset<=offset) {
-          set({notice:get().language==='zh-CN'?'无法在当前引用的完整历史中定位该 Commit。':'Could not locate this Commit in the full history of the selected refs.'});
+          set({notice:translate(get().language, "notices.couldNotLocateThisCommitInTheFullHistory")});
           return;
         }
         if (++pages >= 20 || get().commits.length >= 10_000) {
-          set({notice:get().language==='zh-CN'?'已达到自动定位的读取上限，保留当前历史和 Commit 详情。可使用 Load More 继续加载，或缩小引用范围后再定位。':'Automatic locate reached its read limit. History and Commit details are preserved. Use Load More to continue, or narrow the selected refs and locate again.'});
+          set({notice:translate(get().language, "notices.automaticLocateReachedItsReadLimitHistoryAndCommit")});
           return;
         }
         append=true;
@@ -268,11 +270,11 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   async execute(action) {
     const repoId = get().repoId, epoch = repositoryEpoch; if (!repoId || get().busy) return false;
     if ((action.type === 'operation.continue' || action.type === 'commit' && get().snapshot?.operation.kind) && !action.reviewToken) {
-      executingRepositories.add(repoId); set({ busy: true, activity: 'Inspect staged result', error: undefined, operationReview: undefined });
+      executingRepositories.add(repoId); set({ busy: true, activity: uiText("notices.inspectStagedResult"), error: undefined, operationReview: undefined });
       try {
         const review = await rpc<OperationReview>('operationReview', repoId);
         if (epoch === repositoryEpoch) {
-          if (action.type === 'operation.continue' && review.kind !== action.kind) throw new Error('The Git operation changed. Refresh before continuing.');
+          if (action.type === 'operation.continue' && review.kind !== action.kind) throw new Error(uiText("notices.theGitOperationChangedRefreshBeforeContinuing"));
           set({ operationReview: { repoId, action, review } });
         }
       } catch (error) { if (epoch === repositoryEpoch) { get().report(error); await get().refresh({ background: true }); } }
@@ -305,11 +307,11 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         if(epoch===repositoryEpoch) {
           const checkout = ['branch.checkout', 'commit.checkout', 'checkout.stash'].includes(action.type) || (action.type === 'branch.create' || action.type === 'branch.track') && action.checkout;
           if (checkout) { const snap = get().snapshot; const ref = snap?.refs.find(r => r.kind === 'local' && r.name === snap.branch)?.fullName ?? (snap?.head ? 'HEAD' : undefined); if (ref && !get().checkedRefs?.includes(ref)) get().setCheckedRefs([...(get().checkedRefs ?? []), ref]); }
-          set({ notice: demoMode ? (get().language === 'zh-CN' ? `模拟操作：${action.type}；未修改实际仓库。` : `Demo: ${action.type} completed. No disk changes.`) : action.type === 'resolve-and-stage' ? (get().language === 'zh-CN' ? '已标记并暂存；继续前请检查结果。' : 'Marked and staged; inspect the result before continuing.') : `${action.type} ✓` });
+          set({ notice: demoMode ? (translate(get().language, "notices.demoCompletedNoDiskChanges", { kind: (action.type) })) : action.type === 'resolve-and-stage' ? (translate(get().language, "notices.markedAndStagedInspectTheResultBeforeContinuing")) : `${action.type} ✓` });
         }
       }
       const snapshot = epoch === repositoryEpoch ? get().snapshot : undefined;
-      if (action.type !== 'commit') finish('success', undefined, stashed&&snapshot&&snapshot.stashes[0]?.oid!==stashed.previousOid?{kind:'stash',files:stashed.files,untracked:stashed.untracked,clean:snapshot.changes.length===0}:action.type==='branch.create'&&snapshot?{kind:'branch',name:action.name,checkedOut:!!action.checkout,currentBranch:snapshot.branch||'Detached HEAD'}:undefined);
+      if (action.type !== 'commit') finish('success', undefined, stashed&&snapshot&&snapshot.stashes[0]?.oid!==stashed.previousOid?{kind:'stash',files:stashed.files,untracked:stashed.untracked,clean:snapshot.changes.length===0}:action.type==='branch.create'&&snapshot?{kind:'branch',name:action.name,checkedOut:!!action.checkout,currentBranch:snapshot.branch||uiText("notices.detachedHEAD")}:undefined);
       return true;
     } catch (error) {
       if (get().repoId === repoId) {
@@ -355,7 +357,7 @@ useWorkbench.subscribe(state => {
   persistedSelection = selection;
   if (state.repoId) views[state.repoId] = { ref: state.ref, checkedRefs: state.checkedRefs, expandedRefGroups:state.expandedRefGroups,collapsedSidebarGroups:state.collapsedSidebarGroups, search: state.search, selectedOid: state.selectedOid, selectedParent: state.selectedParent, selectedStashOid: state.selectedStashOid, selectedFile: state.selectedFile, tab: state.tab };
   const baseline = state.settingsBaseline;
-  saveSession({ version: 2, diffNavigationScope: baseline?.diffNavigationScope ?? state.diffNavigationScope, singleKeyShortcuts: baseline?.singleKeyShortcuts ?? state.singleKeyShortcuts, repoId: state.repoId, drafts: state.drafts, views, language: baseline?.language ?? state.language, layout: baseline ? { ...state.layout, font: baseline.font, row: baseline.row } : state.layout, appearance: baseline?.appearance ?? state.appearance }, error => useWorkbench.getState().report(new Error(`${state.language === 'zh-CN' ? '恢复状态未能保存；当前标签仍保留草稿。' : 'Could not save the recovery baseline; drafts remain in this panel.'} ${error.message}`)));
+  saveSession({ version: 2, diffNavigationScope: baseline?.diffNavigationScope ?? state.diffNavigationScope, singleKeyShortcuts: baseline?.singleKeyShortcuts ?? state.singleKeyShortcuts, repoId: state.repoId, drafts: state.drafts, views, language: baseline?.language ?? state.language, layout: baseline ? { ...state.layout, font: baseline.font, row: baseline.row } : state.layout, appearance: baseline?.appearance ?? state.appearance }, error => useWorkbench.getState().report(new Error(`${translate(state.language, "notices.couldNotSaveTheRecoveryBaselineDraftsRemainIn")} ${error.message}`)));
 });
 let changedTimer: ReturnType<typeof setTimeout>;
 let pendingChange: { repoId: string; changes?: RepositoryChanges; snapshot?: Snapshot } | undefined;
@@ -373,3 +375,6 @@ subscribe(event => {
   if(event.type==='activity'){if(event.busy)hostBusyRepositories.add(event.repoId);else hostBusyRepositories.delete(event.repoId);if(event.repoId===state.repoId)useWorkbench.setState({busy:event.busy||executingRepositories.has(event.repoId),activity:event.label});}
   if (event.type === 'selectRepository') void state.selectRepository(event.repoId);
 });
+
+
+setLanguageReader(() => useWorkbench.getState().language);

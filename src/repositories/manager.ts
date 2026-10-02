@@ -1,3 +1,4 @@
+import { message as localizeMessage, MessageError, translate } from '../i18n/index';
 import * as vscode from 'vscode';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -93,8 +94,8 @@ export class RepositoryManager implements vscode.Disposable {
     const collections = catalog.collections, ids = new Set(collections.map(collection => collection.id));
     const parents = new Map<string, string | undefined>(collections.map(collection => [collectionOrderKey(collection.id), undefined]));
     for (const group of this.groups()) if (!catalog.exclusions.includes(group.key)) parents.set(repositoryOrderKey(group.key), catalog.assignments[group.key] && ids.has(catalog.assignments[group.key]) ? catalog.assignments[group.key] : undefined);
-    if (!parents.has(key) || !parents.has(targetKey)) throw new Error('The repository or group no longer exists.');
-    if (parents.get(key) !== parents.get(targetKey)) throw new Error('Reorder items within the same level.');
+    if (!parents.has(key) || !parents.has(targetKey)) throw new MessageError(localizeMessage("manager.theRepositoryOrGroupNoLongerExists"));
+    if (parents.get(key) !== parents.get(targetKey)) throw new MessageError(localizeMessage("manager.reorderItemsWithinTheSameLevel"));
     if (key === targetKey) return;
     const order = this.catalogOrder(catalog), parent = parents.get(key), entries = parent ? order.collections[parent] : order.root;
     const next = entries.filter(entry => entry !== key), target = next.indexOf(targetKey);
@@ -105,11 +106,11 @@ export class RepositoryManager implements vscode.Disposable {
   }
   get(id: string | undefined): Repository {
     const repo = id && this.repositories.get(id);
-    if (!repo) throw new Error('Select a registered repository first.');
+    if (!repo) throw new MessageError(localizeMessage("manager.selectARegisteredRepositoryFirst"));
     return repo;
   }
   async add(root: string, remember = true): Promise<Repository> {
-    if (!vscode.workspace.isTrusted) throw new Error('Trust this workspace before executing Git.');
+    if (!vscode.workspace.isTrusted) throw new MessageError(localizeMessage("manager.trustThisWorkspaceBeforeExecutingGit"));
     this.invalidateScan();
     const repo = await this.git.discover(root);
     let prepared: ReturnType<RepositoryManager['prepareRegistration']> | undefined;
@@ -126,7 +127,7 @@ export class RepositoryManager implements vscode.Disposable {
     return repo;
   }
   async discoverDirectory(root: string, options: DiscoveryOptions = {}): Promise<DiscoveryResult> {
-    if (!vscode.workspace.isTrusted) throw new Error('Trust this workspace before executing Git.');
+    if (!vscode.workspace.isTrusted) throw new MessageError(localizeMessage("manager.trustThisWorkspaceBeforeExecutingGit"));
     return discoverRepositories(root, this.git, options);
   }
   private async rememberedRoots(): Promise<Set<string>> {
@@ -224,7 +225,7 @@ export class RepositoryManager implements vscode.Disposable {
   async registerDiscovered(discovery: DiscoveryResult, options: Pick<DiscoveryOptions, 'isCancelled'> = {}, destination: { collectionId?: string; newCollectionName?: string } = {}): Promise<AddDirectoryResult> {
     const result: AddDirectoryResult = { ...discovery, issues: [...discovery.issues], added: 0, existing: 0 };
     if (result.cancelled || options.isCancelled?.()) { result.cancelled = true; return result; }
-    if (!vscode.workspace.isTrusted) throw new Error('Trust this workspace before executing Git.');
+    if (!vscode.workspace.isTrusted) throw new MessageError(localizeMessage("manager.trustThisWorkspaceBeforeExecutingGit"));
     this.invalidateScan();
     const existingGroups = new Set(this.groups().map(group => group.key));
     let registered = false;
@@ -238,7 +239,7 @@ export class RepositoryManager implements vscode.Disposable {
           const collection = this.newCollection(catalog, destination.newCollectionName);
           catalog.collections.push(collection); collectionId = collection.id; createdCollection = collection;
         }
-        if (collectionId && !catalog.collections.some(item => item.id === collectionId)) throw new Error('Repository group no longer exists.');
+        if (collectionId && !catalog.collections.some(item => item.id === collectionId)) throw new MessageError(localizeMessage("manager.repositoryGroupNoLongerExists"));
         for (const { repo } of prepared) {
           if (!catalog.roots.some(root => pathKey(root) === pathKey(repo.root))) catalog.roots.push(repo.root);
           const key = repositoryGroupKey(repo);
@@ -277,9 +278,9 @@ export class RepositoryManager implements vscode.Disposable {
   }
   private newCollection(catalog: RepositoryCatalog, name: string): RepositoryCollection {
     const normalized = name.trim();
-    if (!normalized) throw new Error('Repository group name is required.');
-    if (normalized.length > 80) throw new Error('Repository group name is too long.');
-    if (catalog.collections.some(item => item.name.localeCompare(normalized, undefined, { sensitivity: 'accent' }) === 0)) throw new Error('A repository group with this name already exists.');
+    if (!normalized) throw new MessageError(localizeMessage("manager.repositoryGroupNameIsRequired"));
+    if (normalized.length > 80) throw new MessageError(localizeMessage("manager.repositoryGroupNameIsTooLong"));
+    if (catalog.collections.some(item => item.name.localeCompare(normalized, undefined, { sensitivity: 'accent' }) === 0)) throw new MessageError(localizeMessage("manager.aRepositoryGroupWithThisNameAlreadyExists"));
     return { id: randomUUID(), name: normalized };
   }
   async createCollection(name: string): Promise<RepositoryCollection> {
@@ -291,7 +292,7 @@ export class RepositoryManager implements vscode.Disposable {
   }
   async renameCollection(id: string, name: string): Promise<void> {
     await this.mutate(catalog => {
-      if (!catalog.collections.some(item => item.id === id)) throw new Error('Repository group no longer exists.');
+      if (!catalog.collections.some(item => item.id === id)) throw new MessageError(localizeMessage("manager.repositoryGroupNoLongerExists"));
       const others = { ...catalog, collections: catalog.collections.filter(item => item.id !== id) };
       const renamed = this.newCollection(others, name);
       catalog.collections = catalog.collections.map(item => item.id === id ? { ...item, name: renamed.name } : item);
@@ -310,7 +311,7 @@ export class RepositoryManager implements vscode.Disposable {
   async move(keys: Iterable<string>, collectionId?: string): Promise<number> {
     const requested = new Set(keys), available = new Set(this.groups().map(group => group.key));
     const moved = await this.mutate(catalog => {
-      if (collectionId && !catalog.collections.some(item => item.id === collectionId)) throw new Error('Repository group no longer exists.');
+      if (collectionId && !catalog.collections.some(item => item.id === collectionId)) throw new MessageError(localizeMessage("manager.repositoryGroupNoLongerExists"));
       let moved = 0;
       for (const key of requested) {
         if (!available.has(key) || catalog.exclusions.includes(key) || catalog.assignments[key] === collectionId) continue;
@@ -356,7 +357,7 @@ export class RepositoryManager implements vscode.Disposable {
       for(const root of roots){
         if(this.disposed||generation!==this.scanGeneration)break;
         try{const repo=await this.git.discover(root);if(generation===this.scanGeneration&&!this.disposed){discovered.push(repo);desiredRoots.add(pathKey(repo.root));}}
-        catch(error){this.log.appendLine(`[discovery] ${root}: ${error instanceof Error?error.message:String(error)}`);}
+        catch(error){this.log.appendLine(translate('en', "manager.discovery", { root: (root), value: (error instanceof Error?error.message:String(error)) }));}
       }
       if(this.disposed)return;
       const currentRoots=await this.discoveryRoots();

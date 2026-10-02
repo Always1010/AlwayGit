@@ -1,3 +1,4 @@
+import { translate, message as localizeMessage, MessageError } from '../i18n/index';
 import * as vscode from 'vscode';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
@@ -55,7 +56,7 @@ export class ProjectWindows implements vscode.Disposable {
   async recoverRepositoryOperation(commonDir: string, token: string): Promise<void> { await this.operationLock.recover(await canonicalPath(commonDir), token); }
   private async notifyActivity(commonDir: string, busy: boolean, label: string): Promise<void> {
     try { await this.bridge.broadcast({ action: 'repository-activity', commonDir, busy, label }); }
-    catch (error) { try { this.log.appendLine(`[repository-activity] ${error instanceof Error ? error.message : String(error)}`); } catch { /* Disposal must not affect the Git operation or its lease. */ } }
+    catch (error) { try { this.log.appendLine(translate('en', "projectWindows.repositoryActivity", { value: (error instanceof Error ? error.message : String(error)) })); } catch { /* Disposal must not affect the Git operation or its lease. */ } }
   }
   async runRepositoryOperation<T>(commonDir: string, label: string, task: () => Promise<T>): Promise<T> {
     const canonical = await canonicalPath(commonDir), lease = await this.operationLock.acquire(canonical, label);
@@ -82,7 +83,7 @@ export class ProjectWindows implements vscode.Disposable {
   private async execute(request: ProjectRequest): Promise<void> {
     if (request.action === 'catalog-changed') { await this.synchronizeRepositories(); return; }
     if (request.action === 'repository-activity') { this.repositoryActivity(request.commonDir, request.busy, request.label); return; }
-    if (!vscode.workspace.isTrusted) throw new Error('Trust the project workspace before opening it from AlwayGit.');
+    if (!vscode.workspace.isTrusted) throw new MessageError(localizeMessage("projectWindows.trustTheProjectWorkspaceBeforeOpeningItFromAlwayGit"));
     if (request.action === 'show-workbench') {
       await this.showWorkbench(undefined, true);
       await this.focus();
@@ -90,7 +91,7 @@ export class ProjectWindows implements vscode.Disposable {
     }
     if (request.action !== 'project') {
       const repo = await this.repositories.add(request.root, false);
-      if (await canonicalPath(repo.root) !== request.root) throw new Error('The repository directory changed. Reopen it from AlwayGit.');
+      if (await canonicalPath(repo.root) !== request.root) throw new MessageError(localizeMessage("projectWindows.theRepositoryDirectoryChangedReopenItFromAlwayGit"));
       if (request.action === 'workbench') await this.showWorkbench(repo.id);
       else if (request.action === 'file') await this.documents.openFile(repo, request.path);
       else await this.documents.diff(repo, request.target);
@@ -103,15 +104,15 @@ export class ProjectWindows implements vscode.Disposable {
     else {
       // Older native builds reuse an already-open workspace by its identity, without changing its folders.
       const workspace = vscode.workspace.workspaceFile ?? vscode.workspace.workspaceFolders?.[0]?.uri;
-      if (!workspace) throw new Error('The project window has no workspace to activate.');
+      if (!workspace) throw new MessageError(localizeMessage("projectWindows.theProjectWindowHasNoWorkspaceToActivate"));
       await vscode.commands.executeCommand('vscode.openFolder', workspace, { forceNewWindow: false, noRecentEntry: true });
     }
     const deadline = Date.now() + 4000;
     while (!vscode.window.state.focused && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50));
-    if (!vscode.window.state.focused) throw new Error('VS Code could not activate the selected project window. Switch to that window and try again.');
+    if (!vscode.window.state.focused) throw new MessageError(localizeMessage("projectWindows.vSCodeCouldNotActivateTheSelectedProjectWindow"));
   }
   private async route(request: ProjectRequest): Promise<void> {
-    if (request.action === 'show-workbench' || request.action === 'catalog-changed' || request.action === 'repository-activity') throw new Error('A window-level request cannot be routed as a project request.');
+    if (request.action === 'show-workbench' || request.action === 'catalog-changed' || request.action === 'repository-activity') throw new MessageError(localizeMessage("projectWindows.aWindowLevelRequestCannotBeRoutedAsA"));
     const root = await canonicalPath(request.root);
     const existing = await this.find(root);
     if (existing) { await WindowBridge.send(existing, { ...request, root }); return; }
@@ -141,7 +142,7 @@ export class ProjectWindows implements vscode.Disposable {
       if (candidate) return candidate;
       await new Promise(resolve => setTimeout(resolve, 250));
     }
-    throw new Error('The project was opened, but AlwayGit did not respond. Enable AlwayGit and trust that project window, then try again.');
+    throw new MessageError(localizeMessage("projectWindows.theProjectWasOpenedButAlwayGitDidNotRespond"));
   }
   private async openNewAndWait(root: string): Promise<WindowRecord> {
     const previous = new Set((await this.bridge.candidates(root)).map(candidate => candidate.id));
@@ -155,7 +156,7 @@ export class ProjectWindows implements vscode.Disposable {
       }
       await new Promise(resolve => setTimeout(resolve, 250));
     }
-    throw new Error('The project was opened in a new window, but AlwayGit did not respond. Enable AlwayGit and trust that project window, then try again.');
+    throw new MessageError(localizeMessage("projectWindows.theProjectWasOpenedInANewWindowBut"));
   }
   private async openBlankAndWait(): Promise<WindowRecord> {
     const previous = new Set((await this.bridge.windows()).map(candidate => candidate.id));
@@ -169,7 +170,7 @@ export class ProjectWindows implements vscode.Disposable {
       }
       await new Promise(resolve => setTimeout(resolve, 250));
     }
-    throw new Error('The new window opened, but AlwayGit did not respond. Enable AlwayGit in that window, then try again.');
+    throw new MessageError(localizeMessage("projectWindows.theNewWindowOpenedButAlwayGitDidNotRespond"));
   }
   dispose(): void { this.operationLock.dispose();this.bridge.dispose(); for (const disposable of this.disposables) disposable.dispose(); }
 }

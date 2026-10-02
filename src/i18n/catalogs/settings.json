@@ -1,0 +1,764 @@
+{
+  "settings.lineHeight": {
+    "en": "Line height",
+    "zh-CN": "行高",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / DiffHeightField"
+  },
+  "settings.diffLineHeight": {
+    "en": "Diff line height",
+    "zh-CN": "Diff 行高",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / DiffHeightField"
+  },
+  "settings.default": {
+    "en": " · Default",
+    "zh-CN": " · 默认",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / DiffHeightField"
+  },
+  "settings.custom": {
+    "en": "Custom",
+    "zh-CN": "自定义",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / DiffHeightField"
+  },
+  "settings.customDiffLineHeight": {
+    "en": "Custom Diff line height",
+    "zh-CN": "自定义 Diff 行高",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / DiffHeightField"
+  },
+  "settings.dense": {
+    "en": "Dense",
+    "zh-CN": "密集",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / FileSpacingField / names"
+  },
+  "settings.compactDefault": {
+    "en": "Compact · Default",
+    "zh-CN": "紧凑 · 默认",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / FileSpacingField / names"
+  },
+  "settings.balanced": {
+    "en": "Balanced",
+    "zh-CN": "适中",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / FileSpacingField / names"
+  },
+  "settings.comfortable": {
+    "en": "Comfortable",
+    "zh-CN": "宽松",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / FileSpacingField / names"
+  },
+  "settings.fileListSpacing": {
+    "en": "File list spacing",
+    "zh-CN": "文件列表间距",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / FileSpacingField"
+  },
+  "settings.customFileListSpacing": {
+    "en": "Custom file list spacing",
+    "zh-CN": "自定义文件列表间距",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / FileSpacingField"
+  },
+  "settings.removeColor": {
+    "en": "Remove color",
+    "zh-CN": "删除颜色",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / ColorField"
+  },
+  "settings.remove": {
+    "en": "Remove",
+    "zh-CN": "删除",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / ColorField"
+  },
+  "settings.previewOfConcurrentBranchingAndMergingCommitPaths": {
+    "en": "Preview of concurrent, branching and merging commit paths",
+    "zh-CN": "并行、分叉与合并提交路径预览",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / GraphPreview"
+  },
+  "settings.gitOperations": {
+    "en": "Git operations",
+    "zh-CN": "Git 操作",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog / pageLabel"
+  },
+  "settings.keyboardShortcuts": {
+    "en": "Keyboard shortcuts",
+    "zh-CN": "快捷键",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog / pageLabel"
+  },
+  "settings.theme": {
+    "en": "Theme",
+    "zh-CN": "主题",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog / pageLabel"
+  },
+  "settings.textDensity": {
+    "en": "Text & density",
+    "zh-CN": "字号与密度",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog / pageLabel"
+  },
+  "settings.statusIndicators": {
+    "en": "Status indicators",
+    "zh-CN": "状态提醒",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog / pageLabel"
+  },
+  "settings.graphColors": {
+    "en": "Graph colors",
+    "zh-CN": "提交图配色",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog / pageLabel"
+  },
+  "settings.gitOptionsAreSavedInUserSettings": {
+    "en": "Git options are saved in user settings",
+    "zh-CN": "Git 选项保存在用户设置",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.appliesToThisWorkspace": {
+    "en": "Applies to this workspace",
+    "zh-CN": "保存在当前工作区",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.saving": {
+    "en": "Saving…",
+    "zh-CN": "保存中…",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.settingsCategories": {
+    "en": "Settings categories",
+    "zh-CN": "设置分类",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.general": {
+    "en": "General",
+    "zh-CN": "常规",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.interface": {
+    "en": "Interface",
+    "zh-CN": "界面",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.diff": {
+    "en": "Diff",
+    "zh-CN": "Diff",
+    "review": "keep",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.commitGraph": {
+    "en": "Commit graph",
+    "zh-CN": "提交图",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.colors": {
+    "en": "Colors",
+    "zh-CN": "配色",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.advanced": {
+    "en": "Advanced",
+    "zh-CN": "高级",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.gitOptionsTakeEffectOnlyAfterApply": {
+    "en": "Git options take effect only after Apply.",
+    "zh-CN": "Git 操作选项在应用后生效。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.changesPreviewImmediatelyApplyToSave": {
+    "en": "Changes preview immediately. Apply to save.",
+    "zh-CN": "调整会立即预览，应用后保存。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.enableSingleKeyShortcuts": {
+    "en": "Enable single-key shortcuts",
+    "zh-CN": "启用单键快捷键",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.enabledByDefaultShortcutsWorkThroughoutTheFocusedWorkbench": {
+    "en": "Enabled by default. Shortcuts work throughout the focused workbench, except text inputs, selectors, input-method composition, dialogs and menus.",
+    "zh-CN": "默认开启。焦点位于工作台内时，各区域均可使用；文字输入框、选择控件、输入法组合、弹窗和菜单中暂停。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.hoverOverAnActionToSeeItsKeyHelp": {
+    "en": "Hover over an action to see its key. Help & Guide → Selection and keyboard shortcuts contains the full reference. Ctrl/Cmd+R and existing selection keys remain available when single-key shortcuts are disabled.",
+    "zh-CN": "悬停操作按钮可查看按键；帮助与指南 → 选择和快捷键提供完整速查。关闭单键后，Ctrl/Cmd+R 和原有选择快捷键仍可使用。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.display": {
+    "en": "Display",
+    "zh-CN": "显示",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.fontSize": {
+    "en": "Font size",
+    "zh-CN": "字号",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.diffFont": {
+    "en": "Diff font",
+    "zh-CN": "Diff 字号",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.preview": {
+    "en": "Preview",
+    "zh-CN": "预览",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.renderedLineHeight": {
+    "en": "Rendered line height",
+    "zh-CN": "实际行高",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.diffTextPreview": {
+    "en": "Diff text preview",
+    "zh-CN": "Diff 文字预览",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.navigation": {
+    "en": "Navigation",
+    "zh-CN": "导航",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.navigationScope": {
+    "en": "Navigation scope",
+    "zh-CN": "导航范围",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.diffNavigationScope": {
+    "en": "Diff navigation scope",
+    "zh-CN": "Diff 导航范围",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.entireCommitDefault": {
+    "en": "Entire Commit · Default",
+    "zh-CN": "整个 Commit · 默认",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.currentFile": {
+    "en": "Current file",
+    "zh-CN": "当前文件",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.navigateChangesAcrossAllFilesInTheCommitWrapping": {
+    "en": "Navigate changes across all files in the Commit, wrapping at either end.",
+    "zh-CN": "在整个提交的变更文件之间跳转，首尾循环。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.navigateChangesWithinTheCurrentFileWrappingAtEither": {
+    "en": "Navigate changes within the current file, wrapping at either end.",
+    "zh-CN": "在当前文件的修改之间跳转，首尾循环。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.detailedRules": {
+    "en": "Detailed rules",
+    "zh-CN": "详细规则",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.entireCommitFollowsTheChangedFileOrderNextMoves": {
+    "en": "Entire Commit follows the changed-file order. Next moves to the first change in the next file; Previous moves to the last change in the previous file. The first and last changes of the Commit wrap around.",
+    "zh-CN": "整个 Commit 按变更文件顺序导航。下一处跨文件定位第一处修改，上一处跨文件定位最后一处修改，Commit 的首尾循环衔接。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.navigatesAllFilesInTheCurrentCommitAndSelected": {
+    "en": "Navigates all files in the current Commit and selected Parent, including files hidden by the path filter. Binary files and files without text change blocks are skipped; truncated files only include previewed changes. Working Tree, Stash and comparisons continue to cycle within the current file.",
+    "zh-CN": "范围为当前 Commit 和所选 Parent 的全部文件，包括路径筛选隐藏的文件。跳过二进制文件及没有文本修改块的文件；截断文件仅导航预览中的修改。Working Tree、Stash 和 Commit 比较仍在当前文件内循环。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.allowDirectDetachedHEADCheckout": {
+    "en": "Allow direct Detached HEAD Checkout",
+    "zh-CN": "允许直接进入 Detached HEAD",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.disabledByDefaultCreateAndSwitchToALocal": {
+    "en": "Disabled by default. Create and switch to a local branch when checking out a historical Commit or Tag. Enabling this option allows direct Checkout; new commits will not automatically belong to a branch.",
+    "zh-CN": "默认关闭。切换到历史 Commit 或 Tag 时，请创建并切换到本地分支。开启后允许直接 Checkout；新提交不会自动归属于任何分支。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.thisAlsoControlsDetachedWorktreesInternalRebaseStepsAnd": {
+    "en": "This also controls Detached Worktrees. Internal Rebase steps and existing Detached HEAD repositories remain usable.",
+    "zh-CN": "此选项同时控制 Detached Worktree；不影响 Rebase 内部步骤或已经处于 Detached HEAD 的仓库。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.chooseTheLanguageUsedThroughoutTheWorkbench": {
+    "en": "Choose the language used throughout the workbench.",
+    "zh-CN": "选择工作台界面使用的语言。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.displayLanguage": {
+    "en": "Display language",
+    "zh-CN": "显示语言",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.useTheVSCodeThemeOrChooseAFixed": {
+    "en": "Use the VS Code theme or choose a fixed workbench appearance.",
+    "zh-CN": "跟随 VS Code，或为工作台选择固定外观。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.colorTheme": {
+    "en": "Color theme",
+    "zh-CN": "颜色主题",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.interfaceFont": {
+    "en": "Interface font",
+    "zh-CN": "界面字号",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.listDensity": {
+    "en": "List density",
+    "zh-CN": "列表密度",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.comfortableVariant2": {
+    "en": "Comfortable",
+    "zh-CN": "舒适",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.refineTheWorkbench": {
+    "en": "Refine the workbench",
+    "zh-CN": "优化工作台体验",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.modified": {
+    "en": "Modified",
+    "zh-CN": "已修改",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.fileSpacingSetsThePaddingAboveAndBelowEach": {
+    "en": "File spacing sets the padding above and below each file in Commit Details, comparisons and Working Tree. The filename and path remain on two lines; long paths expand as needed.",
+    "zh-CN": "文件间距控制 Commit 详情、比较和 Working Tree 文件行的上下留白。保留文件名与路径两行，长路径自动增高。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.rowHeightGrowsWithLargerTextToKeepEvery": {
+    "en": "Row height grows with larger text to keep every line readable.",
+    "zh-CN": "大字号会自动增加最小行高，避免文字被裁切。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.setSeparateColorsForCommitCountsTheCurrentBranch": {
+    "en": "Set separate colors for Commit counts, the current branch and the current repository.",
+    "zh-CN": "分别设置未推送 Commit 数量、当前分支和当前仓库的颜色。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.restoreDefault": {
+    "en": "Restore default",
+    "zh-CN": "恢复默认",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.restoreDefaultBadgeColor": {
+    "en": "Restore default badge color",
+    "zh-CN": "恢复默认提醒颜色",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.badgeColorPresets": {
+    "en": "Badge color presets",
+    "zh-CN": "提醒颜色预设",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.customColor": {
+    "en": "Custom color",
+    "zh-CN": "自定义颜色",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.notificationBadgeColor": {
+    "en": "Notification badge color",
+    "zh-CN": "通知角标颜色",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.textSwitchesBetweenBlackAndWhiteAutomaticallyForContrast": {
+    "en": "Text switches between black and white automatically for contrast.",
+    "zh-CN": "文字会根据背景自动切换黑色或白色，保持清晰。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.currentBranchMarker": {
+    "en": "Current branch marker",
+    "zh-CN": "当前分支标记",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.circleBehindTheCurrentBranchIcon": {
+    "en": "Circle behind the current branch icon.",
+    "zh-CN": "当前分支图标的圆形底色。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.currentBranchMarkerColor": {
+    "en": "Current branch marker color",
+    "zh-CN": "当前分支标记颜色",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.restoreDefaultBlue": {
+    "en": "Restore default blue",
+    "zh-CN": "恢复默认蓝色",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.restoreCurrentBranchMarkerColor": {
+    "en": "Restore current branch marker color",
+    "zh-CN": "恢复当前分支标记颜色",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.currentRepositoryIcon": {
+    "en": "Current repository icon",
+    "zh-CN": "当前仓库图标",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.filledBoxWithACheckInTheRepositoryList": {
+    "en": "Filled box with a check in the repository list.",
+    "zh-CN": "仓库列表中带勾的实心箱体。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.currentRepositoryIconColor": {
+    "en": "Current repository icon color",
+    "zh-CN": "当前仓库图标颜色",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.restoreCurrentRepositoryIconColor": {
+    "en": "Restore current repository icon color",
+    "zh-CN": "恢复当前仓库图标颜色",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.startFromAPresetThenTuneEveryColorFor": {
+    "en": "Start from a preset, then tune every color for your display.",
+    "zh-CN": "从预设开始，再按你的显示效果逐色调整。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.restorePreset": {
+    "en": "Restore preset",
+    "zh-CN": "恢复预设",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.colorPreset": {
+    "en": "Color preset",
+    "zh-CN": "配色预设",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.previewTheme": {
+    "en": "Preview theme",
+    "zh-CN": "预览主题",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.light": {
+    "en": "Light",
+    "zh-CN": "浅色",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.dark": {
+    "en": "Dark",
+    "zh-CN": "深色",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.colorsVariant2": {
+    "en": "colors",
+    "zh-CN": "色",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.customized": {
+    "en": " · Customized",
+    "zh-CN": " · 已修改",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.pathColors": {
+    "en": "Path colors",
+    "zh-CN": "路径颜色",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.addColor": {
+    "en": "Add color",
+    "zh-CN": "添加颜色",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.backgroundContrastIndicator": {
+    "en": "Background contrast indicator",
+    "zh-CN": "背景对比度提示",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.pathColor": {
+    "en": "Path color",
+    "zh-CN": "路径颜色",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.mainLine": {
+    "en": "Main line",
+    "zh-CN": "主线",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.keptSeparateFromBranchColors": {
+    "en": "Kept separate from branch colors.",
+    "zh-CN": "与其他分支颜色独立。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.mainLineColor": {
+    "en": "Main line color",
+    "zh-CN": "主线颜色",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.restoreMainLineColor": {
+    "en": "Restore main line color",
+    "zh-CN": "恢复主线颜色",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.atLeast31AgainstThePreviewBackground": {
+    "en": "At least 3:1 against the preview background",
+    "zh-CN": "与预览背景至少 3:1",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.lowContrastConsiderAStrongerColor": {
+    "en": "Low contrast; consider a stronger color",
+    "zh-CN": "对比偏低，建议调整",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.newPathsPreferUnusedColorsThatDifferFromNearby": {
+    "en": "New paths prefer unused colors that differ from nearby lines.",
+    "zh-CN": "新路径会优先选择未使用且与邻线差异较大的颜色。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.followVSCode": {
+    "en": "Follow VS Code",
+    "zh-CN": "跟随 VS Code",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / themes / label"
+  },
+  "settings.clearLight": {
+    "en": "Clear Light",
+    "zh-CN": "清透亮色",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / themes / label"
+  },
+  "settings.warmPaper": {
+    "en": "Warm Paper",
+    "zh-CN": "暖纸",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / themes / label"
+  },
+  "settings.mistBlue": {
+    "en": "Mist Blue",
+    "zh-CN": "雾蓝",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / themes / label"
+  },
+  "settings.deepNight": {
+    "en": "Deep Night",
+    "zh-CN": "深夜",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / themes / label"
+  },
+  "settings.midnightBlue": {
+    "en": "Midnight Blue",
+    "zh-CN": "午夜蓝",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / themes / label"
+  },
+  "settings.graphite": {
+    "en": "Graphite",
+    "zh-CN": "石墨",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / themes / label"
+  },
+  "settings.forest": {
+    "en": "Forest",
+    "zh-CN": "森林",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / themes / label"
+  },
+  "settings.berryPurple": {
+    "en": "Berry Purple",
+    "zh-CN": "莓紫",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / themes / label"
+  },
+  "settings.highContrast": {
+    "en": "High Contrast",
+    "zh-CN": "高对比",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / themes / label"
+  },
+  "settings.picker": {
+    "en": "{{label}} picker",
+    "zh-CN": "{{label}} picker",
+    "review": "pending",
+    "context": "webview/SettingsDialog.tsx / ColorField"
+  },
+  "settings.hEADMain": {
+    "en": "HEAD · main",
+    "zh-CN": "HEAD · main",
+    "review": "pending",
+    "context": "webview/SettingsDialog.tsx / GraphPreview"
+  },
+  "settings.featureSearch": {
+    "en": "feature/search",
+    "zh-CN": "feature/search",
+    "review": "pending",
+    "context": "webview/SettingsDialog.tsx / GraphPreview"
+  },
+  "settings.fixSidebar": {
+    "en": "fix/sidebar",
+    "zh-CN": "fix/sidebar",
+    "review": "pending",
+    "context": "webview/SettingsDialog.tsx / GraphPreview"
+  },
+  "settings.releaseNext": {
+    "en": "release/next",
+    "zh-CN": "release/next",
+    "review": "pending",
+    "context": "webview/SettingsDialog.tsx / GraphPreview"
+  },
+  "settings.mergedPaths": {
+    "en": "merged paths",
+    "zh-CN": "merged paths",
+    "review": "pending",
+    "context": "webview/SettingsDialog.tsx / GraphPreview"
+  },
+  "settings.px": {
+    "en": "px",
+    "zh-CN": "px",
+    "review": "pending",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.constTitleAlwayGit": {
+    "en": "const title = 'AlwayGit';",
+    "zh-CN": "const title = 'AlwayGit';",
+    "review": "pending",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.constCount1": {
+    "en": "const count = 1;",
+    "zh-CN": "const count = 1;",
+    "review": "pending",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.constCount2": {
+    "en": "const count = 2;",
+    "zh-CN": "const count = 2;",
+    "review": "pending",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.english": {
+    "en": "English",
+    "zh-CN": "English",
+    "review": "pending",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.text": {
+    "en": "简体中文",
+    "zh-CN": "简体中文",
+    "review": "pending",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.main": {
+    "en": "main",
+    "zh-CN": "main",
+    "review": "pending",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.feat": {
+    "en": "feat: ",
+    "zh-CN": "feat: ",
+    "review": "pending",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.m": {
+    "en": "M",
+    "zh-CN": "M",
+    "review": "pending",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.appTsx": {
+    "en": "App.tsx",
+    "zh-CN": "App.tsx",
+    "review": "pending",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.webview": {
+    "en": "./webview",
+    "zh-CN": "./webview",
+    "review": "pending",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  }
+}

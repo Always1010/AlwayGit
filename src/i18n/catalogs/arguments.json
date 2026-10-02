@@ -1,0 +1,14 @@
+{
+  "arguments.gitCommandArgumentsAreTooLongSelectFewerItems": {
+    "en": "Git command arguments are too long. Select fewer items or shorten the description and retry.",
+    "zh-CN": "Git command arguments are too long. Select fewer items or shorten the description and retry.",
+    "review": "pending",
+    "context": "src/git/arguments.ts / assertGitArgumentBudget"
+  },
+  "arguments.messagesCannotContainNULCharacters": {
+    "en": "Messages cannot contain NUL characters",
+    "zh-CN": "Messages cannot contain NUL characters",
+    "review": "pending",
+    "context": "src/git/arguments.ts / prepareGitArguments"
+  }
+}

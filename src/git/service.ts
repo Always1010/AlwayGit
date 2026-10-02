@@ -1,8 +1,9 @@
+import { message as localizeMessage, translate } from '../i18n/index';
 import { createHash, randomUUID } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { access, lstat, realpath, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { ActionBlocker, Change, CheckoutBlocker, Commit, CommitComparison, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationReview, OperationState, Repository, RepositoryStatus, Snapshot, Stash, StashApplyBlocker, StashDetails, Worktree } from '../protocol/types';
+import type { Change, CheckoutBlocker, Commit, CommitComparison, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationReview, OperationState, Repository, RepositoryStatus, Snapshot, Stash, StashApplyBlocker, StashDetails, Worktree } from '../protocol/types';
 import { branchNameConflict, branchNameConflictMessage, branchNameProblem, branchNameProblemMessage } from '../protocol/ref-name';
 import { remoteNameProblem, remoteUrlProblem } from '../protocol/remote';
 import { inferDefaultBranch } from './default-branch';
@@ -29,17 +30,17 @@ const unsafeTerminations = new Map<string, GitTerminationError>();
 const normalized = (p: string) => process.platform === 'win32' ? path.resolve(p).toLowerCase() : path.resolve(p);
 const canonicalPath = async (p: string) => { try { return await realpath(p); } catch (e) { if ((e as NodeJS.ErrnoException).code === 'ENOENT') return path.resolve(p); throw e; } };
 function decodePaths(buffer: Buffer): string {
-  try { return new TextDecoder('utf-8', { fatal: true }).decode(buffer); } catch { throw new GitError('This repository contains a path encoded with invalid UTF-8. Rename the affected file with an external Git tool before continuing.', 'UNSUPPORTED_PATH_ENCODING'); }
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(buffer); } catch { throw new GitError(localizeMessage("service.thisRepositoryContainsAPathEncodedWithInvalidUTF"), 'UNSUPPORTED_PATH_ENCODING'); }
 }
 const exists = async (p: string) => { try { await access(p); return true; } catch (e) { if ((e as NodeJS.ErrnoException).code === 'ENOENT') return false; throw e; } };
-const token = (value: string, label: string) => { if (!value || value.startsWith('-') || /[\0\r\n]/.test(value)) throw new GitError(`Invalid ${label}`, 'INVALID_ARGUMENT'); return value; };
+const token = (value: string, label: string) => { if (!value || value.startsWith('-') || /[\0\r\n]/.test(value)) throw new GitError(localizeMessage("service.invalid", { label: (label) }), 'INVALID_ARGUMENT'); return value; };
 export function validateFilePath(value: string): string {
-  if (!value || value.includes('\0') || path.isAbsolute(value) || /^[A-Za-z]:/.test(value) || value.startsWith('\\') || value.split(/[\\/]/).some(x => x === '..' || x === '.' || x.toLowerCase() === '.git' || (process.platform === 'win32' && (/^[. ]+$/.test(x) || /^\.git[. ]*$/i.test(x))))) throw new GitError('File paths must stay inside the repository', 'INVALID_PATH');
+  if (!value || value.includes('\0') || path.isAbsolute(value) || /^[A-Za-z]:/.test(value) || value.startsWith('\\') || value.split(/[\\/]/).some(x => x === '..' || x === '.' || x.toLowerCase() === '.git' || (process.platform === 'win32' && (/^[. ]+$/.test(x) || /^\.git[. ]*$/i.test(x))))) throw new GitError(localizeMessage("service.filePathsMustStayInsideTheRepository"), 'INVALID_PATH');
   return process.platform === 'win32' ? value.replace(/\\/g, '/') : value;
 }
 function fields(record: string, count: number): [string[], string] {
   const result: string[] = []; let start = 0;
-  for (let i = 0; i < count; i++) { const end = record.indexOf(' ', start); if (end < 0) throw new GitError('Malformed Git status output', 'PARSE_ERROR'); result.push(record.slice(start, end)); start = end + 1; }
+  for (let i = 0; i < count; i++) { const end = record.indexOf(' ', start); if (end < 0) throw new GitError(localizeMessage("service.malformedGitStatusOutput"), 'PARSE_ERROR'); result.push(record.slice(start, end)); start = end + 1; }
   return [result, record.slice(start)];
 }
 export function parseStatus(buffer: Buffer): { branch: string; head?: string; upstream?: string; ahead: number; behind: number; changes: Change[] } {
@@ -86,7 +87,7 @@ export class GitService implements GitServiceContract {
   }
   private async run(repo: Repository, args: string[], allowFailure = false, captureBytes?: number, execution: StashExecution & { signal?: AbortSignal } = {}): Promise<Result> {
     const readOnly = isReadOnlyGitCommand(args), scope = this.readSignal.getStore(), scopeSignal = scope?.controller.signal;
-    if (!readOnly && scopeSignal) throw new GitError('A read-only request cannot run Git mutations', 'WRITE_IN_READ_SCOPE');
+    if (!readOnly && scopeSignal) throw new GitError(localizeMessage("service.aReadOnlyRequestCannotRunGitMutations"), 'WRITE_IN_READ_SCOPE');
     const unsafe = unsafeTerminations.get(normalized(repo.commonDir));
     if (!readOnly && unsafe) throw unsafe;
     const prefix = ['-C', execution.root ?? repo.root, ...(args[0] === 'stash' ? [] : ['--literal-pathspecs'])];
@@ -101,7 +102,7 @@ export class GitService implements GitServiceContract {
         }
       } catch (error) {
         if (error instanceof GitTerminationError || !results.length) throw error;
-        throw new GitError(`${results.length} clean batch(es) completed; a later batch failed and may have partially removed files. Inspect the remaining files before retrying.\n${error instanceof Error ? error.message : String(error)}`, 'PARTIAL_FAILURE');
+        throw new GitError(localizeMessage("service.cleanBatchEsCompletedALaterBatchFailedAnd", { count: (results.length), value: (error instanceof Error ? error.message : String(error)) }), 'PARTIAL_FAILURE');
       }
       return { stdout: Buffer.concat(results.map(result => result.stdout)), stderr: Buffer.concat(results.map(result => result.stderr)), code: results.at(-1)?.code ?? 0 };
     }
@@ -132,8 +133,8 @@ export class GitService implements GitServiceContract {
       if (!execution.silent && result.stdout.length && ['add', 'restore', 'rm', 'clean', 'commit', 'fetch', 'pull', 'push', 'branch', 'switch', 'tag', 'stash', 'worktree', 'merge', 'rebase', 'cherry-pick', 'revert', 'reset'].includes(args[0]) && !(args[0] === 'stash' && args[1] === 'list') && !(args[0] === 'worktree' && args[1] === 'list')) this.options.onOutput?.(repo, result.stdout.toString('utf8'));
       if (result.code && !allowFailure && !execution.allowFailure) {
         const stdout = result.stdout.toString('utf8'); const stderr = result.stderr.toString('utf8');
-        const hint = /authentication|could not read Username|terminal prompts disabled|permission denied|credential/i.test(stderr) ? '\nConfigure Git credentials or sign in, then retry.' : /index.lock|another git process/i.test(stderr) ? '\nAnother Git process is using this repository. Finish it and retry.' : '';
-        throw new GitError((stderr.trim() || stdout.trim() || `Git exited with status ${result.code}`) + hint, 'GIT_FAILED', stdout, stderr);
+        const hint = /authentication|could not read Username|terminal prompts disabled|permission denied|credential/i.test(stderr) ? translate('en', "service.configureGitCredentialsOrSignInThenRetry") : /index.lock|another git process/i.test(stderr) ? translate('en', "service.anotherGitProcessIsUsingThisRepositoryFinishIt") : '';
+        throw new GitError((stderr.trim() || stdout.trim() || translate('en', "service.gitExitedWithStatus", { code: (result.code) })) + hint, 'GIT_FAILED', stdout, stderr);
       }
       return result;
     } catch (error) {
@@ -150,29 +151,29 @@ export class GitService implements GitServiceContract {
   private async text(repo: Repository, args: string[]): Promise<string> { return (await this.run(repo, args)).stdout.toString('utf8').trim(); }
   private async optionalConfig(repo: Repository, key: string): Promise<string | undefined> {
     const result = await this.run(repo, ['config', '--get', key], true);
-    if (result.code > 1) throw new GitError(result.stderr.toString('utf8').trim() || `Cannot read Git configuration ${key}`, 'GIT_FAILED');
+    if (result.code > 1) throw new GitError(result.stderr.toString('utf8').trim() || translate('en', "service.cannotReadGitConfiguration", { key: (key) }), 'GIT_FAILED');
     return result.stdout.toString('utf8').trim() || undefined;
   }
   private async remoteDestination(repo: Repository, remote: string, requireSingle = false): Promise<string> {
     const urls = (await this.text(repo, ['remote', 'get-url', '--push', '--all', token(remote, 'remote')])).split('\n').filter(Boolean);
-    if (requireSingle && urls.length !== 1) throw new GitError('This remote has multiple Push destinations. Select a remote with one destination before Force-with-lease or deleting branches.', 'MULTIPLE_PUSH_DESTINATIONS');
+    if (requireSingle && urls.length !== 1) throw new GitError(localizeMessage("service.thisRemoteHasMultiplePushDestinationsSelectARemote"), 'MULTIPLE_PUSH_DESTINATIONS');
     // The UI only receives a fingerprint; URLs may contain authentication secrets.
     return createHash('sha256').update(JSON.stringify(urls)).digest('hex');
   }
   private async confirmRemoteDestination(repo: Repository, remote: string, expected?: string): Promise<void> {
     const actual = await this.remoteDestination(repo, remote, true);
-    if (!expected || actual !== expected) throw new GitError('The remote Push destination is missing or changed. Refresh and reopen the confirmation before trying again.', 'OPERATION_CHANGED');
+    if (!expected || actual !== expected) throw new GitError(localizeMessage("service.theRemotePushDestinationIsMissingOrChangedRefresh"), 'OPERATION_CHANGED');
   }
   private confirmedRemoteOid(value: string | undefined): string {
-    if (value === undefined) throw new GitError('The confirmed remote branch version is missing. Refresh and reopen the confirmation before trying again.', 'OPERATION_CHANGED');
-    if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})?$/.test(value)) throw new GitError('Invalid confirmed remote branch version', 'INVALID_ARGUMENT');
+    if (value === undefined) throw new GitError(localizeMessage("service.theConfirmedRemoteBranchVersionIsMissingRefreshAnd"), 'OPERATION_CHANGED');
+    if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})?$/.test(value)) throw new GitError(localizeMessage("service.invalidConfirmedRemoteBranchVersion"), 'INVALID_ARGUMENT');
     return value;
   }
   async discover(root: string): Promise<Repository> {
     const resolved = await realpath(path.resolve(root));
     const provisional: Repository = { id: '', root: resolved, commonDir: '', name: path.basename(resolved) };
     const bare = await this.text(provisional, ['rev-parse', '--is-bare-repository']);
-    if (bare === 'true') throw new GitError('Open a working repository rather than a bare repository', 'BARE_REPOSITORY');
+    if (bare === 'true') throw new GitError(localizeMessage("service.openAWorkingRepositoryRatherThanABareRepository"), 'BARE_REPOSITORY');
     const top = await this.text(provisional, ['rev-parse', '--show-toplevel']);
     provisional.root = await realpath(top);
     provisional.commonDir = await realpath(await this.text(provisional, ['rev-parse', '--path-format=absolute', '--git-common-dir']));
@@ -187,7 +188,7 @@ export class GitService implements GitServiceContract {
     }
     return provisional;
   }
-  private async verify(repo: Repository) { const current = await this.discover(repo.root); if (normalized(current.commonDir) !== normalized(repo.commonDir) || current.id !== repo.id) throw new GitError('Repository changed; reopen it before continuing', 'REPOSITORY_CHANGED'); return current; }
+  private async verify(repo: Repository) { const current = await this.discover(repo.root); if (normalized(current.commonDir) !== normalized(repo.commonDir) || current.id !== repo.id) throw new GitError(localizeMessage("service.repositoryChangedReopenItBeforeContinuing"), 'REPOSITORY_CHANGED'); return current; }
   private async oid(repo: Repository, revision: string): Promise<string> { token(revision, 'revision'); return this.text(repo, ['rev-parse', '--verify', '--end-of-options', `${revision}^{commit}`]); }
   private async refName(repo: Repository, name: string): Promise<string> { const problem=branchNameProblem(name);if(problem)throw new GitError(branchNameProblemMessage(problem),'INVALID_BRANCH_NAME');await this.run(repo, ['check-ref-format', `refs/heads/${name}`]); return name; }
   private async status(repo: Repository) { return parseStatus((await this.run(repo, ['status', '--porcelain=v2', '-z', '--branch', '--untracked-files=all'])).stdout); }
@@ -248,12 +249,12 @@ export class GitService implements GitServiceContract {
   }
   private async worktrees(repo: Repository): Promise<Worktree[]> {
     const records = decodePaths((await this.run(repo, ['worktree', 'list', '--porcelain', '-z'])).stdout).split('\0'); const result: Worktree[] = []; let current: Worktree | undefined;
-    for (const record of records) { if (record.startsWith('worktree ')) { current = { path: record.slice(9), head: '', bare: false, detached: false }; result.push(current); } else if (current) { if (record.startsWith('HEAD ')) current.head = record.slice(5); else if (record.startsWith('branch ')) current.branch = record.slice(7).replace(/^refs\/heads\//, ''); else if (record === 'bare') current.bare = true; else if (record === 'detached') current.detached = true; else if (record.startsWith('locked')) current.locked = record.slice(7) || 'Locked'; else if (record.startsWith('prunable')) current.prunable = record.slice(9) || 'Prunable'; } }
+    for (const record of records) { if (record.startsWith('worktree ')) { current = { path: record.slice(9), head: '', bare: false, detached: false }; result.push(current); } else if (current) { if (record.startsWith('HEAD ')) current.head = record.slice(5); else if (record.startsWith('branch ')) current.branch = record.slice(7).replace(/^refs\/heads\//, ''); else if (record === 'bare') current.bare = true; else if (record === 'detached') current.detached = true; else if (record.startsWith('locked')) current.locked = record.slice(7) || translate('en', "service.locked"); else if (record.startsWith('prunable')) current.prunable = record.slice(9) || translate('en', "service.prunable"); } }
     return result;
   }
   async history(repo: Repository, query: HistoryQuery = {}): Promise<HistoryPage> {
     await this.verify(repo); const offset = query.offset ?? 0; const limit = query.limit ?? 100;
-    if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 1000) throw new GitError('Invalid history page', 'INVALID_ARGUMENT');
+    if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 1000) throw new GitError(localizeMessage("service.invalidHistoryPage"), 'INVALID_ARGUMENT');
     let tips: string[];
     if (query.tips) tips = await mapGitQueries([...new Set(query.tips)], ref => this.oid(repo, ref));
     else if (query.ref) tips = [await this.oid(repo, query.ref)];
@@ -273,7 +274,7 @@ export class GitService implements GitServiceContract {
     }
     tips = [...new Set(tips)];
     const searchArgs = query.search ? ['--fixed-strings', '--regexp-ignore-case', `--grep=${query.search}`] : [];
-    if (query.search?.includes('\0')) throw new GitError('Invalid search', 'INVALID_ARGUMENT');
+    if (query.search?.includes('\0')) throw new GitError(localizeMessage("service.invalidSearch"), 'INVALID_ARGUMENT');
     // Only resolved commit IDs enter stdin; raw revisions cannot inject flags or
     // negative tips. Keep --not/--remotes on argv to preserve remote exclusion.
     const tipInput = Buffer.from(`${tips.join('\n')}\n`, 'utf8');
@@ -300,13 +301,13 @@ export class GitService implements GitServiceContract {
   async details(repo: Repository, revision: string, parent?: string): Promise<CommitDetails> {
     await this.verify(repo); const oid = await this.oid(repo, revision); const data = (await this.run(repo, ['show', '-s', `--format=${commitFormat}%x00%B`, oid, '--'])).stdout.toString('utf8').split('\0'); const commit = parseCommit(data);
     const base = parent ? await this.oid(repo, parent) : commit.parents[0];
-    if (base && !commit.parents.includes(base)) throw new GitError('Selected parent is not a parent of this commit', 'INVALID_PARENT');
+    if (base && !commit.parents.includes(base)) throw new GitError(localizeMessage("service.selectedParentIsNotAParentOfThisCommit"), 'INVALID_PARENT');
     const args = ['diff-tree', '--no-commit-id', '--name-status', '-z', '-r', '-M', ...(base ? [base, oid] : ['--root', oid]), '--']; const files=parseCommitFiles((await this.run(repo,args)).stdout);
     return { commit, body: data.slice(6).join('\0').trimEnd(), files, ...(base ? { parent: base } : {}) };
   }
   async stashDetails(repo: Repository, revision: string): Promise<StashDetails> {
     const stash = await this.details(repo, revision), [, indexOid, untrackedOid] = stash.commit.parents;
-    if (!indexOid) throw new GitError('The selected object is not a Stash.', 'INVALID_STASH');
+    if (!indexOid) throw new GitError(localizeMessage("service.theSelectedObjectIsNotAStash"), 'INVALID_STASH');
     const [working, index, untracked] = await Promise.all([
       this.details(repo, stash.commit.oid, indexOid),
       this.details(repo, indexOid),
@@ -342,10 +343,10 @@ export class GitService implements GitServiceContract {
     return {left:parseCommit(leftData.split('\0')),right:parseCommit(rightData.split('\0')),files:parseCommitFiles(diff.stdout)};
   }
   async content(repo: Repository, source: ContentSource, maxBytes?: number): Promise<Buffer> {
-    if (maxBytes !== undefined && (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 32 * 1024 * 1024)) throw new GitError('Invalid content limit', 'INVALID_ARGUMENT');
+    if (maxBytes !== undefined && (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 32 * 1024 * 1024)) throw new GitError(localizeMessage("service.invalidContentLimit"), 'INVALID_ARGUMENT');
     if (source.kind === 'empty') return Buffer.alloc(0); await this.verify(repo); const name = validateFilePath(source.path); let object: string | undefined;
-    if (source.kind === 'revision') { const oid = await this.oid(repo, source.revision); const records = decodePaths((await this.run(repo, ['ls-tree', '-z', oid, '--', name])).stdout).split('\0'); for (const record of records) { const tab = record.indexOf('\t'); if (record.slice(tab + 1) === name) { const meta = record.slice(0, tab).split(' '); if (meta[1] !== 'blob') throw new GitError('The selected path is not a file', 'INVALID_PATH'); object = meta[2]; } } }
-    else { const stage = source.stage ?? 0; if (![0, 1, 2, 3].includes(stage)) throw new GitError('Invalid index stage', 'INVALID_ARGUMENT'); const records = decodePaths((await this.run(repo, ['ls-files', '--stage', '-z', '--', name])).stdout).split('\0'); for (const record of records) { const tab = record.indexOf('\t'); const meta = record.slice(0, tab).split(' '); if (record.slice(tab + 1) === name && Number(meta[2]) === stage) object = meta[1]; } }
+    if (source.kind === 'revision') { const oid = await this.oid(repo, source.revision); const records = decodePaths((await this.run(repo, ['ls-tree', '-z', oid, '--', name])).stdout).split('\0'); for (const record of records) { const tab = record.indexOf('\t'); if (record.slice(tab + 1) === name) { const meta = record.slice(0, tab).split(' '); if (meta[1] !== 'blob') throw new GitError(localizeMessage("service.theSelectedPathIsNotAFile"), 'INVALID_PATH'); object = meta[2]; } } }
+    else { const stage = source.stage ?? 0; if (![0, 1, 2, 3].includes(stage)) throw new GitError(localizeMessage("service.invalidIndexStage"), 'INVALID_ARGUMENT'); const records = decodePaths((await this.run(repo, ['ls-files', '--stage', '-z', '--', name])).stdout).split('\0'); for (const record of records) { const tab = record.indexOf('\t'); const meta = record.slice(0, tab).split(' '); if (record.slice(tab + 1) === name && Number(meta[2]) === stage) object = meta[1]; } }
     return object ? (await this.run(repo, ['cat-file', 'blob', object], false, maxBytes)).stdout : Buffer.alloc(0);
   }
   /** Freeze the selected target before a native confirmation can outlive its snapshot. */
@@ -359,7 +360,7 @@ export class GitService implements GitServiceContract {
   }
   private requireActionContext(action: { expectedHead?: string; expectedBranch?: string }, current: { head?: string; branch: string }): void {
     if (action.expectedHead === undefined || action.expectedBranch === undefined || action.expectedHead !== (current.head ?? '') || action.expectedBranch !== current.branch) {
-      throw new GitError('The target branch or HEAD changed before the operation started. Refresh and confirm the operation again.', 'OPERATION_CHANGED');
+      throw new GitError(localizeMessage("service.theTargetBranchOrHEADChangedBeforeTheOperation"), 'OPERATION_CHANGED');
     }
   }
   async execute(repo: Repository, action: GitAction): Promise<void> {
@@ -381,8 +382,8 @@ export class GitService implements GitServiceContract {
   }
   async reviewOperation(repo: Repository): Promise<OperationReview> {
     const snapshot = await this.snapshot(repo), kind = snapshot.operation.kind;
-    if (!kind) throw new GitError('The Git operation is no longer active. Refresh before continuing.', 'OPERATION_CHANGED');
-    if (!snapshot.operation.canContinue) throw new GitError('Resolve conflicts before continuing', 'CONFLICTS');
+    if (!kind) throw new GitError(localizeMessage("service.theGitOperationIsNoLongerActiveRefreshBefore"), 'OPERATION_CHANGED');
+    if (!snapshot.operation.canContinue) throw new GitError(localizeMessage("service.resolveConflictsBeforeContinuing"), 'CONFLICTS');
     // Scan an immutable tree, rather than working files or a truncated Diff preview.
     const tree = await this.text(repo, ['write-tree']), fingerprint = await this.reviewFingerprint(repo, snapshot, tree);
     const paths = decodePaths((await this.run(repo, ['diff', '--name-only', '--no-renames', '-z', snapshot.head!, tree, '--'])).stdout).split('\0').filter(Boolean);
@@ -411,19 +412,19 @@ export class GitService implements GitServiceContract {
       });
     }
     const current = await this.snapshot(repo);
-    if (!current.operation.canContinue || fingerprint !== await this.reviewFingerprint(repo, current, await this.text(repo, ['write-tree']))) throw new GitError('Staged content or the operation changed during inspection. Check it again.', 'REVIEW_CHANGED');
+    if (!current.operation.canContinue || fingerprint !== await this.reviewFingerprint(repo, current, await this.text(repo, ['write-tree']))) throw new GitError(localizeMessage("service.stagedContentOrTheOperationChangedDuringInspectionCheck"), 'REVIEW_CHANGED');
     const token = randomUUID(); this.reviews.set(repo.id, { token, fingerprint });
     return { kind, token, files };
   }
   private async requireReview(repo: Repository, snapshot: Snapshot, token?: string): Promise<void> {
     if (!snapshot.operation.kind) {
-      if (token) throw new GitError('The reviewed Git operation is no longer active. Refresh before continuing.', 'OPERATION_CHANGED');
+      if (token) throw new GitError(localizeMessage("service.theReviewedGitOperationIsNoLongerActiveRefresh"), 'OPERATION_CHANGED');
       return;
     }
-    if (!snapshot.operation.canContinue) throw new GitError('Resolve conflicts before continuing', 'CONFLICTS');
+    if (!snapshot.operation.canContinue) throw new GitError(localizeMessage("service.resolveConflictsBeforeContinuing"), 'CONFLICTS');
     const review = this.reviews.get(repo.id);
-    if (!token || token !== review?.token) throw new GitError('Inspect the staged result and confirm before completing this operation.', 'REVIEW_REQUIRED');
-    if (review.fingerprint !== await this.reviewFingerprint(repo, snapshot, await this.text(repo, ['write-tree']))) throw new GitError('Staged content or the operation changed. Inspect the result again.', 'REVIEW_CHANGED');
+    if (!token || token !== review?.token) throw new GitError(localizeMessage("service.inspectTheStagedResultAndConfirmBeforeCompletingThis"), 'REVIEW_REQUIRED');
+    if (review.fingerprint !== await this.reviewFingerprint(repo, snapshot, await this.text(repo, ['write-tree']))) throw new GitError(localizeMessage("service.stagedContentOrTheOperationChangedInspectTheResult"), 'REVIEW_CHANGED');
     this.reviews.delete(repo.id);
   }
   private async checkout(repo: Repository, target: string, detached = false, stashFirst = false, includeUntracked = false, createFrom?: { oid: string; upstream: string }): Promise<void> {
@@ -433,10 +434,10 @@ export class GitService implements GitServiceContract {
     const snapshot = await this.snapshot(repo);
     const conflictPaths = snapshot.changes.filter(change => change.conflict).map(change => change.path);
     if (conflictPaths.length || snapshot.operation.kind) {
-      throw new GitError(conflictPaths.length ? 'Resolve conflicts or Abort the active Git operation before Checkout.' : `Continue or Abort the active ${snapshot.operation.kind} before Checkout.`, 'CHECKOUT_BLOCKED', '', '', { reason: conflictPaths.length ? 'conflicts' : 'operation-active', paths: conflictPaths, target });
+      throw new GitError(conflictPaths.length ? translate('en', "service.resolveConflictsOrAbortTheActiveGitOperationBefore") : translate('en', "service.continueOrAbortTheActiveBeforeCheckout", { kind: (snapshot.operation.kind) }), 'CHECKOUT_BLOCKED', '', '', { reason: conflictPaths.length ? 'conflicts' : 'operation-active', paths: conflictPaths, target });
     }
     const occupied = !detached && snapshot.worktrees.find(tree => tree.branch === target && normalized(tree.path) !== normalized(repo.root));
-    if (occupied) throw new GitError(`Branch ${target} is checked out in ${occupied.path}. Open that Worktree to use this branch.`, 'WORKTREE_OCCUPIED', '', '', { reason: 'worktree-occupied', paths: [], target, worktreePath: occupied.path });
+    if (occupied) throw new GitError(localizeMessage("service.branchIsCheckedOutInOpenThatWorktreeTo", { target: (target), path: (occupied.path) }), 'WORKTREE_OCCUPIED', '', '', { reason: 'worktree-occupied', paths: [], target, worktreePath: occupied.path });
     let branchCreated = false;
     if (createFrom) {
       // Create the ref before touching the Index or Working Tree. switch -c can
@@ -445,14 +446,14 @@ export class GitService implements GitServiceContract {
       branchCreated = true;
       try { await this.run(repo, ['branch', `--set-upstream-to=${createFrom.upstream}`, '--', resolved]); }
       catch (error) {
-        throw new GitError(`Branch ${resolved} was created and retained, but upstream configuration failed. Checkout and Stash did not run.\n${error instanceof Error ? error.message : String(error)}`, 'PARTIAL_FAILURE', '', '', { reason: 'checkout-failed', target, paths: [], branchCreated: true });
+        throw new GitError(localizeMessage("service.branchWasCreatedAndRetainedButUpstreamConfigurationFailed", { resolved: (resolved), value: (error instanceof Error ? error.message : String(error)) }), 'PARTIAL_FAILURE', '', '', { reason: 'checkout-failed', target, paths: [], branchCreated: true });
       }
     }
     let stashOid: string | undefined;
     if (detached) this.requireDetachedHead();
     if (stashFirst) {
       const previous = snapshot.stashes[0]?.oid;
-      await this.run(repo, ['stash', 'push', ...(includeUntracked ? ['--include-untracked'] : []), '-m', `AlwayGit: before Checkout ${target}`]);
+      await this.run(repo, ['stash', 'push', ...(includeUntracked ? ['--include-untracked'] : []), '-m', translate('en', "service.alwayGitBeforeCheckout", { target: (target) })]);
       const top = await this.run(repo, ['rev-parse', '--verify', 'refs/stash'], true);
       const saved = top.code ? undefined : top.stdout.toString('utf8').trim();
       if (saved !== previous) stashOid = saved;
@@ -469,15 +470,15 @@ export class GitService implements GitServiceContract {
       const affected = listed.length ? current.changes.filter(change => listed.includes(change.path) || listed.includes(change.originalPath ?? '')).map(change => change.path) : [];
       const paths = blocked ? (affected.length ? affected : current.changes.map(change => change.path)) : [];
       const details: CheckoutBlocker = { reason: blocked ? 'local-changes' : 'checkout-failed', paths, target, ...(branchCreated ? { branchCreated: true } : {}), ...(stashOid ? { stashCreated: true, stashOid } : stashFirst ? { stashCreated: false } : {}) };
-      const message = `${branchCreated ? `Branch ${resolved} was created and retained, but Checkout did not complete.\n` : ''}${cause}${stashOid ? `\nStash ${stashOid} was created and retained. Checkout did not complete; your saved changes remain in Stashes.` : ''}`;
+      const message = `${branchCreated ? translate("en", "service.retainedCheckoutBranch", {branch:resolved}) : ''}${cause}${stashOid ? translate("en", "service.retainedCheckoutStash", {oid:stashOid}) : ''}`;
       throw new GitError(message, blocked ? 'CHECKOUT_BLOCKED' : error instanceof GitError ? error.code : 'CHECKOUT_FAILED', error instanceof GitError ? error.stdout : '', error instanceof GitError ? error.stderr : '', details);
     }
   }
   private requireDetachedHead(): void {
-    if (this.options.allowDetachedHead?.() !== true) throw new GitError('Direct Detached HEAD Checkout is disabled. Create and switch to a branch, or enable it in Settings > Advanced.', 'DETACHED_HEAD_DISABLED');
+    if (this.options.allowDetachedHead?.() !== true) throw new GitError(localizeMessage("service.directDetachedHEADCheckoutIsDisabledCreateAndSwitch"), 'DETACHED_HEAD_DISABLED');
   }
   private async trackBranches(repo: Repository, action: Extract<GitAction, { type: 'branch.track' }>): Promise<void> {
-    if (!action.branches.length || action.branches.length > 1000 || (action.checkout && action.branches.length !== 1) || (action.stashFirst && !action.checkout)) throw new GitError('Select up to 1000 branches; Checkout and Stash require a single branch.', 'INVALID_ARGUMENT');
+    if (!action.branches.length || action.branches.length > 1000 || (action.checkout && action.branches.length !== 1) || (action.stashFirst && !action.checkout)) throw new GitError(localizeMessage("service.selectUpTo1000BranchesCheckoutAndStashRequire"), 'INVALID_ARGUMENT');
     // Re-read full ref names under the common-directory write queue. Short names
     // are ambiguous across remotes and upstreams may have changed since the UI opened.
     const [output, remoteOutput] = await Promise.all([
@@ -491,14 +492,14 @@ export class GitService implements GitServiceContract {
     for (const branch of action.branches) {
       const name = await this.refName(repo, branch.name), source = token(branch.source, 'remote reference');
       const remoteRef = refs.get(source);
-      if (!source.startsWith('refs/remotes/') || !remotes.some(remote => source.startsWith(`refs/remotes/${remote}/`)) || !remoteRef || remoteRef.symbolicTarget || remoteRef.type !== 'commit') throw new GitError(`Select an existing remote branch rather than a symbolic reference: ${source}`, 'INVALID_ARGUMENT');
-      if (branch.expectedOid && remoteRef.oid !== branch.expectedOid) throw new GitError(`Remote branch changed. Refresh and select it again: ${source}`, 'OPERATION_CHANGED');
+      if (!source.startsWith('refs/remotes/') || !remotes.some(remote => source.startsWith(`refs/remotes/${remote}/`)) || !remoteRef || remoteRef.symbolicTarget || remoteRef.type !== 'commit') throw new GitError(localizeMessage("service.selectAnExistingRemoteBranchRatherThanASymbolic", { source: (source) }), 'INVALID_ARGUMENT');
+      if (branch.expectedOid && remoteRef.oid !== branch.expectedOid) throw new GitError(localizeMessage("service.remoteBranchChangedRefreshAndSelectItAgain", { source: (source) }), 'OPERATION_CHANGED');
       const prior = names.get(name);
-      if (prior && prior !== source) throw new GitError(`Multiple remote branches would use the same local name: ${name}. Choose distinct local names.`, 'BRANCH_EXISTS');
+      if (prior && prior !== source) throw new GitError(localizeMessage("service.multipleRemoteBranchesWouldUseTheSameLocalName", { name: (name) }), 'BRANCH_EXISTS');
       if (prior) continue;
       names.set(name, source);
       const local = refs.get(`refs/heads/${name}`);
-      if (local && (local.symbolicTarget || local.upstream !== source)) throw new GitError(`Local branch ${name} already exists and does not track ${source.replace('refs/remotes/', '')}. Choose another local name.`, 'BRANCH_EXISTS');
+      if (local && (local.symbolicTarget || local.upstream !== source)) throw new GitError(localizeMessage("service.localBranchAlreadyExistsAndDoesNotTrackChoose", { name: (name), value: (source.replace('refs/remotes/', '')) }), 'BRANCH_EXISTS');
       // refs/heads/feature and refs/heads/feature/a cannot coexist. Detect this
       // before creating any branch, including collisions within the batch.
       const collision = branchNameConflict(name, [...refs.keys()].filter(ref => ref.startsWith('refs/heads/')).map(ref => ref.slice('refs/heads/'.length)).concat([...names.keys()]).filter(other => other !== name));
@@ -522,16 +523,16 @@ export class GitService implements GitServiceContract {
         // An external Git process can race the preflight. Report exactly how far
         // this operation got; never roll back refs which the user may now be using.
         if (!created) throw error;
-        throw new GitError(`${created} local branch(es) created; creation stopped at ${branch.name}. Refresh before retrying.\n${error instanceof Error ? error.message : String(error)}`, 'PARTIAL_FAILURE');
+        throw new GitError(localizeMessage("service.localBranchEsCreatedCreationStoppedAtRefreshBefore", { created: (created), name: (branch.name), value: (error instanceof Error ? error.message : String(error)) }), 'PARTIAL_FAILURE');
       }
     }
   }
   private async validateStash(repo: Repository, selector: string, expectedOid?: string): Promise<string> {
-    if (!/^stash@\{\d+\}$/.test(selector)) throw new GitError('Invalid stash selector', 'INVALID_ARGUMENT');
+    if (!/^stash@\{\d+\}$/.test(selector)) throw new GitError(localizeMessage("service.invalidStashSelector"), 'INVALID_ARGUMENT');
     if (expectedOid) {
       token(expectedOid, 'stash ID');
       const current = await this.run(repo, ['rev-parse', '--verify', '--end-of-options', `${selector}^{commit}`], true);
-      if (current.code || current.stdout.toString('utf8').trim() !== expectedOid) throw new GitError('The Stash list changed. Refresh and select the saved entry again.', 'STASH_CHANGED');
+      if (current.code || current.stdout.toString('utf8').trim() !== expectedOid) throw new GitError(localizeMessage("service.theStashListChangedRefreshAndSelectTheSaved"), 'STASH_CHANGED');
     }
     return selector;
   }
@@ -540,10 +541,10 @@ export class GitService implements GitServiceContract {
     let args: string[]; const remote = (value?: string) => value ? [token(value, 'remote')] : [];
     switch (action.type) {
       case 'stage': case 'resolve-and-stage': case 'unstage': case 'discard': {
-        if (!action.paths.length) throw new GitError('Select at least one file', 'INVALID_ARGUMENT'); const paths = action.paths.map(validateFilePath);
+        if (!action.paths.length) throw new GitError(localizeMessage("service.selectAtLeastOneFile"), 'INVALID_ARGUMENT'); const paths = action.paths.map(validateFilePath);
         const status = await this.status(repo);
         const relatedPaths = (area: 'indexStatus' | 'worktreeStatus') => [...new Set(paths.flatMap(name => { const rename = status.changes.find(change => change[area] === 'R' && change.originalPath && (change.path === name || change.originalPath === name)); return rename ? [validateFilePath(rename.path), validateFilePath(rename.originalPath!)] : [name]; }))];
-        if (action.type === 'resolve-and-stage' && paths.some(name => !status.changes.some(change => change.path === name && change.conflict))) throw new GitError('The selected conflict files changed. Refresh and select them again.', 'OPERATION_CHANGED');
+        if (action.type === 'resolve-and-stage' && paths.some(name => !status.changes.some(change => change.path === name && change.conflict))) throw new GitError(localizeMessage("service.theSelectedConflictFilesChangedRefreshAndSelectThem"), 'OPERATION_CHANGED');
         if (action.type === 'stage' || action.type === 'resolve-and-stage') args = ['add', '--', ...relatedPaths('worktreeStatus')];
         else if (action.type === 'unstage') { const selected = relatedPaths('indexStatus'); args = status.head ? ['restore', '--staged', '--source=HEAD', '--', ...selected] : ['rm', '-f', '--cached', '--ignore-unmatch', '--', ...selected]; }
         else {
@@ -554,7 +555,7 @@ export class GitService implements GitServiceContract {
             validateFilePath(rename.path); validateFilePath(rename.originalPath!);
             const visible = decodePaths((await this.run(repo, ['diff', '--cached', '--ita-visible-in-index', '--name-only', '-z', '--', rename.path])).stdout).split('\0');
             const invisible = decodePaths((await this.run(repo, ['diff', '--cached', '--ita-invisible-in-index', '--name-only', '-z', '--', rename.path])).stdout).split('\0');
-            if (!visible.includes(rename.path) || invisible.includes(rename.path)) throw new GitError('The rename destination has staged content. Unstage the rename before discarding it.', 'STAGED_RENAME_DESTINATION');
+            if (!visible.includes(rename.path) || invisible.includes(rename.path)) throw new GitError(localizeMessage("service.theRenameDestinationHasStagedContentUnstageTheRename"), 'STAGED_RENAME_DESTINATION');
           }
           const destinations = renames.map(rename => rename.path);
           const untracked = [...new Set([...paths.filter(name => status.changes.some(change => change.path === name && change.untracked)), ...destinations])];
@@ -568,19 +569,19 @@ export class GitService implements GitServiceContract {
         break;
       }
       case 'commit': {
-        if (!action.message.trim() || action.message.includes('\0')) throw new GitError('Enter a commit message', 'INVALID_ARGUMENT');
+        if (!action.message.trim() || action.message.includes('\0')) throw new GitError(localizeMessage("service.enterACommitMessage"), 'INVALID_ARGUMENT');
         const snapshot = await this.snapshot(repo);
-        if (snapshot.operation.kind && action.amend) throw new GitError('Amend is unavailable during an active Git operation.', 'INVALID_ARGUMENT');
+        if (snapshot.operation.kind && action.amend) throw new GitError(localizeMessage("service.amendIsUnavailableDuringAnActiveGitOperation"), 'INVALID_ARGUMENT');
         await this.requireReview(repo, snapshot, action.reviewToken);
         args = ['commit', ...(action.amend ? ['--amend'] : []), '-m', action.message]; break;
       }
       case 'fetch': args = ['fetch', ...remote(action.remote)]; break;
-      case 'pull': if (!['ff-only', 'merge', 'rebase'].includes(action.strategy)) throw new GitError('Invalid pull strategy', 'INVALID_ARGUMENT'); args = ['pull', ...(action.strategy === 'merge' ? ['--no-rebase', '--ff'] : [`--${action.strategy}`]), ...remote(action.remote)]; break;
+      case 'pull': if (!['ff-only', 'merge', 'rebase'].includes(action.strategy)) throw new GitError(localizeMessage("service.invalidPullStrategy"), 'INVALID_ARGUMENT'); args = ['pull', ...(action.strategy === 'merge' ? ['--no-rebase', '--ff'] : [`--${action.strategy}`]), ...remote(action.remote)]; break;
       case 'push': {
-        if (action.forceWithLease && (!action.remote || !action.branch || !action.remoteBranch)) throw new GitError('Select explicit local and remote branches, then reopen the Force-with-lease confirmation.', 'OPERATION_CHANGED');
+        if (action.forceWithLease && (!action.remote || !action.branch || !action.remoteBranch)) throw new GitError(localizeMessage("service.selectExplicitLocalAndRemoteBranchesThenReopenThe"), 'OPERATION_CHANGED');
         const branch = action.branch ? await this.refName(repo, action.branch) : undefined; let destination = action.remote;
-        if (action.remoteBranch && !branch) throw new GitError('Select a local branch before choosing a remote branch', 'INVALID_ARGUMENT');
-        if (branch) { await this.oid(repo, `refs/heads/${branch}`); if (!destination) { const configured = await this.run(repo, ['config', '--get', `branch.${branch}.remote`], true); if (configured.code > 1) throw new GitError(configured.stderr.toString('utf8'), 'GIT_FAILED'); destination = configured.stdout.toString('utf8').trim(); if (!destination) { const remotes = (await this.text(repo, ['remote'])).split('\n').filter(Boolean); if (remotes.length !== 1) throw new GitError('Select a remote before pushing this branch', 'INVALID_ARGUMENT'); destination = remotes[0]; } } }
+        if (action.remoteBranch && !branch) throw new GitError(localizeMessage("service.selectALocalBranchBeforeChoosingARemoteBranch"), 'INVALID_ARGUMENT');
+        if (branch) { await this.oid(repo, `refs/heads/${branch}`); if (!destination) { const configured = await this.run(repo, ['config', '--get', `branch.${branch}.remote`], true); if (configured.code > 1) throw new GitError(configured.stderr.toString('utf8'), 'GIT_FAILED'); destination = configured.stdout.toString('utf8').trim(); if (!destination) { const remotes = (await this.text(repo, ['remote'])).split('\n').filter(Boolean); if (remotes.length !== 1) throw new GitError(localizeMessage("service.selectARemoteBeforePushingThisBranch"), 'INVALID_ARGUMENT'); destination = remotes[0]; } } }
         const remoteBranch = branch ? await this.refName(repo, action.remoteBranch ?? branch) : undefined;
         const setUpstream = branch && (action.setUpstream ?? true);
         const lease = action.forceWithLease ? this.confirmedRemoteOid(action.expectedOid) : undefined;
@@ -589,10 +590,10 @@ export class GitService implements GitServiceContract {
       }
       case 'remote.add': {
         const name=action.name.trim(),url=action.url.trim();
-        if(remoteNameProblem(name))throw new GitError('Enter a remote name without spaces, such as origin.','INVALID_REMOTE_NAME');
-        if(remoteUrlProblem(url))throw new GitError('Enter a repository URL.','INVALID_REMOTE_URL');
+        if(remoteNameProblem(name))throw new GitError(localizeMessage("service.enterARemoteNameWithoutSpacesSuchAsOrigin"),'INVALID_REMOTE_NAME');
+        if(remoteUrlProblem(url))throw new GitError(localizeMessage("service.enterARepositoryURL"),'INVALID_REMOTE_URL');
         const configured=(await this.text(repo,['remote'])).split('\n').filter(Boolean);
-        if(configured.includes(name))throw new GitError(`Remote already exists: ${name}`,'REMOTE_EXISTS');
+        if(configured.includes(name))throw new GitError(localizeMessage("service.remoteAlreadyExists", { name: (name) }),'REMOTE_EXISTS');
         args=['remote','add',name,url];break;
       }
       case 'branch.create': {
@@ -608,13 +609,13 @@ export class GitService implements GitServiceContract {
         await this.run(repo, ['branch', '--no-track', '--', name, start]);
         if (upstream) {
           try { await this.run(repo, ['branch', `--set-upstream-to=${upstream}`, '--', name]); }
-          catch (error) { throw new GitError(`Branch ${name} was created and retained, but upstream configuration failed. Checkout did not run.\n${error instanceof Error ? error.message : String(error)}`, 'PARTIAL_FAILURE'); }
+          catch (error) { throw new GitError(localizeMessage("service.branchWasCreatedAndRetainedButUpstreamConfigurationFailedVariant2", { name: (name), value: (error instanceof Error ? error.message : String(error)) }), 'PARTIAL_FAILURE'); }
         }
         if (action.checkout) {
           try { await this.checkout(repo, name); }
           catch (error) {
             const details: CheckoutBlocker = { ...(error instanceof GitError && error.details && 'target' in error.details ? error.details : { reason: 'checkout-failed' as const, paths: [], target: name }), branchCreated: true };
-            throw new GitError(`Branch ${name} was created and retained, but Checkout did not complete.\n${error instanceof Error ? error.message : String(error)}`, error instanceof GitError ? error.code : 'CHECKOUT_FAILED', error instanceof GitError ? error.stdout : '', error instanceof GitError ? error.stderr : '', details);
+            throw new GitError(localizeMessage("service.branchWasCreatedAndRetainedButCheckoutDidNotVariant2", { name: (name), value: (error instanceof Error ? error.message : String(error)) }), error instanceof GitError ? error.code : 'CHECKOUT_FAILED', error instanceof GitError ? error.stdout : '', error instanceof GitError ? error.stderr : '', details);
           }
         }
         return;
@@ -625,54 +626,54 @@ export class GitService implements GitServiceContract {
       case 'checkout.stash': return this.checkout(repo, action.target, action.detached, true, action.includeUntracked);
       case 'branch.delete': {
         const names=[...new Set(await Promise.all(action.names.map(name=>this.refName(repo,name))))];
-        if(!names.length)throw new GitError('Select at least one branch','INVALID_ARGUMENT');
+        if(!names.length)throw new GitError(localizeMessage("service.selectAtLeastOneBranch"),'INVALID_ARGUMENT');
         const state=await this.snapshot(repo),current=state.branch,occupied=new Set(state.worktrees.map(tree=>tree.branch?.replace(/^refs\/heads\//,'')).filter(Boolean));
-        if(current&&names.includes(current))throw new GitError(`The current branch cannot be deleted: ${current}`,'INVALID_ARGUMENT');
-        const inUse=names.find(name=>occupied.has(name));if(inUse)throw new GitError(`Branch is used by a Worktree: ${inUse}`,'WORKTREE_OCCUPIED');
-        for(const name of names){const expected=action.expectedOids?.[name];if(expected&&await this.oid(repo,`refs/heads/${name}`)!==expected)throw new GitError(`Branch changed before deletion: ${name}`,'OPERATION_CHANGED');}
+        if(current&&names.includes(current))throw new GitError(localizeMessage("service.theCurrentBranchCannotBeDeleted", { current: (current) }),'INVALID_ARGUMENT');
+        const inUse=names.find(name=>occupied.has(name));if(inUse)throw new GitError(localizeMessage("service.branchIsUsedByAWorktree", { inUse: (inUse) }),'WORKTREE_OCCUPIED');
+        for(const name of names){const expected=action.expectedOids?.[name];if(expected&&await this.oid(repo,`refs/heads/${name}`)!==expected)throw new GitError(localizeMessage("service.branchChangedBeforeDeletion", { name: (name) }),'OPERATION_CHANGED');}
         const failures:string[]=[];let deleted=0;
         for(const name of names){try{await this.run(repo,['branch',action.force?'-D':'-d','--',name]);deleted++;}catch(error){failures.push(`${name}: ${error instanceof Error?error.message:String(error)}`);}}
-        if(failures.length)throw new GitError(`${deleted} branch(es) deleted; ${failures.length} failed.\n${failures.join('\n')}`,'PARTIAL_FAILURE');
+        if(failures.length)throw new GitError(localizeMessage("service.branchEsDeletedFailed", { deleted: (deleted), count: (failures.length), value: (failures.join('\n')) }),'PARTIAL_FAILURE');
         return;
       }
       case 'remote.delete': {
         const destination=token(action.remote,'remote'),configured=(await this.text(repo,['remote'])).split('\n').filter(Boolean);
-        if(!configured.includes(destination))throw new GitError(`Unknown remote: ${destination}`,'INVALID_ARGUMENT');
+        if(!configured.includes(destination))throw new GitError(localizeMessage("service.unknownRemote", { destination: (destination) }),'INVALID_ARGUMENT');
         const branches=[...new Set(await Promise.all(action.branches.map(name=>this.refName(repo,name))))];
-        if(!branches.length)throw new GitError('Select at least one remote branch','INVALID_ARGUMENT');
+        if(!branches.length)throw new GitError(localizeMessage("service.selectAtLeastOneRemoteBranch"),'INVALID_ARGUMENT');
         for (const branch of branches) this.confirmedRemoteOid(Object.hasOwn(action.expectedOids ?? {}, branch) ? action.expectedOids![branch] : undefined);
         await this.confirmRemoteDestination(repo, destination, action.expectedDestination);
         const failures:string[]=[];let deleted=0;
         for(const branch of branches){try{await this.run(repo,['push',`--force-with-lease=refs/heads/${branch}:${action.expectedOids![branch]}`,destination,`:refs/heads/${branch}`]);deleted++;}catch(error){if(error instanceof GitTerminationError)throw error;failures.push(`${destination}/${branch}: ${error instanceof Error?error.message:String(error)}`);}}
-        if(failures.length)throw new GitError(`${deleted} remote branch(es) deleted; ${failures.length} failed.\n${failures.join('\n')}`,'PARTIAL_FAILURE');
+        if(failures.length)throw new GitError(localizeMessage("service.remoteBranchEsDeletedFailed", { deleted: (deleted), count: (failures.length), value: (failures.join('\n')) }),'PARTIAL_FAILURE');
         return;
       }
       case 'tag.create': await this.run(repo, ['check-ref-format', `refs/tags/${token(action.name, 'tag name')}`]); args = ['tag', ...(action.message ? ['-a', '-m', action.message] : []), action.name, await this.oid(repo, action.target ?? 'HEAD')]; break;
       case 'tag.delete': {
         const ref = `refs/tags/${token(action.name, 'tag name')}`, expected = action.expectedOid;
         await this.run(repo, ['check-ref-format', ref]);
-        if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(expected ?? '') || /^0+$/.test(expected)) throw new GitError('The Tag identity is missing or invalid. Refresh and reopen the deletion dialog.', 'OPERATION_CHANGED');
+        if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(expected ?? '') || /^0+$/.test(expected)) throw new GitError(localizeMessage("service.theTagIdentityIsMissingOrInvalidRefreshAnd"), 'OPERATION_CHANGED');
         const current = await this.run(repo, ['show-ref', '--verify', '--hash', '--', ref], true);
-        if (current.code || current.stdout.toString('utf8').trim() !== expected) throw new GitError('The Tag changed. Refresh and reopen the deletion dialog.', 'OPERATION_CHANGED');
+        if (current.code || current.stdout.toString('utf8').trim() !== expected) throw new GitError(localizeMessage("service.theTagChangedRefreshAndReopenTheDeletionDialog"), 'OPERATION_CHANGED');
         // Compare the raw ref object, including an annotated tag object, atomically.
         // Do not dereference a symbolic tag and accidentally remove its target.
         const deleted = await this.run(repo, ['update-ref', '--no-deref', '-d', ref, expected], true);
         if (deleted.code) {
           const latest = await this.run(repo, ['show-ref', '--verify', '--hash', '--', ref], true);
-          if (latest.code || latest.stdout.toString('utf8').trim() !== expected) throw new GitError('The Tag changed before deletion. Refresh and reopen the deletion dialog.', 'OPERATION_CHANGED', deleted.stdout.toString('utf8'), deleted.stderr.toString('utf8'));
-          throw new GitError(deleted.stderr.toString('utf8').trim() || 'Tag deletion failed.', 'GIT_FAILED', deleted.stdout.toString('utf8'), deleted.stderr.toString('utf8'));
+          if (latest.code || latest.stdout.toString('utf8').trim() !== expected) throw new GitError(localizeMessage("service.theTagChangedBeforeDeletionRefreshAndReopenThe"), 'OPERATION_CHANGED', deleted.stdout.toString('utf8'), deleted.stderr.toString('utf8'));
+          throw new GitError(deleted.stderr.toString('utf8').trim() || translate('en', "service.tagDeletionFailed"), 'GIT_FAILED', deleted.stdout.toString('utf8'), deleted.stderr.toString('utf8'));
         }
         return;
       }
       case 'stash.create': {
-        if (action.message?.includes('\0')) throw new GitError('Messages cannot contain NUL characters', 'INVALID_ARGUMENT');
+        if (action.message?.includes('\0')) throw new GitError(localizeMessage("service.messagesCannotContainNULCharacters"), 'INVALID_ARGUMENT');
         // store has no stdin message option. Check its worst-case command before
         // preparing any snapshot or changing the source repository.
         if (action.message) assertGitArgumentBudget(this.options.gitPath ?? 'git', ['-C', repo.root, 'stash', 'store', '-m', action.message, '0'.repeat(64)]);
         if (action.paths) {
-          if (!action.paths.length) throw new GitError('Select at least one file', 'INVALID_ARGUMENT');
+          if (!action.paths.length) throw new GitError(localizeMessage("service.selectAtLeastOneFile"), 'INVALID_ARGUMENT');
           const snapshot = await this.snapshot(repo);
-          if (snapshot.operation.kind || snapshot.operation.conflicts) throw new GitError('Finish the active operation or resolve conflicts before saving selected files.', 'CONFLICTS');
+          if (snapshot.operation.kind || snapshot.operation.conflicts) throw new GitError(localizeMessage("service.finishTheActiveOperationOrResolveConflictsBeforeSaving"), 'CONFLICTS');
           try { await createSelectedStash(repo, action.paths.map(validateFilePath), action.message, snapshot.changes, (args, execution) => this.run(repo, args, false, undefined, execution)); }
           catch (error) { if (error instanceof StashStateError) throw new GitError(error.message, error.code, error.stdout, error.stderr, error.details); throw error; }
           return;
@@ -686,8 +687,8 @@ export class GitService implements GitServiceContract {
         const paths = await this.existingStashPaths(repo, details.sections.untracked?.files ?? []);
         if (paths.length) {
           const blocker: StashApplyBlocker = { kind: 'stash-apply', reason: 'untracked-path-exists', paths, selector, stashOid, stashRetained: true, workingTreeUnchanged: true };
-          const summary = paths.length === 1 ? paths[0] : `${paths.length} saved untracked files`;
-          throw new GitError(`Cannot restore the Stash because the project already contains ${summary}. Existing files were not overwritten, and the Stash is still saved.`, 'STASH_UNTRACKED_CONFLICT', '', '', blocker);
+          const summary = paths.length === 1 ? paths[0] : translate('en', "service.savedUntrackedFiles", { count: (paths.length) });
+          throw new GitError(localizeMessage("service.cannotRestoreTheStashBecauseTheProjectAlreadyContains", { summary: (summary) }), 'STASH_UNTRACKED_CONFLICT', '', '', blocker);
         }
         const snapshot = await this.snapshot(repo);
         const affected = [...new Set(Object.values(details.sections).flatMap(section => section?.files.flatMap(file => [file.path, ...(file.previousPath ? [file.previousPath] : [])]) ?? []))];
@@ -699,7 +700,7 @@ export class GitService implements GitServiceContract {
         await this.run(repo, ['stash', 'apply', '--index', stashOid]);
         if (action.pop) {
           try { await this.validateStash(repo, selector, stashOid); }
-          catch { throw new GitError('Stash changes were applied, but the Stash list changed before Drop. The saved entry was retained; refresh the list.', 'STASH_CHANGED'); }
+          catch { throw new GitError(localizeMessage("service.stashChangesWereAppliedButTheStashListChanged"), 'STASH_CHANGED'); }
           await this.run(repo, ['stash', 'drop', selector]);
         }
         return;
@@ -708,29 +709,29 @@ export class GitService implements GitServiceContract {
       case 'worktree.add': {
         // A revision without -b or an existing branch implicitly creates a detached Worktree.
         if (action.detach || !action.branch && !action.newBranch && !!action.start) this.requireDetachedHead();
-        token(action.path, 'worktree path'); if (action.detach && (action.branch || action.newBranch)) throw new GitError('Detached worktrees cannot also select a branch', 'INVALID_ARGUMENT'); if (action.branch && action.newBranch) throw new GitError('Choose an existing or a new branch', 'INVALID_ARGUMENT');
-        const target = path.resolve(repo.root, action.path); const current = await this.worktrees(repo); if (current.some(x => normalized(x.path) === normalized(target))) throw new GitError('Worktree already registered', 'INVALID_WORKTREE');
+        token(action.path, 'worktree path'); if (action.detach && (action.branch || action.newBranch)) throw new GitError(localizeMessage("service.detachedWorktreesCannotAlsoSelectABranch"), 'INVALID_ARGUMENT'); if (action.branch && action.newBranch) throw new GitError(localizeMessage("service.chooseAnExistingOrANewBranch"), 'INVALID_ARGUMENT');
+        const target = path.resolve(repo.root, action.path); const current = await this.worktrees(repo); if (current.some(x => normalized(x.path) === normalized(target))) throw new GitError(localizeMessage("service.worktreeAlreadyRegistered"), 'INVALID_WORKTREE');
         args = ['worktree', 'add', ...(action.detach ? ['--detach'] : []), ...(action.newBranch ? ['-b', await this.refName(repo, action.newBranch)] : []), '--', target];
         if (action.branch) { await this.refName(repo, action.branch); args.push(await this.oid(repo, `refs/heads/${action.branch}`)); if (!action.detach) args[args.length - 1] = action.branch; } else if (action.start) args.push(await this.oid(repo, action.start)); break;
       }
-      case 'worktree.remove': { token(action.path, 'worktree path'); const target = await canonicalPath(path.resolve(repo.root, action.path)); const trees = await this.worktrees(repo); const canonical = await Promise.all(trees.map(tree => canonicalPath(tree.path))); const selected = trees.find((_, index) => normalized(canonical[index]) === normalized(target)); if (!selected || normalized(target) === normalized(canonical[0]) || normalized(target) === normalized(repo.root)) throw new GitError('Only registered linked worktrees other than the current Worktree can be removed', 'INVALID_WORKTREE'); if (selected.locked) throw new GitError(`This Worktree is Locked: ${selected.locked}. Unlock it before removal.`, 'WORKTREE_LOCKED'); args = ['worktree', 'remove', ...(action.force ? ['--force'] : []), '--', selected.path]; break; }
+      case 'worktree.remove': { token(action.path, 'worktree path'); const target = await canonicalPath(path.resolve(repo.root, action.path)); const trees = await this.worktrees(repo); const canonical = await Promise.all(trees.map(tree => canonicalPath(tree.path))); const selected = trees.find((_, index) => normalized(canonical[index]) === normalized(target)); if (!selected || normalized(target) === normalized(canonical[0]) || normalized(target) === normalized(repo.root)) throw new GitError(localizeMessage("service.onlyRegisteredLinkedWorktreesOtherThanTheCurrentWorktree"), 'INVALID_WORKTREE'); if (selected.locked) throw new GitError(localizeMessage("service.thisWorktreeIsLockedUnlockItBeforeRemoval", { locked: (selected.locked) }), 'WORKTREE_LOCKED'); args = ['worktree', 'remove', ...(action.force ? ['--force'] : []), '--', selected.path]; break; }
       case 'merge': case 'rebase': this.requireActionContext(action, await this.status(repo)); args = [action.type, await this.oid(repo, action.target)]; break;
       case 'cherry-pick': case 'revert': {
-        if (!action.commits.length) throw new GitError('Select commits', 'INVALID_ARGUMENT');
-        if (action.mainline !== undefined && (!Number.isSafeInteger(action.mainline) || action.mainline < 1)) throw new GitError('Invalid merge parent number', 'INVALID_ARGUMENT');
-        if(action.expectedHead||action.expectedBranch){const current=await this.status(repo);if(action.expectedHead&&current.head!==action.expectedHead||action.expectedBranch&&current.branch!==action.expectedBranch)throw new GitError('The target branch changed before the operation started. Select the commits again.', 'OPERATION_CHANGED');}
+        if (!action.commits.length) throw new GitError(localizeMessage("service.selectCommits"), 'INVALID_ARGUMENT');
+        if (action.mainline !== undefined && (!Number.isSafeInteger(action.mainline) || action.mainline < 1)) throw new GitError(localizeMessage("service.invalidMergeParentNumber"), 'INVALID_ARGUMENT');
+        if(action.expectedHead||action.expectedBranch){const current=await this.status(repo);if(action.expectedHead&&current.head!==action.expectedHead||action.expectedBranch&&current.branch!==action.expectedBranch)throw new GitError(localizeMessage("service.theTargetBranchChangedBeforeTheOperationStartedSelect"), 'OPERATION_CHANGED');}
         args = [action.type, ...(action.mainline ? ['-m', String(action.mainline)] : []), ...(await Promise.all(action.commits.map(x => this.oid(repo, x))))]; break;
       }
-      case 'reset': if (!['soft', 'mixed', 'hard'].includes(action.mode)) throw new GitError('Invalid reset mode', 'INVALID_ARGUMENT'); this.requireActionContext(action, await this.status(repo)); args = ['reset', `--${action.mode}`, await this.oid(repo, action.target), '--']; break;
+      case 'reset': if (!['soft', 'mixed', 'hard'].includes(action.mode)) throw new GitError(localizeMessage("service.invalidResetMode"), 'INVALID_ARGUMENT'); this.requireActionContext(action, await this.status(repo)); args = ['reset', `--${action.mode}`, await this.oid(repo, action.target), '--']; break;
       case 'operation.continue': case 'operation.abort': case 'operation.skip': {
         const snapshot = await this.snapshot(repo), state = snapshot.operation;
-        if (!state.kind || state.kind !== action.kind) throw new GitError('The selected Git operation is no longer active', 'OPERATION_CHANGED');
+        if (!state.kind || state.kind !== action.kind) throw new GitError(localizeMessage("service.theSelectedGitOperationIsNoLongerActive"), 'OPERATION_CHANGED');
         const command = action.type.split('.')[1];
-        if (command === 'skip' && !state.canSkip) throw new GitError('This operation cannot be skipped', 'INVALID_ARGUMENT');
+        if (command === 'skip' && !state.canSkip) throw new GitError(localizeMessage("service.thisOperationCannotBeSkipped"), 'INVALID_ARGUMENT');
         if (action.type === 'operation.continue') await this.requireReview(repo, snapshot, action.reviewToken);
         args = [action.kind, `--${command}`]; break;
       }
-      default: throw new GitError('Unsupported Git action', 'INVALID_ARGUMENT');
+      default: throw new GitError(localizeMessage("service.unsupportedGitAction"), 'INVALID_ARGUMENT');
     }
     if (action.type === 'worktree.add' && (action.detach || !action.branch && !action.newBranch && !!action.start)) this.requireDetachedHead();
     await this.run(repo, args);

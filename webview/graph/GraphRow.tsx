@@ -1,4 +1,5 @@
-import React, { useId } from 'react';
+import { uiText } from '../text';
+import { useId } from 'react';
 import type { GraphLayoutRow, GraphSegment } from './layout';
 import { getGraphPalette, type GraphPaletteId } from './palettes';
 
@@ -41,11 +42,11 @@ export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false
   };
   const svgWidth = Math.max(width ?? 0, row.laneCount * laneWidth, laneWidth);
   const parentLabel = row.parents.length
-    ? `${row.parents.length > 1 ? 'Merge commit; ' : ''}parents ${row.parents.map(oid => oid.slice(0, 8)).join(', ')}`
-    : 'Root commit; no parents';
+    ? uiText("graphRow.parents", { value: (row.parents.length > 1 ? uiText("graphRow.mergeCommit") : ''), value2: (row.parents.map(oid => oid.slice(0, 8)).join(', ')) })
+    : uiText("graphRow.rootCommitNoParents");
   const label = working
-    ? `Working Tree virtual node, lane ${row.lane + 1}.${selected ? ' Selected.' : ''}`
-    : `Commit ${row.oid.slice(0, 8)}, lane ${row.lane + 1}. ${parentLabel}.${main ? ' Main branch.' : ''}${head ? ' Current HEAD.' : ''}${selected ? ' Selected commit.' : ''}`;
+    ? uiText("graphRow.workingTreeVirtualNodeLane", { value: (row.lane + 1), value2: (selected ? uiText("graphRow.selected") : '') })
+    : uiText("graphRow.commitLane", { value: (row.oid.slice(0, 8)), value2: (row.lane + 1), parentLabel: (parentLabel), value3: (main ? uiText("graphRow.mainBranch") : ''), value4: (head ? uiText("graphRow.currentHEAD") : ''), value5: (selected ? uiText("graphRow.selectedCommit") : '') });
   const nodeX = (row.lane + 0.5) * laneWidth;
   const nodeY = height / 2;
   const nodeColor = main ? 'var(--graph-main, #f2f2f2)' : colorFor(row.color);
