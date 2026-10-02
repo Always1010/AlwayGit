@@ -51,13 +51,32 @@ export class ProjectWindows implements vscode.Disposable {
   async openFile(root: string, filename: string): Promise<void> { await this.route({ root, action: 'file', path: filename }); }
   async openDiff(root: string, target: DiffTarget): Promise<void> { await this.route({ root, action: 'diff', target }); }
   async notifyCatalogChanged(): Promise<void> { await this.bridge.broadcast({ action: 'catalog-changed' }); }
+  async isRepositoryBusy(commonDir: string): Promise<boolean> { return this.operationLock.isBusy(await canonicalPath(commonDir)); }
+  async recoverRepositoryOperation(commonDir: string, token: string): Promise<void> { await this.operationLock.recover(await canonicalPath(commonDir), token); }
+  private async notifyActivity(commonDir: string, busy: boolean, label: string): Promise<void> {
+    try { await this.bridge.broadcast({ action: 'repository-activity', commonDir, busy, label }); }
+    catch (error) { try { this.log.appendLine(`[repository-activity] ${error instanceof Error ? error.message : String(error)}`); } catch { /* Disposal must not affect the Git operation or its lease. */ } }
+  }
   async runRepositoryOperation<T>(commonDir: string, label: string, task: () => Promise<T>): Promise<T> {
     const canonical = await canonicalPath(commonDir), lease = await this.operationLock.acquire(canonical, label);
-    await this.bridge.broadcast({ action: 'repository-activity', commonDir: canonical, busy: true, label });
-    try { return await task(); }
+    let unconfirmed = false;
+    try {
+      await this.notifyActivity(canonical, true, label);
+      await lease.markRunning();
+      return await task();
+    }
+    catch (error) {
+      if ((error as { terminationUnconfirmed?: unknown })?.terminationUnconfirmed === true) {
+        unconfirmed = true;
+        await lease.quarantine((error as { pid?: number }).pid);
+      }
+      throw error;
+    }
     finally {
-      await this.bridge.broadcast({ action: 'repository-activity', commonDir: canonical, busy: false, label });
-      await lease.release();
+      if (!unconfirmed) {
+        await lease.release();
+        await this.notifyActivity(canonical, false, label);
+      }
     }
   }
   private async execute(request: ProjectRequest): Promise<void> {
