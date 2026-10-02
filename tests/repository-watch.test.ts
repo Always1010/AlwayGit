@@ -1,4 +1,6 @@
 import path from 'node:path';
+import os from 'node:os';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GitServiceContract, Repository } from '../src/protocol/types';
 import * as vscode from 'vscode';
@@ -27,14 +29,20 @@ const root = path.join(process.cwd(), 'fixture');
 const repo: Repository = { id: 'fixture', root, commonDir: path.join(root, '.git'), name: 'Fixture' };
 let manager: RepositoryManager;
 let discover: ReturnType<typeof vi.fn>;
+let storage: string;
 beforeEach(async () => {
   vi.useFakeTimers(); surfaces.watchers.length = 0;
   Object.assign(vscode.workspace,{workspaceFolders:[]});
   discover=vi.fn(async()=>repo);
-  manager = new RepositoryManager({ discover } as unknown as GitServiceContract, { workspaceState: { get: vi.fn((_key, fallback) => fallback), update: vi.fn() }, globalState: { get: vi.fn((_key, fallback) => fallback), update: vi.fn() } } as any, { appendLine: vi.fn() } as any);
-  await manager.add(root);
+  storage = await mkdtemp(path.join(os.tmpdir(), 'alwaygit-watch-'));
+  manager = new RepositoryManager({ discover } as unknown as GitServiceContract, { globalStorageUri: { fsPath: storage }, workspaceState: { get: vi.fn((_key, fallback) => fallback), update: vi.fn() }, globalState: { get: vi.fn((_key, fallback) => fallback), update: vi.fn() } } as any, { appendLine: vi.fn() } as any);
+  await manager.add(root, false);
 });
-afterEach(() => { manager.dispose(); vi.useRealTimers(); });
+afterEach(async () => {
+  manager.dispose(); vi.useRealTimers();
+  if(path.dirname(storage)!==path.resolve(os.tmpdir())||!path.basename(storage).startsWith('alwaygit-watch-'))throw new Error('Unsafe cleanup target');
+  await rm(storage,{recursive:true,force:true,maxRetries:5});
+});
 
 describe('repository change scope', () => {
   it('combines working-file and Index notifications without losing paths', async () => {

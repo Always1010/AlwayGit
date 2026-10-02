@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-050：交错目录修改与多窗口缓存可覆盖仓库分组及顺序
+
+- 日期：2026-10-03
+- 状态：已解决
+- 现象：移除操作等待保存时，另一个移动已成功却被旧归属覆盖；跨窗口陈旧缓存可丢失添加、删除或排序。
+- 原因：多个 Memento 键分别读改写，宿主缓存无法提供跨窗口权威事务；扫描和监听发布也可能交错。
+- 解决方案：改为带 schema/revision 的共享 JSON，OS 短互斥下重读并原子替换；同宿主 FIFO 串行预备、提交与发布，镜像在锁外；复合添加一次提交，过期扫描重新读取，旧工作区逐一迁移。
+- 验证方式：相关 39 项测试及后续受影响复合添加、宿主入口 7 项通过，覆盖独立 Store 争用、陈旧缓存、磁盘写失败、镜像失败与监听顺序；类型检查由最终集成检查确认。未启动实际多 VS Code 窗口。
+- 相关文件：`src/repositories/catalog-store.ts`、`src/repositories/manager.ts`、`src/extension/workbench.ts`、`tests/repository-catalog.test.ts`、`tests/repository-manager.test.ts`、`tests/repository-watch.test.ts`。
+
 ## BUG-051：Reset、Merge 和 Rebase 确认后可能作用于已改变的分支
 
 - 日期：2026-10-03

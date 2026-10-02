@@ -111,14 +111,10 @@ export class Workbench implements vscode.Disposable {
     if(collectionId&&!this.repositories.collections().some(collection=>collection.id===collectionId))throw new Error(this.text('The selected repository group no longer exists.','所选仓库分组已不存在。'));
     if(newCollectionName){const problem=this.collectionNameProblem(newCollectionName);if(problem)throw new Error(problem);}
     const repositories=discoveredGroups.filter(group=>selectedKeys.has(group.key)).flatMap(group=>group.members);
-    let collection:RepositoryCollection|undefined;
-    try{
-      if(newCollectionName)collection=await this.repositories.createCollection(newCollectionName);
-      const result=await this.repositories.registerDiscovered({...session.discovery,repositories,found:selectedKeys.size});
-      const targetCollectionId=collection?.id??collectionId,moved=await this.repositories.move(selectedKeys,targetCollectionId);
-      if(result.added||moved||collection)await this.projects.notifyCatalogChanged();
-      return {added:result.added,existing:result.existing,skipped:result.issues.length,...(collection?{collection}:{})};
-    }catch(error){if(collection)await this.repositories.deleteCollection(collection.id);throw error;}
+    const result=await this.repositories.registerDiscovered({...session.discovery,repositories,found:selectedKeys.size},{},{collectionId,newCollectionName});
+    // Existing candidates can change collection assignments without adding a new repository.
+    if(result.added||result.existing||result.collection)await this.projects.notifyCatalogChanged();
+    return {added:result.added,existing:result.existing,skipped:result.issues.length,...(result.collection?{collection:result.collection}:{})};
   }
   async removeRepositories(keys: string[]): Promise<number> {
     const groups=this.repositories.groups().filter(group=>keys.includes(group.key));
