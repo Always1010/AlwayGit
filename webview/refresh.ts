@@ -4,6 +4,7 @@ export function diffKey(target?: DiffTarget): string {
   if (!target) return '';
   if (target.kind === 'commit') return JSON.stringify([target.kind, target.oid, target.parent, target.path, target.previousPath]);
   if (target.kind === 'comparison') return JSON.stringify([target.kind, target.left, target.right, target.path, target.previousPath]);
+  if (target.kind === 'stash-working') return JSON.stringify([target.kind, target.stashOid, target.path]);
   return JSON.stringify([target.kind, target.area, target.path]);
 }
 

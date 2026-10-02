@@ -48,6 +48,15 @@ describe('Bounded Git Diff previews', () => {
     expect(await documents.preview(repo,{kind:'comparison',left,right,path:'after.txt'})).toMatchObject({leftLabel:left.slice(0,8),rightLabel:right.slice(0,8),left:'common\nleft',right:'common\nright'});
   });
 
+  it('compares a saved untracked file with the existing working copy',async()=>{
+    const {root,repo,service,documents}=await setup();
+    await writeFile(path.join(root,'base.txt'),'base');await commit(root,'initial');
+    await writeFile(path.join(root,'notes.txt'),'saved notes');await service.execute(repo,{type:'stash.create',message:'pause notes',includeUntracked:true});
+    const stash=(await service.snapshot(repo)).stashes[0];await service.execute(repo,{type:'stash.apply',selector:stash.selector,expectedOid:stash.oid});await writeFile(path.join(root,'notes.txt'),'continued notes');
+    expect(await documents.preview(repo,{kind:'stash-working',stashOid:stash.oid,path:'notes.txt'})).toMatchObject({leftLabel:'Stash',rightLabel:'Working Tree',left:'saved notes',right:'continued notes'});
+    await expect(documents.preview(repo,{kind:'stash-working',stashOid:stash.oid,path:'outside.txt'})).rejects.toThrow('not part');
+  });
+
   it('bounds large files by bytes and lines and reports binary content without exposing text', async () => {
     const { root, repo, documents } = await setup();
     await writeFile(path.join(root, 'base.txt'), 'base'); await commit(root, 'initial');

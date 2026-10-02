@@ -62,7 +62,7 @@
 - Checkout 成功、当前分支、脏文件可能被覆盖、未解决冲突和 Worktree 占用；单个远程分支创建并 Checkout、本地跟踪分支复用和 Stash 重试。
 - 远程分支目录递归批量创建本地跟踪分支，保持当前 HEAD；批量名称、upstream、符号引用、远程来源和层级冲突在写入前完成验证。
 - `Stash Changes & Checkout` 分步结果；Checkout 失败时保留已经创建的 Stash。
-- Apply、Pop、Drop Stash 在列表变化后仍验证正确对象。
+- Apply、Pop、Drop Stash 在列表变化后仍验证正确对象；重复恢复未跟踪文件时在 Git 写入前识别现有路径，保留现有内容与 Stash，并提供两份内容比较和打开入口，不显示无效的重复 Apply。
 - Stash 详情分别验证 Working Tree、Index 与 Untracked Files，按路径去重汇总文件数；仅含未跟踪文件时默认打开该分类，空分类给出内容位置与直接跳转，创建成功反馈说明保存范围和工作区状态。
 - 同一文件同时含 Staged / Unstaged 修改时，Discard 只处理工作区一侧。
 - Detached HEAD、Tracking Branch、Tag Checkout 和主 / 当前 / Locked Worktree 限制。

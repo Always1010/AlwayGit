@@ -317,6 +317,13 @@ h1,h2,p {margin:0;}
 .modal-footer {display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap;padding:10px 13px;border-top:1px solid var(--border);}
 .warning-text,.form-error {color:var(--error);}
 .discard-paths {overflow:auto;max-height:150px;font:12px/1.7 var(--vscode-editor-font-family,Consolas,monospace);overflow-wrap:anywhere;}
+.stash-apply-blocker {display:flex;flex-direction:column;gap:9px;padding:10px 11px;border:1px solid color-mix(in srgb,var(--error) 58%,var(--border));border-left:3px solid var(--error);background:color-mix(in srgb,var(--error) 9%,var(--bg));}
+.stash-apply-blocker>p {margin:0;}
+.stash-apply-blocker details pre {margin:6px 0 0;max-height:120px;overflow:auto;white-space:pre-wrap;font:11px/1.5 var(--vscode-editor-font-family,Consolas,monospace);}
+.stash-conflict-files {display:grid;gap:4px;max-height:170px;overflow:auto;}
+.stash-conflict-file {display:flex;align-items:center;gap:8px;min-height:32px;padding:3px 4px;border-top:1px solid var(--row-border);}
+.stash-conflict-file code {flex:1;min-width:0;overflow-wrap:anywhere;}
+.stash-conflict-file>div {display:flex;gap:3px;flex:none;}
 .remote-tracking-list {display:grid;gap:10px;max-height:45vh;overflow:auto;}
 .remote-tracking-row {display:grid;grid-template-columns:minmax(0,1fr) 16px minmax(0,1fr);gap:4px 8px;align-items:center;}
 .remote-tracking-source {overflow-wrap:anywhere;font-family:var(--vscode-editor-font-family,Consolas,monospace);}

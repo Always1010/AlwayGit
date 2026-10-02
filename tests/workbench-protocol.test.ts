@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { actionSchema, openRepositorySchema, openWorkbenchSchema, requestSchema, sessionSchema } from '../src/protocol/validation';
+import { actionSchema, diffSchema, openRepositorySchema, openWorkbenchSchema, requestSchema, sessionSchema } from '../src/protocol/validation';
 
 describe('Workbench protocol validation', () => {
   it('preserves operation review tokens and the explicit conflict staging action',()=>{
@@ -22,6 +22,7 @@ describe('Workbench protocol validation', () => {
     expect(actionSchema.parse({ type: 'checkout.stash', target: 'topic', includeUntracked: true })).toEqual({ type: 'checkout.stash', target: 'topic', includeUntracked: true });
     expect(requestSchema.parse({id:'stash-details',method:'stashDetails',repoId:'fixture',payload:{oid:'a'.repeat(40)}}).method).toBe('stashDetails');
     expect(requestSchema.parse({ id: 'preview', method: 'diffPreview', repoId: 'fixture', payload: { kind: 'change', path: 'a.txt', area: 'staged' } }).method).toBe('diffPreview');
+    expect(diffSchema.parse({kind:'stash-working',stashOid:'a'.repeat(40),path:'notes.txt'})).toEqual({kind:'stash-working',stashOid:'a'.repeat(40),path:'notes.txt'});
     expect(requestSchema.parse({id:'compare',method:'compare',repoId:'fixture',payload:{left:'abc',right:'def'}}).method).toBe('compare');
     expect(requestSchema.parse({id:'statuses',method:'repositoryStatuses'}).method).toBe('repositoryStatuses');
     expect(openRepositorySchema.parse({newTab:true})).toEqual({newTab:true});

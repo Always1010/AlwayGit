@@ -187,6 +187,22 @@ describe('Git safety regressions', () => {
     expect((await service.snapshot(repo)).changes[0].conflict).toBe(true);
   });
 
+  it('blocks a repeated untracked-file restore before mutation and keeps both copies', async () => {
+    const { root, service, repo } = await setup();
+    await commit(root, 'base.txt', 'base');
+    await writeFile(path.join(root, 'notes.txt'), 'saved notes');
+    await service.execute(repo, { type: 'stash.create', message: 'pause notes', includeUntracked: true });
+    const saved = (await service.snapshot(repo)).stashes[0];
+    await service.execute(repo, { type: 'stash.apply', selector: saved.selector, expectedOid: saved.oid });
+    await writeFile(path.join(root, 'notes.txt'), 'continued notes');
+    await expect(service.execute(repo, { type: 'stash.apply', selector: saved.selector, expectedOid: saved.oid, pop: true })).rejects.toMatchObject({
+      code: 'STASH_UNTRACKED_CONFLICT',
+      details: { kind: 'stash-apply', reason: 'untracked-path-exists', paths: ['notes.txt'], selector: saved.selector, stashOid: saved.oid, stashRetained: true, workingTreeUnchanged: true },
+    });
+    expect(await readFile(path.join(root, 'notes.txt'), 'utf8')).toBe('continued notes');
+    expect((await service.snapshot(repo)).stashes).toEqual([saved]);
+  });
+
   it('reports unresolved conflict paths and blocks both Checkout and Stash & Checkout', async () => {
     const { root, service, repo } = await setup();
     await commit(root, 'same.txt', 'base');

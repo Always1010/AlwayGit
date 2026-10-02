@@ -222,6 +222,15 @@ describe('repository UI consistency', () => {
     store.getState().dismissFeedback(); expect(store.getState().error).toBeUndefined();
   });
 
+  it('retains structured Stash restore safety details after refresh',async()=>{
+    await store.getState().selectRepository('a');const fallback=bridge.rpc.getMockImplementation()!,details={kind:'stash-apply' as const,reason:'untracked-path-exists' as const,paths:['notes.txt'],selector:'stash@{0}',stashOid:'saved',stashRetained:true as const,workingTreeUnchanged:true as const};
+    bridge.rpc.mockImplementation((method,...args)=>method==='action'?Promise.reject(Object.assign(new Error('Cannot restore because notes.txt already exists.'),{code:'STASH_UNTRACKED_CONFLICT',details})):fallback(method,...args));
+    expect(await store.getState().execute({type:'stash.apply',selector:'stash@{0}',expectedOid:'saved'})).toBe(false);
+    expect(store.getState()).toMatchObject({stashApplyFailure:details,error:'Cannot restore because notes.txt already exists.',checkoutFailure:undefined});
+    store.getState().dismissFeedback();expect(store.getState()).toMatchObject({stashApplyFailure:undefined,error:undefined});
+    store.setState({stashApplyFailure:details});await store.getState().selectRepository('b');expect(store.getState().stashApplyFailure).toBeUndefined();
+  });
+
   it('isolates operation feedback by repository and completes it after returning', async () => {
     await store.getState().selectRepository('a'); const pending = deferred<void>(), fallback = bridge.rpc.getMockImplementation()!;
     bridge.rpc.mockImplementation((method, repoId, payload) => method === 'action' ? pending.promise : fallback(method, repoId, payload));

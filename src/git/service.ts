@@ -1,8 +1,8 @@
 import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { access, realpath, readFile } from 'node:fs/promises';
+import { access, lstat, realpath, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { Change, CheckoutBlocker, Commit, CommitComparison, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationReview, OperationState, Repository, RepositoryStatus, Snapshot, Stash, StashDetails, Worktree } from '../protocol/types';
+import type { ActionBlocker, Change, CheckoutBlocker, Commit, CommitComparison, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationReview, OperationState, Repository, RepositoryStatus, Snapshot, Stash, StashApplyBlocker, StashDetails, Worktree } from '../protocol/types';
 import { inferDefaultBranch } from './default-branch';
 
 export interface GitServiceOptions {
@@ -13,7 +13,7 @@ export interface GitServiceOptions {
   environment?: NodeJS.ProcessEnv | ((repo: Repository, args: readonly string[]) => Promise<NodeJS.ProcessEnv | { env: NodeJS.ProcessEnv; dispose?: () => void | Promise<void> }>);
 }
 export class GitError extends Error {
-  constructor(message: string, public readonly code: string, public readonly stdout = '', public readonly stderr = '', public readonly details?: CheckoutBlocker) { super(message); this.name = 'GitError'; }
+  constructor(message: string, public readonly code: string, public readonly stdout = '', public readonly stderr = '', public readonly details?: ActionBlocker) { super(message); this.name = 'GitError'; }
 }
 type Result = { stdout: Buffer; stderr: Buffer; code: number };
 const queues = new Map<string, Promise<unknown>>();
@@ -222,6 +222,26 @@ export class GitService implements GitServiceContract {
     const paths = new Set([...working.files, ...index.files, ...(untracked?.files ?? [])].map(file => file.path));
     return { commit: stash.commit, body: stash.body, sections: { working, index, ...(untracked ? { untracked } : {}) }, totalFiles: paths.size };
   }
+  private async existingStashPaths(repo: Repository, files: CommitFile[]): Promise<string[]> {
+    const conflicts: string[] = [];
+    for (const file of files) {
+      const name = validateFilePath(file.path), parts = name.split('/');
+      let current = repo.root;
+      for (let index = 0; index < parts.length; index++) {
+        current = path.join(current, parts[index]);
+        try {
+          const stat = await lstat(current);
+          if (index === parts.length - 1 || stat.isSymbolicLink() || !stat.isDirectory()) { conflicts.push(name); break; }
+        } catch (error) {
+          const code = (error as NodeJS.ErrnoException).code;
+          if (code === 'ENOENT') break;
+          if (code === 'ENOTDIR') { conflicts.push(name); break; }
+          throw error;
+        }
+      }
+    }
+    return conflicts;
+  }
   async compare(repo:Repository,leftRevision:string,rightRevision:string,preserveOrder=false):Promise<CommitComparison>{
     await this.verify(repo);let left=await this.oid(repo,leftRevision),right=await this.oid(repo,rightRevision);
     if(!preserveOrder){const leftAncestor=await this.run(repo,['merge-base','--is-ancestor',left,right],true),rightAncestor=leftAncestor.code===0?undefined:await this.run(repo,['merge-base','--is-ancestor',right,left],true);if(rightAncestor?.code===0)[left,right]=[right,left];}
@@ -362,7 +382,7 @@ export class GitService implements GitServiceContract {
       const branch = plan[0];
       try { await this.checkout(repo, branch.name, false, action.stashFirst, action.includeUntracked, branch.exists ? undefined : branch.source); }
       catch (error) {
-        if (error instanceof GitError && error.details) throw new GitError(error.message, error.code, error.stdout, error.stderr, { ...error.details, trackBranches: action.branches });
+        if (error instanceof GitError && error.details && 'target' in error.details) throw new GitError(error.message, error.code, error.stdout, error.stderr, { ...error.details, trackBranches: action.branches });
         throw error;
       }
       return;
@@ -473,6 +493,14 @@ export class GitService implements GitServiceContract {
       case 'stash.create': args = ['stash', 'push', ...(action.includeUntracked ? ['--include-untracked'] : []), ...(action.message ? ['-m', action.message] : [])]; break;
       case 'stash.apply': {
         const selector = await this.validateStash(repo, action.selector, action.expectedOid);
+        const stashOid = action.expectedOid ?? await this.oid(repo, selector);
+        const details = await this.stashDetails(repo, stashOid);
+        const paths = await this.existingStashPaths(repo, details.sections.untracked?.files ?? []);
+        if (paths.length) {
+          const blocker: StashApplyBlocker = { kind: 'stash-apply', reason: 'untracked-path-exists', paths, selector, stashOid, stashRetained: true, workingTreeUnchanged: true };
+          const summary = paths.length === 1 ? paths[0] : `${paths.length} saved untracked files`;
+          throw new GitError(`Cannot restore the Stash because the project already contains ${summary}. Existing files were not overwritten, and the Stash is still saved.`, 'STASH_UNTRACKED_CONFLICT', '', '', blocker);
+        }
         if (action.expectedOid) {
           // Apply the captured object rather than a reflog position which can move externally.
           await this.run(repo, ['stash', 'apply', action.expectedOid]);
