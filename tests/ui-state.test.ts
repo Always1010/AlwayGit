@@ -232,6 +232,53 @@ describe('repository UI consistency', () => {
     const calls = bridge.rpc.mock.calls.filter(([method]) => method === 'history');
     expect(calls.at(-1)?.[2]).toMatchObject({ offset: 1, tips: ['fixed-tip'] });
   });
+  it.each(['', 'Example'])('locates a loaded HEAD without reloading history or changing filters (search: %s)', async search => {
+    await store.getState().selectRepository('a');
+    const other={...commit,oid:'other'},commits=[other,commit],checkedRefs=['refs/heads/topic'],tips=['pinned-topic'];
+    store.setState({commits,historyHead:commit,checkedRefs,tips,search,nextOffset:200,hasMore:true,selectedOid:other.oid,selectedOids:[other.oid],details:undefined});
+    const token=store.getState().locateToken;
+    bridge.rpc.mockClear();store.getState().locateHead();
+    expect(store.getState()).toMatchObject({selectedOid:commit.oid,selectedOids:[commit.oid],search,nextOffset:200,hasMore:true,historyLoading:false,locateToken:token+1});
+    expect(store.getState().commits).toBe(commits);expect(store.getState().historyHead).toBe(commit);
+    expect(store.getState().checkedRefs).toBe(checkedRefs);expect(store.getState().tips).toBe(tips);
+    await vi.waitFor(()=>expect(store.getState().detailsLoading).toBe(false));
+    store.getState().locateHead();
+    expect(store.getState().locateToken).toBe(token+2);
+    expect(store.getState().commits).toBe(commits);
+    expect(bridge.rpc.mock.calls.map(([method])=>method)).toEqual(['details']);
+  });
+  it('appends missing HEAD pages without clearing or restarting loaded history', async () => {
+    await store.getState().selectRepository('a');
+    const other={...commit,oid:'other'},commits=[other],next=deferred<HistoryPage>(),fallback=bridge.rpc.getMockImplementation()!;
+    store.setState({commits,historyHead:commit,checkedRefs:['HEAD'],tips:['pinned-head'],nextOffset:100,hasMore:true});
+    bridge.rpc.mockImplementation((method,repoId,payload)=>method==='history'?next.promise:fallback(method,repoId,payload));
+    bridge.rpc.mockClear();store.getState().locateHead();
+    expect(store.getState().commits).toBe(commits);
+    expect(store.getState()).toMatchObject({nextOffset:100,hasMore:true,locatingOid:commit.oid,selectedOid:commit.oid});
+    expect(bridge.rpc).toHaveBeenCalledWith('history','a',expect.objectContaining({offset:100,tips:['pinned-head']}));
+    next.resolve({commits:[commit],head:commit,tips:['pinned-head'],nextOffset:101,hasMore:false});
+    await vi.waitFor(()=>expect(store.getState().locatingOid).toBeUndefined());
+    expect(store.getState().commits).toEqual([other,commit]);
+    expect(bridge.rpc.mock.calls.filter(([method])=>method==='history')).toHaveLength(1);
+  });
+  it.each(['main', ''])('restores an excluded HEAD and locates it beyond the first page (branch: %s)', async branch => {
+    await store.getState().selectRepository('a');
+    const other={...commit,oid:'other'},fallback=bridge.rpc.getMockImplementation()!;
+    store.setState({snapshot:{...snapshot(a),branch,refs:[{name:'main',fullName:'refs/heads/main',kind:'local',oid:commit.oid}]},checkedRefs:[],commits:[]});
+    bridge.rpc.mockImplementation((method,repoId,payload)=>method==='history'?{
+      commits:payload.offset?[commit]:[other],head:commit,tips:['fixed-head'],nextOffset:payload.offset?2:1,hasMore:!payload.offset,
+    }:fallback(method,repoId,payload));
+    // Locate must cancel a pending search as well as discard its filtered query.
+    store.getState().setSearch('no-match');bridge.rpc.mockClear();store.getState().locateHead();
+    expect(store.getState()).toMatchObject({search:'',locatingOid:commit.oid,selectedOid:commit.oid});
+    await vi.waitFor(()=>expect(store.getState().locatingOid).toBeUndefined());
+    expect(store.getState().commits).toEqual([other,commit]);
+    const calls=bridge.rpc.mock.calls.filter(([method])=>method==='history');
+    expect(calls).toHaveLength(2);
+    expect(calls[0][2]).toMatchObject({offset:0,tips:[branch?'refs/heads/main':'HEAD']});
+    expect(calls[0][2]).not.toHaveProperty('search');
+    expect(calls[1][2]).toMatchObject({offset:1,tips:['fixed-head']});
+  });
   it('clears filtered rows immediately and locates an older result across full history pages', async () => {
     await store.getState().selectRepository('a');
     const old={...commit,oid:'old'}, fallback=bridge.rpc.getMockImplementation()!;

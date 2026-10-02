@@ -27,7 +27,7 @@ interface WorkbenchState {
   beginSettings(): void; previewSettings(value: InterfaceSettingsUpdate): void; finishSettings(apply: boolean): void; restoreLayout(): void;
   repositories: Repository[]; repositoryCollections:RepositoryCollection[]; repositoryOrder?:RepositoryOrder; reorderRepository(payload:ReorderRepository):Promise<void>; repositoryStatuses: Record<string, RepositoryStatus>; selectedRepositoryKeys:string[]; repositorySelectionAnchor?:string; repoId?: string; snapshot?: Snapshot; commits: Commit[]; historyHead?: Commit; details?: CommitDetails; comparison?: CommitComparison; selectedOid?: string; selectedOids: string[]; selectionAnchor?: string; selectedRefs:string[]; refSelectionAnchor?:string; selectedParent?: string; selectedStashOid?: string; selectedStashSection?:StashSection; stashDetails?: StashDetails; selectedFile?: string; diffTarget?: DiffTarget; diffRevision: number;
   ref?: string; checkedRefs?: string[]; expandedRefGroups?:string[]; collapsedSidebarGroups:string[]; search: string; language: Language; layout: LayoutState; checkoutFailure?: CheckoutFailure; stashApplyFailure?: StashApplyBlocker; actionFeedback?: ActionFeedback; locateToken:number;
-  nextOffset: number; hasMore: boolean; tips: string[]; loading: boolean; historyLoading: boolean; locatingOid?: string; locateCommit(oid: string): Promise<void>; detailsLoading: boolean; busy: boolean; activity: string; error?: string; notice?: string; tab: 'history' | 'changes'; drafts: Record<string, string>;
+  nextOffset: number; hasMore: boolean; tips: string[]; loading: boolean; historyLoading: boolean; locatingOid?: string; locateCommit(oid: string, append?: boolean): Promise<void>; detailsLoading: boolean; busy: boolean; activity: string; error?: string; notice?: string; tab: 'history' | 'changes'; drafts: Record<string, string>;
   initialize(): Promise<void>; loadRepositoryStatuses(): Promise<void>; selectRepository(id: string): Promise<void>; refresh(options?: { background?: boolean; changes?: RepositoryChanges; snapshot?: Snapshot }): Promise<void>; loadHistory(append?: boolean): Promise<void>; selectCommit(oid: string, parent?: string, stashOid?: string, preserveSelection?: boolean): Promise<void>; selectStashSection(section:StashSection):void; compareCommits(left:string,right:string,preserveOrder?:boolean):Promise<void>; setCommitSelection(oids:string[],anchor?:string,primary?:string):void; setRefSelection(refs:string[],anchor?:string):void; setRepositorySelection(keys:string[],anchor?:string):void;
   setFilter(ref?: string, search?: string): void; setCheckedRefs(refs: string[]): void; setExpandedRefGroup(key:string,expanded:boolean):void; toggleSidebarGroup(key:string):void; setSearch(value: string): void; selectWorking(): void; selectFile(target: DiffTarget): void; locateHead():void;
   execute(action: GitAction): Promise<boolean>; dismissFeedback(): void; setDraft(value: string): void; setLanguage(value: Language): void; setLayout(value: Partial<LayoutState>): void; report(error: unknown): void;
@@ -221,15 +221,27 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     if (target) get().selectFile(target); else set({ selectedFile: undefined, diffTarget: undefined });
   },
   selectFile(target) { if (diffKey(target) !== diffKey(get().diffTarget)) set({ selectedFile: target.path, diffTarget: target }); },
-  locateHead(){const snapshot=get().snapshot;if(!snapshot?.head)return;const ref=snapshot.refs.find(r=>r.kind==='local'&&r.name===snapshot.branch)?.fullName??'HEAD';set({checkedRefs:[...new Set([...(get().checkedRefs??[]),ref])],search:'',commits:[],historyHead:undefined,nextOffset:0,hasMore:false,locatingOid:undefined,locateToken:get().locateToken+1,selectedStashOid:undefined,selectedStashSection:undefined,stashDetails:undefined});void get().loadHistory();void get().selectCommit(snapshot.head);},
-  async locateCommit(oid) {
+  locateHead() {
+    const state=get(),snapshot=state.snapshot;if(!snapshot?.head)return;
+    if(state.commits.some(commit=>commit.oid===snapshot.head)) {
+      set({locatingOid:undefined,locateToken:state.locateToken+1,selectedStashOid:undefined,selectedStashSection:undefined,stashDetails:undefined,notice:undefined});
+      void get().selectCommit(snapshot.head);
+      return;
+    }
+    const ref=snapshot.refs.find(r=>r.kind==='local'&&r.name===snapshot.branch)?.fullName??'HEAD';
+    const refsChanged=!state.checkedRefs?.includes(ref);
+    if(refsChanged)set({checkedRefs:[...(state.checkedRefs??[]),ref],ref:undefined});
+    const append=!refsChanged&&!state.search&&!state.historyLoading&&state.commits.length>0&&state.hasMore;
+    void get().locateCommit(snapshot.head,append);
+  },
+  async locateCommit(oid, append = false) {
     if(!get().repoId)return;
     const repoEpoch=repositoryEpoch,token=get().locateToken+1;
-    set({search:'',commits:[],historyHead:undefined,tips:[],nextOffset:0,hasMore:false,locateToken:token,locatingOid:oid,selectedStashOid:undefined,selectedStashSection:undefined,stashDetails:undefined,notice:undefined});
+    set({search:'',...(!append?{commits:[],historyHead:undefined,tips:[],nextOffset:0,hasMore:false}:{}),locateToken:token,locatingOid:oid,selectedStashOid:undefined,selectedStashSection:undefined,stashDetails:undefined,notice:undefined});
     void get().selectCommit(oid);
     const current=()=>repositoryEpoch===repoEpoch&&get().locateToken===token&&get().locatingOid===oid&&get().selectedOid===oid&&!get().search&&get().tab==='history';
     try {
-      let append=false, pages=0;
+      let pages=0;
       while(current()) {
         const offset=get().nextOffset,expectedEpoch=historyEpoch+1;
         await get().loadHistory(append);

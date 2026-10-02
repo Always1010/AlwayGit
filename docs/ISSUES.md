@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-056：定位 HEAD 无条件清空并重载 Graph
+
+- 日期：2026-10-03
+- 状态：已解决
+- 现象：HEAD 已在加载的提交列表中时，点击工具栏定位图标仍清空 Graph 并显示正在读取历史，丢失已加载分页和当前搜索。
+- 原因：定位入口无条件重置提交列表、分页和筛选后调用 History 查询，未区分定位已有节点与读取缺失节点；只读首屏也不能保证较旧 HEAD 可见。
+- 解决方案：已加载 HEAD 只更新选择和滚动定位令牌，保留提交、引用、搜索和分页；缺失 HEAD 时恢复必要引用、清除阻挡的搜索并复用有界跨页定位，同一历史的未加载 HEAD 继续追加分页。
+- 验证方式：类型检查、状态与历史项两文件 60 项单元测试、无头 History 专项通过；覆盖重复定位、筛选保持、HEAD 被筛除、Detached HEAD 和分页追加。受控宿主以 150 条提交验证两次滚动定位较旧 HEAD，Graph 数量始终保留，不重读 Snapshot/History、不显示空列表或加载状态；未启动真实 VS Code 桌面集成。
+- 相关文件：`webview/store.ts`、`tests/ui-state.test.ts`、`scripts/test-history-ui.mjs`、`scripts/test-ui.mjs`、`docs/WORKBENCH_SPEC.md`。
+
 ## BUG-055：Stash 预检隐藏底层诊断并将涉及文件误作冲突路径
 
 - 日期：2026-10-03
