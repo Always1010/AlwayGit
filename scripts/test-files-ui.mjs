@@ -33,6 +33,8 @@ export async function verifyFiles(browser, url) {
     assert.equal(await panel.locator('.file-status[aria-label="Modified"]').count(), 3, 'File states expose accessible status labels');
     assert.equal((await panel.locator('.file-status-badge').first().innerText()).trim(), 'M', 'Modification status appears in the file icon corner');
     assert.equal(await panel.locator('.file-item > .codicon').count(), 0, 'Each row uses one file icon with a status badge');
+    const compactRow = await panel.locator('.file-item').first().boundingBox();
+    assert.ok(compactRow && compactRow.height <= 34, 'Default two-line file rows stay compact');
     const filter = panel.getByRole('searchbox', { name: 'Filter changed file paths', exact: true });
     await filter.fill(' FEATURES/AUTH ');
     assert.equal(await panel.locator('.file-item').count(), 1, 'Directory fragments must filter the complete relative path case-insensitively');
