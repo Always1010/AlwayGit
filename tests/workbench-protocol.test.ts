@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { actionSchema, createRepositoryCollectionSchema, reorderRepositorySchema, diffSchema, openRepositorySchema, openWorkbenchSchema, requestSchema, sessionSchema } from '../src/protocol/validation';
 
 describe('Workbench protocol validation', () => {
+  it.each(['merge', 'rebase', 'reset'])('requires a captured branch and HEAD for %s', type => {
+    const action = { type, target: 'HEAD', ...(type === 'reset' ? { mode: 'hard' } : {}) };
+    expect(actionSchema.safeParse(action).success).toBe(false);
+    expect(actionSchema.parse({ ...action, expectedHead: 'a'.repeat(40), expectedBranch: 'main' })).toMatchObject({ expectedBranch: 'main' });
+    expect(actionSchema.safeParse({ ...action, expectedHead: '', expectedBranch: '' }).success).toBe(true);
+  });
   it('accepts selected Stash paths and rejects an empty selection', () => {
     const action = { type: 'stash.create', paths: ['selected [1].txt', 'notes.txt'], includeUntracked: true, message: 'selected files' };
     expect(actionSchema.parse(action)).toEqual(action);

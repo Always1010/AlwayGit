@@ -342,7 +342,7 @@ describe('Git safety regressions', () => {
     await commit(root, 'same.txt', 'base');
     await git(root, 'switch', '-c', 'topic'); await commit(root, 'same.txt', 'topic');
     await git(root, 'switch', 'main'); await commit(root, 'same.txt', 'main');
-    await expect(service.execute(repo, { type: 'merge', target: 'topic' })).rejects.toThrow();
+    await expect(service.execute(repo, await service.prepareAction(repo, { type: 'merge', target: 'topic' }))).rejects.toThrow();
     await expect(service.execute(repo, { type: 'branch.checkout', name: 'topic' })).rejects.toMatchObject({ code: 'CHECKOUT_BLOCKED', details: { reason: 'conflicts', paths: ['same.txt'] } });
     await expect(service.execute(repo, { type: 'checkout.stash', target: 'topic' })).rejects.toMatchObject({ code: 'CHECKOUT_BLOCKED', details: { reason: 'conflicts' } });
     await git(root, 'remote', 'add', 'origin', path.join(root, 'unused.git'));

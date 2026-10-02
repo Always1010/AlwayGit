@@ -6,7 +6,7 @@ import * as vscode from 'vscode';
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { ActionBlocker, AddRepositoriesResult, GitServiceContract, HostMessage, RepositoryCollection, RepositoryDiscoveryPreview, RepositoryStatus, RpcRequest, Snapshot, OperationSettings } from '../protocol/types';
+import type { ActionBlocker, AddRepositoriesResult, GitAction, GitServiceContract, HostMessage, RepositoryCollection, RepositoryDiscoveryPreview, RepositoryStatus, RpcRequest, Snapshot, OperationSettings } from '../protocol/types';
 import { actionSchema, operationSettingsSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema, repositoryDiscoverySchema, cancelRepositoryDiscoverySchema, addRepositoriesSchema, reorderRepositorySchema, createRepositoryCollectionSchema } from '../protocol/validation';
 import type { RepositoryManager } from '../repositories/manager';
 import type { DiscoveryResult } from '../repositories/discovery';
@@ -222,9 +222,10 @@ export class Workbench implements vscode.Disposable {
         return null;
       }
       case 'action': {
-        const action = actionSchema.parse(request.payload);
+        let action: GitAction = actionSchema.parse(request.payload);
         await this.refreshExternalActivity(repo.commonDir);
         if (this.isBusy(repo.commonDir)) throw new Error(this.text('An operation is already running in this repository.', '此仓库已有正在执行的操作。'));
+        if (action.type === 'merge' || action.type === 'rebase' || action.type === 'reset') action = await this.git.prepareAction(repo, action);
         const operation = action.type === 'operation.abort' ? (await this.snapshots.read(repo.id, () => this.git.snapshot(repo))).operation : undefined;
         if (!await confirmAction(repo, action, this.language(), operation)) throw new Error(this.text('Operation cancelled.', '操作已取消。'));
         await this.refreshExternalActivity(repo.commonDir);

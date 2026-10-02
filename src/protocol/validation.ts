@@ -2,6 +2,7 @@ import { z } from 'zod';
 const text = z.string().min(1).max(4096);
 const paths = z.array(text).min(1).max(10000);
 const kind = z.enum(['merge', 'rebase', 'cherry-pick', 'revert']);
+const actionContext = { expectedHead: z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})?$/), expectedBranch: z.string().max(4096) };
 export const actionSchema = z.union([
   z.object({ type: z.enum(['stage', 'resolve-and-stage', 'unstage', 'discard']), paths }),
   z.object({ type: z.literal('commit'), message: z.string().min(1).max(100000), amend: z.boolean().optional(), reviewToken: text.optional() }),
@@ -25,9 +26,9 @@ export const actionSchema = z.union([
   z.object({ type: z.literal('stash.drop'), selector: text, expectedOid: text.optional() }),
   z.object({ type: z.literal('worktree.add'), path: text, branch: text.optional(), newBranch: text.optional(), start: text.optional(), detach: z.boolean().optional() }),
   z.object({ type: z.literal('worktree.remove'), path: text, force: z.boolean().optional() }),
-  z.object({ type: z.enum(['merge', 'rebase']), target: text }),
+  z.object({ type: z.enum(['merge', 'rebase']), target: text, ...actionContext }),
   z.object({ type: z.enum(['cherry-pick', 'revert']), commits: z.array(text).min(1).max(1000), mainline: z.number().int().min(1).max(100).optional(), expectedHead: text.optional(), expectedBranch: text.optional() }),
-  z.object({ type: z.literal('reset'), target: text, mode: z.enum(['soft', 'mixed', 'hard']) }),
+  z.object({ type: z.literal('reset'), target: text, mode: z.enum(['soft', 'mixed', 'hard']), ...actionContext }),
   z.object({ type: z.literal('operation.continue'), kind, reviewToken: text.optional() }),
   z.object({ type: z.enum(['operation.abort', 'operation.skip']), kind }),
 ]);

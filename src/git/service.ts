@@ -347,6 +347,20 @@ export class GitService implements GitServiceContract {
     else { const stage = source.stage ?? 0; if (![0, 1, 2, 3].includes(stage)) throw new GitError('Invalid index stage', 'INVALID_ARGUMENT'); const records = decodePaths((await this.run(repo, ['ls-files', '--stage', '-z', '--', name])).stdout).split('\0'); for (const record of records) { const tab = record.indexOf('\t'); const meta = record.slice(0, tab).split(' '); if (record.slice(tab + 1) === name && Number(meta[2]) === stage) object = meta[1]; } }
     return object ? (await this.run(repo, ['cat-file', 'blob', object], false, maxBytes)).stdout : Buffer.alloc(0);
   }
+  /** Freeze the selected target before a native confirmation can outlive its snapshot. */
+  async prepareAction(repo: Repository, action: GitAction): Promise<GitAction> {
+    if (!['merge', 'rebase', 'reset'].includes(action.type)) return action;
+    const guarded = action as Extract<GitAction, { type: 'merge' | 'rebase' | 'reset' }>;
+    await this.verify(repo);
+    const current = await this.status(repo);
+    if (guarded.expectedHead !== undefined || guarded.expectedBranch !== undefined) this.requireActionContext(guarded, current);
+    return { ...guarded, target: await this.oid(repo, guarded.target), expectedHead: current.head ?? '', expectedBranch: current.branch };
+  }
+  private requireActionContext(action: { expectedHead?: string; expectedBranch?: string }, current: { head?: string; branch: string }): void {
+    if (action.expectedHead === undefined || action.expectedBranch === undefined || action.expectedHead !== (current.head ?? '') || action.expectedBranch !== current.branch) {
+      throw new GitError('The target branch or HEAD changed before the operation started. Refresh and confirm the operation again.', 'OPERATION_CHANGED');
+    }
+  }
   async execute(repo: Repository, action: GitAction): Promise<void> {
     const key = normalized(repo.commonDir); const prior = queues.get(key) ?? Promise.resolve();
     const operation = prior.catch(() => {}).then(async () => { const unsafe = unsafeTerminations.get(key); if (unsafe) throw unsafe; await this.verify(repo); await this.executeNow(repo, action); });
@@ -684,14 +698,14 @@ export class GitService implements GitServiceContract {
         if (action.branch) { await this.refName(repo, action.branch); args.push(await this.oid(repo, `refs/heads/${action.branch}`)); if (!action.detach) args[args.length - 1] = action.branch; } else if (action.start) args.push(await this.oid(repo, action.start)); break;
       }
       case 'worktree.remove': { token(action.path, 'worktree path'); const target = await canonicalPath(path.resolve(repo.root, action.path)); const trees = await this.worktrees(repo); const canonical = await Promise.all(trees.map(tree => canonicalPath(tree.path))); const selected = trees.find((_, index) => normalized(canonical[index]) === normalized(target)); if (!selected || normalized(target) === normalized(canonical[0]) || normalized(target) === normalized(repo.root)) throw new GitError('Only registered linked worktrees other than the current Worktree can be removed', 'INVALID_WORKTREE'); if (selected.locked) throw new GitError(`This Worktree is Locked: ${selected.locked}. Unlock it before removal.`, 'WORKTREE_LOCKED'); args = ['worktree', 'remove', ...(action.force ? ['--force'] : []), '--', selected.path]; break; }
-      case 'merge': case 'rebase': args = [action.type, await this.oid(repo, action.target)]; break;
+      case 'merge': case 'rebase': this.requireActionContext(action, await this.status(repo)); args = [action.type, await this.oid(repo, action.target)]; break;
       case 'cherry-pick': case 'revert': {
         if (!action.commits.length) throw new GitError('Select commits', 'INVALID_ARGUMENT');
         if (action.mainline !== undefined && (!Number.isSafeInteger(action.mainline) || action.mainline < 1)) throw new GitError('Invalid merge parent number', 'INVALID_ARGUMENT');
         if(action.expectedHead||action.expectedBranch){const current=await this.status(repo);if(action.expectedHead&&current.head!==action.expectedHead||action.expectedBranch&&current.branch!==action.expectedBranch)throw new GitError('The target branch changed before the operation started. Select the commits again.', 'OPERATION_CHANGED');}
         args = [action.type, ...(action.mainline ? ['-m', String(action.mainline)] : []), ...(await Promise.all(action.commits.map(x => this.oid(repo, x))))]; break;
       }
-      case 'reset': if (!['soft', 'mixed', 'hard'].includes(action.mode)) throw new GitError('Invalid reset mode', 'INVALID_ARGUMENT'); args = ['reset', `--${action.mode}`, await this.oid(repo, action.target), '--']; break;
+      case 'reset': if (!['soft', 'mixed', 'hard'].includes(action.mode)) throw new GitError('Invalid reset mode', 'INVALID_ARGUMENT'); this.requireActionContext(action, await this.status(repo)); args = ['reset', `--${action.mode}`, await this.oid(repo, action.target), '--']; break;
       case 'operation.continue': case 'operation.abort': case 'operation.skip': {
         const snapshot = await this.snapshot(repo), state = snapshot.operation;
         if (!state.kind || state.kind !== action.kind) throw new GitError('The selected Git operation is no longer active', 'OPERATION_CHANGED');
