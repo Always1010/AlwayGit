@@ -1,4 +1,4 @@
-export interface Repository { id: string; root: string; commonDir: string; name: string; mainRoot?: string; collectionId?: string }
+export interface Repository { id: string; root: string; commonDir: string; gitDir?: string; name: string; mainRoot?: string; collectionId?: string }
 export interface RepositoryCollection { id: string; name: string }
 export interface RepositoryOrder { root: string[]; collections: Record<string, string[]> }
 export interface ReorderRepository { key: string; targetKey: string; position: 'before' | 'after' }
