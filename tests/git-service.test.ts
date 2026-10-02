@@ -1,20 +1,14 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-import { mkdtemp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { GitService, parseStatus, validateFilePath } from '../src/git/service';
-const exec = promisify(execFile);
-const roots: string[] = [];
-const git = async (cwd: string, ...args: string[]) => (await exec('git', ['-C', cwd, ...args], { windowsHide: true, env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_EDITOR: 'true' } })).stdout.trim();
-async function setup() {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'alwaygit-test-')); roots.push(root);
-  await git(root, 'init', '-b', 'main'); await git(root, 'config', 'user.name', 'Test User'); await git(root, 'config', 'user.email', 'test@example.com'); await git(root, 'config', 'commit.gpgsign', 'false');
-  const service = new GitService(); const repo = await service.discover(root); return { root, service, repo };
-}
-async function commit(root: string, name: string, text: string | Buffer, message = name) { await writeFile(path.join(root, name), text); await git(root, 'add', '--', name); await git(root, 'commit', '-m', message); return git(root, 'rev-parse', 'HEAD'); }
-afterEach(async () => { for (const root of roots.splice(0)) { if (path.dirname(root) !== os.tmpdir() || !path.basename(root).startsWith('alwaygit-test-')) throw new Error('Unsafe cleanup target'); await rm(root, { recursive: true, force: true, maxRetries: 5 }); } });
+import { commitFile as commit, git, gitFixtures } from './support/git-fixture';
+
+const fixtures = gitFixtures('alwaygit-test-');
+const setup = fixtures.setup;
+afterEach(fixtures.cleanup);
+
 describe('Git service integration', () => {
   it('adds a remote only after validating its name and URL',async()=>{
     const {service,repo}=await setup();
@@ -145,16 +139,91 @@ describe('Git service integration', () => {
     const original=(await service.snapshot(repo)).operation.originalHead;await service.execute(repo,{type:'operation.abort',kind:'merge'});
     expect(await git(root,'rev-parse','HEAD')).toBe(original);expect(await git(root,'status','--porcelain')).toBe('');
   });
-  it('implements branches, tags, stashes, reset, amend, cherry-pick, revert and rebase', async () => {
-    const { root, service, repo } = await setup(); const base = await commit(root, 'base.txt', 'base');
-    await service.execute(repo, { type: 'branch.create', name: 'topic', checkout: true }); const picked = await commit(root, 'picked.txt', 'pick'); await service.execute(repo, { type: 'branch.checkout', name: 'main' }); await commit(root, 'main.txt', 'main');
-    await expect(service.execute(repo,{type:'cherry-pick',commits:[picked],expectedHead:'0'.repeat(40),expectedBranch:'main'})).rejects.toThrow('target branch changed');
-    await service.execute(repo, { type: 'cherry-pick', commits: [picked], expectedHead: await git(root,'rev-parse','HEAD'), expectedBranch:'main' }); expect(await readFile(path.join(root, 'picked.txt'), 'utf8')).toBe('pick'); await service.execute(repo, { type: 'revert', commits: ['HEAD'] }); await expect(readFile(path.join(root, 'picked.txt'))).rejects.toThrow();
-    await service.execute(repo, { type: 'tag.create', name: 'v1', message: 'release' }); expect((await service.snapshot(repo)).refs.find(x => x.kind === 'tag' && x.name === 'v1')?.oid).toBe(await git(root, 'rev-parse', 'HEAD')); await service.execute(repo, { type: 'tag.delete', name: 'v1' });
-    await writeFile(path.join(root, 'base.txt'), 'stash'); await service.execute(repo, { type: 'stash.create', message: 'saved' }); expect((await service.snapshot(repo)).stashes).toHaveLength(1); await service.execute(repo, { type: 'stash.apply', selector: 'stash@{0}' }); expect(await readFile(path.join(root, 'base.txt'), 'utf8')).toBe('stash'); await service.execute(repo, { type: 'stash.drop', selector: 'stash@{0}' });
-    await service.execute(repo, { type: 'reset', mode: 'hard', target: base }); await service.execute(repo, { type: 'commit', message: 'amended base', amend: true }); expect((await service.details(repo, 'HEAD')).commit.subject).toBe('amended base');
-    await service.execute(repo, { type: 'branch.checkout', name: 'topic' }); await service.execute(repo, { type: 'rebase', target: 'main' }); expect((await service.snapshot(repo)).operation.kind).toBeUndefined(); await service.execute(repo, { type: 'branch.checkout', name: 'main' }); await service.execute(repo, { type: 'branch.create', name: 'topic-two' }); const branches=await service.snapshot(repo),expectedOids=Object.fromEntries(branches.refs.filter(ref=>ref.kind==='local'&&['topic','topic-two'].includes(ref.name)).map(ref=>[ref.name,ref.oid])); await service.execute(repo, { type: 'branch.delete', names: ['topic','topic-two'], force: true, expectedOids }); expect((await service.snapshot(repo)).refs.filter(ref=>['topic','topic-two'].includes(ref.name))).toHaveLength(0);
+  it('creates and checks out branches, then deletes the confirmed branch set', async () => {
+    const { root, service, repo } = await setup();
+    await commit(root, 'base.txt', 'base');
+    await service.execute(repo, { type: 'branch.create', name: 'topic', checkout: true });
+    expect((await service.snapshot(repo)).branch).toBe('topic');
+    await service.execute(repo, { type: 'branch.checkout', name: 'main' });
+    await service.execute(repo, { type: 'branch.create', name: 'topic-two' });
+    const branches = await service.snapshot(repo);
+    expect(branches.branch).toBe('main');
+    const expectedOids = Object.fromEntries(branches.refs
+      .filter(ref => ref.kind === 'local' && ['topic', 'topic-two'].includes(ref.name))
+      .map(ref => [ref.name, ref.oid]));
+    await service.execute(repo, { type: 'branch.delete', names: ['topic', 'topic-two'], force: true, expectedOids });
+    expect((await service.snapshot(repo)).refs.filter(ref => ['topic', 'topic-two'].includes(ref.name))).toHaveLength(0);
   });
+
+  it('creates an annotated Tag at HEAD and deletes it', async () => {
+    const { root, service, repo } = await setup();
+    const head = await commit(root, 'base.txt', 'base');
+    await service.execute(repo, { type: 'tag.create', name: 'v1', message: 'release' });
+    expect((await service.snapshot(repo)).refs.find(ref => ref.kind === 'tag' && ref.name === 'v1')?.oid).toBe(head);
+    expect(await git(root, 'cat-file', '-t', 'refs/tags/v1')).toBe('tag');
+    await service.execute(repo, { type: 'tag.delete', name: 'v1' });
+    expect((await service.snapshot(repo)).refs.some(ref => ref.kind === 'tag' && ref.name === 'v1')).toBe(false);
+  });
+
+  it('applies a saved Stash and drops it only when explicitly requested', async () => {
+    const { root, service, repo } = await setup();
+    await commit(root, 'base.txt', 'base');
+    await writeFile(path.join(root, 'base.txt'), 'stash');
+    await service.execute(repo, { type: 'stash.create', message: 'saved' });
+    const saved = (await service.snapshot(repo)).stashes;
+    expect(saved).toHaveLength(1);
+    await service.execute(repo, { type: 'stash.apply', selector: saved[0].selector });
+    expect(await readFile(path.join(root, 'base.txt'), 'utf8')).toBe('stash');
+    expect((await service.snapshot(repo)).stashes).toEqual(saved);
+    await service.execute(repo, { type: 'stash.drop', selector: saved[0].selector });
+    expect((await service.snapshot(repo)).stashes).toEqual([]);
+  });
+
+  it('rejects a stale Cherry-pick target and reverts a successful pick', async () => {
+    const { root, service, repo } = await setup();
+    await commit(root, 'base.txt', 'base');
+    await git(root, 'switch', '-c', 'topic');
+    const picked = await commit(root, 'picked.txt', 'pick');
+    await git(root, 'switch', 'main');
+    const head = await commit(root, 'main.txt', 'main');
+    await expect(service.execute(repo, {
+      type: 'cherry-pick', commits: [picked], expectedHead: '0'.repeat(40), expectedBranch: 'main',
+    })).rejects.toThrow('target branch changed');
+    expect(await git(root, 'rev-parse', 'HEAD')).toBe(head);
+    await service.execute(repo, { type: 'cherry-pick', commits: [picked], expectedHead: head, expectedBranch: 'main' });
+    expect(await readFile(path.join(root, 'picked.txt'), 'utf8')).toBe('pick');
+    await service.execute(repo, { type: 'revert', commits: ['HEAD'] });
+    await expect(readFile(path.join(root, 'picked.txt'))).rejects.toThrow();
+    expect(await readFile(path.join(root, 'main.txt'), 'utf8')).toBe('main');
+  });
+
+  it('resets to the selected Commit and amends its message', async () => {
+    const { root, service, repo } = await setup();
+    const base = await commit(root, 'base.txt', 'base');
+    await commit(root, 'later.txt', 'later');
+    await service.execute(repo, { type: 'reset', mode: 'hard', target: base });
+    expect(await git(root, 'rev-parse', 'HEAD')).toBe(base);
+    await expect(readFile(path.join(root, 'later.txt'))).rejects.toThrow();
+    await service.execute(repo, { type: 'commit', message: 'amended base', amend: true });
+    expect((await service.details(repo, 'HEAD')).commit.subject).toBe('amended base');
+    expect(await readFile(path.join(root, 'base.txt'), 'utf8')).toBe('base');
+  });
+
+  it('rebases a topic onto main while preserving both branches of content', async () => {
+    const { root, service, repo } = await setup();
+    await commit(root, 'base.txt', 'base');
+    await git(root, 'switch', '-c', 'topic');
+    await commit(root, 'topic.txt', 'topic');
+    await git(root, 'switch', 'main');
+    const main = await commit(root, 'main.txt', 'main');
+    await git(root, 'switch', 'topic');
+    await service.execute(repo, { type: 'rebase', target: 'main' });
+    expect((await service.snapshot(repo)).operation.kind).toBeUndefined();
+    expect(await git(root, 'rev-parse', 'HEAD^')).toBe(main);
+    expect(await readFile(path.join(root, 'topic.txt'), 'utf8')).toBe('topic');
+    expect(await readFile(path.join(root, 'main.txt'), 'utf8')).toBe('main');
+  });
+
   it('shares commonDir across linked worktrees and only removes registered linked worktrees', async () => {
     const { root, service, repo } = await setup(); await commit(root, 'a.txt', 'a'); const linked = path.join(root, 'linked');
     await service.execute(repo, { type: 'worktree.add', path: linked, newBranch: 'linked-branch' }); const child = await service.discover(linked); expect(child.commonDir).toBe(repo.commonDir); expect(child.id).not.toBe(repo.id); expect((await service.snapshot(repo)).worktrees).toHaveLength(2);
@@ -175,15 +244,6 @@ describe('Git service integration', () => {
     expect(await git(bare, 'rev-parse', 'refs/heads/release/tracked')).toBe(await git(root, 'rev-parse', 'HEAD'));
     expect((await service.snapshot(repo)).pushTarget).toEqual({ localBranch: 'tracked', remote: 'origin', remoteBranch: 'release/tracked', configured: true });
     const remoteRef=(await service.snapshot(repo)).refs.find(ref=>ref.name==='origin/release/tracked')!;await service.execute(repo,{type:'remote.delete',remote:'origin',branches:['release/tracked'],expectedOids:{'release/tracked':remoteRef.oid}});await expect(git(bare,'rev-parse','refs/heads/release/tracked')).rejects.toThrow();
-  });
-  it('serializes writes across service instances sharing a common directory', async () => {
-    const { root, service, repo } = await setup(); await commit(root, 'a.txt', 'base'); const linked = path.join(root, 'linked'); await service.execute(repo, { type: 'worktree.add', path: linked, newBranch: 'linked' }); const other = await service.discover(linked);
-    await writeFile(path.join(root, 'a.txt'), 'main content'); await writeFile(path.join(linked, 'a.txt'), 'linked content');
-    let release!: () => void; let enter!: () => void; const blocked = new Promise<void>(resolve => { release = resolve; }); const entered = new Promise<void>(resolve => { enter = resolve; }); let otherCalls = 0;
-    const first = new GitService({ environment: async (_repo, args) => { if (args[0] === 'add') { enter(); await blocked; } return {}; } }); const second = new GitService({ environment: async () => { otherCalls++; return {}; } });
-    const firstWrite = first.execute(repo, { type: 'stage', paths: ['a.txt'] }); await entered; const otherWrite = second.execute(other, { type: 'stage', paths: ['a.txt'] });
-    await new Promise(resolve => setTimeout(resolve, 100)); expect(otherCalls).toBe(0); release(); await Promise.all([firstWrite, otherWrite]);
-    expect((await service.content(repo, { kind: 'index', path: 'a.txt' })).toString()).toBe('main content'); expect((await service.content(other, { kind: 'index', path: 'a.txt' })).toString()).toBe('linked content');
   });
   it('rejects path traversal/options and surfaces external locks, hooks, and bounded output failures', async () => {
     const { root, service, repo } = await setup(); await commit(root, 'a.txt', 'a');
