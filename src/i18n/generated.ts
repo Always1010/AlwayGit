@@ -832,6 +832,18 @@ export const catalog = {
     "en": "Only the listed Tags will be pushed. Existing remote Tags with different identities are not overwritten.",
     "zh-CN": "只会推送上面列出的标签；不会覆盖远端已有但身份不同的同名标签。"
   },
+  "actions.pushRelatedAnnotatedTags": {
+    "en": "Also push related annotated Tags",
+    "zh-CN": "同时推送相关的注解标签"
+  },
+  "actions.rememberPushTagChoiceAsDefault": {
+    "en": "Remember this Tag choice as the Push default",
+    "zh-CN": "将此标签选项记为 Push 默认值"
+  },
+  "actions.followTagsDoesNotPushLightweightOrUnrelatedTags": {
+    "en": "This follows Git --follow-tags: lightweight and unrelated Tags are not included.",
+    "zh-CN": "此选项对应 Git --follow-tags，不包含轻量标签或与本分支无关的标签。"
+  },
   "arguments.gitCommandArgumentsAreTooLongSelectFewerItems": {
     "en": "Git command arguments are too long. Select fewer items or shorten the description and retry.",
     "zh-CN": "Git 命令参数过长。请选择更少的项目或缩短说明后重试。"
@@ -2171,6 +2183,10 @@ export const catalog = {
   "manifest.contributes.configuration.properties.alwaygit.allowDetachedHead.description": {
     "en": "Allow direct Detached HEAD Checkout. Disabled by default; create and switch to a local branch when inspecting historical versions.",
     "zh-CN": "允许直接切换到 Detached HEAD。默认关闭；查看历史版本时请创建并切换到本地分支。"
+  },
+  "manifest.contributes.configuration.properties.alwaygit.pushFollowTags.description": {
+    "en": "Default to pushing missing annotated Tags reachable from the selected branch during Push. The Push dialog can override and remember this choice.",
+    "zh-CN": "分支 Push 时默认同时推送该分支可达且远端缺少的注解标签。可在 Push 对话框中临时覆盖并记住选择。"
   },
   "menus.createLocalTrackingBranches": {
     "en": "Create Local Tracking Branches…",
@@ -4159,6 +4175,14 @@ export const catalog = {
     "en": "./webview",
     "zh-CN": "./webview"
   },
+  "settings.pushRelatedAnnotatedTagsByDefault": {
+    "en": "Push related annotated Tags by default",
+    "zh-CN": "默认推送相关的注解标签"
+  },
+  "settings.branchPushUsesFollowTagsWhenEnabled": {
+    "en": "When enabled, branch Push includes missing annotated Tags reachable from that branch. Lightweight and unrelated Tags still require Push Tag.",
+    "zh-CN": "开启后，分支 Push 会附带该分支可达且远端缺少的注解标签；轻量标签和无关标签仍需使用“推送标签”。"
+  },
   "sidebar.refreshRepositoryListAndStatusBadges": {
     "en": "Refresh repository list and status badges",
     "zh-CN": "刷新仓库列表和状态角标"
@@ -5008,6 +5032,9 @@ export interface MessageParameters {
   "actions.selectTagsAndRemote": {  };
   "actions.selectedTags": { count: number };
   "actions.pushesOnlyTheListedTags": {  };
+  "actions.pushRelatedAnnotatedTags": {  };
+  "actions.rememberPushTagChoiceAsDefault": {  };
+  "actions.followTagsDoesNotPushLightweightOrUnrelatedTags": {  };
   "arguments.gitCommandArgumentsAreTooLongSelectFewerItems": {  };
   "arguments.messagesCannotContainNULCharacters": {  };
   "catalogStore.theSharedRepositoryCatalogIsDamagedOrUsesAn": {  };
@@ -5337,6 +5364,7 @@ export interface MessageParameters {
   "manifest.contributes.configuration.properties.alwaygit.historyPageSize.description": {  };
   "manifest.contributes.configuration.properties.alwaygit.refreshInterval.description": {  };
   "manifest.contributes.configuration.properties.alwaygit.allowDetachedHead.description": {  };
+  "manifest.contributes.configuration.properties.alwaygit.pushFollowTags.description": {  };
   "menus.createLocalTrackingBranches": {  };
   "menus.checkoutAsLocalBranch": {  };
   "menus.repositoriesSelected": { count: number };
@@ -5830,6 +5858,8 @@ export interface MessageParameters {
   "settings.m": {  };
   "settings.appTsx": {  };
   "settings.webview": {  };
+  "settings.pushRelatedAnnotatedTagsByDefault": {  };
+  "settings.branchPushUsesFollowTagsWhenEnabled": {  };
   "sidebar.refreshRepositoryListAndStatusBadges": {  };
   "sidebar.collapse": {  };
   "sidebar.expand": {  };

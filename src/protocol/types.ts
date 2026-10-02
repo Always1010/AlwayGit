@@ -30,7 +30,7 @@ export type GitAction =
   | { type: 'commit'; message: string; amend?: boolean; reviewToken?: string }
   | { type: 'fetch'; remote?: string }
   | { type: 'pull'; strategy: 'ff-only' | 'merge' | 'rebase'; remote?: string }
-  | { type: 'push'; remote?: string; branch?: string; remoteBranch?: string; setUpstream?: boolean; forceWithLease?: boolean; expectedOid?: string; expectedDestination?: string }
+  | { type: 'push'; remote?: string; branch?: string; remoteBranch?: string; setUpstream?: boolean; followTags?: boolean; forceWithLease?: boolean; expectedOid?: string; expectedDestination?: string }
   | { type: 'remote.add'; name: string; url: string }
   | { type: 'branch.create'; name: string; start?: string; checkout?: boolean }
   | { type: 'branch.track'; branches: { source: string; name: string; expectedOid?: string }[]; checkout?: boolean; stashFirst?: boolean; includeUntracked?: boolean }
@@ -63,7 +63,7 @@ export type DiffPreview =
 export interface CheckoutBlocker { reason: 'local-changes' | 'conflicts' | 'operation-active' | 'worktree-occupied' | 'checkout-failed'; paths: string[]; target: string; worktreePath?: string; stashOid?: string; stashCreated?: boolean; branchCreated?: boolean; trackBranches?: { source: string; name: string; expectedOid?: string }[] }
 export interface StashApplyBlocker { kind: 'stash-apply'; reason: 'untracked-path-exists' | 'restore-conflict' | 'restore-blocked' | 'state-changed'; paths: string[]; conflictPaths?: string[]; selector: string; stashOid: string; stashRetained: true; workingTreeUnchanged: true; output?: string }
 export type ActionBlocker = CheckoutBlocker | StashApplyBlocker;
-export interface OperationSettings { allowDetachedHead: boolean; scope: 'workspace' | 'user' }
+export interface OperationSettings { allowDetachedHead: boolean; pushFollowTags: boolean; scope: 'workspace' | 'user' }
 export interface RpcRequest { id: string; method: 'repositories' | 'repositoryCollections' | 'repositoryOrder' | 'reorderRepository' | 'repositoryStatuses' | 'pickRepositoryDirectory' | 'discoverRepositories' | 'cancelRepositoryDiscovery' | 'addRepository' | 'removeRepositories' | 'createRepositoryCollection' | 'renameRepositoryCollection' | 'deleteRepositoryCollection' | 'moveRepositories' | 'snapshot' | 'operationReview' | 'history' | 'details' | 'stashDetails' | 'compare' | 'cherryPickCheck' | 'cancelQuery' | 'action' | 'diff' | 'diffPreview' | 'copyText' | 'openWorkbench' | 'openRepository' | 'openProject' | 'openFile' | 'openWorktree' | 'pickWorktree' | 'showLog' | 'saveSession' | 'operationSettings' | 'saveOperationSettings'; repoId?: string; payload?: unknown }
 /** Missing paths means the source cannot limit which working files changed. */
 export interface RepositoryChanges { paths?: string[]; index?: boolean }

@@ -24,7 +24,7 @@ export const defaultLayout: LayoutState = { preset: 'workbench', sidebar: 210, d
 export type CheckoutFailure = CheckoutBlocker & { detached?: boolean };
 interface WorkbenchState {
   operationReview?: { repoId: string; action: Extract<GitAction, { type: 'commit' | 'operation.continue' }>; review: OperationReview };
-  operationSettings: OperationSettings; loadOperationSettings(): Promise<void>; saveOperationSettings(allowDetachedHead: boolean): Promise<void>;
+  operationSettings: OperationSettings; loadOperationSettings(): Promise<void>; saveOperationSettings(settings: Omit<OperationSettings,'scope'>): Promise<void>;
   appearance: Appearance; diffNavigationScope: DiffNavigationScope; singleKeyShortcuts: boolean; settingsBaseline?: InterfaceSettings;
   beginSettings(): void; previewSettings(value: InterfaceSettingsUpdate): void; finishSettings(apply: boolean): void; restoreLayout(): void;
   repositories: Repository[]; repositoryCollections:RepositoryCollection[]; repositoryOrder?:RepositoryOrder; reorderRepository(payload:ReorderRepository):Promise<void>; repositoryStatuses: Record<string, RepositoryStatus>; selectedRepositoryKeys:string[]; repositorySelectionAnchor?:string; repoId?: string; snapshot?: Snapshot; commits: Commit[]; historyHead?: Commit; details?: CommitDetails; comparison?: CommitComparison; selectedOid?: string; selectedOids: string[]; selectionAnchor?: string; selectedRefs:string[]; refSelectionAnchor?:string; selectedParent?: string; selectedStashOid?: string; selectedStashSection?:StashSection; stashDetails?: StashDetails; selectedFile?: string; diffTarget?: DiffTarget; diffRevision: number;
@@ -49,9 +49,9 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   setWorkingFilter(value) { const repoId = get().repoId; if (repoId) set({ workingFilters: { ...get().workingFilters, [repoId]: value } }); },
   diffNavigationScope: session.diffNavigationScope === 'file' ? 'file' : 'commit',
   singleKeyShortcuts: session.singleKeyShortcuts !== false,
-  operationSettings: { allowDetachedHead: false, scope: 'workspace' },
-  async loadOperationSettings() { const settings = await rpc<OperationSettings>('operationSettings'); if (typeof settings?.allowDetachedHead === 'boolean') set({ operationSettings: settings }); },
-  async saveOperationSettings(allowDetachedHead) { const settings = await rpc<OperationSettings>('saveOperationSettings', undefined, { allowDetachedHead }); if (typeof settings?.allowDetachedHead !== 'boolean' || settings.allowDetachedHead !== allowDetachedHead) throw new Error(uiText("notices.couldNotSaveGitOperationSettings")); set({ operationSettings: settings }); },
+  operationSettings: { allowDetachedHead: false, pushFollowTags: false, scope: 'workspace' },
+  async loadOperationSettings() { const settings = await rpc<OperationSettings>('operationSettings'); if (typeof settings?.allowDetachedHead === 'boolean'&&typeof settings?.pushFollowTags==='boolean') set({ operationSettings: settings }); },
+  async saveOperationSettings(update) { const settings = await rpc<OperationSettings>('saveOperationSettings', undefined, update); if (typeof settings?.allowDetachedHead !== 'boolean' || typeof settings?.pushFollowTags !== 'boolean' || settings.allowDetachedHead !== update.allowDetachedHead || settings.pushFollowTags !== update.pushFollowTags) throw new Error(uiText("notices.couldNotSaveGitOperationSettings")); set({ operationSettings: settings }); },
   repositories: [], repositoryCollections:[], repositoryStatuses: {}, selectedRepositoryKeys:[], commits: [], selectedOids:[], selectedRefs:[], search: '', language: session.language === 'zh-CN' ? 'zh-CN' : 'en', layout: initialLayout, appearance: normalizeAppearance(session.appearance), locateToken:0,nextOffset: 0, tips: [], hasMore: false, loading: false, historyLoading: false, detailsLoading: false, diffRevision: 0, busy: false, activity: '', tab: 'history', drafts: session.drafts ?? {}, collapsedSidebarGroups:[],
   report(error) { set({ error: message(error) }); },
   async initialize() {

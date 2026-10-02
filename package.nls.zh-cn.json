@@ -14,5 +14,6 @@
   "manifest.contributes.configuration.properties.alwaygit.gitPath.description": "Git 可执行文件路径。留空时使用内置 Git 扩展的路径或 PATH。",
   "manifest.contributes.configuration.properties.alwaygit.historyPageSize.description": "每页历史记录加载的提交数。",
   "manifest.contributes.configuration.properties.alwaygit.refreshInterval.description": "可见 Workbench 的刷新间隔（秒）。",
-  "manifest.contributes.configuration.properties.alwaygit.allowDetachedHead.description": "允许直接切换到 Detached HEAD。默认关闭；查看历史版本时请创建并切换到本地分支。"
+  "manifest.contributes.configuration.properties.alwaygit.allowDetachedHead.description": "允许直接切换到 Detached HEAD。默认关闭；查看历史版本时请创建并切换到本地分支。",
+  "manifest.contributes.configuration.properties.alwaygit.pushFollowTags.description": "分支 Push 时默认同时推送该分支可达且远端缺少的注解标签。可在 Push 对话框中临时覆盖并记住选择。"
 }

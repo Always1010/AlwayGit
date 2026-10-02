@@ -61,7 +61,7 @@ describe('Workbench protocol validation', () => {
     expect(openWorkbenchSchema.parse({newTab:true})).toEqual({newTab:true});
     expect(()=>openWorkbenchSchema.parse({})).toThrow();
     expect(()=>openRepositorySchema.parse({newTab:true,newWindow:true})).toThrow();
-    expect(actionSchema.parse({ type: 'push', remote: 'origin', branch: 'main', remoteBranch: 'release/main', setUpstream: true })).toMatchObject({ remoteBranch: 'release/main', setUpstream: true });
+    expect(actionSchema.parse({ type: 'push', remote: 'origin', branch: 'main', remoteBranch: 'release/main', setUpstream: true, followTags: true })).toMatchObject({ remoteBranch: 'release/main', setUpstream: true, followTags: true });
     expect(actionSchema.parse({type:'remote.add',name:'origin',url:'https://example.com/acme/repo.git'})).toEqual({type:'remote.add',name:'origin',url:'https://example.com/acme/repo.git'});
     expect(actionSchema.parse({type:'cherry-pick',commits:['abc'],expectedHead:'def',expectedBranch:'main'})).toMatchObject({expectedBranch:'main'});
     expect(actionSchema.parse({type:'branch.delete',names:['topic','fix/a'],expectedOids:{topic:'a'.repeat(40)}})).toMatchObject({names:['topic','fix/a']});

@@ -119,12 +119,12 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
   const state = useWorkbench(), t = useTranslation(), { appearance, layout } = state;
   const [page, setPage] = useState<SettingsPage>('theme');
   const [colorTheme, setColorTheme] = useState<ColorTheme>(isLightTheme(theme) ? 'light' : 'dark');
-  const [allowDetachedHead, setAllowDetachedHead] = useState(state.operationSettings.allowDetachedHead), [advancedDirty, setAdvancedDirty] = useState(false), [saving, setSaving] = useState(false), [saveError, setSaveError] = useState<string>();
-  useEffect(() => { if (!advancedDirty) setAllowDetachedHead(state.operationSettings.allowDetachedHead); }, [advancedDirty, state.operationSettings.allowDetachedHead]);
+  const [allowDetachedHead, setAllowDetachedHead] = useState(state.operationSettings.allowDetachedHead),[pushFollowTags,setPushFollowTags]=useState(state.operationSettings.pushFollowTags), [advancedDirty, setAdvancedDirty] = useState(false), [saving, setSaving] = useState(false), [saveError, setSaveError] = useState<string>();
+  useEffect(() => { if (!advancedDirty){setAllowDetachedHead(state.operationSettings.allowDetachedHead);setPushFollowTags(state.operationSettings.pushFollowTags);} }, [advancedDirty, state.operationSettings.allowDetachedHead,state.operationSettings.pushFollowTags]);
   const close = () => { if (!saving) state.finishSettings(false); };
   const apply = async () => {
     setSaving(true); setSaveError(undefined);
-    try { if (advancedDirty) await state.saveOperationSettings(allowDetachedHead); state.finishSettings(true); }
+    try { if (advancedDirty) await state.saveOperationSettings({allowDetachedHead,pushFollowTags}); state.finishSettings(true); }
     catch (error) { setSaveError(error instanceof Error ? error.message : String(error)); }
     finally { setSaving(false); }
   };
@@ -197,6 +197,8 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
           <label className="form-checkbox"><input type="checkbox" aria-label={t("settings.allowDirectDetachedHEADCheckout")} checked={allowDetachedHead} disabled={saving} onChange={event=>{setAdvancedDirty(true);setAllowDetachedHead(event.target.checked);}}/>{t("settings.allowDirectDetachedHEADCheckout")}</label>
           <p className="settings-page-copy">{t("settings.disabledByDefaultCreateAndSwitchToALocal")}</p>
           <p className="settings-note">{t("settings.thisAlsoControlsDetachedWorktreesInternalRebaseStepsAnd")}</p>
+          <label className="form-checkbox"><input type="checkbox" aria-label={t("settings.pushRelatedAnnotatedTagsByDefault")} checked={pushFollowTags} disabled={saving} onChange={event=>{setAdvancedDirty(true);setPushFollowTags(event.target.checked);}}/>{t("settings.pushRelatedAnnotatedTagsByDefault")}</label>
+          <p className="settings-page-copy">{t("settings.branchPushUsesFollowTagsWhenEnabled")}</p>
         </section>}
         {page === 'language' && <section className="settings-page" aria-labelledby="language-heading">
           <h3 id="language-heading">{t("common.language")}</h3>

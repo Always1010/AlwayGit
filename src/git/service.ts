@@ -599,7 +599,7 @@ export class GitService implements GitServiceContract {
         const setUpstream = branch && (action.setUpstream ?? true);
         const lease = action.forceWithLease ? this.confirmedRemoteOid(action.expectedOid) : undefined;
         if (action.forceWithLease) await this.confirmRemoteDestination(repo, destination!, action.expectedDestination);
-        args = ['push', ...(setUpstream ? ['--set-upstream'] : []), ...(lease !== undefined ? [`--force-with-lease=refs/heads/${remoteBranch}:${lease}`] : []), ...remote(destination), ...(branch ? [`refs/heads/${branch}:refs/heads/${remoteBranch}`] : [])]; break;
+        args = ['push', action.followTags ? '--follow-tags' : '--no-follow-tags', ...(setUpstream ? ['--set-upstream'] : []), ...(lease !== undefined ? [`--force-with-lease=refs/heads/${remoteBranch}:${lease}`] : []), ...remote(destination), ...(branch ? [`refs/heads/${branch}:refs/heads/${remoteBranch}`] : [])]; break;
       }
       case 'remote.add': {
         const name=action.name.trim(),url=action.url.trim();
