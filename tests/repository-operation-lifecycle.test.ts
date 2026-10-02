@@ -87,4 +87,21 @@ describe('repository operation lifecycle', () => {
     expect(git.execute).not.toHaveBeenCalled();
     expect(projects.runRepositoryOperation).toHaveBeenCalledOnce();
   });
+  it('forwards cancellation through the read scope while leaving a concurrent write untouched',async()=>{
+    const projects={runRepositoryOperation:vi.fn(async(_key:string,_label:string,task:()=>Promise<unknown>)=>task())};
+    const {value,git}=workbench(projects),signals:AbortSignal[]=[];
+    let finishOld!:(value:string)=>void,finishWrite!:()=>void;
+    Object.assign(git,{
+      withReadSignal:vi.fn((signal:AbortSignal,task:()=>Promise<unknown>)=>{signals.push(signal);return task();}),
+      history:vi.fn(async(_repo:unknown,query:{search?:string})=>query.search==='old'?new Promise<string>(done=>{finishOld=done;}):'latest'),
+    });
+    git.execute.mockImplementation(()=>new Promise<void>(done=>{finishWrite=done;}));
+    const old=value.handle({id:'old-read',method:'history',repoId:'repo',payload:{search:'old'}}),rejected=expect(old).rejects.toMatchObject({code:'ABORTED'});
+    for(let i=0;i<5;i++)await Promise.resolve();
+    const write=value.handle(action);for(let i=0;i<12;i++)await Promise.resolve();
+    await expect(value.handle({id:'new-read',method:'history',repoId:'repo',payload:{search:'new'}})).resolves.toBe('latest');await rejected;
+    expect(signals.map(signal=>signal.aborted)).toEqual([true,false]);expect(git.execute).toHaveBeenCalledOnce();
+    await value.handle({id:'cancel-write-attempt',method:'cancelQuery',payload:{requestId:action.id}});
+    expect(signals[1].aborted).toBe(false);finishOld('obsolete');finishWrite();await write;
+  });
 });

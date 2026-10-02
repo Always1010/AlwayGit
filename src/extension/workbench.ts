@@ -1,4 +1,7 @@
 import { SnapshotCoordinator } from '../application/snapshot-coordinator';
+import { QueryCoordinator } from '../application/query-coordinator';
+import { readQueryCategory } from '../protocol/queries';
+import { cancelQuerySchema } from '../protocol/validation';
 import * as vscode from 'vscode';
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -27,6 +30,7 @@ export class Workbench implements vscode.Disposable {
   private lastPanel?: WorkbenchPanel;
   private activeRepository?: string;
   private readonly snapshots = new SnapshotCoordinator();
+  private readonly queries = new QueryCoordinator();
   private readonly fingerprints = new Map<string, string>();
   private readonly disposables: vscode.Disposable[] = [];
   private readonly busy = new Set<string>();
@@ -64,7 +68,7 @@ export class Workbench implements vscode.Disposable {
     const entry:WorkbenchPanel={panel,activeRepository:repoId,blank};
     this.panels.set(panel,entry);this.lastPanel=entry;this.updatePanelTitle(entry);this.presenceEmitter.fire(this.presence);
     panel.iconPath = vscode.Uri.joinPath(this.context.extensionUri, 'media', 'alwaygit.svg');
-    panel.onDidDispose(() => { this.panels.delete(panel);for(const [id,scan] of this.repositoryDiscoveries)if(scan.source===entry){scan.cancelled=true;this.repositoryDiscoveries.delete(id);}if(this.lastPanel===entry)this.lastPanel=[...this.panels.values()].at(-1);this.presenceEmitter.fire(this.presence); });
+    panel.onDidDispose(() => { this.queries.cancelOwner(entry);this.panels.delete(panel);for(const [id,scan] of this.repositoryDiscoveries)if(scan.source===entry){scan.cancelled=true;this.repositoryDiscoveries.delete(id);}if(this.lastPanel===entry)this.lastPanel=[...this.panels.values()].at(-1);this.presenceEmitter.fire(this.presence); });
     panel.webview.onDidReceiveMessage(async (raw: unknown) => {
       const parsed = requestSchema.safeParse(raw);
       if (!parsed.success) return;
@@ -133,6 +137,12 @@ export class Workbench implements vscode.Disposable {
   /** All UI requests go through the same validated, trusted application boundary. */
   async handle(request: RpcRequest): Promise<unknown> { return this.handleRequest(request); }
   private async handleRequest(request: RpcRequest, source?:WorkbenchPanel): Promise<unknown> {
+    if(request.method==='cancelQuery'){this.queries.cancelOwner(source??this,cancelQuerySchema.parse(request.payload).requestId);return null;}
+    const category=readQueryCategory(request.method);
+    if(category)return this.queries.run(source??this,category,request.id,signal=>this.git.withReadSignal?this.git.withReadSignal(signal,()=>this.executeRequest(request,source)):this.executeRequest(request,source));
+    return this.executeRequest(request,source);
+  }
+  private async executeRequest(request: RpcRequest, source?:WorkbenchPanel): Promise<unknown> {
     if (request.method === 'operationSettings') return this.operationSettings();
     if (request.method === 'saveOperationSettings') {
       const settings = operationSettingsSchema.parse(request.payload);
@@ -143,6 +153,7 @@ export class Workbench implements vscode.Disposable {
     if (request.method === 'saveSession') {
       const session = sessionSchema.parse(request.payload);
       if (source) {
+        if(source.activeRepository!==session.repoId)this.queries.cancelOwner(source);
         source.session = session;
         source.activeRepository = session.repoId;
         source.blank = source.blank && !session.repoId;
@@ -176,6 +187,7 @@ export class Workbench implements vscode.Disposable {
     const repo = this.repositories.get(request.repoId);
     switch (request.method) {
       case 'snapshot': {
+        if(source&&source.activeRepository!==repo.id)this.queries.cancelOwner(source);
         this.activeRepository = repo.id;if(source){source.activeRepository=repo.id;this.lastPanel=source;this.updatePanelTitle(source);}
         const snapshot = await this.snapshots.read(repo.id, () => this.git.snapshot(repo)); this.recordFingerprint(snapshot); return snapshot;
       }
@@ -269,7 +281,7 @@ export class Workbench implements vscode.Disposable {
     }
     finally { this.polling = false; }
   }
-  private selectPanelRepository(entry:WorkbenchPanel,repoId:string):void {entry.activeRepository=repoId;this.activeRepository=repoId;this.lastPanel=entry;this.updatePanelTitle(entry);entry.panel.reveal();this.post({type:'selectRepository',repoId},entry);}
+  private selectPanelRepository(entry:WorkbenchPanel,repoId:string):void {if(entry.activeRepository!==repoId)this.queries.cancelOwner(entry);entry.activeRepository=repoId;this.activeRepository=repoId;this.lastPanel=entry;this.updatePanelTitle(entry);entry.panel.reveal();this.post({type:'selectRepository',repoId},entry);}
   private async refreshExternalActivity(commonDir:string):Promise<void>{
     const key=this.repositoryKey(commonDir),activity=this.externalBusy.get(key);if(!activity)return;
     if(await this.projects.isRepositoryBusy(commonDir)||this.externalBusy.get(key)!==activity)return;
@@ -289,5 +301,5 @@ export class Workbench implements vscode.Disposable {
     html = html.replace('</head>', `<script nonce="${nonce}">window.__ALWAYGIT_SESSION__=${session};</script></head>`);
     return html.replace('<head>', `<head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">`);
   }
-  dispose(): void { clearInterval(this.interval);for(const scan of this.repositoryDiscoveries.values())scan.cancelled=true;this.repositoryDiscoveries.clear();const panels=[...this.panels.keys()];this.panels.clear();this.lastPanel=undefined;for(const panel of panels)panel.dispose();this.presenceEmitter.dispose();for (const disposable of this.disposables) disposable.dispose(); }
+  dispose(): void { this.queries.dispose();clearInterval(this.interval);for(const scan of this.repositoryDiscoveries.values())scan.cancelled=true;this.repositoryDiscoveries.clear();const panels=[...this.panels.keys()];this.panels.clear();this.lastPanel=undefined;for(const panel of panels)panel.dispose();this.presenceEmitter.dispose();for (const disposable of this.disposables) disposable.dispose(); }
 }
