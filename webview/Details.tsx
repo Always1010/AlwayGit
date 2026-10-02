@@ -1,7 +1,8 @@
-import { useEffect, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
+import { memo, useEffect, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
 import type { Change, CommitDetails, CommitFile, DiffTarget } from '../src/protocol/types';
 import type { DialogRequest } from './ActionDialog';
 import { useWorkbench } from './store';
+import { useSnapshotFields, useWorkbenchFields } from './subscriptions';
 import { useTranslation } from './i18n';
 import { rpc } from './rpc';
 import { Button, Empty, Icon, Modal } from './ui';
@@ -45,7 +46,7 @@ function FileSelectionHint({ count, clickSelect = false }: { count: number; clic
 }
 
 function CommitFiles({ files, scope, filter, onFilterChange, target, empty, emptyAction, edit, context }: { files: CommitFile[]; scope: string; filter: string; onFilterChange(value:string):void; target(file: CommitFile): DiffTarget; empty: string; emptyAction?:ReactNode; edit(): void; context:ContextHandler }) {
-  const state = useWorkbench(), t = useTranslation(), visibleFiles = filterFilesByPath(files, filter), batch = useFileSelection(`${state.repoId}:${scope}`, visibleFiles.map(file => file.path)), filtering=!!filter.trim();
+  const state = useWorkbenchFields('diffTarget', 'repoId', 'report', 'selectFile', 'selectedFile'), t = useTranslation(), visibleFiles = filterFilesByPath(files, filter), batch = useFileSelection(`${state.repoId}:${scope}`, visibleFiles.map(file => file.path)), filtering=!!filter.trim();
   return <div className="file-selection-panel" onKeyDownCapture={batch.keyDown}>
     <div className="file-selection-toolbar"><label className="file-path-filter"><Icon name="search"/><input type="search" aria-label={t('Filter changed file paths', '筛选变更文件路径')} placeholder={t('Filter paths…', '筛选相对路径…')} value={filter} onChange={event=>onFilterChange(event.target.value)}/></label>{filtering&&<span className="file-filter-count" aria-live="polite">{visibleFiles.length} / {files.length}</span>}<Button icon="copy" disabled={!batch.selection.paths.length} onClick={() => void rpc('copyText', state.repoId, { text: batch.selection.paths.join('\n') }).catch(state.report)}>{t('Copy Paths', '复制路径')}{batch.selection.paths.length ? ` (${batch.selection.paths.length})` : ''}</Button></div>
     <FileSelectionHint clickSelect count={batch.selection.paths.length}/>
@@ -55,8 +56,8 @@ function CommitFiles({ files, scope, filter, onFilterChange, target, empty, empt
   </div>;
 }
 
-export function Details({ open, edit, context }: { open(dialog:DialogRequest):void; edit():void; context:ContextHandler }) {
-  const state=useWorkbench(),t=useTranslation(),detail=state.details,comparison=state.comparison,[fileFilter,setFileFilter]=useState('');
+function DetailsPanel({ open, edit, context }: { open(dialog:DialogRequest):void; edit():void; context:ContextHandler }) {
+  const state=useWorkbenchFields('compareCommits', 'comparison', 'details', 'detailsLoading', 'language', 'repoId', 'selectCommit', 'selectStashSection', 'selectedStashOid', 'selectedStashSection', 'stashDetails', 'tab'),t=useTranslation(),detail=state.details,comparison=state.comparison,[fileFilter,setFileFilter]=useState('');
   useEffect(()=>{setFileFilter('');},[state.repoId,state.tab,state.selectedStashSection]);
   const stash=state.selectedStashOid?state.stashDetails:undefined,metadata=stash??detail,bodyLines=metadata?.body.split('\n')??[],body=(bodyLines[0]===metadata?.commit.subject?bodyLines.slice(1):bodyLines).join('\n').trim();
   const stashSections=stash?(Object.entries(stash.sections) as ['working'|'index'|'untracked',CommitDetails][]).filter((entry):entry is ['working'|'index'|'untracked',CommitDetails]=>!!entry[1]):[];
@@ -75,12 +76,12 @@ export function Details({ open, edit, context }: { open(dialog:DialogRequest):vo
 }
 
 function ComparisonDetails({filter,onFilterChange,edit,context}:{filter:string;onFilterChange(value:string):void;edit():void;context:ContextHandler}){
-  const state=useWorkbench(),t=useTranslation(),comparison=state.comparison!;
+  const state=useWorkbenchFields('comparison'),t=useTranslation(),comparison=state.comparison!;
   return <><div className="comparison-summary"><div><span className="hash">{comparison.left.oid.slice(0,8)}</span><strong>{comparison.left.subject}</strong></div><Icon name="arrow-right"/><div><span className="hash">{comparison.right.oid.slice(0,8)}</span><strong>{comparison.right.subject}</strong></div></div><div className="pane-heading"><strong>{t('Changed Files','变更文件')} · {comparison.files.length}</strong></div><CommitFiles files={comparison.files} scope={`comparison:${comparison.left.oid}:${comparison.right.oid}`} filter={filter} onFilterChange={onFilterChange} target={file=>({kind:'comparison',left:comparison.left.oid,right:comparison.right.oid,path:file.path,previousPath:file.previousPath})} empty={t('The selected Commits have identical file contents','所选 Commit 的文件内容相同')} edit={edit} context={context}/></>;
 }
 
 function WorkingTree({ open, edit, context }: { open(dialog:DialogRequest):void; edit():void; context:ContextHandler }) {
-  const state=useWorkbench(),snapshot=state.snapshot!,t=useTranslation(),[amend,setAmend]=useState(false),[bulkAction,setBulkAction]=useState<{type:'stage'|'unstage';paths:string[]}>();
+  const state={ ...useWorkbenchFields('busy', 'diffTarget', 'drafts', 'execute', 'repoId', 'report', 'selectFile', 'selectedFile', 'setDraft'), snapshot: useSnapshotFields('branch', 'head', 'changes', 'operation') },snapshot=state.snapshot!,t=useTranslation(),[amend,setAmend]=useState(false),[bulkAction,setBulkAction]=useState<{type:'stage'|'unstage';paths:string[]}>();
   const [collapsed, setCollapsed] = useState({ conflict: false, unstaged: false, staged: false });
   useEffect(()=>{if(snapshot.operation.kind)setAmend(false);},[snapshot.operation.kind]);
   useEffect(()=>{setAmend(false);setBulkAction(undefined);setCollapsed({conflict:false,unstaged:false,staged:false});},[state.repoId]);
@@ -108,3 +109,5 @@ function WorkingTree({ open, edit, context }: { open(dialog:DialogRequest):void;
     {bulkAction&&<Modal title={bulkAction.type==='stage'?t(`Stage all ${bulkAction.paths.length} file${bulkAction.paths.length===1?'':'s'}?`,`Stage 全部 ${bulkAction.paths.length} 个文件？`):t(`Unstage all ${bulkAction.paths.length} file${bulkAction.paths.length===1?'':'s'}?`,`Unstage 全部 ${bulkAction.paths.length} 个文件？`)} onClose={()=>setBulkAction(undefined)} footer={<><Button onClick={()=>setBulkAction(undefined)}>{t('Cancel','取消')}</Button><Button data-autofocus="true" className="primary" onClick={()=>{const action=bulkAction;setBulkAction(undefined);void state.execute(action);}}>{bulkAction.type==='stage'?'Stage All':'Unstage All'}</Button></>}>{null}</Modal>}
   </>;
 }
+
+export const Details = memo(DetailsPanel);

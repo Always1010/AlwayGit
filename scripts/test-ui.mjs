@@ -29,7 +29,10 @@ let browser;
 try {
   browser = await chromium.launch(process.env.ALWAYGIT_BROWSER_EXECUTABLE ? { executablePath: process.env.ALWAYGIT_BROWSER_EXECUTABLE } : process.platform === 'win32' ? { channel: 'msedge' } : {});
   const url = `http://127.0.0.1:${server.address().port}/?demo=1`;
-  if(process.argv.includes('--stash-only')){
+  if(process.argv.includes('--refresh-only')){
+    await verifyRefresh(browser,url);
+    console.log('ALWAYGIT_UI_TESTS_PASSED: refresh-only');
+  } else if(process.argv.includes('--stash-only')){
     await verifyStash(browser,url);
     console.log('ALWAYGIT_UI_TESTS_PASSED: stash-only');
   } else if (process.argv.includes('--feedback-only')) {

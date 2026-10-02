@@ -1,8 +1,8 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type React from 'react';
 import { GraphRow, layoutGraph, type GraphCommit } from './graph';
-import { useWorkbench } from './store';
+import { useSnapshotFields, useWorkbenchFields } from './subscriptions';
 import { useTranslation } from './i18n';
 import { Button, Empty, Icon, ResizeHandle } from './ui';
 import type { ContextHandler } from './Sidebar';
@@ -16,8 +16,8 @@ const sameGraphPrefix = (prior: readonly GraphCommit[], next: readonly GraphComm
   return candidate?.oid===commit.oid&&candidate.parents.length===commit.parents.length&&candidate.parents.every((parent,parentIndex)=>parent===commit.parents[parentIndex]);
 });
 
-export function History({ context, checkout, checkoutBranch }: { context: ContextHandler; checkout(oid:string):void; checkoutBranch(name:string,remote?:boolean):void }) {
-  const state=useWorkbench(),t=useTranslation(),viewport=useRef<HTMLDivElement>(null),header=useRef<HTMLDivElement>(null),pendingSelection=useRef<string|undefined>(undefined),pendingRowFocus=useRef<string|undefined>(undefined),cached=useRef<{commits:GraphCommit[];paletteKey:string;graph:ReturnType<typeof layoutGraph>}|undefined>(undefined);
+function HistoryPanel({ context, checkout, checkoutBranch }: { context: ContextHandler; checkout(oid:string):void; checkoutBranch(name:string,remote?:boolean):void }) {
+  const state={ ...useWorkbenchFields('appearance', 'checkedRefs', 'commits', 'hasMore', 'historyHead', 'historyLoading', 'language', 'layout', 'loadHistory', 'locateCommit', 'locateToken', 'locatingOid', 'repoId', 'search', 'selectCommit', 'selectWorking', 'selectedOid', 'selectedOids', 'selectionAnchor', 'setCommitSelection', 'setLayout', 'setSearch', 'tab'), snapshot: useSnapshotFields('head', 'branch', 'defaultBranch', 'refs', 'changes') },t=useTranslation(),viewport=useRef<HTMLDivElement>(null),header=useRef<HTMLDivElement>(null),pendingSelection=useRef<string|undefined>(undefined),pendingRowFocus=useRef<string|undefined>(undefined),cached=useRef<{commits:GraphCommit[];paletteKey:string;graph:ReturnType<typeof layoutGraph>}|undefined>(undefined);
   const [hoveredPath,setHoveredPath]=useState<string|undefined>(undefined);
   const searching=state.search.length>0;
   const items=useMemo(()=>buildHistoryItems(state.commits,state.historyHead),[state.commits,state.historyHead]);
@@ -84,3 +84,5 @@ export function History({ context, checkout, checkoutBranch }: { context: Contex
     {state.hasMore&&<Button className="load-more" disabled={state.historyLoading||!!state.locatingOid} onClick={()=>void state.loadHistory(true)}>{t('Load More','加载更多')}</Button>}
   </section>;
 }
+
+export const History = memo(HistoryPanel);
