@@ -62,7 +62,9 @@ h1,h2,p {margin:0;}
 .repository-collection-heading {font-weight:600;}
 .repository-collection-heading>.codicon-folder,.repository-collection-heading>.codicon-folder-opened {color:var(--yellow);}
 .repository-row {display:flex;align-items:center;min-width:0;min-height:var(--row-height,24px);border-radius:3px;}
-.repository-row>.sidebar-item {flex:1;width:auto;min-width:0;}
+.repository-row>.sidebar-item {flex:1;width:auto;min-width:0;padding-left:0;}
+.repository-item>.codicon-repo {color:var(--muted);}
+.repository-item[aria-current="true"]>.codicon-repo {color:var(--accent);}
 .repository-collection-member {padding-left:19px;}
 .button.repository-drag-handle {flex:none;width:20px;min-height:20px;padding:0;color:var(--muted);opacity:.4;}
 .repository-row:hover>.repository-drag-handle,.repository-drag-handle:focus-visible {opacity:1;}
