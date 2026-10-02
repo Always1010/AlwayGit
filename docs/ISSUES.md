@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-023：多窗口仓库目录不同步且写操作可能并发
+
+- 日期：2026-10-02
+- 状态：已解决
+- 现象：在一个 VS Code 窗口添加、分组、移动或移除仓库后，另一个已打开的 Workbench 不会立即刷新；两个窗口还可能同时对同一仓库执行写操作，只能依赖 Git 最终报锁冲突。
+- 原因：仓库目录虽然写入共享 `globalState`，但扩展宿主之间没有变更通知；写操作队列只存在于单个扩展宿主内存中，不能覆盖不同 VS Code 窗口。
+- 解决方案：复用经过认证的窗口桥广播目录变更与仓库活动，接收窗口重新对齐保存路径、排除项和分组状态；按规范化 `commonDir` 建立跨宿主文件租约，运行期间续期并在结束后释放，崩溃遗留租约超时恢复。同仓库的第二个写操作在执行前被拒绝，不同仓库仍可并行。
+- 验证方式：类型检查通过；窗口桥测试覆盖无共同工作区时的目录与活动广播，仓库管理测试覆盖跨窗口添加、分组和移除对齐，租约测试覆盖同仓库互斥、不同仓库并行和陈旧租约恢复。
+- 相关文件：`src/application/window-bridge.ts`、`src/application/operation-lock.ts`、`src/extension/project-windows.ts`、`src/extension/workbench.ts`、`src/repositories/manager.ts`、`tests/window-bridge.test.ts`、`tests/operation-lock.test.ts`、`tests/repository-manager.test.ts`、`docs/ARCHITECTURE.md`、`docs/WORKBENCH_SPEC.md`。
+
 ## BUG-022：未选择仓库时误显示 Detached HEAD
 
 - 日期：2026-10-02

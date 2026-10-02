@@ -13,7 +13,7 @@ AlwayGit 是 Workspace 类型的 VS Code 扩展。每个 React WebviewPanel 提�
 | 目录 | 主要入口 | 职责 |
 | --- | --- | --- |
 | `src/extension` | `extension.ts`、`workbench.ts`、`project-windows.ts` | 扩展激活、面板集合、RPC 路由、VS Code 命令和生命周期 |
-| `src/application` | `confirm.ts`、`credentials.ts`、`window-bridge.ts`、`logging.ts` | 操作确认、认证与窗口 IPC、日志脱敏和用例协调 |
+| `src/application` | `confirm.ts`、`credentials.ts`、`window-bridge.ts`、`operation-lock.ts`、`logging.ts` | 操作确认、认证与窗口 IPC、跨宿主写操作租约、日志脱敏和用例协调 |
 | `src/git` | `service.ts`、`default-branch.ts` | 系统 Git 执行、结构化解析、查询、操作及共享仓库队列 |
 | `src/repositories` | `manager.ts`、`discovery.ts` | 仓库注册、递归发现、文件监听和持久化 |
 | `src/editor` | `paths.ts`、`documents.ts` | 安全路径解析、Git 内容文档、只读预览和 VS Code 原生 Diff |
@@ -32,7 +32,7 @@ Repository 标识工作目录，`commonDir` 标识共享 Git 存储。同一存�
 
 Git 发现比较 Git 目录与共享目录识别主工作目录；linked Worktree 使用 `worktree list` 返回的主目录维护可选 `mainRoot`，独立存储的普通仓库仍使用自身工作目录。不根据 `.git` 文件类型或远端 URL 推断归属。共享纯函数 `src/protocol/repositories.ts` 按规范化 `commonDir` 派生逻辑仓库，供 Workbench 仓库导航使用；活动工作目录仍为实际操作目标。用户创建的 Repository Collection 是独立的展示层级，以逻辑仓库键保存归属；没有 Collection 的仓库直接位于根层，不生成特殊的“未分组”节点。RepositoryManager 和 RPC 保留完整工作目录列表及原路径 ID，旧保存路径、会话和草稿无需重写；扫描数量以逻辑仓库计数，新增 Worktree 即使不增加仓库数也发布列表变化。
 
-手动添加目录由 `src/repositories/discovery.ts` 使用异步迭代遍历，仅对有 `.git` 标记的候选目录调用 Git 验证，并在有效仓库处停止深入。发现阶段不注册监听或写入状态；宿主显示逻辑仓库级多选结果，用户确认后 RepositoryManager 才批量去重、注册监听、保存和发布一次列表变更。已有自定义分组时，确认前可选择目标分组或仓库根层。扫描取消或关闭确认列表均不注册。用户主动添加的仓库路径、Collection 和归属保存在扩展 `globalState` 中，在同一 VS Code Profile 和运行环境的窗口间共享；首次启动会合并旧 `workspaceState` 路径完成兼容迁移。移除仓库会释放其监听、删除保存路径和分组归属并保存逻辑仓库排除项，防止工作区或内置 Git 自动发现立即恢复；再次明确添加时解除排除。启动恢复只重新验证已保存路径及 VS Code 提供的仓库，不重复递归扫描分类目录。本地路径不参与 Settings Sync。
+手动添加目录由 `src/repositories/discovery.ts` 使用异步迭代遍历，仅对有 `.git` 标记的候选目录调用 Git 验证，并在有效仓库处停止深入。发现阶段不注册监听或写入状态；宿主显示逻辑仓库级多选结果，用户确认后 RepositoryManager 才批量去重、注册监听、保存和发布一次列表变更。已有自定义分组时，确认前可选择目标分组或仓库根层。扫描取消或关闭确认列表均不注册。用户主动添加的仓库路径、Collection 和归属保存在扩展 `globalState` 中，在同一 VS Code Profile 和运行环境的窗口间共享；写入后通过窗口桥通知同一隔离域内的其他宿主，接收方重新发现保存路径、释放已排除或不再保存的注册项，并刷新惰性读取的 Collection 归属。首次启动会合并旧 `workspaceState` 路径完成兼容迁移。移除仓库会释放其监听、删除保存路径和分组归属并保存逻辑仓库排除项，防止工作区或内置 Git 自动发现立即恢复；再次明确添加时解除排除。启动恢复只重新验证已保存路径及 VS Code 提供的仓库，不重复递归扫描分类目录。本地路径不参与 Settings Sync。
 
 Status 使用 porcelain v2 与 NUL 分隔，分别保存 Index 和工作区状态。历史查询接受一组完整引用名；首次查询固定 tips，后续分页沿用同一组 tips，避免翻页过程中引用移动造成重复或遗漏。多个引用的结果使用 Git 可达提交并集，共同祖先只返回一次。图算法的 pending lanes 跨页延续，虚拟列表只渲染可见行。
 
@@ -72,13 +72,13 @@ Diff 的加载依赖比较目标的语义身份。历史比较不依赖 Snapshot
 
 `ProjectWindows` 通过 `WindowBridge` 登记每个扩展宿主的真实工作区目录和最近活动时间。登记位于系统临时目录，按 VS Code 数据/Profile、应用和宿主隔离；每个实例独立写入登记并定期续期，不写入仓库或工作台会话。Windows 路径规范化大小写并解析真实目录，Worktree 按工作目录区分。
 
-窗口间使用带随机令牌的回环 IPC，只接受预定义请求并重新核对工作区归属和信任状态。匹配优先级为精确目录、包含项目的最长工作区目录、最近活动窗口。接收方调用原生 `workbench.action.focusWindow` 激活自己；旧版通过工作区身份复用已打开窗口，并核对焦点结果。发送方等待执行回执。没有可用目标时以 `vscode.openFolder` 打开项目新窗口并等待扩展登记，超时报告失败。Repository 或 Worktree 的项目窗口命令始终创建独立项目窗口，待新宿主登记后发送受限的 `workbench` 请求，由目标窗口注册仓库并显示对应工作台。独立的“在新窗口打开 Workbench”使用 VS Code 空窗口，按新出现的宿主登记定位目标，只发送不带路径的 `show-workbench` 请求，因此不会在入口处隐式选择仓库。
+窗口间使用带随机令牌的回环 IPC，只接受预定义请求并重新核对工作区归属和信任状态。匹配优先级为精确目录、包含项目的最长工作区目录、最近活动窗口。接收方调用原生 `workbench.action.focusWindow` 激活自己；旧版通过工作区身份复用已打开窗口，并核对焦点结果。发送方等待执行回执。没有可用目标时以 `vscode.openFolder` 打开项目新窗口并等待扩展登记，超时报告失败。Repository 或 Worktree 的项目窗口命令始终创建独立项目窗口，待新宿主登记后发送受限的 `workbench` 请求，由目标窗口注册仓库并显示对应工作台。独立的“在新窗口打开 Workbench”使用 VS Code 空窗口，按新出现的宿主登记定位目标，只发送不带路径的 `show-workbench` 请求，因此不会在入口处隐式选择仓库。目录刷新与活动广播是同一隔离域内的窗口级请求，不要求两个窗口打开同一项目；它们不携带任意命令或 Git 参数。
 
 ## Git 操作、并发和错误
 
 Git 使用参数数组与 `shell: false`，引用和路径额外校验，文件操作使用 literal pathspec。子进程有输出限制、超时和非交互编辑器；超时终止子进程树。外部 Git 不受内存队列控制，因此 Git 锁和实际返回结果仍是最终依据。
 
-同一个 `commonDir` 同时只执行一个写操作，忙碌状态同步给该 Git 存储下所有已注册 Worktree。Checkout 在宿主检查当前分支、未提交修改、未解决冲突和 Worktree 占用。远程分支本地化使用完整 `refs/remotes/*` 来源和预期 OID；批量创建在任何写入前验证全部本地名称、upstream、符号引用与层级冲突，单项创建并切换通过带 `--track` 的 `switch -c` 原子建立本地分支和跟踪关系。`Stash Changes & Checkout` 的 Stash 与 Checkout 分别报告结果；若远程分支 Checkout 受阻，重试保留原来源、名称和 OID；若 Stash 成功但 Checkout 失败，保留 Stash，不隐式恢复或删除。
+同一个 `commonDir` 同时只执行一个写操作。单宿主仍使用内存忙碌状态；跨宿主使用隔离临时目录中的原子文件租约，租约按规范化共享 Git 目录散列、定期续期、结束时核对随机 token 后释放，崩溃遗留项超时后可恢复。活动开始与结束通过窗口桥同步给其他宿主，并映射到该 Git 存储下所有已注册 Worktree；广播只负责界面反馈，租约才是执行互斥边界，外部 Git 仍由 Git 自身锁保护。Checkout 在宿主检查当前分支、未提交修改、未解决冲突和 Worktree 占用。远程分支本地化使用完整 `refs/remotes/*` 来源和预期 OID；批量创建在任何写入前验证全部本地名称、upstream、符号引用与层级冲突，单项创建并切换通过带 `--track` 的 `switch -c` 原子建立本地分支和跟踪关系。`Stash Changes & Checkout` 的 Stash 与 Checkout 分别报告结果；若远程分支 Checkout 受阻，重试保留原来源、名称和 OID；若 Stash 成功但 Checkout 失败，保留 Stash，不隐式恢复或删除。
 
 Fetch、Pull 和 Push 沿用系统 Git Credential Helper、SSH Agent 和配置。需要输入时，使用每条命令独立的回环 IPC AskPass 桥接到 VS Code 输入框。桥接使用随机令牌并在命令结束后关闭；凭据不持久化，也不传到 Webview。日志与前端错误隐藏 URL 中的认证信息。
 

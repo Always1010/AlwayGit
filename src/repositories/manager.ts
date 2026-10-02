@@ -155,16 +155,20 @@ export class RepositoryManager implements vscode.Disposable {
     for(const key of new Set(keys)){if(!available.has(key))continue;if(collectionId)assignments[key]=collectionId;else delete assignments[key];moved++;}
     if(moved){await this.context.globalState.update(GLOBAL_COLLECTION_ASSIGNMENTS_KEY,assignments);this.listEmitter.fire();}return moved;
   }
-  async scan(): Promise<void> {
-    if (!vscode.workspace.isTrusted) return;
+  private async discoveryRoots(): Promise<Set<string>> {
     const roots = await this.rememberedRoots();
-    const excluded = new Set(this.context.globalState.get<string[]>(GLOBAL_EXCLUDED_KEY, []));
     for (const folder of vscode.workspace.workspaceFolders ?? []) if (folder.uri.scheme === 'file') roots.add(folder.uri.fsPath);
     try {
       const ext = vscode.extensions.getExtension<{ getAPI(version: number): { repositories: { rootUri: vscode.Uri }[] } }>('vscode.git');
       const api = ext ? (await ext.activate()).getAPI(1) : undefined;
       for (const repo of api?.repositories ?? []) if (repo.rootUri.scheme === 'file') roots.add(repo.rootUri.fsPath);
     } catch { /* Git extension is optional. */ }
+    return roots;
+  }
+  async scan(): Promise<void> {
+    if (!vscode.workspace.isTrusted) return;
+    const roots = await this.discoveryRoots();
+    const excluded = new Set(this.context.globalState.get<string[]>(GLOBAL_EXCLUDED_KEY, []));
     for (const root of roots) {
       try {
         const repo = await this.git.discover(root);
@@ -172,6 +176,24 @@ export class RepositoryManager implements vscode.Disposable {
       }
       catch (error) { this.log.appendLine(`[discovery] ${root}: ${error instanceof Error ? error.message : String(error)}`); }
     }
+  }
+  /** Reconciles this extension host after another VS Code window changes the shared catalog. */
+  async synchronizeSharedState(): Promise<void> {
+    if (!vscode.workspace.isTrusted) { this.listEmitter.fire(); return; }
+    const roots = await this.discoveryRoots(), desiredRoots = new Set([...roots].map(pathKey));
+    const excluded = new Set(this.context.globalState.get<string[]>(GLOBAL_EXCLUDED_KEY, []));
+    for (const root of roots) {
+      try {
+        const repo = await this.git.discover(root);
+        desiredRoots.add(pathKey(repo.root));
+        if (!excluded.has(repositoryGroupKey(repo))) this.register(repo);
+      } catch (error) { this.log.appendLine(`[catalog-sync] ${root}: ${error instanceof Error ? error.message : String(error)}`); }
+    }
+    for (const repo of [...this.repositories.values()]) {
+      if (excluded.has(repositoryGroupKey(repo)) || !desiredRoots.has(pathKey(repo.root))) this.unregister(repo.id);
+    }
+    // Collection names and assignments are read lazily from globalState, so one notification refreshes all panels.
+    this.listEmitter.fire();
   }
   notify(id: string, changes: RepositoryChanges = {}): void {
     clearTimeout(this.timers.get(id));
