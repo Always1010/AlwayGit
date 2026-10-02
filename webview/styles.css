@@ -303,6 +303,8 @@ h1,h2,p {margin:0;}
 .diff-word-added {background:var(--vscode-diffEditor-insertedTextBackground,color-mix(in srgb,var(--green) 48%,transparent));}
 .diff-word-removed {background:var(--vscode-diffEditor-removedTextBackground,color-mix(in srgb,var(--error) 48%,transparent));}
 .banner {display:flex;align-items:center;gap:7px;padding:5px 9px;flex:none;font-size:12px;flex-wrap:wrap;}
+.banner.notice {border-bottom:1px solid var(--border);border-left:3px solid var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--bg));}
+.banner.notice>.codicon {color:var(--accent);}
 .banner.error {background:var(--vscode-inputValidation-errorBackground,#472b2d);color:var(--error);}
 .banner>span {flex:1;overflow-wrap:anywhere;}
 .operation-notice {display:flex;align-items:center;gap:9px;flex:none;padding:7px 10px;border-bottom:1px solid var(--yellow);border-left:3px solid var(--yellow);background:color-mix(in srgb,var(--yellow) 15%,var(--bg));font-size:12px;flex-wrap:wrap;}
@@ -332,8 +334,6 @@ h1,h2,p {margin:0;}
 .feedback-error>.codicon {color:var(--error);}
 .feedback-spinner {animation:feedback-spin 1.2s linear infinite;}
 @keyframes feedback-spin {to{transform:rotate(360deg);}}
-.statusbar {display:flex;align-items:center;justify-content:space-between;gap:8px;flex:none;min-height:23px;border-top:1px solid var(--border);background:var(--surface-toolbar);font-size:11px;padding:2px 8px;}
-.statusbar>span:first-child {flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .context-menu {position:fixed;z-index:100;width:270px;max-width:calc(100vw - 12px);max-height:calc(100vh - 12px);overflow:auto;padding:4px;background:var(--vscode-menu-background,var(--bg));color:var(--vscode-menu-foreground,var(--fg));border:1px solid var(--vscode-menu-border,var(--border));border-radius:4px;box-shadow:0 7px 24px #0005;}
 .menu-caption {color:var(--muted);font-size:11px;padding:4px 9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .context-menu>button {display:flex;align-items:center;gap:9px;width:100%;text-align:left;min-height:29px;padding:4px 9px;border-radius:2px;}
@@ -437,7 +437,7 @@ h1,h2,p {margin:0;}
 .vscode-high-contrast-light {--border:var(--vscode-contrastBorder,#222);--accent:var(--vscode-focusBorder,#0f4a85);--graph-main:var(--vscode-foreground,#111);}
 @media(max-width:1000px) {.workspace{grid-template-columns:min(185px,var(--sidebar-width)) 6px minmax(0,1fr);}.top-panels{grid-template-columns:minmax(0,1fr) 6px clamp(230px,var(--details-width),270px);}.ref-badge{max-width:100px;}}
 @media(max-width:780px) {.top-panels{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(160px,1fr) minmax(170px,1fr);}.top-panels>.resize-handle{display:none;}.details-panel{border-top:1px solid var(--border);}.commit-metadata{max-height:110px;}.app-chrome .workbench-tab{display:none;}}
-@media(max-width:560px) {.workspace{grid-template-columns:minmax(0,1fr);grid-template-rows:125px minmax(0,1fr);}.workspace>.resize-handle{display:none;}.sidebar{border-bottom:1px solid var(--border);}.main-panel:not(.diff-collapsed){grid-template-rows:minmax(0,1fr) 6px min(150px,var(--diff-height));}.layout-editor .main-panel{grid-template-rows:minmax(0,1fr);}.app-chrome>.button{font-size:11px;}.app-chrome{gap:3px;}.app-chrome select{max-width:120px;}.toolbar-divider{margin:0 2px;}.toolbar .button{font-size:12px;padding:2px 5px;}.statusbar>span:last-child{display:none;}.ref-badge{max-width:90px;}}
+@media(max-width:560px) {.workspace{grid-template-columns:minmax(0,1fr);grid-template-rows:125px minmax(0,1fr);}.workspace>.resize-handle{display:none;}.sidebar{border-bottom:1px solid var(--border);}.main-panel:not(.diff-collapsed){grid-template-rows:minmax(0,1fr) 6px min(150px,var(--diff-height));}.layout-editor .main-panel{grid-template-rows:minmax(0,1fr);}.app-chrome>.button{font-size:11px;}.app-chrome{gap:3px;}.app-chrome select{max-width:120px;}.toolbar-divider{margin:0 2px;}.toolbar .button{font-size:12px;padding:2px 5px;}.ref-badge{max-width:90px;}}
 @media(prefers-reduced-motion:reduce) {*{scroll-behavior:auto;transition:none!important;animation:none!important;}}
 
 /* Same-level repository ordering uses an insertion line without changing row size. */

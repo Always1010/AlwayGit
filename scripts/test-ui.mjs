@@ -115,10 +115,14 @@ async function verifyWorkbench(browser, url) {
     assert.equal(await projectButton.locator('.codicon-folder').count(), 2, 'Repository folder command uses the selected double-folder design');
     assert.equal(await projectButton.locator('.codicon-vscode').count(), 1, 'Repository folder command keeps the VS Code mark centered in the folder');
     assert.equal(await page.locator('.branch-bar').count(), 0, 'Branch state is merged into the action toolbar');
+    assert.equal(await page.locator('.statusbar').count(), 0, 'The redundant persistent status bar is removed');
     const toolbarBox = await page.locator('.toolbar').boundingBox(), projectBox = await projectButton.boundingBox();
     assert.ok(toolbarBox && projectBox && toolbarBox.x + toolbarBox.width - projectBox.x - projectBox.width < 16, 'Project button belongs at the far right of the action toolbar');
     await projectButton.click();
-    await page.getByText('Demo: native VS Code command preview.', { exact: true }).waitFor();
+    const notice = page.locator('.banner.notice');
+    await notice.getByText('Demo: native VS Code command preview.', { exact: true }).waitFor();
+    await notice.getByRole('button', { name: 'Dismiss notification', exact: true }).click();
+    assert.equal(await notice.count(), 0, 'Transient notices can be dismissed from the top of the workbench');
     const historyViewport = history.locator('.history-viewport');
     await historyViewport.evaluate(element => { element.scrollTop = 500; });
     assert.ok(await historyViewport.evaluate(element => element.scrollTop) > 0, 'Fixture must scroll away from HEAD before Locate HEAD');

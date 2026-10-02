@@ -43,7 +43,7 @@
 
 ## 浏览器验收矩阵
 
-- 固定四区 Workbench、旧 Editor Focus 会话迁移、分支徽标与操作栏合并、右侧定位 HEAD 和双层文件夹/VS Code 纯图标按钮、面板和列拖动、Diff 动态最大高度与收起恢复、仅恢复布局而不重置界面设置的 Restore Layout、窄窗口和主题。
+- 固定四区 Workbench、旧 Editor Focus 会话迁移、分支徽标与操作栏合并、右侧定位 HEAD 和双层文件夹/VS Code 纯图标按钮、底部常驻状态栏移除与顶部按需提示、面板和列拖动、Diff 动态最大高度与收起恢复、仅恢复布局而不重置界面设置的 Restore Layout、窄窗口和主题。
 - 设置浮窗分级导航、预览、取消、应用、刷新期间的持久化；宿主主题与主题卡片优先级、丰富明暗主题、可配置未推送角标、字号、列表密度及独立 Diff 行高同步虚拟行高、Diff 自定义行高边界和旧设置兼容、Graph 预设及自定义浅色/深色色板的连续性与分页。
 - Repository、Local Branch、Remote Branch、Remote、Tag、Stash、Worktree 的对象菜单；仓库行和仓库分组标题通过右键打开管理菜单；分区标题单击只折叠内容，右侧图标执行分组操作，Local Branches 的 Graph 预设具有激活状态。Repository 单击、Ctrl/Cmd、Shift、Ctrl/Cmd+A 与 Escape 管理独立的批量操作选择，不切换仓库，范围严格按当前显示顺序计算；双击或 Enter 切换仓库，右键遵循所选范围。Worktree 单击只聚焦、双击或 Enter 切换。当前 Repository 使用强调色仓库图标，Worktree 和本地分支保留排头实心三角形；三者均使用 `aria-current`，与 Repository 蓝色操作选择相互独立。三角形在浅色背景为纯黑、深色背景为纯白，不显示 Current 文字徽标。
 - 菜单指针定位、视口边缘修正、竖向排列、键盘焦点、Escape 与点击外部关闭。

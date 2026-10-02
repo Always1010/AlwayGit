@@ -312,8 +312,9 @@ describe('repository UI consistency', () => {
     store.getState().dismissFeedback(); expect(store.getState().actionFeedback?.status).toBe('running');
     pending.resolve(); await pushing;
     expect(store.getState().actionFeedback?.status).toBe('success');
+    expect(store.getState().notice).toBe('push ✓');
     await store.getState().refresh({ background: true }); expect(store.getState().actionFeedback?.status).toBe('success');
-    store.getState().dismissFeedback(); expect(store.getState().actionFeedback).toBeUndefined();
+    store.getState().dismissFeedback(); expect(store.getState()).toMatchObject({actionFeedback:undefined,notice:undefined});
   });
   it('summarizes saved and untracked files after creating a Stash',async()=>{
     await store.getState().selectRepository('a');const before={...snapshot(a),changes:[{path:'notes.txt',indexStatus:'?',worktreeStatus:'?',conflict:false,untracked:true}]},after={...snapshot(a,2),stashes:[{selector:'stash@{0}',oid:'saved',subject:'pause notes'}]},fallback=bridge.rpc.getMockImplementation()!;
