@@ -233,7 +233,8 @@ async function verifyWorkbench(browser, url) {
     await sidebar.getByRole('button', { name: 'Branch feature/login/api', exact: true }).waitFor();
     const currentBranch = sidebar.getByRole('button', { name: 'Branch main', exact: true });
     assert.equal(await currentBranch.getAttribute('aria-current'), 'true', 'The current local branch exposes aria-current');
-    assert.equal(await currentBranch.locator('.current-indicator-glyph').count(), 1, 'The current local branch starts with a solid triangle marker');
+    assert.equal(await currentBranch.locator('.branch-icon').count(), 1, 'The current local branch uses the shared icon column');
+    assert.equal(await currentBranch.locator('.current-indicator').count(), 0, 'Branch icons do not reserve a separate current-marker column');
     assert.equal(await currentBranch.innerText(), 'main', 'The current branch does not repeat its state as a text badge');
     const featureBranch = sidebar.getByRole('button', { name: 'Branch feature/history-graph', exact: true });
     await assertMenu(featureBranch, ['Checkout…', 'Show in Graph', 'Show Only This Branch', 'Create Branch…', 'Create Tag…', 'Merge…', 'Rebase…', 'Push…', 'Delete Branch…', 'Copy Branch Name'], true);
