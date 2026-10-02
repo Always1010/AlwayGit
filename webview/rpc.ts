@@ -1,4 +1,5 @@
 import { groupRepositories } from '../src/protocol/repositories';
+import { branchNameConflict, branchNameConflictMessage } from '../src/protocol/ref-name';
 import { reconcileRepositoryOrder } from '../src/protocol/repository-order';
 import type { RepositoryOrder, ReorderRepository, ActionBlocker, Commit, CommitComparison, CommitDetails, GitAction, HistoryPage, HistoryQuery, HostMessage, Repository, RepositoryCollection, RepositoryStatus, RpcRequest, Snapshot, StashDetails } from '../src/protocol/types';
 import type { Appearance } from './appearance';
@@ -151,7 +152,7 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
       for(const {branch,source,existing} of branches)if(!existing)demoSnapshot.refs.push({name:branch.name,fullName:'refs/heads/'+branch.name,kind:'local',oid:source.oid,upstream:source.name});
       if(action.checkout&&branches[0]){demoSnapshot.branch=target!;demoSnapshot.head=branches[0].existing?.oid??branches[0].source.oid;demoSnapshot.upstream=branches[0].source.name;const tree=demoSnapshot.worktrees[0];if(tree){tree.branch='refs/heads/'+target;tree.detached=false;tree.head=demoSnapshot.head;}}
     }
-    else if (action.type === 'branch.create') {const target=resolve(action.start??'HEAD');demoSnapshot.refs.push({ name: action.name, fullName: `refs/heads/${action.name}`, kind: 'local', oid: target,upstream:action.start?.startsWith('refs/remotes/')?action.start.slice(13):undefined }); if (action.checkout){demoSnapshot.branch = action.name;demoSnapshot.head=target;} }
+    else if (action.type === 'branch.create') {const collision=branchNameConflict(action.name,demoSnapshot.refs.filter(ref=>ref.kind==='local').map(ref=>ref.name));if(collision)throw new RpcError(branchNameConflictMessage(action.name,collision),'BRANCH_EXISTS');const target=resolve(action.start??'HEAD');demoSnapshot.refs.push({ name: action.name, fullName: `refs/heads/${action.name}`, kind: 'local', oid: target,upstream:action.start?.startsWith('refs/remotes/')?action.start.slice(13):undefined }); if (action.checkout){demoSnapshot.branch = action.name;demoSnapshot.head=target;} }
     else if (action.type === 'branch.delete') demoSnapshot.refs = demoSnapshot.refs.filter(r => !(r.kind === 'local' && action.names.includes(r.name)));
     else if(action.type==='remote.add'){demoSnapshot.remotes=[...new Set([...(demoSnapshot.remotes??[]),action.name])];}
     else if(action.type==='remote.delete')demoSnapshot.refs=demoSnapshot.refs.filter(r=>!(r.kind==='remote'&&action.branches.some(branch=>r.name===`${action.remote}/${branch}`)));

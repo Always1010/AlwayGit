@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { access, lstat, realpath, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { ActionBlocker, Change, CheckoutBlocker, Commit, CommitComparison, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationReview, OperationState, Repository, RepositoryStatus, Snapshot, Stash, StashApplyBlocker, StashDetails, Worktree } from '../protocol/types';
-import { branchNameProblem, branchNameProblemMessage } from '../protocol/ref-name';
+import { branchNameConflict, branchNameConflictMessage, branchNameProblem, branchNameProblemMessage } from '../protocol/ref-name';
 import { remoteNameProblem, remoteUrlProblem } from '../protocol/remote';
 import { inferDefaultBranch } from './default-branch';
 
@@ -376,8 +376,8 @@ export class GitService implements GitServiceContract {
       if (local && (local.symbolicTarget || local.upstream !== source)) throw new GitError(`Local branch ${name} already exists and does not track ${source.replace('refs/remotes/', '')}. Choose another local name.`, 'BRANCH_EXISTS');
       // refs/heads/feature and refs/heads/feature/a cannot coexist. Detect this
       // before creating any branch, including collisions within the batch.
-      const collision = [...refs.keys()].filter(ref => ref.startsWith('refs/heads/')).map(ref => ref.slice('refs/heads/'.length)).concat([...names.keys()]).find(other => other !== name && (other.startsWith(`${name}/`) || name.startsWith(`${other}/`)));
-      if (collision) throw new GitError(`Local branch names conflict: ${name} and ${collision}. Choose another local name.`, 'BRANCH_EXISTS');
+      const collision = branchNameConflict(name, [...refs.keys()].filter(ref => ref.startsWith('refs/heads/')).map(ref => ref.slice('refs/heads/'.length)).concat([...names.keys()]).filter(other => other !== name));
+      if (collision) throw new GitError(branchNameConflictMessage(name, collision), 'BRANCH_EXISTS');
       plan.push({ source, name, exists: !!local });
     }
     if (action.checkout) {
@@ -468,8 +468,28 @@ export class GitService implements GitServiceContract {
         args=['remote','add',name,url];break;
       }
       case 'branch.create': {
-        const name = await this.refName(repo, action.name); const start = action.start ? await this.oid(repo, action.start) : undefined; const upstream = action.start?.startsWith('refs/remotes/') ? action.start : undefined;
-        if (upstream) await this.run(repo, ['show-ref', '--verify', '--', upstream]); args = action.checkout ? ['switch', '-c', name] : ['branch', name]; if (start) args.push(start); await this.run(repo, args); if (upstream) await this.run(repo, ['branch', `--set-upstream-to=${upstream}`, '--', name]); return;
+        const name = await this.refName(repo, action.name);
+        // Re-read inside the common-directory write queue; the dialog snapshot may be stale.
+        const localNames = (await this.text(repo, ['for-each-ref', '--format=%(refname)', 'refs/heads'])).split('\n').filter(Boolean).map(ref => ref.slice('refs/heads/'.length));
+        const collision = branchNameConflict(name, localNames);
+        if (collision) throw new GitError(branchNameConflictMessage(name, collision), 'BRANCH_EXISTS');
+        const start = await this.oid(repo, action.start ?? 'HEAD'), upstream = action.start?.startsWith('refs/remotes/') ? action.start : undefined;
+        if (upstream) await this.run(repo, ['show-ref', '--verify', '--', upstream]);
+        // switch -c can change Index/Working Tree before a ref creation failure.
+        // Create the ref first so even an external race cannot start Checkout on failure.
+        await this.run(repo, ['branch', '--no-track', '--', name, start]);
+        if (upstream) {
+          try { await this.run(repo, ['branch', `--set-upstream-to=${upstream}`, '--', name]); }
+          catch (error) { throw new GitError(`Branch ${name} was created and retained, but upstream configuration failed. Checkout did not run.\n${error instanceof Error ? error.message : String(error)}`, 'PARTIAL_FAILURE'); }
+        }
+        if (action.checkout) {
+          try { await this.checkout(repo, name); }
+          catch (error) {
+            const details: CheckoutBlocker = { ...(error instanceof GitError && error.details && 'target' in error.details ? error.details : { reason: 'checkout-failed' as const, paths: [], target: name }), branchCreated: true };
+            throw new GitError(`Branch ${name} was created and retained, but Checkout did not complete.\n${error instanceof Error ? error.message : String(error)}`, error instanceof GitError ? error.code : 'CHECKOUT_FAILED', error instanceof GitError ? error.stdout : '', error instanceof GitError ? error.stderr : '', details);
+          }
+        }
+        return;
       }
       case 'branch.checkout': return this.checkout(repo, action.name);
       case 'branch.track': return this.trackBranches(repo, action);

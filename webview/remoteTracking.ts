@@ -1,4 +1,5 @@
 import type { GitRef, Snapshot } from '../src/protocol/types';
+import { branchNameConflict } from '../src/protocol/ref-name';
 
 export function remoteBranchName(ref: GitRef, snapshot: Snapshot): string {
   const name = ref.fullName.replace(/^refs\/remotes\//, '');
@@ -15,6 +16,6 @@ export function trackingConflict(ref: GitRef, name: string, snapshot: Snapshot, 
   if (names.filter(value => value === name).length > 1) return 'duplicate';
   const collision = snapshot.refs.find(local => local.kind === 'local' && local.name === name);
   if (collision && !trackingCandidates(ref, snapshot).includes(collision)) return 'upstream';
-  if ([...names, ...snapshot.refs.filter(local => local.kind === 'local').map(local => local.name)].some(other => other !== name && (other.startsWith(`${name}/`) || name.startsWith(`${other}/`)))) return 'prefix';
+  if (branchNameConflict(name, [...names, ...snapshot.refs.filter(local => local.kind === 'local').map(local => local.name)].filter(other => other !== name))) return 'prefix';
   return undefined;
 }
