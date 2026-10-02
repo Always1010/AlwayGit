@@ -86,7 +86,7 @@ h1,h2,p {margin:0;}
 .repository-row>.sidebar-item>.truncate {flex:1;}
 .repository-icon {display:block;flex:none;width:18px;height:18px;}
 .repository-item>.repository-icon {color:var(--muted);}
-.repository-item[aria-current="true"]>.repository-icon {color:var(--accent);}
+.repository-item[aria-current="true"]>.repository-icon {color:var(--current-repository-color,#2463C5);}
 .repository-collection-member {padding-left:20px;}
 .button.repository-drag-handle {flex:none;width:20px;min-height:20px;padding:0;color:var(--muted);opacity:.4;}
 .repository-row:hover>.repository-drag-handle,.repository-drag-handle:focus-visible {opacity:1;}
@@ -102,7 +102,7 @@ h1,h2,p {margin:0;}
 .ref-item>.truncate,.tree-folder-name>.truncate {flex:1;}
 .branch-check {display:flex;align-items:center;justify-content:center;width:20px;min-height:var(--row-height,24px);flex:none;}
 .branch-icon {display:inline-flex;align-items:center;justify-content:center;flex:none;width:18px;height:18px;color:var(--muted);}
-.ref-item[aria-current="true"]>.branch-icon {border-radius:50%;background:#2463C5;color:#FFFFFF;}
+.ref-item[aria-current="true"]>.branch-icon {border-radius:50%;background:var(--current-branch-color,#2463C5);color:var(--current-branch-fg,#FFFFFF);}
 .ref-item[aria-current="true"]>.branch-icon>.codicon {font-size:13px;}
 .branch-shortcuts {display:flex;align-items:center;gap:6px;padding:4px 5px;font-size:11px;border-bottom:1px solid var(--row-border);}
 .branch-shortcuts>.muted {color:var(--fg);font-weight:500;}

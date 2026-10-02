@@ -13,6 +13,8 @@ export interface Appearance {
   codeRowHeight: number;
   fileSpacing: number;
   badgeColor: string;
+  currentBranchColor: string;
+  currentRepositoryColor: string;
   colors: GraphPaletteColors;
   mainColors: { light: string; dark: string };
 }
@@ -21,6 +23,8 @@ export type InterfaceSettingsUpdate = Partial<Omit<InterfaceSettings, 'appearanc
 const hexColor = /^#[0-9a-f]{6}$/i;
 const defaultMainColors = { light: '#283447', dark: '#EDF3FF' } as const;
 export const defaultBadgeColor = '#D61F3C';
+export const defaultCurrentBranchColor = '#2463C5';
+export const defaultCurrentRepositoryColor = '#2463C5';
 
 export function presetColors(id: GraphPaletteId): GraphPaletteColors {
   const palette = getGraphPalette(id);
@@ -28,7 +32,7 @@ export function presetColors(id: GraphPaletteId): GraphPaletteColors {
 }
 
 export const defaultAppearance: Appearance = {
-  theme: 'system', palette: 'vivid', codeFont: 12, codeRowHeight: 18, fileSpacing: 1, badgeColor: defaultBadgeColor, colors: presetColors('vivid'), mainColors: { ...defaultMainColors },
+  theme: 'system', palette: 'vivid', codeFont: 12, codeRowHeight: 18, fileSpacing: 1, badgeColor: defaultBadgeColor, currentBranchColor: defaultCurrentBranchColor, currentRepositoryColor: defaultCurrentRepositoryColor, colors: presetColors('vivid'), mainColors: { ...defaultMainColors },
 };
 
 function normalizeColors(value: Partial<GraphPaletteColors> | undefined, palette: GraphPaletteId): GraphPaletteColors {
@@ -47,6 +51,8 @@ export function normalizeAppearance(value: Partial<Appearance> = {}): Appearance
     codeRowHeight: Number.isFinite(value.codeRowHeight) ? Math.round(Math.max(16, Math.min(36, value.codeRowHeight!))) : 18,
     fileSpacing: Number.isFinite(value.fileSpacing) ? Math.round(Math.max(0, Math.min(8, value.fileSpacing!))) : 1,
     badgeColor: hexColor.test(value.badgeColor ?? '') ? value.badgeColor!.toUpperCase() : defaultBadgeColor,
+    currentBranchColor: hexColor.test(value.currentBranchColor ?? '') ? value.currentBranchColor!.toUpperCase() : defaultCurrentBranchColor,
+    currentRepositoryColor: hexColor.test(value.currentRepositoryColor ?? '') ? value.currentRepositoryColor!.toUpperCase() : defaultCurrentRepositoryColor,
     colors: normalizeColors(value.colors, palette),
     mainColors: {
       light: hexColor.test(value.mainColors?.light ?? '') ? value.mainColors!.light.toUpperCase() : defaultMainColors.light,

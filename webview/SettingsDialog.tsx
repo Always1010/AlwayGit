@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { useWorkbench } from './store';
 import { useTranslation } from './i18n';
 import type { Language } from './i18n';
-import { defaultBadgeColor, diffRowHeight, effectiveRowHeight, fileRowHeight, isLightTheme, presetColors, textColorForBackground, type ResolvedTheme, type ThemePreference } from './appearance';
+import { defaultBadgeColor, defaultCurrentBranchColor, defaultCurrentRepositoryColor, diffRowHeight, effectiveRowHeight, fileRowHeight, isLightTheme, presetColors, textColorForBackground, type ResolvedTheme, type ThemePreference } from './appearance';
 import { graphPalettes, type GraphPaletteId } from './graph/palettes';
-import { Button, Icon, Modal } from './ui';
+import { BranchIcon, Button, Icon, Modal } from './ui';
+import { RepositoryIcon } from './RepositoryIcon';
 
 type SettingsPage = 'language' | 'theme' | 'density' | 'status' | 'colors' | 'advanced';
 type ColorTheme = 'light' | 'dark';
@@ -193,13 +194,25 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
         </section>}
 
         {page === 'status' && <section className="settings-page" aria-labelledby="status-heading">
-          <div className="settings-title-row"><div><h3 id="status-heading">{t('Status indicators', '状态提醒')}</h3><p className="settings-page-copy">{t('Choose the color used for unpushed Commit counts.', '选择未推送 Commit 数量提醒的颜色。')}</p></div><Button className="icon-only" icon="discard" title={t('Restore default', '恢复默认')} aria-label={t('Restore default badge color', '恢复默认提醒颜色')} onClick={() => updateAppearance({ ...appearance, badgeColor: defaultBadgeColor })}/></div>
+          <div className="settings-title-row"><div><h3 id="status-heading">{t('Status indicators', '状态提醒')}</h3><p className="settings-page-copy">{t('Set separate colors for Commit counts, the current branch and the current repository.', '分别设置未推送 Commit 数量、当前分支和当前仓库的颜色。')}</p></div><Button className="icon-only" icon="discard" title={t('Restore default', '恢复默认')} aria-label={t('Restore default badge color', '恢复默认提醒颜色')} onClick={() => updateAppearance({ ...appearance, badgeColor: defaultBadgeColor })}/></div>
           <div className="badge-preview-row"><span>{t('Preview', '预览')}</span><span className="notification-badge settings-badge-preview" style={{ background: appearance.badgeColor, color: textColorForBackground(appearance.badgeColor) }}>24</span><span className="notification-badge settings-badge-preview" style={{ background: appearance.badgeColor, color: textColorForBackground(appearance.badgeColor) }}>69</span></div>
           <div className="badge-presets" role="radiogroup" aria-label={t('Badge color presets', '提醒颜色预设')}>
             {badgeColors.map(color => <button key={color} type="button" role="radio" aria-checked={appearance.badgeColor === color} aria-label={color} className={appearance.badgeColor === color ? 'is-chosen' : ''} style={{ background: color }} onClick={() => updateAppearance({ ...appearance, badgeColor: color })}/>)}
           </div>
           <label className="status-color-field"><span>{t('Custom color', '自定义颜色')}</span><ColorField value={appearance.badgeColor} label={t('Notification badge color', '通知角标颜色')} onChange={value => updateAppearance({ ...appearance, badgeColor: value })}/></label>
           <p className="settings-note">{t('Text switches between black and white automatically for contrast.', '文字会根据背景自动切换黑色或白色，保持清晰。')}</p>
+          <div className="current-color-setting">
+            <div className="current-color-label"><strong>{t('Current branch marker', '当前分支标记')}</strong><small>{t('Circle behind the current branch icon.', '当前分支图标的圆形底色。')}</small></div>
+            <span className="ref-item settings-current-preview" aria-current="true" style={{'--current-branch-color':appearance.currentBranchColor,'--current-branch-fg':textColorForBackground(appearance.currentBranchColor)} as React.CSSProperties}><BranchIcon/></span>
+            <ColorField value={appearance.currentBranchColor} label={t('Current branch marker color', '当前分支标记颜色')} onChange={currentBranchColor=>updateAppearance({...appearance,currentBranchColor})}/>
+            <Button className="icon-only" icon="discard" title={t('Restore default blue', '恢复默认蓝色')} aria-label={t('Restore current branch marker color', '恢复当前分支标记颜色')} onClick={()=>updateAppearance({...appearance,currentBranchColor:defaultCurrentBranchColor})}/>
+          </div>
+          <div className="current-color-setting">
+            <div className="current-color-label"><strong>{t('Current repository icon', '当前仓库图标')}</strong><small>{t('Filled box with a check in the repository list.', '仓库列表中带勾的实心箱体。')}</small></div>
+            <span className="repository-item settings-current-preview" aria-current="true" style={{'--current-repository-color':appearance.currentRepositoryColor} as React.CSSProperties}><RepositoryIcon current/></span>
+            <ColorField value={appearance.currentRepositoryColor} label={t('Current repository icon color', '当前仓库图标颜色')} onChange={currentRepositoryColor=>updateAppearance({...appearance,currentRepositoryColor})}/>
+            <Button className="icon-only" icon="discard" title={t('Restore default blue', '恢复默认蓝色')} aria-label={t('Restore current repository icon color', '恢复当前仓库图标颜色')} onClick={()=>updateAppearance({...appearance,currentRepositoryColor:defaultCurrentRepositoryColor})}/>
+          </div>
         </section>}
 
         {page === 'colors' && <section className="settings-page graph-colors-page" aria-labelledby="colors-heading">
