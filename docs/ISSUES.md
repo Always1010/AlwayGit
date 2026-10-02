@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-018：递归扫描会直接添加仓库且列表无法移除
+
+- 日期：2026-10-02
+- 状态：已解决
+- 现象：选择一个包含多个 Git 仓库的目录后，扫描结果未经确认便全部加入 AlwayGit；活动栏和工作台列表没有移除入口，用户无法撤销不需要的仓库。
+- 原因：RepositoryManager 的批量扫描同时承担发现、注册监听和持久化，宿主在扫描完成后直接调用该流程；仓库目录只有追加路径，没有排除和释放已注册仓库的生命周期。
+- 解决方案：把递归发现与注册拆成独立阶段，扫描结束后显示包含“可添加”和“已添加”状态的多选确认列表；只有确认项才注册并保存。活动栏和工作台仓库菜单增加单个及批量移除，明确不删除磁盘文件，同时释放监听、移除保存路径并记录排除项，防止工作区自动发现立即恢复该仓库。
+- 验证方式：仓库管理测试覆盖无副作用发现、确认添加、关闭确认列表、逻辑仓库移除、保存路径清理、工作区自动发现排除和宿主确认文案；协议校验、类型检查和相关无头界面检查通过。
+- 相关文件：`src/repositories/manager.ts`、`src/extension/workbench.ts`、`src/extension/extension.ts`、`src/protocol/types.ts`、`src/protocol/validation.ts`、`webview/menus.ts`、`package.json`、`tests/repository-manager.test.ts`、`docs/ARCHITECTURE.md`、`docs/WORKBENCH_SPEC.md`。
+
 ## BUG-017：多选区域的 Ctrl+A 可能选中整页文本
 
 - 日期：2026-10-01

@@ -20,7 +20,7 @@ vi.mock('vscode', () => {
     EventEmitter, RelativePattern: class { constructor(public base: string, public pattern: string) {} },
     workspace: { isTrusted: true, workspaceFolders: [], createFileSystemWatcher: vi.fn(), getConfiguration: () => ({ get: (_key: string, fallback: unknown) => fallback }) },
     extensions: { getExtension: vi.fn() }, ProgressLocation: { Notification: 15 },
-    window: { showOpenDialog: vi.fn(), withProgress: vi.fn(), showInformationMessage: vi.fn(), showWarningMessage: vi.fn() },
+    window: { showOpenDialog: vi.fn(), showQuickPick: vi.fn(), withProgress: vi.fn(), showInformationMessage: vi.fn(), showWarningMessage: vi.fn() },
   };
 });
 const exec = promisify(execFile), roots: string[] = [], managers: RepositoryManager[] = [], workbenches: Workbench[] = [];
@@ -52,6 +52,7 @@ beforeEach(() => {
   vi.mocked(vscode.workspace.createFileSystemWatcher).mockImplementation(watcher as unknown as typeof vscode.workspace.createFileSystemWatcher);
   vi.mocked(vscode.window.showInformationMessage).mockResolvedValue(undefined);
   vi.mocked(vscode.window.showWarningMessage).mockResolvedValue(undefined);
+  vi.mocked(vscode.window.showQuickPick).mockImplementation(async items => (items as vscode.QuickPickItem[]).filter(item => item.picked) as never);
   vi.mocked(vscode.window.withProgress).mockImplementation(async (_options, task) => task({ report: vi.fn() }, { isCancellationRequested: false, onCancellationRequested: () => ({ dispose() {} }) }));
 });
 afterEach(async () => {
@@ -145,6 +146,19 @@ describe('batch repository registration', () => {
     expect(first.dispose).toHaveBeenCalledTimes(1); expect(manager.list().map(r => r.name)).toEqual(['B']);
   });
 
+  it('removes a logical repository, forgets its roots and keeps automatic discovery from restoring it', async () => {
+    const root = await fixture(), shared = new Map<string, unknown>(), { manager, globalValues } = setup(shared);
+    await manager.addDirectory(root);
+    const group = manager.groups()[0];
+    expect(await manager.remove([group.key])).toBe(1);
+    expect(manager.groups()).toHaveLength(1);
+    expect(globalValues.get('alwaygit.repositoryRoots.v1')).toHaveLength(1);
+    expect(globalValues.get('alwaygit.excludedRepositories.v1')).toContain(group.key);
+    Object.assign(vscode.workspace, { workspaceFolders: [{ uri: { scheme: 'file', fsPath: group.repository.root } }] });
+    await manager.scan();
+    expect(manager.groups().some(item => item.key === group.key)).toBe(false);
+  });
+
   it('does not scan or register in an untrusted workspace', async () => {
     const { manager, git, globalUpdate } = setup(), discover = vi.spyOn(git, 'discover');
     Object.assign(vscode.workspace, { isTrusted: false });
@@ -163,8 +177,27 @@ describe('Add Repository host entry', () => {
     vi.mocked(vscode.window.showOpenDialog).mockResolvedValue([{ fsPath: root }] as vscode.Uri[]);
     expect(await value.handle({ id: 'add', method: 'addRepository' })).toEqual({ added: 2, existing: 0, skipped: 0, cancelled: false });
     expect(manager.list()).toHaveLength(2);
+    expect(vscode.window.showQuickPick).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ description: '可添加', picked: true })]),expect.objectContaining({canPickMany:true}));
     expect(vscode.window.withProgress).toHaveBeenCalledWith(expect.objectContaining({ cancellable: true }), expect.any(Function));
     expect(vscode.window.showInformationMessage).toHaveBeenCalledWith('新增 2 个仓库，0 个已存在。');
+  });
+
+  it('does not register scan results when the review picker is dismissed', async () => {
+    const root=await fixture(),{value,manager}=workbench();
+    vi.mocked(vscode.window.showOpenDialog).mockResolvedValue([{fsPath:root}] as vscode.Uri[]);
+    vi.mocked(vscode.window.showQuickPick).mockResolvedValue(undefined);
+    expect(await value.addRepository()).toMatchObject({added:0,cancelled:true});
+    expect(manager.list()).toEqual([]);
+    expect(vscode.workspace.createFileSystemWatcher).not.toHaveBeenCalled();
+  });
+
+  it('confirms removal without deleting files and excludes the repository from later scans', async () => {
+    const root=await fixture(),{value,manager}=workbench();
+    await manager.addDirectory(root);const group=manager.groups()[0];
+    vi.mocked(vscode.window.showWarningMessage).mockResolvedValue('移除' as never);
+    expect(await value.handle({id:'remove',method:'removeRepositories',payload:{keys:[group.key]}})).toBe(1);
+    expect(manager.groups().some(item=>item.key===group.key)).toBe(false);
+    expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(expect.stringContaining('不会删除磁盘上的文件'),{modal:true},'移除');
   });
 
   it('reports no repositories and a damaged repository without silently succeeding', async () => {
@@ -180,7 +213,7 @@ describe('Add Repository host entry', () => {
   });
 
   it('does not scan when the folder picker is dismissed or progress is cancelled', async () => {
-    const { value, manager } = workbench(), add = vi.spyOn(manager, 'addDirectory');
+    const { value, manager } = workbench(), add = vi.spyOn(manager, 'discoverDirectory');
     vi.mocked(vscode.window.showOpenDialog).mockResolvedValue(undefined);
     expect(await value.addRepository()).toBeUndefined(); expect(add).not.toHaveBeenCalled();
     const root = await fixture();

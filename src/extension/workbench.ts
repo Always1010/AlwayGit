@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { CheckoutBlocker, GitServiceContract, HostMessage, RepositoryStatus, RpcRequest, Snapshot } from '../protocol/types';
-import { actionSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorktreeSchema } from '../protocol/validation';
+import { actionSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorktreeSchema, repositoryKeysSchema } from '../protocol/validation';
 import type { RepositoryManager } from '../repositories/manager';
 import type { GitDocuments } from '../editor/documents';
 import { confirmAction } from '../application/confirm';
@@ -69,9 +69,9 @@ export class Workbench implements vscode.Disposable {
     try {
       const selected = await vscode.window.showOpenDialog({ canSelectFolders: true, canSelectFiles: false, canSelectMany: false, title: this.text('Select a repository or a folder containing repositories', '选择仓库或存放多个仓库的目录'), openLabel: this.text('Add Repositories', '添加仓库') });
       if (!selected?.[0]) return undefined;
-      const result = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: this.text('Discovering Git repositories', '正在查找 Git 仓库'), cancellable: true }, (progress, token) => {
+      const discovery = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: this.text('Discovering Git repositories', '正在查找 Git 仓库'), cancellable: true }, (progress, token) => {
         let lastReport = 0;
-        return this.repositories.addDirectory(selected[0].fsPath, {
+        return this.repositories.discoverDirectory(selected[0].fsPath, {
           isCancelled: () => token.isCancellationRequested,
           onProgress: ({ scanned, found }) => {
             if (Date.now() - lastReport < 100) return;
@@ -80,16 +80,32 @@ export class Workbench implements vscode.Disposable {
           },
         });
       });
-      for (const issue of result.issues) this.output.appendLine(redactSecrets(`[discovery] ${issue.path}: ${issue.message}`));
-      if (result.cancelled) {
+      for (const issue of discovery.issues) this.output.appendLine(redactSecrets(`[discovery] ${issue.path}: ${issue.message}`));
+      if (discovery.cancelled) {
         void vscode.window.showInformationMessage(this.text('Repository discovery cancelled. No repositories were added.', '已取消仓库扫描，未添加任何仓库。'));
-      } else {
-        const summary = result.found ? this.text(`Added ${result.added} repositories; ${result.existing} already registered.`, `新增 ${result.added} 个仓库，${result.existing} 个已存在。`) : this.text('No Git repositories found in the selected folder.', '所选目录中没有找到 Git 仓库。');
-        if (result.issues.length) void vscode.window.showWarningMessage(summary + this.text(` Skipped ${result.issues.length} folders or repositories. See AlwayGit output for details.`, ` 跳过 ${result.issues.length} 个异常目录或仓库，详情请查看 AlwayGit 输出。`));
-        else void vscode.window.showInformationMessage(summary);
+        return { added: 0, existing: 0, skipped: discovery.issues.length, cancelled: true };
       }
-      return { added: result.added, existing: result.existing, skipped: result.issues.length, cancelled: result.cancelled };
+      const discoveredGroups=groupRepositories(discovery.repositories),existingKeys=new Set(this.repositories.groups().map(group=>group.key));
+      if(!discoveredGroups.length){const summary=this.text('No Git repositories found in the selected folder.','所选目录中没有找到 Git 仓库。');if(discovery.issues.length)void vscode.window.showWarningMessage(summary+this.text(` Skipped ${discovery.issues.length} folders or repositories. See AlwayGit output for details.`,` 跳过 ${discovery.issues.length} 个异常目录或仓库，详情请查看 AlwayGit 输出。`));else void vscode.window.showInformationMessage(summary);return {added:0,existing:0,skipped:discovery.issues.length,cancelled:false};}
+      type Candidate = vscode.QuickPickItem & { key:string };
+      const candidates:Candidate[]=discoveredGroups.map(group=>({label:group.name,description:existingKeys.has(group.key)?this.text('Already added','已添加'):this.text('Available to add','可添加'),detail:group.repository.root,picked:!existingKeys.has(group.key),key:group.key}));
+      const picked=await vscode.window.showQuickPick(candidates,{canPickMany:true,title:this.text(`Found ${discoveredGroups.length} repositories`,`扫描到 ${discoveredGroups.length} 个仓库`),placeHolder:this.text('Select repositories to add','选择要添加的仓库')});
+      if(!picked)return {added:0,existing:discoveredGroups.filter(group=>existingKeys.has(group.key)).length,skipped:discovery.issues.length,cancelled:true};
+      const selectedKeys=new Set(picked.map(item=>item.key).filter(key=>!existingKeys.has(key))),repositories=discoveredGroups.filter(group=>selectedKeys.has(group.key)).flatMap(group=>group.members);
+      const result=await this.repositories.registerDiscovered({...discovery,repositories,found:selectedKeys.size});
+      result.existing=discoveredGroups.filter(group=>existingKeys.has(group.key)).length;
+      const summary=this.text(`Added ${result.added} repositories; ${result.existing} already registered.`,`新增 ${result.added} 个仓库，${result.existing} 个已存在。`);
+      if(discovery.issues.length)void vscode.window.showWarningMessage(summary+this.text(` Skipped ${discovery.issues.length} folders or repositories. See AlwayGit output for details.`,` 跳过 ${discovery.issues.length} 个异常目录或仓库，详情请查看 AlwayGit 输出。`));else void vscode.window.showInformationMessage(summary);
+      return {added:result.added,existing:result.existing,skipped:discovery.issues.length,cancelled:false};
     } finally { this.addingRepositories = false; }
+  }
+  async removeRepositories(keys: string[]): Promise<number> {
+    const groups=this.repositories.groups().filter(group=>keys.includes(group.key));
+    if(!groups.length)return 0;
+    if(groups.some(group=>group.members.some(repo=>this.busy.has(repo.commonDir))))throw new Error(this.text('Wait for the running Git operation before removing this repository.','请等待正在执行的 Git 操作完成后再移除仓库。'));
+    const remove=this.text('Remove','移除'),confirmed=await vscode.window.showWarningMessage(this.text(`Remove ${groups.length} ${groups.length===1?'repository':'repositories'} from AlwayGit? Files on disk will not be deleted.`,`从 AlwayGit 移除 ${groups.length} 个仓库？不会删除磁盘上的文件。`),{modal:true},remove);
+    if(confirmed!==remove)return 0;
+    return this.repositories.remove(groups.map(group=>group.key));
   }
   /** All UI requests go through the same validated, trusted application boundary. */
   async handle(request: RpcRequest): Promise<unknown> { return this.handleRequest(request); }
@@ -101,6 +117,7 @@ export class Workbench implements vscode.Disposable {
     if (request.method === 'repositories') { const list = this.repositories.list(),active=source?.activeRepository??this.activeRepository; return active ? list.sort((a, b) => Number(b.id === active) - Number(a.id === active)) : list; }
     if (request.method === 'repositoryStatuses') return this.repositoryStatuses();
     if (request.method === 'addRepository') return this.addRepository();
+    if (request.method === 'removeRepositories') return this.removeRepositories(repositoryKeysSchema.parse(request.payload).keys);
     if (request.method === 'pickWorktree') {
       const value = await vscode.window.showSaveDialog({ title: 'New Worktree Directory', saveLabel: 'Use Directory', defaultUri: vscode.Uri.file(path.join(path.dirname(this.repositories.get(request.repoId).root), 'new-worktree')) });
       return value?.fsPath;
