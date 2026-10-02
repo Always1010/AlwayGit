@@ -57,6 +57,27 @@ describe('Bounded Git Diff previews', () => {
     await expect(documents.preview(repo,{kind:'stash-working',stashOid:stash.oid,path:'outside.txt'})).rejects.toThrow('not part');
   });
 
+  it('compares saved tracked working content independently from its saved Index content',async()=>{
+    const {root,repo,service,documents}=await setup();
+    await writeFile(path.join(root,'both.txt'),'base');await writeFile(path.join(root,'index-only.txt'),'base');await commit(root,'initial');
+    await writeFile(path.join(root,'both.txt'),'saved Index');await writeFile(path.join(root,'index-only.txt'),'saved staged file');await git(root,'add','-A');
+    await writeFile(path.join(root,'both.txt'),'saved Working Tree');
+    await service.execute(repo,{type:'stash.create',message:'tracked state'});const stash=(await service.snapshot(repo)).stashes[0];
+    await writeFile(path.join(root,'both.txt'),'current working file');await writeFile(path.join(root,'index-only.txt'),'current staged-file working copy');
+    expect(await documents.preview(repo,{kind:'stash-working',stashOid:stash.oid,path:'both.txt'})).toMatchObject({left:'saved Working Tree',right:'current working file'});
+    expect(await documents.preview(repo,{kind:'stash-working',stashOid:stash.oid,path:'index-only.txt'})).toMatchObject({left:'saved staged file',right:'current staged-file working copy'});
+  });
+
+  it('represents saved and current deletions as empty sides in Stash comparisons',async()=>{
+    const {root,repo,service,documents}=await setup();
+    await writeFile(path.join(root,'deleted.txt'),'base');await writeFile(path.join(root,'missing.txt'),'base');await commit(root,'initial');
+    await rm(path.join(root,'deleted.txt'));await writeFile(path.join(root,'missing.txt'),'saved content');
+    await service.execute(repo,{type:'stash.create'});const stash=(await service.snapshot(repo)).stashes[0];
+    await writeFile(path.join(root,'deleted.txt'),'current content');await rm(path.join(root,'missing.txt'));
+    expect(await documents.preview(repo,{kind:'stash-working',stashOid:stash.oid,path:'deleted.txt'})).toMatchObject({left:'',right:'current content'});
+    expect(await documents.preview(repo,{kind:'stash-working',stashOid:stash.oid,path:'missing.txt'})).toMatchObject({left:'saved content',right:''});
+  });
+
   it('bounds large files by bytes and lines and reports binary content without exposing text', async () => {
     const { root, repo, documents } = await setup();
     await writeFile(path.join(root, 'base.txt'), 'base'); await commit(root, 'initial');

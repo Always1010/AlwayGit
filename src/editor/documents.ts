@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import path from 'node:path';
-import { open } from 'node:fs/promises';
+import { open, stat } from 'node:fs/promises';
 import type { ContentSource, DiffPreview, DiffTarget, GitServiceContract, Repository } from '../protocol/types';
 import { safeWorkingPath } from './paths';
 
@@ -65,11 +65,16 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
     let label: string;
     if (target.kind === 'stash-working') {
       const details = await this.git.stashDetails(repo, target.stashOid), untracked = details.sections.untracked;
-      const file = untracked?.files.find(item => item.path === target.path);
-      if (!untracked || !file) throw new Error('This file is not part of the saved untracked files.');
-      left = { source: { kind: 'revision', revision: untracked.commit.oid, path: file.path }, label: 'Stash', path: file.path };
-      right = { workingPath: await safeWorkingPath(repo.root, file.path), label: 'Working Tree', path: file.path };
-      label = `${path.basename(file.path)} · Stash ↔ Working Tree`;
+      const savedUntracked = untracked?.files.some(item => item.path === target.path);
+      const savedTracked = [...details.sections.working.files, ...details.sections.index.files].some(item => item.path === target.path || item.previousPath === target.path);
+      if (!savedUntracked && !savedTracked) throw new Error('This file is not part of the saved Stash files.');
+      // The Stash tree contains the complete tracked working state, including
+      // files with Index-only changes; untracked files live in the third parent.
+      left = { source: { kind: 'revision', revision: savedUntracked ? untracked!.commit.oid : details.commit.oid, path: target.path }, label: 'Stash', path: target.path };
+      const workingPath = await safeWorkingPath(repo.root, target.path);
+      try { await stat(workingPath); right = { workingPath, label: 'Working Tree', path: target.path }; }
+      catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; right = { source: { kind: 'empty' }, label: 'Working Tree', path: target.path }; }
+      label = `${path.basename(target.path)} · Stash ↔ Working Tree`;
     } else if (target.kind === 'commit') {
       const details = await this.git.details(repo, target.oid, target.parent);
       const file = details.files.find(f => f.path === target.path);

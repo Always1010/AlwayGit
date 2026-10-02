@@ -6,6 +6,7 @@ import type { ActionBlocker, Change, CheckoutBlocker, Commit, CommitComparison, 
 import { branchNameConflict, branchNameConflictMessage, branchNameProblem, branchNameProblemMessage } from '../protocol/ref-name';
 import { remoteNameProblem, remoteUrlProblem } from '../protocol/remote';
 import { inferDefaultBranch } from './default-branch';
+import { preflightStash, StashStateError, type StashExecution } from './stash';
 
 export interface GitServiceOptions {
   allowDetachedHead?: () => boolean;
@@ -62,27 +63,30 @@ export class GitService implements GitServiceContract {
   private version = 0;
   private readonly reviews = new Map<string, { token: string; fingerprint: string }>();
   constructor(private readonly options: GitServiceOptions = {}) {}
-  private async run(repo: Repository, args: string[], allowFailure = false, captureBytes?: number): Promise<Result> {
+  private async run(repo: Repository, args: string[], allowFailure = false, captureBytes?: number, execution: StashExecution = {}): Promise<Result> {
     const adapter = this.options.environment;
-    const supplied = typeof adapter === 'function' ? await adapter(repo, args) : adapter;
+    const supplied = execution.isolated ? undefined : typeof adapter === 'function' ? await adapter(repo, args) : adapter;
     const wrapped = supplied && 'env' in supplied && typeof supplied.env === 'object' ? supplied as { env: NodeJS.ProcessEnv; dispose?: () => void | Promise<void> } : undefined;
     const env = wrapped?.env ?? supplied as NodeJS.ProcessEnv | undefined;
+    const commandEnv: NodeJS.ProcessEnv = { ...process.env, ...env };
+    if (execution.isolated) for (const key of Object.keys(commandEnv)) if (/^GIT_/i.test(key)) delete commandEnv[key];
     try {
       const result = await new Promise<Result>((resolve, reject) => {
         // Stash accepts no user pathspecs in this API. Its internal cleanup relies on
         // Git pathspec matching; inheriting --literal-pathspecs leaves saved untracked
         // files behind on Git for Windows. All file actions still use literal paths.
-        const child = spawn(this.options.gitPath ?? 'git', ['-C', repo.root, ...(args[0] === 'stash' ? [] : ['--literal-pathspecs']), ...args], { shell: false, windowsHide: true, detached: process.platform !== 'win32', env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never', GIT_EDITOR: 'true', GIT_SEQUENCE_EDITOR: 'true', ...(['status', 'log', 'show', 'ls-tree', 'ls-files', 'for-each-ref'].includes(args[0]) ? { GIT_OPTIONAL_LOCKS: '0' } : {}), ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
+        const child = spawn(this.options.gitPath ?? 'git', ['-C', execution.root ?? repo.root, ...(args[0] === 'stash' ? [] : ['--literal-pathspecs']), ...args], { shell: false, windowsHide: true, detached: process.platform !== 'win32', env: { ...commandEnv, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never', GIT_EDITOR: 'true', GIT_SEQUENCE_EDITOR: 'true', ...(['status', 'log', 'show', 'ls-tree', 'ls-files', 'for-each-ref'].includes(args[0]) ? { GIT_OPTIONAL_LOCKS: '0' } : {}), ...execution.env }, stdio: [execution.input ? 'pipe' : 'ignore', 'pipe', 'pipe'] });
+        if (execution.input) { child.stdin?.on('error', () => {}); child.stdin?.end(execution.input); }
         const out: Buffer[] = []; const err: Buffer[] = []; let size = 0; let captured = 0; let failure: GitError | undefined;
-        const stop = (error: GitError) => { failure = error; if (child.pid) { if (process.platform === 'win32') { const killer = spawn('taskkill', ['/PID', String(child.pid), '/T', '/F'], { shell: false, windowsHide: true, stdio: 'ignore' }); killer.on('error', () => child.kill()); } else { try { process.kill(-child.pid, 'SIGKILL'); } catch { child.kill(); } } } child.stdout.destroy(); child.stderr.destroy(); reject(error); };
+        const stop = (error: GitError) => { failure = error; if (child.pid) { if (process.platform === 'win32') { const killer = spawn('taskkill', ['/PID', String(child.pid), '/T', '/F'], { shell: false, windowsHide: true, stdio: 'ignore' }); killer.on('error', () => child.kill()); } else { try { process.kill(-child.pid, 'SIGKILL'); } catch { child.kill(); } } } child.stdout!.destroy(); child.stderr!.destroy(); reject(error); };
         const timer = setTimeout(() => stop(new GitError('Git timed out. Check credentials, hooks, or another Git process, then retry.', 'TIMEOUT')), this.options.timeoutMs ?? 60000);
-        const collect = (bucket: Buffer[], chunk: Buffer) => { if (bucket === out && captureBytes !== undefined) { const remaining = captureBytes - captured; if (remaining > 0) { const piece = chunk.subarray(0, remaining); bucket.push(piece); captured += piece.length; } return; } size += chunk.length; if (size > (this.options.maxOutputBytes ?? 32 * 1024 * 1024)) { clearTimeout(timer); stop(new GitError('Git output exceeded the configured limit', 'OUTPUT_LIMIT')); return; } bucket.push(chunk); if (bucket === err) this.options.onOutput?.(repo, chunk.toString('utf8')); };
-        child.stdout.on('data', chunk => collect(out, chunk)); child.stderr.on('data', chunk => collect(err, chunk));
+        const collect = (bucket: Buffer[], chunk: Buffer) => { if (bucket === out && captureBytes !== undefined) { const remaining = captureBytes - captured; if (remaining > 0) { const piece = chunk.subarray(0, remaining); bucket.push(piece); captured += piece.length; } return; } size += chunk.length; if (size > (this.options.maxOutputBytes ?? 32 * 1024 * 1024)) { clearTimeout(timer); stop(new GitError('Git output exceeded the configured limit', 'OUTPUT_LIMIT')); return; } bucket.push(chunk); if (bucket === err && !execution.silent) this.options.onOutput?.(repo, chunk.toString('utf8')); };
+        child.stdout!.on('data', chunk => collect(out, chunk)); child.stderr!.on('data', chunk => collect(err, chunk));
         child.once('error', e => { clearTimeout(timer); reject(new GitError(`Cannot run Git: ${e.message}`, 'GIT_UNAVAILABLE')); });
         child.once('close', code => { clearTimeout(timer); if (failure) reject(failure); else resolve({ stdout: Buffer.concat(out), stderr: Buffer.concat(err), code: code ?? 1 }); });
       });
-      if (result.stdout.length && ['add', 'restore', 'rm', 'clean', 'commit', 'fetch', 'pull', 'push', 'branch', 'switch', 'tag', 'stash', 'worktree', 'merge', 'rebase', 'cherry-pick', 'revert', 'reset'].includes(args[0]) && !(args[0] === 'stash' && args[1] === 'list') && !(args[0] === 'worktree' && args[1] === 'list')) this.options.onOutput?.(repo, result.stdout.toString('utf8'));
-      if (result.code && !allowFailure) {
+      if (!execution.silent && result.stdout.length && ['add', 'restore', 'rm', 'clean', 'commit', 'fetch', 'pull', 'push', 'branch', 'switch', 'tag', 'stash', 'worktree', 'merge', 'rebase', 'cherry-pick', 'revert', 'reset'].includes(args[0]) && !(args[0] === 'stash' && args[1] === 'list') && !(args[0] === 'worktree' && args[1] === 'list')) this.options.onOutput?.(repo, result.stdout.toString('utf8'));
+      if (result.code && !allowFailure && !execution.allowFailure) {
         const stdout = result.stdout.toString('utf8'); const stderr = result.stderr.toString('utf8');
         const hint = /authentication|could not read Username|terminal prompts disabled|permission denied|credential/i.test(stderr) ? '\nConfigure Git credentials or sign in, then retry.' : /index.lock|another git process/i.test(stderr) ? '\nAnother Git process is using this repository. Finish it and retry.' : '';
         throw new GitError((stderr.trim() || stdout.trim() || `Git exited with status ${result.code}`) + hint, 'GIT_FAILED', stdout, stderr);
@@ -538,17 +542,20 @@ export class GitService implements GitServiceContract {
           const summary = paths.length === 1 ? paths[0] : `${paths.length} saved untracked files`;
           throw new GitError(`Cannot restore the Stash because the project already contains ${summary}. Existing files were not overwritten, and the Stash is still saved.`, 'STASH_UNTRACKED_CONFLICT', '', '', blocker);
         }
-        if (action.expectedOid) {
-          // Apply the captured object rather than a reflog position which can move externally.
-          await this.run(repo, ['stash', 'apply', action.expectedOid]);
-          if (action.pop) {
-            try { await this.validateStash(repo, selector, action.expectedOid); }
-            catch { throw new GitError('Stash changes were applied, but the Stash list changed before Drop. The saved entry was retained; refresh the list.', 'STASH_CHANGED'); }
-            await this.run(repo, ['stash', 'drop', selector]);
-          }
-          return;
+        const snapshot = await this.snapshot(repo);
+        const affected = [...new Set(Object.values(details.sections).flatMap(section => section?.files.flatMap(file => [file.path, ...(file.previousPath ? [file.previousPath] : [])]) ?? []))];
+        try {
+          await preflightStash(repo, selector, stashOid, affected.map(validateFilePath), snapshot.operation, (args, execution) => this.run(repo, args, false, undefined, execution));
+        } catch (error) { if (error instanceof StashStateError) throw new GitError(error.message, error.code, error.stdout, error.stderr, error.details); throw error; }
+        await this.validateStash(repo, selector, stashOid);
+        // Apply the captured object, restore the Index, and keep the original archive.
+        await this.run(repo, ['stash', 'apply', '--index', stashOid]);
+        if (action.pop) {
+          try { await this.validateStash(repo, selector, stashOid); }
+          catch { throw new GitError('Stash changes were applied, but the Stash list changed before Drop. The saved entry was retained; refresh the list.', 'STASH_CHANGED'); }
+          await this.run(repo, ['stash', 'drop', selector]);
         }
-        args = ['stash', action.pop ? 'pop' : 'apply', selector]; break;
+        return;
       }
       case 'stash.drop': args = ['stash', 'drop', await this.validateStash(repo, action.selector, action.expectedOid)]; break;
       case 'worktree.add': {
