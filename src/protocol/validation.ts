@@ -3,8 +3,8 @@ const text = z.string().min(1).max(4096);
 const paths = z.array(text).min(1).max(10000);
 const kind = z.enum(['merge', 'rebase', 'cherry-pick', 'revert']);
 export const actionSchema = z.union([
-  z.object({ type: z.enum(['stage', 'unstage', 'discard']), paths }),
-  z.object({ type: z.literal('commit'), message: z.string().min(1).max(100000), amend: z.boolean().optional() }),
+  z.object({ type: z.enum(['stage', 'resolve-and-stage', 'unstage', 'discard']), paths }),
+  z.object({ type: z.literal('commit'), message: z.string().min(1).max(100000), amend: z.boolean().optional(), reviewToken: text.optional() }),
   z.object({ type: z.literal('fetch'), remote: text.optional() }),
   z.object({ type: z.literal('pull'), strategy: z.enum(['ff-only', 'merge', 'rebase']), remote: text.optional() }),
   z.object({ type: z.literal('push'), remote: text.optional(), branch: text.optional(), remoteBranch: text.optional(), setUpstream: z.boolean().optional(), forceWithLease: z.boolean().optional() }),
@@ -27,9 +27,10 @@ export const actionSchema = z.union([
   z.object({ type: z.enum(['merge', 'rebase']), target: text }),
   z.object({ type: z.enum(['cherry-pick', 'revert']), commits: z.array(text).min(1).max(1000), mainline: z.number().int().min(1).max(100).optional(), expectedHead: text.optional(), expectedBranch: text.optional() }),
   z.object({ type: z.literal('reset'), target: text, mode: z.enum(['soft', 'mixed', 'hard']) }),
-  z.object({ type: z.enum(['operation.continue', 'operation.abort', 'operation.skip']), kind }),
+  z.object({ type: z.literal('operation.continue'), kind, reviewToken: text.optional() }),
+  z.object({ type: z.enum(['operation.abort', 'operation.skip']), kind }),
 ]);
-export const requestSchema = z.object({ id: z.string().min(1).max(128), method: z.enum(['repositories', 'repositoryCollections', 'repositoryStatuses', 'addRepository', 'removeRepositories', 'createRepositoryCollection', 'renameRepositoryCollection', 'deleteRepositoryCollection', 'moveRepositories', 'snapshot', 'history', 'details', 'compare', 'action', 'diff', 'diffPreview', 'copyText', 'openRepository', 'openProject', 'openFile', 'openWorktree', 'pickWorktree', 'showLog', 'saveSession']), repoId: text.optional(), payload: z.unknown().optional() });
+export const requestSchema = z.object({ id: z.string().min(1).max(128), method: z.enum(['repositories', 'repositoryCollections', 'repositoryStatuses', 'addRepository', 'removeRepositories', 'createRepositoryCollection', 'renameRepositoryCollection', 'deleteRepositoryCollection', 'moveRepositories', 'snapshot', 'operationReview', 'history', 'details', 'compare', 'action', 'diff', 'diffPreview', 'copyText', 'openRepository', 'openProject', 'openFile', 'openWorktree', 'pickWorktree', 'showLog', 'saveSession']), repoId: text.optional(), payload: z.unknown().optional() });
 const graphColor = z.string().regex(/^#[0-9a-f]{6}$/i);
 const graphColors = z.object({ light: z.array(graphColor).min(4).max(16), dark: z.array(graphColor).min(4).max(16) })
   .refine(colors => colors.light.length === colors.dark.length, 'Light and dark graph palettes must have the same size');

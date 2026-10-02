@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Commit, CommitComparison, CommitDetails, DiffTarget, GitAction, HistoryPage, HistoryQuery, Repository, RepositoryChanges, RepositoryCollection, RepositoryStatus, Snapshot } from '../src/protocol/types';
+import type { Commit, CommitComparison, CommitDetails, DiffTarget, GitAction, HistoryPage, HistoryQuery, OperationReview, Repository, RepositoryChanges, RepositoryCollection, RepositoryStatus, Snapshot } from '../src/protocol/types';
 import { demoMode, readSession, rpc, saveSession, subscribe } from './rpc';
 import type { LayoutState } from './rpc';
 import type { Language } from './i18n';
@@ -18,6 +18,7 @@ let actionSequence = 0;
 export const defaultLayout: LayoutState = { preset: 'workbench', sidebar: 210, details: 300, diff: 220, diffCollapsed: false, graph: 64, author: 100, date: 120, font: 13, row: 24 };
 export interface CheckoutFailure { reason?: string; paths: string[]; target: string; worktreePath?: string; stashCreated?: boolean; stashOid?: string; detached?: boolean; trackBranches?: {source:string;name:string;expectedOid?:string}[] }
 interface WorkbenchState {
+  operationReview?: { repoId: string; action: Extract<GitAction, { type: 'commit' | 'operation.continue' }>; review: OperationReview };
   appearance: Appearance; settingsBaseline?: InterfaceSettings;
   beginSettings(): void; previewSettings(value: InterfaceSettingsUpdate): void; finishSettings(apply: boolean): void; restoreLayout(): void;
   repositories: Repository[]; repositoryCollections:RepositoryCollection[]; repositoryStatuses: Record<string, RepositoryStatus>; selectedRepositoryKeys:string[]; repositorySelectionAnchor?:string; repoId?: string; snapshot?: Snapshot; commits: Commit[]; historyHead?: Commit; details?: CommitDetails; comparison?: CommitComparison; selectedOid?: string; selectedOids: string[]; selectionAnchor?: string; selectedRefs:string[]; refSelectionAnchor?:string; selectedParent?: string; selectedStashOid?: string; stashDetails?: CommitDetails; selectedFile?: string; diffTarget?: DiffTarget; diffRevision: number;
@@ -58,6 +59,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   },
   async selectRepository(id) {
     ++repositoryEpoch; ++historyEpoch; ++detailEpoch; const view = views[id];
+    set({ operationReview: undefined });
     set({ repoId: id, snapshot: undefined, commits: [], historyHead: undefined, selectedOids:[], selectionAnchor:undefined, selectedRefs:[],refSelectionAnchor:undefined, tips: [], details: undefined, comparison:undefined, stashDetails: undefined, diffTarget: undefined, diffRevision:0, selectedFile: view?.selectedFile, selectedOid: view?.selectedOid, selectedParent: view?.selectedParent, selectedStashOid: view?.selectedStashOid, ref: view?.ref, checkedRefs: view?.checkedRefs ? [...view.checkedRefs] : view?.ref ? [view.ref] : undefined, expandedRefGroups:view?.expandedRefGroups?[...view.expandedRefGroups]:undefined,collapsedSidebarGroups:[...(view?.collapsedSidebarGroups??[])], search: view?.search ?? '', tab: view?.tab ?? 'history', checkoutFailure: undefined, error: undefined, notice: undefined, actionFeedback: actionFeedbacks.get(id), loading: true, busy: executingRepositories.has(id) || hostBusyRepositories.has(id), activity: '', detailsLoading: false, historyLoading: false });
     await get().refresh();
   },
@@ -151,6 +153,19 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   locateHead(){const snapshot=get().snapshot;if(!snapshot?.head)return;const ref=snapshot.refs.find(r=>r.kind==='local'&&r.name===snapshot.branch)?.fullName??'HEAD';set({checkedRefs:[...new Set([...(get().checkedRefs??[]),ref])],search:'',locateToken:get().locateToken+1,selectedStashOid:undefined});void get().loadHistory();void get().selectCommit(snapshot.head);},
   async execute(action) {
     const repoId = get().repoId, epoch = repositoryEpoch; if (!repoId || get().busy) return false;
+    if ((action.type === 'operation.continue' || action.type === 'commit' && get().snapshot?.operation.kind) && !action.reviewToken) {
+      executingRepositories.add(repoId); set({ busy: true, activity: 'Inspect staged result', error: undefined, operationReview: undefined });
+      try {
+        const review = await rpc<OperationReview>('operationReview', repoId);
+        if (epoch === repositoryEpoch) {
+          if (action.type === 'operation.continue' && review.kind !== action.kind) throw new Error('The Git operation changed. Refresh before continuing.');
+          set({ operationReview: { repoId, action, review } });
+        }
+      } catch (error) { if (epoch === repositoryEpoch) { get().report(error); await get().refresh({ background: true }); } }
+      finally { executingRepositories.delete(repoId); if (epoch === repositoryEpoch) set({ busy: hostBusyRepositories.has(repoId), activity: '' }); }
+      return false;
+    }
+    set({ operationReview: undefined });
     const feedback: ActionFeedback = { id: ++actionSequence, repoId, action, status: 'running', target: actionTarget(action, get().snapshot) };
     const finish = (status: 'success' | 'error', error?: string) => {
       if (actionFeedbacks.get(repoId)?.id !== feedback.id) return;
@@ -167,7 +182,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         if(epoch===repositoryEpoch) {
           const checkout = ['branch.checkout', 'commit.checkout', 'checkout.stash'].includes(action.type) || (action.type === 'branch.create' || action.type === 'branch.track') && action.checkout;
           if (checkout) { const snap = get().snapshot; const ref = snap?.refs.find(r => r.kind === 'local' && r.name === snap.branch)?.fullName ?? (snap?.head ? 'HEAD' : undefined); if (ref && !get().checkedRefs?.includes(ref)) get().setCheckedRefs([...(get().checkedRefs ?? []), ref]); }
-          set({ notice: demoMode ? (get().language === 'zh-CN' ? `模拟操作：${action.type}；未修改实际仓库。` : `Demo: ${action.type} completed. No disk changes.`) : `${action.type} ✓` });
+          set({ notice: demoMode ? (get().language === 'zh-CN' ? `模拟操作：${action.type}；未修改实际仓库。` : `Demo: ${action.type} completed. No disk changes.`) : action.type === 'resolve-and-stage' ? (get().language === 'zh-CN' ? '已标记并暂存；继续前请检查结果。' : 'Marked and staged; inspect the result before continuing.') : `${action.type} ✓` });
         }
       }
       finish('success');

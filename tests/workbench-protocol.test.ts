@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { actionSchema, openRepositorySchema, requestSchema, sessionSchema } from '../src/protocol/validation';
 
 describe('Workbench protocol validation', () => {
+  it('preserves operation review tokens and the explicit conflict staging action',()=>{
+    expect(actionSchema.parse({type:'resolve-and-stage',paths:['same.txt']})).toEqual({type:'resolve-and-stage',paths:['same.txt']});
+    expect(actionSchema.parse({type:'operation.continue',kind:'merge',reviewToken:'reviewed'})).toEqual({type:'operation.continue',kind:'merge',reviewToken:'reviewed'});
+    expect(actionSchema.parse({type:'commit',message:'Reviewed',reviewToken:'reviewed'})).toMatchObject({reviewToken:'reviewed'});
+    expect(requestSchema.parse({id:'review',method:'operationReview',repoId:'fixture'}).method).toBe('operationReview');
+  });
   it('retains v2 layout, multi-reference views and drafts while accepting legacy sessions', () => {
     const state = { version: 2, language: 'zh-CN', layout: { preset: 'workbench', sidebar: 230, details: 360, diff: 720, diffCollapsed: true, graph: 72, author: 120, date: 150, font: 13, row: 26 }, repoId: 'fixture', drafts: { fixture: 'Commit draft' }, views: { fixture: { checkedRefs: [],expandedRefGroups:['local:feature'],collapsedSidebarGroups:['tag'], search: '', selectedOid: 'abc', selectedParent: 'parent-2', selectedStashOid: 'def', selectedFile: 'a.txt', tab: 'history' } } };
     expect(sessionSchema.parse(state)).toEqual(state);

@@ -11,7 +11,7 @@ export interface ActionFeedback {
 
 export function actionName(action: GitAction): string {
   const names: Partial<Record<GitAction['type'], string>> = {
-    stage: 'Stage', unstage: 'Unstage', discard: 'Discard', commit: action.type === 'commit' && action.amend ? 'Amend' : 'Commit',
+    stage: 'Stage', 'resolve-and-stage': 'Mark & Stage', unstage: 'Unstage', discard: 'Discard', commit: action.type === 'commit' && action.amend ? 'Amend' : 'Commit',
     fetch: 'Fetch', pull: 'Pull', push: 'Push', 'branch.create': 'Create Branch', 'branch.checkout': 'Checkout', 'commit.checkout': 'Checkout',
     'checkout.stash': 'Stash & Checkout', 'branch.track': action.type==='branch.track'&&action.checkout?'Checkout Remote Branch':'Create Tracking Branches', 'branch.delete': action.type==='branch.delete'&&action.names.length>1?'Delete Branches':'Delete Branch', 'remote.delete':'Delete Remote Branches', 'tag.create': 'Create Tag', 'tag.delete': 'Delete Tag',
     'stash.create': 'Stash', 'stash.apply': action.type === 'stash.apply' && action.pop ? 'Pop Stash' : 'Apply Stash', 'stash.drop': 'Drop Stash',

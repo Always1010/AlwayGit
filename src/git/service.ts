@@ -1,8 +1,8 @@
 import { spawn } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { access, realpath, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { Change, CheckoutBlocker, Commit, CommitComparison, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationState, Repository, RepositoryStatus, Snapshot, Stash, Worktree } from '../protocol/types';
+import type { Change, CheckoutBlocker, Commit, CommitComparison, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationReview, OperationState, Repository, RepositoryStatus, Snapshot, Stash, Worktree } from '../protocol/types';
 import { inferDefaultBranch } from './default-branch';
 
 export interface GitServiceOptions {
@@ -57,6 +57,7 @@ const commitFormat = '%H%x00%P%x00%an%x00%ae%x00%at%x00%s';
 
 export class GitService implements GitServiceContract {
   private version = 0;
+  private readonly reviews = new Map<string, { token: string; fingerprint: string }>();
   constructor(private readonly options: GitServiceOptions = {}) {}
   private async run(repo: Repository, args: string[], allowFailure = false, captureBytes?: number): Promise<Result> {
     const adapter = this.options.environment;
@@ -224,6 +225,62 @@ export class GitService implements GitServiceContract {
     const operation = prior.catch(() => {}).then(async () => { await this.verify(repo); await this.executeNow(repo, action); });
     queues.set(key, operation); try { await operation; } finally { if (queues.get(key) === operation) queues.delete(key); }
   }
+  private async readOperationFile(gitDir: string, name: string): Promise<string> {
+    try { return await readFile(path.join(gitDir, name), 'utf8'); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return ''; throw error; }
+  }
+  private async reviewFingerprint(repo: Repository, snapshot: Snapshot, tree: string): Promise<string> {
+    const gitDir = await this.text(repo, ['rev-parse', '--path-format=absolute', '--git-dir']);
+    const markers = await Promise.all(['MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'sequencer/head', 'sequencer/todo', 'rebase-merge/onto', 'rebase-merge/orig-head', 'rebase-merge/done', 'rebase-merge/git-rebase-todo', 'rebase-apply/next', 'rebase-apply/last', 'rebase-apply/orig-head'].map(name => this.readOperationFile(gitDir, name)));
+    return createHash('sha256').update(JSON.stringify([repo.id, snapshot.branch, snapshot.head, snapshot.operation.kind, tree, markers])).digest('hex');
+  }
+  async reviewOperation(repo: Repository): Promise<OperationReview> {
+    const snapshot = await this.snapshot(repo), kind = snapshot.operation.kind;
+    if (!kind) throw new GitError('The Git operation is no longer active. Refresh before continuing.', 'OPERATION_CHANGED');
+    if (!snapshot.operation.canContinue) throw new GitError('Resolve conflicts before continuing', 'CONFLICTS');
+    // Scan an immutable tree, rather than working files or a truncated Diff preview.
+    const tree = await this.text(repo, ['write-tree']), fingerprint = await this.reviewFingerprint(repo, snapshot, tree);
+    const paths = decodePaths((await this.run(repo, ['diff', '--name-only', '--no-renames', '-z', snapshot.head!, tree, '--'])).stdout).split('\0').filter(Boolean);
+    const records = decodePaths((await this.run(repo, ['ls-tree', '-r', '-z', tree])).stdout).split('\0');
+    const entries = new Map(records.filter(Boolean).map(record => { const tab = record.indexOf('\t'); return [record.slice(tab + 1), record.slice(0, tab).split(' ')]; }));
+    const files: OperationReview['files'] = [];
+    let remaining = 16 * 1024 * 1024;
+    for (const name of paths) {
+      const entry = entries.get(name); if (!entry) continue; // Staged deletions contain no text.
+      const file: OperationReview['files'][number] = { path: name, lines: [] }; files.push(file);
+      if (entry[1] !== 'blob') { file.skipped = 'submodule'; continue; }
+      const size = Number(await this.text(repo, ['cat-file', '-s', entry[2]]));
+      if (size > 2 * 1024 * 1024) { file.skipped = 'large'; continue; }
+      if (size > remaining) { file.skipped = 'limit'; continue; }
+      remaining -= size;
+      const bytes = (await this.run(repo, ['cat-file', 'blob', entry[2]], false, size + 1)).stdout;
+      if (bytes.includes(0)) { file.skipped = 'binary'; continue; }
+      let text: string;
+      try { text = new TextDecoder('utf-8', { fatal: true }).decode(bytes); } catch { file.skipped = 'encoding'; continue; }
+      text.split(/\r?\n/).forEach((line, index) => {
+        // Include diff3/zdiff3 base markers and non-default marker widths. A single
+        // leftover marker is suspicious too; explicit confirmation allows literal text.
+        if (/^(?:<{7,}(?: .*)?|\|{7,}(?: .*)?|={7,}|>{7,}(?: .*)?)$/.test(line)) {
+          if (file.lines.length < 100) file.lines.push(index + 1); else file.more = true;
+        }
+      });
+    }
+    const current = await this.snapshot(repo);
+    if (!current.operation.canContinue || fingerprint !== await this.reviewFingerprint(repo, current, await this.text(repo, ['write-tree']))) throw new GitError('Staged content or the operation changed during inspection. Check it again.', 'REVIEW_CHANGED');
+    const token = randomUUID(); this.reviews.set(repo.id, { token, fingerprint });
+    return { kind, token, files };
+  }
+  private async requireReview(repo: Repository, snapshot: Snapshot, token?: string): Promise<void> {
+    if (!snapshot.operation.kind) {
+      if (token) throw new GitError('The reviewed Git operation is no longer active. Refresh before continuing.', 'OPERATION_CHANGED');
+      return;
+    }
+    if (!snapshot.operation.canContinue) throw new GitError('Resolve conflicts before continuing', 'CONFLICTS');
+    const review = this.reviews.get(repo.id);
+    if (!token || token !== review?.token) throw new GitError('Inspect the staged result and confirm before completing this operation.', 'REVIEW_REQUIRED');
+    if (review.fingerprint !== await this.reviewFingerprint(repo, snapshot, await this.text(repo, ['write-tree']))) throw new GitError('Staged content or the operation changed. Inspect the result again.', 'REVIEW_CHANGED');
+    this.reviews.delete(repo.id);
+  }
   private async checkout(repo: Repository, target: string, detached = false, stashFirst = false, includeUntracked = false, createFrom?: string): Promise<void> {
     const resolved = detached ? await this.oid(repo, target) : await this.refName(repo, target);
     if (!detached && !createFrom) await this.oid(repo, `refs/heads/${resolved}`);
@@ -317,13 +374,15 @@ export class GitService implements GitServiceContract {
     return selector;
   }
   private async executeNow(repo: Repository, action: GitAction): Promise<void> {
+    if (action.type !== 'commit' && action.type !== 'operation.continue') this.reviews.delete(repo.id);
     let args: string[]; const remote = (value?: string) => value ? [token(value, 'remote')] : [];
     switch (action.type) {
-      case 'stage': case 'unstage': case 'discard': {
+      case 'stage': case 'resolve-and-stage': case 'unstage': case 'discard': {
         if (!action.paths.length) throw new GitError('Select at least one file', 'INVALID_ARGUMENT'); const paths = action.paths.map(validateFilePath);
         const status = await this.status(repo);
         const relatedPaths = (area: 'indexStatus' | 'worktreeStatus') => [...new Set(paths.flatMap(name => { const rename = status.changes.find(change => change[area] === 'R' && change.originalPath && (change.path === name || change.originalPath === name)); return rename ? [validateFilePath(rename.path), validateFilePath(rename.originalPath!)] : [name]; }))];
-        if (action.type === 'stage') args = ['add', '--', ...relatedPaths('worktreeStatus')];
+        if (action.type === 'resolve-and-stage' && paths.some(name => !status.changes.some(change => change.path === name && change.conflict))) throw new GitError('The selected conflict files changed. Refresh and select them again.', 'OPERATION_CHANGED');
+        if (action.type === 'stage' || action.type === 'resolve-and-stage') args = ['add', '--', ...relatedPaths('worktreeStatus')];
         else if (action.type === 'unstage') { const selected = relatedPaths('indexStatus'); args = status.head ? ['restore', '--staged', '--source=HEAD', '--', ...selected] : ['rm', '-f', '--cached', '--ignore-unmatch', '--', ...selected]; }
         else {
           const renames = status.changes.filter(change => change.worktreeStatus === 'R' && change.originalPath && (paths.includes(change.path) || paths.includes(change.originalPath)));
@@ -346,7 +405,13 @@ export class GitService implements GitServiceContract {
         }
         break;
       }
-      case 'commit': if (!action.message.trim() || action.message.includes('\0')) throw new GitError('Enter a commit message', 'INVALID_ARGUMENT'); args = ['commit', ...(action.amend ? ['--amend'] : []), '-m', action.message]; break;
+      case 'commit': {
+        if (!action.message.trim() || action.message.includes('\0')) throw new GitError('Enter a commit message', 'INVALID_ARGUMENT');
+        const snapshot = await this.snapshot(repo);
+        if (snapshot.operation.kind && action.amend) throw new GitError('Amend is unavailable during an active Git operation.', 'INVALID_ARGUMENT');
+        await this.requireReview(repo, snapshot, action.reviewToken);
+        args = ['commit', ...(action.amend ? ['--amend'] : []), '-m', action.message]; break;
+      }
       case 'fetch': args = ['fetch', ...remote(action.remote)]; break;
       case 'pull': if (!['ff-only', 'merge', 'rebase'].includes(action.strategy)) throw new GitError('Invalid pull strategy', 'INVALID_ARGUMENT'); args = ['pull', ...(action.strategy === 'merge' ? ['--no-rebase', '--ff'] : [`--${action.strategy}`]), ...remote(action.remote)]; break;
       case 'push': {
@@ -421,7 +486,14 @@ export class GitService implements GitServiceContract {
         args = [action.type, ...(action.mainline ? ['-m', String(action.mainline)] : []), ...(await Promise.all(action.commits.map(x => this.oid(repo, x))))]; break;
       }
       case 'reset': if (!['soft', 'mixed', 'hard'].includes(action.mode)) throw new GitError('Invalid reset mode', 'INVALID_ARGUMENT'); args = ['reset', `--${action.mode}`, await this.oid(repo, action.target), '--']; break;
-      case 'operation.continue': case 'operation.abort': case 'operation.skip': { const state = (await this.snapshot(repo)).operation; if (!state.kind || state.kind !== action.kind) throw new GitError('The selected Git operation is no longer active', 'OPERATION_CHANGED'); const command = action.type.split('.')[1]; if (command === 'skip' && !state.canSkip) throw new GitError('This operation cannot be skipped', 'INVALID_ARGUMENT'); if (command === 'continue' && !state.canContinue) throw new GitError('Resolve conflicts before continuing', 'CONFLICTS'); args = [action.kind, `--${command}`]; break; }
+      case 'operation.continue': case 'operation.abort': case 'operation.skip': {
+        const snapshot = await this.snapshot(repo), state = snapshot.operation;
+        if (!state.kind || state.kind !== action.kind) throw new GitError('The selected Git operation is no longer active', 'OPERATION_CHANGED');
+        const command = action.type.split('.')[1];
+        if (command === 'skip' && !state.canSkip) throw new GitError('This operation cannot be skipped', 'INVALID_ARGUMENT');
+        if (action.type === 'operation.continue') await this.requireReview(repo, snapshot, action.reviewToken);
+        args = [action.kind, `--${command}`]; break;
+      }
       default: throw new GitError('Unsupported Git action', 'INVALID_ARGUMENT');
     }
     await this.run(repo, args);

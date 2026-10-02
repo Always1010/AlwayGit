@@ -64,6 +64,8 @@ Diff 的加载依赖比较目标的语义身份。历史比较不依赖 Snapshot
 
 历史中的删除文件没有工作区实体，打开时使用只读 Git 内容。Merge Commit 必须明确比较父提交。冲突比较使用 Index Stage 2/3，并允许打开实际文件解决冲突。
 
+`resolve-and-stage` 表达用户已人工处理后的 Git 标记与暂存，仍通过 `git add` 实现，不证明内容正确。`operationReview` 将当前 Index 写成不可变 Tree，扫描相对 HEAD 的暂存变更，并返回文件、标记行号、未扫描原因及宿主颁发的一次性确认 token。token 绑定工作目录身份、分支、HEAD、Tree 和操作控制文件；Continue 以及活动操作中的 Commit 在共享写队列内重新核对，普通 Stage/Abort 等写操作使已有 token 失效。确认后内容变化不能复用旧确认。每文件最多扫描 2 MiB、累计 16 MiB，未扫描内容必须向用户明确展示；标记检测只用于提醒，不做语义正确性保证。外部 Git 进程仍可能在最后检查与实际 Git 命令间竞争，Git 自身的 Index 锁及执行错误继续生效。
+
 原生 Diff 和文件编辑请求先经项目窗口路由，再在接收方调用 `GitDocuments`；虚拟内容登记只存在于接收宿主。编辑器使用当前组与 `preview: false`，保留既有标签和工作台，避免新增侧边编辑器组。
 
 ## 项目窗口路由

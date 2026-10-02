@@ -21,6 +21,29 @@ beforeEach(async () => {
 });
 afterEach(() => { vi.useRealTimers(); });
 describe('repository UI consistency', () => {
+  it('inspects before Continue or an operation Commit and sends only the confirmed action',async()=>{
+    await store.getState().selectRepository('a');
+    store.setState({snapshot:{...snapshot(a),operation:{kind:'merge',conflicts:0,canContinue:true,canAbort:true,canSkip:false}}});
+    const fallback=bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method,...args)=>method==='operationReview'?Promise.resolve({kind:'merge',token:'review',files:[{path:'a.txt',lines:[1,3,5]}]}):fallback(method,...args));
+    expect(await store.getState().execute({type:'operation.continue',kind:'merge'})).toBe(false);
+    expect(bridge.rpc.mock.calls.filter(([method])=>method==='action')).toHaveLength(0);
+    expect(store.getState().operationReview?.review.files[0].lines).toEqual([1,3,5]);
+    const pending=store.getState().operationReview!;
+    expect(await store.getState().execute({...pending.action,reviewToken:pending.review.token})).toBe(true);
+    expect(bridge.rpc.mock.calls.find(([method])=>method==='action')?.[2]).toMatchObject({reviewToken:'review'});
+    store.setState({snapshot:{...snapshot(a),operation:{kind:'merge',conflicts:0,canContinue:true,canAbort:true,canSkip:false}}});
+    await store.getState().execute({type:'commit',message:'bypass'});
+    expect(store.getState().operationReview?.action.type).toBe('commit');
+    await store.getState().selectRepository('b');expect(store.getState().operationReview).toBeUndefined();
+  });
+  it('ignores a review response after switching repositories',async()=>{
+    await store.getState().selectRepository('a');const response=deferred<unknown>(),fallback=bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method,...args)=>method==='operationReview'?response.promise:fallback(method,...args));
+    const action=store.getState().execute({type:'operation.continue',kind:'merge'});await store.getState().selectRepository('b');
+    response.resolve({kind:'merge',token:'late',files:[]});await action;
+    expect(store.getState().operationReview).toBeUndefined();expect(store.getState().busy).toBe(false);
+  });
   it('passes a selected ref union and preserves an explicitly empty selection', async () => {
     await store.getState().selectRepository('a');
     store.getState().setCheckedRefs(['refs/heads/main','refs/heads/topic','refs/heads/main']);
