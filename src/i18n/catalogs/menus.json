@@ -215,6 +215,18 @@
     "review": "translated",
     "context": "webview/menus.ts / menuFor / refBatch"
   },
+  "menus.copyTagNames": {
+    "en": "Copy Tag Names",
+    "zh-CN": "复制标签名称",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor / refBatch"
+  },
+  "menus.copyReferenceNames": {
+    "en": "Copy Reference Names",
+    "zh-CN": "复制引用名称",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor / refBatch"
+  },
   "menus.branches": {
     "en": "branches",
     "zh-CN": "个分支",
@@ -293,6 +305,18 @@
   "menus.branchesVariant2": {
     "en": "{{count}} Branches",
     "zh-CN": "{{count}} 个分支",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.tagsSelected": {
+    "en": "{{count}} Tags",
+    "zh-CN": "{{count}} 个标签",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.referencesSelected": {
+    "en": "{{count}} References",
+    "zh-CN": "{{count}} 个引用",
     "review": "translated",
     "context": "webview/menus.ts / menuFor"
   },
