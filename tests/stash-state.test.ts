@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { GitService } from '../src/git/service';
@@ -21,7 +21,10 @@ async function setup(files: Record<string, string>) {
   await git(root, 'config', 'user.email', 'stash@example.com');
   await git(root, 'config', 'commit.gpgsign', 'false');
   await git(root, 'config', 'core.autocrlf', 'false');
-  for (const [name, content] of Object.entries(files)) await writeFile(path.join(root, name), content);
+  for (const [name, content] of Object.entries(files)) {
+    await mkdir(path.dirname(path.join(root, name)), { recursive: true });
+    await writeFile(path.join(root, name), content);
+  }
   await git(root, 'add', '-A');
   await git(root, 'commit', '--allow-empty', '-m', 'base');
   const service = new GitService();
@@ -194,27 +197,79 @@ describe('Stash saved state and restore preflight', () => {
     expect((await service.snapshot(repo)).stashes).toEqual([saved]);
   });
 
-  it('preserves UTF-16 raw working bytes and canonical blobs using repository-local attributes', async () => {
+  it.each(['info', 'ignored-root', 'ignored-ancestor'] as const)('preserves UTF-16 raw working bytes and canonical blobs using %s attributes', async source => {
     const { root, service, repo } = await setup({ 'base.txt': 'base' });
-    await writeFile(path.join(root, '.git', 'info', 'attributes'), 'encoded.txt text working-tree-encoding=UTF-16LE-BOM eol=lf\n');
+    const file = source === 'ignored-ancestor' ? 'nested/deeper/encoded.txt' : 'encoded.txt';
+    const attributeFile = source === 'info' ? '.git/info/attributes' : source === 'ignored-root' ? '.gitattributes' : 'nested/.gitattributes';
+    const attributes = 'encoded.txt text working-tree-encoding=UTF-16LE-BOM eol=lf\n';
+    await mkdir(path.dirname(path.join(root, file)), { recursive: true });
+    await writeFile(path.join(root, '.git', 'info', 'exclude'), '.gitattributes\n');
+    await writeFile(path.join(root, attributeFile), attributes);
     const encoded = (text: string) => Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(text, 'utf16le')]);
     const base = encoded('原始内容\n'), staged = encoded('暂存内容\n'), working = encoded('现场内容\n');
-    await writeFile(path.join(root, 'encoded.txt'), base);
-    await git(root, 'add', '--', 'encoded.txt');
+    await writeFile(path.join(root, file), base);
+    await git(root, 'add', '--', file);
     await git(root, 'commit', '-m', 'encoded base');
-    await writeFile(path.join(root, 'encoded.txt'), staged);
-    await git(root, 'add', '--', 'encoded.txt');
-    await writeFile(path.join(root, 'encoded.txt'), working);
+    await writeFile(path.join(root, file), staged);
+    await git(root, 'add', '--', file);
+    await writeFile(path.join(root, file), working);
 
-    await service.execute(repo, { type: 'stash.create', paths: ['encoded.txt'] });
+    await service.execute(repo, { type: 'stash.create', paths: [file] });
     const saved = (await service.snapshot(repo)).stashes[0];
-    expect(await service.content(repo, { kind: 'revision', revision: `${saved.oid}^2`, path: 'encoded.txt' })).toEqual(Buffer.from('暂存内容\n'));
-    expect(await service.content(repo, { kind: 'revision', revision: saved.oid, path: 'encoded.txt' })).toEqual(Buffer.from('现场内容\n'));
-    expect(await readFile(path.join(root, 'encoded.txt'))).toEqual(base);
+    expect(await service.content(repo, { kind: 'revision', revision: `${saved.oid}^2`, path: file })).toEqual(Buffer.from('暂存内容\n'));
+    expect(await service.content(repo, { kind: 'revision', revision: saved.oid, path: file })).toEqual(Buffer.from('现场内容\n'));
+    expect(await readFile(path.join(root, file))).toEqual(base);
+    expect(await readFile(path.join(root, attributeFile), 'utf8')).toBe(attributes);
     await service.execute(repo, { type: 'stash.apply', selector: saved.selector, expectedOid: saved.oid });
-    expect(await readFile(path.join(root, 'encoded.txt'))).toEqual(working);
-    expect(await service.content(repo, { kind: 'index', path: 'encoded.txt' })).toEqual(Buffer.from('暂存内容\n'));
+    expect(await readFile(path.join(root, file))).toEqual(working);
+    expect(await service.content(repo, { kind: 'index', path: file })).toEqual(Buffer.from('暂存内容\n'));
+    expect(await readFile(path.join(root, attributeFile), 'utf8')).toBe(attributes);
     expect((await service.snapshot(repo)).stashes).toEqual([saved]);
+  });
+
+  it.each(['created', 'deleted', 'changed'] as const)('retains the saved Stash and skips cleanup when an ignored attribute source is %s', async change => {
+    const { root, service, repo } = await setup({ 'selected.txt': 'base' });
+    const attributeFile = path.join(root, '.gitattributes');
+    await writeFile(path.join(root, '.git', 'info', 'exclude'), '.gitattributes\n');
+    if (change !== 'created') await writeFile(attributeFile, '# initial context\n');
+    await writeFile(path.join(root, 'selected.txt'), 'saved index');
+    await git(root, 'add', '--', 'selected.txt');
+    await writeFile(path.join(root, 'selected.txt'), 'saved working');
+    const indexBefore = await git(root, 'ls-files', '--stage');
+    const changingService = new GitService({ environment: async (_repo, args) => {
+      if (args[0] === 'stash' && args[1] === 'store') {
+        if (change === 'deleted') await rm(attributeFile);
+        else await writeFile(attributeFile, '# updated context\n');
+      }
+      return {};
+    } });
+    await expect(changingService.execute(repo, { type: 'stash.create', paths: ['selected.txt'] })).rejects.toMatchObject({ code: 'STASH_CLEANUP_FAILED' });
+    expect(await git(root, 'ls-files', '--stage')).toBe(indexBefore);
+    expect(await readFile(path.join(root, 'selected.txt'), 'utf8')).toBe('saved working');
+    const saved = (await service.snapshot(repo)).stashes[0];
+    expect(saved).toBeDefined();
+    expect(await git(root, 'show', `${saved.oid}^2:selected.txt`)).toBe('saved index');
+    expect(await git(root, 'show', `${saved.oid}:selected.txt`)).toBe('saved working');
+    if (change === 'deleted') await expect(readFile(attributeFile)).rejects.toThrow();
+    else expect(await readFile(attributeFile, 'utf8')).toBe('# updated context\n');
+  });
+
+  it.each(['leaf', 'ancestor'] as const)('rejects an attribute %s link while preserving the repository and outside files', async link => {
+    const { root, service, repo } = await setup({ 'nested/selected.txt': 'base' });
+    const outside = await mkdtemp(path.join(os.tmpdir(), 'alwaygit-stash-'));
+    fixtures.push(outside);
+    await writeFile(path.join(outside, '.gitattributes'), 'selected.txt text\n');
+    await writeFile(path.join(outside, 'selected.txt'), 'outside working');
+    if (link === 'ancestor') await rm(path.join(root, 'nested'), { recursive: true });
+    else await writeFile(path.join(root, 'nested', 'selected.txt'), 'local working');
+    await symlink(outside, path.join(root, link === 'ancestor' ? 'nested' : '.gitattributes'), process.platform === 'win32' ? 'junction' : 'dir');
+    const indexBefore = await readFile(path.join(root, '.git', 'index'));
+    await expect(service.execute(repo, { type: 'stash.create', paths: ['nested/selected.txt'] })).rejects.toMatchObject({ code: 'UNSUPPORTED_STASH_PATH' });
+    expect(await readFile(path.join(root, '.git', 'index'))).toEqual(indexBefore);
+    expect(await git(root, 'stash', 'list')).toBe('');
+    expect(await readFile(path.join(outside, '.gitattributes'), 'utf8')).toBe('selected.txt text\n');
+    expect(await readFile(path.join(outside, 'selected.txt'), 'utf8')).toBe('outside working');
+    expect(await readFile(path.join(root, 'nested', 'selected.txt'), 'utf8')).toBe(link === 'ancestor' ? 'outside working' : 'local working');
   });
 
   it.each(['external-filter', 'merge-default'] as const)('blocks %s during restore inspection without changing project state', async driver => {

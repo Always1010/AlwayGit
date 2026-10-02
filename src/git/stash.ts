@@ -54,7 +54,15 @@ async function capture(repo: Repository, extraPaths: string[], run: Run): Promis
   ]);
   const config = configResult.stdout.toString('utf8');
   if (config.split('\0').some(entry => /^core\.sparsecheckout\n(?:true|1|yes|on)$/i.test(entry))) throw new StashStateError('Stash preflight is not supported in a sparse checkout. Use Git directly for this repository.', 'UNSUPPORTED_STASH_STATE');
-  const tree = treeEntries(headFiles.stdout), names = [...new Set([...tree.keys(), ...indexPaths(indexFiles.stdout), ...paths(otherFiles.stdout), ...paths(occupied.stdout), ...extraPaths])].sort();
+  const tree = treeEntries(headFiles.stdout), listedNames = [...new Set([...tree.keys(), ...indexPaths(indexFiles.stdout), ...paths(otherFiles.stdout), ...paths(occupied.stdout), ...extraPaths])];
+  // Attribute context applies even when it is ignored or outside the selected scope.
+  // Record absent sources too, so creating an attribute file invalidates cleanup.
+  const attributeNames = new Set(['.gitattributes']);
+  for (const name of listedNames) {
+    const parts = name.split('/');
+    for (let i = 1; i < parts.length; i++) attributeNames.add(`${parts.slice(0, i).join('/')}/.gitattributes`);
+  }
+  const names = [...new Set([...listedNames, ...attributeNames])].sort();
   const gitlinks = new Set([...tree].filter(([, entry]) => entry.mode === '160000').map(([name]) => name));
   for (const record of paths(indexFiles.stdout)) if (record.startsWith('160000 ')) gitlinks.add(record.slice(record.indexOf('\t') + 1));
   if (extraPaths.some(name => gitlinks.has(name))) throw new StashStateError('Stash isolation cannot save or restore a submodule state. Use Git directly for this path.', 'UNSUPPORTED_STASH_STATE');
@@ -81,6 +89,7 @@ async function capture(repo: Repository, extraPaths: string[], run: Run): Promis
     // Gitlinks refer to separate repositories; their inner contents are never copied.
     if (gitlinks.has(name)) continue;
     const state = await fileState(repo.root, name); files.set(name, state);
+    if (attributeNames.has(name) && state.kind === 'link') throw new StashStateError(`Cannot safely snapshot a symbolic link used as an attribute source: ${name}`, 'UNSUPPORTED_STASH_PATH');
     if (extraPaths.includes(name) && state.kind === 'directory' && state.children?.some(child => !names.some(candidate => candidate === `${name}/${child}` || candidate.startsWith(`${name}/${child}/`)))) throw new StashStateError(`Cannot safely inspect the directory occupying ${name}. Move it before restoring.`, 'UNSUPPORTED_STASH_PATH');
     size += state.bytes?.length ?? 0;
     if (size > 128 * 1024 * 1024) throw new StashStateError('The working state is larger than the 128 MiB Stash preflight limit. Use Git directly for this repository.', 'UNSUPPORTED_STASH_STATE');
