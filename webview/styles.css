@@ -173,10 +173,12 @@ h1,h2,p {margin:0;}
 .comparison-summary>.codicon {justify-self:center;color:var(--muted);}
 .detail-files {padding:4px;overflow:auto;flex:1;min-height:40px;}
 .file-item {display:flex;align-items:center;gap:5px;text-align:left;width:100%;min-height:28px;border-bottom:1px solid var(--row-border);padding:4px;font-size:inherit;}
-.file-status {min-width:17px;flex:none;text-align:center;}
-.status-M,.status-R {color:var(--accent);}
+.file-status {display:inline-flex;align-items:center;justify-content:center;min-width:17px;flex:none;text-align:center;}
+.file-status>.codicon {font-size:14px;}
+.status-M,.status-R,.status-C {color:var(--accent);}
 .status-A,.status-\? {color:var(--green);}
 .status-D,.status-U {color:var(--error);}
+.status-T {color:var(--yellow);}
 .stash-tabs {display:flex;gap:3px;flex-wrap:wrap;font-size:11px;}
 .working-summary {display:flex;align-items:center;justify-content:space-between;gap:6px;padding:5px 9px;font-size:12px;border-bottom:1px solid var(--row-border);white-space:nowrap;}
 .working-summary>span {min-width:0;overflow:hidden;text-overflow:ellipsis;}

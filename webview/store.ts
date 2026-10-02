@@ -166,10 +166,11 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       return false;
     }
     set({ operationReview: undefined });
+    const committedFiles = action.type === 'commit' && !action.amend ? get().snapshot?.changes.filter(change => !change.conflict && change.indexStatus !== ' ' && change.indexStatus !== '?' && !!change.indexStatus).length : undefined;
     const feedback: ActionFeedback = { id: ++actionSequence, repoId, action, status: 'running', target: actionTarget(action, get().snapshot) };
-    const finish = (status: 'success' | 'error', error?: string) => {
+    const finish = (status: 'success' | 'error', error?: string, result?: ActionFeedback['result']) => {
       if (actionFeedbacks.get(repoId)?.id !== feedback.id) return;
-      const completed = { ...feedback, status, error };
+      const completed = { ...feedback, status, error, result };
       actionFeedbacks.set(repoId, completed);
       if (get().repoId === repoId) set({ actionFeedback: completed });
     };
@@ -185,7 +186,8 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
           set({ notice: demoMode ? (get().language === 'zh-CN' ? `模拟操作：${action.type}；未修改实际仓库。` : `Demo: ${action.type} completed. No disk changes.`) : action.type === 'resolve-and-stage' ? (get().language === 'zh-CN' ? '已标记并暂存；继续前请检查结果。' : 'Marked and staged; inspect the result before continuing.') : `${action.type} ✓` });
         }
       }
-      finish('success');
+      const snapshot = epoch === repositoryEpoch ? get().snapshot : undefined;
+      finish('success', undefined, action.type === 'commit' && snapshot?.head ? { kind: 'commit', oid: snapshot.head, files: committedFiles, remaining: snapshot.changes.length, amended: !!action.amend } : undefined);
       return true;
     } catch (error) {
       if (get().repoId === repoId) {

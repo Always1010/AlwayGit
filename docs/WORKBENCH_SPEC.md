@@ -40,6 +40,8 @@ Repository 和 Worktree 名称行单击只改变操作选择，不切换当前�
 
 当焦点位于可多选区域或其标题、行内控件时，Ctrl/Cmd+A 只全选焦点所属作用域，Escape 只清除该作用域的操作选择；快捷键由区域容器捕获，不能落到整页文本选择。Repository 的范围是全部逻辑仓库；Local Branches 的范围是全部本地分支；每个 Remote 是独立范围，只包含该 Remote 下的分支；Worktrees 的范围是当前仓库的全部 Worktree。分支 action selection 与 Graph 筛选复选框相互独立，Ctrl/Cmd+A 和 Escape 都不改变 `checkedRefs`。History 的范围是当前已经加载的真实 Commit，不为全选隐式加载下一页，并排除 Working Tree 虚拟 Commit。Working Tree、Commit Details 和 Commit 比较的文件区域只处理当前面板可见文件。输入框、文本域和可编辑内容保留 Ctrl/Cmd+A 与 Escape 的原生行为。
 
+Working Tree 和提交文件列表使用不同形状的语义图标与 Git 状态颜色区分新增、修改、删除、重命名和冲突，悬停说明完整状态，不常驻显示字母缩写。没有选择文件时，分组按钮显示 `Stage All` 或 `Unstage All`，点击后先显示实际文件数量的确认浮窗，确认按钮默认获得焦点，可按 Enter 快速执行；Escape、点击遮罩或 Cancel 取消。已明确选择文件时，分组按钮以及右键菜单中的 Stage / Unstage 直接作用于所选范围，不重复确认。
+
 分组应用于全部添加、恢复和自动发现入口。已有保存路径无需清除，工作目录 ID、各自的 Commit 草稿与视图继续保留；不将多个 Worktree 的文件或暂存区状态合并。
 
 | 输入 | 行为 |
@@ -135,7 +137,7 @@ Graph 中 Commit 的菜单集中提供 `Create Branch…`、`Create Tag…`、Ch
 
 ## 禁用与受阻规则
 
-工具栏下的操作信息栏显示 Git 操作名称、目标及进行中、成功、失败状态；结果保留到用户关闭或下一次操作，进行中不可关闭。失败显示原因摘要，并提供完整错误详情和日志入口；失败后重新读取仓库状态。操作反馈按仓库隔离，切换仓库不会展示其他仓库的结果。
+工具栏下的操作信息栏显示 Git 操作名称、目标及进行中、成功、失败状态；结果保留到用户关闭或下一次操作，进行中不可关闭。Commit 成功时显示短哈希、实际提交的暂存文件数以及剩余未提交变更数或干净工作区状态，并提供 `View Commit` 直接打开新提交。失败显示原因摘要，并提供完整错误详情和日志入口；Commit 失败不清空消息草稿。失败后重新读取仓库状态。操作反馈按仓库隔离，切换仓库不会展示其他仓库的结果。
 
 Merge、Rebase、Cherry-pick、Revert 的活动状态在独立操作条中持续显示。冲突时显示数量、处理说明和“查看冲突”，进入 Working Tree 并定位首个冲突文件；Continue 禁用原因直接可见。Git 的 unmerged entries 归零后显示“待检查结果”和“检查暂存结果”，只表示 Git 允许继续，不宣称内容已经正确解决；完成或 Abort 后移除。没有活动操作的冲突也显示提醒。Skip 只在 Git 支持时出现。
 
