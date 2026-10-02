@@ -346,6 +346,27 @@ describe('repository UI consistency', () => {
     expect(store.getState().workingFilters).toEqual({ a: 'src/', b: 'docs/' });
     expect(bridge.save.mock.calls.at(-1)?.[0]).toMatchObject({ repoId: 'a', drafts: { a: 'Draft A', b: 'Draft B' } });
   });
+  it.each([false, true])('clears only the submitted repository draft after Commit, preserving newer text (newer=%s)', async newer => {
+    await store.getState().selectRepository('a'); store.getState().setDraft('  submitted\n');
+    const result = deferred<Snapshot>(), fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, ...args) => method === 'action' ? result.promise : fallback(method, ...args));
+    const action = store.getState().execute({ type: 'commit', message: 'submitted' });
+    await store.getState().selectRepository('b'); store.getState().setDraft('Draft B');
+    if (newer) store.setState({ drafts: { ...store.getState().drafts, a: 'new draft A' } });
+    result.resolve({ ...snapshot(a), head: 'created' });
+    expect(await action).toBe(true);
+    expect(store.getState().drafts).toEqual({ a: newer ? 'new draft A' : '', b: 'Draft B' });
+    expect(bridge.save.mock.calls.at(-1)?.[0].drafts).toEqual(store.getState().drafts);
+  });
+
+  it('preserves the Commit draft when Git rejects the action', async () => {
+    await store.getState().selectRepository('a'); store.getState().setDraft('keep this draft');
+    const fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, ...args) => method === 'action' ? Promise.reject(new Error('hook rejected')) : fallback(method, ...args));
+    expect(await store.getState().execute({ type: 'commit', message: 'keep this draft' })).toBe(false);
+    expect(store.getState().drafts.a).toBe('keep this draft');
+  });
+
   it('keeps controls busy when host activity ends before the action response arrives', async () => {
     await store.getState().selectRepository('a'); const pending = deferred<void>();
     const fallback = bridge.rpc.getMockImplementation()!;

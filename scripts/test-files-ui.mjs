@@ -12,10 +12,18 @@ export async function verifyFiles(browser, url) {
       const fixture = window.__filesFixture = { calls: [], paths,
         holdDetails: false, heldDetails: [], snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 0, behind: 0, changes: paths.map((path, i) => ({ path, indexStatus: i === 2 ? '?' : 'M', worktreeStatus: i === 2 ? '?' : 'M', conflict: false, untracked: i === 2 })), refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
       };
-      window.acquireVsCodeApi = () => ({ getState: () => ({}), setState: () => {}, postMessage(request) {
+      window.acquireVsCodeApi = () => ({ getState: () => JSON.parse(localStorage.getItem('files-session') || '{}'), setState: session => { fixture.session = structuredClone(session); localStorage.setItem('files-session', JSON.stringify(session)); }, postMessage(request) {
         if (request.method === 'saveSession') { setTimeout(() => window.postMessage({ type: 'response', id: request.id, result: null }, '*'), 0); return; }
         fixture.calls.push(request);
+        if (request.method === 'action' && request.payload.type === 'commit' && fixture.failCommit) {
+          setTimeout(() => window.postMessage({ type: 'response', id: request.id, error: { message: 'hook rejected' } }, '*'), 10); return;
+        }
         let result;
+        if (request.method === 'action' && request.payload.type === 'commit') {
+          fixture.snapshot.head = 'b'.repeat(40);
+          fixture.snapshot.changes = fixture.snapshot.changes.map(file => ({ ...file, indexStatus: file.untracked ? '?' : ' ' }));
+          result = structuredClone({ ...fixture.snapshot, version: ++fixture.snapshot.version });
+        }
         if (request.method === 'repositories') result = [repo];
         if (request.method === 'snapshot') result = structuredClone({ ...fixture.snapshot, version: ++fixture.snapshot.version });
         if (request.method === 'history') result = { commits: [commit], tips: [commit.oid], nextOffset: 1, hasMore: false };
@@ -147,11 +155,26 @@ export async function verifyFiles(browser, url) {
     const dialog = page.getByRole('dialog');
     assert.deepEqual(await dialog.locator('.discard-paths > div').allTextContents(), await page.evaluate(() => window.__filesFixture.paths), 'Discard All includes every Unstaged path even with a partial selection');
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
-    const draft = details.getByRole('textbox', { name: 'Commit message' });
+    const commitTrigger = staged.getByRole('button', { name: 'Commit…', exact: true });
+    assert.equal(await details.locator('textarea').count(), 0, 'Working Tree no longer reserves space for a Commit form');
+    assert.equal(await commitTrigger.evaluate(element => element.previousElementSibling.classList.contains('change-action-staged')), true, 'Commit follows Unstage in the Staged heading');
+    await page.getByRole('separator', { name: 'Resize details panel', exact: true }).press('Home');
+    const headingBox = await staged.locator('.change-heading').boundingBox(), triggerBox = await commitTrigger.boundingBox();
+    assert.ok(triggerBox.x + triggerBox.width <= headingBox.x + headingBox.width + 1, 'Commit fits the narrowest details panel');
+    await commitTrigger.click();
+    const commitDialog = page.getByRole('dialog', { name: 'Commit', exact: true }), draft = commitDialog.getByRole('textbox', { name: 'Commit message' });
+    await draft.fill('saved draft\nwith body');
+    await commitDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    assert.equal(await commitTrigger.locator('.commit-draft-dot').count(), 1);
+    await commitTrigger.click(); assert.equal(await draft.inputValue(), 'saved draft\nwith body', 'Cancel preserves the complete message');
+    await page.keyboard.press('Escape');
+    assert.equal(await commitTrigger.evaluate(element => element === document.activeElement), true, 'Closing Commit restores focus to its trigger');
+    await commitTrigger.click();
+    assert.equal(await draft.inputValue(), 'saved draft\nwith body', 'Escape also preserves the draft');
     await draft.fill('draft stays editable'); await draft.press('Control+a'); await draft.press('Backspace');
     assert.equal(await draft.inputValue(), '', 'Text area keeps native Select All');
     await page.evaluate(() => { window.__filesFixture.holdDetails = true; });
-    const amend = details.getByRole('checkbox', { name: 'Amend', exact: true });
+    const amend = commitDialog.getByRole('checkbox', { name: 'Amend last Commit', exact: true });
     await amend.check();
     await page.waitForFunction(() => window.__filesFixture.heldDetails.length === 1);
     await amend.uncheck();
@@ -166,14 +189,16 @@ export async function verifyFiles(browser, url) {
     assert.equal(await draft.inputValue(), 'my newer message', 'Amend must preserve text entered while details load');
     await amend.uncheck(); await draft.fill('');
     await page.evaluate(() => { window.__filesFixture.holdDetails = false; });
+    await page.keyboard.press('Escape');
 
     assert.equal(await groups.locator('.change-file[aria-selected="true"]').count(), 1, 'Editing Ctrl+A must not change file selection');
     await unstaged.getByRole('button', { name: 'README.md', exact: true }).click({ button: 'right' });
     await menu.waitFor();
     assert.deepEqual((await menu.getByRole('menuitem').allTextContents()).map(value=>value.trim()), ['Open Diff in VS Code','Edit in VS Code','Stage 1 File','Stash Selected Files…','Discard 1 File…','Copy Path']);
     await page.keyboard.press('Escape');
-    await draft.click({ button: 'right' });
+    await commitTrigger.click(); await draft.click({ button: 'right' });
     assert.equal(await menu.isVisible(), false, 'Editable text keeps the native context menu');
+    await commitDialog.locator('.modal-heading button').click();
     await discardAll.click();
     discardDialog = page.getByRole('dialog', { name: 'Discard Changes', exact: true });
     await discardDialog.locator('button.danger').click();
@@ -206,9 +231,62 @@ export async function verifyFiles(browser, url) {
     assert.equal(await groups.locator('.change-file').count(), 0);
     assert.equal(await groups.locator('.change-heading-staged').isVisible(), true, 'Staged heading stays available with no matching files');
     assert.equal(await staged.getByRole('button', { name: 'Unstage Matching (0)', exact: true }).isDisabled(), true);
+    assert.equal(await commitTrigger.isDisabled(), false, 'Commit opens even when the path filter has no matches');
+    await commitTrigger.click();
+    await commitDialog.getByText('Commit includes all 2 Staged files, including files hidden by a path filter.', { exact: true }).waitFor();
+    await draft.fill('persistent message\nmessage body');
+    await commitDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     await details.getByRole('button', { name: 'Clear file filter', exact: true }).click();
     assert.equal(await groups.locator('.change-file').count(), 5);
+    await page.reload();
+    await workingFilter.waitFor();
+    assert.equal(await workingFilter.inputValue(), '', 'Working path filters start empty after reopening');
+    assert.equal(await commitDialog.count(), 0, 'Reopening restores drafts without opening a modal automatically');
+    await commitTrigger.click();
+    assert.equal(await draft.inputValue(), 'persistent message\nmessage body', 'Saved message survives a full Webview reload');
+    await page.screenshot({ path: 'artifacts/commit-dialog.png' });
+    await page.setViewportSize({ width: 380, height: 650 });
+    assert.ok(await commitDialog.evaluate(element => element.scrollWidth <= element.clientWidth + 1), 'Commit dialog fits narrow windows');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.evaluate(() => { window.__filesFixture.failCommit = true; });
+    await commitDialog.getByRole('button', { name: 'Commit', exact: true }).click();
+    await commitDialog.getByRole('alert').getByText('hook rejected', { exact: true }).waitFor();
+    assert.equal(await draft.inputValue(), 'persistent message\nmessage body', 'Rejected Commit keeps the modal and message');
+    await commitDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await page.evaluate(() => {
+      const fixture = window.__filesFixture; fixture.failCommit = false;
+      fixture.snapshot.changes.push({ path: 'hidden-conflict.txt', indexStatus: 'U', worktreeStatus: 'U', conflict: true, untracked: false });
+      fixture.snapshot.operation.conflicts = 1;
+      window.postMessage({ type: 'changed', repoId: 'files' }, '*');
+    });
+    await workingFilter.fill('features/auth');
+    await details.getByText('1 conflicts are hidden by the filter. Resolve all conflicts before Commit.', { exact: true }).waitFor();
+    await commitTrigger.click();
+    await commitDialog.getByText('Resolve all 1 conflicts before Commit.', { exact: true }).waitFor();
+    assert.equal(await commitDialog.getByRole('button', { name: 'Commit', exact: true }).isDisabled(), true, 'Hidden conflicts still block Commit');
+    await page.evaluate(() => {
+      const fixture = window.__filesFixture; fixture.snapshot.changes = fixture.snapshot.changes.filter(file => !file.conflict);
+      fixture.snapshot.operation.conflicts = 0; window.postMessage({ type: 'changed', repoId: 'files' }, '*');
+    });
+    await commitDialog.getByRole('button', { name: 'Commit', exact: true }).waitFor();
+    await page.waitForFunction(() => !document.querySelector('.commit-dialog .modal-footer .primary').disabled);
+    await draft.press('Control+Enter'); await commitDialog.waitFor({ state: 'hidden' });
+    assert.equal(await page.evaluate(() => window.__filesFixture.session.drafts.files), '', 'Successful Commit clears only the used draft');
+    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action').at(-1).payload), { type: 'commit', message: 'persistent message\nmessage body', amend: false });
+    assert.equal(await commitTrigger.locator('.commit-draft-dot').count(), 0);
+    await commitTrigger.click();
+    await draft.fill('amend message');
+    assert.equal(await commitDialog.getByRole('button', { name: 'Commit', exact: true }).isDisabled(), true, 'Zero Staged files allow drafting but block an ordinary Commit');
+    await amend.check();
+    assert.equal(await draft.inputValue(), 'amend message', 'Amend never overwrites an existing draft');
+    await commitDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await commitTrigger.click(); assert.equal(await amend.isChecked(), false, 'Amend defaults off when reopened');
+    await amend.check(); await draft.press('Control+Enter'); await commitDialog.waitFor({ state: 'hidden' });
+    assert.equal(await page.evaluate(() => window.__filesFixture.session.drafts.files), '');
+    assert.equal(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action').at(-1).payload.amend), true, 'Message-only Amend works with no Staged files');
+    await details.getByRole('button', { name: 'Clear file filter', exact: true }).click();
+    await page.screenshot({ path: 'artifacts/working-tree-search.png' });
     assert.deepEqual(errors, []);
-    console.log('ALWAYGIT_FILES_UI_TESTS_PASSED: corner status badges, collapsible groups, semantic action icons, Stage/Unstage All confirmation and selection-independent scope, full-path filtering, context menus, confirmed Discard All and native text editing');
+    console.log('ALWAYGIT_FILES_UI_TESTS_PASSED: working path filtering and action scope, narrow Staged Commit entry, cancel/reload draft recovery, failures, hidden conflicts, Commit/Amend and native text editing');
   } finally { await page.close(); }
 }

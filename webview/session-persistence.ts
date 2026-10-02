@@ -28,6 +28,12 @@ export class SessionPersistence<T> {
     this.timer = setTimeout(() => { void this.flush(); }, delay);
   }
 
+  /** Closing an editor sends its pending draft without waiting for the debounce. */
+  flushNow(): void {
+    clearTimeout(this.timer);
+    void this.flush();
+  }
+
   private async flush(): Promise<void> {
     const next = this.desired;
     if (this.writing || !next || next.serialized === this.acknowledged) return;

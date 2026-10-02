@@ -94,10 +94,12 @@ export async function verifyShortcuts(browser, url) {
     await search.fill('');
     // Clicking non-focusable text must release the input before dispatching another key.
     await diff.locator('.pane-heading > .truncate').click();await page.keyboard.press('w');
-    await page.getByRole('textbox',{name:'Commit message',exact:true}).waitFor();
+    await page.getByTestId('details').locator('.change-heading-staged').waitFor();
+    assert.equal(await page.getByRole('textbox',{name:'Commit message',exact:true}).count(),0,'W opens Working Tree without a Commit editor');
     await press('c');const message=page.getByRole('textbox',{name:'Commit message',exact:true});
     await page.waitForFunction(()=>document.activeElement?.id==='ag-commit-message');
     await page.keyboard.type('rfplcswodeau');assert.equal(await message.inputValue(),'rfplcswodeau');assert.equal(await calls(),beforeOverlay);
+    await page.keyboard.press('Escape');await dialog().waitFor({state:'hidden'});
 
     // Selectors and editable elements preserve text entry even outside a modal.
     for(const html of ['<select><option>first</option><option>previous</option></select>','<div contenteditable="true"></div>']){

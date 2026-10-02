@@ -22,11 +22,7 @@ export function OperationReviewDialog({ edit }: { edit(path: string): void }) {
   }[reason!]);
   async function confirm() {
     if (state.repoId !== pending.repoId) { close(); return; }
-    const success = await state.execute({ ...pending.action, reviewToken: pending.review.token });
-    if (success && pending.action.type === 'commit') {
-      const latest = useWorkbench.getState();
-      if (latest.repoId === pending.repoId && latest.drafts[pending.repoId]?.trim() === pending.action.message) latest.setDraft('');
-    }
+    await state.execute({ ...pending.action, reviewToken: pending.review.token });
   }
   return <Modal title={t('Inspect Staged Result','检查暂存结果')} busy={state.busy} onClose={close} footer={<>
     <Button icon="arrow-left" disabled={state.busy} onClick={()=>inspect()}>{t('Return to Review','返回检查')}</Button>

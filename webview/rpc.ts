@@ -23,6 +23,7 @@ const sessions = new SessionPersistence<SessionState>(
 export function saveSession(state: SessionState, onError?: (error: Error) => void) {
   sessions.save(state, onError);
 }
+export function flushSession(): void { sessions.flushNow(); }
 const listeners = new Set<(event: HostMessage) => void>();
 const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer?: ReturnType<typeof setTimeout>; category?: ReadQueryCategory; repoId?: string; cleanup?(): void }>();
 let sequence = 0;

@@ -142,15 +142,18 @@ export async function verifyFeedback(browser, url) {
     // Ordinary Commit during an active operation uses the same review boundary.
     await page.evaluate(()=>{const fixture=window.__feedbackFixture;fixture.cleanReview=true;fixture.snapshot.operation={kind:'merge',conflicts:0,canContinue:true,canAbort:true,canSkip:false};window.postMessage({type:'changed',repoId:'feedback'},'*');});
     await operation.waitFor();
+    await page.locator('.toolbar .commit-trigger').click();
     await page.getByLabel('Commit message',{exact:true}).fill('Reviewed merge');
-    await page.locator('.commit-form').getByRole('button',{name:'Commit',exact:true}).click();
+    await page.getByRole('dialog',{name:'Commit',exact:true}).getByRole('button',{name:'Commit',exact:true}).click();
     review=page.getByRole('dialog',{name:'Inspect Staged Result',exact:true});
     await review.getByText('This does not verify content correctness.',{exact:false}).waitFor();
     assert.equal(await review.getByRole('checkbox').count(),0);
     await review.getByRole('button',{name:'Confirm & Continue',exact:true}).click();
     await page.waitForFunction(()=>window.__feedbackFixture.pending?.payload.type==='commit');
     await page.evaluate(()=>{const fixture=window.__feedbackFixture;fixture.snapshot.head='b'.repeat(40);fixture.snapshot.operation={conflicts:0,canContinue:false,canAbort:false,canSkip:false};fixture.snapshot.changes=[{path:'notes.txt',indexStatus:'?',worktreeStatus:'?',conflict:false,untracked:true}];fixture.complete();});
-    await page.waitForFunction(()=>document.querySelector('#ag-commit-message').value==='');
+    await page.locator('.toolbar .commit-trigger').click();
+    assert.equal(await page.getByLabel('Commit message',{exact:true}).inputValue(),'');
+    await page.keyboard.press('Escape');
     await bar.getByText(`Commit ${'b'.repeat(8)} created`,{exact:true}).waitFor();
     await bar.getByText('2 files committed · 1 change remaining',{exact:true}).waitFor();
     await bar.getByRole('button',{name:'View Commit',exact:true}).click();

@@ -280,6 +280,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       return false;
     }
     set({ operationReview: undefined });
+    const submittedDraft = action.type === 'commit' ? get().drafts[repoId] : undefined;
     const before=get().snapshot,committedFiles = action.type === 'commit' && !action.amend ? before?.changes.filter(change => !change.conflict && change.indexStatus !== ' ' && change.indexStatus !== '?' && !!change.indexStatus).length : undefined;
     const stashChanges=action.type==='stash.create'?before?.changes.filter(change=>(!action.paths||action.paths.includes(change.path))&&(!change.untracked||!!action.paths||!!action.includeUntracked))??[]:[];
     const stashed=action.type==='stash.create'?{files:new Set(stashChanges.map(change=>change.path)).size,untracked:new Set(stashChanges.filter(change=>change.untracked).map(change=>change.path)).size,previousOid:before?.stashes[0]?.oid}:undefined;
@@ -294,6 +295,9 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     executingRepositories.add(repoId); set({ busy: true, activity: action.type, actionFeedback: feedback, error: undefined, notice: undefined, checkoutFailure: undefined, stashApplyFailure: undefined });
     try {
       const result = await rpc<Snapshot | undefined>('action', repoId, action);
+      if (action.type === 'commit' && submittedDraft !== undefined && submittedDraft.trim() === action.message && get().drafts[repoId] === submittedDraft) {
+        set({ drafts: { ...get().drafts, [repoId]: '' } });
+      }
       // Freeze this action's result before history loading or another refresh changes the store.
       if (action.type === 'commit') finish('success', undefined, result?.repository.id === repoId && result.head ? { kind: 'commit', oid: result.head, files: committedFiles, remaining: result.changes.length, amended: !!action.amend } : undefined);
       if (epoch === repositoryEpoch) {
