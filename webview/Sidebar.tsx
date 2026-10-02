@@ -6,7 +6,7 @@ import { useWorkbench } from './store';
 import { useTranslation } from './i18n';
 import { Button, Icon } from './ui';
 import { samePath } from './pathIdentity';
-import { buildRefTree, refsUnder, type RefTreeNode } from './refTree';
+import { buildRefTree, refsUnder, visibleRefs, type RefTreeNode } from './refTree';
 import { groupRepositories, type RepositoryGroup } from '../src/protocol/repositories';
 import { selectionForClick } from './commitSelection';
 import type { MenuItem } from './ContextMenu';
@@ -57,7 +57,7 @@ function BranchNode({node,depth,order,context,checkoutBranch}:{node:RefTreeNode;
 }
 
 function BranchTree({refs,keyPrefix,stripPrefix='',context,checkoutBranch}:{refs:GitRef[];keyPrefix:string;stripPrefix?:string;context:ContextHandler;checkoutBranch(name:string,remote?:boolean):void}) {
-  const nodes=buildRefTree(refs,keyPrefix,stripPrefix),order=nodes.flatMap(refsUnder);
+  const state=useWorkbench(),nodes=buildRefTree(refs,keyPrefix,stripPrefix),order=visibleRefs(nodes,state.expandedRefGroups??[]);
   return <div className="branch-tree" data-ref-kind={refs[0]?.kind} data-selection-scope={keyPrefix} tabIndex={0} role="tree" aria-multiselectable="true">{nodes.map(node=><BranchNode key={node.key} node={node} depth={0} order={order} context={context} checkoutBranch={checkoutBranch}/>)}</div>;
 }
 
