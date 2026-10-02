@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readlink, symlink, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { GitService } from '../src/git/service';
@@ -23,6 +23,20 @@ async function commit(root: string, message: string) { await git(root, 'add', '-
 afterEach(async () => { for (const root of roots.splice(0)) { if (path.dirname(root) !== os.tmpdir() || !path.basename(root).startsWith('alwaygit-preview-')) throw new Error('Unsafe cleanup target'); await rm(root, { recursive: true, force: true, maxRetries: 5 }); } });
 
 describe('Bounded Git Diff previews', () => {
+  it('compares symbolic-link target text without reading an external target', async () => {
+    const { root, repo } = await setup();
+    const outside = await mkdtemp(path.join(os.tmpdir(), 'alwaygit-preview-')); roots.push(outside);
+    await writeFile(path.join(outside, 'private.txt'), 'must not be read');
+    const leaf = path.join(root, 'link');
+    await symlink(outside, leaf, process.platform === 'win32' ? 'junction' : 'dir');
+    const service = { snapshot: async () => ({ changes: [{ path: 'link', indexStatus: ' ', worktreeStatus: 'M', untracked: false }] }), content: async () => Buffer.from('old-target') };
+    const preview = await new GitDocuments(service as never).preview(repo, { kind: 'change', path: 'link', area: 'unstaged' });
+    expect(preview.left).toBe('old-target');
+    expect(preview.right).toBe(await readlink(leaf));
+    expect(preview.rightLabel).toContain('Symbolic Link');
+    await expect(new GitDocuments(service as never).openFile(repo, 'link/private.txt')).rejects.toThrow('outside');
+  });
+
   it('reads HEAD, Index and Working Tree independently when one file has both kinds of changes', async () => {
     const { root, service, repo, documents } = await setup();
     await writeFile(path.join(root, 'a.txt'), 'committed'); await commit(root, 'initial');
