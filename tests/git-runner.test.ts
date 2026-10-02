@@ -53,19 +53,39 @@ describe('Git process termination', () => {
   });
 
   it('retains authentication until Git closes when taskkill finishes first', async () => {
-    const git = processFixture(44), killer = processFixture(45), dispose = vi.fn();
+    const git = processFixture(44), killer = processFixture(45), dispose = vi.fn(), cancelPrompts = vi.fn();
     vi.mocked(spawn).mockReturnValueOnce(git as unknown as ChildProcess).mockReturnValueOnce(killer as unknown as ChildProcess);
-    const service = new GitService({ timeoutMs: 100, environment: async () => ({ env: {}, dispose }) });
+    const service = new GitService({ timeoutMs: 100, environment: async () => ({ env: {}, dispose, cancelPrompts }) });
     const result = service.discover(process.cwd()).catch(error => error);
     // discover resolves the root before the environment adapter and spawn.
     await vi.waitFor(() => expect(spawn).toHaveBeenCalledTimes(1));
     await vi.advanceTimersByTimeAsync(100);
+    expect(cancelPrompts).toHaveBeenCalledTimes(1);
     killer.emit('close', 0);
     await Promise.resolve();
     expect(dispose).not.toHaveBeenCalled();
     git.emit('close', 1);
     expect(await result).toMatchObject({ code: 'TIMEOUT' });
     expect(dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('allows a network command beyond the query deadline and stops at its host budget', async () => {
+    const repo = { id: 'network-budget', name: 'test', root: process.cwd(), commonDir: `${process.cwd()}/runner-network-budget` };
+    const git = processFixture(54), killer = processFixture(55), cancelPrompts = vi.fn();
+    const service = new GitService({ environment: async () => ({ env: {}, cancelPrompts }) });
+    vi.spyOn(service, 'discover').mockResolvedValue(repo);
+    vi.mocked(spawn).mockImplementation(((executable: string, args: readonly string[]) => {
+      if (executable === 'taskkill') return killer;
+      return args.includes('fetch') ? git : completedProcess();
+    }) as typeof spawn);
+    const result = service.execute(repo, { type: 'fetch' }).catch(error => error);
+    await vi.advanceTimersByTimeAsync(240_000);
+    expect(cancelPrompts).not.toHaveBeenCalled();
+    expect(spawn).not.toHaveBeenCalledWith('taskkill', expect.anything(), expect.anything());
+    await vi.advanceTimersByTimeAsync(360_000);
+    expect(cancelPrompts).toHaveBeenCalledTimes(1);
+    killer.emit('close', 0); git.emit('close', 1);
+    expect(await result).toMatchObject({ code: 'TIMEOUT' });
   });
 
   it('isolates later writes across service instances when taskkill fails', async () => {

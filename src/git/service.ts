@@ -19,8 +19,9 @@ export interface GitServiceOptions {
   gitPath?: string;
   onOutput?: (repo: Repository, text: string) => void;
   timeoutMs?: number;
+  networkTimeoutMs?: number;
   maxOutputBytes?: number;
-  environment?: NodeJS.ProcessEnv | ((repo: Repository, args: readonly string[]) => Promise<NodeJS.ProcessEnv | { env: NodeJS.ProcessEnv; dispose?: () => void | Promise<void> }>);
+  environment?: NodeJS.ProcessEnv | ((repo: Repository, args: readonly string[]) => Promise<NodeJS.ProcessEnv | { env: NodeJS.ProcessEnv; cancelPrompts?: () => void; dispose?: () => void | Promise<void> }>);
 }
 type Result = GitResult;
 const queues = new Map<string, Promise<unknown>>();
@@ -108,7 +109,7 @@ export class GitService implements GitServiceContract {
     assertGitArgumentBudget(this.options.gitPath ?? 'git', [...prefix, ...prepared.args]);
     const adapter = this.options.environment;
     const supplied = execution.isolated ? undefined : typeof adapter === 'function' ? await adapter(repo, args) : adapter;
-    const wrapped = supplied && 'env' in supplied && typeof supplied.env === 'object' ? supplied as { env: NodeJS.ProcessEnv; dispose?: () => void | Promise<void> } : undefined;
+    const wrapped = supplied && 'env' in supplied && typeof supplied.env === 'object' ? supplied as { env: NodeJS.ProcessEnv; cancelPrompts?: () => void; dispose?: () => void | Promise<void> } : undefined;
     const env = wrapped?.env ?? supplied as NodeJS.ProcessEnv | undefined;
     const commandEnv: NodeJS.ProcessEnv = { ...process.env, ...env };
     if (execution.isolated) for (const key of Object.keys(commandEnv)) if (/^GIT_/i.test(key)) delete commandEnv[key];
@@ -120,7 +121,7 @@ export class GitService implements GitServiceContract {
         args: [...prefix, ...prepared.args],
         env: { ...commandEnv, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never', GIT_EDITOR: 'true', GIT_SEQUENCE_EDITOR: 'true', ...(['status', 'log', 'show', 'ls-tree', 'ls-files', 'for-each-ref'].includes(args[0]) ? { GIT_OPTIONAL_LOCKS: '0' } : {}), ...execution.env },
         input: prepared.input, signal: execution.signal && scopeSignal ? AbortSignal.any([execution.signal,scopeSignal]) : execution.signal ?? scopeSignal, readOnly, captureBytes,
-        timeoutMs: this.options.timeoutMs, maxOutputBytes: this.options.maxOutputBytes,
+        timeoutMs: this.options.timeoutMs ?? (['fetch', 'pull', 'push'].includes(args[0]) ? this.options.networkTimeoutMs ?? 600_000 : undefined), onStop: wrapped?.cancelPrompts, maxOutputBytes: this.options.maxOutputBytes,
         onStderr: execution.silent ? undefined : chunk => this.options.onOutput?.(repo, chunk.toString('utf8')),
       });
       if(scope){

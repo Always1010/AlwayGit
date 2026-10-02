@@ -51,8 +51,8 @@ export async function rpc<T>(method: RpcRequest['method'], repoId?: string, payl
   for(const [previousId,request] of [...pending])if(category&&request.category===category||method==='snapshot'&&request.category&&request.repoId!==repoId)cancelRead(previousId);
   const id = `webview-${++sequence}`;
   return new Promise<T>((resolve, reject) => {
-    // Folder selection and cancellable recursive discovery can outlive a Git request.
-    const timer = ['pickRepositoryDirectory','discoverRepositories','addRepository'].includes(method) ? undefined : setTimeout(() => { if(category)cancelRead(id,new RpcError('The read request timed out.','TIMEOUT'));else{pending.delete(id);reject(new Error('The Git operation timed out. Refresh to check its result before retrying.'));} }, method === 'saveSession' ? 10_000 : 180_000);
+    // The host owns mutation deadlines, including time spent in native confirmation.
+    const timer = ['action','pickRepositoryDirectory','discoverRepositories','addRepository'].includes(method) ? undefined : setTimeout(() => { if(category)cancelRead(id,new RpcError('The read request timed out.','TIMEOUT'));else{pending.delete(id);reject(new Error('The Git operation timed out. Refresh to check its result before retrying.'));} }, method === 'saveSession' ? 10_000 : 180_000);
     const abort=()=>cancelRead(id);
     pending.set(id, { resolve: value => resolve(value as T), reject, timer, category, repoId, cleanup:signal?()=>signal.removeEventListener('abort',abort):undefined });
     signal?.addEventListener('abort',abort,{once:true});
