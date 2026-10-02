@@ -119,7 +119,7 @@ async function verifyDetachedHeadPolicy(page) {
   const settings = async () => {
     await page.getByRole('button',{name:'Settings',exact:true}).click();
     const dialog = page.getByRole('dialog',{name:'Settings',exact:true});
-    await dialog.getByRole('button',{name:'Advanced',exact:true}).click();
+    await dialog.getByRole('button',{name:'Git operations',exact:true}).click();
     return dialog;
   };
   let dialog = await settings();
