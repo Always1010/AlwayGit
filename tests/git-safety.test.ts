@@ -1,44 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-import { access, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import os from 'node:os';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { GitService } from '../src/git/service';
+import { commitFile, git, gitFixtures } from './support/git-fixture';
 
-const exec = promisify(execFile);
-const fixtures: string[] = [];
-const git = async (cwd: string, ...args: string[]) => (await exec('git', ['-C', cwd, ...args], {
-  windowsHide: true,
-  env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_EDITOR: 'true' },
-})).stdout.trim();
-
-async function setup() {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'alwaygit-safety-'));
-  fixtures.push(root);
-  await git(root, 'init', '-b', 'main');
-  await git(root, 'config', 'user.name', 'Safety Test');
-  await git(root, 'config', 'user.email', 'safety@example.com');
-  await git(root, 'config', 'commit.gpgsign', 'false');
-  const service = new GitService();
-  return { root, service, repo: await service.discover(root) };
-}
-
-async function commit(root: string, filename: string, text: string) {
-  await writeFile(path.join(root, filename), text);
-  await git(root, 'add', '--', filename);
-  await git(root, 'commit', '-m', text);
-  return git(root, 'rev-parse', 'HEAD');
-}
-
-afterEach(async () => {
-  for (const root of fixtures.splice(0)) {
-    if (path.dirname(root) !== os.tmpdir() || !path.basename(root).startsWith('alwaygit-safety-')) {
-      throw new Error('Unsafe cleanup target');
-    }
-    await rm(root, { recursive: true, force: true, maxRetries: 5 });
-  }
-});
+const fixtures = gitFixtures('alwaygit-safety-', { name: 'Safety Test', email: 'safety@example.com' });
+const setup = fixtures.setup;
+const commit = (root: string, filename: string, text: string) => commitFile(root, filename, text, text);
+afterEach(fixtures.cleanup);
 
 describe('Git safety regressions', () => {
   it.each([false, true])('rejects stale branch names without changing HEAD, refs, Index or files (dirty: %s)', async dirty => {
@@ -449,39 +418,53 @@ describe('Git safety regressions', () => {
     expect(await readFile(path.join(root, '- odd 1 你好.txt'), 'utf8')).toBe('neighbor');
   });
 
-  it('serializes mutations across service instances for linked worktrees sharing refs', async () => {
+  it('queues writes across service instances and keeps linked Worktree indexes independent', async () => {
     const { root, service, repo } = await setup();
-    await commit(root, 'base.txt', 'base');
+    await commit(root, 'same.txt', 'base');
     const linked = path.join(root, 'linked');
     await service.execute(repo, { type: 'worktree.add', path: linked, newBranch: 'linked' });
     const child = await service.discover(linked);
-    await writeFile(path.join(root, 'main.txt'), 'main');
-    await writeFile(path.join(linked, 'child.txt'), 'child');
-    let active = 0;
-    let maximum = 0;
-    let mutations = 0;
-    const options = {
-      environment: async (_repo: typeof repo, args: readonly string[]) => {
-        if (args[0] !== 'add') return {};
-        active++;
-        mutations++;
-        maximum = Math.max(maximum, active);
-        // Keep each mutation's environment active through process completion;
-        // this deliberately exposes concurrent execution if commonDir locking breaks.
-        await new Promise(resolve => setTimeout(resolve, 25));
-        return { env: {}, dispose: () => { active--; } };
-      },
+    await writeFile(path.join(root, 'same.txt'), 'main content');
+    await writeFile(path.join(linked, 'same.txt'), 'linked content');
+    let release!: () => void;
+    let entered!: () => void;
+    const blocked = new Promise<void>(resolve => { release = resolve; });
+    const firstEntered = new Promise<void>(resolve => { entered = resolve; });
+    let active = 0, maximum = 0, mutations = 0, secondCalls = 0;
+    const environment = async (_repo: typeof repo, args: readonly string[]) => {
+      if (args[0] !== 'add') return {};
+      active++;
+      maximum = Math.max(maximum, active);
+      if (++mutations === 1) { entered(); await blocked; }
+      return { env: {}, dispose: () => { active--; } };
     };
-    const first = new GitService(options);
-    const second = new GitService(options);
-    await Promise.all([
-      first.execute(repo, { type: 'stage', paths: ['main.txt'] }),
-      second.execute(child, { type: 'stage', paths: ['child.txt'] }),
-    ]);
+    const first = new GitService({ environment });
+    const second = new GitService({ environment: async (repo, args) => {
+      secondCalls++;
+      return environment(repo, args);
+    } });
+    const firstWrite = first.execute(repo, { type: 'stage', paths: ['same.txt'] });
+    const settledFirst = firstWrite.then(() => ({ error: undefined }), error => ({ error }));
+    let secondWrite: Promise<void> | undefined;
+    try {
+      // A failed first write must fail this test instead of leaving an unresolved wait.
+      await Promise.race([firstEntered, firstWrite.then(() => { throw new Error('Stage never reached Git'); })]);
+      secondWrite = second.execute(child, { type: 'stage', paths: ['same.txt'] });
+      const settledSecond = secondWrite.then(() => ({ error: undefined }), error => ({ error }));
+      // Let the second task try to enter the queue while the first is held explicitly.
+      await new Promise(resolve => setTimeout(resolve, 100));
+      expect(secondCalls).toBe(0);
+      release();
+      const results = await Promise.all([settledFirst, settledSecond]);
+      for (const result of results) expect(result.error).toBeUndefined();
+    } finally {
+      release();
+      await Promise.allSettled([firstWrite, ...(secondWrite ? [secondWrite] : [])]);
+    }
     expect(mutations).toBe(2);
     expect(maximum).toBe(1);
     expect(active).toBe(0);
-    expect((await first.content(repo, { kind: 'index', path: 'main.txt' })).toString()).toBe('main');
-    expect((await second.content(child, { kind: 'index', path: 'child.txt' })).toString()).toBe('child');
+    expect((await service.content(repo, { kind: 'index', path: 'same.txt' })).toString()).toBe('main content');
+    expect((await service.content(child, { kind: 'index', path: 'same.txt' })).toString()).toBe('linked content');
   });
 });
