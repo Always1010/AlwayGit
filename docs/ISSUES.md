@@ -9,7 +9,7 @@
 - 现象：仓库没有配置远端时，Push 对话框仍显示空的目标下拉框和 `Force-with-lease`；提交后只提示选择列表项目，但列表没有可选项，Remotes 空状态也没有添加入口。
 - 原因：Push 表单只校验目标是否已选择，没有把“尚未连接远端仓库”建模为独立前置状态；产品协议没有添加远端动作，高级强制选项也与普通目标配置处在同一层级。
 - 解决方案：Push 在无远端时先说明本地 Commit 已保存、发送前需要添加远端，只提供“添加远端”下一步；Remotes 空状态和标题同时提供入口。新增经过协议和后端校验的 `remote.add` 动作，添加成功后返回已具备目标的 Push 摘要。`Force-with-lease` 收入默认折叠的高级选项，启用时解释其可能覆盖远端历史及 lease 保护条件。
-- 验证方式：协议与真实 Git 临时仓库回归覆盖远端名称、地址、重复名称及 Snapshot 更新；无头主界面覆盖 Remotes 空状态、Push 前置说明、无空选择器、添加远端后返回 Push，以及高级选项默认折叠。
+- 验证方式：协议与真实 Git 临时仓库回归覆盖远端名称、地址、重复名称及 Snapshot 更新；无头主界面覆盖 Remotes 空状态、Push 前置说明、无空选择器、添加远端后返回 Push，以及高级选项默认折叠。类型检查、生产构建和完整无头界面套件通过；0.20.0 固定 VSIX 已打包并通过官方 CLI 安装及身份/版本核对。
 - 相关文件：`src/protocol/types.ts`、`src/protocol/validation.ts`、`src/protocol/remote.ts`、`src/git/service.ts`、`webview/App.tsx`、`webview/ActionDialog.tsx`、`webview/Sidebar.tsx`、`webview/menus.ts`、`webview/rpc.ts`、`webview/actionFeedback.ts`、`webview/styles.css`、`tests/git-service.test.ts`、`tests/workbench-protocol.test.ts`、`scripts/test-ui.mjs`、`docs/WORKBENCH_SPEC.md`、`docs/VALIDATION.md`。
 
 ## BUG-026：创建分支没有解释名称错误和切换结果
@@ -19,7 +19,7 @@
 - 现象：输入含空格的分支名后只显示 `Git exited with status 1`；输入保留但没有指出如何修正。创建对话框默认不 Checkout，成功后也没有说明当前仍在原分支，容易让后续修改落错位置。起点直接显示 `refs/heads/main` 或完整 Commit ID。
 - 原因：名称只在 Git `check-ref-format` 阶段校验，而该命令失败时可能没有错误输出；创建与 Checkout 由默认关闭的复选框控制，通用操作反馈不携带创建后的当前分支；起点字段直接暴露内部引用。
 - 解决方案：前后端共享完整的分支名规则并在输入框旁实时解释错误，保留输入、错误语义和字段焦点，后端继续执行最终校验。对话框用“仅创建”和默认主操作“创建并切换”明确区分意图；起点显示当前分支、远程分支、Tag 或短 Commit 的用户语义，内部引用收进 Git 详情。成功反馈明确显示已切换到新分支或当前仍在原分支。
-- 验证方式：名称规则单测覆盖常用合法名称、空格、开头连字符、连续斜杠、隐藏段、`.lock` 和 `@{`；真实 Git 回归确认后端返回可操作错误；无头主界面验证实时错误、输入与焦点保留、友好起点、“仅创建”及仍在原分支的结果反馈。
+- 验证方式：名称规则单测覆盖常用合法名称、空格、开头连字符、连续斜杠、隐藏段、`.lock` 和 `@{`；真实 Git 回归确认后端返回可操作错误；无头主界面验证实时错误、输入与焦点保留、友好起点、“仅创建”及仍在原分支的结果反馈。类型检查、生产构建和完整无头界面套件通过；0.20.0 固定 VSIX 已打包并通过官方 CLI 安装及身份/版本核对。
 - 相关文件：`src/protocol/ref-name.ts`、`src/git/service.ts`、`webview/ActionDialog.tsx`、`webview/actionFeedback.ts`、`webview/ActionFeedbackBar.tsx`、`webview/store.ts`、`webview/styles.css`、`tests/ref-name.test.ts`、`tests/git-service.test.ts`、`scripts/test-ui.mjs`、`docs/WORKBENCH_SPEC.md`、`docs/VALIDATION.md`。
 
 ## BUG-025：重复恢复未跟踪文件时缺少安全下一步
