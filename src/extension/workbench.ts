@@ -49,7 +49,7 @@ export class Workbench implements vscode.Disposable {
     if (!vscode.workspace.isTrusted) { await vscode.window.showWarningMessage(this.text('Trust this workspace using VS Code Workspace Trust, then reopen AlwayGit.', '请在 VS Code 中信任此工作区，然后重新打开 AlwayGit。')); return; }
     await this.repositories.scan();
     if (repoId) this.activeRepository = repoId;
-    const existing=!restoredPanel&&!newTab?(this.lastPanel??[...this.panels.values()].at(-1)):undefined;
+    const existing=!restoredPanel&&!newTab?([...this.panels.values()].find(entry=>entry.panel.active)??this.lastPanel??[...this.panels.values()].at(-1)):undefined;
     if(existing){existing.panel.reveal();this.lastPanel=existing;this.post({type:'repositoriesChanged'},existing);if(repoId)this.selectPanelRepository(existing,repoId);this.presenceEmitter.fire(this.presence);return;}
     const options = { enableScripts: true, localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview')] };
     const panel = restoredPanel ?? vscode.window.createWebviewPanel('alwaygit.workbench', 'AlwayGit', vscode.ViewColumn.Active, options);
@@ -70,7 +70,7 @@ export class Workbench implements vscode.Disposable {
         this.post({ type: 'response', id: parsed.data.id, error: { message, code: String((error as { code?: unknown }).code ?? 'FAILED'), ...(details ? { details } : {}) } },entry);
       }
     });
-    panel.onDidChangeViewState(event => { if (event.webviewPanel.visible) { this.lastPanel=entry;this.post({ type: 'repositoriesChanged' },entry); if (entry.activeRepository) this.post({ type: 'changed', repoId: entry.activeRepository },entry); } this.presenceEmitter.fire(this.presence); });
+    panel.onDidChangeViewState(event => { if (event.webviewPanel.active) this.lastPanel=entry; if (event.webviewPanel.visible) { this.post({ type: 'repositoriesChanged' },entry); if (entry.activeRepository) this.post({ type: 'changed', repoId: entry.activeRepository },entry); } this.presenceEmitter.fire(this.presence); });
     panel.webview.html = await this.html(panel.webview,repoId,blank);
   }
   async pickRepositoryDirectory():Promise<string|undefined>{

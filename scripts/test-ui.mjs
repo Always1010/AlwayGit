@@ -42,7 +42,7 @@ try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     try {
       await page.goto(url);
-      await page.getByTestId('sidebar').getByRole('option', { name: /^AlwayGit/ }).click();
+      await page.getByTestId('sidebar').getByRole('option', { name: /^AlwayGit/ }).dblclick();
       await verifyHistoryRows(page);
       console.log('ALWAYGIT_UI_TESTS_PASSED: history-only');
     } finally { await page.close(); }
@@ -72,7 +72,7 @@ try {
   const details = page.getByTestId('details');
   await Promise.all([workbench.waitFor(), sidebar.waitFor()]);
   assert.match(await page.locator('.branch-caption').innerText(), /No repository selected/, 'A fresh Workbench does not select a repository at the entry point');
-  await sidebar.getByRole('option', { name: /^AlwayGit/ }).click();
+  await sidebar.getByRole('option', { name: /^AlwayGit/ }).dblclick();
   await Promise.all([history.waitFor(), details.waitFor()]);
   assert.ok((await sidebar.locator('.sidebar-heading').first().boundingBox()).height <= 29, 'Sidebar section headers stay compact');
   assert.ok((await history.locator('.pane-heading').first().boundingBox()).height <= 29, 'Pane headers stay compact');
@@ -115,7 +115,7 @@ try {
     await noRemotePage.evaluate(()=>localStorage.clear());
     await noRemotePage.reload();
     const noRemoteSidebar=noRemotePage.getByTestId('sidebar');
-    await noRemoteSidebar.getByRole('option',{name:/^AlwayGit/}).click();
+    await noRemoteSidebar.getByRole('option',{name:/^AlwayGit/}).dblclick();
     await noRemoteSidebar.getByText('No remote repository connected.',{exact:true}).waitFor();
     await noRemoteSidebar.locator('.remote-empty').getByRole('button',{name:'Add Remote…',exact:true}).waitFor();
     await noRemotePage.getByRole('button',{name:/^Push/}).click();
@@ -167,7 +167,7 @@ try {
   assert.equal(await menu.isVisible(), false, 'A section title click must collapse the section without opening its menu');
   await repositoriesHeading.click();
   await assertIconActions(repositoriesHeading.locator('..'), ['Add Repository…', 'Create Repository Group', 'Refresh']);
-  await assertIconActions(sidebar.getByRole('option', { name: /^AlwayGit/ }).locator('..'), ['Repository actions for AlwayGit']);
+  assert.equal(await sidebar.locator('.codicon-ellipsis').count(), 0, 'Sidebar retains the original actions without repository ellipsis controls');
   await assertMenu(repositoriesHeading, ['Add Repository…', 'Create Repository Group', 'Refresh']);
   await assertMenu(sidebar.getByRole('option', { name: /^AlwayGit/ }), ['Switch to Repository', 'Open in New AlwayGit Tab', 'Open Repository in New Project Window', 'Fetch…', 'Refresh Status', 'Copy Repository Path', 'Move to Repository Group…', 'Remove from AlwayGit…']);
   const localHeading = sidebar.getByRole('button', { name: 'Local Branches', exact: true });

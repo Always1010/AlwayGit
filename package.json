@@ -2,7 +2,7 @@
   "name": "alwaygit",
   "displayName": "AlwayGit",
   "description": "A professional Git workbench inside Visual Studio Code.",
-  "version": "0.25.0",
+  "version": "0.25.1",
   "publisher": "alwaygit-dev",
   "private": true,
   "type": "module",
@@ -70,6 +70,12 @@
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "alwaygit.workbenchLauncher",
+        "contents": "[Show Git Workbench](command:alwaygit.showWorkbench)\n[Open Workbench in New Window](command:alwaygit.openWorkbenchInNewWindow)"
+      }
+    ],
     "configuration": {
       "title": "AlwayGit",
       "properties": {
