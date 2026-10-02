@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-027：无远端时 Push 进入无法完成的表单
+
+- 日期：2026-10-02
+- 状态：已解决
+- 现象：仓库没有配置远端时，Push 对话框仍显示空的目标下拉框和 `Force-with-lease`；提交后只提示选择列表项目，但列表没有可选项，Remotes 空状态也没有添加入口。
+- 原因：Push 表单只校验目标是否已选择，没有把“尚未连接远端仓库”建模为独立前置状态；产品协议没有添加远端动作，高级强制选项也与普通目标配置处在同一层级。
+- 解决方案：Push 在无远端时先说明本地 Commit 已保存、发送前需要添加远端，只提供“添加远端”下一步；Remotes 空状态和标题同时提供入口。新增经过协议和后端校验的 `remote.add` 动作，添加成功后返回已具备目标的 Push 摘要。`Force-with-lease` 收入默认折叠的高级选项，启用时解释其可能覆盖远端历史及 lease 保护条件。
+- 验证方式：协议与真实 Git 临时仓库回归覆盖远端名称、地址、重复名称及 Snapshot 更新；无头主界面覆盖 Remotes 空状态、Push 前置说明、无空选择器、添加远端后返回 Push，以及高级选项默认折叠。
+- 相关文件：`src/protocol/types.ts`、`src/protocol/validation.ts`、`src/protocol/remote.ts`、`src/git/service.ts`、`webview/App.tsx`、`webview/ActionDialog.tsx`、`webview/Sidebar.tsx`、`webview/menus.ts`、`webview/rpc.ts`、`webview/actionFeedback.ts`、`webview/styles.css`、`tests/git-service.test.ts`、`tests/workbench-protocol.test.ts`、`scripts/test-ui.mjs`、`docs/WORKBENCH_SPEC.md`、`docs/VALIDATION.md`。
+
 ## BUG-026：创建分支没有解释名称错误和切换结果
 
 - 日期：2026-10-02

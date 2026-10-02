@@ -4,6 +4,7 @@ import { access, lstat, realpath, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { ActionBlocker, Change, CheckoutBlocker, Commit, CommitComparison, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationReview, OperationState, Repository, RepositoryStatus, Snapshot, Stash, StashApplyBlocker, StashDetails, Worktree } from '../protocol/types';
 import { branchNameProblem, branchNameProblemMessage } from '../protocol/ref-name';
+import { remoteNameProblem, remoteUrlProblem } from '../protocol/remote';
 import { inferDefaultBranch } from './default-branch';
 
 export interface GitServiceOptions {
@@ -457,6 +458,14 @@ export class GitService implements GitServiceContract {
         const remoteBranch = branch ? await this.refName(repo, action.remoteBranch ?? branch) : undefined;
         const setUpstream = branch && (action.setUpstream ?? true);
         args = ['push', ...(setUpstream ? ['--set-upstream'] : []), ...(action.forceWithLease ? ['--force-with-lease'] : []), ...remote(destination), ...(branch ? [`refs/heads/${branch}:refs/heads/${remoteBranch}`] : [])]; break;
+      }
+      case 'remote.add': {
+        const name=action.name.trim(),url=action.url.trim();
+        if(remoteNameProblem(name))throw new GitError('Enter a remote name without spaces, such as origin.','INVALID_REMOTE_NAME');
+        if(remoteUrlProblem(url))throw new GitError('Enter a repository URL.','INVALID_REMOTE_URL');
+        const configured=(await this.text(repo,['remote'])).split('\n').filter(Boolean);
+        if(configured.includes(name))throw new GitError(`Remote already exists: ${name}`,'REMOTE_EXISTS');
+        args=['remote','add',name,url];break;
       }
       case 'branch.create': {
         const name = await this.refName(repo, action.name); const start = action.start ? await this.oid(repo, action.start) : undefined; const upstream = action.start?.startsWith('refs/remotes/') ? action.start : undefined;

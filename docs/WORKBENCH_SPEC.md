@@ -132,7 +132,7 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 | --- | --- |
 | Repositories | `Add Repository…`、`Create Repository Group`、`Refresh` |
 | Local Branches | 标题：`Create Branch…`；Graph 预设：`Show All Local Branches in Graph`、`Show Current Branch Only in Graph` |
-| Remotes | `Fetch…`、`Create Local Tracking Branches…`、`Refresh` |
+| Remotes | `Add Remote…`、`Fetch…`、`Create Local Tracking Branches…`、`Refresh`；没有远端时正文说明尚未连接并保留文字入口 |
 | Tags | `Create Tag…`、`Refresh` |
 | Stashes | `Stash Changes…`、`Refresh` |
 | Worktrees | `Add Worktree…`、`Refresh` |
@@ -160,7 +160,7 @@ Merge 等操作暂停后，原发起对话框改为处理状态，主入口是�
 - Remote Branch 的 `Checkout as Local Branch…` 列出远程来源与本地名称，默认剥除 Remote 前缀并保持完整目录（`origin/feature/login/api` → `feature/login/api`），自动选择已有跟踪分支，允许改名。多个已有本地跟踪分支时提示用户选择名称。单项默认 Checkout，可取消切换；Remote 父级、Remotes 分组、分支目录和远程多选通过 `Create Local Tracking Branches…` 创建或复用全部后代，保持当前分支。对话框逐项显示将创建、已跟踪、同名 upstream 冲突、路径冲突与成功结果；名称冲突阻止执行，不覆盖已有分支或改写 upstream。使用最近 Fetch 的引用，不自动 Fetch/Pull；后端重新校验来源与 OID。`origin/HEAD` 等符号引用不可检出为本地分支，批量范围自动排除。
 - Local 与 Remote 的批量选择互相隔离；同一 Remote 下的普通分支可以批量 `Delete … from <remote>…`，操作明确显示远端和分支清单并二次确认，通过逐项 Push 删除并汇总部分失败。`origin/HEAD` 等符号引用不可删除。
 - Tag 的 `Checkout…` 明确提示进入 Detached HEAD。
-- 无变更、无 Staged 文件或没有可用目标时禁用对应操作并说明原因。Detached HEAD 禁用工具栏 Push。Push 对话框先显示实际的 `Local Branch → Remote/Remote Branch`；当前 upstream、`branch.*.pushRemote`、`remote.pushDefault` 或唯一远端可确定目标时不得显示空白可选项。用户通过 `Change Target…` 显式修改目标；首次 Push 说明会建立 upstream。多远端且没有配置目标时要求选择远端。
+- 无变更、无 Staged 文件或没有可用目标时禁用对应操作并说明原因。Detached HEAD 禁用工具栏 Push。仓库没有远端时，Push 不显示无法完成的空选择器，而是说明本地 Commit 已保存、发送前需要连接远端，并直接进入 `Add Remote…`；添加成功后返回 Push。Push 对话框先显示实际的 `Local Branch → Remote/Remote Branch`；当前 upstream、`branch.*.pushRemote`、`remote.pushDefault` 或唯一远端可确定目标时不得显示空白可选项。用户通过 `Change Target…` 显式修改目标；首次 Push 说明会建立 upstream。多远端且没有配置目标时要求选择远端。`Force-with-lease` 位于默认折叠的高级选项，启用后说明可能覆盖远端历史以及只在远端未发生未知变化时执行的保护条件。
 - 当前分支存在未推送提交时，工具栏 Push 与仓库导航项使用高饱和通知角标显示数量；用户可以在“界面 / 状态提醒”中选用预设色或输入 HEX，文字自动在黑白之间选择以保持对比，并使用亮色边缘增强辨识度。数量为零时不显示角标。仓库列表先显示，角标状态随后在后台加载，当前仓库的角标随状态刷新即时更新。
 - Checkout 可能覆盖修改时显示受影响文件，并提供查看文件与 `Stash Changes & Checkout`。
 - 存在未解决冲突时，提示先解决冲突或 Abort 当前操作。

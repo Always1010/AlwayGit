@@ -9,6 +9,7 @@ export class RpcError extends Error {
 declare global { interface Window { __ALWAYGIT_SESSION__?: SessionState; acquireVsCodeApi?: () => { postMessage(message: unknown): void; getState?(): SessionState | undefined; setState?(state: SessionState): void }; } }
 const vscode = typeof window.acquireVsCodeApi === 'function' ? window.acquireVsCodeApi() : undefined;
 export const demoMode = !vscode && new URLSearchParams(location.search).get('demo') === '1';
+const noRemoteDemo = demoMode && new URLSearchParams(location.search).get('noRemote') === '1';
 export const connected = !!vscode || demoMode;
 export function readSession(): SessionState {
   if (vscode) return vscode.getState?.() ?? window.__ALWAYGIT_SESSION__ ?? {};
@@ -77,6 +78,7 @@ const demoStores:Record<string,{snapshot:Snapshot;commits:Commit[];saved:Map<str
   repository.id,
   {snapshot:{...structuredClone(demoSnapshot),repository,remotes:['origin'],worktrees:demoSnapshot.worktrees.map((tree,i)=>({...tree,path:i?repository.root+'-graph':repository.root}))},commits:structuredClone(commits),saved:new Map([[commits[9].oid,[{path:'notes.txt',indexStatus:'?',worktreeStatus:'?',conflict:false,untracked:true}] ]])},
 ]));
+if(noRemoteDemo)for(const store of Object.values(demoStores)){store.snapshot.remotes=[];store.snapshot.refs=store.snapshot.refs.filter(ref=>ref.kind!=='remote');delete store.snapshot.upstream;delete store.snapshot.pushTarget;}
 const demoCollections:RepositoryCollection[]=[];
 async function demoRequest(method: RpcRequest['method'], payload: unknown, repoId?:string): Promise<unknown> {
   await new Promise(resolve => setTimeout(resolve, 110));
@@ -139,6 +141,7 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
     }
     else if (action.type === 'branch.create') {const target=resolve(action.start??'HEAD');demoSnapshot.refs.push({ name: action.name, fullName: `refs/heads/${action.name}`, kind: 'local', oid: target,upstream:action.start?.startsWith('refs/remotes/')?action.start.slice(13):undefined }); if (action.checkout){demoSnapshot.branch = action.name;demoSnapshot.head=target;} }
     else if (action.type === 'branch.delete') demoSnapshot.refs = demoSnapshot.refs.filter(r => !(r.kind === 'local' && action.names.includes(r.name)));
+    else if(action.type==='remote.add'){demoSnapshot.remotes=[...new Set([...(demoSnapshot.remotes??[]),action.name])];}
     else if(action.type==='remote.delete')demoSnapshot.refs=demoSnapshot.refs.filter(r=>!(r.kind==='remote'&&action.branches.some(branch=>r.name===`${action.remote}/${branch}`)));
     else if (action.type === 'tag.create') demoSnapshot.refs.push({ name: action.name, fullName: `refs/tags/${action.name}`, kind: 'tag', oid: resolve(action.target??'HEAD') });
     else if (action.type === 'tag.delete') demoSnapshot.refs = demoSnapshot.refs.filter(r => !(r.kind === 'tag' && r.name === action.name));
