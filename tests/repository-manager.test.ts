@@ -3,10 +3,12 @@ import * as vscode from 'vscode';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtempSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { GitService } from '../src/git/service';
 import { RepositoryManager } from '../src/repositories/manager';
+import { CatalogStore } from '../src/repositories/catalog-store';
 import { collectionOrderKey, repositoryOrderKey } from '../src/protocol/repository-order';
 import { Workbench } from '../src/extension/workbench';
 import type { Repository } from '../src/protocol/types';
@@ -27,6 +29,7 @@ vi.mock('vscode', () => {
 });
 const exec = promisify(execFile), roots: string[] = [], managers: RepositoryManager[] = [], workbenches: Workbench[] = [];
 const watcher = () => ({ dispose: vi.fn(), onDidChange: () => ({ dispose() {} }), onDidCreate: () => ({ dispose() {} }), onDidDelete: () => ({ dispose() {} }) });
+const storage = new WeakMap<Map<string, unknown>, string>();
 async function fixture() {
   const root = await mkdtemp(path.join(os.tmpdir(), 'alwaygit-registration-')); roots.push(root);
   for (const relative of ['A', 'category/B']) {
@@ -36,11 +39,15 @@ async function fixture() {
   return root;
 }
 function setup(globalValues = new Map<string, unknown>()) {
+  let storagePath = storage.get(globalValues);
+  if (!storagePath) { storagePath = mkdtempSync(path.join(os.tmpdir(), 'alwaygit-registration-')); storage.set(globalValues, storagePath); roots.push(storagePath); }
   const values = new Map<string, unknown>();
   values.set('alwaygit.session', { language: 'zh-CN', repoId: 'active', layout: { preset: 'editor' }, drafts: { active: '保留草稿' } });
   const update = vi.fn(async (key: string, value: unknown) => { values.set(key, value); });
   const globalUpdate = vi.fn(async (key: string, value: unknown) => { globalValues.set(key, value); });
   const context = {
+    globalStorageUri: { fsPath: storagePath },
+    storageUri: { fsPath: path.join(storagePath, 'workspace-default') },
     workspaceState: { get: (key: string, fallback: unknown) => values.get(key) ?? fallback, update },
     globalState: { get: (key: string, fallback: unknown) => globalValues.get(key) ?? fallback, update: globalUpdate },
   } as unknown as vscode.ExtensionContext;
@@ -87,8 +94,13 @@ describe('batch repository registration', () => {
     expect(manager.list()).toEqual([]);
     expect(vscode.workspace.createFileSystemWatcher).not.toHaveBeenCalled();
     expect(globalUpdate).not.toHaveBeenCalled();
-    expect(await manager.registerDiscovered(discovery)).toMatchObject({ added: 2, existing: 0 });
+    const result=await manager.registerDiscovered(discovery, {}, { newCollectionName: 'Imported' });
+    expect(result).toMatchObject({ added: 2, existing: 0, collection: { name: 'Imported' } });
     expect(manager.groups()).toHaveLength(2);
+    expect(manager.collections()).toHaveLength(1);expect(manager.groups().every(group=>group.collectionId===manager.collections()[0].id)).toBe(true);
+    expect((manager as unknown as {catalog:CatalogStore}).catalog.snapshot().revision).toBe(1);
+    await manager.registerDiscovered(discovery, {}, { collectionId: undefined });
+    expect(manager.groups().every(group=>!group.collectionId)).toBe(true);
   });
   it('notifies when adding a new Worktree to an existing group without counting a new repository', async () => {
     const root = await fixture(), { main, linked } = await worktree(root), { manager } = setup();
@@ -213,7 +225,8 @@ describe('batch repository registration', () => {
     globalValues.set('alwaygit.repositoryCollections.v1',[{id:'z',name:'Zulu'},{id:'a',name:'Alpha'}]);
     await manager.scan();const keys=manager.groups().sort((a,b)=>a.name.localeCompare(b.name)).map(group=>repositoryOrderKey(group.key));
     expect(manager.order().root).toEqual([...keys,'collection:z','collection:a']);
-    globalValues.set('alwaygit.repositoryOrder.v1',{root:['repository:unavailable',...manager.order().root],collections:{z:[],a:[]}});
+    const store = new CatalogStore(storage.get(globalValues)!, () => { throw new Error('Already migrated'); });
+    await store.transaction(catalog => { catalog.order={root:['repository:unavailable',...manager.order().root],collections:{z:[],a:[]}}; });
     await manager.scan();expect(manager.order().root[0]).toBe('repository:unavailable');
   });
 
@@ -261,6 +274,65 @@ describe('repository scan coordination',()=>{
     const {manager,git}=setup(),repo=repository('unavailable'),discover=vi.spyOn(git,'discover').mockResolvedValue(repo);await manager.add(repo.root);
     discover.mockRejectedValue(new Error('temporarily unavailable'));await manager.synchronizeSharedState();expect(manager.list()).toEqual([repo]);
   });
+  it('preserves another group move while removal waits for its compatibility mirror',async()=>{
+    const {manager,git,globalUpdate}=setup(),a=repository('remove-A'),b=repository('move-B');
+    vi.spyOn(git,'discover').mockImplementation(async root=>root===a.root?a:b);
+    await manager.add(a.root);await manager.add(b.root);const collection=await manager.createCollection('Client');
+    const entered=deferred<void>(),gate=deferred<void>();
+    globalUpdate.mockImplementationOnce(async()=>{entered.resolve();await gate.promise;});
+    const removing=manager.remove([manager.groups().find(group=>group.repository.id===a.id)!.key]);await entered.promise;
+    await manager.move([manager.groups().find(group=>group.repository.id===b.id)!.key],collection.id);
+    gate.resolve();await removing;
+    expect(manager.groups()).toHaveLength(1);expect(manager.groups()[0].collectionId).toBe(collection.id);
+    await manager.synchronizeSharedState();expect(manager.groups()[0].collectionId).toBe(collection.id);
+  });
+  it('reloads authoritative state despite stale Memento and discards a scan overtaken by another host removal',async()=>{
+    const first=setup(),otherValues=new Map<string,unknown>();storage.set(otherValues,first.context.globalStorageUri.fsPath);
+    const second=setup(otherValues),repo=repository('cross-host'),other=repository('other-host');
+    vi.spyOn(first.git,'discover').mockImplementation(async root=>root===repo.root?repo:other);
+    vi.spyOn(second.git,'discover').mockImplementation(async root=>root===repo.root?repo:other);
+    await first.manager.add(repo.root);await second.manager.synchronizeSharedState();
+    const gate=deferred<Repository>(),entered=deferred<void>();
+    vi.mocked(first.git.discover).mockImplementationOnce(async()=>{entered.resolve();return gate.promise;});
+    const scanning=first.manager.synchronizeSharedState();await entered.promise;
+    await second.manager.remove([second.manager.groups()[0].key]);await second.manager.add(other.root);
+    gate.resolve(repo);await scanning;
+    expect(first.manager.list().map(item=>item.id)).toEqual([other.id]);
+    expect(first.globalValues.get('alwaygit.excludedRepositories.v1')).toContain(path.join(repo.root,'.git').replace(/\\/g,'/').toLowerCase());
+  });
+  it('does not publish watcher removals on a failed catalog commit and treats mirror failures as committed success',async()=>{
+    const {manager,git,globalUpdate}=setup(),repo=repository('save-failure');vi.spyOn(git,'discover').mockResolvedValue(repo);await manager.add(repo.root);
+    const store=(manager as unknown as {catalog:CatalogStore}).catalog;
+    const write=vi.spyOn(store as unknown as {write(catalog:unknown):Promise<void>},'write').mockRejectedValueOnce(new Error('disk full'));
+    const changed=vi.fn();manager.onDidChangeRepositories(changed);
+    await expect(manager.remove([manager.groups()[0].key])).rejects.toThrow('disk full');
+    expect(manager.list()).toEqual([repo]);expect(changed).not.toHaveBeenCalled();write.mockRestore();
+    globalUpdate.mockRejectedValue(new Error('Memento unavailable'));
+    expect(await manager.remove([manager.groups()[0].key])).toBe(1);expect(manager.list()).toEqual([]);
+    await manager.synchronizeSharedState();expect(manager.list()).toEqual([]);
+  });
+  it('imports a later legacy workspace once and keeps its removed Worktree group excluded',async()=>{
+    const shared=new Map<string,unknown>(),first=setup(shared),removed=repository('legacy-removed'),later=repository('legacy-later');
+    vi.spyOn(first.git,'discover').mockResolvedValue(removed);await first.manager.add(removed.root);await first.manager.remove([first.manager.groups()[0].key]);
+    const second=setup(shared);Object.assign(second.context,{storageUri:{fsPath:path.join(second.context.globalStorageUri.fsPath,'workspace-later')}});
+    second.values.set('alwaygit.roots',[removed.root,later.root]);
+    vi.spyOn(second.git,'discover').mockImplementation(async root=>root===removed.root?removed:later);
+    await second.manager.scan();expect(second.manager.list()).toEqual([later]);
+    expect(shared.get('alwaygit.repositoryRoots.v1')).toEqual([later.root]);
+    await second.manager.remove([second.manager.groups()[0].key]);await second.manager.scan();expect(second.manager.list()).toEqual([]);
+    expect(shared.get('alwaygit.repositoryRoots.v1')).toEqual([]);
+  });
+  it('keeps a subsequent re-add registered while a removed catalog compatibility mirror is delayed',async()=>{
+    const {manager,git,globalUpdate}=setup(),repo=repository('mirror-readd');vi.spyOn(git,'discover').mockResolvedValue(repo);await manager.add(repo.root);
+    const entered=deferred<void>(),gate=deferred<void>();globalUpdate.mockImplementationOnce(async()=>{entered.resolve();await gate.promise;});
+    const removing=manager.remove([manager.groups()[0].key]);await entered.promise;await manager.add(repo.root);gate.resolve();await removing;
+    expect(manager.list()).toEqual([repo]);await manager.synchronizeSharedState();expect(manager.list()).toEqual([repo]);
+    const store=(manager as unknown as {catalog:CatalogStore}).catalog as unknown as {write(catalog:unknown):Promise<void>};
+    const original=store.write.bind(store),diskEntered=deferred<void>(),diskGate=deferred<void>();
+    const write=vi.spyOn(store,'write').mockImplementationOnce(async catalog=>{diskEntered.resolve();await diskGate.promise;await original(catalog);});
+    const pendingRemove=manager.remove([manager.groups()[0].key]);await diskEntered.promise;const pendingAdd=manager.add(repo.root);diskGate.resolve();
+    await Promise.all([pendingRemove,pendingAdd]);write.mockRestore();expect(manager.list()).toEqual([repo]);
+  });
 });
 
 describe('Add Repository host entry', () => {
@@ -280,6 +352,17 @@ describe('Add Repository host entry', () => {
     expect(manager.list()).toHaveLength(2);
     expect(vscode.window.showQuickPick).not.toHaveBeenCalled();expect(vscode.window.withProgress).not.toHaveBeenCalled();
     expect(projects.notifyCatalogChanged).toHaveBeenCalledTimes(1);
+    const store=(manager as unknown as {catalog:CatalogStore}).catalog,revision=store.snapshot().revision;
+    const existing=await value.discoverRepositories('scan-existing',root);
+    const result=await value.addRepository('scan-existing',existing.candidates.map(item=>item.key),undefined,'Client');
+    expect(result).toMatchObject({added:0,existing:2,skipped:0,collection:{name:'Client'}});
+    expect(result.collection).toEqual(manager.collections()[0]);expect(store.snapshot().revision).toBe(revision+1);
+    expect(manager.groups().every(group=>group.collectionId===result.collection?.id)).toBe(true);
+    const changed=vi.fn();manager.onDidChangeRepositories(changed);
+    const regroup=await value.discoverRepositories('scan-root',root);
+    await value.addRepository('scan-root',regroup.candidates.map(item=>item.key),undefined,undefined);
+    expect(manager.groups().every(group=>!group.collectionId)).toBe(true);expect(changed).toHaveBeenCalledOnce();
+    expect(projects.notifyCatalogChanged).toHaveBeenCalledTimes(3);
   });
 
   it('creates an empty group from a validated page form without native input or discovery', async () => {
