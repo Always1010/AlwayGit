@@ -30,12 +30,13 @@ function DiffPreviewPanel({ native, edit }: { native():void; edit():void }) {
   const targetKey=JSON.stringify([state.repoId,diffKey(state.diffTarget)]),revision=state.diffTarget?.kind==='change'?state.diffRevision:0;
   useEffect(()=>{
     let live=true;
+    const controller=new AbortController();
     if(displayedKey.current!==targetKey){displayedKey.current=targetKey;initiallyPositioned.current=false;setPreview(undefined);setSelection(undefined);setHorizontalScroll(0);lastScrollTop.current=0;navigationScroll.current=undefined;viewport.current?.scrollTo({top:0,left:0});}
     setError(undefined);
     const target=state.diffTarget;if(!target){setLoading(false);return;}
     setLoading(true);
-    void rpc<Preview>('diffPreview',state.repoId,target).then(value=>{if(live)setPreview(previous=>JSON.stringify(previous)===JSON.stringify(value)?previous:value);}).catch(error=>{if(live)setError(error instanceof Error?error.message:String(error));}).finally(()=>{if(live)setLoading(false);});
-    return()=>{live=false;};
+    void rpc<Preview>('diffPreview',state.repoId,target,{signal:controller.signal}).then(value=>{if(live)setPreview(previous=>JSON.stringify(previous)===JSON.stringify(value)?previous:value);}).catch(error=>{if(live)setError(error instanceof Error?error.message:String(error));}).finally(()=>{if(live)setLoading(false);});
+    return()=>{live=false;controller.abort();};
   },[targetKey,revision]);
   const rows=useMemo(()=>preview&&!preview.binary?alignDiff(preview.left,preview.right):[],[preview]);
   const ROW_HEIGHT=diffRowHeight(state.appearance.codeFont,state.appearance.codeRowHeight);

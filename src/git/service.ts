@@ -64,11 +64,25 @@ const commitFormat = '%H%x00%P%x00%an%x00%ae%x00%at%x00%s';
 export class GitService implements GitServiceContract {
   private version = 0;
   private readonly reviews = new Map<string, { token: string; fingerprint: string }>();
-  private readonly readSignal = new AsyncLocalStorage<AbortSignal>();
+  private readonly readSignal = new AsyncLocalStorage<{ controller: AbortController; pending: Set<Promise<void>> }>();
   constructor(private readonly options: GitServiceOptions = {}) {}
-  withReadSignal<T>(signal: AbortSignal, task: () => Promise<T>): Promise<T> { return this.readSignal.run(signal, task); }
+  async withReadSignal<T>(signal: AbortSignal, task: () => Promise<T>): Promise<T> {
+    const controller=new AbortController(),abort=()=>controller.abort();
+    if(signal.aborted)abort();else signal.addEventListener('abort',abort,{once:true});
+    const scope={controller,pending:new Set<Promise<void>>()};
+    try{return await this.readSignal.run(scope,task);}
+    catch(error){
+      controller.abort();
+      const failure=error instanceof Error?error:new Error(String(error));
+      const original=(failure as {completion?:Promise<void>}).completion;
+      const completion=Promise.all([...scope.pending,...(original?[original]:[])]).then(()=>{});
+      Object.defineProperty(failure,'completion',{value:completion,configurable:true});
+      throw failure;
+    }
+    finally{signal.removeEventListener('abort',abort);}
+  }
   private async run(repo: Repository, args: string[], allowFailure = false, captureBytes?: number, execution: StashExecution & { signal?: AbortSignal } = {}): Promise<Result> {
-    const readOnly = isReadOnlyGitCommand(args), scopeSignal = this.readSignal.getStore();
+    const readOnly = isReadOnlyGitCommand(args), scope = this.readSignal.getStore(), scopeSignal = scope?.controller.signal;
     if (!readOnly && scopeSignal) throw new GitError('A read-only request cannot run Git mutations', 'WRITE_IN_READ_SCOPE');
     const unsafe = unsafeTerminations.get(normalized(repo.commonDir));
     if (!readOnly && unsafe) throw unsafe;
@@ -81,14 +95,19 @@ export class GitService implements GitServiceContract {
     let preserveEnvironment = false;
     try {
       // Stash cleanup uses Git pathspec matching; all other commands use literal paths.
-      const result = await runGitProcess({
+      const gitProcess = runGitProcess({
         executable: this.options.gitPath,
         args: ['-C', execution.root ?? repo.root, ...(args[0] === 'stash' ? [] : ['--literal-pathspecs']), ...args],
         env: { ...commandEnv, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never', GIT_EDITOR: 'true', GIT_SEQUENCE_EDITOR: 'true', ...(['status', 'log', 'show', 'ls-tree', 'ls-files', 'for-each-ref'].includes(args[0]) ? { GIT_OPTIONAL_LOCKS: '0' } : {}), ...execution.env },
-        input: execution.input, signal: execution.signal ?? scopeSignal, readOnly, captureBytes,
+        input: execution.input, signal: execution.signal && scopeSignal ? AbortSignal.any([execution.signal,scopeSignal]) : execution.signal ?? scopeSignal, readOnly, captureBytes,
         timeoutMs: this.options.timeoutMs, maxOutputBytes: this.options.maxOutputBytes,
         onStderr: execution.silent ? undefined : chunk => this.options.onOutput?.(repo, chunk.toString('utf8')),
       });
+      if(scope){
+        const completion=gitProcess.then(()=>{},error=>(error as {completion?:Promise<void>}|undefined)?.completion?.catch(()=>{}));
+        scope.pending.add(completion);void completion.then(()=>scope.pending.delete(completion));
+      }
+      const result = await gitProcess;
       if (!execution.silent && result.stdout.length && ['add', 'restore', 'rm', 'clean', 'commit', 'fetch', 'pull', 'push', 'branch', 'switch', 'tag', 'stash', 'worktree', 'merge', 'rebase', 'cherry-pick', 'revert', 'reset'].includes(args[0]) && !(args[0] === 'stash' && args[1] === 'list') && !(args[0] === 'worktree' && args[1] === 'list')) this.options.onOutput?.(repo, result.stdout.toString('utf8'));
       if (result.code && !allowFailure && !execution.allowFailure) {
         const stdout = result.stdout.toString('utf8'); const stderr = result.stderr.toString('utf8');
