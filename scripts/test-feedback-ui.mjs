@@ -31,6 +31,25 @@ export async function verifyFeedback(browser, url) {
     await page.goto(url);
     await page.getByRole('option', { name: 'Feedback fixture' }).dblclick();
     const bar = page.getByTestId('action-feedback');
+    for (const [kind, title] of [['merge', 'Merge'], ['rebase', 'Rebase'], ['reset', 'Reset']]) {
+      await page.getByTestId('history').locator('[data-oid]').first().click({ button: 'right' });
+      await page.getByRole('menuitem', { name: `${title}…`, exact: true }).click();
+      const dialog = page.getByRole('dialog', { name: title, exact: true });
+      await dialog.getByText(`HEAD: ${'a'.repeat(40)}`, { exact: false }).waitFor();
+      await page.evaluate(() => { const fixture = window.__feedbackFixture; fixture.snapshot.branch = 'other-confirmation'; fixture.snapshot.head = 'b'.repeat(40); window.postMessage({ type: 'changed', repoId: 'feedback' }, '*'); });
+      await page.waitForFunction(() => document.querySelector('.toolbar')?.textContent.includes('other-confirmation'));
+      assert.match(await dialog.innerText(), /main/);
+      assert.equal((await dialog.innerText()).includes('other-confirmation'), false);
+      await dialog.getByRole('button', { name: title, exact: true }).click();
+      await page.waitForFunction(kind => window.__feedbackFixture.pending?.payload.type === kind, kind);
+      const payload = await page.evaluate(() => window.__feedbackFixture.pending.payload);
+      assert.equal(payload.expectedBranch, 'main'); assert.equal(payload.expectedHead, 'a'.repeat(40));
+      await page.evaluate(() => { const fixture = window.__feedbackFixture; fixture.snapshot.branch = 'main'; fixture.snapshot.head = 'a'.repeat(40); fixture.complete('The confirmed branch changed. Refresh and reopen the dialog.'); });
+      await bar.getByText(`${title} failed`, { exact: true }).waitFor();
+      await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+      await bar.getByRole('button', { name: 'Dismiss notification' }).click();
+      await page.waitForFunction(() => !document.querySelector('.toolbar')?.textContent.includes('other-confirmation'));
+    }
     await page.evaluate(()=>{const fixture=window.__feedbackFixture;fixture.snapshot.changes=[{path:'notes.txt',indexStatus:'?',worktreeStatus:'?',conflict:false,untracked:true}];window.postMessage({type:'changed',repoId:'feedback'},'*');});
     await page.locator('.toolbar').getByRole('button',{name:'Stash All Changes…',exact:true}).click();
     await page.getByRole('dialog',{name:'Stash All Changes',exact:true}).getByRole('button',{name:'Stash All Changes',exact:true}).click();
