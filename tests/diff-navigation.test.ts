@@ -1,7 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { alignDiff, changeAtRow, changedRanges, remapChange, summarizeChanges, type DiffRow } from '../webview/diff';
+import { adjacentDiffFile, alignDiff, changeAtRow, changedRanges, remapChange, summarizeChanges, type DiffRow } from '../webview/diff';
 
 describe('Diff change navigation', () => {
+  it('wraps across files in both directions and skips files without text blocks', async () => {
+    const counts=[2,0,0,3],controller=new AbortController(),count=async(index:number)=>counts[index];
+    expect(await adjacentDiffFile(4,0,1,count,controller.signal)).toEqual({fileIndex:3,changeIndex:0});
+    expect(await adjacentDiffFile(4,3,-1,count,controller.signal)).toEqual({fileIndex:0,changeIndex:1});
+    expect(await adjacentDiffFile(4,0,-1,count,controller.signal)).toEqual({fileIndex:3,changeIndex:2});
+    expect(await adjacentDiffFile(4,3,1,count,controller.signal)).toEqual({fileIndex:0,changeIndex:0});
+    const visited:number[]=[];
+    expect(await adjacentDiffFile(4,0,1,async index=>{visited.push(index);return 0;},controller.signal)).toBeUndefined();
+    expect(visited).toEqual([1,2,3,0]);
+    expect(await adjacentDiffFile(1,0,-1,async()=>1,controller.signal)).toEqual({fileIndex:0,changeIndex:0});
+  });
+
+  it('stops on read failure or cancellation without navigating using a stale response', async () => {
+    const controller=new AbortController();
+    await expect(adjacentDiffFile(3,0,1,async()=>{throw new Error('read failed');},controller.signal)).rejects.toThrow('read failed');
+    const visited:number[]=[];
+    await expect(adjacentDiffFile(3,0,1,async index=>{visited.push(index);controller.abort();return 2;},controller.signal)).rejects.toThrow();
+    expect(visited).toEqual([1]);
+  });
   it('groups adjacent changed rows and keeps separate changes independently navigable', () => {
     const rows=alignDiff('same\nold a\nold b\ncontext\ntail', 'same\nnew a\nnew b\ncontext\nadded\ntail');
     const ranges=changedRanges(rows);

@@ -5,32 +5,7 @@ export async function verifyDiffNavigation(browser, url) {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   try {
-    await page.addInitScript(() => {
-      const repo = { id: 'diff', root: '/diff', commonDir: '/diff/.git', name: 'Diff fixture' };
-      const commit = { oid: 'a'.repeat(40), parents: [], author: 'Fixture', email: 'test@example.com', timestamp: 0, subject: 'Diff navigation' };
-      const lines = Array.from({ length: 130 }, (_, i) => `context line ${i}`);
-      lines[81] = 'left long ' + '0123456789'.repeat(120);
-      const right = lines.map((line, i) => [26, 27, 28, 40, 41, 42, 80, 81, 82].includes(i) ? i === 81 ? 'right long ' + 'abcdefghij'.repeat(120) : `changed line ${i}` : line);
-      const fixture = window.__diffFixture = { calls: [], left: lines.join('\n'), right: right.join('\n'), truncated: false,
-        snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 0, behind: 0, changes: [{ path: 'diff.txt', indexStatus: ' ', worktreeStatus: 'M', conflict: false, untracked: false }], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
-        emit() { window.postMessage({ type: 'changed', repoId: repo.id, changes: { paths: ['diff.txt'] } }, '*'); },
-      };
-      window.acquireVsCodeApi = () => ({ getState: () => ({}), setState: () => {}, postMessage(request) {
-        if (request.method === 'saveSession') { setTimeout(() => window.postMessage({ type: 'response', id: request.id, result: null }, '*'), 0); return; }
-        fixture.calls.push(request.method);
-        let result;
-        if (request.method === 'repositories') result = [repo];
-        if (request.method === 'snapshot') result = structuredClone({ ...fixture.snapshot, version: ++fixture.snapshot.version });
-        if (request.method === 'history') result = { commits: [commit], tips: [commit.oid], nextOffset: 1, hasMore: false };
-        if (request.method === 'details') result = { commit, body: '', files: ['diff.txt', 'same.txt', 'single.txt', 'large.txt'].map(path => ({ path, status: 'M' })) };
-        if (request.method === 'diffPreview') {
-          const path = request.payload.path;
-          const right = path === 'same.txt' ? fixture.left : path === 'single.txt' || path === 'large.txt' ? fixture.left.split('\n').map((line, i) => i === 80 || path === 'large.txt' && i > 80 && i <= 115 ? `changed line ${i}` : line).join('\n') : fixture.right;
-          result = { path, leftLabel: 'Before', rightLabel: 'After', left: fixture.left, right, truncated: fixture.truncated };
-        }
-        setTimeout(() => window.postMessage({ type: 'response', id: request.id, result }, '*'), 10);
-      } });
-    });
+    await addDiffFixture(page, 'file');
     await page.goto(url);
     await page.getByRole('option', { name: 'Diff fixture' }).dblclick();
     const diff = page.getByTestId('diff-preview'), count = diff.getByTestId('diff-change-count'), summary = diff.getByTestId('diff-change-summary'), viewport = diff.locator('.diff-viewport');
@@ -115,9 +90,11 @@ export async function verifyDiffNavigation(browser, url) {
     assert.ok(Math.abs(await viewport.evaluate(element => element.scrollTop) - singleScroll) < 2, 'Collapse/expand preserves the reading position');
     await page.getByTestId('details').getByRole('button', { name: 'large.txt', exact: true }).click();
     await count.getByText('1/1', { exact: true }).waitFor();
+    // Both files have one block; wait for the tall block rather than the old count.
+    await page.waitForFunction(() => document.querySelectorAll('.diff-line.active-change').length > 1);
     await assertRevealed();
     const largeStart = await diff.locator('.active-change-start').boundingBox(), largeViewport = await viewport.boundingBox();
-    assert.ok(Math.abs(largeStart.y - largeViewport.y) < 2, 'A block taller than the viewport is revealed from its beginning');
+    assert.ok(Math.abs(largeStart.y - largeViewport.y) < 2, `A block taller than the viewport is revealed from its beginning (block ${largeStart.y}, viewport ${largeViewport.y}, height ${largeViewport.height})`);
     const topRow = await viewport.evaluate(element => element.scrollTop / document.querySelector('.diff-line').getBoundingClientRect().height);
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     const settings = page.getByTestId('interface-settings'), dialog = page.getByRole('dialog', { name: 'Settings' });
@@ -148,5 +125,130 @@ export async function verifyDiffNavigation(browser, url) {
     await count.getByText('2/2 (preview)', { exact: true }).waitFor();
     assert.deepEqual(errors, []);
     console.log('ALWAYGIT_DIFF_UI_TESTS_PASSED: initial reveal, cyclic/single-change navigation, tall blocks, collapse/restore, type summary, scrolling, refresh remap and truncation');
+  } finally { await page.close(); }
+  await verifyCommitNavigation(browser, url);
+}
+
+async function addDiffFixture(page, diffNavigationScope) {
+    await page.addInitScript(scope => {
+      const repo = { id: 'diff', root: '/diff', commonDir: '/diff/.git', name: 'Diff fixture' };
+      const commit = { oid: 'a'.repeat(40), parents: ['b'.repeat(40), 'c'.repeat(40)], author: 'Fixture', email: 'test@example.com', timestamp: 0, subject: 'Diff navigation' };
+      const lines = Array.from({ length: 130 }, (_, i) => `context line ${i}`);
+      lines[81] = 'left long ' + '0123456789'.repeat(120);
+      const right = lines.map((line, i) => [26, 27, 28, 40, 41, 42, 80, 81, 82].includes(i) ? i === 81 ? 'right long ' + 'abcdefghij'.repeat(120) : `changed line ${i}` : line);
+      const fixture = window.__diffFixture = { commit, calls: [], previews: [], failPath: null, holdPath: null, held: [], emptyFiles: false, left: lines.join('\n'), right: right.join('\n'), truncated: false,
+        snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 0, behind: 0, changes: [{ path: 'diff.txt', indexStatus: ' ', worktreeStatus: 'M', conflict: false, untracked: false }], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
+        emit() { window.postMessage({ type: 'changed', repoId: repo.id, changes: { paths: ['diff.txt'] } }, '*'); },
+      };
+      window.acquireVsCodeApi = () => ({ getState: () => JSON.parse(localStorage.getItem('alwaygit.diff-fixture-session') || 'null') ?? { diffNavigationScope: scope }, setState: state => localStorage.setItem('alwaygit.diff-fixture-session', JSON.stringify(state)), postMessage(request) {
+        if (request.method === 'saveSession') { setTimeout(() => window.postMessage({ type: 'response', id: request.id, result: null }, '*'), 0); return; }
+        fixture.calls.push(request.method);
+        let result;
+        if (request.method === 'repositories') result = [repo];
+        if (request.method === 'snapshot') result = structuredClone({ ...fixture.snapshot, version: ++fixture.snapshot.version });
+        if (request.method === 'history') result = { commits: [commit], tips: [commit.oid], nextOffset: 1, hasMore: false };
+        if (request.method === 'details') result = { commit, parent: request.payload.parent ?? commit.parents[0], body: '', files: ['diff.txt', 'same.txt', 'binary.bin', 'single.txt', 'large.txt', 'tail.txt'].map(path => ({ path, status: path === 'single.txt' ? 'R' : 'M', previousPath: path === 'single.txt' ? 'old-single.txt' : undefined })) };
+        if (request.method === 'diffPreview') {
+          const path = request.payload.path;
+          fixture.previews.push(structuredClone(request.payload));
+          if (fixture.failPath === path) { setTimeout(() => window.postMessage({ type: 'response', id: request.id, error: { message: 'Read failed' } }, '*'), 10); return; }
+          const right = fixture.emptyFiles || path === 'same.txt' ? fixture.left : path === 'tail.txt' ? fixture.left.split('\n').map((line, i) => [30, 95].includes(i) ? `tail changed ${i}` : line).join('\n') : path === 'single.txt' || path === 'large.txt' ? fixture.left.split('\n').map((line, i) => i === 80 || path === 'large.txt' && i > 80 && i <= 125 ? `changed line ${i}` : line).join('\n') : fixture.right;
+          result = { path, leftLabel: 'Before', rightLabel: 'After', left: fixture.left, right, truncated: fixture.truncated, binary: path === 'binary.bin' };
+          if (fixture.holdPath === path) { fixture.held.push(() => window.postMessage({ type: 'response', id: request.id, result }, '*')); return; }
+        }
+        setTimeout(() => window.postMessage({ type: 'response', id: request.id, result }, '*'), 10);
+      } });
+    }, diffNavigationScope);
+}
+
+async function verifyCommitNavigation(browser, url) {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } }), errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  try {
+    await addDiffFixture(page);
+    await page.goto(url);
+    await page.getByRole('option', { name: 'Diff fixture' }).dblclick();
+    const diff = page.getByTestId('diff-preview'), count = diff.getByTestId('diff-change-count'), details = page.getByTestId('details');
+    const expectCount = async text => { await count.getByText(text, { exact: true }).waitFor(); };
+    const step = async (direction, text) => { await diff.getByRole('button', { name: direction === -1 ? 'Previous change' : 'Next change' }).click(); await expectCount(text); };
+    const settings = async () => {
+      await page.getByRole('button', { name: 'Settings', exact: true }).click();
+      await page.getByTestId('interface-settings').getByRole('button', { name: 'Diff', exact: true }).click();
+      return page.getByRole('dialog', { name: 'Settings' });
+    };
+    await expectCount('File 1/6 · Change 1/3');
+    await step(-1, 'File 6/6 · Change 2/2');
+    await page.waitForFunction(() => {
+      const block = document.querySelector('.active-change-start'), viewport = document.querySelector('.diff-viewport');
+      if (!block) return false;
+      return block.querySelector('.line-number').textContent === '96' && block.getBoundingClientRect().y >= viewport.getBoundingClientRect().y && block.getBoundingClientRect().bottom <= viewport.getBoundingClientRect().bottom;
+    });
+    await step(1, 'File 1/6 · Change 1/3');
+    await step(1, 'File 1/6 · Change 2/3');
+    await step(1, 'File 1/6 · Change 3/3');
+    const filter = details.getByLabel('Filter changed file paths');
+    await filter.fill('diff');
+    await step(1, 'File 4/6 · Change 1/1');
+    assert.equal(await filter.inputValue(), 'diff');
+    await details.getByText('Current Diff is outside the path filter: single.txt', { exact: true }).waitFor();
+    const renamed = await page.evaluate(() => window.__diffFixture.previews.find(target => target.path === 'single.txt'));
+    assert.equal(renamed.previousPath, 'old-single.txt');
+    assert.equal(renamed.parent, 'b'.repeat(40));
+    await filter.fill('');
+    assert.ok(await details.locator('.file-item.selected').getByRole('button', { name: 'single.txt', exact: true }).count());
+    await step(-1, 'File 1/6 · Change 3/3');
+    await step(1, 'File 4/6 · Change 1/1');
+    await step(1, 'File 5/6 · Change 1/1');
+    await step(1, 'File 6/6 · Change 1/2');
+    await step(1, 'File 6/6 · Change 2/2');
+    await step(1, 'File 1/6 · Change 1/3');
+    await details.getByRole('button', { name: 'binary.bin', exact: true }).click();
+    await expectCount('File 3/6 · Change 0/0');
+    await step(1, 'File 4/6 · Change 1/1');
+    await step(-1, 'File 1/6 · Change 3/3');
+    await page.evaluate(() => { window.__diffFixture.failPath = 'same.txt'; });
+    await diff.getByRole('button', { name: 'Next change' }).click();
+    await diff.getByRole('alert').getByText('same.txt: Read failed', { exact: true }).waitFor();
+    assert.equal(await count.innerText(), 'File 1/6 · Change 3/3', 'A failed file read must not skip to a later file');
+    await page.evaluate(() => { window.__diffFixture.failPath = null; });
+    await step(1, 'File 4/6 · Change 1/1');
+    await details.getByRole('button', { name: 'tail.txt', exact: true }).click();
+    await expectCount('File 6/6 · Change 1/2');
+    await step(1, 'File 6/6 · Change 2/2');
+    // A parent switch cancels a pending cross-file read, preserving the new comparison.
+    await page.evaluate(() => { window.__diffFixture.holdPath = 'diff.txt'; });
+    await diff.getByRole('button', { name: 'Next change' }).click();
+    await page.waitForFunction(() => window.__diffFixture.held.length === 1);
+    await details.getByLabel('Compare parent').selectOption('c'.repeat(40));
+    await expectCount('File 6/6 · Change 1/2');
+    await page.evaluate(() => { const fixture = window.__diffFixture; fixture.holdPath = null; fixture.held.splice(0).forEach(reply => reply()); });
+    await step(-1, 'File 5/6 · Change 1/1');
+    assert.equal(await page.evaluate(() => window.__diffFixture.previews.at(-1).parent), 'c'.repeat(40));
+    // Cancelling settings restores the default; applying persists across reload.
+    let dialog = await settings();
+    await dialog.getByLabel('Diff navigation scope').selectOption('file');
+    await expectCount('1/1');
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expectCount('File 5/6 · Change 1/1');
+    dialog = await settings();
+    await dialog.getByLabel('Diff navigation scope').selectOption('file');
+    await dialog.getByRole('button', { name: 'Apply', exact: true }).click();
+    await page.reload();
+    await expectCount('1/1');
+    await step(1, '1/1');
+    assert.ok(await details.locator('.file-item.selected').getByRole('button', { name: 'large.txt', exact: true }).count());
+    dialog = await settings();
+    assert.equal(await dialog.getByLabel('Diff navigation scope').inputValue(), 'file');
+    await dialog.getByLabel('Diff navigation scope').selectOption('commit');
+    await dialog.getByRole('button', { name: 'Apply', exact: true }).click();
+    // Empty previews terminate a full scan and disable both arrows.
+    await page.evaluate(() => { window.__diffFixture.emptyFiles = true; });
+    await details.getByRole('button', { name: 'same.txt', exact: true }).click();
+    await expectCount('File 2/6 · Change 0/0');
+    await diff.getByRole('button', { name: 'Next change' }).click();
+    await page.waitForFunction(() => [...document.querySelectorAll('.diff-preview button')].filter(button => ['Previous change', 'Next change'].includes(button.getAttribute('aria-label'))).every(button => button.disabled) && !document.querySelector('.diff-viewport [role="status"]'));
+    assert.equal(await count.innerText(), 'File 2/6 · Change 0/0');
+    assert.deepEqual(errors, []);
+    console.log('ALWAYGIT_COMMIT_DIFF_UI_TESTS_PASSED: cross-file wrap, reverse landing, rename/parent, filtering, binary/empty files, read failures, cancellation and saved scope');
   } finally { await page.close(); }
 }

@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { useWorkbench } from './store';
 import { useTranslation } from './i18n';
 import type { Language } from './i18n';
+import type { DiffNavigationScope } from '../src/protocol/session';
 import { defaultBadgeColor, defaultCurrentBranchColor, defaultCurrentRepositoryColor, diffRowHeight, effectiveRowHeight, fileRowHeight, isLightTheme, presetColors, textColorForBackground, type ResolvedTheme, type ThemePreference } from './appearance';
 import { graphPalettes, type GraphPaletteId } from './graph/palettes';
 import { BranchIcon, Button, Icon, Modal } from './ui';
 import { RepositoryIcon } from './RepositoryIcon';
 
-type SettingsPage = 'language' | 'theme' | 'density' | 'status' | 'colors' | 'advanced';
+type SettingsPage = 'language' | 'theme' | 'density' | 'diff' | 'status' | 'colors' | 'advanced';
 type ColorTheme = 'light' | 'dark';
 const defaultMainColors = { light: '#283447', dark: '#EDF3FF' } as const;
 const themes: { id: ThemePreference; label: string; labelZh: string; colors: readonly [string, string, string] }[] = [
@@ -137,7 +138,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
   };
   const presetBase = presetColors(appearance.palette);
   const customized = appearance.colors.light.some((color, index) => color !== presetBase.light[index]) || appearance.colors.dark.some((color, index) => color !== presetBase.dark[index]) || appearance.colors.light.length !== presetBase.light.length;
-  const pageLabel = page === 'advanced' ? t('Git operations', 'Git 操作') : page === 'language' ? t('Language', '语言') : page === 'theme' ? t('Theme', '主题') : page === 'density' ? t('Text & density', '字号与密度') : page === 'status' ? t('Status indicators', '状态提醒') : t('Graph colors', '提交图配色');
+  const pageLabel = page === 'advanced' ? t('Git operations', 'Git 操作') : page === 'language' ? t('Language', '语言') : page === 'theme' ? t('Theme', '主题') : page === 'density' ? t('Text & density', '字号与密度') : page === 'diff' ? 'Diff' : page === 'status' ? t('Status indicators', '状态提醒') : t('Graph colors', '提交图配色');
   const navItem = (id: SettingsPage, icon: string, en: string, zh: string) => <button type="button" className={`settings-nav-item ${page === id ? 'is-active' : ''}`} aria-current={page === id ? 'page' : undefined} onClick={() => setPage(id)}><Icon name={icon}/><span>{t(en, zh)}</span></button>;
 
   return <Modal title={t('Settings', '设置')} busy={saving} onClose={close} footer={
@@ -146,7 +147,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
     <div className="interface-settings" data-testid="interface-settings">
       <nav className="settings-nav" aria-label={t('Settings categories', '设置分类')}>
         <div className="settings-nav-group"><strong>{t('General', '常规')}</strong>{navItem('language', 'globe', 'Language', '语言')}</div>
-        <div className="settings-nav-group"><strong>{t('Interface', '界面')}</strong>{navItem('theme', 'color-mode', 'Theme', '主题')}{navItem('density', 'text-size', 'Text & density', '字号与密度')}{navItem('status', 'bell-dot', 'Status indicators', '状态提醒')}</div>
+        <div className="settings-nav-group"><strong>{t('Interface', '界面')}</strong>{navItem('theme', 'color-mode', 'Theme', '主题')}{navItem('density', 'text-size', 'Text & density', '字号与密度')}{navItem('diff', 'diff', 'Diff', 'Diff')}{navItem('status', 'bell-dot', 'Status indicators', '状态提醒')}</div>
         <div className="settings-nav-group"><strong>{t('Commit graph', '提交图')}</strong>{navItem('colors', 'git-merge', 'Colors', '配色')}</div>
         <div className="settings-nav-group">{navItem('advanced', 'tools', 'Advanced', '高级')}</div>
       </nav>
@@ -154,6 +155,12 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
         <header className="settings-page-heading"><span>{page === 'advanced' ? t('Advanced', '高级') : page === 'language' ? t('General', '常规') : page === 'colors' ? t('Commit graph', '提交图') : t('Interface', '界面')} › {pageLabel}</span><small>{page === 'advanced' ? t('Git options take effect only after Apply.', 'Git 操作选项在应用后生效。') : t('Changes preview immediately. Apply to save.', '调整会立即预览，应用后保存。')}</small></header>
 
         {saveError&&<p role="alert" className="form-error">{saveError}</p>}
+        {page === 'diff' && <section className="settings-page" aria-labelledby="diff-heading">
+          <h3 id="diff-heading">Diff</h3>
+          <label className="settings-control">{t('Diff navigation scope', 'Diff 导航范围')}<select aria-label={t('Diff navigation scope', 'Diff 导航范围')} value={state.diffNavigationScope} onChange={event=>state.previewSettings({ diffNavigationScope: event.target.value as DiffNavigationScope })}><option value="commit">{t('Entire Commit · Default', '整个 Commit · 默认')}</option><option value="file">{t('Current file', '当前文件')}</option></select></label>
+          <p className="settings-page-copy">{t('Entire Commit follows the changed-file order. Next moves to the first change in the next file; Previous moves to the last change in the previous file. The first and last changes of the Commit wrap around.', '整个 Commit 按变更文件顺序导航。下一处跨文件定位第一处修改，上一处跨文件定位最后一处修改，Commit 的首尾循环衔接。')}</p>
+          <p className="settings-note">{t('Navigates all files in the current Commit and selected Parent, including files hidden by the path filter. Binary files and files without text change blocks are skipped; truncated files only include previewed changes. Working Tree, Stash and comparisons continue to cycle within the current file.', '范围为当前 Commit 和所选 Parent 的全部文件，包括路径筛选隐藏的文件。跳过二进制文件及没有文本修改块的文件；截断文件仅导航预览中的修改。Working Tree、Stash 和 Commit 比较仍在当前文件内循环。')}</p>
+        </section>}
         {page === 'advanced' && <section className="settings-page" aria-labelledby="advanced-heading">
           <h3 id="advanced-heading">{t('Git operations','Git 操作')}</h3>
           <label className="form-checkbox"><input type="checkbox" aria-label={t('Allow direct Detached HEAD Checkout','允许直接进入 Detached HEAD')} checked={allowDetachedHead} disabled={saving} onChange={event=>{setAdvancedDirty(true);setAllowDetachedHead(event.target.checked);}}/>{t('Allow direct Detached HEAD Checkout','允许直接进入 Detached HEAD')}</label>

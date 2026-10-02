@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { LayoutState } from './rpc';
 import type { Language } from './i18n';
+import type { DiffNavigationScope } from '../src/protocol/session';
 import { getGraphPalette, type GraphPaletteColors, type GraphPaletteId } from './graph/palettes';
 
 export const themePreferences = ['system', 'light', 'paper', 'mist', 'dark', 'midnight', 'graphite', 'forest', 'berry', 'contrast'] as const;
@@ -18,7 +19,7 @@ export interface Appearance {
   colors: GraphPaletteColors;
   mainColors: { light: string; dark: string };
 }
-export interface InterfaceSettings { language: Language; font: number; row: number; appearance: Appearance }
+export interface InterfaceSettings { language: Language; font: number; row: number; appearance: Appearance; diffNavigationScope: DiffNavigationScope }
 export type InterfaceSettingsUpdate = Partial<Omit<InterfaceSettings, 'appearance'>> & { appearance?: Partial<Appearance> };
 const hexColor = /^#[0-9a-f]{6}$/i;
 const defaultMainColors = { light: '#283447', dark: '#EDF3FF' } as const;

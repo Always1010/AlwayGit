@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { CheckoutBlocker, Commit, CommitComparison, CommitDetails, DiffTarget, GitAction, HistoryPage, HistoryQuery, OperationReview, OperationSettings, Repository, RepositoryChanges, RepositoryCollection, RepositoryOrder, ReorderRepository, RepositoryStatus, Snapshot, StashApplyBlocker, StashDetails, StashSection } from '../src/protocol/types';
 import { demoMode, readSession, rpc, saveSession, subscribe } from './rpc';
 import type { LayoutState } from './rpc';
+import type { DiffNavigationScope } from '../src/protocol/session';
 import type { Language } from './i18n';
 import { folderKeys } from './refTree';
 import { affectsWorkingDiff, diffKey, historyKey, mergeChanges, shareSnapshot, shareValue, workingTarget } from './refresh';
@@ -22,7 +23,7 @@ export type CheckoutFailure = CheckoutBlocker & { detached?: boolean };
 interface WorkbenchState {
   operationReview?: { repoId: string; action: Extract<GitAction, { type: 'commit' | 'operation.continue' }>; review: OperationReview };
   operationSettings: OperationSettings; loadOperationSettings(): Promise<void>; saveOperationSettings(allowDetachedHead: boolean): Promise<void>;
-  appearance: Appearance; settingsBaseline?: InterfaceSettings;
+  appearance: Appearance; diffNavigationScope: DiffNavigationScope; settingsBaseline?: InterfaceSettings;
   beginSettings(): void; previewSettings(value: InterfaceSettingsUpdate): void; finishSettings(apply: boolean): void; restoreLayout(): void;
   repositories: Repository[]; repositoryCollections:RepositoryCollection[]; repositoryOrder?:RepositoryOrder; reorderRepository(payload:ReorderRepository):Promise<void>; repositoryStatuses: Record<string, RepositoryStatus>; selectedRepositoryKeys:string[]; repositorySelectionAnchor?:string; repoId?: string; snapshot?: Snapshot; commits: Commit[]; historyHead?: Commit; details?: CommitDetails; comparison?: CommitComparison; selectedOid?: string; selectedOids: string[]; selectionAnchor?: string; selectedRefs:string[]; refSelectionAnchor?:string; selectedParent?: string; selectedStashOid?: string; selectedStashSection?:StashSection; stashDetails?: StashDetails; selectedFile?: string; diffTarget?: DiffTarget; diffRevision: number;
   ref?: string; checkedRefs?: string[]; expandedRefGroups?:string[]; collapsedSidebarGroups:string[]; search: string; language: Language; layout: LayoutState; checkoutFailure?: CheckoutFailure; stashApplyFailure?: StashApplyBlocker; actionFeedback?: ActionFeedback; locateToken:number;
@@ -41,6 +42,7 @@ const initialLayout = layout(session.layout);
 // Only the old default density migrates; custom dimensions and drafts are kept.
 if (!session.appearance && initialLayout.row === 26) initialLayout.row = 24;
 export const useWorkbench = create<WorkbenchState>((set, get) => ({
+  diffNavigationScope: session.diffNavigationScope === 'file' ? 'file' : 'commit',
   operationSettings: { allowDetachedHead: false, scope: 'workspace' },
   async loadOperationSettings() { const settings = await rpc<OperationSettings>('operationSettings'); if (typeof settings?.allowDetachedHead === 'boolean') set({ operationSettings: settings }); },
   async saveOperationSettings(allowDetachedHead) { const settings = await rpc<OperationSettings>('saveOperationSettings', undefined, { allowDetachedHead }); if (typeof settings?.allowDetachedHead !== 'boolean' || settings.allowDetachedHead !== allowDetachedHead) throw new Error('Could not save Git operation settings.'); set({ operationSettings: settings }); },
@@ -314,26 +316,26 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   restoreLayout() { const { font, row } = get().layout; set({ layout: { ...defaultLayout, font, row } }); },
   beginSettings() {
     const state = get(); if (state.settingsBaseline) return;
-    set({ settingsBaseline: { language: state.language, font: state.layout.font, row: state.layout.row, appearance: { ...state.appearance } } });
+    set({ settingsBaseline: { language: state.language, font: state.layout.font, row: state.layout.row, appearance: { ...state.appearance }, diffNavigationScope: state.diffNavigationScope } });
   },
   previewSettings(value) {
     if (!get().settingsBaseline) return;
     const state = get();
-    set({ language: value.language ?? state.language, appearance: normalizeAppearance(value.appearance ?? state.appearance), layout: layout({ ...state.layout, font: value.font ?? state.layout.font, row: value.row ?? state.layout.row }) });
+    set({ language: value.language ?? state.language, appearance: normalizeAppearance(value.appearance ?? state.appearance), diffNavigationScope: value.diffNavigationScope ?? state.diffNavigationScope, layout: layout({ ...state.layout, font: value.font ?? state.layout.font, row: value.row ?? state.layout.row }) });
   },
   finishSettings(apply) {
     const baseline = get().settingsBaseline; if (!baseline) return;
-    set(apply ? { settingsBaseline: undefined } : { settingsBaseline: undefined, language: baseline.language, appearance: baseline.appearance, layout: layout({ ...get().layout, font: baseline.font, row: baseline.row }) });
+    set(apply ? { settingsBaseline: undefined } : { settingsBaseline: undefined, language: baseline.language, appearance: baseline.appearance, diffNavigationScope: baseline.diffNavigationScope, layout: layout({ ...get().layout, font: baseline.font, row: baseline.row }) });
   },
 }));
 let persistedSelection: unknown[] = [];
 useWorkbench.subscribe(state => {
-  const selection = [state.repoId, state.drafts, state.ref, state.checkedRefs, state.expandedRefGroups, state.collapsedSidebarGroups, state.search, state.selectedOid, state.selectedParent, state.selectedStashOid, state.selectedFile, state.tab, state.language, state.layout, state.appearance, state.settingsBaseline];
+  const selection = [state.repoId, state.drafts, state.ref, state.checkedRefs, state.expandedRefGroups, state.collapsedSidebarGroups, state.search, state.selectedOid, state.selectedParent, state.selectedStashOid, state.selectedFile, state.tab, state.language, state.layout, state.appearance, state.diffNavigationScope, state.settingsBaseline];
   if (selection.every((value, index) => Object.is(value, persistedSelection[index]))) return;
   persistedSelection = selection;
   if (state.repoId) views[state.repoId] = { ref: state.ref, checkedRefs: state.checkedRefs, expandedRefGroups:state.expandedRefGroups,collapsedSidebarGroups:state.collapsedSidebarGroups, search: state.search, selectedOid: state.selectedOid, selectedParent: state.selectedParent, selectedStashOid: state.selectedStashOid, selectedFile: state.selectedFile, tab: state.tab };
   const baseline = state.settingsBaseline;
-  saveSession({ version: 2, repoId: state.repoId, drafts: state.drafts, views, language: baseline?.language ?? state.language, layout: baseline ? { ...state.layout, font: baseline.font, row: baseline.row } : state.layout, appearance: baseline?.appearance ?? state.appearance }, error => useWorkbench.getState().report(new Error(`${state.language === 'zh-CN' ? '恢复状态未能保存；当前标签仍保留草稿。' : 'Could not save the recovery baseline; drafts remain in this panel.'} ${error.message}`)));
+  saveSession({ version: 2, diffNavigationScope: baseline?.diffNavigationScope ?? state.diffNavigationScope, repoId: state.repoId, drafts: state.drafts, views, language: baseline?.language ?? state.language, layout: baseline ? { ...state.layout, font: baseline.font, row: baseline.row } : state.layout, appearance: baseline?.appearance ?? state.appearance }, error => useWorkbench.getState().report(new Error(`${state.language === 'zh-CN' ? '恢复状态未能保存；当前标签仍保留草稿。' : 'Could not save the recovery baseline; drafts remain in this panel.'} ${error.message}`)));
 });
 let changedTimer: ReturnType<typeof setTimeout>;
 let pendingChange: { repoId: string; changes?: RepositoryChanges; snapshot?: Snapshot } | undefined;
