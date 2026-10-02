@@ -105,6 +105,21 @@ export class GitService implements GitServiceContract {
     if (result.code > 1) throw new GitError(result.stderr.toString('utf8').trim() || `Cannot read Git configuration ${key}`, 'GIT_FAILED');
     return result.stdout.toString('utf8').trim() || undefined;
   }
+  private async remoteDestination(repo: Repository, remote: string, requireSingle = false): Promise<string> {
+    const urls = (await this.text(repo, ['remote', 'get-url', '--push', '--all', token(remote, 'remote')])).split('\n').filter(Boolean);
+    if (requireSingle && urls.length !== 1) throw new GitError('This remote has multiple Push destinations. Select a remote with one destination before Force-with-lease or deleting branches.', 'MULTIPLE_PUSH_DESTINATIONS');
+    // The UI only receives a fingerprint; URLs may contain authentication secrets.
+    return createHash('sha256').update(JSON.stringify(urls)).digest('hex');
+  }
+  private async confirmRemoteDestination(repo: Repository, remote: string, expected?: string): Promise<void> {
+    const actual = await this.remoteDestination(repo, remote, true);
+    if (!expected || actual !== expected) throw new GitError('The remote Push destination is missing or changed. Refresh and reopen the confirmation before trying again.', 'OPERATION_CHANGED');
+  }
+  private confirmedRemoteOid(value: string | undefined): string {
+    if (value === undefined) throw new GitError('The confirmed remote branch version is missing. Refresh and reopen the confirmation before trying again.', 'OPERATION_CHANGED');
+    if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})?$/.test(value)) throw new GitError('Invalid confirmed remote branch version', 'INVALID_ARGUMENT');
+    return value;
+  }
   async discover(root: string): Promise<Repository> {
     const resolved = await realpath(path.resolve(root));
     const provisional: Repository = { id: '', root: resolved, commonDir: '', name: path.basename(resolved) };
@@ -152,6 +167,7 @@ export class GitService implements GitServiceContract {
     })) : [];
     const stashes: Stash[] = stashOutput ? stashOutput.split('\n').map(line => { const [selector, oid, subject] = line.split('\0'); return { selector, oid, subject }; }) : [];
     const remotes = remoteOutput ? remoteOutput.split('\n') : [];
+    const remoteDestinations = Object.fromEntries(await Promise.all(remotes.map(async remote => [remote, await this.remoteDestination(repo, remote)] as const)));
     const defaultBranch=inferDefaultBranch(refs,remotes,status.upstream);
     const operation: OperationState = { conflicts: status.changes.filter(x => x.conflict).length, canContinue: false, canAbort: false, canSkip: false };
     const markers = await Promise.all(['rebase-merge', 'rebase-apply', 'MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'sequencer'].map(name => exists(path.join(gitDir, name))));
@@ -179,7 +195,7 @@ export class GitService implements GitServiceContract {
       const remoteBranch = remote && remote === upstreamRemote && upstreamBranch ? upstreamBranch : remote && remote === branchRemote && configuredBranch ? configuredBranch : status.branch;
       pushTarget = { localBranch: status.branch, ...(remote ? { remote } : {}), remoteBranch, configured: !!upstream };
     }
-    return { repository: repo, ...status, unpushed: status.branch ? unpushed : 0, refs, remotes, ...(defaultBranch ? { defaultBranch } : {}), ...(pushTarget ? { pushTarget } : {}), stashes, worktrees, operation, version: ++this.version };
+    return { repository: repo, ...status, unpushed: status.branch ? unpushed : 0, refs, remotes, remoteDestinations, ...(defaultBranch ? { defaultBranch } : {}), ...(pushTarget ? { pushTarget } : {}), stashes, worktrees, operation, version: ++this.version };
   }
   private async worktrees(repo: Repository): Promise<Worktree[]> {
     const records = decodePaths((await this.run(repo, ['worktree', 'list', '--porcelain', '-z'])).stdout).split('\0'); const result: Worktree[] = []; let current: Worktree | undefined;
@@ -468,12 +484,15 @@ export class GitService implements GitServiceContract {
       case 'fetch': args = ['fetch', ...remote(action.remote)]; break;
       case 'pull': if (!['ff-only', 'merge', 'rebase'].includes(action.strategy)) throw new GitError('Invalid pull strategy', 'INVALID_ARGUMENT'); args = ['pull', ...(action.strategy === 'merge' ? ['--no-rebase', '--ff'] : [`--${action.strategy}`]), ...remote(action.remote)]; break;
       case 'push': {
+        if (action.forceWithLease && (!action.remote || !action.branch || !action.remoteBranch)) throw new GitError('Select explicit local and remote branches, then reopen the Force-with-lease confirmation.', 'OPERATION_CHANGED');
         const branch = action.branch ? await this.refName(repo, action.branch) : undefined; let destination = action.remote;
         if (action.remoteBranch && !branch) throw new GitError('Select a local branch before choosing a remote branch', 'INVALID_ARGUMENT');
         if (branch) { await this.oid(repo, `refs/heads/${branch}`); if (!destination) { const configured = await this.run(repo, ['config', '--get', `branch.${branch}.remote`], true); if (configured.code > 1) throw new GitError(configured.stderr.toString('utf8'), 'GIT_FAILED'); destination = configured.stdout.toString('utf8').trim(); if (!destination) { const remotes = (await this.text(repo, ['remote'])).split('\n').filter(Boolean); if (remotes.length !== 1) throw new GitError('Select a remote before pushing this branch', 'INVALID_ARGUMENT'); destination = remotes[0]; } } }
         const remoteBranch = branch ? await this.refName(repo, action.remoteBranch ?? branch) : undefined;
         const setUpstream = branch && (action.setUpstream ?? true);
-        args = ['push', ...(setUpstream ? ['--set-upstream'] : []), ...(action.forceWithLease ? ['--force-with-lease'] : []), ...remote(destination), ...(branch ? [`refs/heads/${branch}:refs/heads/${remoteBranch}`] : [])]; break;
+        const lease = action.forceWithLease ? this.confirmedRemoteOid(action.expectedOid) : undefined;
+        if (action.forceWithLease) await this.confirmRemoteDestination(repo, destination!, action.expectedDestination);
+        args = ['push', ...(setUpstream ? ['--set-upstream'] : []), ...(lease !== undefined ? [`--force-with-lease=refs/heads/${remoteBranch}:${lease}`] : []), ...remote(destination), ...(branch ? [`refs/heads/${branch}:refs/heads/${remoteBranch}`] : [])]; break;
       }
       case 'remote.add': {
         const name=action.name.trim(),url=action.url.trim();
@@ -528,9 +547,10 @@ export class GitService implements GitServiceContract {
         if(!configured.includes(destination))throw new GitError(`Unknown remote: ${destination}`,'INVALID_ARGUMENT');
         const branches=[...new Set(await Promise.all(action.branches.map(name=>this.refName(repo,name))))];
         if(!branches.length)throw new GitError('Select at least one remote branch','INVALID_ARGUMENT');
-        for(const branch of branches){const expected=action.expectedOids?.[branch];if(expected&&await this.oid(repo,`refs/remotes/${destination}/${branch}`)!==expected)throw new GitError(`Remote-tracking branch changed before deletion: ${destination}/${branch}`,'OPERATION_CHANGED');}
+        for (const branch of branches) this.confirmedRemoteOid(Object.hasOwn(action.expectedOids ?? {}, branch) ? action.expectedOids![branch] : undefined);
+        await this.confirmRemoteDestination(repo, destination, action.expectedDestination);
         const failures:string[]=[];let deleted=0;
-        for(const branch of branches){try{await this.run(repo,['push',destination,'--delete',branch]);deleted++;}catch(error){failures.push(`${destination}/${branch}: ${error instanceof Error?error.message:String(error)}`);}}
+        for(const branch of branches){try{await this.run(repo,['push',`--force-with-lease=refs/heads/${branch}:${action.expectedOids![branch]}`,destination,`:refs/heads/${branch}`]);deleted++;}catch(error){if(error instanceof GitTerminationError)throw error;failures.push(`${destination}/${branch}: ${error instanceof Error?error.message:String(error)}`);}}
         if(failures.length)throw new GitError(`${deleted} remote branch(es) deleted; ${failures.length} failed.\n${failures.join('\n')}`,'PARTIAL_FAILURE');
         return;
       }

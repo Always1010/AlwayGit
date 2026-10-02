@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-042：远端删除与强推未绑定确认时的远端版本
+
+- 日期：2026-10-03
+- 状态：已解决
+- 现象：打开确认后，其他客户端推进远端分支或后台 Fetch 更新本地跟踪引用，删除和强推仍可能覆盖用户未确认的新状态。
+- 原因：删除仅核对本地跟踪引用，强推使用随 Fetch 变化的隐式 lease；远端 Push 地址改变也没有重新确认。
+- 解决方案：确认时固定目标 OID 与 Push 地址指纹，执行时使用显式 `--force-with-lease=<ref>:<oid>`；空 OID 只允许仍不存在的分支，地址变化或多个 Push 地址拒绝危险操作。批量删除保留逐项结果，进程终止未确认立即上抛。
+- 验证方式：两个本地 Clone 与 Bare 远端回归覆盖并发推进、后台 Fetch、并发创建、部分删除失败、地址改变与多 Push 地址；协议、既有 Push/Pull/Upstream 定向检查和类型检查通过。
+- 相关文件：`src/git/service.ts`、`src/protocol/types.ts`、`src/protocol/validation.ts`、`webview/remoteLease.ts`、`webview/ActionDialog.tsx`、`webview/menus.ts`、`tests/git-remote-lease.test.ts`、`tests/git-service.test.ts`。
+
 ## BUG-041：会话恢复基线保存失败无法反馈且重复全量发送
 
 - 日期：2026-10-03
