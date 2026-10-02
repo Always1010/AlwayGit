@@ -402,6 +402,9 @@ describe('repository UI consistency', () => {
     expect(store.getState().diffTarget).toMatchObject({ path: 'b.txt' });
     current.changes = []; await store.getState().refresh({ background: true, changes: { paths: [] } });
     expect(store.getState().diffTarget).toBeUndefined(); expect(store.getState().selectedFile).toBeUndefined();
+    store.setState({ selectedFile: 'removed-session-file.txt' });
+    await store.getState().refresh({ background: true, changes: { paths: [] } });
+    expect(store.getState().selectedFile).toBeUndefined();
   });
 
   it('merges file invalidation across overlapping snapshot requests', async () => {
