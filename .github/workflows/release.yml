@@ -1,0 +1,179 @@
+name: Release VSIX
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Validate and package
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      artifact_name: ${{ steps.release.outputs.artifact_name }}
+      asset_name: ${{ steps.release.outputs.asset_name }}
+      checksum_name: ${{ steps.release.outputs.checksum_name }}
+    steps:
+      - name: Check out tagged commit
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Validate release tag and project version
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="$GITHUB_REF_NAME"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tags must use the stable version format vMAJOR.MINOR.PATCH: $tag" >&2
+            exit 1
+          fi
+
+          version="${tag#v}"
+          VERSION="$version" node <<'NODE'
+          const fs = require('node:fs');
+
+          const expected = process.env.VERSION;
+          const manifest = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+          const versions = [
+            ['package.json', manifest.version],
+            ['package-lock.json', lock.version],
+            ['package-lock.json packages[""]', lock.packages?.['']?.version],
+          ];
+
+          for (const [source, actual] of versions) {
+            if (actual !== expected) {
+              console.error(`${source} version ${actual ?? '<missing>'} does not match tag version ${expected}.`);
+              process.exit(1);
+            }
+          }
+          NODE
+
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          tagged_commit="$(git rev-parse "${GITHUB_SHA}^{commit}")"
+          if ! git merge-base --is-ancestor "$tagged_commit" origin/main; then
+            echo "Tagged commit $tagged_commit is not contained in origin/main." >&2
+            exit 1
+          fi
+
+          asset_name="alwaygit-${version}.vsix"
+          checksum_name="${asset_name}.sha256"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=alwaygit-release-${version}" >> "$GITHUB_OUTPUT"
+          echo "asset_name=$asset_name" >> "$GITHUB_OUTPUT"
+          echo "checksum_name=$checksum_name" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check types and translations
+        run: npm run typecheck
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Package VSIX
+        run: node scripts/package.mjs
+
+      - name: Verify packaged extension
+        shell: bash
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          ASSET_NAME: ${{ steps.release.outputs.asset_name }}
+        run: |
+          set -euo pipefail
+
+          asset_path="artifacts/$ASSET_NAME"
+          test -f "$asset_path"
+          unzip -p "$asset_path" extension/package.json > "$RUNNER_TEMP/alwaygit-package.json"
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          const manifest = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/alwaygit-package.json', 'utf8'));
+          const expected = {
+            publisher: 'alwaygit-dev',
+            name: 'alwaygit',
+            version: process.env.VERSION,
+          };
+
+          for (const [field, value] of Object.entries(expected)) {
+            if (manifest[field] !== value) {
+              console.error(`Packaged ${field} ${manifest[field] ?? '<missing>'} does not match ${value}.`);
+              process.exit(1);
+            }
+          }
+          NODE
+
+          (
+            cd artifacts
+            sha256sum "$ASSET_NAME" > "${ASSET_NAME}.sha256"
+          )
+
+      - name: Upload release files for publishing
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.release.outputs.artifact_name }}
+          path: |
+            artifacts/${{ steps.release.outputs.asset_name }}
+            artifacts/${{ steps.release.outputs.checksum_name }}
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download verified release files
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.build.outputs.artifact_name }}
+          path: release
+
+      - name: Ensure the release does not already exist
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists; refusing to replace it." >&2
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+          ASSET_NAME: ${{ needs.build.outputs.asset_name }}
+          CHECKSUM_NAME: ${{ needs.build.outputs.checksum_name }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "release/$ASSET_NAME" \
+            "release/$CHECKSUM_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --generate-notes \
+            --title "AlwayGit $VERSION"
