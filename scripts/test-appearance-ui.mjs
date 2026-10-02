@@ -61,7 +61,7 @@ export async function verifyAppearance(browser, url) {
     await Promise.all([workbench.waitFor(), history.locator('[data-oid]').first().waitFor(), details.waitFor()]);
     assert.equal(await workbench.getAttribute('data-theme'), 'light', 'System appearance follows the simulated light VS Code host');
     assert.equal(await workbench.evaluate(element => getComputedStyle(element).backgroundColor), 'rgb(255, 255, 255)', 'Workbench light theme overrides gray host surface tokens');
-    const currentIndicator = workbench.locator('[data-repository-group][aria-current="true"] .current-indicator-glyph');
+    const currentIndicator = workbench.locator('[data-worktree-path][aria-current="true"] .current-indicator-glyph');
     await assertCurrentIndicator(currentIndicator, 'rgb(0, 0, 0)', 'Light theme current marker');
     assert.equal(await page.getByLabel('Layout', { exact: true }).count(), 0, 'Removed Layout control must not remain in the workbench');
     assert.equal(await page.getByLabel('Language').count(), 0, 'Language control belongs only in Interface Settings');

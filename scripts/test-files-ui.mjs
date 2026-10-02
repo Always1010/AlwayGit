@@ -13,7 +13,7 @@ export async function verifyFiles(browser, url) {
         holdDetails: false, heldDetails: [], snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 0, behind: 0, changes: paths.map((path, i) => ({ path, indexStatus: i === 2 ? '?' : 'M', worktreeStatus: i === 2 ? '?' : 'M', conflict: false, untracked: i === 2 })), refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
       };
       window.acquireVsCodeApi = () => ({ getState: () => ({}), setState: () => {}, postMessage(request) {
-        if (request.method === 'saveSession') return;
+        if (request.method === 'saveSession') { setTimeout(() => window.postMessage({ type: 'response', id: request.id, result: null }, '*'), 0); return; }
         fixture.calls.push(request);
         let result;
         if (request.method === 'repositories') result = [repo];

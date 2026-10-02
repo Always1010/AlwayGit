@@ -257,7 +257,7 @@ async function verifyWorkbench(browser, url) {
     await menu.waitFor();
     assert.ok((await menu.getByRole('menuitem').allTextContents()).some(value=>value.trim()==='Copy Branch Names'),'Branch folders use the custom branch menu');
     await page.keyboard.press('Escape');
-    await assertIconActions(sidebar.getByRole('button', { name: 'Remotes', exact: true }).locator('..'), ['Add Remote…', 'Fetch…', 'Create Local Tracking Branches…', 'Refresh']);
+    await assertIconActions(sidebar.getByRole('button', { name: 'Remotes', exact: true }).locator('..'), ['Add Remote…']);
     await assertIconActions(sidebar.getByRole('button', { name: 'origin', exact: true }).locator('..'), ['Fetch…', 'Refresh']);
     const remoteBranch = sidebar.getByRole('button', { name: 'Branch origin/develop', exact: true });
     await assertMenu(remoteBranch, ['Show in Graph', 'Show Only This Branch', 'Checkout as Local Branch…', 'Merge…', 'Rebase…', 'Delete Branch from origin…', 'Copy Branch Name']);
@@ -276,8 +276,8 @@ async function verifyWorkbench(browser, url) {
     await menu.getByRole('menuitem',{name:'Delete 2 Branches from origin…',exact:true}).click();dialog=page.getByRole('dialog');await dialog.getByText('Delete from origin',{exact:true}).waitFor();await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
     await assertIconActions(sidebar.getByRole('button', { name: 'Tags', exact: true }).locator('..'), ['Create Tag…', 'Refresh']);
     const tag = sidebar.getByRole('button', { name: 'v0.1.0', exact: true });
-    await assertMenu(tag, ['Checkout…', 'Show in Graph', 'Show Only This Tag', 'Create Branch…', 'Delete Tag…', 'Copy Tag Name', 'Copy Commit ID']);
-    await assertIconActions(sidebar.getByRole('button', { name: 'Stashes', exact: true }).locator('..'), ['Stash Changes…', 'Refresh']);
+    await assertMenu(tag, ['Create Branch and Checkout…', 'Show in Graph', 'Show Only This Tag', 'Create Branch…', 'Delete Tag…', 'Copy Tag Name', 'Copy Commit ID']);
+    await assertIconActions(sidebar.getByRole('button', { name: 'Stashes', exact: true }).locator('..'), ['Stash All Changes…', 'Refresh']);
     const stash = sidebar.getByRole('button').filter({ hasText: 'stash@{0}' });
     await assertMenu(stash, ['View Changes', 'Apply Stash', 'Pop Stash', 'Drop Stash…']);
     await assertIconActions(sidebar.getByRole('button', { name: 'Worktrees', exact: true }).locator('..'), ['Add Worktree…', 'Refresh']);
@@ -406,6 +406,9 @@ async function verifyWorkbench(browser, url) {
     assert.equal(await page.locator('.toolbar .button').first().evaluate(button => getComputedStyle(button).transitionDuration), '0s');
     await page.emulateMedia({ reducedMotion: 'no-preference' });
 
+    // Search results intentionally hide Graph; restore full history for column resizing.
+    await page.getByRole('textbox', { name: 'Search commit history' }).fill('');
+    await history.locator('[data-oid]').first().waitFor();
     await page.setViewportSize({ width: 700, height: 650 });
     for (const [label, key, maximum] of [['Resize graph column', 'ArrowRight', 180], ['Resize author column', 'ArrowLeft', 220], ['Resize date column', 'ArrowLeft', 220]]) {
       const handle = page.getByRole('separator', { name: label });

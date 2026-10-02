@@ -14,7 +14,7 @@ export async function verifyWorktrees(browser, url) {
       const collections=[{id:'client',name:'Client Project'}];
       const fixture = window.__worktreeFixture = { session, calls: [], version: 0, order:{root:['repository:d:/other/app/.git','collection:client'],collections:{client:['repository:d:/projects/app/.git']}} };
       window.acquireVsCodeApi = () => ({ getState: () => fixture.session, setState: value => { fixture.session = value; }, postMessage(request) {
-        if (request.method === 'saveSession') return;
+        if (request.method === 'saveSession') { setTimeout(() => window.postMessage({ type: 'response', id: request.id, result: null }, '*'), 0); return; }
         fixture.calls.push(request);
         const repo = repositories.find(repo => repo.id === request.repoId) ?? linked;
         const branch = repo.id === linked.id ? 'feature' : 'main';
@@ -49,10 +49,10 @@ export async function verifyWorktrees(browser, url) {
     await sidebar.locator('.repository-collection-heading').waitFor();
     assert.equal(await sidebar.locator('.codicon-ellipsis').count(), 0, 'Repository rows and groups retain their original context-menu controls');
     assert.equal(await sidebar.getByText('Ungrouped',{exact:true}).count(),0,'Repositories without a group stay at the root without an Ungrouped folder');
-    const app = sidebar.locator('.repository-collection-members [data-repository-group]');
-    const clone = page.locator('[data-repository-group][title^="D:/Other/App"]');
+    const app = sidebar.locator('.repository-collection-members [data-repository-group] .repository-item');
+    const clone = page.locator('[data-repository-group] .repository-item[title^="D:/Other/App"]');
     assert.equal(await app.innerText(), 'App'); assert.equal((await app.getAttribute('title'))?.split('\n')[0], 'D:/Projects/App-feature');
-    assert.equal(await app.getAttribute('aria-current'), 'true'); assert.equal(await app.locator('.current-indicator-glyph').count(), 1);
+    assert.equal(await app.getAttribute('aria-current'), 'true'); assert.equal(await app.locator('.codicon-repo').count(), 1);
     assert.equal(await sidebar.getByRole('button', { name: 'Branch feature', exact: true }).getAttribute('aria-current'), 'true');
     assert.equal(await sidebar.getByRole('button', { name: 'Branch feature', exact: true }).innerText(), 'feature', 'The current branch uses an icon instead of a Current label');
     assert.equal(await sidebar.locator('[data-worktree-path="D:/Projects/App-feature"]').getAttribute('aria-current'), 'true');
@@ -69,8 +69,8 @@ export async function verifyWorktrees(browser, url) {
     await clone.click();
     await page.waitForTimeout(30);
     assert.equal(await page.evaluate(() => window.__worktreeFixture.session.repoId), 'linked', 'Single-clicking a repository must not switch it');
-    assert.equal(await clone.getAttribute('aria-selected'), 'true', 'Single-click selects a repository for actions');
-    assert.equal(await app.getAttribute('aria-selected'), 'false');
+    assert.equal(await clone.locator('..').getAttribute('aria-selected'), 'true', 'Single-click selects a repository for actions');
+    assert.equal(await app.locator('..').getAttribute('aria-selected'), 'false');
     assert.equal(await draft.inputValue(), 'Edited linked draft');
     await clone.press('Control+a');
     assert.equal(await page.locator('.repository-list [aria-selected="true"]').count(), await groups.count(), 'Ctrl+A selects every logical repository group');
@@ -131,16 +131,17 @@ export async function verifyWorktrees(browser, url) {
     assert.equal(await page.evaluate(() => window.__worktreeFixture.session.drafts.main), 'Main draft');
     const currentBeforeOrder=await page.evaluate(()=>window.__worktreeFixture.session.repoId);
     const collectionHeading=sidebar.locator('.repository-collection-heading');
-    await clone.dragTo(collectionHeading);
+    const collectionRow=collectionHeading.locator('..');
+    const collectionBox=await collectionRow.boundingBox();
+    await clone.locator('..').locator('.repository-drag-handle').dragTo(collectionRow,{targetPosition:{x:10,y:collectionBox.height-2}});
     await page.waitForFunction(()=>window.__worktreeFixture.order.root[0]==='collection:client');
     await page.waitForFunction(()=>document.querySelector('[data-repository-order-key]')?.getAttribute('data-repository-order-key')==='collection:client');
     assert.equal(await sidebar.locator('[data-repository-order-key]').first().getAttribute('data-repository-order-key'),'collection:client','Dragging persists mixed root order');
     assert.equal(await page.evaluate(()=>window.__worktreeFixture.session.repoId),currentBeforeOrder,'Sorting does not switch the active repository');
-    await collectionHeading.click({button:'right'});
-    await page.getByRole('menuitem',{name:'Move Down',exact:true}).click();
+    await collectionRow.locator('.repository-drag-handle').press('Alt+ArrowDown');
     await page.waitForFunction(()=>window.__worktreeFixture.order.root[0]==='repository:d:/other/app/.git');
     await page.waitForFunction(()=>document.querySelector('[data-repository-order-key]')?.getAttribute('data-repository-order-key')==='repository:d:/other/app/.git');
-    assert.equal(await sidebar.locator('[data-repository-order-key]').first().getAttribute('data-repository-order-key'),'repository:d:/other/app/.git','Menu movement shares the persisted drag order');
+    assert.equal(await sidebar.locator('[data-repository-order-key]').first().getAttribute('data-repository-order-key'),'repository:d:/other/app/.git','Keyboard movement shares the persisted drag order');
 
     assert.deepEqual(await sidebar.locator('.sidebar-heading').first().locator('.sidebar-actions button').evaluateAll(buttons=>buttons.map(button=>button.getAttribute('aria-label'))),['Add…','Refresh'],'One plus handles repositories and groups');
     await sidebar.getByRole('button',{name:'Add…',exact:true}).click();
