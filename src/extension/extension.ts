@@ -29,7 +29,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const manager = new RepositoryManager(git, context, output);
   const documents = new GitDocuments(git);
   let workbench: Workbench;
-  const projects = new ProjectWindows(context, output, manager, documents, repoId => workbench.open(repoId));
+  const projects = new ProjectWindows(context, output, manager, documents, (repoId, blank) => workbench.open(repoId, undefined, false, blank));
   workbench = new Workbench(context, git, manager, documents, output, projects);
   const launcher = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   launcher.name = 'AlwayGit'; launcher.text = '$(git-merge) AlwayGit'; launcher.command = 'alwaygit.showWorkbench';
@@ -42,6 +42,7 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.workspace.onDidChangeWorkspaceFolders(() => void manager.scan()),
     vscode.workspace.onDidGrantWorkspaceTrust(() => void manager.scan()),
     vscode.commands.registerCommand('alwaygit.showWorkbench', () => workbench.open()),
+    vscode.commands.registerCommand('alwaygit.openWorkbenchInNewWindow', () => projects.openBlankWorkbenchInNewWindow()),
     vscode.commands.registerCommand('alwaygit.open', (repoId?: string) => workbench.open(typeof repoId === 'string' ? repoId : undefined)),
     vscode.commands.registerCommand('alwaygit.refresh', async () => { await manager.scan(); for (const repo of manager.list()) manager.notify(repo.id); }),
     vscode.commands.registerCommand('alwaygit.showLog', () => output.show(true)),

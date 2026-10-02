@@ -27,9 +27,18 @@ describe('Project window routing', () => {
     expect(projectRequestSchema.safeParse({ root, action: 'file', path: 'sample.ts' }).success).toBe(true);
     expect(projectRequestSchema.safeParse({ root, action: 'diff', target: { kind: 'change', path: 'sample.ts', area: 'staged' } }).success).toBe(true);
     expect(projectRequestSchema.safeParse({ root, action: 'workbench' }).success).toBe(true);
+    expect(projectRequestSchema.safeParse({ action: 'show-workbench' }).success).toBe(true);
+    expect(projectRequestSchema.safeParse({ root, action: 'show-workbench' }).success).toBe(false);
     expect(projectRequestSchema.safeParse({ root, action: 'file', path: '../outside.ts' }).success).toBe(false);
     expect(projectRequestSchema.safeParse({ root, action: 'command', command: 'workbench.action.closeWindow' }).success).toBe(false);
     expect(projectRequestSchema.safeParse({ root, action: 'diff', target: { kind: 'change', path: 'sample.ts', area: 'invalid' } }).success).toBe(false);
+  });
+  it('delivers a blank Workbench request to a window without a project root', async () => {
+    const { registry } = await setup(), received: ProjectRequest[] = [];
+    const source = await start(registry, []), target = await start(registry, [], async request => { received.push(request); });
+    expect((await source.windows()).map(window => window.id)).toContain(target.record.id);
+    await WindowBridge.send(target.record, { action: 'show-workbench' });
+    expect(received).toEqual([{ action: 'show-workbench' }]);
   });
   it('delivers only to the project workspace, not a different active window', async () => {
     const { registry, root, other } = await setup(), received: ProjectRequest[] = [];
