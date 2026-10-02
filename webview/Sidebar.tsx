@@ -6,6 +6,7 @@ import type { MenuTarget } from './menus';
 import { useSnapshotFields, useWorkbenchFields } from './subscriptions';
 import { useTranslation } from './i18n';
 import { Button, Icon } from './ui';
+import { RepositoryIcon } from './RepositoryIcon';
 import { samePath } from './pathIdentity';
 import { buildRefTree, refsUnder, visibleRefs, type RefTreeNode } from './refTree';
 import { groupRepositories, type RepositoryGroup } from '../src/protocol/repositories';
@@ -111,7 +112,7 @@ function SidebarPanel({ context, actions, checkoutBranch, openWorktree }: { cont
     const choose=(event:React.MouseEvent)=>{const next=selectionForClick(repositorySelectionOrder,state.selectedRepositoryKeys,state.repositorySelectionAnchor,group.key,{toggle:event.ctrlKey||event.metaKey,range:event.shiftKey});state.setRepositorySelection(next.selected,next.anchor);};
     const openContext=(event:React.MouseEvent|React.KeyboardEvent)=>{const groups=selected?repositoryGroups.filter(item=>state.selectedRepositoryKeys.includes(item.key)):[group];if(!selected)state.setRepositorySelection([group.key],group.key);context(event,{kind:'repository',group,groups});},target:MenuTarget={kind:'repository',group,groups:[group]};
     return <div key={group.key} data-repository-group={group.key} {...dropProps(key,parent)} className={`repository-row${nested?' repository-collection-member':''} ${selected?'action-selected':''}`} role="option" aria-selected={selected} aria-label={label} onContextMenu={event=>{event.currentTarget.querySelector<HTMLButtonElement>('.repository-item')?.focus({preventScroll:true});openContext(event);}}>
-      {dragHandle(key,group.name,parent)}<button type="button" className="sidebar-item repository-item" aria-label={label} aria-current={current?'true':undefined} title={`${repo.root}${status?.branch?`\n${status.branch}${unpushed?` · ${unpushed} unpushed`:''}`:''}\n${t('Double-click or press Enter to switch repository.','双击或按 Enter 切换仓库。')}`} onClick={choose} onDoubleClick={activate} onKeyDown={event=>{if(event.key==='ContextMenu'||event.shiftKey&&event.key==='F10'){event.preventDefault();openContext(event);}else keyboard(event,target,activate);}}><Icon name="repo"/><span className="truncate">{group.name}</span>{unpushed?<span className="notification-badge" aria-hidden="true">{unpushed>99?'99+':unpushed}</span>:null}</button>
+      {dragHandle(key,group.name,parent)}<button type="button" className="sidebar-item repository-item" aria-label={label} aria-current={current?'true':undefined} title={`${repo.root}${status?.branch?`\n${status.branch}${unpushed?` · ${unpushed} unpushed`:''}`:''}\n${t('Double-click or press Enter to switch repository.','双击或按 Enter 切换仓库。')}`} onClick={choose} onDoubleClick={activate} onKeyDown={event=>{if(event.key==='ContextMenu'||event.shiftKey&&event.key==='F10'){event.preventDefault();openContext(event);}else keyboard(event,target,activate);}}><RepositoryIcon current={current}/><span className="truncate">{group.name}</span>{unpushed?<span className="notification-badge" aria-hidden="true">{unpushed>99?'99+':unpushed}</span>:null}</button>
     </div>;
   };
   return <aside data-testid="sidebar" className="sidebar" onKeyDownCapture={selectionKeys}>
