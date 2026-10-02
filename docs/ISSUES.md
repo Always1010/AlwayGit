@@ -32,15 +32,15 @@
 - 验证方式：类型检查、生产构建、Diff 导航与对齐相关单测 14 项、Diff 无头界面专项通过；覆盖远处首块、首尾循环、唯一块两枚按钮重复定位、收起期间切换比较后展开、超高块、无修改禁用和同文件刷新保留滚动。
 - 相关文件：`webview/DiffPreview.tsx`、`scripts/test-diff-ui.mjs`、`docs/WORKBENCH_SPEC.md`、`docs/VALIDATION.md`。
 
-## BUG-030：移除侧栏仓库树时同时丢失主入口
+## BUG-030：工作台入口丢失及恢复方式偏离需求
 
 - 日期：2026-10-02
 - 状态：已解决
-- 现象：为了把仓库选择集中到 Workbench，原活动栏仓库树和它所属的 View Container 被一起移除，导致 AlwayGit 活动栏图标消失；状态栏入口又在 Workbench 位于前台时隐藏。Workbench 内仓库需要双击才切换，移除和分组管理仅依赖右键，入口不够稳定和可发现。
-- 原因：实现把“不在侧栏管理仓库”错误等同于“不再需要活动栏入口”；状态栏显隐沿用了避免重复入口的假设。仓库行还把普通单击全部留给批量选择，没有区分普通点击的主动作与修饰键多选，管理动作也没有可见控件。
-- 解决方案：恢复只承担启动职责的活动栏 View Container，点击主图标后直接创建或聚焦 Workbench 并收起临时侧栏，不恢复仓库树；状态栏入口保持可见。仓库普通单击和 Enter 直接切换，Ctrl/Cmd 或 Shift 单击继续只做批量选择；仓库行与分组标题增加带 Tooltip 和无障碍名称的省略号菜单，复用既有移除、分组和批量动作。
-- 验证方式：清单回归确认活动栏容器和启动 View 持续贡献；入口呈现单测确认状态栏在 Workbench 活动时仍可用；类型检查、生产构建及完整无头界面套件通过，其中仓库专项覆盖单击切换、修饰键多选、可见管理菜单和内嵌移除。0.22.0 固定 VSIX 已打包并通过官方 CLI 安装及 `alwaygit-dev.alwaygit@0.22.0` 核对；未启动会弹窗的真实 VS Code 桌面集成测试。
-- 相关文件：`package.json`、`src/extension/extension.ts`、`src/extension/workbench-launcher.ts`、`src/extension/workbench-entry.ts`、`webview/Sidebar.tsx`、`webview/styles.css`、`tests/workbench-entry.test.ts`、`scripts/test-ui.mjs`、`scripts/test-worktrees-ui.mjs`、`README.md`、`docs/WORKBENCH_SPEC.md`、`docs/ARCHITECTURE.md`、`docs/VALIDATION.md`。
+- 现象：移除侧栏仓库树时活动栏图标一并丢失。提交 `e95d870` 恢复入口时改用普通树节点，只提供 Show，缺少侧栏的新窗口按钮；视图变为可见就自动打开 Workbench 并强制关闭侧栏。该提交还未经需求确认修改了仓库单击切换和省略号入口。
+- 原因：把活动栏的启动视图当成点击事件处理，未区分布局恢复与用户操作；TreeItem 替代了原先的 `viewsWelcome` 原生按钮。入口修复额外扩大到了工作台仓库交互。
+- 解决方案：启动视图返回空列表，通过 `viewsWelcome` 显示 Show Git Workbench 和 Open Workbench in New Window 两个原生主题按钮，复用已有命令；移除可见性自动启动和强制关闭侧栏逻辑。Show 优先复用活动或最近使用的标签，没有时创建。仓库恢复单击选择、修饰键多选、双击或 Enter 切换，管理动作恢复右键入口；双击切换和右键管理本身不作为 Bug。
+- 验证方式：类型检查、入口相关单测 8 项、生产构建及无头 `--worktrees-only` 通过；覆盖两个按钮的命令配置、初始可见与后续可见事件不触发命令、Show 新建/复用/活动标签优先/最近使用/关闭后重建，以及仓库双击和 Enter 切换、多选、右键管理及草稿保留。0.25.1 固定 VSIX 已通过官方 CLI 安装并核对 `alwaygit-dev.alwaygit@0.25.1`；真实 VS Code 桌面按钮样式和跨窗口集成未运行。
+- 相关文件：`package.json`、`src/extension/extension.ts`、`src/extension/workbench-launcher.ts`、`src/extension/workbench.ts`、`webview/Sidebar.tsx`、`webview/styles.css`、`tests/workbench-entry.test.ts`、`scripts/test-ui.mjs`、`scripts/test-worktrees-ui.mjs`、`README.md`、`docs/WORKBENCH_SPEC.md`、`docs/ARCHITECTURE.md`、`docs/VALIDATION.md`。
 
 ## BUG-029：折叠分支仍会进入 Shift 范围选择
 

@@ -4,7 +4,7 @@
 
 ## 布局与视觉
 
-Workbench 是 AlwayGit 唯一的仓库工作入口。活动栏保留 AlwayGit 主图标，点击后直接创建或聚焦 Workbench，并立即收起为承载图标而存在的临时侧栏；活动栏不显示仓库树、仓库选择器或欢迎中转页。状态栏 AlwayGit 图标始终保留，`AlwayGit: Show Workbench` 命令作为当前窗口的标准备用入口；这些外部入口都不选择或切换仓库。`AlwayGit: Open Workbench in New Window` 与工作台标题栏的窗口图标创建独立空白 VS Code 窗口，并在扩展宿主就绪后打开未选择仓库的 Workbench；仓库选择仍在新 Workbench 内完成。
+Workbench 是 AlwayGit 唯一的仓库工作入口。活动栏 AlwayGit 图标展开启动侧栏，侧栏使用 VS Code 原生主题按钮，依次显示 `Show Git Workbench` 和 `Open Workbench in New Window`；仅按钮点击执行命令，显示或恢复侧栏不自动打开 Workbench，执行按钮也不强制关闭侧栏。Show 在当前窗口优先聚焦活动 Workbench，否则聚焦最近使用的 Workbench，没有工作台标签时新建；聚焦已有标签保留其仓库、布局与草稿。状态栏 AlwayGit 图标始终保留，`AlwayGit: Show Workbench` 命令复用相同显示行为。`Open Workbench in New Window` 按钮、同名命令与工作台标题栏的窗口图标创建独立空白 VS Code 窗口，并在扩展宿主就绪后打开未选择仓库的 Workbench；仓库选择仍在新 Workbench 内完成。
 
 Workbench 顶部的分栏图标显式创建一个新标签。新标签继承界面设置、草稿与仓库列表，但初始不选择仓库；空白标签的会话保存不得覆盖普通 `Show Workbench` 用于恢复的最后仓库。从仓库对象菜单显式在新标签打开时，则使用该仓库作为新标签的当前仓库。
 
@@ -38,11 +38,11 @@ Workbench 明确区分未添加仓库、尚未选择仓库、正在打开仓库�
 
 Workbench 的 Repositories 顶层列表按共享 Git 存储归并，同一仓库的主目录及 linked Worktree 只占一个入口；仓库名称来自 Git 报告的主工作目录。递归发现、新增和已有仓库数量均按归并后的仓库统计，独立克隆保持独立。工作目录在当前仓库的 Worktrees 区域切换；选中 linked Worktree 时，顶层仍标记所属仓库，菜单和工具栏操作以当前工作目录为目标。直接只添加 Worktree 也保留其入口；没有当前选择时优先使用已注册的主目录。
 
-`Add Repository…` 打开工作台内嵌浮窗；只有选择磁盘目录时使用 VS Code 原生目录选择器。选定目录后，同一浮窗显示可取消的递归扫描进度，再按名称显示逻辑仓库级多选结果，分别标记“可添加”和禁用的“已添加”。可添加项默认全选，支持筛选、全选、普通切换与 Shift 连续范围；目标分组和内联新建分组位于同一确认流程，主按钮明确显示将添加的仓库数量。扫描、筛选和关闭浮窗不改变仓库目录，只有最终确认项才注册；跳过项及原因留在浮窗中查看。每个仓库行和分组标题右侧都有带悬浮说明的省略号管理入口，右键仍打开相同菜单；仓库菜单及多选菜单提供 `Remove from AlwayGit…`。工作台内嵌确认浮窗列出将移除的仓库并说明磁盘文件不受影响。该操作只移除导航与持久化记录、释放监听并阻止自动发现立即恢复，不删除磁盘目录或 Git 数据；再次明确添加会恢复显示。
+`Add Repository…` 打开工作台内嵌浮窗；只有选择磁盘目录时使用 VS Code 原生目录选择器。选定目录后，同一浮窗显示可取消的递归扫描进度，再按名称显示逻辑仓库级多选结果，分别标记“可添加”和禁用的“已添加”。可添加项默认全选，支持筛选、全选、普通切换与 Shift 连续范围；目标分组和内联新建分组位于同一确认流程，主按钮明确显示将添加的仓库数量。扫描、筛选和关闭浮窗不改变仓库目录，只有最终确认项才注册；跳过项及原因留在浮窗中查看。仓库行和分组标题通过右键打开管理菜单；仓库菜单及多选菜单提供 `Remove from AlwayGit…`。工作台内嵌确认浮窗列出将移除的仓库并说明磁盘文件不受影响。该操作只移除导航与持久化记录、释放监听并阻止自动发现立即恢复，不删除磁盘目录或 Git 数据；再次明确添加会恢复显示。
 
 用户可以创建、重命名和删除仓库分组，并将单个或多个逻辑仓库移动到分组。分组在 Workbench 的 Repositories 中显示为可折叠目录；没有归属的仓库不创建“未分组”目录，直接与分组目录同处 Repositories 根层。删除分组只删除组织结构，其中仓库回到根层，不从 AlwayGit 移除。分组名称和归属随仓库路径在同一 VS Code Profile 与运行环境内共享。
 
-Repository 名称行普通单击立即切换当前仓库，并将操作选择收敛到该仓库；键盘 Enter 等同普通单击。按住 Ctrl/Cmd 单击只切换批量操作选择中的单项，Shift 单击只选择连续范围，Ctrl/Cmd+Shift 将连续范围加入既有选择，这些修饰键操作不切换仓库。Worktree 名称行仍以普通单击改变操作选择，双击或键盘 Enter 切换工作目录。右键已选项保留批量选择，右键未选项先切为单选。当前 Repository、Worktree 和本地分支统一在内容排头显示实心播放三角形，浅色背景使用纯黑、深色背景使用纯白；蓝色选择背景只表示操作范围，当前状态与操作选择可以同时存在。非当前行保留同宽空位以对齐内容。分支复选框属于 Graph 筛选控件，三角形位于复选框之后、分支图标之前。当前状态使用 `aria-current` 暴露给辅助技术，不重复显示 `Current` 文字徽标。Detached HEAD 时不标记本地分支，但仍标记当前 Worktree。
+Repository 和 Worktree 名称行单击只改变操作选择，不切换当前仓库或工作目录；普通单击单选，Ctrl/Cmd 单击切换单项，Shift 单击选择连续范围，Ctrl/Cmd+Shift 将连续范围加入既有选择。双击或键盘 Enter 才切换仓库或 Worktree。右键已选项保留批量选择，右键未选项先切为单选。当前 Repository、Worktree 和本地分支统一在内容排头显示实心播放三角形，浅色背景使用纯黑、深色背景使用纯白；蓝色选择背景只表示操作范围，当前状态与操作选择可以同时存在。非当前行保留同宽空位以对齐内容。分支复选框属于 Graph 筛选控件，三角形位于复选框之后、分支图标之前。当前状态使用 `aria-current` 暴露给辅助技术，不重复显示 `Current` 文字徽标。Detached HEAD 时不标记本地分支，但仍标记当前 Worktree。
 
 当焦点位于可多选区域或其标题、行内控件时，Ctrl/Cmd+A 只全选焦点所属作用域，Escape 只清除该作用域的操作选择；快捷键由区域容器捕获，不能落到整页文本选择。Repository 的范围是全部逻辑仓库；Local Branches 的范围是全部本地分支；每个 Remote 是独立范围，只包含该 Remote 下的分支；Worktrees 的范围是当前仓库的全部 Worktree。分支 action selection 与 Graph 筛选复选框相互独立，Ctrl/Cmd+A 和 Escape 都不改变 `checkedRefs`。History 的范围是当前已经加载的真实 Commit，不为全选隐式加载下一页，并排除 Working Tree 虚拟 Commit。Working Tree、Commit Details 和 Commit 比较的文件区域只处理当前面板可见文件。输入框、文本域和可编辑内容保留 Ctrl/Cmd+A 与 Escape 的原生行为。
 
@@ -52,11 +52,11 @@ Working Tree、Commit Details 和 Commit 比较的文件列表统一使用中性
 
 | 输入 | 行为 |
 | --- | --- |
-| 单击 Repository 名称 | 切换当前仓库，并把操作选择设为该仓库；Ctrl/Cmd 或 Shift 单击只更新批量操作选择，不切换仓库 |
+| 单击 Repository 名称 | 更新单选或 Ctrl/Cmd、Shift 批量操作选择，不切换当前仓库 |
 | Repositories 中按 `Ctrl` / `Cmd` + `A`；按 `Escape` | 全选全部逻辑仓库的操作选择；清除 Repository 操作选择 |
 | 单击 Worktree 名称 | 更新单选或 Ctrl/Cmd、Shift 批量操作选择，不切换当前工作目录 |
 | Worktrees 中按 `Ctrl` / `Cmd` + `A`；按 `Escape` | 全选当前仓库的全部 Worktree；清除 Worktree 操作选择 |
-| 双击 Worktree 名称 | 切换到目标 Worktree；Repository 不需要双击 |
+| 双击 Repository / Worktree 名称 | 切换到目标仓库或 Worktree |
 | Repository / Worktree 名称获得焦点后按 Enter | 切换到目标仓库或 Worktree |
 | 勾选引用复选框 | 加入或移出 Graph 显示范围，不 Checkout |
 | 勾选分支目录复选框 | 选择或清除该目录下全部分支；部分选中时显示半选状态 |
