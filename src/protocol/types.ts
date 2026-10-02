@@ -39,7 +39,7 @@ export type GitAction =
   | { type: 'remote.delete'; remote:string; branches:string[]; expectedOids?:Record<string,string> }
   | { type: 'tag.create'; name: string; target?: string; message?: string }
   | { type: 'tag.delete'; name: string }
-  | { type: 'stash.create'; message?: string; includeUntracked?: boolean }
+  | { type: 'stash.create'; message?: string; includeUntracked?: boolean; paths?: string[] }
   | { type: 'stash.apply'; selector: string; pop?: boolean; expectedOid?: string }
   | { type: 'stash.drop'; selector: string; expectedOid?: string }
   | { type: 'worktree.add'; path: string; branch?: string; newBranch?: string; start?: string; detach?: boolean }

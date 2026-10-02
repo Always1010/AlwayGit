@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, readlink, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import type { OperationState, Repository, StashApplyBlocker } from '../protocol/types';
+import type { Change, OperationState, Repository, StashApplyBlocker } from '../protocol/types';
 
 export interface StashExecution { root?: string; env?: NodeJS.ProcessEnv; input?: Buffer; silent?: boolean; isolated?: boolean; allowFailure?: boolean }
 type Result = { stdout: Buffer; stderr: Buffer; code: number };
@@ -171,4 +171,57 @@ export async function preflightStash(repo: Repository, selector: string, stashOi
     if (error instanceof StashStateError && error.details) throw error;
     throw block('restore-blocked', affected, `Stash preflight could not complete. The Index and Working Tree were not changed.\n${error instanceof Error ? error.message : String(error)}`);
   } finally { await sandbox?.dispose(); }
+}
+
+async function scopedTree(git: Run, head: string, source: string, names: string[], indexFile: string): Promise<string> {
+  const env = { GIT_INDEX_FILE: indexFile };
+  await git(['read-tree', head], { env });
+  const entries = treeEntries((await git(['ls-tree', '-r', '-z', source])).stdout);
+  const zero = '0'.repeat(head.length);
+  const records = names.map(name => { const entry = entries.get(name); return `${entry ? `${entry.mode} ${entry.oid}` : `0 ${zero}`}\t${name}\0`; });
+  await git(['update-index', '-z', '--index-info'], { env, input: Buffer.from(records.join('')) });
+  return text(git, ['write-tree'], { env });
+}
+
+export async function createSelectedStash(repo: Repository, selected: string[], message: string | undefined, changes: Change[], run: Run): Promise<void> {
+  const names = new Set(selected);
+  for (const name of selected) if (!changes.some(change => change.path === name || change.originalPath === name)) throw new StashStateError(`The selected file no longer has changes: ${name}. Refresh and select it again.`, 'STASH_SELECTION_CHANGED');
+  // A rename is a pair of paths even when the file list displays only its destination.
+  for (const change of changes) if (change.originalPath && (names.has(change.path) || names.has(change.originalPath))) { names.add(change.path); names.add(change.originalPath); }
+  const scope = [...names].sort();
+  await checkAttributes([...new Set([...changes.filter(change => !change.untracked).map(change => change.path), ...scope])], run);
+  const before = await capture(repo, scope, run), sandbox = await makeSandbox(repo, before, run);
+  let saved = false;
+  try {
+    const full = changes.some(change => !change.untracked) ? await text(sandbox.git, ['stash', 'create']) : '';
+    const indexSource = full ? `${full}^2` : before.head, workingSource = full || before.head;
+    const indexFile = path.join(sandbox.root, '.git', 'scope-index');
+    const indexTree = await scopedTree(sandbox.git, before.head, indexSource, scope, indexFile);
+    const workingTree = await scopedTree(sandbox.git, before.head, workingSource, scope, indexFile);
+    const indexCommit = await text(sandbox.git, ['commit-tree', indexTree, '-p', before.head, '-m', 'AlwayGit: saved Index']);
+    const untracked = [...new Set(changes.filter(change => change.untracked && names.has(change.path)).map(change => change.path))];
+    let untrackedCommit: string | undefined;
+    if (untracked.length) {
+      const env = { GIT_INDEX_FILE: indexFile };
+      await sandbox.git(['read-tree', '--empty'], { env });
+      await sandbox.git(['add', '-f', '--', ...untracked], { env });
+      untrackedCommit = await text(sandbox.git, ['commit-tree', await text(sandbox.git, ['write-tree'], { env }), '-m', 'AlwayGit: saved untracked files']);
+    }
+    const stashMessage = message?.trim() || 'AlwayGit: selected files';
+    const stashOid = await text(sandbox.git, ['commit-tree', workingTree, '-p', before.head, '-p', indexCommit, ...(untrackedCommit ? ['-p', untrackedCommit] : []), '-m', stashMessage]);
+    if (before.fingerprint !== (await capture(repo, scope, run)).fingerprint) throw new StashStateError('The project changed while creating the Stash. No files were cleaned; refresh and retry.', 'STASH_SELECTION_CHANGED');
+    // Transfer only this immutable snapshot; no source branch or FETCH_HEAD is changed.
+    await run(['fetch', '--quiet', '--no-tags', '--no-recurse-submodules', '--no-write-fetch-head', sandbox.root, stashOid], { silent: true });
+    await run(['stash', 'store', '-m', stashMessage, stashOid]); saved = true;
+    if (before.fingerprint !== (await capture(repo, scope, run)).fingerprint) throw new StashStateError('The Stash was saved, but the project changed before cleanup. The files were left in place.', 'STASH_CLEANUP_FAILED');
+    const headEntries = treeEntries((await run(['ls-tree', '-r', '-z', before.head])).stdout);
+    const indexNames = new Set(indexPaths((await run(['ls-files', '--stage', '-z'])).stdout));
+    const tracked = scope.filter(name => headEntries.has(name) || indexNames.has(name));
+    if (tracked.length) await run(['restore', `--source=${before.head}`, '--staged', '--worktree', '--', ...tracked]);
+    const removable = untracked.filter(name => !headEntries.has(name));
+    if (removable.length) await run(['clean', '-f', '--', ...removable]);
+  } catch (error) {
+    if (saved && !(error instanceof StashStateError && error.code === 'STASH_CLEANUP_FAILED')) throw new StashStateError(`The Stash was saved and retained, but cleanup did not complete. Inspect the remaining files.\n${error instanceof Error ? error.message : String(error)}`, 'STASH_CLEANUP_FAILED');
+    throw error;
+  } finally { await sandbox.dispose(); }
 }

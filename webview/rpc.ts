@@ -162,7 +162,12 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
     else if(action.type==='remote.delete')demoSnapshot.refs=demoSnapshot.refs.filter(r=>!(r.kind==='remote'&&action.branches.some(branch=>r.name===`${action.remote}/${branch}`)));
     else if (action.type === 'tag.create') demoSnapshot.refs.push({ name: action.name, fullName: `refs/tags/${action.name}`, kind: 'tag', oid: resolve(action.target??'HEAD') });
     else if (action.type === 'tag.delete') demoSnapshot.refs = demoSnapshot.refs.filter(r => !(r.kind === 'tag' && r.name === action.name));
-    else if (action.type === 'stash.create') {const stash={selector:'stash@{0}',oid:oid(2000+demoSnapshot.version),subject:action.message||'WIP on '+demoSnapshot.branch};data.saved.set(stash.oid,structuredClone(demoSnapshot.changes));demoSnapshot.stashes.unshift(stash);demoSnapshot.changes=[];}
+    else if (action.type === 'stash.create') {
+      if(action.paths&&!action.paths.length)throw new Error('Select at least one file to Stash.');
+      if(demoSnapshot.operation.kind||demoSnapshot.operation.conflicts)throw new Error('Resolve the current Git operation or conflicts before Stash.');
+      const selected=new Set(action.paths),saved=demoSnapshot.changes.filter(change=>(!action.paths||selected.has(change.path))&&(!change.untracked||!!action.paths||!!action.includeUntracked));
+      if(saved.length){const stash={selector:'stash@{0}',oid:oid(2000+demoSnapshot.version),subject:action.message||'WIP on '+demoSnapshot.branch};data.saved.set(stash.oid,structuredClone(saved));demoSnapshot.stashes.unshift(stash);const savedPaths=new Set(saved.map(change=>change.path));demoSnapshot.changes=demoSnapshot.changes.filter(change=>!savedPaths.has(change.path));}
+    }
     else if(action.type==='stash.apply'||action.type==='stash.drop'){
       const stash=demoSnapshot.stashes.find(s=>s.selector===action.selector);
       if(!stash||action.expectedOid&&stash.oid!==action.expectedOid)throw new RpcError('Stash changed. Refresh and retry.','STASH_CHANGED');

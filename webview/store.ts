@@ -223,7 +223,8 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     }
     set({ operationReview: undefined });
     const before=get().snapshot,committedFiles = action.type === 'commit' && !action.amend ? before?.changes.filter(change => !change.conflict && change.indexStatus !== ' ' && change.indexStatus !== '?' && !!change.indexStatus).length : undefined;
-    const stashed=action.type==='stash.create'?{files:before?.changes.length??0,untracked:before?.changes.filter(change=>change.untracked).length??0,previousOid:before?.stashes[0]?.oid}:undefined;
+    const stashChanges=action.type==='stash.create'?before?.changes.filter(change=>(!action.paths||action.paths.includes(change.path))&&(!change.untracked||!!action.paths||!!action.includeUntracked))??[]:[];
+    const stashed=action.type==='stash.create'?{files:new Set(stashChanges.map(change=>change.path)).size,untracked:new Set(stashChanges.filter(change=>change.untracked).map(change=>change.path)).size,previousOid:before?.stashes[0]?.oid}:undefined;
     const feedback: ActionFeedback = { id: ++actionSequence, repoId, action, status: 'running', target: actionTarget(action, get().snapshot) };
     const finish = (status: 'success' | 'error', error?: string, result?: ActionFeedback['result']) => {
       if (actionFeedbacks.get(repoId)?.id !== feedback.id) return;

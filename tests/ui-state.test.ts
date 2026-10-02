@@ -274,6 +274,27 @@ describe('repository UI consistency', () => {
     expect(await store.getState().execute({type:'stash.create',message:'pause notes',includeUntracked:true})).toBe(true);
     expect(store.getState().actionFeedback).toMatchObject({status:'success',result:{kind:'stash',files:1,untracked:1,clean:true}});
   });
+  it('counts only the unique selected files and included untracked files in Stash feedback',async()=>{
+    await store.getState().selectRepository('a');
+    const tracked={path:'both.txt',indexStatus:'M',worktreeStatus:'M',conflict:false,untracked:false},untracked={path:'notes.txt',indexStatus:'?',worktreeStatus:'?',conflict:false,untracked:true},other={...tracked,path:'other.txt'},fallback=bridge.rpc.getMockImplementation()!;
+    for(const includeUntracked of [false,true]){
+      store.setState({snapshot:{...snapshot(a),changes:[tracked,untracked,other]}});
+      bridge.rpc.mockImplementation((method,...args)=>method==='snapshot'?Promise.resolve({...snapshot(a,2),changes:[other],stashes:[{selector:'stash@{0}',oid:'saved',subject:'selected'}]}):fallback(method,...args));
+      expect(await store.getState().execute({type:'stash.create',paths:['both.txt','both.txt','notes.txt'],includeUntracked})).toBe(true);
+      expect(store.getState().actionFeedback?.result).toEqual({kind:'stash',files:2,untracked:1,clean:false});
+    }
+  });
+  it('opens a whole-file Stash dialog for unique staged and unstaged selections only',async()=>{
+    const {menuFor}=await import('../webview/menus'),open=vi.fn(),noop=vi.fn(),api={open,checkout:noop,openDiff:noop,editFile:noop,host:vi.fn().mockResolvedValue(undefined),addRepository:vi.fn().mockResolvedValue(undefined),removeRepositories:noop,fetchRepositories:noop};
+    store.setState({snapshot:snapshot(a)});
+    const staged={path:'both.txt',target:{kind:'change' as const,path:'both.txt',area:'staged' as const}},unstaged={...staged,target:{...staged.target,area:'unstaged' as const}},untracked={path:'notes.txt',target:{kind:'change' as const,path:'notes.txt',area:'unstaged' as const}};
+    const item=menuFor({kind:'files',primary:staged,files:[staged,unstaged,untracked]},api).items.find(item=>item.label==='Stash Selected Files…')!;
+    expect(item.disabled).toBe(false);await item.run();expect(open).toHaveBeenCalledWith({type:'stash.create',paths:['both.txt','notes.txt']});
+    store.setState({snapshot:{...snapshot(a),operation:{...snapshot(a).operation,conflicts:1}}});
+    expect(menuFor({kind:'files',primary:staged,files:[staged]},api).items.find(item=>item.label==='Stash Selected Files…')?.disabled).toBe(true);
+    const historical={path:'old.txt',target:{kind:'commit' as const,path:'old.txt',oid:commit.oid}};
+    expect(menuFor({kind:'files',primary:historical,files:[historical]},api).items.some(item=>item.label==='Stash Selected Files…')).toBe(false);
+  });
 
   it('retains failed action details and refreshes conflicts after failure', async () => {
     await store.getState().selectRepository('a'); const fallback = bridge.rpc.getMockImplementation()!;
