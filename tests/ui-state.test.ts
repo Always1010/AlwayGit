@@ -339,10 +339,11 @@ describe('repository UI consistency', () => {
     expect(bridge.rpc.mock.calls.filter(([method,,payload])=>method==='history'&&payload.offset>0)).toHaveLength(0);
   });
   it('preserves independent drafts and view state across repository switches', async () => {
-    await store.getState().selectRepository('a'); store.getState().setDraft('Draft A'); store.setState({ tab: 'changes' });
-    await store.getState().selectRepository('b'); store.getState().setDraft('Draft B');
+    await store.getState().selectRepository('a'); store.getState().setDraft('Draft A'); store.getState().setWorkingFilter('src/'); store.setState({ tab: 'changes' });
+    await store.getState().selectRepository('b'); store.getState().setDraft('Draft B'); store.getState().setWorkingFilter('docs/');
     await store.getState().selectRepository('a');
     expect(store.getState().drafts).toEqual({ a: 'Draft A', b: 'Draft B' }); expect(store.getState().tab).toBe('changes');
+    expect(store.getState().workingFilters).toEqual({ a: 'src/', b: 'docs/' });
     expect(bridge.save.mock.calls.at(-1)?.[0]).toMatchObject({ repoId: 'a', drafts: { a: 'Draft A', b: 'Draft B' } });
   });
   it('keeps controls busy when host activity ends before the action response arrives', async () => {

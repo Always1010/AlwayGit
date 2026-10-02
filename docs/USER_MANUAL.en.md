@@ -149,7 +149,7 @@ Staged is the most important place to check before committing. A file appearing 
 
 **Result:** Staged contains only the changes needed for this commit. After Unstage, the changes remain in the Working Tree.
 
-**Caution:** This version operates on whole files. The All buttons in group headings apply to the entire corresponding group, not just the currently selected items. Use a file’s context menu to act on a subset.
+**Caution:** This version operates on whole files. Search file names or relative paths below the Working Tree summary, ignoring case; use the clear icon to restore all files. Group actions apply to the entire group without a filter, or only matching paths with a filter. Tooltips and confirmations show the scope, independently of the current selection. Use a file’s context menu to act on selected items. Ctrl/Cmd+A selects only visible files. Filtering does not change the actual Index; Commit still includes all Staged content.
 
 ![Figure 08 File context menu showing Stage 1 File, distinct from the group-wide Stage All action](images/user-manual/figure-08.png)
 

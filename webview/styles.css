@@ -265,6 +265,8 @@ h1,h2,p {margin:0;}
 .file-path-filter {display:flex;align-items:center;flex:1 1 110px;min-width:90px;gap:3px;color:var(--muted);}
 .file-path-filter input {width:100%;min-width:0;height:24px;padding:2px 5px;font-size:11px;}
 .file-filter-count {white-space:nowrap;color:var(--muted);font-variant-numeric:tabular-nums;}
+.working-file-toolbar {flex-wrap:nowrap;flex:none;padding:4px 7px;}
+.working-filter-warning {margin:0;padding:4px 8px;color:var(--yellow);font-size:11px;line-height:1.4;}
 .file-selection-hint {display:flex;justify-content:space-between;align-items:center;gap:5px;padding:3px 4px;color:var(--muted);font-size:10px;line-height:1.35;border-bottom:1px solid var(--row-border);}
 .file-selection-hint>span {min-width:0;}
 .file-selection-hint strong {white-space:nowrap;font-weight:500;font-variant-numeric:tabular-nums;}
