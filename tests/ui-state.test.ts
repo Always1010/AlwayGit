@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Commit, HostMessage, Repository, Snapshot } from '../src/protocol/types';
+import type { Commit, HistoryPage, HostMessage, Repository, Snapshot } from '../src/protocol/types';
 const bridge = vi.hoisted(() => ({ rpc: vi.fn(), save: vi.fn(), event: undefined as ((message: HostMessage) => void) | undefined }));
 vi.mock('../webview/rpc', () => ({ demoMode: false, readSession: () => ({}), saveSession: bridge.save, rpc: bridge.rpc, subscribe: (listener: (message: HostMessage) => void) => { bridge.event = listener; return () => {}; } }));
 const a: Repository = { id: 'a', root: '/a', commonDir: '/a/.git', name: 'A' };
@@ -447,6 +447,43 @@ describe('repository UI consistency', () => {
     expect(await store.getState().execute({ type: 'stage', paths: ['a.txt'] })).toBe(true);
     expect(bridge.rpc.mock.calls.map(([method]) => method)).toEqual(['action']);
     expect(store.getState().snapshot?.changes[0].indexStatus).toBe('A');
+  });
+
+  it.each([false, true])('binds Commit feedback and its detail target to the action result across overlapping refreshes (amend=%s)', async amend => {
+    await store.getState().selectRepository('a');
+    const file = { path: 'notes.txt', indexStatus: 'M', worktreeStatus: 'M', conflict: false, untracked: false };
+    store.setState({ snapshot: { ...snapshot(a), changes: [file] } });
+    const returned = { ...snapshot(a, 2), head: 'committed', changes: [{ ...file, indexStatus: ' ' }] };
+    const later = { ...snapshot(a, 3), head: 'later-head', changes: [file, { ...file, path: 'later.txt' }] };
+    const history = deferred<HistoryPage>(), fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, ...args) => method === 'action' ? Promise.resolve(returned) : method === 'history' ? history.promise : method === 'snapshot' ? Promise.resolve(later) : fallback(method, ...args));
+    const operation = store.getState().execute({ type: 'commit', message: 'review', amend });
+    await vi.waitFor(() => expect(store.getState().snapshot?.head).toBe('committed'));
+    const background = store.getState().refresh({ background: true });
+    await vi.waitFor(() => expect(store.getState().snapshot?.head).toBe('later-head'));
+    history.resolve({ commits: [], tips: [], nextOffset: 0, hasMore: false });
+    await Promise.all([operation, background]);
+    const result = store.getState().actionFeedback?.result;
+    expect(result).toEqual({ kind: 'commit', oid: 'committed', files: amend ? undefined : 1, remaining: 1, amended: amend });
+    if (result?.kind !== 'commit') throw new Error('Missing Commit result');
+    await store.getState().selectCommit(result.oid);
+    expect(bridge.rpc.mock.calls.at(-1)).toMatchObject(['details', 'a', { oid: 'committed' }]);
+  });
+
+  it('preserves a successful Commit result when history refresh fails or the user switches repositories', async () => {
+    await store.getState().selectRepository('a');
+    const pending = deferred<Snapshot>(), fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, ...args) => method === 'action' ? pending.promise : fallback(method, ...args));
+    const operation = store.getState().execute({ type: 'commit', message: 'review' });
+    await store.getState().selectRepository('b');
+    pending.resolve({ ...snapshot(a, 2), head: 'committed' });
+    expect(await operation).toBe(true);
+    expect(store.getState().actionFeedback).toBeUndefined();
+    await store.getState().selectRepository('a');
+    expect(store.getState().actionFeedback?.result).toMatchObject({ oid: 'committed', remaining: 0 });
+    bridge.rpc.mockImplementation((method, ...args) => method === 'action' ? Promise.resolve({ ...snapshot(a, 3), head: 'next-commit' }) : method === 'history' ? Promise.reject(new Error('History unavailable')) : fallback(method, ...args));
+    expect(await store.getState().execute({ type: 'commit', message: 'next' })).toBe(true);
+    expect(store.getState()).toMatchObject({ actionFeedback: { status: 'success', result: { oid: 'next-commit', remaining: 0 } }, error: 'History unavailable' });
   });
 
   it('keeps stable region data and skips history after a working-tree action', async () => {

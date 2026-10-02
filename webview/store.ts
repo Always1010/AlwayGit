@@ -276,6 +276,8 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     executingRepositories.add(repoId); set({ busy: true, activity: action.type, actionFeedback: feedback, error: undefined, notice: undefined, checkoutFailure: undefined, stashApplyFailure: undefined });
     try {
       const result = await rpc<Snapshot | undefined>('action', repoId, action);
+      // Freeze this action's result before history loading or another refresh changes the store.
+      if (action.type === 'commit') finish('success', undefined, result?.repository.id === repoId && result.head ? { kind: 'commit', oid: result.head, files: committedFiles, remaining: result.changes.length, amended: !!action.amend } : undefined);
       if (epoch === repositoryEpoch) {
         await get().refresh({ background: true, snapshot: result });
         if(epoch===repositoryEpoch) {
@@ -285,7 +287,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         }
       }
       const snapshot = epoch === repositoryEpoch ? get().snapshot : undefined;
-      finish('success', undefined, action.type === 'commit' && snapshot?.head ? { kind: 'commit', oid: snapshot.head, files: committedFiles, remaining: snapshot.changes.length, amended: !!action.amend } : stashed&&snapshot&&snapshot.stashes[0]?.oid!==stashed.previousOid?{kind:'stash',files:stashed.files,untracked:stashed.untracked,clean:snapshot.changes.length===0}:action.type==='branch.create'&&snapshot?{kind:'branch',name:action.name,checkedOut:!!action.checkout,currentBranch:snapshot.branch||'Detached HEAD'}:undefined);
+      if (action.type !== 'commit') finish('success', undefined, stashed&&snapshot&&snapshot.stashes[0]?.oid!==stashed.previousOid?{kind:'stash',files:stashed.files,untracked:stashed.untracked,clean:snapshot.changes.length===0}:action.type==='branch.create'&&snapshot?{kind:'branch',name:action.name,checkedOut:!!action.checkout,currentBranch:snapshot.branch||'Detached HEAD'}:undefined);
       return true;
     } catch (error) {
       if (get().repoId === repoId) {
