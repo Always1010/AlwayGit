@@ -95,7 +95,9 @@ async function verifyWorkbench(browser, url) {
     const history = page.getByTestId('history');
     const details = page.getByTestId('details');
     await Promise.all([workbench.waitFor(), sidebar.waitFor()]);
-    assert.match(await page.locator('.branch-caption').innerText(), /No repository selected/, 'A fresh Workbench does not select a repository at the entry point');
+    const branchBadge = page.getByTestId('current-branch');
+    assert.equal(await branchBadge.innerText(), '—', 'A fresh Workbench does not select a repository at the entry point');
+    assert.match(await branchBadge.locator('..').getAttribute('title'), /No repository selected/);
     await sidebar.getByRole('option', { name: /^AlwayGit/ }).dblclick();
     await Promise.all([history.waitFor(), details.waitFor()]);
     assert.ok((await sidebar.locator('.sidebar-heading').first().boundingBox()).height <= 29, 'Sidebar section headers stay compact');
@@ -109,6 +111,10 @@ async function verifyWorkbench(browser, url) {
     const projectButton = page.getByTestId('open-project');
     assert.equal(await projectButton.isEnabled(), true);
     assert.match(await projectButton.getAttribute('title'), /AlwayGit/);
+    assert.equal((await projectButton.innerText()).trim(), '', 'Repository folder command stays icon-only');
+    assert.equal(await projectButton.locator('.codicon-folder').count(), 2, 'Repository folder command uses the selected double-folder design');
+    assert.equal(await projectButton.locator('.codicon-vscode').count(), 1, 'Repository folder command keeps the VS Code mark centered in the folder');
+    assert.equal(await page.locator('.branch-bar').count(), 0, 'Branch state is merged into the action toolbar');
     const toolbarBox = await page.locator('.toolbar').boundingBox(), projectBox = await projectButton.boundingBox();
     assert.ok(toolbarBox && projectBox && toolbarBox.x + toolbarBox.width - projectBox.x - projectBox.width < 16, 'Project button belongs at the far right of the action toolbar');
     await projectButton.click();
@@ -361,7 +367,7 @@ async function verifyWorkbench(browser, url) {
     await page.getByTestId('interface-settings').getByRole('button',{name:'Language',exact:true}).click();
     await page.getByTestId('interface-settings').getByRole('combobox',{name:'Language'}).selectOption('zh-CN');
     await page.getByRole('dialog').locator('.modal-footer .primary').click();
-    await page.getByText('当前分支', { exact: true }).waitFor();
+    await page.waitForFunction(()=>document.querySelector('[data-testid="current-branch"]')?.parentElement?.getAttribute('title')?.includes('当前分支：main'));
     assert.equal(await search.inputValue(), 'native diff');
     assert.equal(await draft.inputValue(), 'Persistent bilingual draft');
     assert.equal(await sidebar.getByLabel('Show branch main', { exact: true }).isChecked(), true);
