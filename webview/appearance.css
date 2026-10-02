@@ -12,12 +12,12 @@
 .workbench[data-theme=light],.workbench[data-theme=paper],.workbench[data-theme=mist],.workbench[data-theme=hc-light] {
   color-scheme:light;--bg:#fff;--panel:#f4f6fa;--fg:#202c3e;--muted:#5b6c82;--border:#cbd4e1;
   --surface-header:#e8eef6;--surface-toolbar:#f1f5fa;--hover:#e8f0fb;--selected:#dbeafe;--selected-fg:#123a68;
-  --accent:#2463c5;--button:#2463c5;--button-fg:#fff;--input:#fff;--error:#b52e40;--green:#247146;--working-tree-accent:#0c7964;--yellow:#936100;--graph-main:#283447;--current-indicator-color:#000;
+  --accent:#2463c5;--button:#2463c5;--button-fg:#fff;--input:#fff;--error:#b52e40;--green:#247146;--working-tree-accent:#0c7964;--yellow:#936100;--vscode-brand:#007acc;--graph-main:#283447;--current-indicator-color:#000;
 }
 .workbench[data-theme=dark],.workbench[data-theme=midnight],.workbench[data-theme=graphite],.workbench[data-theme=forest],.workbench[data-theme=berry],.workbench[data-theme=hc-dark] {
   color-scheme:dark;--bg:#1b222d;--panel:#161d27;--fg:#e5ecf6;--muted:#a4b3c8;--border:#3c4b60;
   --surface-header:#293547;--surface-toolbar:#202b3a;--hover:#2c3d53;--selected:#244e78;--selected-fg:#f1f7ff;
-  --accent:#83b8ff;--button:#347bd2;--button-fg:#fff;--input:#182331;--error:#ff9b9e;--green:#78d6a0;--working-tree-accent:#53cfad;--yellow:#edc36c;--graph-main:#edf3ff;--current-indicator-color:#fff;
+  --accent:#83b8ff;--button:#347bd2;--button-fg:#fff;--input:#182331;--error:#ff9b9e;--green:#78d6a0;--working-tree-accent:#53cfad;--yellow:#edc36c;--vscode-brand:#23a8f2;--graph-main:#edf3ff;--current-indicator-color:#fff;
 }
 .workbench[data-theme=paper] {--bg:#fff9ed;--panel:#f8edd8;--fg:#3b2d20;--muted:#78654f;--border:#d7c4a6;--surface-header:#f2dfbd;--surface-toolbar:#fbf1df;--hover:#f4e5ca;--selected:#f5e0b8;--selected-fg:#553410;--accent:#b45309;--button:#a44708;--button-fg:#fff;--input:#fffdf8;--error:#b4233a;--green:#237147;--yellow:#8c5b00;--graph-main:#403225;--current-indicator-color:#000;}
 .workbench[data-theme=mist] {--bg:#f3f8fc;--panel:#e8f2f7;--fg:#183746;--muted:#587684;--border:#bfd4df;--surface-header:#dcecf4;--surface-toolbar:#eaf4f8;--hover:#dceff6;--selected:#d0e9f3;--selected-fg:#0c4157;--accent:#176b87;--button:#176b87;--button-fg:#fff;--input:#fbfdff;--error:#b82f4c;--green:#19724a;--yellow:#8c6100;--graph-main:#203e4d;--current-indicator-color:#000;}
@@ -35,7 +35,7 @@
 .workbench .app-chrome {background:var(--panel);border-bottom-color:var(--border);gap:7px;}
 .workbench .workbench-tab {border:0;border-radius:3px;background:var(--soft-accent);color:var(--accent);font-weight:600;padding:3px 8px;}
 .workbench .settings-trigger {border-color:var(--border);background:var(--bg);}
-.workbench .toolbar [data-testid=open-project] {background:transparent;}
+.workbench .toolbar .toolbar-special {background:var(--bg);}
 .workbench .toolbar .commit-trigger {background:var(--soft-accent);border-color:color-mix(in srgb,var(--accent) 42%,var(--border));color:var(--accent);}
 .workbench .resize-handle {background:var(--panel);}
 .workbench .resize-handle:hover,.workbench .resize-handle:focus-visible {background:var(--accent);}

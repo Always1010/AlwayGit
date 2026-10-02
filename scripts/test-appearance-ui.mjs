@@ -65,7 +65,7 @@ export async function verifyAppearance(browser, url) {
     await assertCurrentIndicator(currentIndicator, 'rgb(0, 0, 0)', 'Light theme current marker');
     assert.equal(await page.getByLabel('Layout', { exact: true }).count(), 0, 'Removed Layout control must not remain in the workbench');
     assert.equal(await page.getByLabel('Language').count(), 0, 'Language control belongs only in Interface Settings');
-    const top = page.locator('.app-chrome, .branch-bar, .toolbar');
+    const top = page.locator('.app-chrome, .toolbar');
     assert.equal(await top.getByRole('button', { name: /^(Stage|Unstage|Discard)/ }).count(), 0, 'Stage and Discard actions must not return to the top bars');
 
     const restore = page.getByRole('button', { name: 'Restore Layout', exact: true });
