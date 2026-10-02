@@ -1,6 +1,7 @@
 node_modules/
 dist/
 artifacts/
+TMP/
 .vscode-test/
 test-results/
 playwright-report/
