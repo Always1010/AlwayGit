@@ -17,6 +17,15 @@ export function buildRefTree(refs:GitRef[],keyPrefix:string,stripPrefix=''):RefT
 }
 
 export function refsUnder(node:RefTreeNode):GitRef[] { return [...(node.ref?[node.ref]:[]),...node.children.flatMap(refsUnder)]; }
+export function visibleRefs(nodes:readonly RefTreeNode[],expandedKeys:readonly string[]):GitRef[] {
+  const expanded=new Set(expandedKeys);
+  const visit=(node:RefTreeNode):GitRef[]=>{
+    if(!node.children.length)return node.ref?[node.ref]:[];
+    if(!expanded.has(node.key))return [];
+    return [...(node.ref?[node.ref]:[]),...node.children.flatMap(visit)];
+  };
+  return nodes.flatMap(visit);
+}
 export function folderKeys(name:string,keyPrefix:string,stripPrefix=''):string[] {
   const relative=stripPrefix&&name.startsWith(stripPrefix+'/')?name.slice(stripPrefix.length+1):name,segments=relative.split('/').filter(Boolean),keys:string[]=[];
   for(let index=1;index<segments.length;index++)keys.push(`${keyPrefix}:${segments.slice(0,index).join('/')}`);

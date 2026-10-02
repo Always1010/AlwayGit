@@ -1,7 +1,7 @@
 import { describe,expect,it } from 'vitest';
 import { alignDiff, changedParts } from '../webview/diff';
 import { samePath } from '../webview/pathIdentity';
-import { buildRefTree, folderKeys, refsUnder } from '../webview/refTree';
+import { buildRefTree, folderKeys, refsUnder, visibleRefs } from '../webview/refTree';
 import type { GitRef } from '../src/protocol/types';
 
 describe('workbench path identities',()=>{
@@ -36,6 +36,9 @@ describe('branch reference tree',()=>{
     expect(tree[0].children.map(node=>node.label)).toEqual(['login','test','test2']);
     expect(tree[0].children[0].children[0].ref?.name).toBe('feature/login/api');
     expect(refsUnder(tree[0]).map(item=>item.name)).toEqual(['feature/login/api','feature/test','feature/test2']);
+    expect(visibleRefs(tree,[]).map(item=>item.name)).toEqual(['main']);
+    expect(visibleRefs(tree,['local:feature']).map(item=>item.name)).toEqual(['feature/test','feature/test2','main']);
+    expect(visibleRefs(tree,['local:feature','local:feature/login']).map(item=>item.name)).toEqual(['feature/login/api','feature/test','feature/test2','main']);
   });
   it('strips the remote name and returns every folder needed to reveal a branch',()=>{
     const tree=buildRefTree([{...ref('origin/feature/login'),kind:'remote',fullName:'refs/remotes/origin/feature/login'}],'remote:origin','origin');
