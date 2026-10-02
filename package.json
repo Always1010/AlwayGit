@@ -44,6 +44,12 @@
         "title": "Show Workbench",
         "category": "AlwayGit",
         "icon": "$(git-merge)"
+      },
+      {
+        "command": "alwaygit.openWorkbenchInNewWindow",
+        "title": "Open Workbench in New Window",
+        "category": "AlwayGit",
+        "icon": "$(window)"
       }
     ],
     "configuration": {

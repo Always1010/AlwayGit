@@ -13,7 +13,7 @@ export class ProjectWindows implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private focusCommand = false;
   private readonly opening = new Map<string, Promise<WindowRecord>>();
-  constructor(context: vscode.ExtensionContext, private readonly log: vscode.OutputChannel, private readonly repositories: RepositoryManager, private readonly documents: GitDocuments, private readonly showWorkbench: (repoId: string) => Promise<void>) {
+  constructor(context: vscode.ExtensionContext, private readonly log: vscode.OutputChannel, private readonly repositories: RepositoryManager, private readonly documents: GitDocuments, private readonly showWorkbench: (repoId?: string, blank?: boolean) => Promise<void>) {
     const scope = createHash('sha256').update([context.globalStorageUri.toString(), vscode.env.appRoot, vscode.env.remoteName ?? '', process.env.VSCODE_IPC_HOOK ?? ''].join('|')).digest('hex').slice(0, 24);
     this.bridge = new WindowBridge(path.join(tmpdir(), 'alwaygit-windows-' + scope), request => this.execute(request), message => this.log.appendLine('[project-window] ' + message));
   }
@@ -35,10 +35,25 @@ export class ProjectWindows implements vscode.Disposable {
     }
     await WindowBridge.send(await opened, { root: canonical, action: 'workbench' });
   }
+  async openBlankWorkbenchInNewWindow(): Promise<void> {
+    const key = 'blank-workbench';
+    let opened = this.opening.get(key);
+    if (!opened) {
+      opened = this.openBlankAndWait();
+      this.opening.set(key, opened);
+      void opened.finally(() => { if (this.opening.get(key) === opened) this.opening.delete(key); }).catch(() => {});
+    }
+    await WindowBridge.send(await opened, { action: 'show-workbench' });
+  }
   async openFile(root: string, filename: string): Promise<void> { await this.route({ root, action: 'file', path: filename }); }
   async openDiff(root: string, target: DiffTarget): Promise<void> { await this.route({ root, action: 'diff', target }); }
   private async execute(request: ProjectRequest): Promise<void> {
     if (!vscode.workspace.isTrusted) throw new Error('Trust the project workspace before opening it from AlwayGit.');
+    if (request.action === 'show-workbench') {
+      await this.showWorkbench(undefined, true);
+      await this.focus();
+      return;
+    }
     if (request.action !== 'project') {
       const repo = await this.repositories.add(request.root, false);
       if (await canonicalPath(repo.root) !== request.root) throw new Error('The repository directory changed. Reopen it from AlwayGit.');
@@ -62,6 +77,7 @@ export class ProjectWindows implements vscode.Disposable {
     if (!vscode.window.state.focused) throw new Error('VS Code could not activate the selected project window. Switch to that window and try again.');
   }
   private async route(request: ProjectRequest): Promise<void> {
+    if (request.action === 'show-workbench') throw new Error('A blank Workbench must be routed to a new window.');
     const root = await canonicalPath(request.root);
     const existing = await this.find(root);
     if (existing) { await WindowBridge.send(existing, { ...request, root }); return; }
@@ -106,6 +122,20 @@ export class ProjectWindows implements vscode.Disposable {
       await new Promise(resolve => setTimeout(resolve, 250));
     }
     throw new Error('The project was opened in a new window, but AlwayGit did not respond. Enable AlwayGit and trust that project window, then try again.');
+  }
+  private async openBlankAndWait(): Promise<WindowRecord> {
+    const previous = new Set((await this.bridge.windows()).map(candidate => candidate.id));
+    await vscode.commands.executeCommand('workbench.action.newWindow');
+    const deadline = Date.now() + 20000;
+    while (Date.now() < deadline) {
+      for (const candidate of await this.bridge.windows()) {
+        if (previous.has(candidate.id)) continue;
+        try { await WindowBridge.send(candidate, undefined, 500); return candidate; }
+        catch { /* The new extension host has not finished starting. */ }
+      }
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+    throw new Error('The new window opened, but AlwayGit did not respond. Enable AlwayGit in that window, then try again.');
   }
   dispose(): void { this.bridge.dispose(); for (const disposable of this.disposables) disposable.dispose(); }
 }

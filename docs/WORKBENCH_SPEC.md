@@ -4,7 +4,7 @@
 
 ## 布局与视觉
 
-Workbench 是 AlwayGit 唯一的仓库工作入口。扩展不提供活动栏仓库树、欢迎中转页或普通编辑器标题入口；状态栏 AlwayGit 图标与 `AlwayGit: Show Workbench` 命令只负责在当前窗口创建或聚焦 Workbench，不从外部选择或切换仓库。Workbench 正在前台时隐藏状态栏入口。
+Workbench 是 AlwayGit 唯一的仓库工作入口。扩展不提供活动栏仓库树、欢迎中转页或普通编辑器标题入口；状态栏 AlwayGit 图标与 `AlwayGit: Show Workbench` 命令只负责在当前窗口创建或聚焦 Workbench，不从外部选择或切换仓库。Workbench 正在前台时隐藏状态栏入口。`AlwayGit: Open Workbench in New Window` 与工作台标题栏的窗口图标创建独立空白 VS Code 窗口，并在扩展宿主就绪后打开未选择仓库的 Workbench；仓库选择仍在新 Workbench 内完成。
 
 Workbench 顶部的分栏图标显式创建一个新标签。新标签继承界面设置、草稿与仓库列表，但初始不选择仓库；空白标签的会话保存不得覆盖普通 `Show Workbench` 用于恢复的最后仓库。从仓库对象菜单显式在新标签打开时，则使用该仓库作为新标签的当前仓库。
 
@@ -108,11 +108,11 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 
 ## 左侧对象菜单
 
-用户主动添加的仓库列表在同一 VS Code Profile 和本地或远程运行环境内的窗口间共享。`Open in New AlwayGit Tab` 在当前 VS Code 窗口创建独立编辑器标签，标题为 `AlwayGit — 仓库名`；每个标签独立维护活动仓库、引用选择、查找、滚动和查看状态，Git 状态变化与仓库操作忙碌状态在标签间同步。显式选择新标签时始终新建，不复用已有标签；多选仓库菜单不提供批量打开标签。不同 VS Code 窗口的界面会话同样不会互相覆盖。
+用户主动添加的仓库列表在同一 VS Code Profile 和本地或远程运行环境内的窗口间共享。`Open in New AlwayGit Tab` 在当前 VS Code 窗口创建独立编辑器标签，标题为 `AlwayGit — 仓库名`；每个标签独立维护活动仓库、引用选择、查找、滚动和查看状态，Git 状态变化与仓库操作忙碌状态在标签间同步。显式选择新标签时始终新建，不复用已有标签；多选仓库菜单不提供批量打开标签。新建空白标签和新建窗口都不继承当前标签选择，重新打开已有窗口时才按该窗口自己的会话恢复。不同 VS Code 窗口的界面会话同样不会互相覆盖。
 
 | 对象 | 项目 |
 | --- | --- |
-| Repository（单选） | `Switch to Repository`、`Open in New AlwayGit Tab`、`Open in New Window`、`Fetch…`、`Refresh Status`、`Copy Repository Path`、`Move to Repository Group…`、`Remove from AlwayGit…` |
+| Repository（单选） | `Switch to Repository`、`Open in New AlwayGit Tab`、`Open Repository in New Project Window`、`Fetch…`、`Refresh Status`、`Copy Repository Path`、`Move to Repository Group…`、`Remove from AlwayGit…` |
 | Repository（多选） | `Fetch N Repositories…`、`Refresh Status for N Repositories`、`Copy N Repository Paths`、`Move to Repository Group…`、`Remove from AlwayGit…` |
 | Repository Group | `Rename Repository Group…`、`Delete Repository Group…` |
 | Local Branch | `Checkout…`、`Show in Graph`、`Show Only This Branch`、`Create Branch…`、`Create Tag…`、`Merge…`、`Rebase…`、`Push…`、`Delete Branch…`、`Copy Branch Name` |
@@ -121,7 +121,7 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 | Remote，例如 `origin` | `Fetch…`、`Create Local Tracking Branches…`、`Refresh` |
 | Tag | `Show in Graph`、`Show Only This Tag`、`Create Branch…`、`Checkout…`、`Delete Tag…`、`Copy Tag Name`、`Copy Commit ID` |
 | Stash | `View Changes`、`Apply Stash`、`Pop Stash`、`Drop Stash…` |
-| Worktree | `Open Worktree`、`Open Workbench in New Window`、`Refresh`、`Remove Worktree…`、`Copy Worktree Path` |
+| Worktree | `Open Worktree`、`Open Worktree in New Project Window`、`Refresh`、`Remove Worktree…`、`Copy Worktree Path` |
 | Worktree（多选） | `Refresh`、`Copy N Worktree Paths` |
 
 ## 左侧分组操作

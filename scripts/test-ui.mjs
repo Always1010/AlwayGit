@@ -133,7 +133,7 @@ try {
   await assertIconActions(repositoriesHeading.locator('..'), ['Add Repository…', 'Create Repository Group', 'Refresh']);
   assert.equal(await sidebar.locator('.codicon-ellipsis').count(), 0, 'Sidebar actions must not use overflow ellipsis buttons');
   await assertMenu(repositoriesHeading, ['Add Repository…', 'Create Repository Group', 'Refresh']);
-  await assertMenu(sidebar.getByRole('option', { name: /^AlwayGit/ }), ['Switch to Repository', 'Open in New AlwayGit Tab', 'Open in New Window', 'Fetch…', 'Refresh Status', 'Copy Repository Path', 'Move to Repository Group…', 'Remove from AlwayGit…']);
+  await assertMenu(sidebar.getByRole('option', { name: /^AlwayGit/ }), ['Switch to Repository', 'Open in New AlwayGit Tab', 'Open Repository in New Project Window', 'Fetch…', 'Refresh Status', 'Copy Repository Path', 'Move to Repository Group…', 'Remove from AlwayGit…']);
   const localHeading = sidebar.getByRole('button', { name: 'Local Branches', exact: true });
   await localHeading.click();
   const localTree=sidebar.locator('.branch-tree[data-ref-kind="local"]');
@@ -214,7 +214,7 @@ try {
   await assertMenu(stash, ['View Changes', 'Apply Stash', 'Pop Stash', 'Drop Stash…']);
   await assertIconActions(sidebar.getByRole('button', { name: 'Worktrees', exact: true }).locator('..'), ['Add Worktree…', 'Refresh']);
   const secondaryWorktree = sidebar.locator('.worktree-list [data-worktree-path]').last();
-  await assertMenu(secondaryWorktree, ['Open Worktree', 'Open Workbench in New Window', 'Refresh', 'Remove Worktree…', 'Copy Worktree Path']);
+  await assertMenu(secondaryWorktree, ['Open Worktree', 'Open Worktree in New Project Window', 'Refresh', 'Remove Worktree…', 'Copy Worktree Path']);
 
   await featureBranch.dispatchEvent('contextmenu', { button: 2, clientX: 1438, clientY: 898, bubbles: true });
   await menu.waitFor();

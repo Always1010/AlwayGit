@@ -12,6 +12,7 @@ export type WindowRecord = z.infer<typeof recordSchema>;
 const rootSchema = z.string().min(1).max(4096).refine(value => path.isAbsolute(value) && !value.includes('\0'));
 const repositoryPath = (value: string) => !path.isAbsolute(value) && !/^[a-z]:/i.test(value) && !value.includes('\0') && !value.split(/[\\/]/).includes('..');
 export const projectRequestSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('show-workbench') }).strict(),
   z.object({ root: rootSchema, action: z.literal('project') }).strict(),
   z.object({ root: rootSchema, action: z.literal('workbench') }).strict(),
   z.object({ root: rootSchema, action: z.literal('file'), path: fileSchema.shape.path.refine(repositoryPath, 'File path is outside the repository.') }).strict(),
@@ -62,9 +63,12 @@ export class WindowBridge {
           if (envelope.token !== this.record.token) { socket.destroy(); return; }
           if (envelope.ping === true) { socket.end('{"ok":true}\n'); return; }
           const request = projectRequestSchema.parse(envelope.request);
-          const root = await canonicalPath(request.root);
-          if (windowMatch(this.record, root) < 0) throw new Error('The project is no longer open in this window.');
-          await this.execute({ ...request, root });
+          if (request.action === 'show-workbench') await this.execute(request);
+          else {
+            const root = await canonicalPath(request.root);
+            if (windowMatch(this.record, root) < 0) throw new Error('The project is no longer open in this window.');
+            await this.execute({ ...request, root });
+          }
           socket.end('{"ok":true}\n');
         } catch (error) { socket.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }) + '\n'); }
       });
@@ -100,19 +104,25 @@ export class WindowBridge {
     });
     return this.writes;
   }
-  async candidates(root: string): Promise<WindowRecord[]> {
-    const canonical = await canonicalPath(root);
+  private async records(): Promise<WindowRecord[]> {
     const filenames = (await readdir(this.directory)).filter(name => /^[a-f0-9]{32}\.json$/.test(name)).slice(0, 256);
     const entries = await Promise.all(filenames.map(async name => {
       try {
         const data = await readFile(path.join(this.directory, name));
         if (data.length > LIMIT) return undefined;
         const record = recordSchema.parse(JSON.parse(data.toString('utf8')));
-        if (record.id + '.json' !== name || Date.now() - record.updatedAt > HEARTBEAT * 4 || windowMatch(record, canonical) < 0) return undefined;
+        if (record.id + '.json' !== name || Date.now() - record.updatedAt > HEARTBEAT * 4) return undefined;
         return record;
       } catch { return undefined; }
     }));
-    return entries.filter((entry): entry is WindowRecord => !!entry).sort((a, b) => windowMatch(b, canonical) - windowMatch(a, canonical) || b.focusedAt - a.focusedAt || a.id.localeCompare(b.id));
+    return entries.filter((entry): entry is WindowRecord => !!entry);
+  }
+  async windows(): Promise<WindowRecord[]> {
+    return (await this.records()).sort((a, b) => b.focusedAt - a.focusedAt || a.id.localeCompare(b.id));
+  }
+  async candidates(root: string): Promise<WindowRecord[]> {
+    const canonical = await canonicalPath(root);
+    return (await this.records()).filter(record => windowMatch(record, canonical) >= 0).sort((a, b) => windowMatch(b, canonical) - windowMatch(a, canonical) || b.focusedAt - a.focusedAt || a.id.localeCompare(b.id));
   }
   static send(record: WindowRecord, request?: ProjectRequest, timeout = 20000): Promise<void> {
     return new Promise((resolve, reject) => {

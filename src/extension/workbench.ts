@@ -138,7 +138,7 @@ export class Workbench implements vscode.Disposable {
     if (request.method === 'renameRepositoryCollection') { await this.renameRepositoryCollection(repositoryCollectionSchema.parse(request.payload).id); return null; }
     if (request.method === 'deleteRepositoryCollection') { await this.deleteRepositoryCollection(repositoryCollectionSchema.parse(request.payload).id); return null; }
     if (request.method === 'moveRepositories') { const data=moveRepositoriesSchema.parse(request.payload); return data.collectionId===undefined?this.moveRepositories(data.keys):this.repositories.move(data.keys,data.collectionId); }
-    if(request.method==='openWorkbench'){const data=openWorkbenchSchema.parse(request.payload??{});if(data.newTab)await this.open(undefined,undefined,true,true);else throw new Error(this.text('Opening a new Workbench window is not available yet.','暂时无法在新窗口打开 Workbench。'));return null;}
+    if(request.method==='openWorkbench'){const data=openWorkbenchSchema.parse(request.payload??{});if(data.newTab)await this.open(undefined,undefined,true,true);else await this.projects.openBlankWorkbenchInNewWindow();return null;}
     if (request.method === 'pickWorktree') {
       const value = await vscode.window.showSaveDialog({ title: 'New Worktree Directory', saveLabel: 'Use Directory', defaultUri: vscode.Uri.file(path.join(path.dirname(this.repositories.get(request.repoId).root), 'new-worktree')) });
       return value?.fsPath;
