@@ -2,9 +2,10 @@ import * as vscode from 'vscode';
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { ActionBlocker, GitServiceContract, HostMessage, RepositoryCollection, RepositoryStatus, RpcRequest, Snapshot } from '../protocol/types';
-import { actionSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema } from '../protocol/validation';
+import type { ActionBlocker, AddRepositoriesResult, GitServiceContract, HostMessage, RepositoryCollection, RepositoryDiscoveryPreview, RepositoryStatus, RpcRequest, Snapshot } from '../protocol/types';
+import { actionSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema, repositoryDiscoverySchema, cancelRepositoryDiscoverySchema, addRepositoriesSchema } from '../protocol/validation';
 import type { RepositoryManager } from '../repositories/manager';
+import type { DiscoveryResult } from '../repositories/discovery';
 import type { GitDocuments } from '../editor/documents';
 import { confirmAction } from '../application/confirm';
 import { redactSecrets } from '../application/logging';
@@ -15,6 +16,7 @@ import { panelSession } from './workbench-entry';
 import { RepositoryOperationBusyError } from '../application/operation-lock';
 
 interface WorkbenchPanel { panel: vscode.WebviewPanel; activeRepository?: string; blank: boolean }
+interface RepositoryDiscoverySession { source?: WorkbenchPanel; cancelled: boolean; root: string; discovery?: DiscoveryResult }
 export interface WorkbenchPresence { open: boolean; active: boolean }
 
 export class Workbench implements vscode.Disposable {
@@ -27,7 +29,7 @@ export class Workbench implements vscode.Disposable {
   private readonly externalBusy = new Set<string>();
   private polling = false;
   private requestCount = 0;
-  private addingRepositories = false;
+  private readonly repositoryDiscoveries = new Map<string, RepositoryDiscoverySession>();
   private readonly presenceEmitter = new vscode.EventEmitter<WorkbenchPresence>();
   readonly onDidChangePresence = this.presenceEmitter.event;
   get presence(): WorkbenchPresence { return { open: this.panels.size > 0, active: [...this.panels.keys()].some(panel => panel.active) }; }
@@ -55,7 +57,7 @@ export class Workbench implements vscode.Disposable {
     const entry:WorkbenchPanel={panel,activeRepository:repoId,blank};
     this.panels.set(panel,entry);this.lastPanel=entry;this.updatePanelTitle(entry);this.presenceEmitter.fire(this.presence);
     panel.iconPath = vscode.Uri.joinPath(this.context.extensionUri, 'media', 'alwaygit.svg');
-    panel.onDidDispose(() => { this.panels.delete(panel);if(this.lastPanel===entry)this.lastPanel=[...this.panels.values()].at(-1);this.presenceEmitter.fire(this.presence); });
+    panel.onDidDispose(() => { this.panels.delete(panel);for(const [id,scan] of this.repositoryDiscoveries)if(scan.source===entry){scan.cancelled=true;this.repositoryDiscoveries.delete(id);}if(this.lastPanel===entry)this.lastPanel=[...this.panels.values()].at(-1);this.presenceEmitter.fire(this.presence); });
     panel.webview.onDidReceiveMessage(async (raw: unknown) => {
       const parsed = requestSchema.safeParse(raw);
       if (!parsed.success) return;
@@ -71,46 +73,41 @@ export class Workbench implements vscode.Disposable {
     panel.onDidChangeViewState(event => { if (event.webviewPanel.visible) { this.lastPanel=entry;this.post({ type: 'repositoriesChanged' },entry); if (entry.activeRepository) this.post({ type: 'changed', repoId: entry.activeRepository },entry); } this.presenceEmitter.fire(this.presence); });
     panel.webview.html = await this.html(panel.webview,repoId,blank);
   }
-  async addRepository(): Promise<unknown> {
-    if (!vscode.workspace.isTrusted) throw new Error(this.text('Git execution requires a trusted workspace.', '请先信任工作区，再执行 Git 操作。'));
-    if (this.addingRepositories) return undefined;
-    this.addingRepositories = true;
-    try {
-      const selected = await vscode.window.showOpenDialog({ canSelectFolders: true, canSelectFiles: false, canSelectMany: false, title: this.text('Select a repository or a folder containing repositories', '选择仓库或存放多个仓库的目录'), openLabel: this.text('Add Repositories', '添加仓库') });
-      if (!selected?.[0]) return undefined;
-      const discovery = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: this.text('Discovering Git repositories', '正在查找 Git 仓库'), cancellable: true }, (progress, token) => {
-        let lastReport = 0;
-        return this.repositories.discoverDirectory(selected[0].fsPath, {
-          isCancelled: () => token.isCancellationRequested,
-          onProgress: ({ scanned, found }) => {
-            if (Date.now() - lastReport < 100) return;
-            lastReport = Date.now();
-            progress.report({ message: this.text(`Scanned ${scanned} folders, found ${found} repositories`, `已扫描 ${scanned} 个目录，发现 ${found} 个仓库`) });
-          },
-        });
-      });
-      for (const issue of discovery.issues) this.output.appendLine(redactSecrets(`[discovery] ${issue.path}: ${issue.message}`));
-      if (discovery.cancelled) {
-        void vscode.window.showInformationMessage(this.text('Repository discovery cancelled. No repositories were added.', '已取消仓库扫描，未添加任何仓库。'));
-        return { added: 0, existing: 0, skipped: discovery.issues.length, cancelled: true };
-      }
-      const discoveredGroups=groupRepositories(discovery.repositories),existingKeys=new Set(this.repositories.groups().map(group=>group.key));
-      if(!discoveredGroups.length){const summary=this.text('No Git repositories found in the selected folder.','所选目录中没有找到 Git 仓库。');if(discovery.issues.length)void vscode.window.showWarningMessage(summary+this.text(` Skipped ${discovery.issues.length} folders or repositories. See AlwayGit output for details.`,` 跳过 ${discovery.issues.length} 个异常目录或仓库，详情请查看 AlwayGit 输出。`));else void vscode.window.showInformationMessage(summary);return {added:0,existing:0,skipped:discovery.issues.length,cancelled:false};}
-      type Candidate = vscode.QuickPickItem & { key:string };
-      const candidates:Candidate[]=discoveredGroups.map(group=>({label:group.name,description:existingKeys.has(group.key)?this.text('Already added','已添加'):this.text('Available to add','可添加'),detail:group.repository.root,picked:!existingKeys.has(group.key),key:group.key}));
-      const picked=await vscode.window.showQuickPick(candidates,{canPickMany:true,title:this.text(`Found ${discoveredGroups.length} repositories`,`扫描到 ${discoveredGroups.length} 个仓库`),placeHolder:this.text('Select repositories to add','选择要添加的仓库')});
-      if(!picked)return {added:0,existing:discoveredGroups.filter(group=>existingKeys.has(group.key)).length,skipped:discovery.issues.length,cancelled:true};
-      const selectedKeys=new Set(picked.map(item=>item.key).filter(key=>!existingKeys.has(key))),repositories=discoveredGroups.filter(group=>selectedKeys.has(group.key)).flatMap(group=>group.members);
-      let collectionId:string|undefined;
-      if(selectedKeys.size&&this.repositories.collections().length){type Destination=vscode.QuickPickItem&{collectionId?:string};const destinations:Destination[]=[{label:this.text('Repository root','仓库根目录'),description:this.text('Keep alongside repository groups','与仓库分组目录同级')} ,...this.repositories.collections().map(collection=>({label:collection.name,collectionId:collection.id}))];const destination=await vscode.window.showQuickPick(destinations,{title:this.text('Choose a repository group','选择仓库分组'),placeHolder:this.text('Repositories without a group stay at the root','不选择分组的仓库保留在根层')});if(!destination)return {added:0,existing:discoveredGroups.filter(group=>existingKeys.has(group.key)).length,skipped:discovery.issues.length,cancelled:true};collectionId=destination.collectionId;}
-      const result=await this.repositories.registerDiscovered({...discovery,repositories,found:selectedKeys.size});
-      if(selectedKeys.size)await this.repositories.move(selectedKeys,collectionId);
-      if(result.added)await this.projects.notifyCatalogChanged();
-      result.existing=discoveredGroups.filter(group=>existingKeys.has(group.key)).length;
-      const summary=this.text(`Added ${result.added} repositories; ${result.existing} already registered.`,`新增 ${result.added} 个仓库，${result.existing} 个已存在。`);
-      if(discovery.issues.length)void vscode.window.showWarningMessage(summary+this.text(` Skipped ${discovery.issues.length} folders or repositories. See AlwayGit output for details.`,` 跳过 ${discovery.issues.length} 个异常目录或仓库，详情请查看 AlwayGit 输出。`));else void vscode.window.showInformationMessage(summary);
-      return {added:result.added,existing:result.existing,skipped:discovery.issues.length,cancelled:false};
-    } finally { this.addingRepositories = false; }
+  async pickRepositoryDirectory():Promise<string|undefined>{
+    const selected=await vscode.window.showOpenDialog({canSelectFolders:true,canSelectFiles:false,canSelectMany:false,title:this.text('Select a repository or a folder containing repositories','选择仓库或存放多个仓库的目录'),openLabel:this.text('Scan Folder','扫描文件夹')});
+    return selected?.[0]?.fsPath;
+  }
+  async discoverRepositories(scanId:string,root:string,source?:WorkbenchPanel):Promise<RepositoryDiscoveryPreview>{
+    for(const [id,scan] of this.repositoryDiscoveries)if(scan.source===source){scan.cancelled=true;this.repositoryDiscoveries.delete(id);}
+    const session:RepositoryDiscoverySession={source,cancelled:false,root};this.repositoryDiscoveries.set(scanId,session);
+    try{
+      const discovery=await this.repositories.discoverDirectory(root,{isCancelled:()=>session.cancelled,onProgress:progress=>this.post({type:'repositoryDiscoveryProgress',scanId,...progress},source)});
+      session.discovery=discovery;
+      for(const issue of discovery.issues)this.output.appendLine(redactSecrets(`[discovery] ${issue.path}: ${issue.message}`));
+      const issues=discovery.issues.map(issue=>({...issue,message:redactSecrets(issue.message)}));
+      if(discovery.cancelled){this.repositoryDiscoveries.delete(scanId);return {scanId,root,scanned:discovery.scanned,found:discovery.found,cancelled:true,candidates:[],issues};}
+      const existingKeys=new Set(this.repositories.groups().map(group=>group.key));
+      const candidates=groupRepositories(discovery.repositories).map(group=>({key:group.key,name:group.name,path:group.repository.root,existing:existingKeys.has(group.key)})).sort((left,right)=>left.name.localeCompare(right.name));
+      return {scanId,root,scanned:discovery.scanned,found:discovery.found,cancelled:false,candidates,issues};
+    }catch(error){this.repositoryDiscoveries.delete(scanId);throw error;}
+  }
+  cancelRepositoryDiscovery(scanId:string,source?:WorkbenchPanel):void{const session=this.repositoryDiscoveries.get(scanId);if(!session||session.source!==source)return;session.cancelled=true;if(session.discovery)this.repositoryDiscoveries.delete(scanId);}
+  async addRepository(scanId:string,keys:string[],collectionId:string|undefined,newCollectionName:string|undefined,source?:WorkbenchPanel):Promise<AddRepositoriesResult>{
+    const session=this.repositoryDiscoveries.get(scanId);if(!session||session.source!==source||!session.discovery||session.discovery.cancelled)throw new Error(this.text('The repository scan has expired. Scan the folder again.','仓库扫描结果已失效，请重新扫描文件夹。'));
+    this.repositoryDiscoveries.delete(scanId);
+    const discoveredGroups=groupRepositories(session.discovery.repositories),availableKeys=new Set(discoveredGroups.map(group=>group.key)),selectedKeys=new Set(keys.filter(key=>availableKeys.has(key)));
+    if(!selectedKeys.size)throw new Error(this.text('Select at least one available repository.','请至少选择一个可添加的仓库。'));
+    if(collectionId&&!this.repositories.collections().some(collection=>collection.id===collectionId))throw new Error(this.text('The selected repository group no longer exists.','所选仓库分组已不存在。'));
+    if(newCollectionName){const problem=this.collectionNameProblem(newCollectionName);if(problem)throw new Error(problem);}
+    const repositories=discoveredGroups.filter(group=>selectedKeys.has(group.key)).flatMap(group=>group.members);
+    let collection:RepositoryCollection|undefined;
+    try{
+      if(newCollectionName)collection=await this.repositories.createCollection(newCollectionName);
+      const result=await this.repositories.registerDiscovered({...session.discovery,repositories,found:selectedKeys.size});
+      const targetCollectionId=collection?.id??collectionId,moved=await this.repositories.move(selectedKeys,targetCollectionId);
+      if(result.added||moved||collection)await this.projects.notifyCatalogChanged();
+      return {added:result.added,existing:result.existing,skipped:result.issues.length,...(collection?{collection}:{})};
+    }catch(error){if(collection)await this.repositories.deleteCollection(collection.id);throw error;}
   }
   async removeRepositories(keys: string[]): Promise<number> {
     const groups=this.repositories.groups().filter(group=>keys.includes(group.key));
@@ -137,7 +134,10 @@ export class Workbench implements vscode.Disposable {
     if (request.method === 'repositories') { const list = this.repositories.list(),active=source?.activeRepository??this.activeRepository; return active ? list.sort((a, b) => Number(b.id === active) - Number(a.id === active)) : list; }
     if (request.method === 'repositoryCollections') return this.repositories.collections();
     if (request.method === 'repositoryStatuses') return this.repositoryStatuses();
-    if (request.method === 'addRepository') return this.addRepository();
+    if(request.method==='pickRepositoryDirectory')return this.pickRepositoryDirectory();
+    if(request.method==='discoverRepositories'){const data=repositoryDiscoverySchema.parse(request.payload);return this.discoverRepositories(data.scanId,data.path,source);}
+    if(request.method==='cancelRepositoryDiscovery'){const data=cancelRepositoryDiscoverySchema.parse(request.payload);this.cancelRepositoryDiscovery(data.scanId,source);return null;}
+    if(request.method==='addRepository'){const data=addRepositoriesSchema.parse(request.payload);return this.addRepository(data.scanId,data.keys,data.collectionId,data.newCollectionName,source);}
     if (request.method === 'removeRepositories') return this.removeRepositories(repositoryKeysSchema.parse(request.payload).keys);
     if (request.method === 'createRepositoryCollection') return this.createRepositoryCollection();
     if (request.method === 'renameRepositoryCollection') { await this.renameRepositoryCollection(repositoryCollectionSchema.parse(request.payload).id); return null; }
@@ -241,5 +241,5 @@ export class Workbench implements vscode.Disposable {
     html = html.replace('</head>', `<script nonce="${nonce}">window.__ALWAYGIT_SESSION__=${session};</script></head>`);
     return html.replace('<head>', `<head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">`);
   }
-  dispose(): void { clearInterval(this.interval);const panels=[...this.panels.keys()];this.panels.clear();this.lastPanel=undefined;for(const panel of panels)panel.dispose();this.presenceEmitter.dispose();for (const disposable of this.disposables) disposable.dispose(); }
+  dispose(): void { clearInterval(this.interval);for(const scan of this.repositoryDiscoveries.values())scan.cancelled=true;this.repositoryDiscoveries.clear();const panels=[...this.panels.keys()];this.panels.clear();this.lastPanel=undefined;for(const panel of panels)panel.dispose();this.presenceEmitter.dispose();for (const disposable of this.disposables) disposable.dispose(); }
 }

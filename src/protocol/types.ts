@@ -1,5 +1,8 @@
 export interface Repository { id: string; root: string; commonDir: string; name: string; mainRoot?: string; collectionId?: string }
 export interface RepositoryCollection { id: string; name: string }
+export interface RepositoryDiscoveryCandidate { key: string; name: string; path: string; existing: boolean }
+export interface RepositoryDiscoveryPreview { scanId: string; root: string; scanned: number; found: number; cancelled: boolean; candidates: RepositoryDiscoveryCandidate[]; issues: { path: string; message: string }[] }
+export interface AddRepositoriesResult { added: number; existing: number; skipped: number; collection?: RepositoryCollection }
 export interface RepositoryStatus { repositoryId: string; branch: string; upstream?: string; ahead: number; unpushed: number }
 export interface Change { path: string; originalPath?: string; indexStatus: string; worktreeStatus: string; conflict: boolean; untracked: boolean }
 export interface GitRef { name: string; fullName: string; kind: 'local' | 'remote' | 'tag'; oid: string; targetType?: 'commit' | 'tree' | 'blob' | 'tag'; upstream?: string; symbolicTarget?: string }
@@ -50,10 +53,10 @@ export interface DiffPreview { path: string; leftLabel: string; rightLabel: stri
 export interface CheckoutBlocker { reason: 'local-changes' | 'conflicts' | 'operation-active' | 'worktree-occupied' | 'checkout-failed'; paths: string[]; target: string; worktreePath?: string; stashOid?: string; stashCreated?: boolean; trackBranches?: { source: string; name: string; expectedOid?: string }[] }
 export interface StashApplyBlocker { kind: 'stash-apply'; reason: 'untracked-path-exists'; paths: string[]; selector: string; stashOid: string; stashRetained: true; workingTreeUnchanged: true }
 export type ActionBlocker = CheckoutBlocker | StashApplyBlocker;
-export interface RpcRequest { id: string; method: 'repositories' | 'repositoryCollections' | 'repositoryStatuses' | 'addRepository' | 'removeRepositories' | 'createRepositoryCollection' | 'renameRepositoryCollection' | 'deleteRepositoryCollection' | 'moveRepositories' | 'snapshot' | 'operationReview' | 'history' | 'details' | 'stashDetails' | 'compare' | 'action' | 'diff' | 'diffPreview' | 'copyText' | 'openWorkbench' | 'openRepository' | 'openProject' | 'openFile' | 'openWorktree' | 'pickWorktree' | 'showLog' | 'saveSession'; repoId?: string; payload?: unknown }
+export interface RpcRequest { id: string; method: 'repositories' | 'repositoryCollections' | 'repositoryStatuses' | 'pickRepositoryDirectory' | 'discoverRepositories' | 'cancelRepositoryDiscovery' | 'addRepository' | 'removeRepositories' | 'createRepositoryCollection' | 'renameRepositoryCollection' | 'deleteRepositoryCollection' | 'moveRepositories' | 'snapshot' | 'operationReview' | 'history' | 'details' | 'stashDetails' | 'compare' | 'action' | 'diff' | 'diffPreview' | 'copyText' | 'openWorkbench' | 'openRepository' | 'openProject' | 'openFile' | 'openWorktree' | 'pickWorktree' | 'showLog' | 'saveSession'; repoId?: string; payload?: unknown }
 /** Missing paths means the source cannot limit which working files changed. */
 export interface RepositoryChanges { paths?: string[]; index?: boolean }
-export type HostMessage = { type: 'response'; id: string; result?: unknown; error?: { message: string; code?: string; details?: ActionBlocker } } | { type: 'changed'; repoId: string; changes?: RepositoryChanges } | { type: 'activity'; repoId: string; busy: boolean; label: string } | { type: 'repositoriesChanged' } | { type: 'selectRepository'; repoId: string };
+export type HostMessage = { type: 'response'; id: string; result?: unknown; error?: { message: string; code?: string; details?: ActionBlocker } } | { type: 'changed'; repoId: string; changes?: RepositoryChanges } | { type: 'activity'; repoId: string; busy: boolean; label: string } | { type: 'repositoriesChanged' } | { type: 'selectRepository'; repoId: string } | { type: 'repositoryDiscoveryProgress'; scanId: string; scanned: number; found: number };
 export interface GitServiceContract {
   discover(root: string): Promise<Repository>;
   repositoryStatus(repo: Repository): Promise<RepositoryStatus>;

@@ -21,6 +21,10 @@ export async function verifyWorktrees(browser, url) {
         let result;
         if (request.method === 'repositories') result = repositories;
         if (request.method === 'repositoryCollections') result = [{ id: 'client', name: 'Client Project' }];
+        if (request.method === 'pickRepositoryDirectory') result = 'D:/Scan';
+        if (request.method === 'discoverRepositories') result = { scanId: request.payload.scanId, root: request.payload.path, scanned: 8, found: 4, cancelled: false, candidates: [{ key: 'existing-app', name: 'App', path: 'D:/Projects/App', existing: true }, { key: 'notes', name: 'NotesAnywhere', path: 'D:/Scan/NotesAnywhere', existing: false }, { key: 'schedule', name: 'SchedulePin', path: 'D:/Scan/SchedulePin', existing: false }, { key: 'resume', name: 'SwiftResume', path: 'D:/Scan/SwiftResume', existing: false }], issues: [{ path: 'D:/Scan/broken', message: 'Invalid Git directory' }] };
+        if (request.method === 'cancelRepositoryDiscovery') result = null;
+        if (request.method === 'addRepository') result = { added: request.payload.keys.length, existing: 0, skipped: 1, collection: request.payload.newCollectionName ? { id: 'created', name: request.payload.newCollectionName } : undefined };
         if (request.method === 'snapshot') result = { repository: repo, branch, head: undefined, ahead: 0, behind: 0, changes: [{ path: `${repo.id}.txt`, indexStatus: ' ', worktreeStatus: 'M', untracked: false, conflict: false }], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: 'a'.repeat(40) }, { name: 'feature', fullName: 'refs/heads/feature', kind: 'local', oid: 'b'.repeat(40) }], stashes: [], worktrees, operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: ++fixture.version };
         if (request.method === 'history') result = { commits: [], tips: [], nextOffset: 0, hasMore: false };
         if (request.method === 'diffPreview') result = { path: request.payload.path, leftLabel: 'Index', rightLabel: 'Working Tree', left: 'before', right: repo.id };
@@ -118,6 +122,24 @@ export async function verifyWorktrees(browser, url) {
     assert.equal(await draft.inputValue(), 'Edited linked draft');
     assert.equal(await page.evaluate(() => window.__worktreeFixture.session.repoId), 'linked');
     assert.equal(await page.evaluate(() => window.__worktreeFixture.session.drafts.main), 'Main draft');
+    await sidebar.getByRole('button',{name:'Add Repository…',exact:true}).click();
+    const repositoryDialog=page.getByRole('dialog',{name:'Add Repositories',exact:true});
+    await repositoryDialog.getByRole('button',{name:'Choose Folder…',exact:true}).click();
+    await repositoryDialog.getByText('NotesAnywhere',{exact:true}).waitFor();
+    assert.equal(await repositoryDialog.getByRole('checkbox').count(),5,'Result list exposes select-all plus one checkbox per repository');
+    assert.equal(await repositoryDialog.getByRole('checkbox',{name:/App/}).isDisabled(),true,'Already-added repositories are disabled');
+    assert.equal(await repositoryDialog.locator('.repository-candidate[aria-selected="true"]').count(),3,'Available repositories are selected by default');
+    await repositoryDialog.getByRole('checkbox',{name:/NotesAnywhere/}).click();
+    assert.equal(await repositoryDialog.locator('.repository-candidate[aria-selected="true"]').count(),1,'A plain click selects one candidate');
+    await repositoryDialog.getByRole('checkbox',{name:/SwiftResume/}).click({modifiers:['Shift']});
+    assert.equal(await repositoryDialog.locator('.repository-candidate[aria-selected="true"]').count(),3,'Shift selects the complete visible candidate range');
+    await repositoryDialog.getByRole('button',{name:'New Group',exact:true}).click();
+    await repositoryDialog.getByLabel('New group name',{exact:true}).fill('Imported');
+    await repositoryDialog.getByRole('button',{name:'Add 3 Repositories',exact:true}).click();
+    await repositoryDialog.waitFor({state:'hidden'});
+    const addCall=await page.evaluate(() => window.__worktreeFixture.calls.find(call=>call.method==='addRepository'));
+    assert.deepEqual(addCall.payload.keys,['notes','schedule','resume']);assert.equal(addCall.payload.newCollectionName,'Imported');
+    await page.getByText('Added 3 repositories to Imported. Skipped 1.',{exact:true}).waitFor();
     assert.deepEqual(errors, []);
     console.log('ALWAYGIT_WORKTREES_UI_TESTS_PASSED: grouped repository entries, double-click switching, keyboard switching, current markers, legacy Worktree drafts and repository refresh');
   } finally { await page.close(); }

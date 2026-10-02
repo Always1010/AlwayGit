@@ -44,8 +44,8 @@ export async function rpc<T>(method: RpcRequest['method'], repoId?: string, payl
   if (!vscode) throw new Error('Open AlwayGit in VS Code to connect to your repositories.');
   const id = `webview-${++sequence}`;
   return new Promise<T>((resolve, reject) => {
-    // The folder picker and cancellable recursive discovery can outlive a Git request.
-    const timer = method === 'addRepository' ? undefined : setTimeout(() => { pending.delete(id); reject(new Error('The Git operation timed out. Refresh to check its result before retrying.')); }, 180_000);
+    // Folder selection and cancellable recursive discovery can outlive a Git request.
+    const timer = ['pickRepositoryDirectory','discoverRepositories','addRepository'].includes(method) ? undefined : setTimeout(() => { pending.delete(id); reject(new Error('The Git operation timed out. Refresh to check its result before retrying.')); }, 180_000);
     pending.set(id, { resolve: value => resolve(value as T), reject, timer });
     vscode.postMessage({ id, method, repoId, payload } satisfies RpcRequest);
   });
@@ -84,7 +84,11 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
   await new Promise(resolve => setTimeout(resolve, 110));
   const data=demoStores[repoId??repo.id]??demoStores[repo.id],demoSnapshot=data.snapshot,commits=data.commits;
   const resolve=(ref:string)=>ref==='HEAD'?demoSnapshot.head!:demoSnapshot.refs.find(r=>r.name===ref||r.fullName===ref)?.oid??ref;
-  if (method === 'repositories' || method === 'addRepository') return [repo,website];
+  if (method === 'repositories') return [repo,website];
+  if(method==='pickRepositoryDirectory')return 'D:\\Projects';
+  if(method==='discoverRepositories'){const scanId=(payload as {scanId:string}).scanId;return {scanId,root:'D:\\Projects',scanned:8,found:3,cancelled:false,candidates:[{key:'demo-existing',name:'AlwayGit',path:repo.root,existing:true},{key:'demo-notes',name:'NotesAnywhere',path:'D:\\Projects\\NotesAnywhere',existing:false},{key:'demo-resume',name:'SwiftResume',path:'D:\\Projects\\SwiftResume',existing:false}],issues:[]};}
+  if(method==='cancelRepositoryDiscovery')return null;
+  if(method==='addRepository')return {added:2,existing:0,skipped:0};
   if(method==='repositoryCollections')return demoCollections;
   if(method==='createRepositoryCollection'){const collection={id:`demo-group-${demoCollections.length+1}`,name:'Demo Group'};demoCollections.push(collection);return collection;}
   if (method === 'repositoryStatuses') return Object.values(demoStores).map(({ snapshot }) => ({ repositoryId: snapshot.repository.id, branch: snapshot.branch, upstream: snapshot.upstream, ahead: snapshot.ahead, unpushed: snapshot.unpushed ?? snapshot.ahead } satisfies RepositoryStatus));
