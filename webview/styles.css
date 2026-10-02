@@ -306,7 +306,11 @@ h1,h2,p {margin:0;}
 .form-field {display:flex;flex-direction:column;gap:5px;}
 .form-field input,.form-field select {padding:6px 8px;width:100%;}
 .form-field small {font-size:11px;}
+.form-field input[aria-invalid=true] {border-color:var(--error);outline:1px solid var(--error);}
 .form-checkbox {display:flex;align-items:center;gap:6px;}
+.branch-start-point {display:flex;flex-direction:column;gap:5px;padding:9px 10px;border:1px solid var(--section-border);background:color-mix(in srgb,var(--panel) 76%,var(--bg));}
+.branch-start-point>span,.branch-start-point>small {color:var(--muted);font-size:11px;}
+.branch-start-point details code {display:block;margin-top:5px;overflow-wrap:anywhere;}
 .push-target {display:flex;flex-direction:column;gap:6px;padding:10px 11px;border:1px solid var(--section-border);background:color-mix(in srgb,var(--panel) 76%,var(--bg));}
 .push-target>span {color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em;}
 .push-target>strong {font-family:var(--vscode-editor-font-family,Consolas,monospace);font-size:14px;overflow-wrap:anywhere;}

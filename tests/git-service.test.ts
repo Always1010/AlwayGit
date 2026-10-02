@@ -180,7 +180,7 @@ describe('Git service integration', () => {
   it('rejects path traversal/options and surfaces external locks, hooks, and bounded output failures', async () => {
     const { root, service, repo } = await setup(); await commit(root, 'a.txt', 'a');
     for (const file of ['../outside', 'C:\\outside', '/outside', '.git/config', 'dir/../../out', '.']) expect(() => validateFilePath(file)).toThrow();
-    await expect(service.execute(repo, { type: 'branch.create', name: '--bad' })).rejects.toThrow(); await expect(service.execute(repo, { type: 'merge', target: '--help' })).rejects.toThrow();
+    await expect(service.execute(repo, { type: 'branch.create', name: 'bad name' })).rejects.toThrow('Branch names cannot contain spaces'); await expect(service.execute(repo, { type: 'branch.create', name: '--bad' })).rejects.toThrow('cannot start with a hyphen'); await expect(service.execute(repo, { type: 'merge', target: '--help' })).rejects.toThrow();
     await writeFile(path.join(root, '.git', 'index.lock'), ''); await writeFile(path.join(root, 'a.txt'), 'edited'); await expect(service.execute(repo, { type: 'stage', paths: ['a.txt'] })).rejects.toThrow('Another Git process'); await rm(path.join(root, '.git', 'index.lock'));
     await service.execute(repo, { type: 'stage', paths: ['a.txt'] }); await writeFile(path.join(root, '.git', 'hooks', 'pre-commit'), '#!/bin/sh\necho rejected-by-test-hook >&2\nexit 1\n'); await expect(service.execute(repo, { type: 'commit', message: 'blocked' })).rejects.toThrow('rejected-by-test-hook');
     await writeFile(path.join(root, '.git', 'hooks', 'pre-commit'), '#!/bin/sh\nsleep 10\n'); let calls = 0; let disposed = 0;
