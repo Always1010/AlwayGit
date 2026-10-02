@@ -28,7 +28,7 @@ export async function verifyRefresh(browser, url) {
       } });
     });
     await page.goto(url);
-    await page.getByRole('option', { name: 'Refresh fixture' }).dblclick();
+    await page.getByRole('option', { name: 'Refresh fixture' }).click();
     const details = page.getByTestId('details'), diff = page.getByTestId('diff-preview'), viewport = diff.locator('.diff-viewport');
     await details.getByText('Historical merge body', { exact: true }).waitFor();
     await diff.locator('.diff-line').first().waitFor();
