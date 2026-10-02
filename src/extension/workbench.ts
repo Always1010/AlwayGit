@@ -13,7 +13,7 @@ import { hostText, preferredLanguage, type Language } from '../application/langu
 import type { ProjectWindows } from './project-windows';
 import { groupRepositories } from '../protocol/repositories';
 import { panelSession } from './workbench-entry';
-import { RepositoryOperationBusyError } from '../application/operation-lock';
+import { RepositoryOperationBusyError, RepositoryOperationRecoveryRequiredError } from '../application/operation-lock';
 
 interface WorkbenchPanel { panel: vscode.WebviewPanel; activeRepository?: string; blank: boolean }
 interface RepositoryDiscoverySession { source?: WorkbenchPanel; cancelled: boolean; root: string; discovery?: DiscoveryResult }
@@ -26,7 +26,7 @@ export class Workbench implements vscode.Disposable {
   private readonly fingerprints = new Map<string, string>();
   private readonly disposables: vscode.Disposable[] = [];
   private readonly busy = new Set<string>();
-  private readonly externalBusy = new Set<string>();
+  private readonly externalBusy = new Map<string, { label: string }>();
   private polling = false;
   private requestCount = 0;
   private readonly repositoryDiscoveries = new Map<string, RepositoryDiscoverySession>();
@@ -195,17 +195,28 @@ export class Workbench implements vscode.Disposable {
       }
       case 'action': {
         const action = actionSchema.parse(request.payload);
+        await this.refreshExternalActivity(repo.commonDir);
         if (this.isBusy(repo.commonDir)) throw new Error(this.text('An operation is already running in this repository.', '此仓库已有正在执行的操作。'));
         const operation = action.type === 'operation.abort' ? (await this.git.snapshot(repo)).operation : undefined;
         if (!await confirmAction(repo, action, this.language(), operation)) throw new Error(this.text('Operation cancelled.', '操作已取消。'));
+        await this.refreshExternalActivity(repo.commonDir);
         if (this.isBusy(repo.commonDir)) throw new Error(this.text('An operation is already running in this repository.', '此仓库已有正在执行的操作。'));
         const operationKey=this.repositoryKey(repo.commonDir);this.busy.add(operationKey);
         for (const r of this.repositories.list().filter(r => r.commonDir === repo.commonDir)) this.post({ type: 'activity', repoId: r.id, busy: true, label: action.type });
         try { await this.projects.runRepositoryOperation(repo.commonDir,action.type,()=>this.git.execute(repo, action)); }
-        catch(error){if(error instanceof RepositoryOperationBusyError)throw new Error(this.text('A Git operation is already running for this repository in another AlwayGit window.','另一个 AlwayGit 窗口正在对该仓库执行 Git 操作。'));throw error;}
+        catch(error){
+          if((error as {terminationUnconfirmed?:unknown})?.terminationUnconfirmed===true)this.externalBusy.set(operationKey,{label:action.type});
+          if(error instanceof RepositoryOperationRecoveryRequiredError){
+            const recover=this.text('Remove protection','解除保护');
+            const chosen=await vscode.window.showWarningMessage(this.text('The previous Git operation was interrupted.','上次 Git 操作中断，仓库保护仍保留。'),{modal:true,detail:this.text('Confirm that the previous AlwayGit window and all of its Git processes have ended, then inspect the repository status. Removing protection will not repeat the interrupted operation.','请先确认上次 AlwayGit 窗口及其 Git 进程均已结束，并检查仓库状态。解除保护后需重新发起操作。')},recover);
+            if(chosen===recover){await this.projects.recoverRepositoryOperation(repo.commonDir,error.token);throw new Error(this.text('Protection removed. Refresh the repository and retry the operation.','已解除保护，请刷新仓库并重新发起操作。'));}
+            throw error;
+          }
+          if(error instanceof RepositoryOperationBusyError)throw new Error(this.text('A Git operation is already running for this repository in another AlwayGit window.','另一个 AlwayGit 窗口正在对该仓库执行 Git 操作。'));throw error;
+        }
         finally {
           this.busy.delete(operationKey);
-          for (const r of this.repositories.list().filter(r => r.commonDir === repo.commonDir)) { this.post({ type: 'activity', repoId: r.id, busy: false, label: action.type }); this.post({ type: 'changed', repoId: r.id }); }
+          for (const r of this.repositories.list().filter(r => r.commonDir === repo.commonDir)) { this.post({ type: 'activity', repoId: r.id, busy: this.isBusy(repo.commonDir), label: action.type }); this.post({ type: 'changed', repoId: r.id }); }
         }
         const snapshot = await this.git.snapshot(repo); this.recordFingerprint(snapshot); return snapshot;
       }
@@ -231,12 +242,18 @@ export class Workbench implements vscode.Disposable {
     if (!ids.length || this.polling || !vscode.workspace.isTrusted) return;
     this.polling = true;
     try {
+      await Promise.all([...this.externalBusy.keys()].map(key=>this.refreshExternalActivity(key).catch(error=>this.output.appendLine(redactSecrets(`[activity-refresh] ${error instanceof Error?error.message:String(error)}`)))));
       for(const id of ids){try{const repo=this.repositories.get(id);if(this.isBusy(repo.commonDir))continue;const previous=this.fingerprints.get(repo.id),snapshot=await this.git.snapshot(repo);if(this.recordFingerprint(snapshot)!==previous)this.post({type:'changed',repoId:repo.id,changes:{paths:[]}});}catch(error){this.output.appendLine(redactSecrets(`[refresh] ${error instanceof Error?error.message:String(error)}`));}}
     }
     finally { this.polling = false; }
   }
   private selectPanelRepository(entry:WorkbenchPanel,repoId:string):void {entry.activeRepository=repoId;this.activeRepository=repoId;this.lastPanel=entry;this.updatePanelTitle(entry);entry.panel.reveal();this.post({type:'selectRepository',repoId},entry);}
-  externalRepositoryActivity(commonDir:string,busy:boolean,label:string):void {const key=this.repositoryKey(commonDir);if(busy)this.externalBusy.add(key);else this.externalBusy.delete(key);for(const repo of this.repositories.list().filter(repo=>this.repositoryKey(repo.commonDir)===key)){this.post({type:'activity',repoId:repo.id,busy,label});if(!busy)this.post({type:'changed',repoId:repo.id});}}
+  private async refreshExternalActivity(commonDir:string):Promise<void>{
+    const key=this.repositoryKey(commonDir),activity=this.externalBusy.get(key);if(!activity)return;
+    if(await this.projects.isRepositoryBusy(commonDir)||this.externalBusy.get(key)!==activity)return;
+    this.externalRepositoryActivity(commonDir,false,activity.label);
+  }
+  externalRepositoryActivity(commonDir:string,busy:boolean,label:string):void {const key=this.repositoryKey(commonDir);if(busy)this.externalBusy.set(key,{label});else this.externalBusy.delete(key);for(const repo of this.repositories.list().filter(repo=>this.repositoryKey(repo.commonDir)===key)){this.post({type:'activity',repoId:repo.id,busy:this.isBusy(commonDir),label});if(!busy)this.post({type:'changed',repoId:repo.id});}}
   private updatePanelTitle(entry:WorkbenchPanel):void {let name:string|undefined;try{name=entry.activeRepository?groupRepositories(this.repositories.list(),entry.activeRepository).find(group=>group.members.some(repo=>repo.id===entry.activeRepository))?.name:undefined;}catch{/* Repository discovery can remove a stale restored ID. */}entry.panel.title=name?`AlwayGit — ${name}`:'AlwayGit';}
   private post(message: HostMessage,target?:WorkbenchPanel): void {if(target){void target.panel.webview.postMessage(message);return;}for(const entry of this.panels.values())void entry.panel.webview.postMessage(message);}
   private async html(webview: vscode.Webview,activeRepository?:string,blank=false): Promise<string> {
