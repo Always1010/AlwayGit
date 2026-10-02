@@ -1,5 +1,59 @@
 import assert from 'node:assert/strict';
 
+export async function verifyLocateHead(browser, url) {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  try {
+    await page.addInitScript(() => {
+      const repo = { id: 'locate', root: '/fixture', commonDir: '/fixture/.git', name: 'Locate fixture' };
+      const commits = Array.from({ length: 150 }, (_, index) => ({ oid: (index + 1).toString(16).padStart(40, '0'), parents: index < 149 ? [(index + 2).toString(16).padStart(40, '0')] : [], author: 'Fixture', email: 'fixture@example.com', timestamp: 0, subject: `Commit ${index}` }));
+      const head = commits[40];
+      const fixture = window.__locateFixture = { calls: [], cleared: false };
+      window.acquireVsCodeApi = () => ({ getState: () => ({}), setState: () => {}, postMessage(request) {
+        fixture.calls.push(request.method);
+        let result;
+        if (request.method === 'repositories') result = [repo];
+        if (request.method === 'snapshot') result = { repository: repo, branch: 'main', head: head.oid, upstream: 'origin/main', ahead: 0, behind: 40, changes: [], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: head.oid }, { name: 'origin/main', fullName: 'refs/remotes/origin/main', kind: 'remote', oid: commits[0].oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 1 };
+        if (request.method === 'history') result = { commits, head, tips: [commits[0].oid, head.oid], nextOffset: 150, hasMore: false };
+        if (request.method === 'details') { const commit = commits.find(commit => commit.oid === request.payload.oid); result = { commit, body: commit.subject, files: [] }; }
+        setTimeout(() => window.postMessage({ type: 'response', id: request.id, result }, '*'), 30);
+      } });
+    });
+    await page.goto(url);
+    await page.getByRole('option', { name: 'Locate fixture', exact: true }).dblclick();
+    const history = page.getByTestId('history'), viewport = history.locator('.history-viewport');
+    await history.locator('[data-oid]').first().waitFor();
+    await page.getByTestId('details').getByText('Commit 0', { exact: true }).first().waitFor();
+    await page.evaluate(() => {
+      window.__locateFixture.calls.length = 0;
+      new MutationObserver(() => {
+        const history = document.querySelector('[data-testid="history"]');
+        if (history.querySelector('[role="table"]').getAttribute('aria-rowcount') !== '152' || history.textContent.includes('Reading history')) window.__locateFixture.cleared = true;
+      }).observe(document.querySelector('[data-testid="history"]'), { subtree: true, childList: true, attributes: true, attributeFilter: ['aria-rowcount'] });
+    });
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await viewport.evaluate(element => { element.scrollTop = element.scrollHeight; });
+      await page.waitForFunction(() => document.querySelector('.history-viewport').scrollTop > 2000);
+      await page.getByRole('button', { name: 'Locate HEAD', exact: true }).click();
+      await page.waitForFunction(() => {
+        const head = document.querySelector('[data-head-commit="true"][aria-selected="true"]');
+        const viewport = document.querySelector('.history-viewport');
+        if (!head) return false;
+        const row = head.getBoundingClientRect(), bounds = viewport.getBoundingClientRect();
+        return row.top >= bounds.top && row.bottom <= bounds.bottom;
+      });
+      await page.getByTestId('details').getByText('Commit 40', { exact: true }).first().waitFor();
+      assert.equal(await history.getByRole('table').getAttribute('aria-rowcount'), '152');
+      assert.deepEqual(await page.evaluate(() => window.__locateFixture.calls.filter(method => ['snapshot', 'history'].includes(method))), [], 'Locating a loaded HEAD must not request Graph data');
+      assert.equal(await page.evaluate(() => window.__locateFixture.cleared), false, 'Graph must not clear or show a history loading state');
+    }
+    assert.deepEqual(errors, []);
+  } finally {
+    await page.close();
+  }
+}
+
 export async function verifyHistoryRows(page) {
   const history = page.getByTestId('history'), rows = history.locator('[data-oid]');
   const first = rows.nth(0), second = rows.nth(1), third = rows.nth(2);
