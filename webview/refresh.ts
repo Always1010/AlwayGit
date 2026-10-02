@@ -1,3 +1,4 @@
+import { indexRefs } from './refIndex';
 import type { Change, DiffTarget, RepositoryChanges, Snapshot } from '../src/protocol/types';
 
 export function diffKey(target?: DiffTarget): string {
@@ -15,7 +16,8 @@ export function mergeChanges(a?: RepositoryChanges, b?: RepositoryChanges): Repo
 
 export function historyKey(snapshot: Snapshot, refs: string[]): string {
   // HEAD supplies the Working Tree node; all remote tips determine pushed markers.
-  return JSON.stringify([snapshot.head, refs.map(name => [name, name === 'HEAD' ? snapshot.head : snapshot.refs.find(ref => ref.fullName === name)?.oid]), snapshot.refs.filter(ref => ref.kind === 'remote').map(ref => [ref.fullName, ref.oid]).sort()]);
+  const index = indexRefs(snapshot.refs);
+  return JSON.stringify([snapshot.head, refs.map(name => [name, name === 'HEAD' ? snapshot.head : index.byName.get(name)?.oid]), index.remote.map(ref => [ref.fullName, ref.oid]).sort()]);
 }
 
 export function shareSnapshot(previous: Snapshot | undefined, incoming: Snapshot): Snapshot {
