@@ -13,6 +13,7 @@ import type { ProjectWindows } from './project-windows';
 import { groupRepositories } from '../protocol/repositories';
 
 interface WorkbenchPanel { panel: vscode.WebviewPanel; activeRepository?: string }
+export interface WorkbenchPresence { open: boolean; active: boolean }
 
 export class Workbench implements vscode.Disposable {
   private readonly panels = new Map<vscode.WebviewPanel, WorkbenchPanel>();
@@ -24,6 +25,9 @@ export class Workbench implements vscode.Disposable {
   private polling = false;
   private requestCount = 0;
   private addingRepositories = false;
+  private readonly presenceEmitter = new vscode.EventEmitter<WorkbenchPresence>();
+  readonly onDidChangePresence = this.presenceEmitter.event;
+  get presence(): WorkbenchPresence { return { open: this.panels.size > 0, active: [...this.panels.keys()].some(panel => panel.active) }; }
   /** Diagnostic count used to verify the real Webview message bridge. */
   get receivedWebviewRequests(): number { return this.requestCount; }
   private readonly interval: ReturnType<typeof setInterval>;
@@ -39,14 +43,14 @@ export class Workbench implements vscode.Disposable {
     await this.repositories.scan();
     if (repoId) this.activeRepository = repoId;
     const existing=!restoredPanel&&!newTab?(this.lastPanel??[...this.panels.values()].at(-1)):undefined;
-    if(existing){existing.panel.reveal();this.lastPanel=existing;this.post({type:'repositoriesChanged'},existing);if(repoId)this.selectPanelRepository(existing,repoId);return;}
+    if(existing){existing.panel.reveal();this.lastPanel=existing;this.post({type:'repositoriesChanged'},existing);if(repoId)this.selectPanelRepository(existing,repoId);this.presenceEmitter.fire(this.presence);return;}
     const options = { enableScripts: true, localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview')] };
     const panel = restoredPanel ?? vscode.window.createWebviewPanel('alwaygit.workbench', 'AlwayGit', vscode.ViewColumn.Active, options);
     panel.webview.options = options;
     const entry:WorkbenchPanel={panel,activeRepository:repoId};
-    this.panels.set(panel,entry);this.lastPanel=entry;this.updatePanelTitle(entry);
+    this.panels.set(panel,entry);this.lastPanel=entry;this.updatePanelTitle(entry);this.presenceEmitter.fire(this.presence);
     panel.iconPath = vscode.Uri.joinPath(this.context.extensionUri, 'media', 'alwaygit.svg');
-    panel.onDidDispose(() => { this.panels.delete(panel);if(this.lastPanel===entry)this.lastPanel=[...this.panels.values()].at(-1); });
+    panel.onDidDispose(() => { this.panels.delete(panel);if(this.lastPanel===entry)this.lastPanel=[...this.panels.values()].at(-1);this.presenceEmitter.fire(this.presence); });
     panel.webview.onDidReceiveMessage(async (raw: unknown) => {
       const parsed = requestSchema.safeParse(raw);
       if (!parsed.success) return;
@@ -59,7 +63,7 @@ export class Workbench implements vscode.Disposable {
         this.post({ type: 'response', id: parsed.data.id, error: { message, code: String((error as { code?: unknown }).code ?? 'FAILED'), ...(details ? { details } : {}) } },entry);
       }
     });
-    panel.onDidChangeViewState(event => { if (event.webviewPanel.visible) { this.lastPanel=entry;this.post({ type: 'repositoriesChanged' },entry); if (entry.activeRepository) this.post({ type: 'changed', repoId: entry.activeRepository },entry); } });
+    panel.onDidChangeViewState(event => { if (event.webviewPanel.visible) { this.lastPanel=entry;this.post({ type: 'repositoriesChanged' },entry); if (entry.activeRepository) this.post({ type: 'changed', repoId: entry.activeRepository },entry); } this.presenceEmitter.fire(this.presence); });
     panel.webview.html = await this.html(panel.webview,repoId);
   }
   async addRepository(): Promise<unknown> {
@@ -226,5 +230,5 @@ export class Workbench implements vscode.Disposable {
     html = html.replace('</head>', `<script nonce="${nonce}">window.__ALWAYGIT_SESSION__=${session};</script></head>`);
     return html.replace('<head>', `<head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">`);
   }
-  dispose(): void { clearInterval(this.interval);const panels=[...this.panels.keys()];this.panels.clear();this.lastPanel=undefined;for(const panel of panels)panel.dispose();for (const disposable of this.disposables) disposable.dispose(); }
+  dispose(): void { clearInterval(this.interval);const panels=[...this.panels.keys()];this.panels.clear();this.lastPanel=undefined;for(const panel of panels)panel.dispose();this.presenceEmitter.dispose();for (const disposable of this.disposables) disposable.dispose(); }
 }

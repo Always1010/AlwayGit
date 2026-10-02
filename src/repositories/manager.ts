@@ -191,28 +191,3 @@ export class RepositoryManager implements vscode.Disposable {
     this.changedEmitter.dispose(); this.listEmitter.dispose();
   }
 }
-
-export type RepositoryTreeNode = Repository | { id:string; name:string; collection:RepositoryCollection };
-
-export class RepositoryTree implements vscode.TreeDataProvider<RepositoryTreeNode> {
-  private readonly emitter = new vscode.EventEmitter<RepositoryTreeNode | undefined>();
-  readonly onDidChangeTreeData = this.emitter.event;
-  constructor(private readonly manager: RepositoryManager) {}
-  refresh(): void { this.emitter.fire(undefined); }
-  getChildren(parent?:RepositoryTreeNode): RepositoryTreeNode[] {
-    const groups=this.manager.groups();
-    if(parent&&'collection' in parent)return groups.filter(group=>group.collectionId===parent.collection.id).map(group=>({...group.repository,name:group.name}));
-    const collections=this.manager.collections().map(collection=>({id:collection.id,name:collection.name,collection}));
-    const roots=groups.filter(group=>!group.collectionId||!this.manager.collections().some(collection=>collection.id===group.collectionId)).map(group=>({...group.repository,name:group.name}));
-    return [...collections,...roots].sort((a,b)=>a.name.localeCompare(b.name));
-  }
-  getTreeItem(node: RepositoryTreeNode): vscode.TreeItem {
-    if('collection' in node){const item=new vscode.TreeItem(node.name,vscode.TreeItemCollapsibleState.Collapsed);item.contextValue='alwaygit.repositoryCollection';item.iconPath=new vscode.ThemeIcon('folder');item.tooltip=node.name;return item;}
-    const item = new vscode.TreeItem(node.name);
-    item.contextValue = 'alwaygit.repository';
-    item.description = node.root; item.tooltip = node.root;
-    item.iconPath = new vscode.ThemeIcon('repo');
-    item.command = { command: 'alwaygit.open', title: 'Open Workbench', arguments: [node.id] };
-    return item;
-  }
-}
