@@ -33,6 +33,10 @@ export class RepositoryManager implements vscode.Disposable {
     if (remember) await this.remember([repo.root]);
     return repo;
   }
+  async discoverDirectory(root: string, options: DiscoveryOptions = {}): Promise<DiscoveryResult> {
+    if (!vscode.workspace.isTrusted) throw new Error('Trust this workspace before executing Git.');
+    return discoverRepositories(root, this.git, options);
+  }
   private async rememberedRoots(): Promise<Set<string>> {
     const global = this.context.globalState.get<string[]>(GLOBAL_ROOTS_KEY, []);
     const legacy = this.context.workspaceState.get<string[]>(LEGACY_WORKSPACE_ROOTS_KEY, []);
@@ -69,8 +73,10 @@ export class RepositoryManager implements vscode.Disposable {
     return false;
   }
   async addDirectory(root: string, options: DiscoveryOptions = {}): Promise<AddDirectoryResult> {
-    if (!vscode.workspace.isTrusted) throw new Error('Trust this workspace before executing Git.');
-    const discovery = await discoverRepositories(root, this.git, options);
+    const discovery = await this.discoverDirectory(root, options);
+    return this.registerDiscovered(discovery, options);
+  }
+  async registerDiscovered(discovery: DiscoveryResult, options: Pick<DiscoveryOptions, 'isCancelled'> = {}): Promise<AddDirectoryResult> {
     const result: AddDirectoryResult = { ...discovery, added: 0, existing: 0 };
     if (result.cancelled || options.isCancelled?.()) { result.cancelled = true; return result; }
     if (!vscode.workspace.isTrusted) throw new Error('Trust this workspace before executing Git.');

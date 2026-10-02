@@ -77,6 +77,16 @@ describe('batch repository registration', () => {
     expect(new RepositoryTree(manager).getChildren().map(repo => repo.name).sort()).toEqual(['A', 'B']);
     expect(await manager.addDirectory(root)).toMatchObject({ found: 2, added: 0, existing: 2 });
   });
+  it('discovers candidates without registering, watching or saving them until confirmed', async () => {
+    const root = await fixture(), { manager, globalUpdate } = setup();
+    const discovery = await manager.discoverDirectory(root);
+    expect(discovery).toMatchObject({ found: 2, cancelled: false });
+    expect(manager.list()).toEqual([]);
+    expect(vscode.workspace.createFileSystemWatcher).not.toHaveBeenCalled();
+    expect(globalUpdate).not.toHaveBeenCalled();
+    expect(await manager.registerDiscovered(discovery)).toMatchObject({ added: 2, existing: 0 });
+    expect(manager.groups()).toHaveLength(2);
+  });
   it('notifies when adding a new Worktree to an existing group without counting a new repository', async () => {
     const root = await fixture(), { main, linked } = await worktree(root), { manager } = setup();
     await manager.add(main); const changed = vi.fn(); manager.onDidChangeRepositories(changed);
