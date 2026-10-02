@@ -661,14 +661,14 @@ Stash 用于暂时保存尚未提交的修改。它与 Stage 完全不同：Stag
 **前提：** 明确要标记的版本。
 
 1. 右键目标 Commit 或分支选择 Create Tag…，或使用 Tags 标题入口。
-2. 在 Tag Name 输入名称，例如 v1.1.0；核对 Target Commit。需要说明时填写 Annotation，再点击 Create Tag。
+2. 在 Tag Name 输入名称，例如 v1.1.0；核对 Target Commit。需要说明时填写 Annotation。若希望立即发布，勾选“创建后推送此标签”并选择 Remote；该选择可以仅用于本次操作，也可记为默认。
 3. 在 Tags 中检查新标签，使用 Show in Graph 定位。
 4. 要发布标签时，右键单个或多选 Tag，选择 Push Tag… / Push N Tags…，核对完整标签清单和 Remote 后执行。
 5. 删除本地标签时，右键目标 Tag 选择 Delete Tag…，核对名称后确认。
 
 **结果：** 本地 Tag 指向指定版本、明确选择的 Tag 已发布到 Remote，或目标本地 Tag 被移除。
 
-**注意：** Tag Push 只发送对话框列出的标签，支持轻量和注解 Tag，不会附带其他本地 Tag，也不会覆盖远端身份不同的同名 Tag。本地删除不会删除远端 Tag；本版本不提供远端 Tag 删除或替换。
+**注意：** 创建后推送会先保留本地 Tag；远端失败时可稍后通过 Push Tag 重试。Tag Push 只发送对话框列出的标签，支持轻量和注解 Tag，不会附带其他本地 Tag，也不会覆盖远端身份不同的同名 Tag。本地删除不会删除远端 Tag；本版本不提供远端 Tag 删除或替换。
 
 ![图 28  Tag Name 与 Target Commit 确定版本 Annotation 为可选说明](images/user-manual/figure-28.png)
 
@@ -963,6 +963,8 @@ Git 在仓库所在的 VS Code 扩展宿主中执行。产品架构面向本地�
 | alwaygit.historyPageSize | 300；50–1000 | 每页加载真实 Commit 的数量上限 |
 | alwaygit.refreshInterval | 15 秒；5–300 秒 | 可见工作台的补偿刷新间隔 |
 | alwaygit.allowDetachedHead | false | 直接进入 Detached HEAD 的高级策略 |
+| alwaygit.pushFollowTags | false | 普通 Push 默认是否附带相关注解 Tag |
+| alwaygit.pushTagAfterCreate | false | 新建 Tag 后默认是否推送到所选 Remote |
 | alwaygit.language | en / zh-CN / auto | 初始语言，工作台保存的选择优先 |
 
 修改 Git 路径或刷新间隔后重新加载 VS Code 窗口。工作台内的主题、配色、字号、密度和语言在应用后即时生效。

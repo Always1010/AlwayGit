@@ -661,14 +661,14 @@ Use the operations in this chapter only after you understand the relationships i
 **Prerequisite:** Identify the version you want to tag.
 
 1. Right-click the target Commit or branch and choose Create Tag…, or use the entry point in the Tags heading.
-2. Enter a name, such as v1.1.0, in Tag Name and verify Target Commit. If you need a description, fill in Annotation, then click Create Tag.
+2. Enter a name, such as v1.1.0, in Tag Name and verify Target Commit. Fill in Annotation if needed. To publish immediately, enable “Push this Tag after creation” and select a Remote; use it once or remember it as the default.
 3. Check the new tag under Tags and use Show in Graph to locate it.
 4. To publish tags, right-click one or more Tags, choose Push Tag… or Push N Tags…, then verify the complete Tag list and Remote.
 5. To delete a local tag, right-click the target Tag, choose Delete Tag…, verify the name, and confirm.
 
 **Result:** The local Tag points to the specified version, the explicitly selected Tags are published to the Remote, or the target local Tag has been removed.
 
-**Caution:** Tag Push sends only the Tags listed in the dialog, supports lightweight and annotated Tags, does not include other local Tags, and does not overwrite a differently identified remote Tag with the same name. Local deletion does not delete a remote Tag; this version does not provide remote Tag deletion or replacement.
+**Caution:** Create-and-push keeps the local Tag first; if the remote push fails, retry later with Push Tag. Tag Push sends only the Tags listed in the dialog, supports lightweight and annotated Tags, does not include other local Tags, and does not overwrite a differently identified remote Tag with the same name. Local deletion does not delete a remote Tag; this version does not provide remote Tag deletion or replacement.
 
 ![Create Tag dialog showing Tag Name, Target Commit, and Annotation](images/user-manual/figure-28.png)
 
@@ -963,6 +963,8 @@ Current scope: whole-file staging, standard Rebase, remote branch management, an
 | alwaygit.historyPageSize | 300; 50–1000 | Maximum number of actual Commits loaded per page |
 | alwaygit.refreshInterval | 15 seconds; 5–300 seconds | Fallback refresh interval while the workbench is visible |
 | alwaygit.allowDetachedHead | false | Advanced policy for entering Detached HEAD directly |
+| alwaygit.pushFollowTags | false | Whether normal Push includes related annotated Tags by default |
+| alwaygit.pushTagAfterCreate | false | Whether a new Tag is pushed to the selected Remote by default |
 | alwaygit.language | en / zh-CN / auto | Initial language; the choice saved in the workbench takes precedence |
 
 Reload the VS Code window after changing the Git path or refresh interval. Theme, color scheme, font size, density, and language settings within the workbench take effect immediately after you apply them.

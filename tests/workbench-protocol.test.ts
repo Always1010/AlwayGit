@@ -12,6 +12,10 @@ describe('Workbench protocol validation', () => {
     expect(actionSchema.safeParse({...action,names:[]}).success).toBe(false);
     expect(actionSchema.safeParse({...action,expectedOids:{v1:'HEAD'}}).success).toBe(false);
   });
+  it('accepts an explicit remote for create-and-push Tag', () => {
+    const action={type:'tag.create' as const,name:'v1',target:'HEAD',message:'release',pushRemote:'origin'};
+    expect(actionSchema.parse(action)).toEqual(action);
+  });
   it.each(['merge', 'rebase', 'reset'])('requires a captured branch and HEAD for %s', type => {
     const action = { type, target: 'HEAD', ...(type === 'reset' ? { mode: 'hard' } : {}) };
     expect(actionSchema.safeParse(action).success).toBe(false);

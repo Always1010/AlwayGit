@@ -661,7 +661,26 @@ export class GitService implements GitServiceContract {
         if(failures.length)throw new GitError(localizeMessage("service.remoteBranchEsDeletedFailed", { deleted: (deleted), count: (failures.length), value: (failures.join('\n')) }),'PARTIAL_FAILURE');
         return;
       }
-      case 'tag.create': await this.run(repo, ['check-ref-format', `refs/tags/${token(action.name, 'tag name')}`]); args = ['tag', ...(action.message ? ['-a', '-m', action.message] : []), action.name, await this.oid(repo, action.target ?? 'HEAD')]; break;
+      case 'tag.create': {
+        const name=token(action.name,'tag name'),ref=`refs/tags/${name}`;
+        await this.run(repo,['check-ref-format',ref]);
+        const target=await this.oid(repo,action.target??'HEAD');
+        let destination:string|undefined;
+        if(action.pushRemote){
+          destination=token(action.pushRemote,'remote');
+          const configured=(await this.text(repo,['remote'])).split('\n').filter(Boolean);
+          if(!configured.includes(destination))throw new GitError(localizeMessage("service.unknownRemote",{destination}),'INVALID_ARGUMENT');
+        }
+        await this.run(repo,['tag',...(action.message?['-a','-m',action.message]:[]),name,target]);
+        if(destination){
+          try{await this.run(repo,['push','--no-follow-tags',destination,`${ref}:${ref}`]);}
+          catch(error){
+            const detail=error instanceof Error?error.message:String(error);
+            throw new GitError(localizeMessage("service.tagWasCreatedLocallyButCouldNotBePushed",{name,destination,value:detail}),'PARTIAL_FAILURE',error instanceof GitError?error.stdout:'',error instanceof GitError?error.stderr:'');
+          }
+        }
+        return;
+      }
       case 'tag.push': {
         const destination=token(action.remote,'remote'),configured=(await this.text(repo,['remote'])).split('\n').filter(Boolean);
         if(!configured.includes(destination))throw new GitError(localizeMessage("service.unknownRemote", { destination: (destination) }),'INVALID_ARGUMENT');

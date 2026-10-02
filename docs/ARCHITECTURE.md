@@ -74,7 +74,7 @@ History、Details（含 Stash 和比较）、Diff 预览按面板与类别替换
 
 会话 Schema 与推导类型统一在 `src/protocol/session.ts`。持久化只订阅相关字段，各标签立即写入自己的 VS Code Webview state；前端 saveSession 请求经 200 ms 防抖、单个在途请求和最新待写状态协调；Commit 浮窗关闭时通过 flushNow 立即发送待保存状态，在途写入结束后继续保存最新草稿，收到成功响应后才更新去重基线，失败最多重试两次并提示。扩展宿主串行保存活动标签状态到 `workspaceState`，作为新标签和兼容恢复的基线；非活动标签只更新自身状态，重新激活后再提交基线；这次由宿主主动发起的同步若失败，仅记录输出日志，不自动重试。每个标签按自身最后成功保存的状态计算草稿和视图改动，在串行写入时合并最新宿主基线；旧标签的未改动字段不覆盖其他标签的新状态，空白标签保留已有仓库、草稿与视图。多个标签具有独立的活动仓库与前端选择状态；宿主按请求来源定向响应和切换仓库，仓库变化与 Git 活动事件广播到全部标签。补偿刷新覆盖所有可见标签当前仓库，并按仓库去重。Demo 模式使用浏览器 localStorage。持久化的数据只包含界面状态，不包含凭据、Git 输出或文件内容。
 
-version 2 会话通过可选 `appearance` 与 `diffNavigationScope` 字段兼容新增设置，后者缺省为整个 Commit，宿主协议验证后保留；旧会话缺少自定义色值时使用当前预设生成完整浅色/深色色板。旧 Editor Focus 迁移为 Workbench，旧默认 26 px 行高迁移为 24 px，其余尺寸和草稿保留。设置浮窗使用内存基线实现实时预览，订阅持久化时仍写入基线，应用后才保存新值；取消只恢复设置，不覆盖刷新后的仓库数据。虚拟列表尺寸由实际字号与密度共同决定。高级 Git 操作策略使用独立的 VS Code 配置 `alwaygit.allowDetachedHead` 与 `alwaygit.pushFollowTags`，不写入界面会话；`operationSettings` / `saveOperationSettings` RPC 严格校验完整设置，应用保存成功后才生效，配置变化广播到所有工作台。Push 弹窗从已应用设置读取初始值，只有用户明确选择“记住为默认”并提交时才回写；普通 saveSession 无法覆盖这些策略。
+version 2 会话通过可选 `appearance` 与 `diffNavigationScope` 字段兼容新增设置，后者缺省为整个 Commit，宿主协议验证后保留；旧会话缺少自定义色值时使用当前预设生成完整浅色/深色色板。旧 Editor Focus 迁移为 Workbench，旧默认 26 px 行高迁移为 24 px，其余尺寸和草稿保留。设置浮窗使用内存基线实现实时预览，订阅持久化时仍写入基线，应用后才保存新值；取消只恢复设置，不覆盖刷新后的仓库数据。虚拟列表尺寸由实际字号与密度共同决定。高级 Git 操作策略使用独立的 VS Code 配置 `alwaygit.allowDetachedHead`、`alwaygit.pushFollowTags` 与 `alwaygit.pushTagAfterCreate`，不写入界面会话；`operationSettings` / `saveOperationSettings` RPC 严格校验完整设置，应用保存成功后才生效，配置变化广播到所有工作台。Push 与 Create Tag 弹窗从已应用设置读取初始值，只有用户明确选择“记住为默认”并提交时才回写；普通 saveSession 无法覆盖这些策略。
 
 Git 操作反馈以仓库 ID 保存在前端内存中，操作序号用于避免旧结果替换新操作；仓库切换只展示对应仓库的反馈。错误和结果不写入会话。文件批量选择属于当前文件区域的临时状态，与 Diff 预览目标分离；区域切换或文件消失时重新核对选择。
 
@@ -124,7 +124,7 @@ Fetch、Pull 和 Push 沿用系统 Git Credential Helper、SSH Agent 和配置�
 
 Snapshot 为当前分支解析 Push 目标，依次考虑 `branch.<name>.pushRemote`、`remote.pushDefault`、分支 remote、upstream 和唯一远端，并把本地分支、远端分支及 upstream 状态作为结构化数据交给 Webview。Push 对话框提交明确的本地与远端 refspec；远端分支名可以与本地分支名不同。首次建立跟踪时才请求 `--set-upstream`，已有 upstream 的普通 Push 不隐式改变跟踪关系。分支 Push 始终显式选择 `--follow-tags` 或 `--no-follow-tags`，不继承 Git 配置的隐式行为；开启时只附带该分支可达且远端缺少的注解 Tag。
 
-Tag Push 使用独立的 `tag.push` 动作和完整 `refs/tags/<name>:refs/tags/<name>` refspec，可从单个或多选 Tag 菜单进入。对话框绑定打开时捕获的原始 Tag 对象 OID，宿主在任何网络写入前复核全部选择；注解 Tag 不使用 peeled Commit OID。每个 Tag 单独推送并汇总部分失败，显式 `--no-follow-tags` 防止 Git 配置附带未选择的 Tag；远端同名 Tag 不同且未明确提供替换操作时由 Git 拒绝覆盖。
+Tag Push 使用独立的 `tag.push` 动作和完整 `refs/tags/<name>:refs/tags/<name>` refspec，可从单个或多选 Tag 菜单进入。对话框绑定打开时捕获的原始 Tag 对象 OID，宿主在任何网络写入前复核全部选择；注解 Tag 不使用 peeled Commit OID。每个 Tag 单独推送并汇总部分失败，显式 `--no-follow-tags` 防止 Git 配置附带未选择的 Tag；远端同名 Tag 不同且未明确提供替换操作时由 Git 拒绝覆盖。Create Tag 可按设置默认值或本次勾选，在本地创建成功后只把新 Tag 推送到所选 Remote；远端推送失败以部分失败报告，本地 Tag 保留，供显式 Tag Push 重试。
 
 本地 Tag 删除绑定打开对话框时的原始引用对象 OID（注解 Tag 不使用 peeled Commit OID）。宿主预检后通过 `update-ref --no-deref -d <ref> <expectedOid>` 原子比较删除，陈旧或缺失身份拒绝操作；符号引用不递归删除目标。
 

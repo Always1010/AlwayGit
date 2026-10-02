@@ -100,5 +100,11 @@
     "zh-CN": "分支 Push 时默认同时推送该分支可达且远端缺少的注解标签。可在 Push 对话框中临时覆盖并记住选择。",
     "review": "translated",
     "context": "package.json / contributes.configuration.properties.alwaygit.pushFollowTags.description"
+  },
+  "manifest.contributes.configuration.properties.alwaygit.pushTagAfterCreate.description": {
+    "en": "Push a newly created Tag to the selected remote by default. The Create Tag dialog can override and remember this choice.",
+    "zh-CN": "默认把新建标签推送到所选远端；创建标签对话框可以单次覆盖并记住该选择。",
+    "review": "translated",
+    "context": "package.json / contributes.configuration.properties.alwaygit.pushTagAfterCreate.description"
   }
 }

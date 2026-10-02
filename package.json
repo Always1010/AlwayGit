@@ -120,6 +120,12 @@
           "default": false,
           "scope": "window",
           "description": "%manifest.contributes.configuration.properties.alwaygit.pushFollowTags.description%"
+        },
+        "alwaygit.pushTagAfterCreate": {
+          "type": "boolean",
+          "default": false,
+          "scope": "window",
+          "description": "%manifest.contributes.configuration.properties.alwaygit.pushTagAfterCreate.description%"
         }
       }
     }

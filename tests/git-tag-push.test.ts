@@ -7,6 +7,29 @@ const fixtures = gitFixtures('alwaygit-tag-push-');
 afterEach(fixtures.cleanup);
 
 describe('Tag Push', () => {
+  it('creates a Tag and pushes only that new Tag when requested', async () => {
+    const { root, service, repo } = await fixtures.setup();
+    const head = await commitFile(root, 'base.txt', 'base');
+    const bare = path.join(root, 'remote.git');
+    await mkdir(bare); await git(bare, 'init', '--bare'); await git(root, 'remote', 'add', 'origin', bare);
+    await git(root, 'tag', 'unrelated');
+    await service.execute(repo, { type: 'tag.create', name: 'v1', target: head, message: 'release', pushRemote: 'origin' });
+    expect(await git(bare, 'rev-parse', 'refs/tags/v1')).toBe(await git(root, 'rev-parse', 'refs/tags/v1'));
+    await expect(git(bare, 'show-ref', '--verify', 'refs/tags/unrelated')).rejects.toThrow();
+  });
+
+  it('retains a newly created local Tag when its remote push is rejected', async () => {
+    const { root, service, repo } = await fixtures.setup();
+    const original = await commitFile(root, 'base.txt', 'base');
+    const bare = path.join(root, 'remote.git');
+    await mkdir(bare); await git(bare, 'init', '--bare'); await git(root, 'remote', 'add', 'origin', bare);
+    await git(root, 'tag', 'remote-v1', original); await git(root, 'push', 'origin', 'refs/tags/remote-v1:refs/tags/v1');
+    const replacement = await commitFile(root, 'next.txt', 'next');
+    await expect(service.execute(repo, { type: 'tag.create', name: 'v1', target: replacement, pushRemote: 'origin' })).rejects.toMatchObject({ code: 'PARTIAL_FAILURE' });
+    expect(await git(root, 'rev-parse', 'refs/tags/v1')).toBe(replacement);
+    expect(await git(bare, 'rev-parse', 'refs/tags/v1')).toBe(original);
+  });
+
   it('pushes only explicitly selected lightweight and annotated Tags', async () => {
     const { root, service, repo } = await fixtures.setup();
     await commitFile(root, 'base.txt', 'base');

@@ -39,7 +39,7 @@ export type GitAction =
   | { type: 'checkout.stash'; target: string; detached?: boolean; includeUntracked?: boolean }
   | { type: 'branch.delete'; names: string[]; force?: boolean; expectedOids?: Record<string,string> }
   | { type: 'remote.delete'; remote:string; branches:string[]; expectedOids?:Record<string,string>; expectedDestination?: string }
-  | { type: 'tag.create'; name: string; target?: string; message?: string }
+  | { type: 'tag.create'; name: string; target?: string; message?: string; pushRemote?: string }
   | { type: 'tag.push'; remote: string; names: string[]; expectedOids: Record<string, string> }
   | { type: 'tag.delete'; name: string; expectedOid: string }
   | { type: 'stash.create'; message?: string; includeUntracked?: boolean; paths?: string[] }
@@ -63,7 +63,7 @@ export type DiffPreview =
 export interface CheckoutBlocker { reason: 'local-changes' | 'conflicts' | 'operation-active' | 'worktree-occupied' | 'checkout-failed'; paths: string[]; target: string; worktreePath?: string; stashOid?: string; stashCreated?: boolean; branchCreated?: boolean; trackBranches?: { source: string; name: string; expectedOid?: string }[] }
 export interface StashApplyBlocker { kind: 'stash-apply'; reason: 'untracked-path-exists' | 'restore-conflict' | 'restore-blocked' | 'state-changed'; paths: string[]; conflictPaths?: string[]; selector: string; stashOid: string; stashRetained: true; workingTreeUnchanged: true; output?: string }
 export type ActionBlocker = CheckoutBlocker | StashApplyBlocker;
-export interface OperationSettings { allowDetachedHead: boolean; pushFollowTags: boolean; scope: 'workspace' | 'user' }
+export interface OperationSettings { allowDetachedHead: boolean; pushFollowTags: boolean; pushTagAfterCreate: boolean; scope: 'workspace' | 'user' }
 export interface RpcRequest { id: string; method: 'repositories' | 'repositoryCollections' | 'repositoryOrder' | 'reorderRepository' | 'repositoryStatuses' | 'pickRepositoryDirectory' | 'discoverRepositories' | 'cancelRepositoryDiscovery' | 'addRepository' | 'removeRepositories' | 'createRepositoryCollection' | 'renameRepositoryCollection' | 'deleteRepositoryCollection' | 'moveRepositories' | 'snapshot' | 'operationReview' | 'history' | 'details' | 'stashDetails' | 'compare' | 'cherryPickCheck' | 'cancelQuery' | 'action' | 'diff' | 'diffPreview' | 'copyText' | 'openWorkbench' | 'openRepository' | 'openProject' | 'openFile' | 'openWorktree' | 'pickWorktree' | 'showLog' | 'saveSession' | 'operationSettings' | 'saveOperationSettings'; repoId?: string; payload?: unknown }
 /** Missing paths means the source cannot limit which working files changed. */
 export interface RepositoryChanges { paths?: string[]; index?: boolean }

@@ -772,5 +772,17 @@
     "zh-CN": "开启后，分支 Push 会附带该分支可达且远端缺少的注解标签；轻量标签和无关标签仍需使用“推送标签”。",
     "review": "translated",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.pushNewTagsAfterCreationByDefault": {
+    "en": "Push newly created Tags by default",
+    "zh-CN": "默认推送新建标签",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.tagCreationOffersTheSelectedRemoteAndKeepsThe": {
+    "en": "Create Tag selects a remote and pushes only the new Tag. If the push fails, the local Tag is retained.",
+    "zh-CN": "创建标签时选择远端，并且只推送新标签；如果推送失败，本地标签会保留。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
   }
 }

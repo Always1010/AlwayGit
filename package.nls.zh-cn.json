@@ -15,5 +15,6 @@
   "manifest.contributes.configuration.properties.alwaygit.historyPageSize.description": "每页历史记录加载的提交数。",
   "manifest.contributes.configuration.properties.alwaygit.refreshInterval.description": "可见 Workbench 的刷新间隔（秒）。",
   "manifest.contributes.configuration.properties.alwaygit.allowDetachedHead.description": "允许直接切换到 Detached HEAD。默认关闭；查看历史版本时请创建并切换到本地分支。",
-  "manifest.contributes.configuration.properties.alwaygit.pushFollowTags.description": "分支 Push 时默认同时推送该分支可达且远端缺少的注解标签。可在 Push 对话框中临时覆盖并记住选择。"
+  "manifest.contributes.configuration.properties.alwaygit.pushFollowTags.description": "分支 Push 时默认同时推送该分支可达且远端缺少的注解标签。可在 Push 对话框中临时覆盖并记住选择。",
+  "manifest.contributes.configuration.properties.alwaygit.pushTagAfterCreate.description": "默认把新建标签推送到所选远端；创建标签对话框可以单次覆盖并记住该选择。"
 }
