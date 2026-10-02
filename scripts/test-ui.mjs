@@ -156,7 +156,16 @@ try {
   await localHeading.locator('..').getByRole('button', { name: 'Create Branch…', exact: true }).click();
   const createBranchDialog = page.getByRole('dialog', { name: 'Create Branch', exact: true });
   await createBranchDialog.waitFor();
-  await createBranchDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await createBranchDialog.getByText('Current branch main · current version', { exact: true }).waitFor();
+  const branchName=createBranchDialog.getByLabel('Branch Name',{exact:true});
+  await branchName.fill('bad name');
+  await createBranchDialog.getByText('Branch names cannot contain spaces. Try feature/ux-flow.',{exact:true}).waitFor();
+  assert.equal(await branchName.inputValue(),'bad name','Invalid branch input must be preserved');
+  assert.equal(await branchName.evaluate(element=>element===document.activeElement),true,'Invalid branch input keeps focus');
+  await branchName.fill('trial/ux-flow');
+  await createBranchDialog.getByRole('button',{name:'Create Only',exact:true}).click();
+  await page.getByTestId('action-feedback').getByText('Created trial/ux-flow; still on main',{exact:true}).waitFor();
+  assert.match(await page.getByTestId('current-branch').innerText(),/main/);
   await localTree.getByRole('button', { name: 'Expand feature', exact: true }).click();
   await sidebar.getByRole('button', { name: 'Expand login', exact: true }).click();
   await sidebar.getByRole('button', { name: 'Branch feature/login/api', exact: true }).waitFor();

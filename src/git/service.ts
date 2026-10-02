@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { access, lstat, realpath, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { ActionBlocker, Change, CheckoutBlocker, Commit, CommitComparison, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationReview, OperationState, Repository, RepositoryStatus, Snapshot, Stash, StashApplyBlocker, StashDetails, Worktree } from '../protocol/types';
+import { branchNameProblem, branchNameProblemMessage } from '../protocol/ref-name';
 import { inferDefaultBranch } from './default-branch';
 
 export interface GitServiceOptions {
@@ -113,7 +114,7 @@ export class GitService implements GitServiceContract {
   }
   private async verify(repo: Repository) { const current = await this.discover(repo.root); if (normalized(current.commonDir) !== normalized(repo.commonDir) || current.id !== repo.id) throw new GitError('Repository changed; reopen it before continuing', 'REPOSITORY_CHANGED'); return current; }
   private async oid(repo: Repository, revision: string): Promise<string> { token(revision, 'revision'); return this.text(repo, ['rev-parse', '--verify', '--end-of-options', `${revision}^{commit}`]); }
-  private async refName(repo: Repository, name: string): Promise<string> { token(name, 'reference name'); await this.run(repo, ['check-ref-format', `refs/heads/${name}`]); return name; }
+  private async refName(repo: Repository, name: string): Promise<string> { const problem=branchNameProblem(name);if(problem)throw new GitError(branchNameProblemMessage(problem),'INVALID_BRANCH_NAME');await this.run(repo, ['check-ref-format', `refs/heads/${name}`]); return name; }
   private async status(repo: Repository) { return parseStatus((await this.run(repo, ['status', '--porcelain=v2', '-z', '--branch', '--untracked-files=all'])).stdout); }
   private async unpushed(repo: Repository): Promise<number> {
     const result = await this.run(repo, ['rev-list', '--count', 'HEAD', '--not', '--remotes'], true);

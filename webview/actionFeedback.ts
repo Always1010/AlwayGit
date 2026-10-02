@@ -7,7 +7,7 @@ export interface ActionFeedback {
   status: 'running' | 'success' | 'error';
   target?: string;
   error?: string;
-  result?: { kind: 'commit'; oid: string; files?: number; remaining: number; amended: boolean } | {kind:'stash';files:number;untracked:number;clean:boolean};
+  result?: { kind: 'commit'; oid: string; files?: number; remaining: number; amended: boolean } | {kind:'stash';files:number;untracked:number;clean:boolean} | {kind:'branch';name:string;checkedOut:boolean;currentBranch:string};
 }
 
 export function actionName(action: GitAction): string {

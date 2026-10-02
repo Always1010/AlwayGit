@@ -154,6 +154,7 @@ Continue 和活动操作期间的普通 Commit 均先检查实际 Index 内容�
 Merge 等操作暂停后，原发起对话框改为处理状态，主入口是“查看并处理冲突”，关闭按钮写“关闭此窗口”，并直接提供“中止本次操作”。关闭对话框只关闭窗口，Git 仍暂停；操作条继续保留 Abort。Abort 使用工作台说明与原生确认，有可确认的操作起点时显示 Commit，说明 Git 将尝试恢复操作开始时的状态、冲突处理修改可能丢弃，以及操作前已有修改可能影响完整恢复。
 
 - 当前分支禁用 `Checkout` 与 `Delete Branch`。
+- Create Branch 在名称字段实时解释 Git 分支名限制并保留错误输入和焦点；起点优先显示“当前分支 `<name>` · 当前版本”或对应分支、Tag、Commit，内部引用只在 Git 详情中显示。对话框明确提供“仅创建”和默认主操作“创建并切换”；完成后分别说明当前仍在原分支或已经切换到新分支。
 - 被其他 Worktree 使用的分支显示占用路径，并允许打开该 Worktree。
 - 主 Worktree 和当前 Worktree不能移除；Locked Worktree 显示锁定原因。
 - Remote Branch 的 `Checkout as Local Branch…` 列出远程来源与本地名称，默认剥除 Remote 前缀并保持完整目录（`origin/feature/login/api` → `feature/login/api`），自动选择已有跟踪分支，允许改名。多个已有本地跟踪分支时提示用户选择名称。单项默认 Checkout，可取消切换；Remote 父级、Remotes 分组、分支目录和远程多选通过 `Create Local Tracking Branches…` 创建或复用全部后代，保持当前分支。对话框逐项显示将创建、已跟踪、同名 upstream 冲突、路径冲突与成功结果；名称冲突阻止执行，不覆盖已有分支或改写 upstream。使用最近 Fetch 的引用，不自动 Fetch/Pull；后端重新校验来源与 OID。`origin/HEAD` 等符号引用不可检出为本地分支，批量范围自动排除。

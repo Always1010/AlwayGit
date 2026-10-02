@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-026：创建分支没有解释名称错误和切换结果
+
+- 日期：2026-10-02
+- 状态：已解决
+- 现象：输入含空格的分支名后只显示 `Git exited with status 1`；输入保留但没有指出如何修正。创建对话框默认不 Checkout，成功后也没有说明当前仍在原分支，容易让后续修改落错位置。起点直接显示 `refs/heads/main` 或完整 Commit ID。
+- 原因：名称只在 Git `check-ref-format` 阶段校验，而该命令失败时可能没有错误输出；创建与 Checkout 由默认关闭的复选框控制，通用操作反馈不携带创建后的当前分支；起点字段直接暴露内部引用。
+- 解决方案：前后端共享完整的分支名规则并在输入框旁实时解释错误，保留输入、错误语义和字段焦点，后端继续执行最终校验。对话框用“仅创建”和默认主操作“创建并切换”明确区分意图；起点显示当前分支、远程分支、Tag 或短 Commit 的用户语义，内部引用收进 Git 详情。成功反馈明确显示已切换到新分支或当前仍在原分支。
+- 验证方式：名称规则单测覆盖常用合法名称、空格、开头连字符、连续斜杠、隐藏段、`.lock` 和 `@{`；真实 Git 回归确认后端返回可操作错误；无头主界面验证实时错误、输入与焦点保留、友好起点、“仅创建”及仍在原分支的结果反馈。
+- 相关文件：`src/protocol/ref-name.ts`、`src/git/service.ts`、`webview/ActionDialog.tsx`、`webview/actionFeedback.ts`、`webview/ActionFeedbackBar.tsx`、`webview/store.ts`、`webview/styles.css`、`tests/ref-name.test.ts`、`tests/git-service.test.ts`、`scripts/test-ui.mjs`、`docs/WORKBENCH_SPEC.md`、`docs/VALIDATION.md`。
+
 ## BUG-025：重复恢复未跟踪文件时缺少安全下一步
 
 - 日期：2026-10-02

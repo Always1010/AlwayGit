@@ -211,7 +211,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         }
       }
       const snapshot = epoch === repositoryEpoch ? get().snapshot : undefined;
-      finish('success', undefined, action.type === 'commit' && snapshot?.head ? { kind: 'commit', oid: snapshot.head, files: committedFiles, remaining: snapshot.changes.length, amended: !!action.amend } : stashed&&snapshot&&snapshot.stashes[0]?.oid!==stashed.previousOid?{kind:'stash',files:stashed.files,untracked:stashed.untracked,clean:snapshot.changes.length===0}:undefined);
+      finish('success', undefined, action.type === 'commit' && snapshot?.head ? { kind: 'commit', oid: snapshot.head, files: committedFiles, remaining: snapshot.changes.length, amended: !!action.amend } : stashed&&snapshot&&snapshot.stashes[0]?.oid!==stashed.previousOid?{kind:'stash',files:stashed.files,untracked:stashed.untracked,clean:snapshot.changes.length===0}:action.type==='branch.create'&&snapshot?{kind:'branch',name:action.name,checkedOut:!!action.checkout,currentBranch:snapshot.branch||'Detached HEAD'}:undefined);
       return true;
     } catch (error) {
       if (get().repoId === repoId) {
