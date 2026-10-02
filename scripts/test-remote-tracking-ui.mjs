@@ -5,6 +5,7 @@ export async function verifyRemoteTracking(browser, url) {
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
   await page.goto(url);await page.evaluate(()=>localStorage.clear());await page.reload();
   const sidebar=page.getByTestId('sidebar'),menu=page.getByTestId('context-menu');
+  await sidebar.getByRole('option',{name:/^AlwayGit/}).dblclick();
   await sidebar.getByRole('button',{name:'Branch origin/develop',exact:true}).waitFor();
   const remoteGroup=sidebar.locator('.remote-group').filter({has:page.getByRole('button',{name:'origin',exact:true})});
   await remoteGroup.getByRole('button',{name:'Expand feature',exact:true}).locator('..').click({button:'right'});

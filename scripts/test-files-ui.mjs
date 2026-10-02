@@ -25,6 +25,7 @@ export async function verifyFiles(browser, url) {
       } });
     });
     await page.goto(url);
+    await page.getByRole('option', { name: 'File fixture' }).dblclick();
     const details = page.getByTestId('details'), panel = details.locator('.file-selection-panel');
     await panel.getByText('./src/features/auth', { exact: true }).waitFor();
     await panel.getByText('./src/services/auth', { exact: true }).waitFor();
