@@ -14,6 +14,7 @@ import { verifyRemoteTracking } from './test-remote-tracking-ui.mjs';
 import { verifyStash } from './test-stash-ui.mjs';
 import { verifyBranchCreation } from './test-branch-ui.mjs';
 import { verifyHelp } from './test-help-ui.mjs';
+import { verifyShortcuts } from './test-shortcuts-ui.mjs';
 
 // Full and targeted runs share one registry, so a new suite cannot be omitted from full runs.
 const suites = new Map([
@@ -29,6 +30,7 @@ const suites = new Map([
   ['branch', verifyBranchCreation],
   ['appearance', verifyAppearance],
   ['help', verifyHelp],
+  ['shortcuts', verifyShortcuts],
 ]);
 const args = process.argv.slice(2);
 if (args.length > 1) throw new Error('Choose one UI suite flag per run.');

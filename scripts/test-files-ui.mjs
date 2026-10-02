@@ -83,7 +83,8 @@ export async function verifyFiles(browser, url) {
     const discardAll = unstaged.getByRole('button', { name: 'Discard All…', exact: true });
     const unstageAll = staged.getByRole('button', { name: 'Unstage All', exact: true });
     assert.equal(await stageAll.innerText(), '', 'Stage uses an icon with its action name exposed accessibly');
-    assert.equal(await stageAll.getAttribute('title'), 'Stage All');
+    assert.equal(await stageAll.getAttribute('title'), 'Stage All · A');
+    assert.equal(await unstageAll.getAttribute('title'), 'Unstage All · U');
     assert.equal(await stageAll.locator('.stage-inbox-icon').count(), 1);
     assert.equal(await unstageAll.locator('.codicon-discard').count(), 1, 'Unstage keeps the slanted rollback arrow');
     assert.equal(await discardAll.locator('.codicon-trash').count(), 1);

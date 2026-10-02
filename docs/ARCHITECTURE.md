@@ -20,6 +20,7 @@ AlwayGit 是 Workspace 类型的 VS Code 扩展。每个 React WebviewPanel 提�
 | `src/protocol` | `types.ts`、`validation.ts`、`session.ts`、`repositories.ts` | 数据模型、RPC 请求响应、运行时校验和仓库展示分组 |
 | `webview` | `App.tsx`、`store.ts`、`rpc.ts`、`demo.ts` | React 组合、Zustand 状态、生产宿主桥接及独立的 Demo 适配器 |
 | `webview` | `Sidebar.tsx`、`History.tsx`、`Details.tsx`、`DiffPreview.tsx` | 四区呈现、对象选择和只读比较 |
+| `webview` | `shortcutKeys.ts`、`shortcuts.ts` | 统一键位、捕获分发、编辑/弹窗/输入法保护及组件动作注册；操作与按钮共用回调和可用条件 |
 | `webview` | `menus.ts`、`SettingsDialog.tsx`、`appearance.ts`、`i18n.ts` | 动作定义、界面设置、外观和语言 |
 | `webview` | `HelpDialog.tsx`、`help-content.ts`、`help-manuals.ts` | 离线帮助、双语手册的章节提取与打包图片映射 |
 | `webview` | `refresh.ts`、`refIndex.ts`、`session-persistence.ts`、`fileSelection.ts`、`diff.ts` | 刷新失效范围、选择规则和修改块导航 |

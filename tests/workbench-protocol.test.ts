@@ -38,6 +38,8 @@ describe('Workbench protocol validation', () => {
     expect(() => sessionSchema.parse({ ...state, language: 'invalid' })).toThrow();
     for(const diffNavigationScope of ['commit','file'])expect(sessionSchema.parse({...state,diffNavigationScope})).toMatchObject({diffNavigationScope,drafts:state.drafts,views:state.views});
     expect(sessionSchema.safeParse({...state,diffNavigationScope:'invalid'}).success).toBe(false);
+    for(const singleKeyShortcuts of [true,false])expect(sessionSchema.parse({...state,singleKeyShortcuts})).toMatchObject({singleKeyShortcuts,drafts:state.drafts,views:state.views});
+    expect(sessionSchema.safeParse({...state,singleKeyShortcuts:'false'}).success).toBe(false);
   });
 
   it('accepts captured Stash IDs and requires validated Checkout targets', () => {
