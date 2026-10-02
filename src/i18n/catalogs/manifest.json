@@ -94,5 +94,11 @@
     "zh-CN": "允许直接切换到 Detached HEAD。默认关闭；查看历史版本时请创建并切换到本地分支。",
     "review": "translated",
     "context": "package.json / contributes.configuration.properties.alwaygit.allowDetachedHead.description"
+  },
+  "manifest.contributes.configuration.properties.alwaygit.pushFollowTags.description": {
+    "en": "Default to pushing missing annotated Tags reachable from the selected branch during Push. The Push dialog can override and remember this choice.",
+    "zh-CN": "分支 Push 时默认同时推送该分支可达且远端缺少的注解标签。可在 Push 对话框中临时覆盖并记住选择。",
+    "review": "translated",
+    "context": "package.json / contributes.configuration.properties.alwaygit.pushFollowTags.description"
   }
 }

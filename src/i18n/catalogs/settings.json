@@ -760,5 +760,17 @@
     "zh-CN": "./webview",
     "review": "keep",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.pushRelatedAnnotatedTagsByDefault": {
+    "en": "Push related annotated Tags by default",
+    "zh-CN": "默认推送相关的注解标签",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.branchPushUsesFollowTagsWhenEnabled": {
+    "en": "When enabled, branch Push includes missing annotated Tags reachable from that branch. Lightweight and unrelated Tags still require Push Tag.",
+    "zh-CN": "开启后，分支 Push 会附带该分支可达且远端缺少的注解标签；轻量标签和无关标签仍需使用“推送标签”。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
   }
 }

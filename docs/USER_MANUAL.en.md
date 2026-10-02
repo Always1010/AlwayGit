@@ -454,7 +454,7 @@ Fetch updates your local knowledge of the remote state. Pull integrates remote c
 
 **Result:** The target remote branch has received the intended commits, or a clear reason for failure is shown.
 
-**Caution:** The Push badge shows the number of unpushed commits, not the number of errors. The toolbar Push action is unavailable in Detached HEAD.
+**Caution:** The Push badge shows the number of unpushed commits, not the number of errors. The toolbar Push action is unavailable in Detached HEAD. A normal Push sends only the branch by default and explicitly uses `--no-follow-tags`, so it does not inherit the machine's `push.followTags` configuration. To include annotated Tags that point into the pushed history, enable “Push related annotated Tags” under Advanced options. You can use that choice once or select “Remember as default” to persist it in Settings. Lightweight Tags and unrelated Tags still require the explicit Tag Push action.
 
 **Troubleshooting:** If the push is rejected, run Fetch first and check for diverging histories, authentication issues, and permission problems. Do not treat Force-with-lease as a routine retry.
 

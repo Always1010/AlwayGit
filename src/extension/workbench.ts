@@ -47,7 +47,7 @@ export class Workbench implements vscode.Disposable {
   get receivedWebviewRequests(): number { return this.requestCount; }
   private readonly interval: ReturnType<typeof setInterval>;
   private readonly sessions = new SessionWriter(session => this.context.workspaceState.update('alwaygit.session', session));
-  private operationSettings(): OperationSettings { return { allowDetachedHead: vscode.workspace.getConfiguration('alwaygit').get<boolean>('allowDetachedHead', false) === true, scope: vscode.workspace.workspaceFile || vscode.workspace.workspaceFolders?.length ? 'workspace' : 'user' }; }
+  private operationSettings(): OperationSettings { const configuration=vscode.workspace.getConfiguration('alwaygit');return { allowDetachedHead: configuration.get<boolean>('allowDetachedHead', false) === true, pushFollowTags: configuration.get<boolean>('pushFollowTags', false) === true, scope: vscode.workspace.workspaceFile || vscode.workspace.workspaceFolders?.length ? 'workspace' : 'user' }; }
   private readonly requestLanguage = new AsyncLocalStorage<Language>();
   private panelLanguage(source?: WorkbenchPanel): Language { const language = source?.session?.language ?? source?.savedSession?.language ?? this.context.workspaceState.get<{ language?: Language }>('alwaygit.session', {}).language ?? preferredLanguage(); return language === 'zh-CN' ? 'zh-CN' : 'en'; }
   private language(): Language { return this.requestLanguage.getStore() ?? this.panelLanguage(); }
@@ -56,7 +56,7 @@ export class Workbench implements vscode.Disposable {
   private isBusy(commonDir: string): boolean { const key=this.repositoryKey(commonDir);return this.busy.has(key)||this.externalBusy.has(key); }
   constructor(private readonly context: vscode.ExtensionContext, private readonly git: GitServiceContract, private readonly repositories: RepositoryManager, private readonly documents: GitDocuments, private readonly output: vscode.OutputChannel, private readonly projects: ProjectWindows) {
     this.disposables.push(repositories.onDidChange(event => { this.snapshots.invalidate(event.repoId); this.post({ type: 'changed', ...event }); }), repositories.onDidChangeRepositories(() => this.post({ type: 'repositoriesChanged' })));
-    this.disposables.push(vscode.workspace.onDidChangeConfiguration(event => { if (event.affectsConfiguration('alwaygit.allowDetachedHead')) this.post({ type: 'operationSettingsChanged', settings: this.operationSettings() }); }));
+    this.disposables.push(vscode.workspace.onDidChangeConfiguration(event => { if (['allowDetachedHead','pushFollowTags'].some(name=>event.affectsConfiguration(`alwaygit.${name}`))) this.post({ type: 'operationSettingsChanged', settings: this.operationSettings() }); }));
     const seconds = vscode.workspace.getConfiguration('alwaygit').get<number>('refreshInterval', 15);
     this.interval = setInterval(() => void this.poll(), seconds * 1000);
   }
@@ -148,7 +148,9 @@ export class Workbench implements vscode.Disposable {
     if (request.method === 'operationSettings') return this.operationSettings();
     if (request.method === 'saveOperationSettings') {
       const settings = operationSettingsSchema.parse(request.payload);
-      await vscode.workspace.getConfiguration('alwaygit').update('allowDetachedHead', settings.allowDetachedHead, this.operationSettings().scope === 'workspace' ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global);
+      const target=this.operationSettings().scope === 'workspace' ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global,configuration=vscode.workspace.getConfiguration('alwaygit');
+      await configuration.update('allowDetachedHead', settings.allowDetachedHead, target);
+      await configuration.update('pushFollowTags', settings.pushFollowTags, target);
       const saved = this.operationSettings(); this.post({ type: 'operationSettingsChanged', settings: saved }); return saved;
     }
     if (request.method === 'showLog') { this.output.show(true); return null; }

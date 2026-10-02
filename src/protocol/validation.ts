@@ -9,7 +9,7 @@ export const actionSchema = z.union([
   z.object({ type: z.literal('commit'), message: z.string().min(1).max(100000), amend: z.boolean().optional(), reviewToken: text.optional() }),
   z.object({ type: z.literal('fetch'), remote: text.optional() }),
   z.object({ type: z.literal('pull'), strategy: z.enum(['ff-only', 'merge', 'rebase']), remote: text.optional() }),
-  z.object({ type: z.literal('push'), remote: text.optional(), branch: text.optional(), remoteBranch: text.optional(), setUpstream: z.boolean().optional(), forceWithLease: z.boolean().optional(), expectedOid: z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})?$/).optional(), expectedDestination: z.string().regex(/^[a-f0-9]{64}$/).optional() }),
+  z.object({ type: z.literal('push'), remote: text.optional(), branch: text.optional(), remoteBranch: text.optional(), setUpstream: z.boolean().optional(), followTags: z.boolean().optional(), forceWithLease: z.boolean().optional(), expectedOid: z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})?$/).optional(), expectedDestination: z.string().regex(/^[a-f0-9]{64}$/).optional() }),
   z.object({ type: z.literal('remote.add'), name: text, url: text }),
   z.object({ type: z.literal('branch.create'), name: text, start: text.optional(), checkout: z.boolean().optional() }),
   z.object({ type: z.literal('branch.track'), branches: z.array(z.object({ source: text, name: text, expectedOid: text.optional() })).min(1).max(1000), checkout: z.boolean().optional(), stashFirst: z.boolean().optional(), includeUntracked: z.boolean().optional() })
@@ -36,7 +36,7 @@ export const actionSchema = z.union([
 ]);
 export const requestSchema = z.object({ id: z.string().min(1).max(128), method: z.enum(['repositories', 'repositoryCollections', 'repositoryOrder', 'reorderRepository', 'repositoryStatuses', 'pickRepositoryDirectory', 'discoverRepositories', 'cancelRepositoryDiscovery', 'addRepository', 'removeRepositories', 'createRepositoryCollection', 'renameRepositoryCollection', 'deleteRepositoryCollection', 'moveRepositories', 'snapshot', 'operationReview', 'history', 'details', 'stashDetails', 'compare', 'cherryPickCheck', 'cancelQuery', 'action', 'diff', 'diffPreview', 'copyText', 'openWorkbench', 'openRepository', 'openProject', 'openFile', 'openWorktree', 'pickWorktree', 'showLog', 'saveSession', 'operationSettings', 'saveOperationSettings']), repoId: text.optional(), payload: z.unknown().optional() });
 export const cancelQuerySchema = z.object({ requestId: z.string().min(1).max(128) }).strict();
-export const operationSettingsSchema = z.object({ allowDetachedHead: z.boolean() }).strict();
+export const operationSettingsSchema = z.object({ allowDetachedHead: z.boolean(), pushFollowTags: z.boolean() }).strict();
 export { sessionSchema } from './session';
 export const copySchema = z.object({ text: z.string().max(1000000) });
 export const repositoryKeysSchema = z.object({ keys: z.array(text).min(1).max(10000) });

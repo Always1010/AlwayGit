@@ -14,5 +14,6 @@
   "manifest.contributes.configuration.properties.alwaygit.gitPath.description": "Git executable path. Empty uses the built-in Git extension path or PATH.",
   "manifest.contributes.configuration.properties.alwaygit.historyPageSize.description": "Commits loaded per history page.",
   "manifest.contributes.configuration.properties.alwaygit.refreshInterval.description": "Visible workbench refresh interval in seconds.",
-  "manifest.contributes.configuration.properties.alwaygit.allowDetachedHead.description": "Allow direct Detached HEAD Checkout. Disabled by default; create and switch to a local branch when inspecting historical versions."
+  "manifest.contributes.configuration.properties.alwaygit.allowDetachedHead.description": "Allow direct Detached HEAD Checkout. Disabled by default; create and switch to a local branch when inspecting historical versions.",
+  "manifest.contributes.configuration.properties.alwaygit.pushFollowTags.description": "Default to pushing missing annotated Tags reachable from the selected branch during Push. The Push dialog can override and remember this choice."
 }

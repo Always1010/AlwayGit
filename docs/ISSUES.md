@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-060：分支 Push 可能被 Git 配置隐式附带 Tag
+
+- 日期：2026-10-03
+- 状态：已解决
+- 现象：界面只显示明确的本地分支到远端分支映射，但当仓库或用户启用 `push.followTags=true` 时，普通 Push 仍可能同时发布相关注解 Tag。
+- 原因：分支 Push 虽然使用完整分支 refspec，却没有显式传递 `--no-follow-tags`，因此继承了 Git 的隐式 Tag 策略。
+- 解决方案：Push 动作增加明确的 `followTags` 参数；关闭时固定传递 `--no-follow-tags`，开启时使用 `--follow-tags`。设置页提供安全默认值，Push 对话框允许单次覆盖并通过“记住为默认”明确持久化。
+- 验证方式：真实临时远端在 `push.followTags=true` 下验证默认分支 Push 不发送任何 Tag；显式开启后只发送相关注解 Tag，不发送轻量 Tag。协议、设置状态与双语资源检查覆盖默认值和持久化。
+- 相关文件：`src/git/service.ts`、`src/protocol/types.ts`、`src/protocol/validation.ts`、`src/extension/workbench.ts`、`webview/ActionDialog.tsx`、`webview/SettingsDialog.tsx`、`webview/store.ts`、`tests/git-safety.test.ts`。
+
 ## BUG-059：多选 Tag 被误当作远端分支
 
 - 日期：2026-10-03

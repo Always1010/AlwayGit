@@ -454,7 +454,7 @@ Fetch 更新本机知道的远端状态；Pull 把远端改动整合进当前分
 
 **结果：** 目标远端分支收到预期提交，或出现明确的失败原因。
 
-**注意：** Push 角标表示尚未推送的数量，不是错误数量。Detached HEAD 下工具栏 Push 不可用。
+**注意：** Push 角标表示尚未推送的数量，不是错误数量。Detached HEAD 下工具栏 Push 不可用。普通 Push 默认只推送分支，并显式使用 `--no-follow-tags`，不会受本机 `push.followTags` 配置影响；如需同时推送指向已推送提交的 annotated Tag，可在高级选项勾选“同时推送相关的 annotated Tag”。该选项可以仅用于本次操作，也可以勾选“记住为默认”持久化到设置；lightweight Tag 和无关 Tag 仍需通过 Tag 的 Push 操作显式推送。
 
 **排错：** 被拒绝时先 Fetch 并检查分叉、认证与权限。不要把 Force-with-lease 当成常规重试。
 

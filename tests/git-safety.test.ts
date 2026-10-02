@@ -406,9 +406,23 @@ describe('Git safety regressions', () => {
     await git(bare, 'init', '--bare');
     await git(root, 'remote', 'add', 'origin', bare);
     await git(root, 'tag', 'main', head);
+    await git(root, 'tag', '-a', '-m', 'release', 'release', head);
+    await git(root, 'config', 'push.followTags', 'true');
     await service.execute(repo, { type: 'push', remote: 'origin', branch: 'main' });
     expect(await git(bare, 'rev-parse', 'refs/heads/main')).toBe(head);
     expect(await git(bare, 'tag', '--list')).toBe('');
+  });
+
+  it('follows only related annotated Tags when explicitly requested by branch Push', async () => {
+    const { root, service, repo } = await setup();
+    const head = await commit(root, 'a.txt', 'a');
+    const bare = path.join(root, 'remote.git');
+    await mkdir(bare); await git(bare, 'init', '--bare'); await git(root, 'remote', 'add', 'origin', bare);
+    await git(root, 'tag', '-a', '-m', 'release', 'annotated', head);
+    await git(root, 'tag', 'lightweight', head);
+    await service.execute(repo, { type: 'push', remote: 'origin', branch: 'main', followTags: true });
+    expect(await git(bare, 'rev-parse', 'refs/tags/annotated')).toBe(await git(root, 'rev-parse', 'refs/tags/annotated'));
+    await expect(git(bare, 'show-ref', '--verify', 'refs/tags/lightweight')).rejects.toThrow();
   });
 
   it('includes commits reachable only from a nested annotated tag', async () => {

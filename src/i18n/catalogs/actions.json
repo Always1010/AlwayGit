@@ -1033,5 +1033,23 @@
     "zh-CN": "只会推送上面列出的标签；不会覆盖远端已有但身份不同的同名标签。",
     "review": "translated",
     "context": "webview/ActionDialog.tsx"
+  },
+  "actions.pushRelatedAnnotatedTags": {
+    "en": "Also push related annotated Tags",
+    "zh-CN": "同时推送相关的注解标签",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx"
+  },
+  "actions.rememberPushTagChoiceAsDefault": {
+    "en": "Remember this Tag choice as the Push default",
+    "zh-CN": "将此标签选项记为 Push 默认值",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx"
+  },
+  "actions.followTagsDoesNotPushLightweightOrUnrelatedTags": {
+    "en": "This follows Git --follow-tags: lightweight and unrelated Tags are not included.",
+    "zh-CN": "此选项对应 Git --follow-tags，不包含轻量标签或与本分支无关的标签。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx"
   }
 }
