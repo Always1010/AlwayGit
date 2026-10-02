@@ -21,7 +21,7 @@ vi.mock('vscode', () => {
     EventEmitter, RelativePattern: class { constructor(public base: string, public pattern: string) {} },
     workspace: { isTrusted: true, workspaceFolders: [], createFileSystemWatcher: vi.fn(), getConfiguration: () => ({ get: (_key: string, fallback: unknown) => fallback }) },
     extensions: { getExtension: vi.fn() }, ProgressLocation: { Notification: 15 },
-    window: { showOpenDialog: vi.fn(), showQuickPick: vi.fn(), withProgress: vi.fn(), showInformationMessage: vi.fn(), showWarningMessage: vi.fn() },
+    window: { showInputBox: vi.fn(), showOpenDialog: vi.fn(), showQuickPick: vi.fn(), withProgress: vi.fn(), showInformationMessage: vi.fn(), showWarningMessage: vi.fn() },
   };
 });
 const exec = promisify(execFile), roots: string[] = [], managers: RepositoryManager[] = [], workbenches: Workbench[] = [];
@@ -241,6 +241,18 @@ describe('Add Repository host entry', () => {
     expect(manager.list()).toHaveLength(2);
     expect(vscode.window.showQuickPick).not.toHaveBeenCalled();expect(vscode.window.withProgress).not.toHaveBeenCalled();
     expect(projects.notifyCatalogChanged).toHaveBeenCalledTimes(1);
+  });
+
+  it('creates an empty group from a validated page form without native input or discovery', async () => {
+    const {value,manager,projects}=workbench();
+    const collection=await value.handle({id:'create',method:'createRepositoryCollection',payload:{name:'  Other  '}}) as {id:string;name:string};
+    expect(collection.name).toBe('Other');expect(manager.collections()).toEqual([collection]);expect(manager.list()).toEqual([]);
+    expect(manager.order().root).toEqual([collectionOrderKey(collection.id)]);
+    expect(projects.notifyCatalogChanged).toHaveBeenCalledTimes(1);
+    expect(vscode.window.showInputBox).not.toHaveBeenCalled();expect(vscode.window.showOpenDialog).not.toHaveBeenCalled();expect(vscode.workspace.createFileSystemWatcher).not.toHaveBeenCalled();
+    await expect(value.handle({id:'duplicate',method:'createRepositoryCollection',payload:{name:'other'}})).rejects.toThrow('同名');
+    for(const payload of [undefined,{name:'  '},{name:'x'.repeat(81)}])await expect(value.handle({id:'invalid',method:'createRepositoryCollection',payload})).rejects.toThrow();
+    expect(manager.collections()).toHaveLength(1);expect(projects.notifyCatalogChanged).toHaveBeenCalledTimes(1);
   });
 
   it('does not register scan results when the embedded review is closed', async () => {

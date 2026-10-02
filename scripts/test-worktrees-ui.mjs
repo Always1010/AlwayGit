@@ -11,6 +11,7 @@ export async function verifyWorktrees(browser, url) {
       const clone = { id: 'clone', root: 'D:/Other/App', commonDir: 'D:/Other/App/.git', name: 'App', mainRoot: 'D:/Other/App' };
       const repositories = [linked, main, clone];
       const session = { version: 2, repoId: linked.id, drafts: { main: 'Main draft', linked: 'Linked draft' }, views: { main: { tab: 'changes', search: '' }, linked: { tab: 'changes', search: '' } } };
+      const collections=[{id:'client',name:'Client Project'}];
       const fixture = window.__worktreeFixture = { session, calls: [], version: 0, order:{root:['repository:d:/other/app/.git','collection:client'],collections:{client:['repository:d:/projects/app/.git']}} };
       window.acquireVsCodeApi = () => ({ getState: () => fixture.session, setState: value => { fixture.session = value; }, postMessage(request) {
         if (request.method === 'saveSession') return;
@@ -20,7 +21,8 @@ export async function verifyWorktrees(browser, url) {
         const worktrees = repo.id === clone.id ? [] : [{ path: main.root, branch: 'main', head: 'a'.repeat(40), bare: false, detached: false }, { path: linked.root, branch: 'feature', head: 'b'.repeat(40), bare: false, detached: false }];
         let result;
         if (request.method === 'repositories') result = repositories;
-        if (request.method === 'repositoryCollections') result = [{ id: 'client', name: 'Client Project' }];
+        if (request.method === 'repositoryCollections') result = structuredClone(collections);
+        if(request.method==='createRepositoryCollection'){const collection={id:'empty-group',name:request.payload.name};collections.push(collection);fixture.order.root.push('collection:'+collection.id);fixture.order.collections[collection.id]=[];result=collection;}
         if(request.method==='repositoryOrder')result=structuredClone(fixture.order);
         if(request.method==='reorderRepository'){const {key,targetKey,position}=request.payload,entries=fixture.order.root.filter(entry=>entry!==key);entries.splice(entries.indexOf(targetKey)+Number(position==='after'),0,key);fixture.order.root=entries;result=structuredClone(fixture.order);}
         if (request.method === 'pickRepositoryDirectory') result = 'D:/Scan';
@@ -35,6 +37,7 @@ export async function verifyWorktrees(browser, url) {
           const target = repositories.find(repo => repo.root === request.payload.path);
           setTimeout(() => window.postMessage({ type: 'selectRepository', repoId: target.id }, '*'), 5);
         }
+        if(request.method==='discoverRepositories'&&fixture.holdScan){fixture.pendingScan=()=>window.postMessage({type:'response',id:request.id,result},'*');return;}
         setTimeout(() => window.postMessage({ type: 'response', id: request.id, result }, '*'), 5);
       } });
     });
@@ -139,8 +142,28 @@ export async function verifyWorktrees(browser, url) {
     await page.waitForFunction(()=>document.querySelector('[data-repository-order-key]')?.getAttribute('data-repository-order-key')==='repository:d:/other/app/.git');
     assert.equal(await sidebar.locator('[data-repository-order-key]').first().getAttribute('data-repository-order-key'),'repository:d:/other/app/.git','Menu movement shares the persisted drag order');
 
-    await sidebar.getByRole('button',{name:'Add Repository…',exact:true}).click();
-    const repositoryDialog=page.getByRole('dialog',{name:'Add Repositories',exact:true});
+    assert.deepEqual(await sidebar.locator('.sidebar-heading').first().locator('.sidebar-actions button').evaluateAll(buttons=>buttons.map(button=>button.getAttribute('aria-label'))),['Add…','Refresh'],'One plus handles repositories and groups');
+    await sidebar.getByRole('button',{name:'Add…',exact:true}).click();
+    const groupDialog=page.getByRole('dialog',{name:'Add',exact:true});
+    await groupDialog.getByRole('tab',{name:'Add Group',exact:true}).click();
+    const groupName=groupDialog.getByLabel('Group name',{exact:true}),createButton=groupDialog.getByRole('button',{name:'Create Group',exact:true});
+    assert.equal(await createButton.isDisabled(),true,'Empty group names cannot submit');
+    await groupName.fill('client project');
+    await groupDialog.getByText('A group with this name already exists.',{exact:true}).waitFor();
+    assert.equal(await createButton.isDisabled(),true,'Duplicate group names show an inline error');
+    await groupName.fill('Other');
+    await groupDialog.getByRole('tab',{name:'Add Repository',exact:true}).click();
+    await groupDialog.getByText('No folder selected',{exact:true}).waitFor();
+    await groupDialog.getByRole('tab',{name:'Add Group',exact:true}).click();
+    assert.equal(await groupName.inputValue(),'Other','Type switching preserves the group draft');
+    await groupName.press('Enter');
+    await groupDialog.waitFor({state:'hidden'});
+    await sidebar.locator('.repository-collection-heading').filter({hasText:'Other'}).waitFor();
+    assert.equal(await sidebar.locator('[data-repository-order-key]').last().getAttribute('data-repository-order-key'),'collection:empty-group','New empty groups append below existing root entries');
+    assert.equal(await page.evaluate(()=>window.__worktreeFixture.calls.some(call=>['pickRepositoryDirectory','discoverRepositories','addRepository'].includes(call.method))),false,'Creating an empty group never scans or adds repositories');
+    assert.equal(await page.evaluate(()=>window.__worktreeFixture.session.repoId),currentBeforeOrder,'Creating a group preserves the active Worktree');
+    await sidebar.getByRole('button',{name:'Add…',exact:true}).click();
+    const repositoryDialog=page.getByRole('dialog',{name:'Add',exact:true});
     await repositoryDialog.getByRole('button',{name:'Choose Folder…',exact:true}).click();
     await repositoryDialog.getByText('NotesAnywhere',{exact:true}).waitFor();
     assert.equal(await repositoryDialog.getByRole('checkbox').count(),5,'Result list exposes select-all plus one checkbox per repository');
@@ -150,6 +173,9 @@ export async function verifyWorktrees(browser, url) {
     assert.equal(await repositoryDialog.locator('.repository-candidate[aria-selected="true"]').count(),1,'A plain click selects one candidate');
     await repositoryDialog.getByRole('checkbox',{name:/SwiftResume/}).click({modifiers:['Shift']});
     assert.equal(await repositoryDialog.locator('.repository-candidate[aria-selected="true"]').count(),3,'Shift selects the complete visible candidate range');
+    await repositoryDialog.getByRole('tab',{name:'Add Group',exact:true}).click();
+    await repositoryDialog.getByRole('tab',{name:'Add Repository',exact:true}).click();
+    assert.equal(await repositoryDialog.locator('.repository-candidate[aria-selected="true"]').count(),3,'Type switching preserves completed scan selections');
     await repositoryDialog.getByRole('button',{name:'New Group',exact:true}).click();
     await repositoryDialog.getByLabel('New group name',{exact:true}).fill('Imported');
     await repositoryDialog.getByRole('button',{name:'Add 3 Repositories',exact:true}).click();
@@ -157,6 +183,22 @@ export async function verifyWorktrees(browser, url) {
     const addCall=await page.evaluate(() => window.__worktreeFixture.calls.find(call=>call.method==='addRepository'));
     assert.deepEqual(addCall.payload.keys,['notes','schedule','resume']);assert.equal(addCall.payload.newCollectionName,'Imported');
     await page.getByText('Added 3 repositories to Imported. Skipped 1.',{exact:true}).waitFor();
+    await page.evaluate(()=>{window.__worktreeFixture.holdScan=true;});
+    await sidebar.getByRole('button',{name:'Add…',exact:true}).click();
+    await repositoryDialog.getByRole('button',{name:'Choose Folder…',exact:true}).click();
+    await repositoryDialog.getByText('Scanning for Git repositories…',{exact:true}).waitFor();
+    await page.waitForFunction(()=>!!window.__worktreeFixture.pendingScan);
+    await repositoryDialog.getByRole('tab',{name:'Add Group',exact:true}).click();
+    await page.waitForFunction(()=>window.__worktreeFixture.calls.some(call=>call.method==='cancelRepositoryDiscovery'));
+    await page.evaluate(()=>window.__worktreeFixture.pendingScan());
+    await repositoryDialog.getByLabel('Group name',{exact:true}).fill('Cancelled draft');
+    await repositoryDialog.getByRole('tab',{name:'Add Repository',exact:true}).click();
+    await repositoryDialog.getByText('Choose another folder or scan this folder again.',{exact:true}).waitFor();
+    assert.equal(await repositoryDialog.locator('.repository-candidate').count(),0,'A cancelled late scan cannot restore its candidate list');
+    await repositoryDialog.getByRole('button',{name:'Cancel',exact:true}).click();
+    await repositoryDialog.waitFor({state:'hidden'});
+    assert.equal(await page.evaluate(()=>window.__worktreeFixture.calls.filter(call=>call.method==='addRepository').length),1,'Switching or cancelling never adds partial scan results');
+    assert.equal(await page.evaluate(()=>window.__worktreeFixture.calls.filter(call=>call.method==='createRepositoryCollection').length),1,'Closing the group draft never creates a second group');
     await clone.click({button:'right'});
     await page.getByRole('menuitem',{name:'Remove from AlwayGit…',exact:true}).click();
     const removeDialog=page.getByRole('dialog',{name:'Remove Repository',exact:true});

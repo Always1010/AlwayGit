@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { ActionBlocker, AddRepositoriesResult, GitServiceContract, HostMessage, RepositoryCollection, RepositoryDiscoveryPreview, RepositoryStatus, RpcRequest, Snapshot } from '../protocol/types';
-import { actionSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema, repositoryDiscoverySchema, cancelRepositoryDiscoverySchema, addRepositoriesSchema, reorderRepositorySchema } from '../protocol/validation';
+import { actionSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema, repositoryDiscoverySchema, cancelRepositoryDiscoverySchema, addRepositoriesSchema, reorderRepositorySchema, createRepositoryCollectionSchema } from '../protocol/validation';
 import type { RepositoryManager } from '../repositories/manager';
 import type { DiscoveryResult } from '../repositories/discovery';
 import type { GitDocuments } from '../editor/documents';
@@ -115,8 +115,9 @@ export class Workbench implements vscode.Disposable {
     if(groups.some(group=>group.members.some(repo=>this.isBusy(repo.commonDir))))throw new Error(this.text('Wait for the running Git operation before removing this repository.','请等待正在执行的 Git 操作完成后再移除仓库。'));
     const removed=await this.repositories.remove(groups.map(group=>group.key));if(removed)await this.projects.notifyCatalogChanged();return removed;
   }
-  async createRepositoryCollection(): Promise<RepositoryCollection|undefined> {
-    const name=await vscode.window.showInputBox({title:this.text('Create Repository Group','新建仓库分组'),prompt:this.text('Repositories can be moved into this group after it is created.','创建后可将仓库移动到该分组。'),validateInput:value=>this.collectionNameProblem(value)});if(name===undefined)return undefined;const collection=await this.repositories.createCollection(name);await this.projects.notifyCatalogChanged();return collection;
+  async createRepositoryCollection(name:string): Promise<RepositoryCollection> {
+    const problem=this.collectionNameProblem(name);if(problem)throw new Error(problem);
+    const collection=await this.repositories.createCollection(name);await this.projects.notifyCatalogChanged();return collection;
   }
   async renameRepositoryCollection(id:string):Promise<void>{const collection=this.repositories.collections().find(item=>item.id===id);if(!collection)return;const name=await vscode.window.showInputBox({title:this.text('Rename Repository Group','重命名仓库分组'),value:collection.name,validateInput:value=>this.collectionNameProblem(value,id)});if(name!==undefined){await this.repositories.renameCollection(id,name);await this.projects.notifyCatalogChanged();}}
   async deleteRepositoryCollection(id:string):Promise<void>{const collection=this.repositories.collections().find(item=>item.id===id);if(!collection)return;const remove=this.text('Delete Group','删除分组'),confirmed=await vscode.window.showWarningMessage(this.text(`Delete repository group "${collection.name}"? Its repositories will remain at the repository root.`,`删除仓库分组“${collection.name}”？其中的仓库会保留在仓库根层。`),{modal:true},remove);if(confirmed===remove){await this.repositories.deleteCollection(id);await this.projects.notifyCatalogChanged();}}
@@ -139,7 +140,7 @@ export class Workbench implements vscode.Disposable {
     if(request.method==='cancelRepositoryDiscovery'){const data=cancelRepositoryDiscoverySchema.parse(request.payload);this.cancelRepositoryDiscovery(data.scanId,source);return null;}
     if(request.method==='addRepository'){const data=addRepositoriesSchema.parse(request.payload);return this.addRepository(data.scanId,data.keys,data.collectionId,data.newCollectionName,source);}
     if (request.method === 'removeRepositories') return this.removeRepositories(repositoryKeysSchema.parse(request.payload).keys);
-    if (request.method === 'createRepositoryCollection') return this.createRepositoryCollection();
+    if (request.method === 'createRepositoryCollection') return this.createRepositoryCollection(createRepositoryCollectionSchema.parse(request.payload).name);
     if (request.method === 'renameRepositoryCollection') { await this.renameRepositoryCollection(repositoryCollectionSchema.parse(request.payload).id); return null; }
     if (request.method === 'deleteRepositoryCollection') { await this.deleteRepositoryCollection(repositoryCollectionSchema.parse(request.payload).id); return null; }
     if (request.method === 'moveRepositories') { const data=moveRepositoriesSchema.parse(request.payload);if(data.collectionId===undefined)return this.moveRepositories(data.keys);const moved=await this.repositories.move(data.keys,data.collectionId);if(moved)await this.projects.notifyCatalogChanged();return moved; }

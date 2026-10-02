@@ -39,6 +39,7 @@ export const sessionSchema = z.object({ version: z.literal(2).optional(), appear
 export const copySchema = z.object({ text: z.string().max(1000000) });
 export const repositoryKeysSchema = z.object({ keys: z.array(text).min(1).max(10000) });
 export const repositoryCollectionSchema = z.object({ id: text });
+export const createRepositoryCollectionSchema = z.object({ name: z.string().trim().min(1).max(80) });
 export const moveRepositoriesSchema = repositoryKeysSchema.extend({ collectionId: text.optional() });
 const repositoryScanId = z.string().min(1).max(128).regex(/^[a-zA-Z0-9._-]+$/);
 export const repositoryDiscoverySchema = z.object({ scanId: repositoryScanId, path: text });
