@@ -37,7 +37,7 @@
   },
   "diff.previousChangeAcrossCommitFilesWrapsToTheLast": {
     "en": "Previous change across Commit files (wraps to the last)",
-    "zh-CN": "上一处修改（跨 Commit 文件，首处循环到末处）",
+    "zh-CN": "上一处更改（跨提交文件，首处循环到末处）",
     "review": "translated",
     "context": "webview/DiffPreview.tsx / DiffPreviewPanel / previousHint"
   },
@@ -55,7 +55,7 @@
   },
   "diff.nextChangeAcrossCommitFilesWrapsToTheFirst": {
     "en": "Next change across Commit files (wraps to the first)",
-    "zh-CN": "下一处修改（跨 Commit 文件，末处循环到首处）",
+    "zh-CN": "下一处更改（跨提交文件，末处循环到首处）",
     "review": "translated",
     "context": "webview/DiffPreview.tsx / DiffPreviewPanel / nextHint"
   },
@@ -152,7 +152,7 @@
   "diff.diff": {
     "en": "Diff · ",
     "zh-CN": "Diff · ",
-    "review": "pending",
+    "review": "keep",
     "context": "webview/DiffPreview.tsx / DiffPreviewPanel"
   }
 }

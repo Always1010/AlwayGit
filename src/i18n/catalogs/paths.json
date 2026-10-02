@@ -1,20 +1,20 @@
 {
   "paths.invalidRepositoryRelativeFilePath": {
     "en": "Invalid repository-relative file path.",
-    "zh-CN": "Invalid repository-relative file path.",
-    "review": "pending",
+    "zh-CN": "无效的仓库相对文件路径。",
+    "review": "translated",
     "context": "src/editor/paths.ts / safeWorkingPath"
   },
   "paths.filePathIsOutsideTheRepository": {
     "en": "File path is outside the repository.",
-    "zh-CN": "File path is outside the repository.",
-    "review": "pending",
+    "zh-CN": "文件路径位于仓库之外。",
+    "review": "translated",
     "context": "src/editor/paths.ts / safeWorkingPath"
   },
   "paths.fileResolvesOutsideTheRepository": {
     "en": "File resolves outside the repository.",
-    "zh-CN": "File resolves outside the repository.",
-    "review": "pending",
+    "zh-CN": "文件解析后位于仓库之外。",
+    "review": "translated",
     "context": "src/editor/paths.ts / safeWorkingPath"
   }
 }

@@ -265,7 +265,7 @@
   },
   "settings.entireCommitDefault": {
     "en": "Entire Commit · Default",
-    "zh-CN": "整个 Commit · 默认",
+    "zh-CN": "整个提交 · 默认",
     "review": "translated",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
@@ -295,13 +295,13 @@
   },
   "settings.entireCommitFollowsTheChangedFileOrderNextMoves": {
     "en": "Entire Commit follows the changed-file order. Next moves to the first change in the next file; Previous moves to the last change in the previous file. The first and last changes of the Commit wrap around.",
-    "zh-CN": "整个 Commit 按变更文件顺序导航。下一处跨文件定位第一处修改，上一处跨文件定位最后一处修改，Commit 的首尾循环衔接。",
+    "zh-CN": "整个提交按更改文件顺序导航。下一处跨文件定位第一处更改，上一处跨文件定位最后一处更改，提交的首尾循环衔接。",
     "review": "translated",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
   "settings.navigatesAllFilesInTheCurrentCommitAndSelected": {
     "en": "Navigates all files in the current Commit and selected Parent, including files hidden by the path filter. Binary files and files without text change blocks are skipped; truncated files only include previewed changes. Working Tree, Stash and comparisons continue to cycle within the current file.",
-    "zh-CN": "范围为当前 Commit 和所选 Parent 的全部文件，包括路径筛选隐藏的文件。跳过二进制文件及没有文本修改块的文件；截断文件仅导航预览中的修改。Working Tree、Stash 和 Commit 比较仍在当前文件内循环。",
+    "zh-CN": "范围为当前提交和所选父提交的全部文件，包括路径筛选隐藏的文件。跳过二进制文件及没有文本更改块的文件；截断文件仅导航预览中的更改。工作区、Stash 和提交比较仍在当前文件内循环。",
     "review": "translated",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
@@ -313,13 +313,13 @@
   },
   "settings.disabledByDefaultCreateAndSwitchToALocal": {
     "en": "Disabled by default. Create and switch to a local branch when checking out a historical Commit or Tag. Enabling this option allows direct Checkout; new commits will not automatically belong to a branch.",
-    "zh-CN": "默认关闭。切换到历史 Commit 或 Tag 时，请创建并切换到本地分支。开启后允许直接 Checkout；新提交不会自动归属于任何分支。",
+    "zh-CN": "默认关闭。切换到历史提交或标签时，请创建并切换到本地分支。开启后允许直接切换；新提交不会自动归属于任何分支。",
     "review": "translated",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
   "settings.thisAlsoControlsDetachedWorktreesInternalRebaseStepsAnd": {
     "en": "This also controls Detached Worktrees. Internal Rebase steps and existing Detached HEAD repositories remain usable.",
-    "zh-CN": "此选项同时控制 Detached Worktree；不影响 Rebase 内部步骤或已经处于 Detached HEAD 的仓库。",
+    "zh-CN": "此选项同时控制 Detached 工作树；不影响 Rebase 内部步骤或已经处于 Detached HEAD 的仓库。",
     "review": "translated",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
@@ -379,7 +379,7 @@
   },
   "settings.fileSpacingSetsThePaddingAboveAndBelowEach": {
     "en": "File spacing sets the padding above and below each file in Commit Details, comparisons and Working Tree. The filename and path remain on two lines; long paths expand as needed.",
-    "zh-CN": "文件间距控制 Commit 详情、比较和 Working Tree 文件行的上下留白。保留文件名与路径两行，长路径自动增高。",
+    "zh-CN": "文件间距控制提交详情、比较和工作区文件行的上下留白。保留文件名与路径两行，长路径自动增高。",
     "review": "translated",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
@@ -391,7 +391,7 @@
   },
   "settings.setSeparateColorsForCommitCountsTheCurrentBranch": {
     "en": "Set separate colors for Commit counts, the current branch and the current repository.",
-    "zh-CN": "分别设置未推送 Commit 数量、当前分支和当前仓库的颜色。",
+    "zh-CN": "分别设置未推送提交数量、当前分支和当前仓库的颜色。",
     "review": "translated",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
@@ -661,104 +661,104 @@
   },
   "settings.picker": {
     "en": "{{label}} picker",
-    "zh-CN": "{{label}} picker",
-    "review": "pending",
+    "zh-CN": "{{label}} 选择器",
+    "review": "translated",
     "context": "webview/SettingsDialog.tsx / ColorField"
   },
   "settings.hEADMain": {
     "en": "HEAD · main",
     "zh-CN": "HEAD · main",
-    "review": "pending",
+    "review": "keep",
     "context": "webview/SettingsDialog.tsx / GraphPreview"
   },
   "settings.featureSearch": {
     "en": "feature/search",
     "zh-CN": "feature/search",
-    "review": "pending",
+    "review": "keep",
     "context": "webview/SettingsDialog.tsx / GraphPreview"
   },
   "settings.fixSidebar": {
     "en": "fix/sidebar",
     "zh-CN": "fix/sidebar",
-    "review": "pending",
+    "review": "keep",
     "context": "webview/SettingsDialog.tsx / GraphPreview"
   },
   "settings.releaseNext": {
     "en": "release/next",
     "zh-CN": "release/next",
-    "review": "pending",
+    "review": "keep",
     "context": "webview/SettingsDialog.tsx / GraphPreview"
   },
   "settings.mergedPaths": {
     "en": "merged paths",
     "zh-CN": "merged paths",
-    "review": "pending",
+    "review": "keep",
     "context": "webview/SettingsDialog.tsx / GraphPreview"
   },
   "settings.px": {
     "en": "px",
     "zh-CN": "px",
-    "review": "pending",
+    "review": "keep",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
   "settings.constTitleAlwayGit": {
     "en": "const title = 'AlwayGit';",
     "zh-CN": "const title = 'AlwayGit';",
-    "review": "pending",
+    "review": "keep",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
   "settings.constCount1": {
     "en": "const count = 1;",
     "zh-CN": "const count = 1;",
-    "review": "pending",
+    "review": "keep",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
   "settings.constCount2": {
     "en": "const count = 2;",
     "zh-CN": "const count = 2;",
-    "review": "pending",
+    "review": "keep",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
   "settings.english": {
     "en": "English",
     "zh-CN": "English",
-    "review": "pending",
+    "review": "keep",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
   "settings.text": {
     "en": "简体中文",
     "zh-CN": "简体中文",
-    "review": "pending",
+    "review": "keep",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
   "settings.main": {
     "en": "main",
     "zh-CN": "main",
-    "review": "pending",
+    "review": "keep",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
   "settings.feat": {
     "en": "feat: ",
     "zh-CN": "feat: ",
-    "review": "pending",
+    "review": "keep",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
   "settings.m": {
     "en": "M",
     "zh-CN": "M",
-    "review": "pending",
+    "review": "keep",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
   "settings.appTsx": {
     "en": "App.tsx",
     "zh-CN": "App.tsx",
-    "review": "pending",
+    "review": "keep",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
   "settings.webview": {
     "en": "./webview",
     "zh-CN": "./webview",
-    "review": "pending",
+    "review": "keep",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   }
 }

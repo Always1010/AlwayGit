@@ -2,55 +2,55 @@
   "projectWindows.repositoryActivity": {
     "en": "[repository-activity] {{value}}",
     "zh-CN": "[repository-activity] {{value}}",
-    "review": "pending",
+    "review": "keep",
     "context": "src/extension/project-windows.ts / notifyActivity"
   },
   "projectWindows.trustTheProjectWorkspaceBeforeOpeningItFromAlwayGit": {
     "en": "Trust the project workspace before opening it from AlwayGit.",
-    "zh-CN": "Trust the project workspace before opening it from AlwayGit.",
-    "review": "pending",
+    "zh-CN": "从 AlwayGit 打开项目前，请先信任项目工作区。",
+    "review": "translated",
     "context": "src/extension/project-windows.ts / execute"
   },
   "projectWindows.theRepositoryDirectoryChangedReopenItFromAlwayGit": {
     "en": "The repository directory changed. Reopen it from AlwayGit.",
-    "zh-CN": "The repository directory changed. Reopen it from AlwayGit.",
-    "review": "pending",
+    "zh-CN": "仓库目录已变化，请从 AlwayGit 重新打开。",
+    "review": "translated",
     "context": "src/extension/project-windows.ts / execute"
   },
   "projectWindows.theProjectWindowHasNoWorkspaceToActivate": {
     "en": "The project window has no workspace to activate.",
-    "zh-CN": "The project window has no workspace to activate.",
-    "review": "pending",
+    "zh-CN": "项目窗口中没有可激活的工作区。",
+    "review": "translated",
     "context": "src/extension/project-windows.ts / focus"
   },
   "projectWindows.vSCodeCouldNotActivateTheSelectedProjectWindow": {
     "en": "VS Code could not activate the selected project window. Switch to that window and try again.",
-    "zh-CN": "VS Code could not activate the selected project window. Switch to that window and try again.",
-    "review": "pending",
+    "zh-CN": "VS Code 无法激活所选项目窗口。请切换到该窗口后重试。",
+    "review": "translated",
     "context": "src/extension/project-windows.ts / focus"
   },
   "projectWindows.aWindowLevelRequestCannotBeRoutedAsA": {
     "en": "A window-level request cannot be routed as a project request.",
-    "zh-CN": "A window-level request cannot be routed as a project request.",
-    "review": "pending",
+    "zh-CN": "窗口级请求不能作为项目请求路由。",
+    "review": "translated",
     "context": "src/extension/project-windows.ts / route"
   },
   "projectWindows.theProjectWasOpenedButAlwayGitDidNotRespond": {
     "en": "The project was opened, but AlwayGit did not respond. Enable AlwayGit and trust that project window, then try again.",
-    "zh-CN": "The project was opened, but AlwayGit did not respond. Enable AlwayGit and trust that project window, then try again.",
-    "review": "pending",
+    "zh-CN": "项目已打开，但 AlwayGit 未响应。请在该项目窗口中启用 AlwayGit 并信任工作区，然后重试。",
+    "review": "translated",
     "context": "src/extension/project-windows.ts / openAndWait"
   },
   "projectWindows.theProjectWasOpenedInANewWindowBut": {
     "en": "The project was opened in a new window, but AlwayGit did not respond. Enable AlwayGit and trust that project window, then try again.",
-    "zh-CN": "The project was opened in a new window, but AlwayGit did not respond. Enable AlwayGit and trust that project window, then try again.",
-    "review": "pending",
+    "zh-CN": "项目已在新窗口中打开，但 AlwayGit 未响应。请在该项目窗口中启用 AlwayGit 并信任工作区，然后重试。",
+    "review": "translated",
     "context": "src/extension/project-windows.ts / openNewAndWait"
   },
   "projectWindows.theNewWindowOpenedButAlwayGitDidNotRespond": {
     "en": "The new window opened, but AlwayGit did not respond. Enable AlwayGit in that window, then try again.",
-    "zh-CN": "The new window opened, but AlwayGit did not respond. Enable AlwayGit in that window, then try again.",
-    "review": "pending",
+    "zh-CN": "新窗口已打开，但 AlwayGit 未响应。请在该窗口中启用 AlwayGit，然后重试。",
+    "review": "translated",
     "context": "src/extension/project-windows.ts / openBlankAndWait"
   }
 }

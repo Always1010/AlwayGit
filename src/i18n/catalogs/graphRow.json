@@ -1,56 +1,56 @@
 {
   "graphRow.parents": {
     "en": "{{value}}parents {{value2}}",
-    "zh-CN": "{{value}}parents {{value2}}",
-    "review": "pending",
+    "zh-CN": "{{value}} 个父提交 {{value2}}",
+    "review": "translated",
     "context": "webview/graph/GraphRow.tsx / GraphRow / parentLabel"
   },
   "graphRow.mergeCommit": {
     "en": "Merge commit; ",
-    "zh-CN": "Merge commit; ",
-    "review": "pending",
+    "zh-CN": "合并提交；",
+    "review": "translated",
     "context": "webview/graph/GraphRow.tsx / GraphRow / parentLabel"
   },
   "graphRow.rootCommitNoParents": {
     "en": "Root commit; no parents",
-    "zh-CN": "Root commit; no parents",
-    "review": "pending",
+    "zh-CN": "根提交；无父提交",
+    "review": "translated",
     "context": "webview/graph/GraphRow.tsx / GraphRow / parentLabel"
   },
   "graphRow.workingTreeVirtualNodeLane": {
     "en": "Working Tree virtual node, lane {{value}}.{{value2}}",
-    "zh-CN": "Working Tree virtual node, lane {{value}}.{{value2}}",
-    "review": "pending",
+    "zh-CN": "工作区虚拟节点，轨道 {{value}}。{{value2}}",
+    "review": "translated",
     "context": "webview/graph/GraphRow.tsx / GraphRow / label"
   },
   "graphRow.selected": {
     "en": " Selected.",
-    "zh-CN": " Selected.",
-    "review": "pending",
+    "zh-CN": " 已选择。",
+    "review": "translated",
     "context": "webview/graph/GraphRow.tsx / GraphRow / label"
   },
   "graphRow.commitLane": {
     "en": "Commit {{value}}, lane {{value2}}. {{parentLabel}}.{{value3}}{{value4}}{{value5}}",
-    "zh-CN": "Commit {{value}}, lane {{value2}}. {{parentLabel}}.{{value3}}{{value4}}{{value5}}",
-    "review": "pending",
+    "zh-CN": "提交 {{value}}，轨道 {{value2}}。{{parentLabel}}。{{value3}}{{value4}}{{value5}}",
+    "review": "translated",
     "context": "webview/graph/GraphRow.tsx / GraphRow / label"
   },
   "graphRow.mainBranch": {
     "en": " Main branch.",
-    "zh-CN": " Main branch.",
-    "review": "pending",
+    "zh-CN": " 主分支。",
+    "review": "translated",
     "context": "webview/graph/GraphRow.tsx / GraphRow / label"
   },
   "graphRow.currentHEAD": {
     "en": " Current HEAD.",
-    "zh-CN": " Current HEAD.",
-    "review": "pending",
+    "zh-CN": " 当前 HEAD。",
+    "review": "translated",
     "context": "webview/graph/GraphRow.tsx / GraphRow / label"
   },
   "graphRow.selectedCommit": {
     "en": " Selected commit.",
-    "zh-CN": " Selected commit.",
-    "review": "pending",
+    "zh-CN": " 已选择的提交。",
+    "review": "translated",
     "context": "webview/graph/GraphRow.tsx / GraphRow / label"
   }
 }

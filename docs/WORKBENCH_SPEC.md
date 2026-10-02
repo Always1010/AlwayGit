@@ -38,25 +38,25 @@ Working Tree 作为只存在于前端的虚拟提交节点显示，不创建 Git
 
 Workbench 明确区分未添加仓库、尚未选择仓库、正在打开仓库、仓库已移除或不可用、普通分支与真实 Detached HEAD。只有已加载的仓库没有当前分支时显示 `Detached HEAD`；其他未开始状态不借用 Git 异常状态表达。新会话不自动选中列表第一个仓库；当前仓库被移除时标签明确回到未选择状态，不静默切换到其他项目。
 
-“添加仓库”模式可选择单个仓库或存放多个仓库的目录。选中目录有 `.git` 时验证该仓库；否则递归扫描所有层级的子目录，列出发现的有效仓库和 Worktree（支持 `.git` 目录与文件），由用户最终确认后批量添加。找到有效仓库后不再扫描其内部，因而不自动添加嵌套仓库和子模块；不跟随子目录链接或 Windows junction，也不进入 `.git`。
+“添加仓库”模式可选择单个仓库或存放多个仓库的目录。选中目录有 `.git` 时验证该仓库；否则递归扫描所有层级的子目录，列出发现的有效仓库和 工作树（支持 `.git` 目录与文件），由用户最终确认后批量添加。找到有效仓库后不再扫描其内部，因而不自动添加嵌套仓库和子模块；不跟随子目录链接或 Windows junction，也不进入 `.git`。
 
 扫描显示已扫描目录数和发现仓库数，支持取消；取消扫描不添加任何仓库。无效仓库和无法访问的子目录单独跳过并汇总提示，详情写入 AlwayGit 输出。重复仓库不重复注册；批量添加只保存和通知一次，保持当前仓库、布局与草稿，记住新增仓库供下次打开工作台恢复。递归扫描仅在主动添加目录时执行。
 
-Workbench 的 Repositories 顶层列表按共享 Git 存储归并，同一仓库的主目录及 linked Worktree 只占一个入口；仓库名称来自 Git 报告的主工作目录。递归发现、新增和已有仓库数量均按归并后的仓库统计，独立克隆保持独立。工作目录在当前仓库的 Worktrees 区域切换；选中 linked Worktree 时，顶层仍标记所属仓库，菜单和工具栏操作以当前工作目录为目标。直接只添加 Worktree 也保留其入口；没有当前选择时优先使用已注册的主目录。
+Workbench 的 Repositories 顶层列表按共享 Git 存储归并，同一仓库的主目录及 linked 工作树 只占一个入口；仓库名称来自 Git 报告的主工作目录。递归发现、新增和已有仓库数量均按归并后的仓库统计，独立克隆保持独立。工作目录在当前仓库的 工作树 区域切换；选中 linked 工作树 时，顶层仍标记所属仓库，菜单和工具栏操作以当前工作目录为目标。直接只添加 工作树 也保留其入口；没有当前选择时优先使用已注册的主目录。
 
 Repositories 标题只显示一个 `Add…` 加号和刷新图标，标题右键也复用该添加入口。加号打开工作台内嵌“添加”浮窗，顶部可切换“添加仓库”和“添加分组”，默认进入添加仓库；添加分组直接输入名称并创建空分组，空白、超长或同名名称在浮窗内提示，支持 Enter 提交及 Esc 取消，不使用 VS Code 输入框。切换类型保留各自草稿及已完成的扫描选择；切换时正在进行的扫描会取消，关闭不产生部分添加。只有选择磁盘目录时使用 VS Code 原生目录选择器。选定目录后，同一浮窗显示可取消的递归扫描进度，再按名称显示逻辑仓库级多选结果，分别标记“可添加”和禁用的“已添加”。可添加项默认全选，支持筛选、全选、普通切换与 Shift 连续范围；目标分组和内联新建分组位于同一确认流程，主按钮明确显示将添加的仓库数量。扫描、筛选和关闭浮窗不改变仓库目录，只有最终确认项才注册；跳过项及原因留在浮窗中查看。仓库行和分组标题通过右键打开管理菜单；仓库菜单及多选菜单提供 `Remove from AlwayGit…`。工作台内嵌确认浮窗列出将移除的仓库并说明磁盘文件不受影响。该操作只移除导航与持久化记录、释放监听并阻止自动发现立即恢复，不删除磁盘目录或 Git 数据；再次明确添加会恢复显示。
 
-用户可以创建、重命名和删除仓库分组，并将单个或多个逻辑仓库移动到分组。分组在 Workbench 的 Repositories 中显示为可折叠目录；没有归属的仓库不创建“未分组”目录，直接与分组目录同处 Repositories 根层。删除分组只删除组织结构，其中仓库回到根层，不从 AlwayGit 移除。分组名称、归属及排列顺序随仓库路径在同一 VS Code Profile 与运行环境内共享。根层的仓库与分组共用顺序，新增项追加到所在层级末尾；移动仓库到分组或根层时追加到目标末尾，重命名不改变位置。分组和仓库支持同层拖动排序，落点显示插入线；右键提供上移、下移，边界项禁用。删除分组时其中仓库按组内顺序追加到根层末尾。旧数据首次迁移保留根层仓库原有相对顺序，分组按保存的创建顺序排在其后；迁移与排序不改变仓库 ID、活动 Worktree、草稿和选择，Shift 范围与展开后的显示顺序一致。
+用户可以创建、重命名和删除仓库分组，并将单个或多个逻辑仓库移动到分组。分组在 Workbench 的 Repositories 中显示为可折叠目录；没有归属的仓库不创建“未分组”目录，直接与分组目录同处 Repositories 根层。删除分组只删除组织结构，其中仓库回到根层，不从 AlwayGit 移除。分组名称、归属及排列顺序随仓库路径在同一 VS Code Profile 与运行环境内共享。根层的仓库与分组共用顺序，新增项追加到所在层级末尾；移动仓库到分组或根层时追加到目标末尾，重命名不改变位置。分组和仓库支持同层拖动排序，落点显示插入线；右键提供上移、下移，边界项禁用。删除分组时其中仓库按组内顺序追加到根层末尾。旧数据首次迁移保留根层仓库原有相对顺序，分组按保存的创建顺序排在其后；迁移与排序不改变仓库 ID、活动 工作树、草稿和选择，Shift 范围与展开后的显示顺序一致。
 
-Repository 和 Worktree 名称行单击只改变操作选择，不切换当前仓库或工作目录；普通单击单选，Ctrl/Cmd 单击切换单项，Shift 单击选择连续范围，Ctrl/Cmd+Shift 将连续范围加入既有选择。双击或键盘 Enter 才切换仓库或 Worktree。右键已选项保留批量选择，右键未选项先切为单选。当前 Repository 以主题强调色的仓库图标标识，不另加三角形或占位列。Worktree 和本地分支在内容排头显示实心播放三角形，浅色背景使用纯黑、深色背景使用纯白，非当前行保留同宽空位以对齐内容；蓝色选择背景只表示操作范围，当前状态与操作选择可以同时存在。分支复选框属于 Graph 筛选控件，三角形位于复选框之后、分支图标之前。当前状态使用 `aria-current` 暴露给辅助技术，不重复显示 `Current` 文字徽标。Detached HEAD 时不标记本地分支，但仍标记当前 Worktree。
+Repository 和 工作树 名称行单击只改变操作选择，不切换当前仓库或工作目录；普通单击单选，Ctrl/Cmd 单击切换单项，Shift 单击选择连续范围，Ctrl/Cmd+Shift 将连续范围加入既有选择。双击或键盘 Enter 才切换仓库或 工作树。右键已选项保留批量选择，右键未选项先切为单选。当前 Repository 以主题强调色的仓库图标标识，不另加三角形或占位列。工作树 和本地分支在内容排头显示实心播放三角形，浅色背景使用纯黑、深色背景使用纯白，非当前行保留同宽空位以对齐内容；蓝色选择背景只表示操作范围，当前状态与操作选择可以同时存在。分支复选框属于 Graph 筛选控件，三角形位于复选框之后、分支图标之前。当前状态使用 `aria-current` 暴露给辅助技术，不重复显示 `Current` 文字徽标。Detached HEAD 时不标记本地分支，但仍标记当前 工作树。
 
 工作台全局快捷键在当前 Webview 拥有焦点时生效，以顶部当前仓库和当前 Diff 为目标，不跟随侧栏操作选择或悬停改变目标。单键默认开启，键位与操作语义以中英文用户手册的“选择和快捷键”为准，相关操作悬浮提示同步显示按键。统一入口在捕获阶段分发，避免行内控件阻止冒泡造成失效；文字输入、可编辑内容、选择控件、输入法组合、弹窗和菜单拥有键盘优先级，长按不重复执行。点击非输入区域后正确转移焦点。所有操作复用按钮回调及可用条件；C 打开 Commit 浮窗，A/U 仅在 Working Tree 视图确认当前匹配范围的暂存或取消暂存。Diff 折叠后的修改跳转先展开，再沿用当前导航范围。设置 → 常规 → 快捷键可关闭单键；该选项兼容旧会话默认开启，Apply 才持久化，Cancel 恢复基线，保留草稿、仓库视图和布局。关闭单键仍保留受焦点与弹窗规则约束的 Ctrl/Cmd+R。
 
-当焦点位于可多选区域或其标题、行内控件时，Ctrl/Cmd+A 只全选焦点所属作用域，Escape 只清除该作用域的操作选择；快捷键由区域容器捕获，不能落到整页文本选择。Repository 的范围是全部逻辑仓库；Local Branches 的范围是全部本地分支；每个 Remote 是独立范围，只包含该 Remote 下的分支；Worktrees 的范围是当前仓库的全部 Worktree。分支 action selection 与 Graph 筛选复选框相互独立，Ctrl/Cmd+A 和 Escape 都不改变 `checkedRefs`。History 的范围是当前已经加载的真实 Commit，不为全选隐式加载下一页，并排除 Working Tree 虚拟 Commit。Working Tree、Commit Details 和 Commit 比较的文件区域只处理当前面板可见文件。输入框、文本域和可编辑内容保留 Ctrl/Cmd+A 与 Escape 的原生行为。
+当焦点位于可多选区域或其标题、行内控件时，Ctrl/Cmd+A 只全选焦点所属作用域，Escape 只清除该作用域的操作选择；快捷键由区域容器捕获，不能落到整页文本选择。Repository 的范围是全部逻辑仓库；Local Branches 的范围是全部本地分支；每个 Remote 是独立范围，只包含该 Remote 下的分支；工作树 的范围是当前仓库的全部 工作树。分支 action selection 与 Graph 筛选复选框相互独立，Ctrl/Cmd+A 和 Escape 都不改变 `checkedRefs`。History 的范围是当前已经加载的真实 Commit，不为全选隐式加载下一页，并排除 Working Tree 虚拟 Commit。Working Tree、Commit Details 和 Commit 比较的文件区域只处理当前面板可见文件。输入框、文本域和可编辑内容保留 Ctrl/Cmd+A 与 Escape 的原生行为。
 
 Working Tree、Commit Details 和 Commit 比较的文件列表统一使用中性的文件图标，右下角以彩色角标显示 Git 状态：黄色 M 修改、绿色 A 新增、红色 D 删除、紫色 R 重命名，未跟踪显示 ?、冲突显示 !，复制和类型变更分别显示 C 和 T。悬停角标或文件名可查看完整含义；列表不常驻显示状态图例。Working Tree 在摘要下面按文件名或完整相对路径实时筛选，忽略大小写，同时覆盖 Staged、Unstaged 和冲突分组；搜索词按工作目录保留在当前工作台内存中，刷新或切换视图不清除，重新打开工作台时清空。筛选时显示匹配数与总数，保留没有匹配文件的分组标题，提示被筛选隐藏的冲突和当前 Diff；摘要和提交范围始终使用完整仓库状态。分组按钮无筛选时处理 `Stage All` / `Unstage All` / `Discard All`，有筛选时提示匹配文件数量并只处理匹配路径，不随批量选择改变范围；Stage / Unstage 点击后先确认本次实际文件数量，确认按钮默认获得焦点，可按 Enter 快速执行，Escape、点击遮罩或 Cancel 取消。A/U 沿用同一筛选范围。文件右键菜单中的 Stage / Unstage 作用于所选可见范围，不重复确认。
 
-分组应用于全部添加、恢复和自动发现入口。已有保存路径无需清除，工作目录 ID、各自的 Commit 草稿与视图继续保留；不将多个 Worktree 的文件或暂存区状态合并。
+分组应用于全部添加、恢复和自动发现入口。已有保存路径无需清除，工作目录 ID、各自的 Commit 草稿与视图继续保留；不将多个 工作树 的文件或暂存区状态合并。
 
 Staged 标题中 Unstage 图标右侧放置 `Commit…` 按钮；分组为空、折叠或无筛选匹配时仍保留入口。顶部 Commit 和 C 快捷键打开同一居中浮窗，显示当前仓库、分支和完整 Staged 数量，聚焦 Message。空草稿、没有暂存文件或存在冲突时可以打开并保存草稿，实际提交按完整仓库状态校验；普通 Commit 需要非空 Message、至少一个 Staged 文件和零冲突。Enter 换行，Ctrl/Cmd+Enter 提交；输入法组合和长按不触发提交。Amend 每次打开默认关闭，草稿为空时才读取 HEAD 的 Message，取消或迟到的读取不覆盖新文字。Cancel、关闭、Esc 和遮罩保留完整草稿，立即发送待保存状态并恢复入口焦点；失败保持浮窗和草稿，成功关闭。草稿仍使用原有每仓库持久化，实际 Git 提交成功后只清理该仓库本次使用且尚未改写的草稿；活动 Git 操作继续沿用暂存结果检查，不叠加两个浮窗。
 
@@ -64,10 +64,10 @@ Staged 标题中 Unstage 图标右侧放置 `Commit…` 按钮；分组为空、
 | --- | --- |
 | 单击 Repository 名称 | 更新单选或 Ctrl/Cmd、Shift 批量操作选择，不切换当前仓库 |
 | Repositories 中按 `Ctrl` / `Cmd` + `A`；按 `Escape` | 全选全部逻辑仓库的操作选择；清除 Repository 操作选择 |
-| 单击 Worktree 名称 | 更新单选或 Ctrl/Cmd、Shift 批量操作选择，不切换当前工作目录 |
-| Worktrees 中按 `Ctrl` / `Cmd` + `A`；按 `Escape` | 全选当前仓库的全部 Worktree；清除 Worktree 操作选择 |
-| 双击 Repository / Worktree 名称 | 切换到目标仓库或 Worktree |
-| Repository / Worktree 名称获得焦点后按 Enter | 切换到目标仓库或 Worktree |
+| 单击 工作树 名称 | 更新单选或 Ctrl/Cmd、Shift 批量操作选择，不切换当前工作目录 |
+| 工作树 中按 `Ctrl` / `Cmd` + `A`；按 `Escape` | 全选当前仓库的全部 工作树；清除 工作树 操作选择 |
+| 双击 Repository / 工作树 名称 | 切换到目标仓库或 工作树 |
+| Repository / 工作树 名称获得焦点后按 Enter | 切换到目标仓库或 工作树 |
 | 勾选引用复选框 | 加入或移出 Graph 显示范围，不 Checkout |
 | 勾选分支目录复选框 | 选择或清除该目录下全部分支；部分选中时显示半选状态 |
 | 单击引用名称 | 选择并定位该引用，不改变其他引用的勾选状态 |
@@ -75,7 +75,7 @@ Staged 标题中 Unstage 图标右侧放置 `Commit…` 按钮；分组为空、
 | `Shift` + 单击分支 | 在同一个 Local 或 Remote 树内按可见顺序选择连续范围 |
 | Local Branches 中按 `Ctrl` / `Cmd` + `A`；按 `Escape` | 全选全部本地分支的 action selection；清除该选择；均不改变 Graph `checkedRefs` |
 | 单个 Remote 中按 `Ctrl` / `Cmd` + `A`；按 `Escape` | 只全选或清除该 Remote 下分支的 action selection；不影响其他 Remote、Local 或 Graph `checkedRefs` |
-| 双击本地分支 | Checkout 到该分支 |
+| 双击本地分支 | 切换到该分支 |
 | 双击远程分支 / 远程引用徽标 | 打开 `Checkout as Local Branch…`，创建或复用本地跟踪分支并默认 Checkout |
 | 右键已选分支 | 保留当前批量选择并打开适用菜单，不改变 Graph 筛选 |
 | 右键未选分支 | 先将批量操作选择切换到该分支，再打开菜单 |
@@ -98,13 +98,13 @@ Local Branches 和 Remote Branches 按分支名中的 `/` 构成递归目录，�
 
 输入 Commit 搜索条件后暂停 200 ms 开始查询，连续输入合并为最后条件；输入变化立即清除旧结果。History 显示“提交搜索结果”和已加载的匹配数量；仍有下一页时数量带 `+`。搜索结果隐藏整个 Graph 列、分隔线与节点，不对缺少中间提交的结果计算轨道；提交信息列使用释放的宽度。引用徽标、作者、时间、行选择与菜单继续可用，推送状态以标题前的实心或空心圆点表达。单选一个匹配 Commit 后，可用“在完整历史中定位”图标清空搜索，沿用当前引用范围加载历史并滚动定位；自动读取最多 20 页或达到 10000 条后停止并提示，保留已加载结果与目标详情，可用 Load More 继续或缩小引用范围；更改搜索、引用、仓库或选择会停止旧定位。清空搜索恢复 Graph 及原有列宽。
 
-工具栏最右侧使用“双层文件夹 + 中央 VS Code 标识”的纯图标按钮打开当前选中的仓库目录，悬停说明为 `Open Repository Folder` 并显示完整路径；不常驻显示 `Open in VS Code` 文字。按钮优先切换到已打开该目录的项目窗口；没有匹配窗口时打开项目新窗口，保留工作台所在窗口。匹配基于实际工作区目录，支持多根工作区，并区分不同 Worktree；相同目录存在多个窗口时优先使用最近活动的匹配窗口。
+工具栏最右侧使用“双层文件夹 + 中央 VS Code 标识”的纯图标按钮打开当前选中的仓库目录，悬停说明为 `Open Repository Folder` 并显示完整路径；不常驻显示 `Open in VS Code` 文字。按钮优先切换到已打开该目录的项目窗口；没有匹配窗口时打开项目新窗口，保留工作台所在窗口。匹配基于实际工作区目录，支持多根工作区，并区分不同 工作树；相同目录存在多个窗口时优先使用最近活动的匹配窗口。
 
 目标窗口需要启用同一 Profile 中的 AlwayGit，并信任项目工作区。新窗口就绪后才报告打开成功；目标未响应时显示明确错误。未选择仓库时禁用此按钮，悬停显示项目完整路径。
 
 ## 自动更新与查看状态
 
-工作区文件变化会更新当前仓库的状态；已选引用变化时更新 History。查看历史 Commit 时，无关的文件、Index 或引用变化不会清空 Commit 详情和 Diff，也不会重置已选 Merge Parent、文件及 Diff 滚动位置。常驻刷新图标只保留两个：顶部工具栏提示“刷新当前仓库状态和提交历史”，重查当前仓库状态和历史，同时保留同一个历史比较；Repositories 标题提示“刷新仓库列表和状态角标”，重新读取已登记仓库、分组、排序及各仓库状态，不扫描新仓库。Tags、Stashes、Worktrees 和各 Remote 的重复刷新入口只保留在右键菜单中。两种刷新均不执行 Fetch。
+工作区文件变化会更新当前仓库的状态；已选引用变化时更新 History。查看历史 Commit 时，无关的文件、Index 或引用变化不会清空 Commit 详情和 Diff，也不会重置已选 Merge Parent、文件及 Diff 滚动位置。常驻刷新图标只保留两个：顶部工具栏提示“刷新当前仓库状态和提交历史”，重查当前仓库状态和历史，同时保留同一个历史比较；Repositories 标题提示“刷新仓库列表和状态角标”，重新读取已登记仓库、分组、排序及各仓库状态，不扫描新仓库。Tags、Stashes、工作树 和各 Remote 的重复刷新入口只保留在右键菜单中。两种刷新均不执行 Fetch。
 
 Working Tree 中所选文件或相关 Index 内容变化时更新该比较，包括文件一直处于 modified 状态而内容再次改变的情况。有效的 Staged / Unstaged / Conflicts 选择继续保留；比较区域或文件消失时才回退到有效目标。后台更新同一个 Diff 时保留现有画面和滚动位置，切换比较目标时在内容加载后自动定位第一处修改；收起面板时暂缓，首次展开后定位。
 
@@ -114,7 +114,7 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 
 菜单在指针附近显示为无分组横线的竖向列表，限制在可视区域内。菜单具有 `menu` 和 `menuitem` 语义；打开时焦点进入菜单，方向键移动，Home/End 跳转，Enter 或 Space 执行，Escape、点击外部和仓库切换关闭。禁用项不可获得执行结果，并说明原因。
 
-分区及 Remote 标题的主区域只执行展开或收起，标题右侧图标按钮直接执行对应操作；右键标题可打开相同操作的菜单。图标按钮具有悬停、焦点和可访问名称。仓库、分支、Tag、Stash、Worktree、文件和 Commit 的对象菜单通过右键或键盘 Context Menu / Shift+F10 打开。
+分区及 Remote 标题的主区域只执行展开或收起，标题右侧图标按钮直接执行对应操作；右键标题可打开相同操作的菜单。图标按钮具有悬停、焦点和可访问名称。仓库、分支、Tag、Stash、工作树、文件和 Commit 的对象菜单通过右键或键盘 Context Menu / Shift+F10 打开。
 
 操作绑定被右键点击的仓库和对象。打开对话框后也不能改用之前选中的 Commit、当前筛选或变化后的 `stash@{n}`；执行前重新核对对象身份。
 
@@ -133,8 +133,8 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 | Remote，例如 `origin` | `Fetch…`、`Create Local Tracking Branches…`、`Refresh` |
 | Tag | `Show in Graph`、`Show Only This Tag`、`Create Branch…`、`Create Branch and Checkout…`、条件显示的 `Checkout to Detached HEAD…`、`Delete Tag…`、`Copy Tag Name`、`Copy Commit ID` |
 | Stash | `View Changes`、`Apply Stash`、`Pop Stash`、`Drop Stash…` |
-| Worktree | `Open Worktree`、`Open Worktree in New Project Window`、`Refresh`、`Remove Worktree…`、`Copy Worktree Path` |
-| Worktree（多选） | `Refresh`、`Copy N Worktree Paths` |
+| 工作树 | `Open 工作树`、`Open 工作树 in New Project Window`、`Refresh`、`Remove 工作树…`、`Copy 工作树 Path` |
+| 工作树（多选） | `Refresh`、`Copy N 工作树 Paths` |
 | Working Tree 文件（Staged / Unstaged） | Stage / Unstage、`Stash Selected Files…`、适用的 `Discard…`、路径复制；单文件额外提供 Diff 与编辑入口 |
 
 ## 左侧分组操作
@@ -148,7 +148,7 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 | Remotes | 标题行仅显示 `＋` 添加远端图标，悬浮提示与无障碍名称为 `Add Remote…`；右键菜单提供 `Add Remote…`、`Create Local Tracking Branches…`、`Refresh`。Fetch 位于各 Remote 行；没有远端时正文说明尚未连接并保留文字入口 |
 | Tags | `Create Tag…` |
 | Stashes | `Stash All Changes…` |
-| Worktrees | `Add Worktree…` |
+| 工作树 | `Add 工作树…` |
 
 Graph 中 Commit 的菜单集中提供 `Create Branch…`、`Create Tag…`、Cherry-pick、`Revert…`、`Reset…`、分支感知的 Checkout、条件显示的 `Checkout to Detached HEAD…`、`Copy Commit ID` 和 `Copy Commit Message`；顶部工具栏和 Commit Details 标题不重复提供这些入口。普通 Commit 的 Cherry-pick 点击后直接执行；Merge Commit 单独选择 Mainline Parent。多选 Commit 按当前拓扑列表从旧到新执行批量 Cherry-pick，且只处理明确选中的 Commit；包含 Merge Commit 时禁用批量操作并要求单独处理。具体项目根据提交、当前分支和仓库操作状态禁用。Cherry-pick 通过独立只读查询检查所选提交与当前 HEAD 的祖先关系，不依赖 Graph 分页或引用标签；检查期间和检查失败时禁用。当前 HEAD、当前分支已有的历史提交（包括通过 Merge 纳入的提交）均禁用普通入口，多选中包含这些提交时整体禁用且不自动跳过。已有历史提交可通过 `Reapply Historical Commits…` 明确勾选确认后重新应用；当前 HEAD 不提供此入口，包含 Merge Commit 的批量重新应用仍禁用。执行前复核真实提交关系及目标分支、HEAD；重新应用对话框绑定打开时的目标上下文，编辑提交或 Mainline Parent 后重新确认。
 
@@ -168,11 +168,11 @@ Merge 等操作暂停后，原发起对话框改为处理状态，主入口是�
 
 - 当前分支禁用 `Checkout` 与 `Delete Branch`。
 - Create Branch 在名称字段实时解释 Git 分支名限制，以及同名本地分支或双向父子路径冲突（已有 `test/b1` 时不能创建 `test`，已有 `test` 时不能创建 `test/b1`）；提示具体冲突分支，禁用两个创建按钮并拦截键盘提交，保留错误输入和焦点。仅检查本地分支命名空间，远程引用、Tag 和合法相邻路径不造成误拦截；后端在写操作队列中重新读取本地引用并校验。起点优先显示“当前分支 `<name>` · 当前版本”或对应分支、Tag、Commit，内部引用只在 Git 详情中显示。对话框明确提供“仅创建”和默认主操作“创建并切换”；先创建分支，成功后再 Checkout，创建失败不改动 Index 或 Working Tree。完成后分别说明当前仍在原分支或已经切换到新分支；创建成功但 Checkout 受阻时明确说明分支已保留、尚未切换，并提供受影响文件及适用的 Stash & Checkout 入口。
-- 被其他 Worktree 使用的分支显示占用路径，并允许打开该 Worktree。
-- 主 Worktree 和当前 Worktree不能移除；Locked Worktree 显示锁定原因。
+- 被其他 工作树 使用的分支显示占用路径，并允许打开该 工作树。
+- 主 工作树 和当前 工作树不能移除；Locked 工作树 显示锁定原因。
 - Remote Branch 的 `Checkout as Local Branch…` 列出远程来源与本地名称，默认剥除 Remote 前缀并保持完整目录（`origin/feature/login/api` → `feature/login/api`），自动选择已有跟踪分支，允许改名。多个已有本地跟踪分支时提示用户选择名称。单项默认 Checkout，可取消切换；Remote 父级、Remotes 分组、分支目录和远程多选通过 `Create Local Tracking Branches…` 创建或复用全部后代，保持当前分支。对话框逐项显示将创建、已跟踪、同名 upstream 冲突、路径冲突与成功结果；名称冲突阻止执行，不覆盖已有分支或改写 upstream。使用最近 Fetch 的引用，不自动 Fetch/Pull；后端重新校验来源与 OID。`origin/HEAD` 等符号引用不可检出为本地分支，批量范围自动排除。
 - Local 与 Remote 的批量选择互相隔离；同一 Remote 下的普通分支可以批量 `Delete … from <remote>…`，操作明确显示远端和分支清单并二次确认，以确认时的远端 Commit 版本为执行条件逐项 Push 删除并汇总部分失败；远端版本或 Push 地址变化时拒绝执行，刷新后重新确认。`origin/HEAD` 等符号引用不可删除。
-- 默认禁止主动进入 Detached HEAD。旧 Commit 的分支感知 Checkout 与 Tag 的 `Create Branch and Checkout…` 进入固定起点的新建分支浮窗，仅提供取消和创建并切换；普通 Create Branch 保留仅创建。设置 → 高级 → Git 操作中的“允许直接进入 Detached HEAD”默认关闭，应用保存成功后即时生效；开启后 Commit 和 Tag 菜单额外显示 `Checkout to Detached HEAD…`，确认说明原分支位置不变、后续提交需要分支承接。关闭时不显示该入口和 Worktree 的 Detached 选项；Worktree 要求已有或新建分支。宿主执行前重新检查策略，Stash 重试在保存 Stash 前拦截，禁止显式和隐式 Detached Worktree。外部造成的已有 Detached HEAD 可以正常读取、返回分支和创建分支；Rebase 内部临时 Detached 状态不受此限制。
+- 默认禁止主动进入 Detached HEAD。旧 Commit 的分支感知 Checkout 与 Tag 的 `Create Branch and Checkout…` 进入固定起点的新建分支浮窗，仅提供取消和创建并切换；普通 Create Branch 保留仅创建。设置 → 高级 → Git 操作中的“允许直接进入 Detached HEAD”默认关闭，应用保存成功后即时生效；开启后 Commit 和 Tag 菜单额外显示 `Checkout to Detached HEAD…`，确认说明原分支位置不变、后续提交需要分支承接。关闭时不显示该入口和 工作树 的 Detached 选项；工作树 要求已有或新建分支。宿主执行前重新检查策略，Stash 重试在保存 Stash 前拦截，禁止显式和隐式 Detached 工作树。外部造成的已有 Detached HEAD 可以正常读取、返回分支和创建分支；Rebase 内部临时 Detached 状态不受此限制。
 - 无变更、无 Staged 文件或没有可用目标时禁用对应操作并说明原因。Detached HEAD 禁用工具栏 Push。仓库没有远端时，Push 不显示无法完成的空选择器，而是说明本地 Commit 已保存、发送前需要连接远端，并直接进入 `Add Remote…`；添加成功后返回 Push。Push 对话框先显示实际的 `Local Branch → Remote/Remote Branch`；当前 upstream、`branch.*.pushRemote`、`remote.pushDefault` 或唯一远端可确定目标时不得显示空白可选项。用户通过 `Change Target…` 显式修改目标；首次 Push 说明会建立 upstream。多远端且没有配置目标时要求选择远端。`Force-with-lease` 位于默认折叠的高级选项，启用后显示确认的远端 Commit，远端仍与该版本一致才执行；目标在本地尚不存在时，仅允许远端也仍不存在。后台 Fetch 不改变已打开窗口的确认版本。Push 地址变化或配置多个 Push 地址时拒绝此危险操作，刷新并重新选择单一目标后确认。
 - 当前分支存在未推送提交时，工具栏 Push 与仓库导航项使用高饱和通知角标显示数量；用户可以在“界面 / 状态提醒”中选用预设色或输入 HEX，文字自动在黑白之间选择以保持对比，并使用亮色边缘增强辨识度。数量为零时不显示角标。仓库列表先显示，角标状态随后在后台加载，当前仓库的角标随状态刷新即时更新。
 - Checkout 可能覆盖修改时显示受影响文件，并提供查看文件与 `Stash Changes & Checkout`。
@@ -208,9 +208,9 @@ Diff 标题栏平铺显示当前文件的新增、修改、删除块数量，当
 
 ## 语言与文案
 
-支持 English 和 `简体中文`。语言选择对屏幕文字、工具提示、空状态、错误和确认生效。Git 操作与专业术语保留英文，包括 Checkout、Fetch、Pull、Push、Merge、Rebase、Stage、Unstage、Stash、Commit、HEAD、Index 和 Worktree。Commit Message、作者、分支、Tag、路径、代码和 Git 返回文本保持原文。
+支持 English 和 `简体中文`。语言选择对屏幕文字、工具提示、空状态、错误和确认生效。面向用户的普通动作与对象使用中文，例如提交、获取、拉取、推送、合并、暂存、标签和工作树；具有稳定 Git 认知且直译会降低辨识度的 Rebase、Cherry-pick、Graph、Stash、HEAD、Detached HEAD、Index 和 Diff 保留英文。Checkout 按语境译为“切换”，直接进入历史提交时明确提示 Detached HEAD。提交消息、作者、分支名、远程仓库名、路径、代码和 Git 原始输出保持原文。
 
-按钮使用统一的英文 Git 动作名和大小写。`Copy Commit ID` 复制完整 OID，`Copy Commit Message` 复制完整提交信息。语言切换不清除引用筛选、当前对象、面板尺寸或 Commit 草稿。
+按钮按当前语言使用统一术语；中文界面翻译普通动作，但保留上述核心 Git 术语。`复制提交 ID` 复制完整 OID，`复制提交消息` 复制完整提交信息。语言切换不清除引用筛选、当前对象、面板尺寸或提交草稿。
 
 应用文案使用独立的中英文资源集中维护，现有措辞与术语按核对结果更新；资源迁移本身不自动补译。来源标签的原生确认与提示使用该标签的语言。VS Code 命令面板、活动栏入口和扩展设置描述使用 VS Code 显示语言，工作台选择器只控制工作台及其发起的提示。文案资源与核对流程见 [架构与开发约定](ARCHITECTURE.md#中英文资源维护)。
 

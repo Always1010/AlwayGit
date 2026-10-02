@@ -1,8 +1,8 @@
 {
   "snapshotCoordinator.theSnapshotRequestWasCancelled": {
     "en": "The snapshot request was cancelled.",
-    "zh-CN": "The snapshot request was cancelled.",
-    "review": "pending",
+    "zh-CN": "快照请求已取消。",
+    "review": "translated",
     "context": "src/application/snapshot-coordinator.ts / constructor"
   }
 }

@@ -1,548 +1,548 @@
 {
   "service.thisRepositoryContainsAPathEncodedWithInvalidUTF": {
     "en": "This repository contains a path encoded with invalid UTF-8. Rename the affected file with an external Git tool before continuing.",
-    "zh-CN": "This repository contains a path encoded with invalid UTF-8. Rename the affected file with an external Git tool before continuing.",
-    "review": "pending",
+    "zh-CN": "此仓库包含未使用有效 UTF-8 编码的路径。继续前，请使用外部 Git 工具重命名受影响的文件。",
+    "review": "translated",
     "context": "src/git/service.ts / decodePaths"
   },
   "service.invalid": {
     "en": "Invalid {{label}}",
-    "zh-CN": "Invalid {{label}}",
-    "review": "pending",
+    "zh-CN": "无效的{{label}}",
+    "review": "translated",
     "context": "src/git/service.ts / token"
   },
   "service.filePathsMustStayInsideTheRepository": {
     "en": "File paths must stay inside the repository",
-    "zh-CN": "File paths must stay inside the repository",
-    "review": "pending",
+    "zh-CN": "文件路径必须位于仓库内",
+    "review": "translated",
     "context": "src/git/service.ts / validateFilePath"
   },
   "service.malformedGitStatusOutput": {
     "en": "Malformed Git status output",
-    "zh-CN": "Malformed Git status output",
-    "review": "pending",
+    "zh-CN": "Git 状态输出格式错误",
+    "review": "translated",
     "context": "src/git/service.ts / fields"
   },
   "service.aReadOnlyRequestCannotRunGitMutations": {
     "en": "A read-only request cannot run Git mutations",
-    "zh-CN": "A read-only request cannot run Git mutations",
-    "review": "pending",
+    "zh-CN": "只读请求不能执行 Git 写操作",
+    "review": "translated",
     "context": "src/git/service.ts / run"
   },
   "service.cleanBatchEsCompletedALaterBatchFailedAnd": {
     "en": "{{count}} clean batch(es) completed; a later batch failed and may have partially removed files. Inspect the remaining files before retrying.\n{{value}}",
-    "zh-CN": "{{count}} clean batch(es) completed; a later batch failed and may have partially removed files. Inspect the remaining files before retrying.\n{{value}}",
-    "review": "pending",
+    "zh-CN": "已完成 {{count}} 个清理批次；后续批次失败，可能只移除了部分文件。重试前请检查剩余文件。\n{{value}}",
+    "review": "translated",
     "context": "src/git/service.ts / run"
   },
   "service.configureGitCredentialsOrSignInThenRetry": {
     "en": "\nConfigure Git credentials or sign in, then retry.",
-    "zh-CN": "\nConfigure Git credentials or sign in, then retry.",
-    "review": "pending",
+    "zh-CN": "\n请配置 Git 凭据或登录后重试。",
+    "review": "translated",
     "context": "src/git/service.ts / run / hint"
   },
   "service.anotherGitProcessIsUsingThisRepositoryFinishIt": {
     "en": "\nAnother Git process is using this repository. Finish it and retry.",
-    "zh-CN": "\nAnother Git process is using this repository. Finish it and retry.",
-    "review": "pending",
+    "zh-CN": "\n另一个 Git 进程正在使用此仓库，请等待其结束后重试。",
+    "review": "translated",
     "context": "src/git/service.ts / run / hint"
   },
   "service.gitExitedWithStatus": {
     "en": "Git exited with status {{code}}",
-    "zh-CN": "Git exited with status {{code}}",
-    "review": "pending",
+    "zh-CN": "Git 退出，状态为 {{code}}",
+    "review": "translated",
     "context": "src/git/service.ts / run"
   },
   "service.cannotReadGitConfiguration": {
     "en": "Cannot read Git configuration {{key}}",
-    "zh-CN": "Cannot read Git configuration {{key}}",
-    "review": "pending",
+    "zh-CN": "无法读取 Git 配置 {{key}}",
+    "review": "translated",
     "context": "src/git/service.ts / optionalConfig"
   },
   "service.thisRemoteHasMultiplePushDestinationsSelectARemote": {
     "en": "This remote has multiple Push destinations. Select a remote with one destination before Force-with-lease or deleting branches.",
-    "zh-CN": "This remote has multiple Push destinations. Select a remote with one destination before Force-with-lease or deleting branches.",
-    "review": "pending",
+    "zh-CN": "此远程仓库有多个推送目标。执行 Force-with-lease 或删除分支前，请选择只有一个目标的远程仓库。",
+    "review": "translated",
     "context": "src/git/service.ts / remoteDestination"
   },
   "service.theRemotePushDestinationIsMissingOrChangedRefresh": {
     "en": "The remote Push destination is missing or changed. Refresh and reopen the confirmation before trying again.",
-    "zh-CN": "The remote Push destination is missing or changed. Refresh and reopen the confirmation before trying again.",
-    "review": "pending",
+    "zh-CN": "远程推送目标缺失或已变化。重试前请刷新并重新打开确认对话框。",
+    "review": "translated",
     "context": "src/git/service.ts / confirmRemoteDestination"
   },
   "service.theConfirmedRemoteBranchVersionIsMissingRefreshAnd": {
     "en": "The confirmed remote branch version is missing. Refresh and reopen the confirmation before trying again.",
-    "zh-CN": "The confirmed remote branch version is missing. Refresh and reopen the confirmation before trying again.",
-    "review": "pending",
+    "zh-CN": "已确认的远程分支版本缺失。重试前请刷新并重新打开确认对话框。",
+    "review": "translated",
     "context": "src/git/service.ts / confirmedRemoteOid"
   },
   "service.invalidConfirmedRemoteBranchVersion": {
     "en": "Invalid confirmed remote branch version",
-    "zh-CN": "Invalid confirmed remote branch version",
-    "review": "pending",
+    "zh-CN": "已确认的远程分支版本无效",
+    "review": "translated",
     "context": "src/git/service.ts / confirmedRemoteOid"
   },
   "service.openAWorkingRepositoryRatherThanABareRepository": {
     "en": "Open a working repository rather than a bare repository",
-    "zh-CN": "Open a working repository rather than a bare repository",
-    "review": "pending",
+    "zh-CN": "请打开工作仓库，而非裸仓库",
+    "review": "translated",
     "context": "src/git/service.ts / discover"
   },
   "service.repositoryChangedReopenItBeforeContinuing": {
     "en": "Repository changed; reopen it before continuing",
-    "zh-CN": "Repository changed; reopen it before continuing",
-    "review": "pending",
+    "zh-CN": "仓库已变化，请重新打开后继续",
+    "review": "translated",
     "context": "src/git/service.ts / verify"
   },
   "service.locked": {
     "en": "Locked",
-    "zh-CN": "Locked",
-    "review": "pending",
+    "zh-CN": "已锁定",
+    "review": "translated",
     "context": "src/git/service.ts / worktrees"
   },
   "service.prunable": {
     "en": "Prunable",
-    "zh-CN": "Prunable",
-    "review": "pending",
+    "zh-CN": "可清理",
+    "review": "translated",
     "context": "src/git/service.ts / worktrees"
   },
   "service.invalidHistoryPage": {
     "en": "Invalid history page",
-    "zh-CN": "Invalid history page",
-    "review": "pending",
+    "zh-CN": "历史记录页无效",
+    "review": "translated",
     "context": "src/git/service.ts / history"
   },
   "service.invalidSearch": {
     "en": "Invalid search",
-    "zh-CN": "Invalid search",
-    "review": "pending",
+    "zh-CN": "搜索条件无效",
+    "review": "translated",
     "context": "src/git/service.ts / history"
   },
   "service.selectedParentIsNotAParentOfThisCommit": {
     "en": "Selected parent is not a parent of this commit",
-    "zh-CN": "Selected parent is not a parent of this commit",
-    "review": "pending",
+    "zh-CN": "所选父提交不是此提交的父提交",
+    "review": "translated",
     "context": "src/git/service.ts / details"
   },
   "service.theSelectedObjectIsNotAStash": {
     "en": "The selected object is not a Stash.",
-    "zh-CN": "The selected object is not a Stash.",
-    "review": "pending",
+    "zh-CN": "所选对象不是 Stash。",
+    "review": "translated",
     "context": "src/git/service.ts / stashDetails"
   },
   "service.invalidContentLimit": {
     "en": "Invalid content limit",
-    "zh-CN": "Invalid content limit",
-    "review": "pending",
+    "zh-CN": "内容限制无效",
+    "review": "translated",
     "context": "src/git/service.ts / content"
   },
   "service.theSelectedPathIsNotAFile": {
     "en": "The selected path is not a file",
-    "zh-CN": "The selected path is not a file",
-    "review": "pending",
+    "zh-CN": "所选路径不是文件",
+    "review": "translated",
     "context": "src/git/service.ts / content"
   },
   "service.invalidIndexStage": {
     "en": "Invalid index stage",
-    "zh-CN": "Invalid index stage",
-    "review": "pending",
+    "zh-CN": "Index 阶段无效",
+    "review": "translated",
     "context": "src/git/service.ts / content"
   },
   "service.theTargetBranchOrHEADChangedBeforeTheOperation": {
     "en": "The target branch or HEAD changed before the operation started. Refresh and confirm the operation again.",
-    "zh-CN": "The target branch or HEAD changed before the operation started. Refresh and confirm the operation again.",
-    "review": "pending",
+    "zh-CN": "目标分支或 HEAD 在操作开始前已变化。请刷新并重新确认操作。",
+    "review": "translated",
     "context": "src/git/service.ts / requireActionContext"
   },
   "service.theGitOperationIsNoLongerActiveRefreshBefore": {
     "en": "The Git operation is no longer active. Refresh before continuing.",
-    "zh-CN": "The Git operation is no longer active. Refresh before continuing.",
-    "review": "pending",
+    "zh-CN": "Git 操作已不再活动，请刷新后继续。",
+    "review": "translated",
     "context": "src/git/service.ts / reviewOperation"
   },
   "service.resolveConflictsBeforeContinuing": {
     "en": "Resolve conflicts before continuing",
-    "zh-CN": "Resolve conflicts before continuing",
-    "review": "pending",
+    "zh-CN": "请先解决冲突，再继续",
+    "review": "translated",
     "context": "src/git/service.ts / reviewOperation"
   },
   "service.stagedContentOrTheOperationChangedDuringInspectionCheck": {
     "en": "Staged content or the operation changed during inspection. Check it again.",
-    "zh-CN": "Staged content or the operation changed during inspection. Check it again.",
-    "review": "pending",
+    "zh-CN": "暂存内容或操作在检查期间已变化，请重新检查。",
+    "review": "translated",
     "context": "src/git/service.ts / reviewOperation"
   },
   "service.theReviewedGitOperationIsNoLongerActiveRefresh": {
     "en": "The reviewed Git operation is no longer active. Refresh before continuing.",
-    "zh-CN": "The reviewed Git operation is no longer active. Refresh before continuing.",
-    "review": "pending",
+    "zh-CN": "已检查的 Git 操作已不再活动，请刷新后继续。",
+    "review": "translated",
     "context": "src/git/service.ts / requireReview"
   },
   "service.inspectTheStagedResultAndConfirmBeforeCompletingThis": {
     "en": "Inspect the staged result and confirm before completing this operation.",
-    "zh-CN": "Inspect the staged result and confirm before completing this operation.",
-    "review": "pending",
+    "zh-CN": "完成此操作前，请检查并确认暂存结果。",
+    "review": "translated",
     "context": "src/git/service.ts / requireReview"
   },
   "service.stagedContentOrTheOperationChangedInspectTheResult": {
     "en": "Staged content or the operation changed. Inspect the result again.",
-    "zh-CN": "Staged content or the operation changed. Inspect the result again.",
-    "review": "pending",
+    "zh-CN": "暂存内容或操作已变化，请重新检查结果。",
+    "review": "translated",
     "context": "src/git/service.ts / requireReview"
   },
   "service.resolveConflictsOrAbortTheActiveGitOperationBefore": {
     "en": "Resolve conflicts or Abort the active Git operation before Checkout.",
-    "zh-CN": "Resolve conflicts or Abort the active Git operation before Checkout.",
-    "review": "pending",
+    "zh-CN": "切换前，请解决冲突或中止当前 Git 操作。",
+    "review": "translated",
     "context": "src/git/service.ts / checkout"
   },
   "service.continueOrAbortTheActiveBeforeCheckout": {
     "en": "Continue or Abort the active {{kind}} before Checkout.",
-    "zh-CN": "Continue or Abort the active {{kind}} before Checkout.",
-    "review": "pending",
+    "zh-CN": "切换前，请继续或中止当前 {{kind}}。",
+    "review": "translated",
     "context": "src/git/service.ts / checkout"
   },
   "service.branchIsCheckedOutInOpenThatWorktreeTo": {
     "en": "Branch {{target}} is checked out in {{path}}. Open that Worktree to use this branch.",
-    "zh-CN": "Branch {{target}} is checked out in {{path}}. Open that Worktree to use this branch.",
-    "review": "pending",
+    "zh-CN": "Branch {{target}} is checked out in {{path}}. Open that 工作树 to use this branch.",
+    "review": "translated",
     "context": "src/git/service.ts / checkout"
   },
   "service.branchWasCreatedAndRetainedButUpstreamConfigurationFailed": {
     "en": "Branch {{resolved}} was created and retained, but upstream configuration failed. Checkout and Stash did not run.\n{{value}}",
-    "zh-CN": "Branch {{resolved}} was created and retained, but upstream configuration failed. Checkout and Stash did not run.\n{{value}}",
-    "review": "pending",
+    "zh-CN": "分支 {{resolved}} 已创建并保留，但上游配置失败。未执行切换和 Stash。\n{{value}}",
+    "review": "translated",
     "context": "src/git/service.ts / checkout"
   },
   "service.alwayGitBeforeCheckout": {
     "en": "AlwayGit: before Checkout {{target}}",
-    "zh-CN": "AlwayGit: before Checkout {{target}}",
-    "review": "pending",
+    "zh-CN": "AlwayGit：切换到 {{target}} 之前",
+    "review": "translated",
     "context": "src/git/service.ts / checkout"
   },
   "service.directDetachedHEADCheckoutIsDisabledCreateAndSwitch": {
     "en": "Direct Detached HEAD Checkout is disabled. Create and switch to a branch, or enable it in Settings > Advanced.",
-    "zh-CN": "Direct Detached HEAD Checkout is disabled. Create and switch to a branch, or enable it in Settings > Advanced.",
-    "review": "pending",
+    "zh-CN": "已禁用直接切换到 Detached HEAD。请创建并切换到分支，或在“设置 > 高级”中启用此功能。",
+    "review": "translated",
     "context": "src/git/service.ts / requireDetachedHead"
   },
   "service.selectUpTo1000BranchesCheckoutAndStashRequire": {
     "en": "Select up to 1000 branches; Checkout and Stash require a single branch.",
-    "zh-CN": "Select up to 1000 branches; Checkout and Stash require a single branch.",
-    "review": "pending",
+    "zh-CN": "最多选择 1000 个分支；切换和 Stash 只能选择一个分支。",
+    "review": "translated",
     "context": "src/git/service.ts / trackBranches"
   },
   "service.selectAnExistingRemoteBranchRatherThanASymbolic": {
     "en": "Select an existing remote branch rather than a symbolic reference: {{source}}",
-    "zh-CN": "Select an existing remote branch rather than a symbolic reference: {{source}}",
-    "review": "pending",
+    "zh-CN": "请选择现有远程分支，而不是符号引用：{{source}}",
+    "review": "translated",
     "context": "src/git/service.ts / trackBranches"
   },
   "service.remoteBranchChangedRefreshAndSelectItAgain": {
     "en": "Remote branch changed. Refresh and select it again: {{source}}",
-    "zh-CN": "Remote branch changed. Refresh and select it again: {{source}}",
-    "review": "pending",
+    "zh-CN": "远程分支已变化，请刷新后重新选择：{{source}}",
+    "review": "translated",
     "context": "src/git/service.ts / trackBranches"
   },
   "service.multipleRemoteBranchesWouldUseTheSameLocalName": {
     "en": "Multiple remote branches would use the same local name: {{name}}. Choose distinct local names.",
-    "zh-CN": "Multiple remote branches would use the same local name: {{name}}. Choose distinct local names.",
-    "review": "pending",
+    "zh-CN": "多个远程分支将使用同一本地名称：{{name}}。请选择不同的本地名称。",
+    "review": "translated",
     "context": "src/git/service.ts / trackBranches"
   },
   "service.localBranchAlreadyExistsAndDoesNotTrackChoose": {
     "en": "Local branch {{name}} already exists and does not track {{value}}. Choose another local name.",
-    "zh-CN": "Local branch {{name}} already exists and does not track {{value}}. Choose another local name.",
-    "review": "pending",
+    "zh-CN": "本地分支 {{name}} 已存在且未跟踪 {{value}}。请选择其他本地名称。",
+    "review": "translated",
     "context": "src/git/service.ts / trackBranches"
   },
   "service.localBranchEsCreatedCreationStoppedAtRefreshBefore": {
     "en": "{{created}} local branch(es) created; creation stopped at {{name}}. Refresh before retrying.\n{{value}}",
-    "zh-CN": "{{created}} local branch(es) created; creation stopped at {{name}}. Refresh before retrying.\n{{value}}",
-    "review": "pending",
+    "zh-CN": "已创建 {{created}} 个本地分支；创建在 {{name}} 处停止。重试前请刷新。\n{{value}}",
+    "review": "translated",
     "context": "src/git/service.ts / trackBranches"
   },
   "service.invalidStashSelector": {
     "en": "Invalid stash selector",
-    "zh-CN": "Invalid stash selector",
-    "review": "pending",
+    "zh-CN": "Stash 选择器无效",
+    "review": "translated",
     "context": "src/git/service.ts / validateStash"
   },
   "service.theStashListChangedRefreshAndSelectTheSaved": {
     "en": "The Stash list changed. Refresh and select the saved entry again.",
-    "zh-CN": "The Stash list changed. Refresh and select the saved entry again.",
-    "review": "pending",
+    "zh-CN": "Stash 列表已变化，请刷新后重新选择保存的条目。",
+    "review": "translated",
     "context": "src/git/service.ts / validateStash"
   },
   "service.selectAtLeastOneFile": {
     "en": "Select at least one file",
-    "zh-CN": "Select at least one file",
-    "review": "pending",
+    "zh-CN": "请至少选择一个文件",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.theSelectedConflictFilesChangedRefreshAndSelectThem": {
     "en": "The selected conflict files changed. Refresh and select them again.",
-    "zh-CN": "The selected conflict files changed. Refresh and select them again.",
-    "review": "pending",
+    "zh-CN": "所选冲突文件已变化，请刷新后重新选择。",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.theRenameDestinationHasStagedContentUnstageTheRename": {
     "en": "The rename destination has staged content. Unstage the rename before discarding it.",
-    "zh-CN": "The rename destination has staged content. Unstage the rename before discarding it.",
-    "review": "pending",
+    "zh-CN": "重命名目标包含已暂存内容。放弃更改前，请取消暂存该重命名。",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.enterACommitMessage": {
     "en": "Enter a commit message",
-    "zh-CN": "Enter a commit message",
-    "review": "pending",
+    "zh-CN": "请输入提交消息",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.amendIsUnavailableDuringAnActiveGitOperation": {
     "en": "Amend is unavailable during an active Git operation.",
-    "zh-CN": "Amend is unavailable during an active Git operation.",
-    "review": "pending",
+    "zh-CN": "进行 Git 操作时无法修订提交。",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.invalidPullStrategy": {
     "en": "Invalid pull strategy",
-    "zh-CN": "Invalid pull strategy",
-    "review": "pending",
+    "zh-CN": "拉取策略无效",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.selectExplicitLocalAndRemoteBranchesThenReopenThe": {
     "en": "Select explicit local and remote branches, then reopen the Force-with-lease confirmation.",
-    "zh-CN": "Select explicit local and remote branches, then reopen the Force-with-lease confirmation.",
-    "review": "pending",
+    "zh-CN": "请选择明确的本地和远程分支，然后重新打开 Force-with-lease 确认对话框。",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.selectALocalBranchBeforeChoosingARemoteBranch": {
     "en": "Select a local branch before choosing a remote branch",
-    "zh-CN": "Select a local branch before choosing a remote branch",
-    "review": "pending",
+    "zh-CN": "选择远程分支前，请先选择本地分支",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.selectARemoteBeforePushingThisBranch": {
     "en": "Select a remote before pushing this branch",
-    "zh-CN": "Select a remote before pushing this branch",
-    "review": "pending",
+    "zh-CN": "推送此分支前，请先选择远程仓库",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.enterARemoteNameWithoutSpacesSuchAsOrigin": {
     "en": "Enter a remote name without spaces, such as origin.",
-    "zh-CN": "Enter a remote name without spaces, such as origin.",
-    "review": "pending",
+    "zh-CN": "请输入不含空格的远程仓库名称，例如 origin。",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.enterARepositoryURL": {
     "en": "Enter a repository URL.",
-    "zh-CN": "Enter a repository URL.",
-    "review": "pending",
+    "zh-CN": "请输入仓库 URL。",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.remoteAlreadyExists": {
     "en": "Remote already exists: {{name}}",
-    "zh-CN": "Remote already exists: {{name}}",
-    "review": "pending",
+    "zh-CN": "远程仓库已存在：{{name}}",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.branchWasCreatedAndRetainedButUpstreamConfigurationFailedVariant2": {
     "en": "Branch {{name}} was created and retained, but upstream configuration failed. Checkout did not run.\n{{value}}",
-    "zh-CN": "Branch {{name}} was created and retained, but upstream configuration failed. Checkout did not run.\n{{value}}",
-    "review": "pending",
+    "zh-CN": "分支 {{name}} 已创建并保留，但上游配置失败。未执行切换。\n{{value}}",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.branchWasCreatedAndRetainedButCheckoutDidNotVariant2": {
     "en": "Branch {{name}} was created and retained, but Checkout did not complete.\n{{value}}",
-    "zh-CN": "Branch {{name}} was created and retained, but Checkout did not complete.\n{{value}}",
-    "review": "pending",
+    "zh-CN": "分支 {{name}} 已创建并保留，但切换未完成。\n{{value}}",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.selectAtLeastOneBranch": {
     "en": "Select at least one branch",
-    "zh-CN": "Select at least one branch",
-    "review": "pending",
+    "zh-CN": "请至少选择一个分支",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.theCurrentBranchCannotBeDeleted": {
     "en": "The current branch cannot be deleted: {{current}}",
-    "zh-CN": "The current branch cannot be deleted: {{current}}",
-    "review": "pending",
+    "zh-CN": "无法删除当前分支：{{current}}",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.branchIsUsedByAWorktree": {
     "en": "Branch is used by a Worktree: {{inUse}}",
-    "zh-CN": "Branch is used by a Worktree: {{inUse}}",
-    "review": "pending",
+    "zh-CN": "Branch is used by a 工作树: {{inUse}}",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.branchChangedBeforeDeletion": {
     "en": "Branch changed before deletion: {{name}}",
-    "zh-CN": "Branch changed before deletion: {{name}}",
-    "review": "pending",
+    "zh-CN": "分支在删除前已变化：{{name}}",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.branchEsDeletedFailed": {
     "en": "{{deleted}} branch(es) deleted; {{count}} failed.\n{{value}}",
-    "zh-CN": "{{deleted}} branch(es) deleted; {{count}} failed.\n{{value}}",
-    "review": "pending",
+    "zh-CN": "已删除 {{deleted}} 个分支；{{count}} 个失败。\n{{value}}",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.unknownRemote": {
     "en": "Unknown remote: {{destination}}",
-    "zh-CN": "Unknown remote: {{destination}}",
-    "review": "pending",
+    "zh-CN": "未知远程仓库：{{destination}}",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.selectAtLeastOneRemoteBranch": {
     "en": "Select at least one remote branch",
-    "zh-CN": "Select at least one remote branch",
-    "review": "pending",
+    "zh-CN": "请至少选择一个远程分支",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.remoteBranchEsDeletedFailed": {
     "en": "{{deleted}} remote branch(es) deleted; {{count}} failed.\n{{value}}",
-    "zh-CN": "{{deleted}} remote branch(es) deleted; {{count}} failed.\n{{value}}",
-    "review": "pending",
+    "zh-CN": "已删除 {{deleted}} 个远程分支；{{count}} 个失败。\n{{value}}",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.theTagIdentityIsMissingOrInvalidRefreshAnd": {
     "en": "The Tag identity is missing or invalid. Refresh and reopen the deletion dialog.",
-    "zh-CN": "The Tag identity is missing or invalid. Refresh and reopen the deletion dialog.",
-    "review": "pending",
+    "zh-CN": "标签标识缺失或无效。请刷新并重新打开删除对话框。",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.theTagChangedRefreshAndReopenTheDeletionDialog": {
     "en": "The Tag changed. Refresh and reopen the deletion dialog.",
-    "zh-CN": "The Tag changed. Refresh and reopen the deletion dialog.",
-    "review": "pending",
+    "zh-CN": "标签已变化，请刷新并重新打开删除对话框。",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.theTagChangedBeforeDeletionRefreshAndReopenThe": {
     "en": "The Tag changed before deletion. Refresh and reopen the deletion dialog.",
-    "zh-CN": "The Tag changed before deletion. Refresh and reopen the deletion dialog.",
-    "review": "pending",
+    "zh-CN": "标签在删除前已变化，请刷新并重新打开删除对话框。",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.tagDeletionFailed": {
     "en": "Tag deletion failed.",
-    "zh-CN": "Tag deletion failed.",
-    "review": "pending",
+    "zh-CN": "删除标签失败。",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.messagesCannotContainNULCharacters": {
     "en": "Messages cannot contain NUL characters",
-    "zh-CN": "Messages cannot contain NUL characters",
-    "review": "pending",
+    "zh-CN": "消息不能包含 NUL 字符",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.finishTheActiveOperationOrResolveConflictsBeforeSaving": {
     "en": "Finish the active operation or resolve conflicts before saving selected files.",
-    "zh-CN": "Finish the active operation or resolve conflicts before saving selected files.",
-    "review": "pending",
+    "zh-CN": "保存所选文件前，请完成当前操作或解决冲突。",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.savedUntrackedFiles": {
     "en": "{{count}} saved untracked files",
-    "zh-CN": "{{count}} saved untracked files",
-    "review": "pending",
+    "zh-CN": "已保存 {{count}} 个未跟踪文件",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow / summary"
   },
   "service.cannotRestoreTheStashBecauseTheProjectAlreadyContains": {
     "en": "Cannot restore the Stash because the project already contains {{summary}}. Existing files were not overwritten, and the Stash is still saved.",
-    "zh-CN": "Cannot restore the Stash because the project already contains {{summary}}. Existing files were not overwritten, and the Stash is still saved.",
-    "review": "pending",
+    "zh-CN": "无法恢复 Stash，因为项目中已包含{{summary}}。未覆盖现有文件，Stash 仍然保留。",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.stashChangesWereAppliedButTheStashListChanged": {
     "en": "Stash changes were applied, but the Stash list changed before Drop. The saved entry was retained; refresh the list.",
-    "zh-CN": "Stash changes were applied, but the Stash list changed before Drop. The saved entry was retained; refresh the list.",
-    "review": "pending",
+    "zh-CN": "已应用 Stash 更改，但 Stash 列表在删除前已变化。保存的条目已保留；请刷新列表。",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.detachedWorktreesCannotAlsoSelectABranch": {
     "en": "Detached worktrees cannot also select a branch",
-    "zh-CN": "Detached worktrees cannot also select a branch",
-    "review": "pending",
+    "zh-CN": "Detached 工作树不能同时选择分支",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.chooseAnExistingOrANewBranch": {
     "en": "Choose an existing or a new branch",
-    "zh-CN": "Choose an existing or a new branch",
-    "review": "pending",
+    "zh-CN": "请选择现有分支或新分支",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.worktreeAlreadyRegistered": {
     "en": "Worktree already registered",
-    "zh-CN": "Worktree already registered",
-    "review": "pending",
+    "zh-CN": "工作树 already registered",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.onlyRegisteredLinkedWorktreesOtherThanTheCurrentWorktree": {
     "en": "Only registered linked worktrees other than the current Worktree can be removed",
-    "zh-CN": "Only registered linked worktrees other than the current Worktree can be removed",
-    "review": "pending",
+    "zh-CN": "只能移除已注册且不是当前工作树的链接工作树",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.thisWorktreeIsLockedUnlockItBeforeRemoval": {
     "en": "This Worktree is Locked: {{locked}}. Unlock it before removal.",
-    "zh-CN": "This Worktree is Locked: {{locked}}. Unlock it before removal.",
-    "review": "pending",
+    "zh-CN": "This 工作树 is Locked: {{locked}}. Unlock it before removal.",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.selectCommits": {
     "en": "Select commits",
-    "zh-CN": "Select commits",
-    "review": "pending",
+    "zh-CN": "请选择提交",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.invalidMergeParentNumber": {
     "en": "Invalid merge parent number",
-    "zh-CN": "Invalid merge parent number",
-    "review": "pending",
+    "zh-CN": "合并父提交编号无效",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.theTargetBranchChangedBeforeTheOperationStartedSelect": {
     "en": "The target branch changed before the operation started. Select the commits again.",
-    "zh-CN": "The target branch changed before the operation started. Select the commits again.",
-    "review": "pending",
+    "zh-CN": "目标分支在操作开始前已变化，请重新选择提交。",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.invalidResetMode": {
     "en": "Invalid reset mode",
-    "zh-CN": "Invalid reset mode",
-    "review": "pending",
+    "zh-CN": "重置模式无效",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.theSelectedGitOperationIsNoLongerActive": {
     "en": "The selected Git operation is no longer active",
-    "zh-CN": "The selected Git operation is no longer active",
-    "review": "pending",
+    "zh-CN": "所选 Git 操作已不再活动",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.thisOperationCannotBeSkipped": {
     "en": "This operation cannot be skipped",
-    "zh-CN": "This operation cannot be skipped",
-    "review": "pending",
+    "zh-CN": "无法跳过此操作",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.unsupportedGitAction": {
     "en": "Unsupported Git action",
-    "zh-CN": "Unsupported Git action",
-    "review": "pending",
+    "zh-CN": "不支持的 Git 操作",
+    "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
   "service.retainedCheckoutBranch": {
     "en": "Branch {{branch}} was created and retained, but Checkout did not complete.\n",
-    "zh-CN": "Branch {{branch}} was created and retained, but Checkout did not complete.\n",
-    "review": "pending",
+    "zh-CN": "分支 {{branch}} 已创建并保留，但切换未完成。\n",
+    "review": "translated",
     "context": "src/git/service.ts / checkout"
   },
   "service.retainedCheckoutStash": {
     "en": "\nStash {{oid}} was created and retained. Checkout did not complete; your saved changes remain in Stashes.",
-    "zh-CN": "\nStash {{oid}} was created and retained. Checkout did not complete; your saved changes remain in Stashes.",
-    "review": "pending",
+    "zh-CN": "\nStash {{oid}} 已创建并保留。切换未完成；保存的更改仍保留在 Stash 中。",
+    "review": "translated",
     "context": "src/git/service.ts / checkout"
   },
   "service.cherryPickNeedsBranch": {

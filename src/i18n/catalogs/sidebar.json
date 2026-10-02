@@ -79,7 +79,7 @@
   },
   "sidebar.noTags": {
     "en": "No tags",
-    "zh-CN": "暂无 Tag",
+    "zh-CN": "没有标签",
     "review": "translated",
     "context": "webview/Sidebar.tsx / SidebarPanel"
   },
@@ -91,7 +91,7 @@
   },
   "sidebar.doubleClickOrPressEnterToSwitchWorktree": {
     "en": "Double-click or press Enter to switch Worktree.",
-    "zh-CN": "双击或按 Enter 切换 Worktree。",
+    "zh-CN": "双击或按 Enter 切换工作树。",
     "review": "translated",
     "context": "webview/Sidebar.tsx / SidebarPanel"
   },
@@ -103,38 +103,38 @@
   },
   "sidebar.showBranch": {
     "en": "Show branch {{name}}",
-    "zh-CN": "Show branch {{name}}",
-    "review": "pending",
+    "zh-CN": "显示分支 {{name}}",
+    "review": "translated",
     "context": "webview/Sidebar.tsx / BranchLeaf"
   },
   "sidebar.branch": {
     "en": "Branch {{name}}",
-    "zh-CN": "Branch {{name}}",
-    "review": "pending",
+    "zh-CN": "分支 {{name}}",
+    "review": "translated",
     "context": "webview/Sidebar.tsx / BranchLeaf"
   },
   "sidebar.hEAD": {
     "en": " · HEAD",
     "zh-CN": " · HEAD",
-    "review": "pending",
+    "review": "keep",
     "context": "webview/Sidebar.tsx / BranchLeaf"
   },
   "sidebar.showBranchGroup": {
     "en": "Show branch group {{label}}",
-    "zh-CN": "Show branch group {{label}}",
-    "review": "pending",
+    "zh-CN": "显示分支组 {{label}}",
+    "review": "translated",
     "context": "webview/Sidebar.tsx / BranchNode"
   },
   "sidebar.graph": {
     "en": "Graph:",
-    "zh-CN": "Graph:",
-    "review": "pending",
+    "zh-CN": "Graph：",
+    "review": "translated",
     "context": "webview/Sidebar.tsx / SidebarPanel"
   },
   "sidebar.tags": {
     "en": "Tags",
-    "zh-CN": "Tags",
-    "review": "keep",
+    "zh-CN": "标签",
+    "review": "translated",
     "context": "webview/Sidebar.tsx / SidebarPanel"
   },
   "sidebar.stashes": {
@@ -145,8 +145,8 @@
   },
   "sidebar.worktrees": {
     "en": "Worktrees",
-    "zh-CN": "Worktrees",
-    "review": "keep",
+    "zh-CN": "工作树",
+    "review": "translated",
     "context": "webview/Sidebar.tsx / SidebarPanel"
   },
   "sidebar.detachedHEAD": {
@@ -157,8 +157,8 @@
   },
   "sidebar.locked": {
     "en": " · Locked",
-    "zh-CN": " · Locked",
-    "review": "pending",
+    "zh-CN": " · 已锁定",
+    "review": "translated",
     "context": "webview/Sidebar.tsx / SidebarPanel"
   }
 }

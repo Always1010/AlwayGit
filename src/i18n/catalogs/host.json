@@ -112,7 +112,7 @@
   },
   "host.selectARegisteredNonBareWorktree": {
     "en": "Select a registered non-bare Worktree.",
-    "zh-CN": "请选择已注册的非 bare Worktree。",
+    "zh-CN": "请选择已注册的非 bare 工作树。",
     "review": "translated",
     "context": "src/extension/workbench.ts / executeRequest"
   },
@@ -160,38 +160,38 @@
   },
   "host.newWorktreeDirectory": {
     "en": "New Worktree Directory",
-    "zh-CN": "New Worktree Directory",
-    "review": "pending",
+    "zh-CN": "新工作树目录",
+    "review": "translated",
     "context": "src/extension/workbench.ts / executeRequest / value"
   },
   "host.useDirectory": {
     "en": "Use Directory",
-    "zh-CN": "Use Directory",
-    "review": "pending",
+    "zh-CN": "使用此目录",
+    "review": "translated",
     "context": "src/extension/workbench.ts / executeRequest / value"
   },
   "host.repositoryStatus": {
     "en": "[repository-status:{{name}}] {{value}}",
     "zh-CN": "[repository-status:{{name}}] {{value}}",
-    "review": "pending",
+    "review": "keep",
     "context": "src/extension/workbench.ts / repositoryStatuses"
   },
   "host.activityRefresh": {
     "en": "[activity-refresh] {{value}}",
     "zh-CN": "[activity-refresh] {{value}}",
-    "review": "pending",
+    "review": "keep",
     "context": "src/extension/workbench.ts / poll"
   },
   "host.refresh": {
     "en": "[refresh] {{value}}",
     "zh-CN": "[refresh] {{value}}",
-    "review": "pending",
+    "review": "keep",
     "context": "src/extension/workbench.ts / poll"
   },
   "host.alwayGit": {
     "en": "AlwayGit — {{name}}",
     "zh-CN": "AlwayGit — {{name}}",
-    "review": "pending",
+    "review": "keep",
     "context": "src/extension/workbench.ts / updatePanelTitle"
   }
 }

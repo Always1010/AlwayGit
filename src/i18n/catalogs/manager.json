@@ -1,56 +1,56 @@
 {
   "manager.theRepositoryOrGroupNoLongerExists": {
     "en": "The repository or group no longer exists.",
-    "zh-CN": "The repository or group no longer exists.",
-    "review": "pending",
+    "zh-CN": "仓库或分组已不存在。",
+    "review": "translated",
     "context": "src/repositories/manager.ts / reorder"
   },
   "manager.reorderItemsWithinTheSameLevel": {
     "en": "Reorder items within the same level.",
-    "zh-CN": "Reorder items within the same level.",
-    "review": "pending",
+    "zh-CN": "只能在同一层级内重新排序。",
+    "review": "translated",
     "context": "src/repositories/manager.ts / reorder"
   },
   "manager.selectARegisteredRepositoryFirst": {
     "en": "Select a registered repository first.",
-    "zh-CN": "Select a registered repository first.",
-    "review": "pending",
+    "zh-CN": "请先选择已注册的仓库。",
+    "review": "translated",
     "context": "src/repositories/manager.ts / get"
   },
   "manager.trustThisWorkspaceBeforeExecutingGit": {
     "en": "Trust this workspace before executing Git.",
-    "zh-CN": "Trust this workspace before executing Git.",
-    "review": "pending",
+    "zh-CN": "执行 Git 操作前，请先信任此工作区。",
+    "review": "translated",
     "context": "src/repositories/manager.ts / add"
   },
   "manager.repositoryGroupNoLongerExists": {
     "en": "Repository group no longer exists.",
-    "zh-CN": "Repository group no longer exists.",
-    "review": "pending",
+    "zh-CN": "仓库分组已不存在。",
+    "review": "translated",
     "context": "src/repositories/manager.ts / registerDiscovered"
   },
   "manager.repositoryGroupNameIsRequired": {
     "en": "Repository group name is required.",
-    "zh-CN": "Repository group name is required.",
-    "review": "pending",
+    "zh-CN": "必须填写仓库分组名称。",
+    "review": "translated",
     "context": "src/repositories/manager.ts / newCollection"
   },
   "manager.repositoryGroupNameIsTooLong": {
     "en": "Repository group name is too long.",
-    "zh-CN": "Repository group name is too long.",
-    "review": "pending",
+    "zh-CN": "仓库分组名称过长。",
+    "review": "translated",
     "context": "src/repositories/manager.ts / newCollection"
   },
   "manager.aRepositoryGroupWithThisNameAlreadyExists": {
     "en": "A repository group with this name already exists.",
-    "zh-CN": "A repository group with this name already exists.",
-    "review": "pending",
+    "zh-CN": "已存在同名仓库分组。",
+    "review": "translated",
     "context": "src/repositories/manager.ts / newCollection"
   },
   "manager.discovery": {
     "en": "[discovery] {{root}}: {{value}}",
     "zh-CN": "[discovery] {{root}}: {{value}}",
-    "review": "pending",
+    "review": "keep",
     "context": "src/repositories/manager.ts / runScan"
   }
 }

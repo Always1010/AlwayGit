@@ -3,91 +3,91 @@ import type { ParameterValue } from './index';
 export const catalog = {
   "actionNames.stage": {
     "en": "Stage",
-    "zh-CN": "Stage"
+    "zh-CN": "暂存"
   },
   "actionNames.markStage": {
     "en": "Mark & Stage",
-    "zh-CN": "Mark & Stage"
+    "zh-CN": "标记为已解决并暂存"
   },
   "actionNames.unstage": {
     "en": "Unstage",
-    "zh-CN": "Unstage"
+    "zh-CN": "取消暂存"
   },
   "actionNames.discard": {
     "en": "Discard",
-    "zh-CN": "Discard"
+    "zh-CN": "放弃更改"
   },
   "actionNames.amend": {
     "en": "Amend",
-    "zh-CN": "Amend"
+    "zh-CN": "修订提交"
   },
   "actionNames.commit": {
     "en": "Commit",
-    "zh-CN": "Commit"
+    "zh-CN": "提交"
   },
   "actionNames.fetch": {
     "en": "Fetch",
-    "zh-CN": "Fetch"
+    "zh-CN": "获取"
   },
   "actionNames.pull": {
     "en": "Pull",
-    "zh-CN": "Pull"
+    "zh-CN": "拉取"
   },
   "actionNames.push": {
     "en": "Push",
-    "zh-CN": "Push"
+    "zh-CN": "推送"
   },
   "actionNames.addRemote": {
     "en": "Add Remote",
-    "zh-CN": "Add Remote"
+    "zh-CN": "添加远程仓库"
   },
   "actionNames.createBranch": {
     "en": "Create Branch",
-    "zh-CN": "Create Branch"
+    "zh-CN": "创建分支"
   },
   "actionNames.checkout": {
     "en": "Checkout",
-    "zh-CN": "Checkout"
+    "zh-CN": "切换"
   },
   "actionNames.stashCheckout": {
     "en": "Stash & Checkout",
-    "zh-CN": "Stash & Checkout"
+    "zh-CN": "Stash 并切换"
   },
   "actionNames.checkoutRemoteBranch": {
     "en": "Checkout Remote Branch",
-    "zh-CN": "Checkout Remote Branch"
+    "zh-CN": "切换到远程分支"
   },
   "actionNames.createTrackingBranches": {
     "en": "Create Tracking Branches",
-    "zh-CN": "Create Tracking Branches"
+    "zh-CN": "创建跟踪分支"
   },
   "actionNames.deleteBranches": {
     "en": "Delete Branches",
-    "zh-CN": "Delete Branches"
+    "zh-CN": "删除分支"
   },
   "actionNames.deleteBranch": {
     "en": "Delete Branch",
-    "zh-CN": "Delete Branch"
+    "zh-CN": "删除分支"
   },
   "actionNames.deleteRemoteBranches": {
     "en": "Delete Remote Branches",
-    "zh-CN": "Delete Remote Branches"
+    "zh-CN": "删除远程分支"
   },
   "actionNames.createTag": {
     "en": "Create Tag",
-    "zh-CN": "Create Tag"
+    "zh-CN": "创建标签"
   },
   "actionNames.deleteTag": {
     "en": "Delete Tag",
-    "zh-CN": "Delete Tag"
+    "zh-CN": "删除标签"
   },
   "actionNames.stashSelectedFiles": {
     "en": "Stash Selected Files",
-    "zh-CN": "Stash Selected Files"
+    "zh-CN": "Stash 所选文件"
   },
   "actionNames.stashAllChanges": {
     "en": "Stash All Changes",
-    "zh-CN": "Stash All Changes"
+    "zh-CN": "Stash 所有更改"
   },
   "actionNames.popStash": {
     "en": "Pop Stash",
@@ -95,23 +95,23 @@ export const catalog = {
   },
   "actionNames.applyStash": {
     "en": "Apply Stash",
-    "zh-CN": "Apply Stash"
+    "zh-CN": "应用 Stash"
   },
   "actionNames.dropStash": {
     "en": "Drop Stash",
-    "zh-CN": "Drop Stash"
+    "zh-CN": "删除 Stash"
   },
   "actionNames.addWorktree": {
     "en": "Add Worktree",
-    "zh-CN": "Add Worktree"
+    "zh-CN": "添加工作树"
   },
   "actionNames.removeWorktree": {
     "en": "Remove Worktree",
-    "zh-CN": "Remove Worktree"
+    "zh-CN": "移除工作树"
   },
   "actionNames.merge": {
     "en": "Merge",
-    "zh-CN": "Merge"
+    "zh-CN": "合并"
   },
   "actionNames.rebase": {
     "en": "Rebase",
@@ -123,19 +123,19 @@ export const catalog = {
   },
   "actionNames.revert": {
     "en": "Revert",
-    "zh-CN": "Revert"
+    "zh-CN": "撤销提交"
   },
   "actionNames.continue": {
     "en": "{{value}} Continue",
-    "zh-CN": "{{value}} Continue"
+    "zh-CN": "{{value}} 继续"
   },
   "actionNames.abort": {
     "en": "{{value}} Abort",
-    "zh-CN": "{{value}} Abort"
+    "zh-CN": "{{value}} 中止"
   },
   "actionNames.skip": {
     "en": "{{value}} Skip",
-    "zh-CN": "{{value}} Skip"
+    "zh-CN": "{{value}} 跳过"
   },
   "actions.currentBranchCurrentVersion": {
     "en": "Current branch {{name}} · current version",
@@ -155,7 +155,7 @@ export const catalog = {
   },
   "actions.currentCommit": {
     "en": "Current Commit",
-    "zh-CN": "当前 Commit"
+    "zh-CN": "当前提交"
   },
   "actions.noneAvailable": {
     "en": "None available",
@@ -167,7 +167,7 @@ export const catalog = {
   },
   "actions.stashAllChanges": {
     "en": "Stash All Changes",
-    "zh-CN": "Stash 全部修改"
+    "zh-CN": "Stash 所有更改"
   },
   "actions.createBranchAndCheckout": {
     "en": "Create Branch and Checkout",
@@ -251,7 +251,7 @@ export const catalog = {
   },
   "actions.refreshAndReopenTheTagDeletionDialog": {
     "en": "Refresh and reopen the Tag deletion dialog.",
-    "zh-CN": "请刷新并重新打开 Tag 删除窗口。"
+    "zh-CN": "请刷新并重新打开标签删除窗口。"
   },
   "actions.selectAtLeastOneFileToStash": {
     "en": "Select at least one file to Stash.",
@@ -271,7 +271,7 @@ export const catalog = {
   },
   "actions.mainlineParentMustBeAPositiveInteger": {
     "en": "Mainline parent must be a positive integer.",
-    "zh-CN": "Mainline 父 Commit 序号必须为正整数。"
+    "zh-CN": "主线父提交序号必须为正整数。"
   },
   "actions.paused": {
     "en": "{{kind}} paused",
@@ -339,7 +339,7 @@ export const catalog = {
   },
   "actions.checkoutPreservesChangesWhenPossibleGitStopsIfThey": {
     "en": "Checkout preserves changes when possible; Git stops if they would be overwritten.",
-    "zh-CN": "Checkout 会尽可能保留修改；可能覆盖修改时 Git 会停止操作。"
+    "zh-CN": "切换会尽可能保留更改；可能覆盖更改时 Git 会停止操作。"
   },
   "actions.deleteFrom": {
     "en": "Delete from {{remote}}",
@@ -351,7 +351,7 @@ export const catalog = {
   },
   "actions.connectThisLocalRepositoryToARemoteRepositoryYour": {
     "en": "Connect this local repository to a remote repository. Your local commits are already saved and will not be sent until you Push.",
-    "zh-CN": "将此本地仓库连接到远程仓库。本地 Commit 已经保存，只有执行 Push 后才会发送。"
+    "zh-CN": "将此本地仓库连接到远程仓库。本地提交已经保存，只有推送后才会发送。"
   },
   "actions.remoteName": {
     "en": "Remote Name",
@@ -371,11 +371,11 @@ export const catalog = {
   },
   "actions.tagName": {
     "en": "Tag Name",
-    "zh-CN": "Tag 名称"
+    "zh-CN": "标签名称"
   },
   "actions.targetCommit": {
     "en": "Target Commit",
-    "zh-CN": "目标 Commit"
+    "zh-CN": "目标提交"
   },
   "actions.annotationOptional": {
     "en": "Annotation (optional)",
@@ -383,7 +383,7 @@ export const catalog = {
   },
   "actions.tag": {
     "en": "Tag",
-    "zh-CN": "Tag"
+    "zh-CN": "标签"
   },
   "actions.selectedFiles": {
     "en": {
@@ -402,7 +402,7 @@ export const catalog = {
   },
   "actions.saveEachSelectedFileSCompleteIndexAndWorking": {
     "en": "Save each selected file’s complete Index and Working Tree state, even when selected from only Staged or Unstaged Changes. Selected untracked files are included. Other files keep their changes.",
-    "zh-CN": "保存每个所选文件完整的 Index 和工作区状态，即使只在 Staged 或 Unstaged Changes 中选择。所选未跟踪文件一并保存，其他文件的修改保留。"
+    "zh-CN": "保存每个所选文件完整的 Index 和工作区状态，即使只在已暂存或未暂存的更改中选择。所选未跟踪文件一并保存，其他文件的更改保留。"
   },
   "actions.saveAllTrackedFilesIndexAndWorkingTreeChanges": {
     "en": "Save all tracked files’ Index and Working Tree changes for later, then clear their saved changes from the project.",
@@ -470,7 +470,7 @@ export const catalog = {
   },
   "actions.worktreeFolder": {
     "en": "Worktree Folder",
-    "zh-CN": "Worktree 目录"
+    "zh-CN": "工作树文件夹"
   },
   "actions.browse": {
     "en": "Browse…",
@@ -498,7 +498,7 @@ export const catalog = {
   },
   "actions.worktree": {
     "en": "Worktree",
-    "zh-CN": "Worktree"
+    "zh-CN": "工作树"
   },
   "actions.removeEvenWithUncommittedChanges": {
     "en": "Remove even with uncommitted changes",
@@ -506,7 +506,7 @@ export const catalog = {
   },
   "actions.mergeSource": {
     "en": "Merge Source",
-    "zh-CN": "Merge 来源"
+    "zh-CN": "合并来源"
   },
   "actions.newBase": {
     "en": "New Base",
@@ -514,31 +514,31 @@ export const catalog = {
   },
   "actions.bringSelectedHistoryIntoTheCurrentBranch": {
     "en": "Bring selected history into the current branch.",
-    "zh-CN": "将选中的历史 Merge 到当前分支。"
+    "zh-CN": "将所选历史合并到当前分支。"
   },
   "actions.replayCurrentBranchCommitsOntoTheSelectedBaseReplayed": {
     "en": "Replay current-branch commits onto the selected base. Replayed Commit IDs change.",
-    "zh-CN": "将当前分支的 Commit 重新应用到选定基点；这些 Commit 的 ID 会改变。"
+    "zh-CN": "将当前分支的提交重新应用到所选基点；这些提交的 ID 会改变。"
   },
   "actions.commitIDs": {
     "en": "Commit IDs",
-    "zh-CN": "Commit ID"
+    "zh-CN": "提交 ID"
   },
   "actions.mainlineParentMergeCommitsOnly": {
     "en": "Mainline Parent (Merge Commits only)",
-    "zh-CN": "Mainline 父 Commit（仅 Merge Commit）"
+    "zh-CN": "主线父提交（仅合并提交）"
   },
   "actions.createNewCommitsReversingTheseChanges": {
     "en": "Create new commits reversing these changes.",
-    "zh-CN": "生成新的 Commit 撤销这些修改。"
+    "zh-CN": "创建新提交以撤销这些更改。"
   },
   "actions.applyTheseCommitsToTheCurrentBranchInThe": {
     "en": "Apply these commits to the current branch in the entered order.",
-    "zh-CN": "按输入顺序将这些 Commit 应用到当前分支。"
+    "zh-CN": "按输入顺序将这些提交应用到当前分支。"
   },
   "actions.resetMode": {
     "en": "Reset Mode",
-    "zh-CN": "Reset 模式"
+    "zh-CN": "重置模式"
   },
   "actions.keepIndexAndWorkingTreeChanges": {
     "en": "Keep Index and Working Tree changes.",
@@ -558,7 +558,7 @@ export const catalog = {
   },
   "actions.pullStrategy": {
     "en": "Pull Strategy",
-    "zh-CN": "Pull 策略"
+    "zh-CN": "拉取策略"
   },
   "actions.noRemoteRepositoryIsConnectedYet": {
     "en": "No remote repository is connected yet.",
@@ -566,11 +566,11 @@ export const catalog = {
   },
   "actions.yourCommitsAreSavedLocallyAddARemoteAddress": {
     "en": "Your commits are saved locally. Add a remote address before sending them with Push.",
-    "zh-CN": "你的 Commit 已保存在本地。请先添加远端地址，再通过 Push 发送。"
+    "zh-CN": "你的提交已保存在本地。请先添加远程地址，再通过推送发送。"
   },
   "actions.pushTarget": {
     "en": "Push Target",
-    "zh-CN": "Push 目标"
+    "zh-CN": "推送目标"
   },
   "actions.selectRemote": {
     "en": "Select remote",
@@ -614,7 +614,7 @@ export const catalog = {
   },
   "actions.expectedRemoteCommit": {
     "en": "Expected remote Commit: ",
-    "zh-CN": "确认的远端 Commit："
+    "zh-CN": "预期的远程提交："
   },
   "actions.createOnlyIfThisRemoteBranchIsStillAbsent": {
     "en": "Create only if this remote branch is still absent.",
@@ -622,11 +622,11 @@ export const catalog = {
   },
   "actions.thisPushWillSetTheSelectedTargetAsThe": {
     "en": "This Push will set the selected target as the upstream branch.",
-    "zh-CN": "本次 Push 会将所选目标设置为 upstream 分支。"
+    "zh-CN": "本次推送会将所选目标设置为 upstream 分支。"
   },
   "actions.discardUnstagedChangesAndSelectedUntrackedFilesStagedChanges": {
     "en": "Discard Unstaged Changes and selected untracked files. Staged Changes remain in the Index.",
-    "zh-CN": "丢弃 Unstaged Changes 和选中的未跟踪文件。Index 中的 Staged Changes 保留。"
+    "zh-CN": "放弃未暂存的更改和所选未跟踪文件。Index 中已暂存的更改会保留。"
   },
   "actions.abortTheActiveEditsMadeWhileResolvingConflictsMay": {
     "en": "Abort the active {{kind}}; edits made while resolving conflicts may be discarded. Closing this window does not abort.",
@@ -634,7 +634,7 @@ export const catalog = {
   },
   "actions.gitWillAttemptToRestoreTheOperationStartState": {
     "en": "Git will attempt to restore the operation start state at Commit ",
-    "zh-CN": "Git 将尝试恢复到操作开始时的状态，Commit "
+    "zh-CN": "Git 将尝试恢复到操作开始时的状态，即提交"
   },
   "actions.preExistingLocalChangesMayPreventAFullRestoration": {
     "en": ". Pre-existing local changes may prevent a full restoration.",
@@ -646,59 +646,59 @@ export const catalog = {
   },
   "actions.createBranch": {
     "en": "Create Branch",
-    "zh-CN": "Create Branch"
+    "zh-CN": "创建分支"
   },
   "actions.checkout": {
     "en": "Checkout",
-    "zh-CN": "Checkout"
+    "zh-CN": "切换"
   },
   "actions.checkoutToDetachedHEAD": {
     "en": "Checkout to Detached HEAD",
-    "zh-CN": "Checkout to Detached HEAD"
+    "zh-CN": "切换到此提交（Detached HEAD）"
   },
   "actions.deleteBranch": {
     "en": "Delete Branch",
-    "zh-CN": "Delete Branch"
+    "zh-CN": "删除分支"
   },
   "actions.addRemoteVariant2": {
     "en": "Add Remote",
-    "zh-CN": "Add Remote"
+    "zh-CN": "添加远程仓库"
   },
   "actions.deleteRemoteBranches": {
     "en": "Delete Remote Branches",
-    "zh-CN": "Delete Remote Branches"
+    "zh-CN": "删除远程分支"
   },
   "actions.createTag": {
     "en": "Create Tag",
-    "zh-CN": "Create Tag"
+    "zh-CN": "创建标签"
   },
   "actions.deleteTag": {
     "en": "Delete Tag",
-    "zh-CN": "Delete Tag"
+    "zh-CN": "删除标签"
   },
   "actions.stashChanges": {
     "en": "Stash Changes",
-    "zh-CN": "Stash Changes"
+    "zh-CN": "Stash 更改"
   },
   "actions.applyStash": {
     "en": "Apply Stash",
-    "zh-CN": "Apply Stash"
+    "zh-CN": "应用 Stash"
   },
   "actions.dropStash": {
     "en": "Drop Stash",
-    "zh-CN": "Drop Stash"
+    "zh-CN": "删除 Stash"
   },
   "actions.addWorktree": {
     "en": "Add Worktree",
-    "zh-CN": "Add Worktree"
+    "zh-CN": "添加工作树"
   },
   "actions.removeWorktree": {
     "en": "Remove Worktree",
-    "zh-CN": "Remove Worktree"
+    "zh-CN": "移除工作树"
   },
   "actions.merge": {
     "en": "Merge",
-    "zh-CN": "Merge"
+    "zh-CN": "合并"
   },
   "actions.rebase": {
     "en": "Rebase",
@@ -710,35 +710,35 @@ export const catalog = {
   },
   "actions.revert": {
     "en": "Revert",
-    "zh-CN": "Revert"
+    "zh-CN": "撤销提交"
   },
   "actions.fetch": {
     "en": "Fetch",
-    "zh-CN": "Fetch"
+    "zh-CN": "获取"
   },
   "actions.pull": {
     "en": "Pull",
-    "zh-CN": "Pull"
+    "zh-CN": "拉取"
   },
   "actions.push": {
     "en": "Push",
-    "zh-CN": "Push"
+    "zh-CN": "推送"
   },
   "actions.discardChanges": {
     "en": "Discard Changes",
-    "zh-CN": "Discard Changes"
+    "zh-CN": "放弃更改"
   },
   "actions.abortVariant2": {
     "en": "Abort",
-    "zh-CN": "Abort"
+    "zh-CN": "中止"
   },
   "actions.tagVariant2": {
     "en": "Tag {{name}}",
-    "zh-CN": "Tag {{name}}"
+    "zh-CN": "标签 {{name}}"
   },
   "actions.commit": {
     "en": "Commit {{value}}",
-    "zh-CN": "Commit {{value}}"
+    "zh-CN": "提交 {{value}}"
   },
   "actions.popStash": {
     "en": "Pop Stash",
@@ -746,7 +746,7 @@ export const catalog = {
   },
   "actions.deleteBranches": {
     "en": "Delete Branches",
-    "zh-CN": "Delete Branches"
+    "zh-CN": "删除分支"
   },
   "actions.hEAD": {
     "en": " · HEAD: ",
@@ -754,7 +754,7 @@ export const catalog = {
   },
   "actions.branchNameVariant2": {
     "en": "Branch Name",
-    "zh-CN": "Branch Name"
+    "zh-CN": "分支名称"
   },
   "actions.featureMyChange": {
     "en": "feature/my-change",
@@ -762,19 +762,19 @@ export const catalog = {
   },
   "actions.checkoutVariant2": {
     "en": "Checkout ",
-    "zh-CN": "Checkout "
+    "zh-CN": "切换到 "
   },
   "actions.mergeInto": {
     "en": "Merge {{displayTarget}} into {{branch}}",
-    "zh-CN": "Merge {{displayTarget}} into {{branch}}"
+    "zh-CN": "将 {{displayTarget}} 合并到 {{branch}}"
   },
   "actions.rebaseOnto": {
     "en": "Rebase {{branch}} onto {{displayTarget}}",
-    "zh-CN": "Rebase {{branch}} onto {{displayTarget}}"
+    "zh-CN": "将 {{branch}} Rebase 到 {{displayTarget}}"
   },
   "actions.revertOn": {
     "en": "Revert {{displayTarget}} on {{branch}}",
-    "zh-CN": "Revert {{displayTarget}} on {{branch}}"
+    "zh-CN": "在 {{branch}} 上撤销提交 {{displayTarget}}"
   },
   "actions.soft": {
     "en": "Soft",
@@ -794,11 +794,11 @@ export const catalog = {
   },
   "actions.resetBranchToTarget": {
     "en": "Reset {{branch}} to {{target}}",
-    "zh-CN": "Reset {{branch}} to {{target}}"
+    "zh-CN": "将 {{branch}} 重置到 {{target}}"
   },
   "actions.cherryPickOnto": {
     "en": "Cherry-pick {{target}} onto {{branch}}",
-    "zh-CN": "Cherry-pick {{target}} onto {{branch}}"
+    "zh-CN": "将 {{target}} Cherry-pick 到 {{branch}}"
   },
   "actions.cherryPickReapplyWarning": {
     "en": "These commits are already in the branch history. Reapply only when their changes were reverted or removed. This can produce conflicts or an empty result.",
@@ -810,23 +810,23 @@ export const catalog = {
   },
   "arguments.gitCommandArgumentsAreTooLongSelectFewerItems": {
     "en": "Git command arguments are too long. Select fewer items or shorten the description and retry.",
-    "zh-CN": "Git command arguments are too long. Select fewer items or shorten the description and retry."
+    "zh-CN": "Git 命令参数过长。请选择更少的项目或缩短说明后重试。"
   },
   "arguments.messagesCannotContainNULCharacters": {
     "en": "Messages cannot contain NUL characters",
-    "zh-CN": "Messages cannot contain NUL characters"
+    "zh-CN": "消息不能包含 NUL 字符"
   },
   "catalogStore.theSharedRepositoryCatalogIsDamagedOrUsesAn": {
     "en": "The shared repository catalog is damaged or uses an unsupported schema. Its contents were preserved.",
-    "zh-CN": "The shared repository catalog is damaged or uses an unsupported schema. Its contents were preserved."
+    "zh-CN": "共享仓库目录已损坏或使用不受支持的架构，其内容已保留。"
   },
   "catalogStore.theSharedRepositoryCatalogIsBusyTryAgain": {
     "en": "The shared repository catalog is busy. Try again.",
-    "zh-CN": "The shared repository catalog is busy. Try again."
+    "zh-CN": "共享仓库目录正忙，请重试。"
   },
   "commit.commitDidNotCompleteYourDraftIsPreserved": {
     "en": "Commit did not complete. Your draft is preserved.",
-    "zh-CN": "Commit 未完成，草稿已保留。"
+    "zh-CN": "提交未完成，草稿已保留。"
   },
   "commit.ctrlCmdEnterToCommit": {
     "en": "Ctrl/Cmd+Enter to commit",
@@ -834,11 +834,11 @@ export const catalog = {
   },
   "commit.commitIncludesAllStagedFilesIncludingFilesHiddenBy": {
     "en": "Commit includes all {{staged}} Staged files, including files hidden by a path filter.",
-    "zh-CN": "Commit 包含全部 {{staged}} 个 Staged 文件，包括被路径筛选隐藏的文件。"
+    "zh-CN": "提交包含全部 {{staged}} 个已暂存文件，包括被路径筛选隐藏的文件。"
   },
   "commit.commitMessage": {
     "en": "Commit Message",
-    "zh-CN": "Commit 信息"
+    "zh-CN": "提交消息"
   },
   "commit.describeYourChanges": {
     "en": "Describe your changes…",
@@ -850,11 +850,11 @@ export const catalog = {
   },
   "commit.resolveAllConflictsBeforeCommit": {
     "en": "Resolve all {{conflicts}} conflicts before Commit.",
-    "zh-CN": "Commit 前须处理全部 {{conflicts}} 个冲突文件。"
+    "zh-CN": "请先解决全部 {{conflicts}} 个冲突，再提交。"
   },
   "commit.stageChangesBeforeCommittingOrUseAmendToEdit": {
     "en": "Stage changes before committing, or use Amend to edit the last Commit message.",
-    "zh-CN": "先 Stage 所需变更，或使用 Amend 修改上一次提交说明。"
+    "zh-CN": "请先暂存更改再提交，或使用“修订提交”编辑上一次提交消息。"
   },
   "commit.draftsSaveAutomaticallyCancelEscapeAndCloseKeepYour": {
     "en": "Drafts save automatically. Cancel, Escape and Close keep your message.",
@@ -862,11 +862,11 @@ export const catalog = {
   },
   "commit.commit": {
     "en": "Commit",
-    "zh-CN": "Commit"
+    "zh-CN": "提交"
   },
   "commit.amendCommit": {
     "en": "Amend Commit",
-    "zh-CN": "Amend Commit"
+    "zh-CN": "修订提交"
   },
   "commit.detachedHEAD": {
     "en": "Detached HEAD",
@@ -874,7 +874,7 @@ export const catalog = {
   },
   "commit.commitMessageVariant2": {
     "en": "Commit message",
-    "zh-CN": "Commit message"
+    "zh-CN": "提交消息"
   },
   "common.gitDetails": {
     "en": "Git details",
@@ -894,7 +894,7 @@ export const catalog = {
   },
   "common.reset": {
     "en": "Reset",
-    "zh-CN": "Reset"
+    "zh-CN": "重置"
   },
   "common.settings": {
     "en": "Settings",
@@ -914,7 +914,7 @@ export const catalog = {
   },
   "common.languageVariant2": {
     "en": "Language",
-    "zh-CN": "Language"
+    "zh-CN": "语言"
   },
   "common.refresh": {
     "en": "Refresh",
@@ -926,11 +926,11 @@ export const catalog = {
   },
   "confirm.discard": {
     "en": "Discard Unstaged Changes in {{count}} file(s)? Untracked files will be deleted; Index content and Staged Changes remain.",
-    "zh-CN": "Discard {{count}} 个文件的 Unstaged Changes？未跟踪文件将被删除；Index 中的 Staged Changes 保留。"
+    "zh-CN": "放弃 {{count}} 个文件的未暂存更改？未跟踪文件将被删除；Index 中已暂存的更改会保留。"
   },
   "confirm.reset": {
     "en": "Reset {{name}} to {{target}} ({{mode}})? {{effect}}",
-    "zh-CN": "Reset {{name}} 到 {{target}}（{{mode}}）？{{effect}}"
+    "zh-CN": "将 {{name}} 重置到 {{target}}（{{mode}}）？{{effect}}"
   },
   "confirm.resetHard": {
     "en": "HEAD, Index and working files will change; uncommitted content can be lost.",
@@ -946,14 +946,14 @@ export const catalog = {
   },
   "confirm.forcePush": {
     "en": "Push with force-with-lease? Published branch history may be replaced.",
-    "zh-CN": "Push with force-with-lease？已发布的分支历史可能被替换。"
+    "zh-CN": "使用 force-with-lease 推送？已发布的分支历史可能被替换。"
   },
   "confirm.deleteBranches": {
     "en": {
       "one": "Delete {{count}} local branch?\n{{names}}{{effect}}",
       "other": "Delete {{count}} local branches?\n{{names}}{{effect}}"
     },
-    "zh-CN": "Delete {{count}} 个本地分支？\n{{names}}{{effect}}"
+    "zh-CN": "删除 {{count}} 个本地分支？\n{{names}}{{effect}}"
   },
   "confirm.forceDeleteBranches": {
     "en": "\nForce deletion may remove the last branch referencing unmerged commits.",
@@ -968,7 +968,7 @@ export const catalog = {
   },
   "confirm.deleteTag": {
     "en": "Delete local tag {{name}}?",
-    "zh-CN": "Delete 本地 Tag {{name}}？"
+    "zh-CN": "删除本地标签 {{name}}？"
   },
   "confirm.dropStash": {
     "en": "Drop {{selector}}? Its saved uncommitted changes may become unreachable.",
@@ -976,7 +976,7 @@ export const catalog = {
   },
   "confirm.removeWorktree": {
     "en": "Remove worktree {{path}}?{{effect}}",
-    "zh-CN": "Remove Worktree {{path}}？{{effect}}"
+    "zh-CN": "Remove 工作树 {{path}}？{{effect}}"
   },
   "confirm.forceRemoveWorktree": {
     "en": " Forced removal may delete uncommitted files.",
@@ -988,11 +988,11 @@ export const catalog = {
   },
   "confirm.detachedCheckout": {
     "en": "Checkout {{target}} as Detached HEAD? New commits will not belong to a branch until you create one.",
-    "zh-CN": "Checkout {{target}} 并进入 Detached HEAD？新提交不会属于分支，请及时创建分支保存。"
+    "zh-CN": "切换到 {{target}} 并进入 Detached HEAD？新提交不会属于分支，请及时创建分支保存。"
   },
   "confirm.stashDetachedCheckout": {
     "en": "Stash Changes and Checkout {{target}} as Detached HEAD? The Stash will be retained for you to apply.",
-    "zh-CN": "Stash Changes 后 Checkout {{target}} 并进入 Detached HEAD？Stash 将保留，供你之后 Apply。"
+    "zh-CN": "Stash 更改后切换到 {{target}} 并进入 Detached HEAD？Stash 会保留，供之后应用。"
   },
   "confirm.proceed": {
     "en": "Proceed",
@@ -1024,7 +1024,7 @@ export const catalog = {
   },
   "credentials.cannotStartGitCredentialPrompt": {
     "en": "Cannot start Git credential prompt.",
-    "zh-CN": "Cannot start Git credential prompt."
+    "zh-CN": "无法启动 Git 凭据提示。"
   },
   "details.ctrlCmdClickTogglesShiftClickSelectsRangeEsc": {
     "en": "Ctrl/Cmd+click toggles · Shift+click selects range · Esc clears",
@@ -1080,11 +1080,11 @@ export const catalog = {
   },
   "details.compareCommits": {
     "en": "Compare Commits",
-    "zh-CN": "比较 Commit"
+    "zh-CN": "比较提交"
   },
   "details.commitDetails": {
     "en": "Commit Details",
-    "zh-CN": "Commit 详情"
+    "zh-CN": "提交详情"
   },
   "details.swapComparisonSides": {
     "en": "Swap comparison sides",
@@ -1096,7 +1096,7 @@ export const catalog = {
   },
   "details.selectACommit": {
     "en": "Select a Commit",
-    "zh-CN": "选择 Commit"
+    "zh-CN": "选择一个提交"
   },
   "details.savedFiles": {
     "en": {
@@ -1131,7 +1131,7 @@ export const catalog = {
   },
   "details.theSelectedCommitsHaveIdenticalFileContents": {
     "en": "The selected Commits have identical file contents",
-    "zh-CN": "所选 Commit 的文件内容相同"
+    "zh-CN": "所选提交的文件内容相同"
   },
   "details.conflicts": {
     "en": "Conflicts",
@@ -1167,11 +1167,11 @@ export const catalog = {
   },
   "details.openCommitSavedDraftAvailable": {
     "en": "Open Commit — saved draft available",
-    "zh-CN": "打开 Commit · 有未提交草稿"
+    "zh-CN": "打开提交 — 有已保存的草稿"
   },
   "details.openCommit": {
     "en": "Open Commit",
-    "zh-CN": "打开 Commit"
+    "zh-CN": "打开提交"
   },
   "details.editAndSaveInVSCodeThenReturnTo": {
     "en": "Edit and save in VS Code, then return to mark and stage",
@@ -1207,7 +1207,7 @@ export const catalog = {
   },
   "details.conflictsAreHiddenByTheFilterResolveAllConflicts": {
     "en": "{{count}} conflicts are hidden by the filter. Resolve all conflicts before Commit.",
-    "zh-CN": "筛选隐藏了 {{count}} 个冲突文件；Commit 前仍须处理全部冲突。"
+    "zh-CN": "筛选隐藏了 {{count}} 个冲突文件；提交前仍须解决全部冲突。"
   },
   "details.workingTreeFiles": {
     "en": "Working tree files",
@@ -1266,7 +1266,7 @@ export const catalog = {
   },
   "details.workingTree": {
     "en": "Working Tree",
-    "zh-CN": "Working Tree"
+    "zh-CN": "工作区"
   },
   "details.index": {
     "en": "Index",
@@ -1274,31 +1274,31 @@ export const catalog = {
   },
   "details.compareParent": {
     "en": "Compare parent",
-    "zh-CN": "Compare parent"
+    "zh-CN": "与父提交比较"
   },
   "details.parent": {
     "en": "Parent ",
-    "zh-CN": "Parent "
+    "zh-CN": "父提交 "
   },
   "details.staged": {
     "en": "Staged",
-    "zh-CN": "Staged"
+    "zh-CN": "已暂存"
   },
   "details.unstaged": {
     "en": "Unstaged",
-    "zh-CN": "Unstaged"
+    "zh-CN": "未暂存"
   },
   "details.unstage": {
     "en": "Unstage",
-    "zh-CN": "Unstage"
+    "zh-CN": "取消暂存"
   },
   "details.stage": {
     "en": "Stage",
-    "zh-CN": "Stage"
+    "zh-CN": "暂存"
   },
   "details.commit": {
     "en": "Commit…",
-    "zh-CN": "Commit…"
+    "zh-CN": "提交…"
   },
   "details.detachedHEAD": {
     "en": "Detached HEAD",
@@ -1306,19 +1306,19 @@ export const catalog = {
   },
   "details.stagedVariant2": {
     "en": "Staged ",
-    "zh-CN": "Staged "
+    "zh-CN": "已暂存 "
   },
   "details.unstagedVariant2": {
     "en": " · Unstaged ",
-    "zh-CN": " · Unstaged "
+    "zh-CN": " · 未暂存 "
   },
   "details.stageAll": {
     "en": "Stage All",
-    "zh-CN": "Stage All"
+    "zh-CN": "全部暂存"
   },
   "details.unstageAll": {
     "en": "Unstage All",
-    "zh-CN": "Unstage All"
+    "zh-CN": "全部取消暂存"
   },
   "diff.openDiff": {
     "en": "Open Diff",
@@ -1346,7 +1346,7 @@ export const catalog = {
   },
   "diff.previousChangeAcrossCommitFilesWrapsToTheLast": {
     "en": "Previous change across Commit files (wraps to the last)",
-    "zh-CN": "上一处修改（跨 Commit 文件，首处循环到末处）"
+    "zh-CN": "上一处更改（跨提交文件，首处循环到末处）"
   },
   "diff.locateTheOnlyChange": {
     "en": "Locate the only change",
@@ -1358,7 +1358,7 @@ export const catalog = {
   },
   "diff.nextChangeAcrossCommitFilesWrapsToTheFirst": {
     "en": "Next change across Commit files (wraps to the first)",
-    "zh-CN": "下一处修改（跨 Commit 文件，末处循环到首处）"
+    "zh-CN": "下一处更改（跨提交文件，末处循环到首处）"
   },
   "diff.nextChangeWrapsToTheFirst": {
     "en": "Next change (wraps to the first)",
@@ -1426,31 +1426,31 @@ export const catalog = {
   },
   "documents.thisComparisonHasExpiredOpenItAgainFromAlwayGit": {
     "en": "This comparison has expired. Open it again from AlwayGit.",
-    "zh-CN": "This comparison has expired. Open it again from AlwayGit."
+    "zh-CN": "此比较已过期，请从 AlwayGit 重新打开。"
   },
   "documents.alwayGitFileExceedsThe8MBTextPreviewLimit": {
     "en": "[AlwayGit: file exceeds the 8 MB text preview limit.]",
-    "zh-CN": "[AlwayGit: file exceeds the 8 MB text preview limit.]"
+    "zh-CN": "[AlwayGit：文件超过 8 MB 文本预览限制。]"
   },
   "documents.alwayGitBinaryFileTextComparisonIsUnavailable": {
     "en": "[AlwayGit: binary file. Text comparison is unavailable.]",
-    "zh-CN": "[AlwayGit: binary file. Text comparison is unavailable.]"
+    "zh-CN": "[AlwayGit：二进制文件，无法进行文本比较。]"
   },
   "documents.workingTreeSymbolicLink": {
     "en": "Working Tree · Symbolic Link",
-    "zh-CN": "Working Tree · Symbolic Link"
+    "zh-CN": "工作区 · 符号链接"
   },
   "documents.thisPathIsADirectoryOrSubmoduleNotA": {
     "en": "This path is a directory or submodule, not a text file.",
-    "zh-CN": "This path is a directory or submodule, not a text file."
+    "zh-CN": "此路径是目录或子模块，不是文本文件。"
   },
   "documents.workingTree": {
     "en": "Working Tree",
-    "zh-CN": "Working Tree"
+    "zh-CN": "工作区"
   },
   "documents.thisFileIsNotPartOfTheSavedStash": {
     "en": "This file is not part of the saved Stash files.",
-    "zh-CN": "This file is not part of the saved Stash files."
+    "zh-CN": "此文件不在已保存的 Stash 文件中。"
   },
   "documents.stash": {
     "en": "Stash",
@@ -1458,23 +1458,23 @@ export const catalog = {
   },
   "documents.stashWorkingTree": {
     "en": "{{value}} · Stash ↔ Working Tree",
-    "zh-CN": "{{value}} · Stash ↔ Working Tree"
+    "zh-CN": "{{value}} · Stash ↔ 工作区"
   },
   "documents.thisFileIsNotPartOfTheSelectedComparison": {
     "en": "This file is not part of the selected comparison.",
-    "zh-CN": "This file is not part of the selected comparison."
+    "zh-CN": "此文件不属于所选比较。"
   },
   "documents.empty": {
     "en": "Empty",
-    "zh-CN": "Empty"
+    "zh-CN": "空"
   },
   "documents.theFileStatusChangedRefreshAndOpenItsComparison": {
     "en": "The file status changed. Refresh and open its comparison again.",
-    "zh-CN": "The file status changed. Refresh and open its comparison again."
+    "zh-CN": "文件状态已变化，请刷新后重新打开比较。"
   },
   "documents.thisFileHasNoStagedChangesRefreshItsComparison": {
     "en": "This file has no Staged Changes. Refresh its comparison.",
-    "zh-CN": "This file has no Staged Changes. Refresh its comparison."
+    "zh-CN": "此文件没有已暂存的更改，请刷新其比较。"
   },
   "documents.index": {
     "en": "Index",
@@ -1482,31 +1482,31 @@ export const catalog = {
   },
   "documents.thisFileNoLongerHasAConflictRefreshIts": {
     "en": "This file no longer has a conflict. Refresh its comparison.",
-    "zh-CN": "This file no longer has a conflict. Refresh its comparison."
+    "zh-CN": "此文件已不存在冲突，请刷新其比较。"
   },
   "documents.ours": {
     "en": "Ours",
-    "zh-CN": "Ours"
+    "zh-CN": "我方"
   },
   "documents.theirs": {
     "en": "Theirs",
-    "zh-CN": "Theirs"
+    "zh-CN": "对方"
   },
   "documents.oursTheirsEditWorkingFileToResolve": {
     "en": "{{value}} · Ours ↔ Theirs (edit working file to resolve)",
-    "zh-CN": "{{value}} · Ours ↔ Theirs (edit working file to resolve)"
+    "zh-CN": "{{value}} · 我方 ↔ 对方（编辑工作文件以解决冲突）"
   },
   "documents.thisFileHasNoUnstagedChangesRefreshItsComparison": {
     "en": "This file has no Unstaged Changes. Refresh its comparison.",
-    "zh-CN": "This file has no Unstaged Changes. Refresh its comparison."
+    "zh-CN": "此文件没有未暂存的更改，请刷新其比较。"
   },
   "documents.indexWorkingTree": {
     "en": "{{value}} · Index ↔ Working Tree",
-    "zh-CN": "{{value}} · Index ↔ Working Tree"
+    "zh-CN": "{{value}} · Index ↔ 工作区"
   },
   "extension.alwayGitGitAuthentication": {
     "en": "AlwayGit · Git Authentication",
-    "zh-CN": "AlwayGit · Git Authentication"
+    "zh-CN": "AlwayGit · Git 身份验证"
   },
   "extension.gitMergeAlwayGit": {
     "en": "$(git-merge) AlwayGit",
@@ -1514,11 +1514,11 @@ export const catalog = {
   },
   "extension.reloadTheVSCodeWindowToApplyAlwayGitRuntime": {
     "en": "Reload the VS Code window to apply AlwayGit runtime configuration changes.",
-    "zh-CN": "Reload the VS Code window to apply AlwayGit runtime configuration changes."
+    "zh-CN": "请重新加载 VS Code 窗口，以应用 AlwayGit 运行时配置更改。"
   },
   "extension.alwayGitActivatedGitOperationsRunInTheWorkspaceExtension": {
     "en": "AlwayGit activated. Git operations run in the workspace extension host.",
-    "zh-CN": "AlwayGit activated. Git operations run in the workspace extension host."
+    "zh-CN": "AlwayGit 已激活。Git 操作在工作区扩展宿主中运行。"
   },
   "feedback.createdAndSwitchedTo": {
     "en": "Created and switched to {{name}}",
@@ -1530,11 +1530,11 @@ export const catalog = {
   },
   "feedback.commitAmended": {
     "en": "Commit {{value}} amended",
-    "zh-CN": "Commit {{value}} 已修订"
+    "zh-CN": "已修订提交 {{value}}"
   },
   "feedback.commitCreated": {
     "en": "Commit {{value}} created",
-    "zh-CN": "Commit {{value}} 已创建"
+    "zh-CN": "已创建提交 {{value}}"
   },
   "feedback.markedAndStagedInspectTheResultBeforeContinuing": {
     "en": "Marked and staged; inspect the result before continuing.",
@@ -1591,7 +1591,7 @@ export const catalog = {
   },
   "feedback.viewCommit": {
     "en": "View Commit",
-    "zh-CN": "查看 Commit"
+    "zh-CN": "查看提交"
   },
   "feedback.showLog": {
     "en": "Show Log",
@@ -1603,39 +1603,39 @@ export const catalog = {
   },
   "graphRow.parents": {
     "en": "{{value}}parents {{value2}}",
-    "zh-CN": "{{value}}parents {{value2}}"
+    "zh-CN": "{{value}} 个父提交 {{value2}}"
   },
   "graphRow.mergeCommit": {
     "en": "Merge commit; ",
-    "zh-CN": "Merge commit; "
+    "zh-CN": "合并提交；"
   },
   "graphRow.rootCommitNoParents": {
     "en": "Root commit; no parents",
-    "zh-CN": "Root commit; no parents"
+    "zh-CN": "根提交；无父提交"
   },
   "graphRow.workingTreeVirtualNodeLane": {
     "en": "Working Tree virtual node, lane {{value}}.{{value2}}",
-    "zh-CN": "Working Tree virtual node, lane {{value}}.{{value2}}"
+    "zh-CN": "工作区虚拟节点，轨道 {{value}}。{{value2}}"
   },
   "graphRow.selected": {
     "en": " Selected.",
-    "zh-CN": " Selected."
+    "zh-CN": " 已选择。"
   },
   "graphRow.commitLane": {
     "en": "Commit {{value}}, lane {{value2}}. {{parentLabel}}.{{value3}}{{value4}}{{value5}}",
-    "zh-CN": "Commit {{value}}, lane {{value2}}. {{parentLabel}}.{{value3}}{{value4}}{{value5}}"
+    "zh-CN": "提交 {{value}}，轨道 {{value2}}。{{parentLabel}}。{{value3}}{{value4}}{{value5}}"
   },
   "graphRow.mainBranch": {
     "en": " Main branch.",
-    "zh-CN": " Main branch."
+    "zh-CN": " 主分支。"
   },
   "graphRow.currentHEAD": {
     "en": " Current HEAD.",
-    "zh-CN": " Current HEAD."
+    "zh-CN": " 当前 HEAD。"
   },
   "graphRow.selectedCommit": {
     "en": " Selected commit.",
-    "zh-CN": " Selected commit."
+    "zh-CN": " 已选择的提交。"
   },
   "help.quickStart": {
     "en": "Quick start",
@@ -1707,7 +1707,7 @@ export const catalog = {
   },
   "history.filterCommitMessages": {
     "en": "Filter commit messages…",
-    "zh-CN": "过滤 Commit 信息…"
+    "zh-CN": "筛选提交消息…"
   },
   "history.refs": {
     "en": "refs",
@@ -1719,7 +1719,7 @@ export const catalog = {
   },
   "history.matchingCommits": {
     "en": "matching Commits",
-    "zh-CN": "个匹配 Commit"
+    "zh-CN": "个匹配提交"
   },
   "history.sharedAncestryShownOnce": {
     "en": "Shared ancestry shown once",
@@ -1727,15 +1727,15 @@ export const catalog = {
   },
   "history.locatingCommit": {
     "en": "Locating Commit…",
-    "zh-CN": "正在定位 Commit…"
+    "zh-CN": "正在定位提交…"
   },
   "history.commitsSelected": {
     "en": "Commits selected",
-    "zh-CN": "个 Commit 已选择"
+    "zh-CN": "已选择提交"
   },
   "history.commitPushStatusLegend": {
     "en": "Commit push status legend",
-    "zh-CN": "Commit 推送状态图例"
+    "zh-CN": "提交推送状态图例"
   },
   "history.pushed": {
     "en": "Pushed",
@@ -1815,7 +1815,7 @@ export const catalog = {
   },
   "history.noMatchingCommits": {
     "en": "No matching commits",
-    "zh-CN": "没有匹配的 Commit"
+    "zh-CN": "没有匹配的提交"
   },
   "history.theWorkingTreeStaysVisibleSelectBranchesOnThe": {
     "en": "The Working Tree stays visible. Select branches on the left or adjust the filter.",
@@ -1831,15 +1831,15 @@ export const catalog = {
   },
   "history.searchCommitHistoryVariant2": {
     "en": "Search commit history",
-    "zh-CN": "Search commit history"
+    "zh-CN": "搜索提交历史"
   },
   "history.commit": {
     "en": "Commit",
-    "zh-CN": "Commit"
+    "zh-CN": "提交"
   },
   "history.commitHistoryVariant2": {
     "en": "Commit history",
-    "zh-CN": "Commit history"
+    "zh-CN": "提交历史"
   },
   "history.graph": {
     "en": "Graph",
@@ -1847,19 +1847,19 @@ export const catalog = {
   },
   "history.resizeGraphColumn": {
     "en": "Resize graph column",
-    "zh-CN": "Resize graph column"
+    "zh-CN": "调整 Graph 列宽"
   },
   "history.resizeAuthorColumn": {
     "en": "Resize author column",
-    "zh-CN": "Resize author column"
+    "zh-CN": "调整作者列宽"
   },
   "history.resizeDateColumn": {
     "en": "Resize date column",
-    "zh-CN": "Resize date column"
+    "zh-CN": "调整日期列宽"
   },
   "history.commitNode": {
     "en": "Commit node {{oid}}",
-    "zh-CN": "Commit node {{oid}}"
+    "zh-CN": "提交节点 {{oid}}"
   },
   "history.graphHeading": {
     "en": "Graph · {{heading}}",
@@ -1942,7 +1942,7 @@ export const catalog = {
   },
   "host.selectARegisteredNonBareWorktree": {
     "en": "Select a registered non-bare Worktree.",
-    "zh-CN": "请选择已注册的非 bare Worktree。"
+    "zh-CN": "请选择已注册的非 bare 工作树。"
   },
   "host.anOperationIsAlreadyRunningInThisRepository": {
     "en": "An operation is already running in this repository.",
@@ -1974,11 +1974,11 @@ export const catalog = {
   },
   "host.newWorktreeDirectory": {
     "en": "New Worktree Directory",
-    "zh-CN": "New Worktree Directory"
+    "zh-CN": "新工作树目录"
   },
   "host.useDirectory": {
     "en": "Use Directory",
-    "zh-CN": "Use Directory"
+    "zh-CN": "使用此目录"
   },
   "host.repositoryStatus": {
     "en": "[repository-status:{{name}}] {{value}}",
@@ -1998,35 +1998,35 @@ export const catalog = {
   },
   "manager.theRepositoryOrGroupNoLongerExists": {
     "en": "The repository or group no longer exists.",
-    "zh-CN": "The repository or group no longer exists."
+    "zh-CN": "仓库或分组已不存在。"
   },
   "manager.reorderItemsWithinTheSameLevel": {
     "en": "Reorder items within the same level.",
-    "zh-CN": "Reorder items within the same level."
+    "zh-CN": "只能在同一层级内重新排序。"
   },
   "manager.selectARegisteredRepositoryFirst": {
     "en": "Select a registered repository first.",
-    "zh-CN": "Select a registered repository first."
+    "zh-CN": "请先选择已注册的仓库。"
   },
   "manager.trustThisWorkspaceBeforeExecutingGit": {
     "en": "Trust this workspace before executing Git.",
-    "zh-CN": "Trust this workspace before executing Git."
+    "zh-CN": "执行 Git 操作前，请先信任此工作区。"
   },
   "manager.repositoryGroupNoLongerExists": {
     "en": "Repository group no longer exists.",
-    "zh-CN": "Repository group no longer exists."
+    "zh-CN": "仓库分组已不存在。"
   },
   "manager.repositoryGroupNameIsRequired": {
     "en": "Repository group name is required.",
-    "zh-CN": "Repository group name is required."
+    "zh-CN": "必须填写仓库分组名称。"
   },
   "manager.repositoryGroupNameIsTooLong": {
     "en": "Repository group name is too long.",
-    "zh-CN": "Repository group name is too long."
+    "zh-CN": "仓库分组名称过长。"
   },
   "manager.aRepositoryGroupWithThisNameAlreadyExists": {
     "en": "A repository group with this name already exists.",
-    "zh-CN": "A repository group with this name already exists."
+    "zh-CN": "已存在同名仓库分组。"
   },
   "manager.discovery": {
     "en": "[discovery] {{root}}: {{value}}",
@@ -2038,15 +2038,15 @@ export const catalog = {
   },
   "manifest.description": {
     "en": "A professional Git workbench inside Visual Studio Code.",
-    "zh-CN": "A professional Git workbench inside Visual Studio Code."
+    "zh-CN": "Visual Studio Code 中的专业 Git 工作台。"
   },
   "manifest.capabilities.untrustedWorkspaces.description": {
     "en": "Git execution requires a trusted workspace.",
-    "zh-CN": "Git execution requires a trusted workspace."
+    "zh-CN": "Git 操作需要受信任的工作区。"
   },
   "manifest.contributes.commands.item0.title": {
     "en": "Show Workbench",
-    "zh-CN": "Show Workbench"
+    "zh-CN": "显示 Workbench"
   },
   "manifest.contributes.commands.item0.category": {
     "en": "AlwayGit",
@@ -2054,7 +2054,7 @@ export const catalog = {
   },
   "manifest.contributes.commands.item1.title": {
     "en": "Open Workbench in New Window",
-    "zh-CN": "Open Workbench in New Window"
+    "zh-CN": "在新窗口中打开 Workbench"
   },
   "manifest.contributes.commands.item1.category": {
     "en": "AlwayGit",
@@ -2070,7 +2070,7 @@ export const catalog = {
   },
   "manifest.contributes.viewsWelcome.item0.contents": {
     "en": "[Show Git Workbench](command:alwaygit.showWorkbench)\n[Open Workbench in New Window](command:alwaygit.openWorkbenchInNewWindow)",
-    "zh-CN": "[Show Git Workbench](command:alwaygit.showWorkbench)\n[Open Workbench in New Window](command:alwaygit.openWorkbenchInNewWindow)"
+    "zh-CN": "[显示 Git Workbench](command:alwaygit.showWorkbench)\n[在新窗口中打开 Workbench](command:alwaygit.openWorkbenchInNewWindow)"
   },
   "manifest.contributes.configuration.title": {
     "en": "AlwayGit",
@@ -2078,23 +2078,23 @@ export const catalog = {
   },
   "manifest.contributes.configuration.properties.alwaygit.language.description": {
     "en": "Workbench language. Git operation names remain in English. The in-workbench language selector is remembered for this workspace.",
-    "zh-CN": "Workbench language. Git operation names remain in English. The in-workbench language selector is remembered for this workspace."
+    "zh-CN": "Workbench 显示语言。界面中的语言选择会为当前工作区保存。"
   },
   "manifest.contributes.configuration.properties.alwaygit.gitPath.description": {
     "en": "Git executable path. Empty uses the built-in Git extension path or PATH.",
-    "zh-CN": "Git executable path. Empty uses the built-in Git extension path or PATH."
+    "zh-CN": "Git 可执行文件路径。留空时使用内置 Git 扩展的路径或 PATH。"
   },
   "manifest.contributes.configuration.properties.alwaygit.historyPageSize.description": {
     "en": "Commits loaded per history page.",
-    "zh-CN": "Commits loaded per history page."
+    "zh-CN": "每页历史记录加载的提交数。"
   },
   "manifest.contributes.configuration.properties.alwaygit.refreshInterval.description": {
     "en": "Visible workbench refresh interval in seconds.",
-    "zh-CN": "Visible workbench refresh interval in seconds."
+    "zh-CN": "可见 Workbench 的刷新间隔（秒）。"
   },
   "manifest.contributes.configuration.properties.alwaygit.allowDetachedHead.description": {
     "en": "Allow direct Detached HEAD Checkout. Disabled by default; create and switch to a local branch when inspecting historical versions.",
-    "zh-CN": "Allow direct Detached HEAD Checkout. Disabled by default; create and switch to a local branch when inspecting historical versions."
+    "zh-CN": "允许直接切换到 Detached HEAD。默认关闭；查看历史版本时请创建并切换到本地分支。"
   },
   "menus.createLocalTrackingBranches": {
     "en": "Create Local Tracking Branches…",
@@ -2102,7 +2102,7 @@ export const catalog = {
   },
   "menus.checkoutAsLocalBranch": {
     "en": "Checkout as Local Branch…",
-    "zh-CN": "Checkout 到本地分支…"
+    "zh-CN": "创建本地跟踪分支并切换…"
   },
   "menus.repositoriesSelected": {
     "en": "{{count}} Repositories selected",
@@ -2110,7 +2110,7 @@ export const catalog = {
   },
   "menus.fetchRepositories": {
     "en": "Fetch {{count}} Repositories…",
-    "zh-CN": "Fetch {{count}} 个仓库…"
+    "zh-CN": "获取 {{count}} 个仓库…"
   },
   "menus.refreshStatusForRepositories": {
     "en": "Refresh Status for {{count}} Repositories",
@@ -2166,7 +2166,7 @@ export const catalog = {
   },
   "menus.showAllLocalBranchesInGraph": {
     "en": "Show All Local Branches in Graph",
-    "zh-CN": "在 Graph 中显示全部本地分支"
+    "zh-CN": "在 Graph 中显示所有本地分支"
   },
   "menus.showCurrentBranchOnlyInGraph": {
     "en": "Show Current Branch Only in Graph",
@@ -2198,7 +2198,7 @@ export const catalog = {
   },
   "menus.usedByAnotherWorktree": {
     "en": "Used by another Worktree: {{name}}",
-    "zh-CN": "其他 Worktree 正在使用：{{name}}"
+    "zh-CN": "其他工作树正在使用：{{name}}"
   },
   "menus.showSelectedInGraph": {
     "en": "Show Selected in Graph",
@@ -2210,7 +2210,7 @@ export const catalog = {
   },
   "menus.hideSelectedFromGraph": {
     "en": "Hide Selected from Graph",
-    "zh-CN": "从 Graph 隐藏所选分支"
+    "zh-CN": "从 Graph 中隐藏所选分支"
   },
   "menus.deleteLocalBranches": {
     "en": {
@@ -2228,7 +2228,7 @@ export const catalog = {
   },
   "menus.deleteRemoteBranches": {
     "en": "Delete Remote Branches…",
-    "zh-CN": "Delete 远程分支…"
+    "zh-CN": "删除远程分支…"
   },
   "menus.symbolicRemoteReferencesCannotBeDeleted": {
     "en": "Symbolic remote references cannot be deleted.",
@@ -2263,14 +2263,14 @@ export const catalog = {
       "one": "Stage {{count}} File",
       "other": "Stage {{count}} Files"
     },
-    "zh-CN": "Stage {{count}} 个文件"
+    "zh-CN": "暂存 {{count}} 个文件"
   },
   "menus.unstageFiles": {
     "en": {
       "one": "Unstage {{count}} File",
       "other": "Unstage {{count}} Files"
     },
-    "zh-CN": "Unstage {{count}} 个文件"
+    "zh-CN": "取消暂存 {{count}} 个文件"
   },
   "menus.stashSelectedFiles": {
     "en": "Stash Selected Files…",
@@ -2305,7 +2305,7 @@ export const catalog = {
   },
   "menus.usedByWorktree": {
     "en": "Used by Worktree: {{path}}",
-    "zh-CN": "被 Worktree 使用：{{path}}"
+    "zh-CN": "被工作树使用：{{path}}"
   },
   "menus.createBranchAndCheckout": {
     "en": "Create Branch and Checkout…",
@@ -2313,91 +2313,95 @@ export const catalog = {
   },
   "menus.checkoutToDetachedHEAD": {
     "en": "Checkout to Detached HEAD…",
-    "zh-CN": "Checkout 到 Detached HEAD…"
+    "zh-CN": "切换到此提交（Detached HEAD）…"
   },
   "menus.deleteBranchFrom": {
     "en": "Delete Branch from {{remote}}…",
-    "zh-CN": "从 {{remote}} Delete 分支…"
+    "zh-CN": "从 {{remote}} 删除分支…"
   },
   "menus.refreshToCaptureThisTagBeforeDeletion": {
     "en": "Refresh to capture this Tag before deletion.",
-    "zh-CN": "请刷新后再删除此 Tag。"
+    "zh-CN": "请刷新后再删除此标签。"
   },
   "menus.thisTagDoesNotPointToACommit": {
     "en": "This Tag does not point to a Commit.",
-    "zh-CN": "此 Tag 不指向 Commit。"
+    "zh-CN": "此标签不指向提交。"
   },
   "menus.worktreesSelected": {
     "en": "{{count}} Worktrees selected",
-    "zh-CN": "已选择 {{count}} 个 Worktree"
+    "zh-CN": "已选择 {{count}} 个工作树"
   },
   "menus.copyWorktreePaths": {
     "en": "Copy {{count}} Worktree Paths",
-    "zh-CN": "复制 {{count}} 个 Worktree 路径"
+    "zh-CN": "复制 {{count}} 个工作树路径"
   },
   "menus.theMainOrCurrentWorktreeCannotBeRemoved": {
     "en": "The main or current Worktree cannot be removed.",
-    "zh-CN": "主 Worktree 或当前 Worktree 无法移除。"
+    "zh-CN": "无法移除主工作树或当前工作树。"
   },
   "menus.selectMergeCommitsIndividuallyAndChooseTheirMainlineParent": {
     "en": "Select merge commits individually and choose their Mainline Parent.",
-    "zh-CN": "请单独选择 Merge Commit 并指定 Mainline Parent。"
+    "zh-CN": "请单独选择合并提交并指定主线父提交。"
   },
   "menus.cherryPickRequiresALocalBranch": {
     "en": "Cherry-pick requires a local branch.",
-    "zh-CN": "Cherry-pick 需要当前处于本地分支。"
+    "zh-CN": "Cherry-pick 要求当前位于本地分支。"
   },
   "menus.fetch": {
     "en": "Fetch…",
-    "zh-CN": "Fetch…"
+    "zh-CN": "获取…"
   },
   "menus.createBranch": {
     "en": "Create Branch…",
-    "zh-CN": "Create Branch…"
+    "zh-CN": "创建分支…"
   },
   "menus.createTag": {
     "en": "Create Tag…",
-    "zh-CN": "Create Tag…"
+    "zh-CN": "创建标签…"
   },
   "menus.stashAllChanges": {
     "en": "Stash All Changes…",
-    "zh-CN": "Stash All Changes…"
+    "zh-CN": "Stash 所有更改…"
   },
   "menus.addWorktree": {
     "en": "Add Worktree…",
-    "zh-CN": "Add Worktree…"
+    "zh-CN": "添加工作树…"
   },
   "menus.tags": {
     "en": "Tags",
-    "zh-CN": "Tags"
+    "zh-CN": "标签"
   },
   "menus.stashes": {
     "en": "Stashes",
-    "zh-CN": "Stashes"
+    "zh-CN": "Stash"
   },
   "menus.worktrees": {
     "en": "Worktrees",
-    "zh-CN": "Worktrees"
+    "zh-CN": "工作树"
   },
-  "menus.checkout": {
+  "menus.switchToBranch": {
     "en": "Checkout…",
-    "zh-CN": "Checkout…"
+    "zh-CN": "切换到此分支…"
+  },
+  "menus.switchToCommit": {
+    "en": "Checkout…",
+    "zh-CN": "切换到此提交（Detached HEAD）…"
   },
   "menus.showInGraph": {
     "en": "Show in Graph",
-    "zh-CN": "Show in Graph"
+    "zh-CN": "在 Graph 中显示"
   },
   "menus.showOnlyThisTag": {
     "en": "Show Only This Tag",
-    "zh-CN": "Show Only This Tag"
+    "zh-CN": "仅显示此标签"
   },
   "menus.showOnlyThisBranch": {
     "en": "Show Only This Branch",
-    "zh-CN": "Show Only This Branch"
+    "zh-CN": "仅显示此分支"
   },
   "menus.merge": {
     "en": "Merge…",
-    "zh-CN": "Merge…"
+    "zh-CN": "合并…"
   },
   "menus.rebase": {
     "en": "Rebase…",
@@ -2405,43 +2409,43 @@ export const catalog = {
   },
   "menus.push": {
     "en": "Push…",
-    "zh-CN": "Push…"
+    "zh-CN": "推送…"
   },
   "menus.deleteBranch": {
     "en": "Delete Branch…",
-    "zh-CN": "Delete Branch…"
+    "zh-CN": "删除分支…"
   },
   "menus.deleteRemoteBranch": {
     "en": "Delete Remote Branch…",
-    "zh-CN": "Delete Remote Branch…"
+    "zh-CN": "删除远程分支…"
   },
   "menus.deleteTag": {
     "en": "Delete Tag…",
-    "zh-CN": "Delete Tag…"
+    "zh-CN": "删除标签…"
   },
   "menus.copyTagName": {
     "en": "Copy Tag Name",
-    "zh-CN": "Copy Tag Name"
+    "zh-CN": "复制标签名称"
   },
   "menus.copyCommitID": {
     "en": "Copy Commit ID",
-    "zh-CN": "Copy Commit ID"
+    "zh-CN": "复制提交 ID"
   },
   "menus.copyBranchName": {
     "en": "Copy Branch Name",
-    "zh-CN": "Copy Branch Name"
+    "zh-CN": "复制分支名称"
   },
   "menus.openWorktree": {
     "en": "Open Worktree",
-    "zh-CN": "Open Worktree"
+    "zh-CN": "打开工作树"
   },
   "menus.viewChanges": {
     "en": "View Changes",
-    "zh-CN": "View Changes"
+    "zh-CN": "查看更改"
   },
   "menus.applyStash": {
     "en": "Apply Stash",
-    "zh-CN": "Apply Stash"
+    "zh-CN": "应用 Stash"
   },
   "menus.popStash": {
     "en": "Pop Stash",
@@ -2449,23 +2453,23 @@ export const catalog = {
   },
   "menus.dropStash": {
     "en": "Drop Stash…",
-    "zh-CN": "Drop Stash…"
+    "zh-CN": "删除 Stash…"
   },
   "menus.openWorktreeInNewProjectWindow": {
     "en": "Open Worktree in New Project Window",
-    "zh-CN": "Open Worktree in New Project Window"
+    "zh-CN": "在新项目窗口中打开工作树"
   },
   "menus.removeWorktree": {
     "en": "Remove Worktree…",
-    "zh-CN": "Remove Worktree…"
+    "zh-CN": "移除工作树…"
   },
   "menus.copyWorktreePath": {
     "en": "Copy Worktree Path",
-    "zh-CN": "Copy Worktree Path"
+    "zh-CN": "复制工作树路径"
   },
   "menus.cherryPickCommitsTo": {
     "en": "Cherry-pick {{count}} Commits to {{value}}",
-    "zh-CN": "Cherry-pick {{count}} Commits to {{value}}"
+    "zh-CN": "将 {{count}} 个提交 Cherry-pick 到 {{value}}"
   },
   "menus.detachedHEAD": {
     "en": "Detached HEAD",
@@ -2473,39 +2477,39 @@ export const catalog = {
   },
   "menus.cherryPickTo": {
     "en": "Cherry-pick to {{value}}",
-    "zh-CN": "Cherry-pick to {{value}}"
+    "zh-CN": "Cherry-pick 到 {{value}}"
   },
   "menus.commits": {
     "en": "{{count}} Commits",
-    "zh-CN": "{{count}} Commits"
+    "zh-CN": "{{count}} 个提交"
   },
   "menus.compareCommits": {
     "en": "Compare Commits",
-    "zh-CN": "Compare Commits"
+    "zh-CN": "比较提交"
   },
   "menus.copyCommitIDs": {
     "en": "Copy Commit IDs",
-    "zh-CN": "Copy Commit IDs"
+    "zh-CN": "复制提交 ID"
   },
   "menus.cherryPickMerge": {
     "en": "Cherry-pick Merge…",
-    "zh-CN": "Cherry-pick Merge…"
+    "zh-CN": "Cherry-pick 合并提交…"
   },
   "menus.revert": {
     "en": "Revert…",
-    "zh-CN": "Revert…"
+    "zh-CN": "撤销此提交…"
   },
   "menus.reset": {
     "en": "Reset…",
-    "zh-CN": "Reset…"
+    "zh-CN": "将当前分支重置到此提交…"
   },
   "menus.copyCommitMessage": {
     "en": "Copy Commit Message",
-    "zh-CN": "Copy Commit Message"
+    "zh-CN": "复制提交消息"
   },
   "menus.commit": {
     "en": "Commit {{value}}",
-    "zh-CN": "Commit {{value}}"
+    "zh-CN": "提交 {{value}}"
   },
   "menus.cherryPickCurrentHead": {
     "en": "This commit is the current branch HEAD.",
@@ -2537,11 +2541,11 @@ export const catalog = {
   },
   "notices.couldNotLocateThisCommitInTheFullHistory": {
     "en": "Could not locate this Commit in the full history of the selected refs.",
-    "zh-CN": "无法在当前引用的完整历史中定位该 Commit。"
+    "zh-CN": "无法在所选引用的完整历史中定位此提交。"
   },
   "notices.automaticLocateReachedItsReadLimitHistoryAndCommit": {
     "en": "Automatic locate reached its read limit. History and Commit details are preserved. Use Load More to continue, or narrow the selected refs and locate again.",
-    "zh-CN": "已达到自动定位的读取上限，保留当前历史和 Commit 详情。可使用 Load More 继续加载，或缩小引用范围后再定位。"
+    "zh-CN": "已达到自动定位的读取上限，保留当前历史和提交详情。可使用“加载更多”继续加载，或缩小引用范围后再定位。"
   },
   "notices.demoCompletedNoDiskChanges": {
     "en": "Demo: {{kind}} completed. No disk changes.",
@@ -2557,19 +2561,19 @@ export const catalog = {
   },
   "notices.couldNotSaveGitOperationSettings": {
     "en": "Could not save Git operation settings.",
-    "zh-CN": "Could not save Git operation settings."
+    "zh-CN": "无法保存 Git 操作设置。"
   },
   "notices.theSelectedStashHasNoReadableSections": {
     "en": "The selected Stash has no readable sections.",
-    "zh-CN": "The selected Stash has no readable sections."
+    "zh-CN": "所选 Stash 没有可读取的内容。"
   },
   "notices.inspectStagedResult": {
     "en": "Inspect staged result",
-    "zh-CN": "Inspect staged result"
+    "zh-CN": "检查暂存结果"
   },
   "notices.theGitOperationChangedRefreshBeforeContinuing": {
     "en": "The Git operation changed. Refresh before continuing.",
-    "zh-CN": "The Git operation changed. Refresh before continuing."
+    "zh-CN": "Git 操作已发生变化，请刷新后继续。"
   },
   "notices.detachedHEAD": {
     "en": "Detached HEAD",
@@ -2577,11 +2581,11 @@ export const catalog = {
   },
   "operationLock.aGitOperationIsAlreadyRunningForThisRepository": {
     "en": "A Git operation is already running for this repository in another AlwayGit window.",
-    "zh-CN": "A Git operation is already running for this repository in another AlwayGit window."
+    "zh-CN": "此仓库已有 Git 操作正在另一个 AlwayGit 窗口中运行。"
   },
   "operationLock.thePreviousGitOperationWasInterruptedConfirmThatIts": {
     "en": "The previous Git operation was interrupted. Confirm that its Git processes have ended and inspect the repository before removing its protection.",
-    "zh-CN": "The previous Git operation was interrupted. Confirm that its Git processes have ended and inspect the repository before removing its protection."
+    "zh-CN": "上一次 Git 操作已中断。移除保护前，请确认其 Git 进程均已结束并检查仓库状态。"
   },
   "operationLock.git": {
     "en": "Git",
@@ -2589,11 +2593,11 @@ export const catalog = {
   },
   "operationLock.repositoryOperationLockIsClosed": {
     "en": "Repository operation lock is closed.",
-    "zh-CN": "Repository operation lock is closed."
+    "zh-CN": "仓库操作锁已关闭。"
   },
   "operations.resolveAndStageConflictingFilesBeforeContinue": {
     "en": "Resolve and Stage conflicting files before Continue.",
-    "zh-CN": "请先解决冲突并 Stage 文件，再 Continue。"
+    "zh-CN": "请先解决冲突并暂存文件，再继续。"
   },
   "operations.noUnmergedFilesInGitInspectTheStagedResult": {
     "en": "No unmerged files in Git. Inspect the staged result before Continue; content correctness has not been verified.",
@@ -2633,7 +2637,7 @@ export const catalog = {
   },
   "operations.skipTheCurrentCommitInThisOperation": {
     "en": "Skip the current commit in this operation",
-    "zh-CN": "跳过当前操作中的 Commit"
+    "zh-CN": "跳过当前操作中的提交"
   },
   "operations.abort": {
     "en": "Abort {{name}}…",
@@ -2641,11 +2645,11 @@ export const catalog = {
   },
   "operations.continue": {
     "en": "Continue",
-    "zh-CN": "Continue"
+    "zh-CN": "继续"
   },
   "operations.skip": {
     "en": "Skip",
-    "zh-CN": "Skip"
+    "zh-CN": "跳过"
   },
   "operationsReview.binaryFileNotScanned": {
     "en": "Binary file: not scanned",
@@ -2745,15 +2749,15 @@ export const catalog = {
   },
   "paths.invalidRepositoryRelativeFilePath": {
     "en": "Invalid repository-relative file path.",
-    "zh-CN": "Invalid repository-relative file path."
+    "zh-CN": "无效的仓库相对文件路径。"
   },
   "paths.filePathIsOutsideTheRepository": {
     "en": "File path is outside the repository.",
-    "zh-CN": "File path is outside the repository."
+    "zh-CN": "文件路径位于仓库之外。"
   },
   "paths.fileResolvesOutsideTheRepository": {
     "en": "File resolves outside the repository.",
-    "zh-CN": "File resolves outside the repository."
+    "zh-CN": "文件解析后位于仓库之外。"
   },
   "projectWindows.repositoryActivity": {
     "en": "[repository-activity] {{value}}",
@@ -2761,99 +2765,99 @@ export const catalog = {
   },
   "projectWindows.trustTheProjectWorkspaceBeforeOpeningItFromAlwayGit": {
     "en": "Trust the project workspace before opening it from AlwayGit.",
-    "zh-CN": "Trust the project workspace before opening it from AlwayGit."
+    "zh-CN": "从 AlwayGit 打开项目前，请先信任项目工作区。"
   },
   "projectWindows.theRepositoryDirectoryChangedReopenItFromAlwayGit": {
     "en": "The repository directory changed. Reopen it from AlwayGit.",
-    "zh-CN": "The repository directory changed. Reopen it from AlwayGit."
+    "zh-CN": "仓库目录已变化，请从 AlwayGit 重新打开。"
   },
   "projectWindows.theProjectWindowHasNoWorkspaceToActivate": {
     "en": "The project window has no workspace to activate.",
-    "zh-CN": "The project window has no workspace to activate."
+    "zh-CN": "项目窗口中没有可激活的工作区。"
   },
   "projectWindows.vSCodeCouldNotActivateTheSelectedProjectWindow": {
     "en": "VS Code could not activate the selected project window. Switch to that window and try again.",
-    "zh-CN": "VS Code could not activate the selected project window. Switch to that window and try again."
+    "zh-CN": "VS Code 无法激活所选项目窗口。请切换到该窗口后重试。"
   },
   "projectWindows.aWindowLevelRequestCannotBeRoutedAsA": {
     "en": "A window-level request cannot be routed as a project request.",
-    "zh-CN": "A window-level request cannot be routed as a project request."
+    "zh-CN": "窗口级请求不能作为项目请求路由。"
   },
   "projectWindows.theProjectWasOpenedButAlwayGitDidNotRespond": {
     "en": "The project was opened, but AlwayGit did not respond. Enable AlwayGit and trust that project window, then try again.",
-    "zh-CN": "The project was opened, but AlwayGit did not respond. Enable AlwayGit and trust that project window, then try again."
+    "zh-CN": "项目已打开，但 AlwayGit 未响应。请在该项目窗口中启用 AlwayGit 并信任工作区，然后重试。"
   },
   "projectWindows.theProjectWasOpenedInANewWindowBut": {
     "en": "The project was opened in a new window, but AlwayGit did not respond. Enable AlwayGit and trust that project window, then try again.",
-    "zh-CN": "The project was opened in a new window, but AlwayGit did not respond. Enable AlwayGit and trust that project window, then try again."
+    "zh-CN": "项目已在新窗口中打开，但 AlwayGit 未响应。请在该项目窗口中启用 AlwayGit 并信任工作区，然后重试。"
   },
   "projectWindows.theNewWindowOpenedButAlwayGitDidNotRespond": {
     "en": "The new window opened, but AlwayGit did not respond. Enable AlwayGit in that window, then try again.",
-    "zh-CN": "The new window opened, but AlwayGit did not respond. Enable AlwayGit in that window, then try again."
+    "zh-CN": "新窗口已打开，但 AlwayGit 未响应。请在该窗口中启用 AlwayGit，然后重试。"
   },
   "queryCoordinator.theReadRequestWasCancelled": {
     "en": "The read request was cancelled.",
-    "zh-CN": "The read request was cancelled."
+    "zh-CN": "读取请求已取消。"
   },
   "queryCoordinator.queryConcurrencyMustBePositive": {
     "en": "Query concurrency must be positive.",
-    "zh-CN": "Query concurrency must be positive."
+    "zh-CN": "查询并发数必须为正数。"
   },
   "refName.localBranchAlreadyExistsChooseAnotherBranchName": {
     "en": "Local branch {{name}} already exists. Choose another branch name.",
-    "zh-CN": "Local branch {{name}} already exists. Choose another branch name."
+    "zh-CN": "本地分支 {{name}} 已存在，请选择其他分支名称。"
   },
   "refName.localBranchNamesConflictAndChooseAnotherBranchName": {
     "en": "Local branch names conflict: {{name}} and {{name2}}. Choose another branch name.",
-    "zh-CN": "Local branch names conflict: {{name}} and {{name2}}. Choose another branch name."
+    "zh-CN": "本地分支名称 {{name}} 与 {{name2}} 冲突，请选择其他分支名称。"
   },
   "refName.enterABranchName": {
     "en": "Enter a branch name.",
-    "zh-CN": "Enter a branch name."
+    "zh-CN": "请输入分支名称。"
   },
   "refName.branchNamesCannotStartWithAHyphen": {
     "en": "Branch names cannot start with a hyphen.",
-    "zh-CN": "Branch names cannot start with a hyphen."
+    "zh-CN": "分支名称不能以连字符开头。"
   },
   "refName.branchNamesCannotContainSpacesTryFeatureUxFlow": {
     "en": "Branch names cannot contain spaces. Try feature/ux-flow.",
-    "zh-CN": "Branch names cannot contain spaces. Try feature/ux-flow."
+    "zh-CN": "分支名称不能包含空格，可尝试 feature/ux-flow。"
   },
   "refName.branchNamesCannotContainControlCharacters": {
     "en": "Branch names cannot contain control characters.",
-    "zh-CN": "Branch names cannot contain control characters."
+    "zh-CN": "分支名称不能包含控制字符。"
   },
   "refName.branchNamesCannotContainOrBackslash": {
     "en": "Branch names cannot contain ~, ^, :, ?, *, [, or backslash.",
-    "zh-CN": "Branch names cannot contain ~, ^, :, ?, *, [, or backslash."
+    "zh-CN": "分支名称不能包含 ~、^、:、?、*、[ 或反斜杠。"
   },
   "refName.branchNamesCannotContainTwoConsecutiveDots": {
     "en": "Branch names cannot contain two consecutive dots.",
-    "zh-CN": "Branch names cannot contain two consecutive dots."
+    "zh-CN": "分支名称不能包含两个连续的点。"
   },
   "refName.branchNamesCannotContain": {
     "en": "Branch names cannot contain @{.",
-    "zh-CN": "Branch names cannot contain @{."
+    "zh-CN": "分支名称不能包含 @{。"
   },
   "refName.branchNamesCannotStartOrEndWithASlash": {
     "en": "Branch names cannot start or end with a slash, or contain consecutive slashes.",
-    "zh-CN": "Branch names cannot start or end with a slash, or contain consecutive slashes."
+    "zh-CN": "分支名称不能以斜杠开头或结尾，也不能包含连续斜杠。"
   },
   "refName.branchNameSegmentsCannotStartWithADot": {
     "en": "Branch name segments cannot start with a dot.",
-    "zh-CN": "Branch name segments cannot start with a dot."
+    "zh-CN": "分支名称的路径段不能以点开头。"
   },
   "refName.branchNameSegmentsCannotEndWithLock": {
     "en": "Branch name segments cannot end with .lock.",
-    "zh-CN": "Branch name segments cannot end with .lock."
+    "zh-CN": "分支名称的路径段不能以 .lock 结尾。"
   },
   "refName.branchNamesCannotEndWithADot": {
     "en": "Branch names cannot end with a dot.",
-    "zh-CN": "Branch names cannot end with a dot."
+    "zh-CN": "分支名称不能以点结尾。"
   },
   "refName.aBranchNameCannotBeOnly": {
     "en": "A branch name cannot be only @.",
-    "zh-CN": "A branch name cannot be only @."
+    "zh-CN": "分支名称不能只有 @。"
   },
   "repositoriesDialog.enterAGroupName": {
     "en": "Enter a group name.",
@@ -3065,435 +3069,435 @@ export const catalog = {
   },
   "rpc.theReadRequestWasCancelled": {
     "en": "The read request was cancelled.",
-    "zh-CN": "The read request was cancelled."
+    "zh-CN": "读取请求已取消。"
   },
   "rpc.openAlwayGitInVSCodeToConnectToYour": {
     "en": "Open AlwayGit in VS Code to connect to your repositories.",
-    "zh-CN": "Open AlwayGit in VS Code to connect to your repositories."
+    "zh-CN": "请在 VS Code 中打开 AlwayGit 以连接仓库。"
   },
   "rpc.theReadRequestTimedOut": {
     "en": "The read request timed out.",
-    "zh-CN": "The read request timed out."
+    "zh-CN": "读取请求超时。"
   },
   "rpc.theGitOperationTimedOutRefreshToCheckIts": {
     "en": "The Git operation timed out. Refresh to check its result before retrying.",
-    "zh-CN": "The Git operation timed out. Refresh to check its result before retrying."
+    "zh-CN": "Git 操作超时。重试前请刷新以检查操作结果。"
   },
   "runner.gitOperationWasCancelled": {
     "en": "Git operation was cancelled",
-    "zh-CN": "Git operation was cancelled"
+    "zh-CN": "Git 操作已取消"
   },
   "runner.theReadOnlyQueryDidNotConfirmProcessTree": {
     "en": "{{value}}. {{message}}; the read-only query did not confirm process-tree termination.",
-    "zh-CN": "{{value}}. {{message}}; the read-only query did not confirm process-tree termination."
+    "zh-CN": "{{value}}。{{message}}；只读查询未能确认进程树已终止。"
   },
   "runner.gitQueryFailed": {
     "en": "Git query failed",
-    "zh-CN": "Git query failed"
+    "zh-CN": "Git 查询失败"
   },
   "runner.furtherWritesAreBlockedPendingManualVerification": {
     "en": "{{value}}. {{message}}; further writes are blocked pending manual verification.",
-    "zh-CN": "{{value}}. {{message}}; further writes are blocked pending manual verification."
+    "zh-CN": "{{value}}。{{message}}；完成手动核验前将阻止后续写入。"
   },
   "runner.cannotStopGit": {
     "en": "Cannot stop Git",
-    "zh-CN": "Cannot stop Git"
+    "zh-CN": "无法停止 Git"
   },
   "runner.processTreeTerminationFailed": {
     "en": "Process-tree termination failed: {{terminationFailure}}",
-    "zh-CN": "Process-tree termination failed: {{terminationFailure}}"
+    "zh-CN": "终止进程树失败：{{terminationFailure}}"
   },
   "runner.theGitTerminationRequestWasNotAccepted": {
     "en": "the Git termination request was not accepted",
-    "zh-CN": "the Git termination request was not accepted"
+    "zh-CN": "Git 终止请求未被接受"
   },
   "runner.gitProcessTreeTerminationDidNotFinishWithin5": {
     "en": "Git process-tree termination did not finish within 5 seconds{{value}}",
-    "zh-CN": "Git process-tree termination did not finish within 5 seconds{{value}}"
+    "zh-CN": "Git 进程树未能在 5 秒内终止{{value}}"
   },
   "runner.taskkillExitedWithStatus": {
     "en": "taskkill exited with status {{value}}",
-    "zh-CN": "taskkill exited with status {{value}}"
+    "zh-CN": "taskkill 退出，状态为 {{value}}"
   },
   "runner.unknown": {
     "en": "unknown",
-    "zh-CN": "unknown"
+    "zh-CN": "未知错误"
   },
   "runner.gitTimedOutCheckCredentialsHooksOrAnotherGit": {
     "en": "Git timed out. Check credentials, hooks, or another Git process, then retry.",
-    "zh-CN": "Git timed out. Check credentials, hooks, or another Git process, then retry."
+    "zh-CN": "Git 操作超时。请检查凭据、钩子或是否有其他 Git 进程正在运行。"
   },
   "runner.gitOutputExceededTheConfiguredLimit": {
     "en": "Git output exceeded the configured limit",
-    "zh-CN": "Git output exceeded the configured limit"
+    "zh-CN": "Git 输出超过配置的限制。"
   },
   "runner.cannotRunGit": {
     "en": "Cannot run Git: {{message}}",
-    "zh-CN": "Cannot run Git: {{message}}"
+    "zh-CN": "无法运行 Git：{{message}}"
   },
   "service.thisRepositoryContainsAPathEncodedWithInvalidUTF": {
     "en": "This repository contains a path encoded with invalid UTF-8. Rename the affected file with an external Git tool before continuing.",
-    "zh-CN": "This repository contains a path encoded with invalid UTF-8. Rename the affected file with an external Git tool before continuing."
+    "zh-CN": "此仓库包含未使用有效 UTF-8 编码的路径。继续前，请使用外部 Git 工具重命名受影响的文件。"
   },
   "service.invalid": {
     "en": "Invalid {{label}}",
-    "zh-CN": "Invalid {{label}}"
+    "zh-CN": "无效的{{label}}"
   },
   "service.filePathsMustStayInsideTheRepository": {
     "en": "File paths must stay inside the repository",
-    "zh-CN": "File paths must stay inside the repository"
+    "zh-CN": "文件路径必须位于仓库内"
   },
   "service.malformedGitStatusOutput": {
     "en": "Malformed Git status output",
-    "zh-CN": "Malformed Git status output"
+    "zh-CN": "Git 状态输出格式错误"
   },
   "service.aReadOnlyRequestCannotRunGitMutations": {
     "en": "A read-only request cannot run Git mutations",
-    "zh-CN": "A read-only request cannot run Git mutations"
+    "zh-CN": "只读请求不能执行 Git 写操作"
   },
   "service.cleanBatchEsCompletedALaterBatchFailedAnd": {
     "en": "{{count}} clean batch(es) completed; a later batch failed and may have partially removed files. Inspect the remaining files before retrying.\n{{value}}",
-    "zh-CN": "{{count}} clean batch(es) completed; a later batch failed and may have partially removed files. Inspect the remaining files before retrying.\n{{value}}"
+    "zh-CN": "已完成 {{count}} 个清理批次；后续批次失败，可能只移除了部分文件。重试前请检查剩余文件。\n{{value}}"
   },
   "service.configureGitCredentialsOrSignInThenRetry": {
     "en": "\nConfigure Git credentials or sign in, then retry.",
-    "zh-CN": "\nConfigure Git credentials or sign in, then retry."
+    "zh-CN": "\n请配置 Git 凭据或登录后重试。"
   },
   "service.anotherGitProcessIsUsingThisRepositoryFinishIt": {
     "en": "\nAnother Git process is using this repository. Finish it and retry.",
-    "zh-CN": "\nAnother Git process is using this repository. Finish it and retry."
+    "zh-CN": "\n另一个 Git 进程正在使用此仓库，请等待其结束后重试。"
   },
   "service.gitExitedWithStatus": {
     "en": "Git exited with status {{code}}",
-    "zh-CN": "Git exited with status {{code}}"
+    "zh-CN": "Git 退出，状态为 {{code}}"
   },
   "service.cannotReadGitConfiguration": {
     "en": "Cannot read Git configuration {{key}}",
-    "zh-CN": "Cannot read Git configuration {{key}}"
+    "zh-CN": "无法读取 Git 配置 {{key}}"
   },
   "service.thisRemoteHasMultiplePushDestinationsSelectARemote": {
     "en": "This remote has multiple Push destinations. Select a remote with one destination before Force-with-lease or deleting branches.",
-    "zh-CN": "This remote has multiple Push destinations. Select a remote with one destination before Force-with-lease or deleting branches."
+    "zh-CN": "此远程仓库有多个推送目标。执行 Force-with-lease 或删除分支前，请选择只有一个目标的远程仓库。"
   },
   "service.theRemotePushDestinationIsMissingOrChangedRefresh": {
     "en": "The remote Push destination is missing or changed. Refresh and reopen the confirmation before trying again.",
-    "zh-CN": "The remote Push destination is missing or changed. Refresh and reopen the confirmation before trying again."
+    "zh-CN": "远程推送目标缺失或已变化。重试前请刷新并重新打开确认对话框。"
   },
   "service.theConfirmedRemoteBranchVersionIsMissingRefreshAnd": {
     "en": "The confirmed remote branch version is missing. Refresh and reopen the confirmation before trying again.",
-    "zh-CN": "The confirmed remote branch version is missing. Refresh and reopen the confirmation before trying again."
+    "zh-CN": "已确认的远程分支版本缺失。重试前请刷新并重新打开确认对话框。"
   },
   "service.invalidConfirmedRemoteBranchVersion": {
     "en": "Invalid confirmed remote branch version",
-    "zh-CN": "Invalid confirmed remote branch version"
+    "zh-CN": "已确认的远程分支版本无效"
   },
   "service.openAWorkingRepositoryRatherThanABareRepository": {
     "en": "Open a working repository rather than a bare repository",
-    "zh-CN": "Open a working repository rather than a bare repository"
+    "zh-CN": "请打开工作仓库，而非裸仓库"
   },
   "service.repositoryChangedReopenItBeforeContinuing": {
     "en": "Repository changed; reopen it before continuing",
-    "zh-CN": "Repository changed; reopen it before continuing"
+    "zh-CN": "仓库已变化，请重新打开后继续"
   },
   "service.locked": {
     "en": "Locked",
-    "zh-CN": "Locked"
+    "zh-CN": "已锁定"
   },
   "service.prunable": {
     "en": "Prunable",
-    "zh-CN": "Prunable"
+    "zh-CN": "可清理"
   },
   "service.invalidHistoryPage": {
     "en": "Invalid history page",
-    "zh-CN": "Invalid history page"
+    "zh-CN": "历史记录页无效"
   },
   "service.invalidSearch": {
     "en": "Invalid search",
-    "zh-CN": "Invalid search"
+    "zh-CN": "搜索条件无效"
   },
   "service.selectedParentIsNotAParentOfThisCommit": {
     "en": "Selected parent is not a parent of this commit",
-    "zh-CN": "Selected parent is not a parent of this commit"
+    "zh-CN": "所选父提交不是此提交的父提交"
   },
   "service.theSelectedObjectIsNotAStash": {
     "en": "The selected object is not a Stash.",
-    "zh-CN": "The selected object is not a Stash."
+    "zh-CN": "所选对象不是 Stash。"
   },
   "service.invalidContentLimit": {
     "en": "Invalid content limit",
-    "zh-CN": "Invalid content limit"
+    "zh-CN": "内容限制无效"
   },
   "service.theSelectedPathIsNotAFile": {
     "en": "The selected path is not a file",
-    "zh-CN": "The selected path is not a file"
+    "zh-CN": "所选路径不是文件"
   },
   "service.invalidIndexStage": {
     "en": "Invalid index stage",
-    "zh-CN": "Invalid index stage"
+    "zh-CN": "Index 阶段无效"
   },
   "service.theTargetBranchOrHEADChangedBeforeTheOperation": {
     "en": "The target branch or HEAD changed before the operation started. Refresh and confirm the operation again.",
-    "zh-CN": "The target branch or HEAD changed before the operation started. Refresh and confirm the operation again."
+    "zh-CN": "目标分支或 HEAD 在操作开始前已变化。请刷新并重新确认操作。"
   },
   "service.theGitOperationIsNoLongerActiveRefreshBefore": {
     "en": "The Git operation is no longer active. Refresh before continuing.",
-    "zh-CN": "The Git operation is no longer active. Refresh before continuing."
+    "zh-CN": "Git 操作已不再活动，请刷新后继续。"
   },
   "service.resolveConflictsBeforeContinuing": {
     "en": "Resolve conflicts before continuing",
-    "zh-CN": "Resolve conflicts before continuing"
+    "zh-CN": "请先解决冲突，再继续"
   },
   "service.stagedContentOrTheOperationChangedDuringInspectionCheck": {
     "en": "Staged content or the operation changed during inspection. Check it again.",
-    "zh-CN": "Staged content or the operation changed during inspection. Check it again."
+    "zh-CN": "暂存内容或操作在检查期间已变化，请重新检查。"
   },
   "service.theReviewedGitOperationIsNoLongerActiveRefresh": {
     "en": "The reviewed Git operation is no longer active. Refresh before continuing.",
-    "zh-CN": "The reviewed Git operation is no longer active. Refresh before continuing."
+    "zh-CN": "已检查的 Git 操作已不再活动，请刷新后继续。"
   },
   "service.inspectTheStagedResultAndConfirmBeforeCompletingThis": {
     "en": "Inspect the staged result and confirm before completing this operation.",
-    "zh-CN": "Inspect the staged result and confirm before completing this operation."
+    "zh-CN": "完成此操作前，请检查并确认暂存结果。"
   },
   "service.stagedContentOrTheOperationChangedInspectTheResult": {
     "en": "Staged content or the operation changed. Inspect the result again.",
-    "zh-CN": "Staged content or the operation changed. Inspect the result again."
+    "zh-CN": "暂存内容或操作已变化，请重新检查结果。"
   },
   "service.resolveConflictsOrAbortTheActiveGitOperationBefore": {
     "en": "Resolve conflicts or Abort the active Git operation before Checkout.",
-    "zh-CN": "Resolve conflicts or Abort the active Git operation before Checkout."
+    "zh-CN": "切换前，请解决冲突或中止当前 Git 操作。"
   },
   "service.continueOrAbortTheActiveBeforeCheckout": {
     "en": "Continue or Abort the active {{kind}} before Checkout.",
-    "zh-CN": "Continue or Abort the active {{kind}} before Checkout."
+    "zh-CN": "切换前，请继续或中止当前 {{kind}}。"
   },
   "service.branchIsCheckedOutInOpenThatWorktreeTo": {
     "en": "Branch {{target}} is checked out in {{path}}. Open that Worktree to use this branch.",
-    "zh-CN": "Branch {{target}} is checked out in {{path}}. Open that Worktree to use this branch."
+    "zh-CN": "Branch {{target}} is checked out in {{path}}. Open that 工作树 to use this branch."
   },
   "service.branchWasCreatedAndRetainedButUpstreamConfigurationFailed": {
     "en": "Branch {{resolved}} was created and retained, but upstream configuration failed. Checkout and Stash did not run.\n{{value}}",
-    "zh-CN": "Branch {{resolved}} was created and retained, but upstream configuration failed. Checkout and Stash did not run.\n{{value}}"
+    "zh-CN": "分支 {{resolved}} 已创建并保留，但上游配置失败。未执行切换和 Stash。\n{{value}}"
   },
   "service.alwayGitBeforeCheckout": {
     "en": "AlwayGit: before Checkout {{target}}",
-    "zh-CN": "AlwayGit: before Checkout {{target}}"
+    "zh-CN": "AlwayGit：切换到 {{target}} 之前"
   },
   "service.directDetachedHEADCheckoutIsDisabledCreateAndSwitch": {
     "en": "Direct Detached HEAD Checkout is disabled. Create and switch to a branch, or enable it in Settings > Advanced.",
-    "zh-CN": "Direct Detached HEAD Checkout is disabled. Create and switch to a branch, or enable it in Settings > Advanced."
+    "zh-CN": "已禁用直接切换到 Detached HEAD。请创建并切换到分支，或在“设置 > 高级”中启用此功能。"
   },
   "service.selectUpTo1000BranchesCheckoutAndStashRequire": {
     "en": "Select up to 1000 branches; Checkout and Stash require a single branch.",
-    "zh-CN": "Select up to 1000 branches; Checkout and Stash require a single branch."
+    "zh-CN": "最多选择 1000 个分支；切换和 Stash 只能选择一个分支。"
   },
   "service.selectAnExistingRemoteBranchRatherThanASymbolic": {
     "en": "Select an existing remote branch rather than a symbolic reference: {{source}}",
-    "zh-CN": "Select an existing remote branch rather than a symbolic reference: {{source}}"
+    "zh-CN": "请选择现有远程分支，而不是符号引用：{{source}}"
   },
   "service.remoteBranchChangedRefreshAndSelectItAgain": {
     "en": "Remote branch changed. Refresh and select it again: {{source}}",
-    "zh-CN": "Remote branch changed. Refresh and select it again: {{source}}"
+    "zh-CN": "远程分支已变化，请刷新后重新选择：{{source}}"
   },
   "service.multipleRemoteBranchesWouldUseTheSameLocalName": {
     "en": "Multiple remote branches would use the same local name: {{name}}. Choose distinct local names.",
-    "zh-CN": "Multiple remote branches would use the same local name: {{name}}. Choose distinct local names."
+    "zh-CN": "多个远程分支将使用同一本地名称：{{name}}。请选择不同的本地名称。"
   },
   "service.localBranchAlreadyExistsAndDoesNotTrackChoose": {
     "en": "Local branch {{name}} already exists and does not track {{value}}. Choose another local name.",
-    "zh-CN": "Local branch {{name}} already exists and does not track {{value}}. Choose another local name."
+    "zh-CN": "本地分支 {{name}} 已存在且未跟踪 {{value}}。请选择其他本地名称。"
   },
   "service.localBranchEsCreatedCreationStoppedAtRefreshBefore": {
     "en": "{{created}} local branch(es) created; creation stopped at {{name}}. Refresh before retrying.\n{{value}}",
-    "zh-CN": "{{created}} local branch(es) created; creation stopped at {{name}}. Refresh before retrying.\n{{value}}"
+    "zh-CN": "已创建 {{created}} 个本地分支；创建在 {{name}} 处停止。重试前请刷新。\n{{value}}"
   },
   "service.invalidStashSelector": {
     "en": "Invalid stash selector",
-    "zh-CN": "Invalid stash selector"
+    "zh-CN": "Stash 选择器无效"
   },
   "service.theStashListChangedRefreshAndSelectTheSaved": {
     "en": "The Stash list changed. Refresh and select the saved entry again.",
-    "zh-CN": "The Stash list changed. Refresh and select the saved entry again."
+    "zh-CN": "Stash 列表已变化，请刷新后重新选择保存的条目。"
   },
   "service.selectAtLeastOneFile": {
     "en": "Select at least one file",
-    "zh-CN": "Select at least one file"
+    "zh-CN": "请至少选择一个文件"
   },
   "service.theSelectedConflictFilesChangedRefreshAndSelectThem": {
     "en": "The selected conflict files changed. Refresh and select them again.",
-    "zh-CN": "The selected conflict files changed. Refresh and select them again."
+    "zh-CN": "所选冲突文件已变化，请刷新后重新选择。"
   },
   "service.theRenameDestinationHasStagedContentUnstageTheRename": {
     "en": "The rename destination has staged content. Unstage the rename before discarding it.",
-    "zh-CN": "The rename destination has staged content. Unstage the rename before discarding it."
+    "zh-CN": "重命名目标包含已暂存内容。放弃更改前，请取消暂存该重命名。"
   },
   "service.enterACommitMessage": {
     "en": "Enter a commit message",
-    "zh-CN": "Enter a commit message"
+    "zh-CN": "请输入提交消息"
   },
   "service.amendIsUnavailableDuringAnActiveGitOperation": {
     "en": "Amend is unavailable during an active Git operation.",
-    "zh-CN": "Amend is unavailable during an active Git operation."
+    "zh-CN": "进行 Git 操作时无法修订提交。"
   },
   "service.invalidPullStrategy": {
     "en": "Invalid pull strategy",
-    "zh-CN": "Invalid pull strategy"
+    "zh-CN": "拉取策略无效"
   },
   "service.selectExplicitLocalAndRemoteBranchesThenReopenThe": {
     "en": "Select explicit local and remote branches, then reopen the Force-with-lease confirmation.",
-    "zh-CN": "Select explicit local and remote branches, then reopen the Force-with-lease confirmation."
+    "zh-CN": "请选择明确的本地和远程分支，然后重新打开 Force-with-lease 确认对话框。"
   },
   "service.selectALocalBranchBeforeChoosingARemoteBranch": {
     "en": "Select a local branch before choosing a remote branch",
-    "zh-CN": "Select a local branch before choosing a remote branch"
+    "zh-CN": "选择远程分支前，请先选择本地分支"
   },
   "service.selectARemoteBeforePushingThisBranch": {
     "en": "Select a remote before pushing this branch",
-    "zh-CN": "Select a remote before pushing this branch"
+    "zh-CN": "推送此分支前，请先选择远程仓库"
   },
   "service.enterARemoteNameWithoutSpacesSuchAsOrigin": {
     "en": "Enter a remote name without spaces, such as origin.",
-    "zh-CN": "Enter a remote name without spaces, such as origin."
+    "zh-CN": "请输入不含空格的远程仓库名称，例如 origin。"
   },
   "service.enterARepositoryURL": {
     "en": "Enter a repository URL.",
-    "zh-CN": "Enter a repository URL."
+    "zh-CN": "请输入仓库 URL。"
   },
   "service.remoteAlreadyExists": {
     "en": "Remote already exists: {{name}}",
-    "zh-CN": "Remote already exists: {{name}}"
+    "zh-CN": "远程仓库已存在：{{name}}"
   },
   "service.branchWasCreatedAndRetainedButUpstreamConfigurationFailedVariant2": {
     "en": "Branch {{name}} was created and retained, but upstream configuration failed. Checkout did not run.\n{{value}}",
-    "zh-CN": "Branch {{name}} was created and retained, but upstream configuration failed. Checkout did not run.\n{{value}}"
+    "zh-CN": "分支 {{name}} 已创建并保留，但上游配置失败。未执行切换。\n{{value}}"
   },
   "service.branchWasCreatedAndRetainedButCheckoutDidNotVariant2": {
     "en": "Branch {{name}} was created and retained, but Checkout did not complete.\n{{value}}",
-    "zh-CN": "Branch {{name}} was created and retained, but Checkout did not complete.\n{{value}}"
+    "zh-CN": "分支 {{name}} 已创建并保留，但切换未完成。\n{{value}}"
   },
   "service.selectAtLeastOneBranch": {
     "en": "Select at least one branch",
-    "zh-CN": "Select at least one branch"
+    "zh-CN": "请至少选择一个分支"
   },
   "service.theCurrentBranchCannotBeDeleted": {
     "en": "The current branch cannot be deleted: {{current}}",
-    "zh-CN": "The current branch cannot be deleted: {{current}}"
+    "zh-CN": "无法删除当前分支：{{current}}"
   },
   "service.branchIsUsedByAWorktree": {
     "en": "Branch is used by a Worktree: {{inUse}}",
-    "zh-CN": "Branch is used by a Worktree: {{inUse}}"
+    "zh-CN": "Branch is used by a 工作树: {{inUse}}"
   },
   "service.branchChangedBeforeDeletion": {
     "en": "Branch changed before deletion: {{name}}",
-    "zh-CN": "Branch changed before deletion: {{name}}"
+    "zh-CN": "分支在删除前已变化：{{name}}"
   },
   "service.branchEsDeletedFailed": {
     "en": "{{deleted}} branch(es) deleted; {{count}} failed.\n{{value}}",
-    "zh-CN": "{{deleted}} branch(es) deleted; {{count}} failed.\n{{value}}"
+    "zh-CN": "已删除 {{deleted}} 个分支；{{count}} 个失败。\n{{value}}"
   },
   "service.unknownRemote": {
     "en": "Unknown remote: {{destination}}",
-    "zh-CN": "Unknown remote: {{destination}}"
+    "zh-CN": "未知远程仓库：{{destination}}"
   },
   "service.selectAtLeastOneRemoteBranch": {
     "en": "Select at least one remote branch",
-    "zh-CN": "Select at least one remote branch"
+    "zh-CN": "请至少选择一个远程分支"
   },
   "service.remoteBranchEsDeletedFailed": {
     "en": "{{deleted}} remote branch(es) deleted; {{count}} failed.\n{{value}}",
-    "zh-CN": "{{deleted}} remote branch(es) deleted; {{count}} failed.\n{{value}}"
+    "zh-CN": "已删除 {{deleted}} 个远程分支；{{count}} 个失败。\n{{value}}"
   },
   "service.theTagIdentityIsMissingOrInvalidRefreshAnd": {
     "en": "The Tag identity is missing or invalid. Refresh and reopen the deletion dialog.",
-    "zh-CN": "The Tag identity is missing or invalid. Refresh and reopen the deletion dialog."
+    "zh-CN": "标签标识缺失或无效。请刷新并重新打开删除对话框。"
   },
   "service.theTagChangedRefreshAndReopenTheDeletionDialog": {
     "en": "The Tag changed. Refresh and reopen the deletion dialog.",
-    "zh-CN": "The Tag changed. Refresh and reopen the deletion dialog."
+    "zh-CN": "标签已变化，请刷新并重新打开删除对话框。"
   },
   "service.theTagChangedBeforeDeletionRefreshAndReopenThe": {
     "en": "The Tag changed before deletion. Refresh and reopen the deletion dialog.",
-    "zh-CN": "The Tag changed before deletion. Refresh and reopen the deletion dialog."
+    "zh-CN": "标签在删除前已变化，请刷新并重新打开删除对话框。"
   },
   "service.tagDeletionFailed": {
     "en": "Tag deletion failed.",
-    "zh-CN": "Tag deletion failed."
+    "zh-CN": "删除标签失败。"
   },
   "service.messagesCannotContainNULCharacters": {
     "en": "Messages cannot contain NUL characters",
-    "zh-CN": "Messages cannot contain NUL characters"
+    "zh-CN": "消息不能包含 NUL 字符"
   },
   "service.finishTheActiveOperationOrResolveConflictsBeforeSaving": {
     "en": "Finish the active operation or resolve conflicts before saving selected files.",
-    "zh-CN": "Finish the active operation or resolve conflicts before saving selected files."
+    "zh-CN": "保存所选文件前，请完成当前操作或解决冲突。"
   },
   "service.savedUntrackedFiles": {
     "en": "{{count}} saved untracked files",
-    "zh-CN": "{{count}} saved untracked files"
+    "zh-CN": "已保存 {{count}} 个未跟踪文件"
   },
   "service.cannotRestoreTheStashBecauseTheProjectAlreadyContains": {
     "en": "Cannot restore the Stash because the project already contains {{summary}}. Existing files were not overwritten, and the Stash is still saved.",
-    "zh-CN": "Cannot restore the Stash because the project already contains {{summary}}. Existing files were not overwritten, and the Stash is still saved."
+    "zh-CN": "无法恢复 Stash，因为项目中已包含{{summary}}。未覆盖现有文件，Stash 仍然保留。"
   },
   "service.stashChangesWereAppliedButTheStashListChanged": {
     "en": "Stash changes were applied, but the Stash list changed before Drop. The saved entry was retained; refresh the list.",
-    "zh-CN": "Stash changes were applied, but the Stash list changed before Drop. The saved entry was retained; refresh the list."
+    "zh-CN": "已应用 Stash 更改，但 Stash 列表在删除前已变化。保存的条目已保留；请刷新列表。"
   },
   "service.detachedWorktreesCannotAlsoSelectABranch": {
     "en": "Detached worktrees cannot also select a branch",
-    "zh-CN": "Detached worktrees cannot also select a branch"
+    "zh-CN": "Detached 工作树不能同时选择分支"
   },
   "service.chooseAnExistingOrANewBranch": {
     "en": "Choose an existing or a new branch",
-    "zh-CN": "Choose an existing or a new branch"
+    "zh-CN": "请选择现有分支或新分支"
   },
   "service.worktreeAlreadyRegistered": {
     "en": "Worktree already registered",
-    "zh-CN": "Worktree already registered"
+    "zh-CN": "工作树 already registered"
   },
   "service.onlyRegisteredLinkedWorktreesOtherThanTheCurrentWorktree": {
     "en": "Only registered linked worktrees other than the current Worktree can be removed",
-    "zh-CN": "Only registered linked worktrees other than the current Worktree can be removed"
+    "zh-CN": "只能移除已注册且不是当前工作树的链接工作树"
   },
   "service.thisWorktreeIsLockedUnlockItBeforeRemoval": {
     "en": "This Worktree is Locked: {{locked}}. Unlock it before removal.",
-    "zh-CN": "This Worktree is Locked: {{locked}}. Unlock it before removal."
+    "zh-CN": "This 工作树 is Locked: {{locked}}. Unlock it before removal."
   },
   "service.selectCommits": {
     "en": "Select commits",
-    "zh-CN": "Select commits"
+    "zh-CN": "请选择提交"
   },
   "service.invalidMergeParentNumber": {
     "en": "Invalid merge parent number",
-    "zh-CN": "Invalid merge parent number"
+    "zh-CN": "合并父提交编号无效"
   },
   "service.theTargetBranchChangedBeforeTheOperationStartedSelect": {
     "en": "The target branch changed before the operation started. Select the commits again.",
-    "zh-CN": "The target branch changed before the operation started. Select the commits again."
+    "zh-CN": "目标分支在操作开始前已变化，请重新选择提交。"
   },
   "service.invalidResetMode": {
     "en": "Invalid reset mode",
-    "zh-CN": "Invalid reset mode"
+    "zh-CN": "重置模式无效"
   },
   "service.theSelectedGitOperationIsNoLongerActive": {
     "en": "The selected Git operation is no longer active",
-    "zh-CN": "The selected Git operation is no longer active"
+    "zh-CN": "所选 Git 操作已不再活动"
   },
   "service.thisOperationCannotBeSkipped": {
     "en": "This operation cannot be skipped",
-    "zh-CN": "This operation cannot be skipped"
+    "zh-CN": "无法跳过此操作"
   },
   "service.unsupportedGitAction": {
     "en": "Unsupported Git action",
-    "zh-CN": "Unsupported Git action"
+    "zh-CN": "不支持的 Git 操作"
   },
   "service.retainedCheckoutBranch": {
     "en": "Branch {{branch}} was created and retained, but Checkout did not complete.\n",
-    "zh-CN": "Branch {{branch}} was created and retained, but Checkout did not complete.\n"
+    "zh-CN": "分支 {{branch}} 已创建并保留，但切换未完成。\n"
   },
   "service.retainedCheckoutStash": {
     "en": "\nStash {{oid}} was created and retained. Checkout did not complete; your saved changes remain in Stashes.",
-    "zh-CN": "\nStash {{oid}} was created and retained. Checkout did not complete; your saved changes remain in Stashes."
+    "zh-CN": "\nStash {{oid}} 已创建并保留。切换未完成；保存的更改仍保留在 Stash 中。"
   },
   "service.cherryPickNeedsBranch": {
     "en": "Cherry-pick requires a local branch with a HEAD commit.",
@@ -3513,7 +3517,7 @@ export const catalog = {
   },
   "session.lightAndDarkGraphPalettesMustHaveTheSame": {
     "en": "Light and dark graph palettes must have the same size",
-    "zh-CN": "Light and dark graph palettes must have the same size"
+    "zh-CN": "浅色和深色 Graph 调色板的大小必须相同"
   },
   "session.zhCN": {
     "en": "zh-CN",
@@ -3521,7 +3525,7 @@ export const catalog = {
   },
   "session.sessionExceedsTheStorageLimit": {
     "en": "Session exceeds the storage limit",
-    "zh-CN": "Session exceeds the storage limit"
+    "zh-CN": "会话超过存储限制"
   },
   "settings.lineHeight": {
     "en": "Line height",
@@ -3701,7 +3705,7 @@ export const catalog = {
   },
   "settings.entireCommitDefault": {
     "en": "Entire Commit · Default",
-    "zh-CN": "整个 Commit · 默认"
+    "zh-CN": "整个提交 · 默认"
   },
   "settings.currentFile": {
     "en": "Current file",
@@ -3721,11 +3725,11 @@ export const catalog = {
   },
   "settings.entireCommitFollowsTheChangedFileOrderNextMoves": {
     "en": "Entire Commit follows the changed-file order. Next moves to the first change in the next file; Previous moves to the last change in the previous file. The first and last changes of the Commit wrap around.",
-    "zh-CN": "整个 Commit 按变更文件顺序导航。下一处跨文件定位第一处修改，上一处跨文件定位最后一处修改，Commit 的首尾循环衔接。"
+    "zh-CN": "整个提交按更改文件顺序导航。下一处跨文件定位第一处更改，上一处跨文件定位最后一处更改，提交的首尾循环衔接。"
   },
   "settings.navigatesAllFilesInTheCurrentCommitAndSelected": {
     "en": "Navigates all files in the current Commit and selected Parent, including files hidden by the path filter. Binary files and files without text change blocks are skipped; truncated files only include previewed changes. Working Tree, Stash and comparisons continue to cycle within the current file.",
-    "zh-CN": "范围为当前 Commit 和所选 Parent 的全部文件，包括路径筛选隐藏的文件。跳过二进制文件及没有文本修改块的文件；截断文件仅导航预览中的修改。Working Tree、Stash 和 Commit 比较仍在当前文件内循环。"
+    "zh-CN": "范围为当前提交和所选父提交的全部文件，包括路径筛选隐藏的文件。跳过二进制文件及没有文本更改块的文件；截断文件仅导航预览中的更改。工作区、Stash 和提交比较仍在当前文件内循环。"
   },
   "settings.allowDirectDetachedHEADCheckout": {
     "en": "Allow direct Detached HEAD Checkout",
@@ -3733,11 +3737,11 @@ export const catalog = {
   },
   "settings.disabledByDefaultCreateAndSwitchToALocal": {
     "en": "Disabled by default. Create and switch to a local branch when checking out a historical Commit or Tag. Enabling this option allows direct Checkout; new commits will not automatically belong to a branch.",
-    "zh-CN": "默认关闭。切换到历史 Commit 或 Tag 时，请创建并切换到本地分支。开启后允许直接 Checkout；新提交不会自动归属于任何分支。"
+    "zh-CN": "默认关闭。切换到历史提交或标签时，请创建并切换到本地分支。开启后允许直接切换；新提交不会自动归属于任何分支。"
   },
   "settings.thisAlsoControlsDetachedWorktreesInternalRebaseStepsAnd": {
     "en": "This also controls Detached Worktrees. Internal Rebase steps and existing Detached HEAD repositories remain usable.",
-    "zh-CN": "此选项同时控制 Detached Worktree；不影响 Rebase 内部步骤或已经处于 Detached HEAD 的仓库。"
+    "zh-CN": "此选项同时控制 Detached 工作树；不影响 Rebase 内部步骤或已经处于 Detached HEAD 的仓库。"
   },
   "settings.chooseTheLanguageUsedThroughoutTheWorkbench": {
     "en": "Choose the language used throughout the workbench.",
@@ -3777,7 +3781,7 @@ export const catalog = {
   },
   "settings.fileSpacingSetsThePaddingAboveAndBelowEach": {
     "en": "File spacing sets the padding above and below each file in Commit Details, comparisons and Working Tree. The filename and path remain on two lines; long paths expand as needed.",
-    "zh-CN": "文件间距控制 Commit 详情、比较和 Working Tree 文件行的上下留白。保留文件名与路径两行，长路径自动增高。"
+    "zh-CN": "文件间距控制提交详情、比较和工作区文件行的上下留白。保留文件名与路径两行，长路径自动增高。"
   },
   "settings.rowHeightGrowsWithLargerTextToKeepEvery": {
     "en": "Row height grows with larger text to keep every line readable.",
@@ -3785,7 +3789,7 @@ export const catalog = {
   },
   "settings.setSeparateColorsForCommitCountsTheCurrentBranch": {
     "en": "Set separate colors for Commit counts, the current branch and the current repository.",
-    "zh-CN": "分别设置未推送 Commit 数量、当前分支和当前仓库的颜色。"
+    "zh-CN": "分别设置未推送提交数量、当前分支和当前仓库的颜色。"
   },
   "settings.restoreDefault": {
     "en": "Restore default",
@@ -3965,7 +3969,7 @@ export const catalog = {
   },
   "settings.picker": {
     "en": "{{label}} picker",
-    "zh-CN": "{{label}} picker"
+    "zh-CN": "{{label}} 选择器"
   },
   "settings.hEADMain": {
     "en": "HEAD · main",
@@ -4085,7 +4089,7 @@ export const catalog = {
   },
   "sidebar.noTags": {
     "en": "No tags",
-    "zh-CN": "暂无 Tag"
+    "zh-CN": "没有标签"
   },
   "sidebar.noSavedChanges": {
     "en": "No saved changes",
@@ -4093,7 +4097,7 @@ export const catalog = {
   },
   "sidebar.doubleClickOrPressEnterToSwitchWorktree": {
     "en": "Double-click or press Enter to switch Worktree.",
-    "zh-CN": "双击或按 Enter 切换 Worktree。"
+    "zh-CN": "双击或按 Enter 切换工作树。"
   },
   "sidebar.selectARepositoryToBegin": {
     "en": "Select a repository to begin.",
@@ -4101,11 +4105,11 @@ export const catalog = {
   },
   "sidebar.showBranch": {
     "en": "Show branch {{name}}",
-    "zh-CN": "Show branch {{name}}"
+    "zh-CN": "显示分支 {{name}}"
   },
   "sidebar.branch": {
     "en": "Branch {{name}}",
-    "zh-CN": "Branch {{name}}"
+    "zh-CN": "分支 {{name}}"
   },
   "sidebar.hEAD": {
     "en": " · HEAD",
@@ -4113,15 +4117,15 @@ export const catalog = {
   },
   "sidebar.showBranchGroup": {
     "en": "Show branch group {{label}}",
-    "zh-CN": "Show branch group {{label}}"
+    "zh-CN": "显示分支组 {{label}}"
   },
   "sidebar.graph": {
     "en": "Graph:",
-    "zh-CN": "Graph:"
+    "zh-CN": "Graph："
   },
   "sidebar.tags": {
     "en": "Tags",
-    "zh-CN": "Tags"
+    "zh-CN": "标签"
   },
   "sidebar.stashes": {
     "en": "Stashes",
@@ -4129,7 +4133,7 @@ export const catalog = {
   },
   "sidebar.worktrees": {
     "en": "Worktrees",
-    "zh-CN": "Worktrees"
+    "zh-CN": "工作树"
   },
   "sidebar.detachedHEAD": {
     "en": "Detached HEAD",
@@ -4137,83 +4141,83 @@ export const catalog = {
   },
   "sidebar.locked": {
     "en": " · Locked",
-    "zh-CN": " · Locked"
+    "zh-CN": " · 已锁定"
   },
   "snapshotCoordinator.theSnapshotRequestWasCancelled": {
     "en": "The snapshot request was cancelled.",
-    "zh-CN": "The snapshot request was cancelled."
+    "zh-CN": "快照请求已取消。"
   },
   "stash.stashRequiresRepositoryPathsEncodedAsUTF8": {
     "en": "Stash requires repository paths encoded as UTF-8.",
-    "zh-CN": "Stash requires repository paths encoded as UTF-8."
+    "zh-CN": "Stash 要求仓库路径使用 UTF-8 编码。"
   },
   "stash.cannotSafelyInspectAPathBelowASymbolicLink": {
     "en": "Cannot safely inspect a path below a symbolic link: {{name}}",
-    "zh-CN": "Cannot safely inspect a path below a symbolic link: {{name}}"
+    "zh-CN": "无法安全检查符号链接下的路径：{{name}}"
   },
   "stash.cannotSafelySnapshotThisFileUnsupportedTypeOrLarger": {
     "en": "Cannot safely snapshot this file (unsupported type or larger than 32 MiB): {{name}}",
-    "zh-CN": "Cannot safely snapshot this file (unsupported type or larger than 32 MiB): {{name}}"
+    "zh-CN": "无法安全创建此文件的快照（类型不受支持或大于 32 MiB）：{{name}}"
   },
   "stash.stashPreflightIsNotSupportedInASparseCheckout": {
     "en": "Stash preflight is not supported in a sparse checkout. Use Git directly for this repository.",
-    "zh-CN": "Stash preflight is not supported in a sparse checkout. Use Git directly for this repository."
+    "zh-CN": "稀疏检出不支持 Stash 预检。请直接使用 Git 处理此仓库。"
   },
   "stash.stashIsolationCannotSaveOrRestoreASubmoduleState": {
     "en": "Stash isolation cannot save or restore a submodule state. Use Git directly for this path.",
-    "zh-CN": "Stash isolation cannot save or restore a submodule state. Use Git directly for this path."
+    "zh-CN": "Stash 隔离无法保存或恢复子模块状态。请直接使用 Git 处理此路径。"
   },
   "stash.stashIsolationNeedsGit243OrNewerTo": {
     "en": "Stash isolation needs Git 2.43 or newer to inspect attribute sources.",
-    "zh-CN": "Stash isolation needs Git 2.43 or newer to inspect attribute sources."
+    "zh-CN": "Stash 隔离需要 Git 2.43 或更高版本才能检查属性来源。"
   },
   "stash.cannotSafelySnapshotASymbolicLinkUsedAsAn": {
     "en": "Cannot safely snapshot a symbolic link used as an attribute source: {{name}}",
-    "zh-CN": "Cannot safely snapshot a symbolic link used as an attribute source: {{name}}"
+    "zh-CN": "无法安全创建用作属性来源的符号链接快照：{{name}}"
   },
   "stash.cannotSafelyInspectTheDirectoryOccupyingMoveItBefore": {
     "en": "Cannot safely inspect the directory occupying {{name}}. Move it before restoring.",
-    "zh-CN": "Cannot safely inspect the directory occupying {{name}}. Move it before restoring."
+    "zh-CN": "无法安全检查占用 {{name}} 的目录。请在恢复前将其移走。"
   },
   "stash.theWorkingStateIsLargerThanThe128MiB": {
     "en": "The working state is larger than the 128 MiB Stash preflight limit. Use Git directly for this repository.",
-    "zh-CN": "The working state is larger than the 128 MiB Stash preflight limit. Use Git directly for this repository."
+    "zh-CN": "工作状态超过 128 MiB 的 Stash 预检限制。请直接使用 Git 处理此仓库。"
   },
   "stash.stashIsolationCannotSafelyRunAnExternalDriverFor": {
     "en": "Stash isolation cannot safely run an external {{attribute}} driver for {{name}}. Use Git directly for this file.",
-    "zh-CN": "Stash isolation cannot safely run an external {{attribute}} driver for {{name}}. Use Git directly for this file."
+    "zh-CN": "Stash 隔离无法安全地为 {{name}} 运行外部 {{attribute}} 驱动。请直接使用 Git 处理此文件。"
   },
   "stash.unsafeStashTemporaryDirectory": {
     "en": "Unsafe Stash temporary directory",
-    "zh-CN": "Unsafe Stash temporary directory"
+    "zh-CN": "Stash 临时目录不安全"
   },
   "stash.stashIsolationCannotRunAnExternalDefaultMergeDriver": {
     "en": "Stash isolation cannot run an external default merge driver. Use Git directly for this repository.",
-    "zh-CN": "Stash isolation cannot run an external default merge driver. Use Git directly for this repository."
+    "zh-CN": "Stash 隔离无法运行外部默认合并驱动。请直接使用 Git 处理此仓库。"
   },
   "stash.finishTheActiveGitOperationOrResolveExistingConflicts": {
     "en": "Finish the active Git operation or resolve existing conflicts before restoring a Stash. The Index and Working Tree were not changed.",
-    "zh-CN": "Finish the active Git operation or resolve existing conflicts before restoring a Stash. The Index and Working Tree were not changed."
+    "zh-CN": "恢复 Stash 前，请完成当前 Git 操作或解决现有冲突。Index 和工作区均未更改。"
   },
   "stash.stashRestorationFailedInTheIsolatedTrial": {
     "en": "Stash restoration failed in the isolated trial.",
-    "zh-CN": "Stash restoration failed in the isolated trial."
+    "zh-CN": "Stash 在隔离试验中恢复失败。"
   },
   "stash.theStashCouldNotBeRestoredInTheIsolated": {
     "en": "The Stash could not be restored in the isolated trial. The real Index and Working Tree were not changed, and the Stash is still saved.",
-    "zh-CN": "The Stash could not be restored in the isolated trial. The real Index and Working Tree were not changed, and the Stash is still saved."
+    "zh-CN": "无法在隔离试验中恢复 Stash。实际 Index 和工作区均未更改，Stash 仍然保留。"
   },
   "stash.theProjectChangedDuringStashInspectionRefreshAndRetry": {
     "en": "The project changed during Stash inspection. Refresh and retry. This restore did not change the Index or Working Tree.",
-    "zh-CN": "The project changed during Stash inspection. Refresh and retry. This restore did not change the Index or Working Tree."
+    "zh-CN": "项目在检查 Stash 期间发生变化。请刷新后重试；此次恢复未更改 Index 或工作区。"
   },
   "stash.stashPreflightCouldNotCompleteTheIndexAndWorking": {
     "en": "Stash preflight could not complete. The Index and Working Tree were not changed.",
-    "zh-CN": "Stash preflight could not complete. The Index and Working Tree were not changed."
+    "zh-CN": "Stash 预检未能完成。Index 和工作区均未更改。"
   },
   "stash.theSelectedFileNoLongerHasChangesRefreshAnd": {
     "en": "The selected file no longer has changes: {{name}}. Refresh and select it again.",
-    "zh-CN": "The selected file no longer has changes: {{name}}. Refresh and select it again."
+    "zh-CN": "所选文件已没有更改：{{name}}。请刷新后重新选择。"
   },
   "stash.commitTree": {
     "en": "commit-tree",
@@ -4229,7 +4233,7 @@ export const catalog = {
   },
   "stash.alwayGitSavedIndex": {
     "en": "AlwayGit: saved Index",
-    "zh-CN": "AlwayGit: saved Index"
+    "zh-CN": "AlwayGit：已保存的 Index"
   },
   "stash.writeTree": {
     "en": "write-tree",
@@ -4237,23 +4241,23 @@ export const catalog = {
   },
   "stash.alwayGitSavedUntrackedFiles": {
     "en": "AlwayGit: saved untracked files",
-    "zh-CN": "AlwayGit: saved untracked files"
+    "zh-CN": "AlwayGit：已保存的未跟踪文件"
   },
   "stash.alwayGitSelectedFiles": {
     "en": "AlwayGit: selected files",
-    "zh-CN": "AlwayGit: selected files"
+    "zh-CN": "AlwayGit：所选文件"
   },
   "stash.theProjectChangedWhileCreatingTheStashNoFiles": {
     "en": "The project changed while creating the Stash. No files were cleaned; refresh and retry.",
-    "zh-CN": "The project changed while creating the Stash. No files were cleaned; refresh and retry."
+    "zh-CN": "项目在创建 Stash 期间发生变化。没有清理任何文件；请刷新后重试。"
   },
   "stash.theStashWasSavedButTheProjectChangedBefore": {
     "en": "The Stash was saved, but the project changed before cleanup. The files were left in place.",
-    "zh-CN": "The Stash was saved, but the project changed before cleanup. The files were left in place."
+    "zh-CN": "Stash 已保存，但项目在清理前发生变化。文件已保留在原处。"
   },
   "stash.theStashWasSavedAndRetainedButCleanupDid": {
     "en": "The Stash was saved and retained, but cleanup did not complete. Inspect the remaining files.\n{{value}}",
-    "zh-CN": "The Stash was saved and retained, but cleanup did not complete. Inspect the remaining files.\n{{value}}"
+    "zh-CN": "Stash 已保存并保留，但清理未完成。请检查剩余文件。\n{{value}}"
   },
   "tracking.enterALocalBranchName": {
     "en": "Enter a local branch name.",
@@ -4277,7 +4281,7 @@ export const catalog = {
   },
   "tracking.checkoutAsLocalBranch": {
     "en": "Checkout as Local Branch",
-    "zh-CN": "Checkout 到本地分支"
+    "zh-CN": "创建本地跟踪分支并切换"
   },
   "tracking.resolveTheBranchNameConflictsBeforeContinuing": {
     "en": "Resolve the branch name conflicts before continuing.",
@@ -4297,7 +4301,7 @@ export const catalog = {
   },
   "tracking.createCheckout": {
     "en": "Create & Checkout",
-    "zh-CN": "创建并 Checkout"
+    "zh-CN": "创建并切换"
   },
   "tracking.createLocalBranches": {
     "en": "Create Local Branches",
@@ -4305,7 +4309,7 @@ export const catalog = {
   },
   "tracking.trackingIsEstablishedUsingTheLastFetch": {
     "en": "Tracking is established using the last Fetch.",
-    "zh-CN": "使用最近一次 Fetch 的远程引用建立跟踪关系。"
+    "zh-CN": "使用最近一次获取的远程引用建立跟踪关系。"
   },
   "tracking.localBranch": {
     "en": "Local Branch",
@@ -4325,7 +4329,7 @@ export const catalog = {
   },
   "tracking.checkoutLocalBranch": {
     "en": "Checkout local branch",
-    "zh-CN": "Checkout 到本地分支"
+    "zh-CN": "切换到本地分支"
   },
   "tracking.createOrReuseAllBranchesInThisSelectionKeep": {
     "en": "Create or reuse all branches in this selection; keep the current branch checked out. Symbolic remote references are excluded.",
@@ -4333,67 +4337,67 @@ export const catalog = {
   },
   "tracking.checkedOut": {
     "en": "Checked out {{value}}.",
-    "zh-CN": "已 Checkout 到 {{value}}。"
+    "zh-CN": "已切换到 {{value}}。"
   },
   "tracking.localBranchFor": {
     "en": "Local branch for {{name}}",
-    "zh-CN": "Local branch for {{name}}"
+    "zh-CN": "{{name}} 的本地分支"
   },
   "validation.checkoutRequiresExactlyOneBranch": {
     "en": "Checkout requires exactly one branch",
-    "zh-CN": "Checkout requires exactly one branch"
+    "zh-CN": "切换操作只能选择一个分支"
   },
   "validation.stashRequiresCheckout": {
     "en": "Stash requires Checkout",
-    "zh-CN": "Stash requires Checkout"
+    "zh-CN": "Stash 要求同时执行切换"
   },
   "validation.chooseAnExistingGroupOrCreateANewOne": {
     "en": "Choose an existing group or create a new one, not both.",
-    "zh-CN": "Choose an existing group or create a new one, not both."
+    "zh-CN": "请选择现有分组或创建新分组，不能同时执行两者。"
   },
   "validation.chooseEitherANewTabOrANewWindow": {
     "en": "Choose either a new tab or a new window.",
-    "zh-CN": "Choose either a new tab or a new window."
+    "zh-CN": "请选择新标签页或新窗口，不能同时选择。"
   },
   "validation.chooseOneWorkbenchDestination": {
     "en": "Choose one Workbench destination.",
-    "zh-CN": "Choose one Workbench destination."
+    "zh-CN": "请选择一个 Workbench 目标。"
   },
   "windowBridge.filePathIsOutsideTheRepository": {
     "en": "File path is outside the repository.",
-    "zh-CN": "File path is outside the repository."
+    "zh-CN": "文件路径位于仓库之外。"
   },
   "windowBridge.theProjectIsNoLongerOpenInThisWindow": {
     "en": "The project is no longer open in this window.",
-    "zh-CN": "The project is no longer open in this window."
+    "zh-CN": "此窗口中已不再打开该项目。"
   },
   "windowBridge.cannotRegisterTheProjectWindow": {
     "en": "Cannot register the project window.",
-    "zh-CN": "Cannot register the project window."
+    "zh-CN": "无法注册项目窗口。"
   },
   "windowBridge.broadcastToFailed": {
     "en": "Broadcast to {{id}} failed: {{value}}",
-    "zh-CN": "Broadcast to {{id}} failed: {{value}}"
+    "zh-CN": "向 {{id}} 广播失败：{{value}}"
   },
   "windowBridge.theProjectWindowDidNotRespond": {
     "en": "The project window did not respond.",
-    "zh-CN": "The project window did not respond."
+    "zh-CN": "项目窗口未响应。"
   },
   "windowBridge.theProjectWindowIsUnavailable": {
     "en": "The project window is unavailable.",
-    "zh-CN": "The project window is unavailable."
+    "zh-CN": "项目窗口不可用。"
   },
   "windowBridge.theProjectWindowClosedBeforeResponding": {
     "en": "The project window closed before responding.",
-    "zh-CN": "The project window closed before responding."
+    "zh-CN": "项目窗口在响应前已关闭。"
   },
   "windowBridge.invalidProjectWindowResponse": {
     "en": "Invalid project window response.",
-    "zh-CN": "Invalid project window response."
+    "zh-CN": "项目窗口响应无效。"
   },
   "windowBridge.theProjectWindowRejectedTheRequest": {
     "en": "The project window rejected the request.",
-    "zh-CN": "The project window rejected the request."
+    "zh-CN": "项目窗口拒绝了请求。"
   },
   "workbench.opening": {
     "en": "Opening…",
@@ -4457,15 +4461,15 @@ export const catalog = {
   },
   "workbench.pushUnpushedCommits": {
     "en": "Push, {{unpushed}} unpushed commits",
-    "zh-CN": "Push，{{unpushed}} 个未推送提交"
+    "zh-CN": "推送，{{unpushed}} 个未推送提交"
   },
   "workbench.pushRequiresALocalBranch": {
     "en": "Push requires a local branch.",
-    "zh-CN": "Push 需要当前处于本地分支。"
+    "zh-CN": "推送要求当前位于本地分支。"
   },
   "workbench.addARemoteBeforePush": {
     "en": "Add a remote before Push.",
-    "zh-CN": "Push 前需要先添加远端。"
+    "zh-CN": "推送前需要先添加远程仓库。"
   },
   "workbench.refreshCurrentRepositoryStatusAndHistory": {
     "en": "Refresh current repository status and history",
@@ -4529,35 +4533,35 @@ export const catalog = {
   },
   "workbench.fetchCompleted": {
     "en": "Fetch completed.",
-    "zh-CN": "Fetch 完成。"
+    "zh-CN": "获取完成。"
   },
   "workbench.fetchedRepositories": {
     "en": "Fetched {{count}} repositories.",
-    "zh-CN": "已 Fetch {{count}} 个仓库。"
+    "zh-CN": "已获取 {{count}} 个仓库。"
   },
   "workbench.fetchRepository": {
     "en": "Fetch Repository",
-    "zh-CN": "Fetch 仓库"
+    "zh-CN": "获取仓库"
   },
   "workbench.fetchRepositories": {
     "en": "Fetch {{count}} Repositories",
-    "zh-CN": "Fetch {{count}} 个仓库"
+    "zh-CN": "获取 {{count}} 个仓库"
   },
   "workbench.fetching": {
     "en": "Fetching…",
-    "zh-CN": "正在 Fetch…"
+    "zh-CN": "正在获取…"
   },
   "workbench.fetchTheSelectedRepositoriesWithoutChangingTheRepositoryOpen": {
     "en": "Fetch the selected repositories without changing the repository open in this tab.",
-    "zh-CN": "Fetch 所选仓库，不切换当前标签页中打开的仓库。"
+    "zh-CN": "获取所选仓库，不切换当前标签页中打开的仓库。"
   },
   "workbench.theBranchIsInUseByAnotherWorktree": {
     "en": "The branch is in use by another Worktree.",
-    "zh-CN": "分支正在被其他 Worktree 使用。"
+    "zh-CN": "该分支正被另一个工作树使用。"
   },
   "workbench.resolveConflictsBeforeCheckout": {
     "en": "Resolve conflicts before Checkout.",
-    "zh-CN": "请先解决冲突，再 Checkout。"
+    "zh-CN": "请先解决冲突，再切换。"
   },
   "workbench.completeOrAbortTheActiveGitOperationBeforeCheckout": {
     "en": "Complete or Abort the active Git operation before Checkout.",
@@ -4565,19 +4569,19 @@ export const catalog = {
   },
   "workbench.stashWasSavedButCheckoutFailedTheStashIs": {
     "en": "Stash was saved, but Checkout failed. The Stash is preserved.",
-    "zh-CN": "Stash 已保存，但 Checkout 失败；保存内容已保留。"
+    "zh-CN": "Stash 已保存，但切换失败；保存内容已保留。"
   },
   "workbench.checkoutWouldOverwriteLocalChanges": {
     "en": "Checkout would overwrite local changes.",
-    "zh-CN": "Checkout 可能覆盖未提交修改。"
+    "zh-CN": "切换可能覆盖本地更改。"
   },
   "workbench.gitCouldNotCompleteCheckoutSeeTheDetailsBelow": {
     "en": "Git could not complete Checkout. See the details below.",
-    "zh-CN": "Git 无法完成 Checkout，请查看下方详情。"
+    "zh-CN": "Git 无法完成切换，请查看下方详情。"
   },
   "workbench.checkoutBlocked": {
     "en": "Checkout Blocked",
-    "zh-CN": "无法 Checkout"
+    "zh-CN": "无法切换"
   },
   "workbench.branchWasCreatedAndRetainedYouHaveNotSwitched": {
     "en": "Branch {{target}} was created and retained. You have not switched to it.",
@@ -4617,59 +4621,59 @@ export const catalog = {
   },
   "workbench.fetch": {
     "en": "Fetch",
-    "zh-CN": "Fetch"
+    "zh-CN": "获取"
   },
   "workbench.pull": {
     "en": "Pull",
-    "zh-CN": "Pull"
+    "zh-CN": "拉取"
   },
   "workbench.push": {
     "en": "Push",
-    "zh-CN": "Push"
+    "zh-CN": "推送"
   },
   "workbench.commit": {
     "en": "Commit",
-    "zh-CN": "Commit"
+    "zh-CN": "提交"
   },
   "workbench.stashAllChanges": {
     "en": "Stash All Changes…",
-    "zh-CN": "Stash All Changes…"
+    "zh-CN": "Stash 所有更改…"
   },
   "workbench.dismissError": {
     "en": "Dismiss error",
-    "zh-CN": "Dismiss error"
+    "zh-CN": "关闭错误"
   },
   "workbench.resizeRepositorySidebar": {
     "en": "Resize repository sidebar",
-    "zh-CN": "Resize repository sidebar"
+    "zh-CN": "调整仓库侧栏大小"
   },
   "workbench.resizeDetailsPanel": {
     "en": "Resize details panel",
-    "zh-CN": "Resize details panel"
+    "zh-CN": "调整详情面板大小"
   },
   "workbench.resizeDiffPanel": {
     "en": "Resize Diff panel",
-    "zh-CN": "Resize Diff panel"
+    "zh-CN": "调整 Diff 面板大小"
   },
   "workbench.stashChangesCheckout": {
     "en": "Stash Changes & Checkout",
-    "zh-CN": "Stash Changes & Checkout"
+    "zh-CN": "Stash 更改并切换"
   },
   "workbench.checkout": {
     "en": "Checkout ",
-    "zh-CN": "Checkout "
+    "zh-CN": "切换到 "
   },
   "workbench.openWorktree": {
     "en": "Open Worktree",
-    "zh-CN": "Open Worktree"
+    "zh-CN": "打开工作树"
   },
   "workbenchEntry.showAlwayGitWorkbench": {
     "en": "Show AlwayGit Workbench",
-    "zh-CN": "Show AlwayGit Workbench"
+    "zh-CN": "显示 AlwayGit Workbench"
   },
   "workbenchEntry.openAlwayGitWorkbench": {
     "en": "Open AlwayGit Workbench",
-    "zh-CN": "Open AlwayGit Workbench"
+    "zh-CN": "打开 AlwayGit Workbench"
   }
 } as const;
 export interface MessageParameters {
@@ -5257,7 +5261,8 @@ export interface MessageParameters {
   "menus.tags": {  };
   "menus.stashes": {  };
   "menus.worktrees": {  };
-  "menus.checkout": {  };
+  "menus.switchToBranch": {  };
+  "menus.switchToCommit": {  };
   "menus.showInGraph": {  };
   "menus.showOnlyThisTag": {  };
   "menus.showOnlyThisBranch": {  };

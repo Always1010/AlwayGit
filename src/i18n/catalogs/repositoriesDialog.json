@@ -266,7 +266,7 @@
   "repositoriesDialog.scan": {
     "en": "scan-{{value}}-{{request}}",
     "zh-CN": "scan-{{value}}-{{request}}",
-    "review": "pending",
+    "review": "keep",
     "context": "webview/RepositoryDialog.tsx / scan / id"
   }
 }

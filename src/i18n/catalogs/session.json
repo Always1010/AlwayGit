@@ -1,20 +1,20 @@
 {
   "session.lightAndDarkGraphPalettesMustHaveTheSame": {
     "en": "Light and dark graph palettes must have the same size",
-    "zh-CN": "Light and dark graph palettes must have the same size",
-    "review": "pending",
+    "zh-CN": "浅色和深色 Graph 调色板的大小必须相同",
+    "review": "translated",
     "context": "src/protocol/session.ts / graphColors"
   },
   "session.zhCN": {
     "en": "zh-CN",
     "zh-CN": "zh-CN",
-    "review": "pending",
+    "review": "keep",
     "context": "src/protocol/session.ts / sessionSchema"
   },
   "session.sessionExceedsTheStorageLimit": {
     "en": "Session exceeds the storage limit",
-    "zh-CN": "Session exceeds the storage limit",
-    "review": "pending",
+    "zh-CN": "会话超过存储限制",
+    "review": "translated",
     "context": "src/protocol/session.ts / sessionSchema"
   }
 }

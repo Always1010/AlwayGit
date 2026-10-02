@@ -7,13 +7,13 @@
   },
   "confirm.discard": {
     "en": "Discard Unstaged Changes in {{count}} file(s)? Untracked files will be deleted; Index content and Staged Changes remain.",
-    "zh-CN": "Discard {{count}} 个文件的 Unstaged Changes？未跟踪文件将被删除；Index 中的 Staged Changes 保留。",
+    "zh-CN": "放弃 {{count}} 个文件的未暂存更改？未跟踪文件将被删除；Index 中已暂存的更改会保留。",
     "review": "translated",
     "context": "src/application/confirm.ts / confirmAction"
   },
   "confirm.reset": {
     "en": "Reset {{name}} to {{target}} ({{mode}})? {{effect}}",
-    "zh-CN": "Reset {{name}} 到 {{target}}（{{mode}}）？{{effect}}",
+    "zh-CN": "将 {{name}} 重置到 {{target}}（{{mode}}）？{{effect}}",
     "review": "translated",
     "context": "src/application/confirm.ts / confirmAction"
   },
@@ -37,7 +37,7 @@
   },
   "confirm.forcePush": {
     "en": "Push with force-with-lease? Published branch history may be replaced.",
-    "zh-CN": "Push with force-with-lease？已发布的分支历史可能被替换。",
+    "zh-CN": "使用 force-with-lease 推送？已发布的分支历史可能被替换。",
     "review": "translated",
     "context": "src/application/confirm.ts / confirmAction"
   },
@@ -46,7 +46,7 @@
       "one": "Delete {{count}} local branch?\n{{names}}{{effect}}",
       "other": "Delete {{count}} local branches?\n{{names}}{{effect}}"
     },
-    "zh-CN": "Delete {{count}} 个本地分支？\n{{names}}{{effect}}",
+    "zh-CN": "删除 {{count}} 个本地分支？\n{{names}}{{effect}}",
     "review": "translated",
     "context": "src/application/confirm.ts / confirmAction"
   },
@@ -67,7 +67,7 @@
   },
   "confirm.deleteTag": {
     "en": "Delete local tag {{name}}?",
-    "zh-CN": "Delete 本地 Tag {{name}}？",
+    "zh-CN": "删除本地标签 {{name}}？",
     "review": "translated",
     "context": "src/application/confirm.ts / confirmAction"
   },
@@ -79,7 +79,7 @@
   },
   "confirm.removeWorktree": {
     "en": "Remove worktree {{path}}?{{effect}}",
-    "zh-CN": "Remove Worktree {{path}}？{{effect}}",
+    "zh-CN": "Remove 工作树 {{path}}？{{effect}}",
     "review": "translated",
     "context": "src/application/confirm.ts / confirmAction"
   },
@@ -97,13 +97,13 @@
   },
   "confirm.detachedCheckout": {
     "en": "Checkout {{target}} as Detached HEAD? New commits will not belong to a branch until you create one.",
-    "zh-CN": "Checkout {{target}} 并进入 Detached HEAD？新提交不会属于分支，请及时创建分支保存。",
+    "zh-CN": "切换到 {{target}} 并进入 Detached HEAD？新提交不会属于分支，请及时创建分支保存。",
     "review": "translated",
     "context": "src/application/confirm.ts / confirmAction"
   },
   "confirm.stashDetachedCheckout": {
     "en": "Stash Changes and Checkout {{target}} as Detached HEAD? The Stash will be retained for you to apply.",
-    "zh-CN": "Stash Changes 后 Checkout {{target}} 并进入 Detached HEAD？Stash 将保留，供你之后 Apply。",
+    "zh-CN": "Stash 更改后切换到 {{target}} 并进入 Detached HEAD？Stash 会保留，供之后应用。",
     "review": "translated",
     "context": "src/application/confirm.ts / confirmAction"
   },

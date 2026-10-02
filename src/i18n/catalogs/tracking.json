@@ -31,7 +31,7 @@
   },
   "tracking.checkoutAsLocalBranch": {
     "en": "Checkout as Local Branch",
-    "zh-CN": "Checkout 到本地分支",
+    "zh-CN": "创建本地跟踪分支并切换",
     "review": "translated",
     "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog / title"
   },
@@ -61,7 +61,7 @@
   },
   "tracking.createCheckout": {
     "en": "Create & Checkout",
-    "zh-CN": "创建并 Checkout",
+    "zh-CN": "创建并切换",
     "review": "translated",
     "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog"
   },
@@ -73,7 +73,7 @@
   },
   "tracking.trackingIsEstablishedUsingTheLastFetch": {
     "en": "Tracking is established using the last Fetch.",
-    "zh-CN": "使用最近一次 Fetch 的远程引用建立跟踪关系。",
+    "zh-CN": "使用最近一次获取的远程引用建立跟踪关系。",
     "review": "translated",
     "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog"
   },
@@ -103,7 +103,7 @@
   },
   "tracking.checkoutLocalBranch": {
     "en": "Checkout local branch",
-    "zh-CN": "Checkout 到本地分支",
+    "zh-CN": "切换到本地分支",
     "review": "translated",
     "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog"
   },
@@ -115,14 +115,14 @@
   },
   "tracking.checkedOut": {
     "en": "Checked out {{value}}.",
-    "zh-CN": "已 Checkout 到 {{value}}。",
+    "zh-CN": "已切换到 {{value}}。",
     "review": "translated",
     "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog"
   },
   "tracking.localBranchFor": {
     "en": "Local branch for {{name}}",
-    "zh-CN": "Local branch for {{name}}",
-    "review": "pending",
+    "zh-CN": "{{name}} 的本地分支",
+    "review": "translated",
     "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog"
   }
 }

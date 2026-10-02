@@ -1,14 +1,14 @@
 {
   "operationLock.aGitOperationIsAlreadyRunningForThisRepository": {
     "en": "A Git operation is already running for this repository in another AlwayGit window.",
-    "zh-CN": "A Git operation is already running for this repository in another AlwayGit window.",
-    "review": "pending",
+    "zh-CN": "此仓库已有 Git 操作正在另一个 AlwayGit 窗口中运行。",
+    "review": "translated",
     "context": "src/application/operation-lock.ts / BUSY_MESSAGE"
   },
   "operationLock.thePreviousGitOperationWasInterruptedConfirmThatIts": {
     "en": "The previous Git operation was interrupted. Confirm that its Git processes have ended and inspect the repository before removing its protection.",
-    "zh-CN": "The previous Git operation was interrupted. Confirm that its Git processes have ended and inspect the repository before removing its protection.",
-    "review": "pending",
+    "zh-CN": "上一次 Git 操作已中断。移除保护前，请确认其 Git 进程均已结束并检查仓库状态。",
+    "review": "translated",
     "context": "src/application/operation-lock.ts / constructor"
   },
   "operationLock.git": {
@@ -19,8 +19,8 @@
   },
   "operationLock.repositoryOperationLockIsClosed": {
     "en": "Repository operation lock is closed.",
-    "zh-CN": "Repository operation lock is closed.",
-    "review": "pending",
+    "zh-CN": "仓库操作锁已关闭。",
+    "review": "translated",
     "context": "src/application/operation-lock.ts / acquire"
   }
 }

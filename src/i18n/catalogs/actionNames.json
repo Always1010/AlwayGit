@@ -1,170 +1,170 @@
 {
   "actionNames.stage": {
     "en": "Stage",
-    "zh-CN": "Stage",
-    "review": "keep",
+    "zh-CN": "暂存",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.markStage": {
     "en": "Mark & Stage",
-    "zh-CN": "Mark & Stage",
-    "review": "pending",
+    "zh-CN": "标记为已解决并暂存",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.unstage": {
     "en": "Unstage",
-    "zh-CN": "Unstage",
-    "review": "keep",
+    "zh-CN": "取消暂存",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.discard": {
     "en": "Discard",
-    "zh-CN": "Discard",
-    "review": "pending",
+    "zh-CN": "放弃更改",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.amend": {
     "en": "Amend",
-    "zh-CN": "Amend",
-    "review": "pending",
+    "zh-CN": "修订提交",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.commit": {
     "en": "Commit",
-    "zh-CN": "Commit",
-    "review": "keep",
+    "zh-CN": "提交",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.fetch": {
     "en": "Fetch",
-    "zh-CN": "Fetch",
-    "review": "keep",
+    "zh-CN": "获取",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.pull": {
     "en": "Pull",
-    "zh-CN": "Pull",
-    "review": "keep",
+    "zh-CN": "拉取",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.push": {
     "en": "Push",
-    "zh-CN": "Push",
-    "review": "keep",
+    "zh-CN": "推送",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.addRemote": {
     "en": "Add Remote",
-    "zh-CN": "Add Remote",
-    "review": "pending",
+    "zh-CN": "添加远程仓库",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.createBranch": {
     "en": "Create Branch",
-    "zh-CN": "Create Branch",
-    "review": "pending",
+    "zh-CN": "创建分支",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.checkout": {
     "en": "Checkout",
-    "zh-CN": "Checkout",
-    "review": "keep",
+    "zh-CN": "切换",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.stashCheckout": {
     "en": "Stash & Checkout",
-    "zh-CN": "Stash & Checkout",
-    "review": "pending",
+    "zh-CN": "Stash 并切换",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.checkoutRemoteBranch": {
     "en": "Checkout Remote Branch",
-    "zh-CN": "Checkout Remote Branch",
-    "review": "pending",
+    "zh-CN": "切换到远程分支",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.createTrackingBranches": {
     "en": "Create Tracking Branches",
-    "zh-CN": "Create Tracking Branches",
-    "review": "pending",
+    "zh-CN": "创建跟踪分支",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.deleteBranches": {
     "en": "Delete Branches",
-    "zh-CN": "Delete Branches",
-    "review": "pending",
+    "zh-CN": "删除分支",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.deleteBranch": {
     "en": "Delete Branch",
-    "zh-CN": "Delete Branch",
-    "review": "pending",
+    "zh-CN": "删除分支",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.deleteRemoteBranches": {
     "en": "Delete Remote Branches",
-    "zh-CN": "Delete Remote Branches",
-    "review": "pending",
+    "zh-CN": "删除远程分支",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.createTag": {
     "en": "Create Tag",
-    "zh-CN": "Create Tag",
-    "review": "pending",
+    "zh-CN": "创建标签",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.deleteTag": {
     "en": "Delete Tag",
-    "zh-CN": "Delete Tag",
-    "review": "pending",
+    "zh-CN": "删除标签",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.stashSelectedFiles": {
     "en": "Stash Selected Files",
-    "zh-CN": "Stash Selected Files",
-    "review": "pending",
+    "zh-CN": "Stash 所选文件",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.stashAllChanges": {
     "en": "Stash All Changes",
-    "zh-CN": "Stash All Changes",
-    "review": "pending",
+    "zh-CN": "Stash 所有更改",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.popStash": {
     "en": "Pop Stash",
     "zh-CN": "Pop Stash",
-    "review": "pending",
+    "review": "keep",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.applyStash": {
     "en": "Apply Stash",
-    "zh-CN": "Apply Stash",
-    "review": "pending",
+    "zh-CN": "应用 Stash",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.dropStash": {
     "en": "Drop Stash",
-    "zh-CN": "Drop Stash",
-    "review": "pending",
+    "zh-CN": "删除 Stash",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.addWorktree": {
     "en": "Add Worktree",
-    "zh-CN": "Add Worktree",
-    "review": "pending",
+    "zh-CN": "添加工作树",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.removeWorktree": {
     "en": "Remove Worktree",
-    "zh-CN": "Remove Worktree",
-    "review": "pending",
+    "zh-CN": "移除工作树",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.merge": {
     "en": "Merge",
-    "zh-CN": "Merge",
-    "review": "keep",
+    "zh-CN": "合并",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.rebase": {
@@ -181,26 +181,26 @@
   },
   "actionNames.revert": {
     "en": "Revert",
-    "zh-CN": "Revert",
-    "review": "keep",
+    "zh-CN": "撤销提交",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName / names"
   },
   "actionNames.continue": {
     "en": "{{value}} Continue",
-    "zh-CN": "{{value}} Continue",
-    "review": "pending",
+    "zh-CN": "{{value}} 继续",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName"
   },
   "actionNames.abort": {
     "en": "{{value}} Abort",
-    "zh-CN": "{{value}} Abort",
-    "review": "pending",
+    "zh-CN": "{{value}} 中止",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName"
   },
   "actionNames.skip": {
     "en": "{{value}} Skip",
-    "zh-CN": "{{value}} Skip",
-    "review": "pending",
+    "zh-CN": "{{value}} 跳过",
+    "review": "translated",
     "context": "webview/actionFeedback.ts / actionName"
   }
 }

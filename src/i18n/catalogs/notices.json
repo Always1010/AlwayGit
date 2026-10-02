@@ -7,13 +7,13 @@
   },
   "notices.couldNotLocateThisCommitInTheFullHistory": {
     "en": "Could not locate this Commit in the full history of the selected refs.",
-    "zh-CN": "无法在当前引用的完整历史中定位该 Commit。",
+    "zh-CN": "无法在所选引用的完整历史中定位此提交。",
     "review": "translated",
     "context": "webview/store.ts / useWorkbench"
   },
   "notices.automaticLocateReachedItsReadLimitHistoryAndCommit": {
     "en": "Automatic locate reached its read limit. History and Commit details are preserved. Use Load More to continue, or narrow the selected refs and locate again.",
-    "zh-CN": "已达到自动定位的读取上限，保留当前历史和 Commit 详情。可使用 Load More 继续加载，或缩小引用范围后再定位。",
+    "zh-CN": "已达到自动定位的读取上限，保留当前历史和提交详情。可使用“加载更多”继续加载，或缩小引用范围后再定位。",
     "review": "translated",
     "context": "webview/store.ts / useWorkbench"
   },
@@ -37,26 +37,26 @@
   },
   "notices.couldNotSaveGitOperationSettings": {
     "en": "Could not save Git operation settings.",
-    "zh-CN": "Could not save Git operation settings.",
-    "review": "pending",
+    "zh-CN": "无法保存 Git 操作设置。",
+    "review": "translated",
     "context": "webview/store.ts / useWorkbench"
   },
   "notices.theSelectedStashHasNoReadableSections": {
     "en": "The selected Stash has no readable sections.",
-    "zh-CN": "The selected Stash has no readable sections.",
-    "review": "pending",
+    "zh-CN": "所选 Stash 没有可读取的内容。",
+    "review": "translated",
     "context": "webview/store.ts / useWorkbench"
   },
   "notices.inspectStagedResult": {
     "en": "Inspect staged result",
-    "zh-CN": "Inspect staged result",
-    "review": "pending",
+    "zh-CN": "检查暂存结果",
+    "review": "translated",
     "context": "webview/store.ts / useWorkbench"
   },
   "notices.theGitOperationChangedRefreshBeforeContinuing": {
     "en": "The Git operation changed. Refresh before continuing.",
-    "zh-CN": "The Git operation changed. Refresh before continuing.",
-    "review": "pending",
+    "zh-CN": "Git 操作已发生变化，请刷新后继续。",
+    "review": "translated",
     "context": "webview/store.ts / useWorkbench"
   },
   "notices.detachedHEAD": {
