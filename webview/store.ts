@@ -304,7 +304,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     const feedback = get().actionFeedback;
     if (!feedback || feedback.status === 'running') return;
     actionFeedbacks.delete(feedback.repoId);
-    set({ actionFeedback: undefined, ...(get().error === feedback.error ? { error: undefined, stashApplyFailure: undefined } : {}) });
+    set({ actionFeedback: undefined, notice: undefined, ...(get().error === feedback.error ? { error: undefined, stashApplyFailure: undefined } : {}) });
   },
   setDraft(value) { const repoId = get().repoId; if (repoId) set({ drafts: { ...get().drafts, [repoId]: value } }); },
   setLanguage(language) { set({ language }); },
