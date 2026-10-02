@@ -9,7 +9,7 @@
 - 现象：含未跟踪 `notes.txt` 的 Stash 首次 Apply 成功后，再次 Apply 同一记录会因文件已存在而失败；对话框只显示 Git 输出，仍保留 Cancel 和 Apply Stash，用户需要自行判断现有文件与 Stash 是否安全，也容易重复无效提交。
 - 原因：恢复直接交给 `git stash apply`，没有在写入前识别 Stash 未跟踪文件与工作区路径冲突；错误协议只支持 Checkout 阻塞信息，操作对话框无法得到可确认的安全状态和具体处理入口。
 - 解决方案：Apply / Pop 在调用 Git 前读取 Stash 的未跟踪文件分类，逐路径检查现有文件、非目录父级和符号链接；命中时不执行 Apply，并返回“工作区未变、Stash 保留”的结构化结果。对话框明确说明原因与安全状态，移除无效重复提交，按冲突文件提供比较收起内容和打开现有文件的图标入口，只保留“取消并保留当前状态”；更换 Stash 后可重新尝试。
-- 验证方式：真实 Git 回归覆盖首次 Apply、继续编辑现有文件、再次 Pop 被预检阻止、文件内容不变和 Stash 保留；文档预览测试覆盖 Stash 与 Working Tree 两份内容的比较；状态与协议测试覆盖结构化阻塞结果；类型检查、生产构建及无头 Stash 专项通过，无头场景确认原因无需查看日志、无重复 Apply 按钮、比较与打开入口均可用。
+- 验证方式：真实 Git 回归覆盖首次 Apply、继续编辑现有文件、再次 Pop 被预检阻止、文件内容不变和 Stash 保留；文档预览测试覆盖 Stash 与 Working Tree 两份内容的比较；状态与协议测试覆盖结构化阻塞结果；类型检查、生产构建及无头 Stash 专项通过，无头场景确认原因无需查看日志、无重复 Apply 按钮、比较与打开入口均可用。0.19.1 固定 VSIX 已打包并通过官方 CLI 安装及身份/版本核对。
 - 相关文件：`src/protocol/types.ts`、`src/protocol/validation.ts`、`src/git/service.ts`、`src/editor/documents.ts`、`src/extension/workbench.ts`、`webview/rpc.ts`、`webview/store.ts`、`webview/App.tsx`、`webview/ActionDialog.tsx`、`webview/refresh.ts`、`webview/styles.css`、`tests/git-safety.test.ts`、`tests/documents.test.ts`、`tests/ui-state.test.ts`、`tests/workbench-protocol.test.ts`、`scripts/test-stash-ui.mjs`、`docs/WORKBENCH_SPEC.md`、`docs/ARCHITECTURE.md`、`docs/VALIDATION.md`。
 
 ## BUG-024：仅含未跟踪文件的 Stash 默认显示为空
@@ -19,7 +19,7 @@
 - 现象：Stash 仅保存未跟踪文件时，打开详情首先看到 `Changed Files 0` 和 `No changed files`；必须自行切换到 `Untracked Files` 才能确认文件与内容仍在，容易把当前分类为空误解为保存失败或数据丢失。
 - 原因：详情默认把 Stash 主提交与 HEAD 比较，只加载当前分类；Working Tree、Index 和未跟踪文件分散在 Stash 的不同父提交中，界面没有整体摘要、分类数量或非空分类选择逻辑。
 - 解决方案：宿主按 Index→Stash、HEAD→Index 和未跟踪文件提交分别返回三个分类，按路径去重计算保存总数；详情显示整体摘要和分类数量，首次打开自动选择第一个非空分类。空分类说明内容所在位置并提供直接跳转，创建成功反馈显示保存文件数、未跟踪文件数及工作区是否干净。
-- 验证方式：真实 Git 集成测试覆盖同一路径的 Staged/Unstaged 内容与独立未跟踪文件，验证分类和去重总数；状态回归覆盖仅有未跟踪文件时自动进入非空分类及分类切换；协议、类型检查、生产构建和无头主界面专项通过。
+- 验证方式：真实 Git 集成测试覆盖同一路径的 Staged/Unstaged 内容与独立未跟踪文件，验证分类和去重总数；状态回归覆盖仅有未跟踪文件时自动进入非空分类及分类切换；协议、类型检查、生产构建和无头主界面专项通过。0.19.1 固定 VSIX 已打包并通过官方 CLI 安装及身份/版本核对。
 - 相关文件：`src/protocol/types.ts`、`src/protocol/validation.ts`、`src/git/service.ts`、`src/extension/workbench.ts`、`webview/rpc.ts`、`webview/store.ts`、`webview/Details.tsx`、`webview/actionFeedback.ts`、`webview/ActionFeedbackBar.tsx`、`webview/styles.css`、`tests/git-service.test.ts`、`tests/ui-state.test.ts`、`tests/workbench-protocol.test.ts`、`scripts/test-stash-ui.mjs`、`scripts/test-feedback-ui.mjs`、`scripts/test-ui.mjs`、`docs/WORKBENCH_SPEC.md`、`docs/VALIDATION.md`。
 
 ## BUG-023：多窗口仓库目录不同步且写操作可能并发
