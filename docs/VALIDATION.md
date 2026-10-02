@@ -45,7 +45,7 @@
 - 菜单指针定位、视口边缘修正、竖向排列、键盘焦点、Escape 与点击外部关闭。
 - 右键对象与操作对话框目标一致；仓库切换后旧菜单和对话框关闭。
 - 递归分支目录、目录展开、三态目录选择、多引用选择及只按可见分支计算的 Shift 范围、共同提交去重、清空选择、分页、搜索、HEAD 标记及 Locate HEAD。
-- Commit 整行悬停、指针、选择、已推送实心节点与粗体消息、本地未推送空心节点与常规消息、各列双击、键盘焦点、本地分支 Checkout 及 Detached HEAD 对话框；Working Tree 使用独立菱形虚拟节点紧邻当前 HEAD，显示变更、冲突和分支，并支持整行选择及上下方向键导航。
+- Commit 整行悬停、指针、选择、已推送实心节点与粗体消息、本地未推送空心节点与常规消息、各列双击、键盘焦点、本地分支 Checkout、历史 Commit 创建并切换分支及高级 Detached HEAD 对话框；Working Tree 使用独立菱形虚拟节点紧邻当前 HEAD，显示变更、冲突和分支，并支持整行选择及上下方向键导航。
 - English / 简体中文切换，并验证 Git 命令、分支、路径和草稿保持不变。
 - 切换仓库或重载后恢复筛选、选择、布局和 Commit 草稿。
 - 文件以 `./` 开头的完整多层相对父目录、形状与颜色不同的状态图标及 Tooltip、Working Tree / Commit Details / Commit 比较的单击/Ctrl/Cmd/Shift 选择及无复选框交互、文件区域 Ctrl/Cmd+A、原生文本框全选、提交文件路径复制、绿色暂存盒与红色回撤/垃圾桶分组图标；Stage All / Unstage All 在无选择或部分选择时均确认全部组内文件数量，确认按钮默认聚焦，执行范围不受选择影响；Discard All 在无选择或部分选择时均列出全部 Unstaged 路径，取消不执行，确认后发送完整范围，文件右键菜单仍按所选路径执行。
@@ -68,7 +68,7 @@
 - Apply、Pop、Drop Stash 在列表变化后仍验证正确对象；重复恢复未跟踪文件时在 Git 写入前识别现有路径，保留现有内容与 Stash，并提供两份内容比较和打开入口，不显示无效的重复 Apply。
 - Stash 详情分别验证 Working Tree、Index 与 Untracked Files，按路径去重汇总文件数；仅含未跟踪文件时默认打开该分类，空分类给出内容位置与直接跳转，创建成功反馈说明保存范围和工作区状态。
 - 同一文件同时含 Staged / Unstaged 修改时，Discard 只处理工作区一侧。
-- Detached HEAD、Tracking Branch、Tag Checkout 和主 / 当前 / Locked Worktree 限制。
+- Detached HEAD 默认禁止、设置应用/取消/重载、关闭后返回分支、Commit/Tag/Stash 重试和隐式 Detached Worktree 后端拦截、Tracking Branch、Tag 创建并切换分支 和主 / 当前 / Locked Worktree 限制。
 - 远端名称、地址、重复名称与添加后的 Snapshot；Push 目标配置解析、不同名称的本地 / 远端分支 refspec 及 upstream 建立。
 - 同 Remote 的远程分支单项和批量删除、符号引用限制、身份校验、确认清单及部分失败汇总。
 - Diff 文本、二进制、大小限制、删除 / 重命名、Merge Parent 和冲突 Stage。
@@ -117,5 +117,7 @@ scripts/update-local.ps1 -InstallOnly
 | 可见顺序范围选择与仓库内嵌管理 | 2026-10-02 / 0.21.0 | 完成 Repository、Local / Remote Branch、History Commit、Details / Working Tree 文件、Worktree 及新增候选仓库列表的 Shift 范围审计，修复仓库排序和折叠分支两处与可见顺序不一致的问题。类型检查、6 个相关 Vitest 文件 39 项、生产构建及无头 `--worktrees-only` 通过；后者覆盖内嵌扫描添加、候选 Shift 范围、新建目标分组和内嵌移除确认。固定 VSIX 已打包并通过官方 CLI 安装及 `alwaygit-dev.alwaygit@0.21.0` 核对；未启动会弹窗的真实 VS Code 桌面集成测试 |
 | Diff 定位、循环跳转与独立行高 | 2026-10-02 / 0.23.0 | 类型检查、Diff 导航/对齐及状态/设置单测共 47 项、生产构建、Diff 和外观两个无头界面专项通过。覆盖首处自动定位、单处重复定位、首尾循环、超高块与收起恢复；默认 18 px 行高、自定义边界、字号安全下限、预览/取消/保存重载、旧设置兼容与改变行高保留阅读行。固定 VSIX 已通过官方 CLI 安装并核对 `alwaygit-dev.alwaygit@0.23.0`；未启动真实 VS Code 桌面集成测试 |
 | 工作台入口与仓库交互勘误 | 2026-10-02 / 0.25.1 | 类型检查、入口回归 8 项、生产构建与无头 `--worktrees-only` 通过；覆盖两个原生按钮的命令配置、视图可见性无自动动作、Show 标签新建与复用、活动/最近使用标签、关闭后重建，以及恢复仓库单击选择、双击/Enter 切换与右键管理。固定 VSIX 已通过官方 CLI 安装并核对 `alwaygit-dev.alwaygit@0.25.1`；真实 VS Code 桌面按钮外观与跨窗口集成未运行 |
+
+| Detached HEAD 高级开关与历史分支引导 | 2026-10-02 / 0.28.0 | 类型检查、Git 安全/状态/协议三个文件 67 项单测、生产构建与无头 History、Appearance、Branch 三个专项通过；覆盖默认拒绝 Commit/Tag、显式及隐式 Detached Worktree、Stash 前预检策略变化和文件保留、关闭后返回分支、设置取消/应用/重载及历史创建并切换。固定 VSIX 已通过官方 CLI 安装并核对 `alwaygit-dev.alwaygit@0.28.0`；未启动真实 VS Code 桌面集成测试 |
 
 macOS、Linux、WSL、Remote SSH、Dev Containers 和最低支持版本仍需相应环境的专项证据。验收矩阵、架构兼容性和测试文件的存在都不等同于这些环境已通过验收。

@@ -50,7 +50,7 @@ Status 使用 porcelain v2 与 NUL 分隔，分别保存 Index 和工作区状�
 
 会话写入各自的 VS Code Webview state，并由扩展宿主把最近状态保存到 `workspaceState` 作为新标签和兼容恢复的基线。多个标签具有独立的活动仓库与前端选择状态；宿主按请求来源定向响应和切换仓库，仓库变化与 Git 活动事件广播到全部标签。补偿刷新覆盖所有可见标签当前仓库，并按仓库去重。Demo 模式使用浏览器 localStorage。持久化的数据只包含界面状态，不包含凭据、Git 输出或文件内容。
 
-version 2 会话通过可选 `appearance` 字段兼容新增设置，宿主协议验证后保留；旧会话缺少自定义色值时使用当前预设生成完整浅色/深色色板。旧 Editor Focus 迁移为 Workbench，旧默认 26 px 行高迁移为 24 px，其余尺寸和草稿保留。设置浮窗使用内存基线实现实时预览，订阅持久化时仍写入基线，应用后才保存新值；取消只恢复设置，不覆盖刷新后的仓库数据。虚拟列表尺寸由实际字号与密度共同决定。
+version 2 会话通过可选 `appearance` 字段兼容新增设置，宿主协议验证后保留；旧会话缺少自定义色值时使用当前预设生成完整浅色/深色色板。旧 Editor Focus 迁移为 Workbench，旧默认 26 px 行高迁移为 24 px，其余尺寸和草稿保留。设置浮窗使用内存基线实现实时预览，订阅持久化时仍写入基线，应用后才保存新值；取消只恢复设置，不覆盖刷新后的仓库数据。虚拟列表尺寸由实际字号与密度共同决定。高级 Git 操作策略使用独立的 VS Code 配置 `alwaygit.allowDetachedHead`，不写入界面会话；`operationSettings` / `saveOperationSettings` RPC 经布尔值严格校验，应用保存成功后才生效，配置变化广播到所有工作台。配置缺省为禁止，界面只缓存已应用值，普通 saveSession 无法覆盖策略。
 
 Git 操作反馈以仓库 ID 保存在前端内存中，操作序号用于避免旧结果替换新操作；仓库切换只展示对应仓库的反馈。错误和结果不写入会话。文件批量选择属于当前文件区域的临时状态，与 Diff 预览目标分离；区域切换或文件消失时重新核对选择。
 
@@ -80,7 +80,7 @@ Diff 的加载依赖比较目标的语义身份。历史比较不依赖 Snapshot
 
 Git 使用参数数组与 `shell: false`，引用和路径额外校验，文件操作使用 literal pathspec。子进程有输出限制、超时和非交互编辑器；超时终止子进程树。外部 Git 不受内存队列控制，因此 Git 锁和实际返回结果仍是最终依据。
 
-同一个 `commonDir` 同时只执行一个写操作。单宿主仍使用内存忙碌状态；跨宿主使用隔离临时目录中的原子文件租约，租约按规范化共享 Git 目录散列、定期续期、结束时核对随机 token 后释放，崩溃遗留项超时后可恢复。活动开始与结束通过窗口桥同步给其他宿主，并映射到该 Git 存储下所有已注册 Worktree；广播只负责界面反馈，租约才是执行互斥边界，外部 Git 仍由 Git 自身锁保护。Checkout 在宿主检查当前分支、未提交修改、未解决冲突和 Worktree 占用。远程分支本地化使用完整 `refs/remotes/*` 来源和预期 OID；批量创建在任何写入前验证全部本地名称、upstream、符号引用与层级冲突，单项创建并切换通过带 `--track` 的 `switch -c` 原子建立本地分支和跟踪关系。`Stash Changes & Checkout` 的 Stash 与 Checkout 分别报告结果；若远程分支 Checkout 受阻，重试保留原来源、名称和 OID；若 Stash 成功但 Checkout 失败，保留 Stash，不隐式恢复或删除。Apply / Pop 在进入 Git 写操作前解析 Stash 的未跟踪文件树，并检查目标路径及每层父路径；已存在文件、非目录父级或符号链接会产生结构化安全阻塞，不执行 Apply。只有该预检路径可以承诺工作区未改变，普通 Git Apply 失败仍按实际输出处理。
+同一个 `commonDir` 同时只执行一个写操作。单宿主仍使用内存忙碌状态；跨宿主使用隔离临时目录中的原子文件租约，租约按规范化共享 Git 目录散列、定期续期、结束时核对随机 token 后释放，崩溃遗留项超时后可恢复。活动开始与结束通过窗口桥同步给其他宿主，并映射到该 Git 存储下所有已注册 Worktree；广播只负责界面反馈，租约才是执行互斥边界，外部 Git 仍由 Git 自身锁保护。GitService 在写队列内动态读取宿主提供的 Detached HEAD 策略，显式 Commit/Tag Checkout、Detached Stash 重试及显式或隐式 Detached Worktree 默认拒绝；Stash 创建和实际切换前再次校验，避免配置在预检期间变化。Rebase 内部操作保持原有流程。Checkout 在宿主检查当前分支、未提交修改、未解决冲突和 Worktree 占用。远程分支本地化使用完整 `refs/remotes/*` 来源和预期 OID；批量创建在任何写入前验证全部本地名称、upstream、符号引用与层级冲突，单项创建并切换通过带 `--track` 的 `switch -c` 原子建立本地分支和跟踪关系。`Stash Changes & Checkout` 的 Stash 与 Checkout 分别报告结果；若远程分支 Checkout 受阻，重试保留原来源、名称和 OID；若 Stash 成功但 Checkout 失败，保留 Stash，不隐式恢复或删除。Apply / Pop 在进入 Git 写操作前解析 Stash 的未跟踪文件树，并检查目标路径及每层父路径；已存在文件、非目录父级或符号链接会产生结构化安全阻塞，不执行 Apply。只有该预检路径可以承诺工作区未改变，普通 Git Apply 失败仍按实际输出处理。
 
 Fetch、Pull 和 Push 沿用系统 Git Credential Helper、SSH Agent 和配置。需要输入时，使用每条命令独立的回环 IPC AskPass 桥接到 VS Code 输入框。桥接使用随机令牌并在命令结束后关闭；凭据不持久化，也不传到 Webview。日志与前端错误隐藏 URL 中的认证信息。
 

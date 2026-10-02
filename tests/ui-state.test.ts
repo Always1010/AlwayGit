@@ -73,6 +73,22 @@ describe('repository UI consistency', () => {
     expect(bridge.save.mock.calls.at(-1)?.[0]).toMatchObject({version:2,language:'zh-CN',layout:{preset:'workbench',sidebar:240,details:320}});
     expect(bridge.rpc.mock.calls.some(([method])=>method==='action')).toBe(false);
   });
+  it('uses host operation settings and keeps failed saves from enabling Detached Checkout', async () => {
+    expect(store.getState().operationSettings.allowDetachedHead).toBe(false);
+    bridge.rpc.mockImplementation(async (method: string) => {
+      if (method === 'operationSettings') return { allowDetachedHead: true, scope: 'workspace' };
+      throw new Error('Settings write failed');
+    });
+    await store.getState().loadOperationSettings();
+    expect(store.getState().operationSettings.allowDetachedHead).toBe(true);
+    bridge.event?.({ type: 'operationSettingsChanged', settings: { allowDetachedHead: false, scope: 'workspace' } });
+    await expect(store.getState().saveOperationSettings(true)).rejects.toThrow('Settings write failed');
+    expect(store.getState().operationSettings.allowDetachedHead).toBe(false);
+    bridge.rpc.mockResolvedValue({ allowDetachedHead: true, scope: 'workspace' });
+    await store.getState().saveOperationSettings(true);
+    expect(store.getState().operationSettings.allowDetachedHead).toBe(true);
+    expect(bridge.save.mock.calls.at(-1)?.[0]).not.toHaveProperty('allowDetachedHead');
+  });
   it('previews settings without persisting them and rolls back while preserving live data', async () => {
     await store.getState().selectRepository('a'); store.getState().setDraft('keep my draft');
     const original = store.getState(), target = original.diffTarget;

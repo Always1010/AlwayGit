@@ -138,8 +138,8 @@ export async function verifyAppearance(browser, url) {
       document.body.dataset.vscodeThemeKind = 'vscode-high-contrast';
     });
     await page.waitForFunction(() => document.querySelector('[data-testid="workbench"]')?.getAttribute('data-theme') === 'hc-dark');
-    await page.getByRole('button', { name: 'Interface Settings', exact: true }).click();
-    let dialog = page.getByRole('dialog', { name: 'Interface Settings' }), settings = page.getByTestId('interface-settings');
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    let dialog = page.getByRole('dialog', { name: 'Settings' }), settings = page.getByTestId('interface-settings');
     await settings.getByRole('radio', { name: 'Clear Light', exact: true }).click();
     assert.equal(await workbench.getAttribute('data-theme'), 'light', 'Manual light theme overrides a high-contrast host');
     await settings.getByRole('radio', { name: 'Warm Paper', exact: true }).click();
@@ -178,8 +178,8 @@ export async function verifyAppearance(browser, url) {
     await page.waitForFunction(() => document.querySelector('[data-testid="workbench"]')?.getAttribute('data-theme') === 'light');
     assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--graph-lane-0').trim()), initialLane, 'Cancel restores graph palette');
 
-    await page.getByRole('button', { name: 'Interface Settings', exact: true }).click();
-    dialog = page.getByRole('dialog', { name: 'Interface Settings' }); settings = page.getByTestId('interface-settings');
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    dialog = page.getByRole('dialog', { name: 'Settings' }); settings = page.getByTestId('interface-settings');
     await settings.getByRole('radio', { name: 'Berry Purple', exact: true }).click();
     await settings.getByRole('button', { name: 'Text & density', exact: true }).click();
     await settings.getByLabel('Interface font', { exact: true }).selectOption('16');
