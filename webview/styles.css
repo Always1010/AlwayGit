@@ -203,8 +203,11 @@ h1,h2,p {margin:0;}
 .change-count {display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border:1px solid var(--border);border-radius:9px;color:var(--muted);font-variant-numeric:tabular-nums;flex:none;}
 .change-actions {display:flex;align-items:center;gap:3px;flex:none;}
 .change-heading .button {font-size:11px;min-height:var(--control-height,24px);height:var(--control-height,24px);padding:2px 6px;}
-.change-action-unstaged {border-color:color-mix(in srgb,var(--green) 55%,var(--border));background:color-mix(in srgb,var(--green) 10%,var(--panel));color:var(--green);}
-.change-action-staged {border-color:color-mix(in srgb,var(--accent) 48%,var(--border));background:color-mix(in srgb,var(--accent) 9%,var(--panel));color:var(--accent);}
+.change-heading .button.icon-only {padding:0;}
+.change-action-unstaged {color:var(--green);}
+.change-action-unstaged:hover:not(:disabled) {border-color:var(--green);background:color-mix(in srgb,var(--green) 10%,var(--panel));}
+.change-action-staged {color:var(--error);}
+.change-action-staged:hover:not(:disabled) {border-color:var(--error);background:color-mix(in srgb,var(--error) 10%,var(--panel));}
 .change-action-conflict {border-color:color-mix(in srgb,var(--yellow) 55%,var(--border));background:color-mix(in srgb,var(--yellow) 10%,var(--panel));color:var(--yellow);white-space:normal;text-align:left;}
 .change-heading-conflict {flex-wrap:wrap;}
 .change-heading-conflict .change-actions {width:100%;}
@@ -213,7 +216,7 @@ h1,h2,p {margin:0;}
 .operation-review-files {max-height:260px;overflow:auto;border:1px solid var(--border);margin:12px 0;}
 .operation-review-file {display:flex;gap:6px;align-items:center;padding:8px;border-bottom:1px solid var(--border);}
 .operation-review-file>div {flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;overflow-wrap:anywhere;}
-.change-discard {color:var(--muted);}
+.change-discard {color:var(--error);}
 .change-discard:hover:not(:disabled) {color:var(--error);border-color:var(--error);background:color-mix(in srgb,var(--error) 10%,var(--panel));}
 .change-file {display:flex;align-items:center;gap:5px;font-size:inherit;border-bottom:1px solid var(--row-border);min-height:28px;padding:2px 4px;}
 .file-name {flex:1;text-align:left;min-height:26px;padding:3px 0;}

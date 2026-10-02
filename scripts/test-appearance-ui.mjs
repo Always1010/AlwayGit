@@ -263,7 +263,7 @@ export async function verifyAppearance(browser, url) {
     const unstaged = details.locator('.change-heading-unstaged'), staged = details.locator('.change-heading-staged');
     await unstaged.getByRole('button', { name: 'Stage All', exact: true }).waitFor();
     await staged.getByRole('button', { name: 'Unstage All', exact: true }).waitFor();
-    const discard = unstaged.getByRole('button', { name: 'Discard selected files…', exact: true });
+    const discard = unstaged.getByRole('button', { name: 'Discard All…', exact: true });
     assert.equal((await discard.innerText()).trim(), '', 'Discard remains icon-only');
     assert.equal(await discard.locator('.codicon').count(), 1);
     for (const [heading, label] of [[unstaged, 'Unstaged'], [staged, 'Staged']]) {

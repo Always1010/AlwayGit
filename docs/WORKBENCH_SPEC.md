@@ -169,17 +169,17 @@ Merge 等操作暂停后，原发起对话框改为处理状态，主入口是�
 
 ## Working Tree 与 Diff
 
-Working Tree 将文件分为 Conflicts、Unstaged 和 Staged。Stage、Unstage 与 Stash 是不同操作。`Discard Changes…` 只丢弃所选 Unstaged 修改，保留 Index 中同一文件的 Staged 修改；确认对话框必须准确描述受影响内容。
+Working Tree 将文件分为 Conflicts、Unstaged 和 Staged。Stage、Unstage 与 Stash 是不同操作。分组标题的 `Discard All…` 丢弃全部 Unstaged 修改，文件右键菜单的 `Discard` 只处理所选文件；两者均保留 Index 中同一文件的 Staged 修改，确认对话框必须准确列出受影响路径并描述内容。
 
 Stash 详情按 Working Tree、Index 和 Untracked Files 分类展示并在页签标明数量；顶部按路径去重显示保存文件总数和未跟踪文件数。首次打开选择第一个非空分类。用户主动进入空分类时，空状态指出包含内容的分类及数量，并提供直接跳转。Stash 成功反馈同时说明保存文件数、未跟踪文件数和操作后的工作区状态。
 
 Apply / Pop Stash 在执行前检查保存的未跟踪文件是否已在工作区存在。命中路径冲突时不得调用 Git Apply，也不得覆盖、删除或重命名任一份内容；对话框说明现有文件未被覆盖、Stash 仍保留，列出冲突路径并提供比较两份内容和打开现有文件的图标入口。已知原因未解决时不保留重复 Apply 按钮，只允许取消并保留当前状态；用户更换 Stash 或外部解决冲突后可重新发起。其他可能由 Git 部分应用的失败不得宣称工作区未改变。
 
-分组标题采用展开箭头、短标题与数量徽标，可通过单击或键盘展开、收起文件列表；收起分组不切换已有 Diff，Ctrl/Cmd+A 只选择展开分组的可见文件。右侧 `Stage All` / `Unstage All` 为清晰的描边按钮；有选择时显示操作数量。Working Tree 不显示文件或分组复选框，Discard 为带悬停说明和可访问名称的图标按钮，仅在选中 Unstaged 文件后启用。空分组压缩提示，完整父目录和文件选择规则保持不变。
+分组标题采用展开箭头、短标题与数量徽标，可通过单击或键盘展开、收起文件列表；收起分组不切换已有 Diff，Ctrl/Cmd+A 只选择展开分组的可见文件。右侧按钮仅显示图标：Stage All 使用绿色暂存盒，Unstage All 使用红色斜向回撤箭头，Discard All 使用红色垃圾桶。悬停说明和可访问名称固定明确 All，三个按钮均处理对应分组的全部文件，不受选择或分组折叠影响；空分组或有操作进行中时禁用。Stage All / Unstage All 点击后确认全部文件数量，Discard All 点击后列出全部 Unstaged 路径供确认。Working Tree 不显示文件或分组复选框。空分组压缩提示，完整父目录和文件选择规则保持不变。
 
 文件行第一行显示文件名，第二行显示以 `./` 开头的完整仓库相对父目录链，不限制目录层级；根目录文件显示 `./`，子目录文件显示如 `./docs`、`./src/protocol`。长父目录换行，完整路径也可通过悬浮提示查看。Commit Details 和 Commit 比较的 Changed Files 支持按完整仓库相对路径进行大小写不敏感的关键字筛选；筛选仅影响可见文件和当前批量选择，不自动切换既有 Diff，切换 Commit 时保留查询，离开历史详情或切换仓库时清空。
 
-Working Tree、Commit Details 和 Commit 比较文件列表均不显示复选框：单击文件即选中并预览，Ctrl/Cmd+单击切换选择，Shift+单击选择范围。焦点在文件区域时 Ctrl/Cmd+A 全选当前面板可见文件，Escape 清空，文本输入保持原生行为。Working Tree 的组内按钮只处理该组选择，没有选择时 Stage / Unstage 明确显示 All，Discard 无选择时禁用；Commit Details 和比较文件的 Copy Paths 处理当前可见选择。
+Working Tree、Commit Details 和 Commit 比较文件列表均不显示复选框：单击文件即选中并预览，Ctrl/Cmd+单击切换选择，Shift+单击选择范围。焦点在文件区域时 Ctrl/Cmd+A 全选当前面板可见文件，Escape 清空，文本输入保持原生行为。Working Tree 的选择用于预览和文件右键菜单，不改变分组标题的 Stage All / Unstage All / Discard All 范围；冲突组的标记暂存仍按所选冲突文件执行，没有选择时处理全部冲突文件。Commit Details 和比较文件的 Copy Paths 处理当前可见选择。
 
 文件右键菜单绑定当前批量选择：右键已选文件保留选择，右键未选文件先切换为单选。Working Tree 按文件区域提供 Stage、Unstage、“已手动处理，标记并暂存”与 Discard；单文件同时提供在 VS Code 中打开 Diff 和编辑入口，冲突文件还提供行内编辑按钮及返回工作台暂存的说明。历史与比较文件提供打开 Diff、编辑和复制路径。非输入、非可编辑、没有文本选择的工作台区域不显示宿主的剪切、复制、粘贴菜单；文本输入与 Diff 文本选择保留原生编辑和复制行为。
 
