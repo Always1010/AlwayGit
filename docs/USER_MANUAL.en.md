@@ -305,14 +305,14 @@ Ref checkboxes control which history you see; branch names and row selections co
 
 **Prerequisite:** The target file is open in the bottom Diff pane.
 
-1. Note the counts of added, modified, and deleted blocks, along with the current block / total blocks indicator.
-2. Click the previous or next button to cycle through contiguous change blocks. When there is only one block, either button can locate it again.
-3. Scroll horizontally for long lines. Drag the divider when you need a larger reading area.
-4. You can collapse and reopen Diff to continue reading. After switching files, check the comparison title again.
+1. Note the current file's added, modified, and deleted block counts. Historical Commits default to “File 2/5 · Change 1/3”, showing the file position and the block position within that file.
+2. Previous and Next follow the current Commit's changed-file order by default. Next enters the first block of the next file; Previous enters the last block of the previous file. The Commit's first and last blocks wrap around. Merge Commits keep the selected Parent, and navigation stays in the same Commit.
+3. To browse one file, open Settings → Interface → Diff, change “Diff navigation scope” to “Current file”, and Apply. This mode shows current / total blocks; with only one block, either button locates it again. The preference is saved for this workspace.
+4. Scroll horizontally for long lines or drag the divider for a larger reading area. Collapse and reopen Diff to continue reading; check the comparison title after switching files.
 
-**Result:** You can inspect the current file block by block without mistaking each line for a separate change block.
+**Result:** Choose to inspect the entire Commit or the current file block by block. Adjacent changed lines form one contiguous block.
 
-**Caution:** If a message says the preview is truncated, the counts cover only the previewed content. Open the native Diff or editor to view the full content.
+**Caution:** Entire Commit includes files hidden by the path filter. The Diff title shows the actual path, and the file list identifies a hidden current file. Binary files and files without text change blocks are skipped but remain available for manual inspection. Read failures stop navigation and show an error. Truncated previews only count and navigate previewed changes; open the native Diff or editor for the full content. Working Tree, Stash, and Commit comparisons still cycle within the current file.
 
 <a id="chapter-05"></a>
 
@@ -902,7 +902,7 @@ Worktree lets a single repository have multiple working directories so you can w
 
 1. Click the gear in the upper-right corner to open settings.
 2. Choose a page in the General, Interface, Commit Graph, or Advanced category.
-3. Adjust the language, theme, font size, list density, file spacing, or Diff line height as needed, and observe the preview.
+3. Adjust the language, theme, font size, list density, file spacing, Diff line height, or Diff navigation scope as needed, and observe the preview.
 4. Click Apply to save. To discard unapplied changes, click Cancel, close settings, or press Esc.
 
 **Result:** Applied settings take effect immediately. Cancel only rolls back previews that have not yet been applied.

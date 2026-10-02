@@ -1,6 +1,19 @@
 export interface DiffRow { before?: string; after?: string; beforeLine?: number; afterLine?: number; changed: boolean }
 export interface DiffChangeRange { start: number; end: number }
 export interface DiffChangeSummary { added: number; modified: number; removed: number }
+export type DiffDirection = -1 | 1;
+
+/** Scan each file at most once, including the current file on wrap-around. */
+export async function adjacentDiffFile(fileCount: number, current: number, direction: DiffDirection, countChanges: (index: number) => Promise<number>, signal: AbortSignal): Promise<{ fileIndex: number; changeIndex: number } | undefined> {
+  if (current < 0 || current >= fileCount) return;
+  for (let step = 1; step <= fileCount; step++) {
+    signal.throwIfAborted();
+    const fileIndex = (current + direction * step + fileCount) % fileCount;
+    const count = await countChanges(fileIndex);
+    signal.throwIfAborted();
+    if (count > 0) return { fileIndex, changeIndex: direction === 1 ? 0 : count - 1 };
+  }
+}
 
 export function changedRanges(rows: readonly DiffRow[]): DiffChangeRange[] {
   const ranges: DiffChangeRange[]=[];

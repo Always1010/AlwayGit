@@ -36,6 +36,8 @@ describe('Workbench protocol validation', () => {
     expect(sessionSchema.parse({ views: { fixture: { ref: 'refs/heads/main', search: '', tab: 'changes' } } })).toEqual({ views: { fixture: { ref: 'refs/heads/main', search: '', tab: 'changes' } } });
     expect(() => sessionSchema.parse({ ...state, layout: { ...state.layout, sidebar: -100 } })).toThrow();
     expect(() => sessionSchema.parse({ ...state, language: 'invalid' })).toThrow();
+    for(const diffNavigationScope of ['commit','file'])expect(sessionSchema.parse({...state,diffNavigationScope})).toMatchObject({diffNavigationScope,drafts:state.drafts,views:state.views});
+    expect(sessionSchema.safeParse({...state,diffNavigationScope:'invalid'}).success).toBe(false);
   });
 
   it('accepts captured Stash IDs and requires validated Checkout targets', () => {
