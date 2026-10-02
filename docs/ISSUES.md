@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-024：仅含未跟踪文件的 Stash 默认显示为空
+
+- 日期：2026-10-02
+- 状态：已解决
+- 现象：Stash 仅保存未跟踪文件时，打开详情首先看到 `Changed Files 0` 和 `No changed files`；必须自行切换到 `Untracked Files` 才能确认文件与内容仍在，容易把当前分类为空误解为保存失败或数据丢失。
+- 原因：详情默认把 Stash 主提交与 HEAD 比较，只加载当前分类；Working Tree、Index 和未跟踪文件分散在 Stash 的不同父提交中，界面没有整体摘要、分类数量或非空分类选择逻辑。
+- 解决方案：宿主按 Index→Stash、HEAD→Index 和未跟踪文件提交分别返回三个分类，按路径去重计算保存总数；详情显示整体摘要和分类数量，首次打开自动选择第一个非空分类。空分类说明内容所在位置并提供直接跳转，创建成功反馈显示保存文件数、未跟踪文件数及工作区是否干净。
+- 验证方式：真实 Git 集成测试覆盖同一路径的 Staged/Unstaged 内容与独立未跟踪文件，验证分类和去重总数；状态回归覆盖仅有未跟踪文件时自动进入非空分类及分类切换；协议、类型检查、生产构建和无头主界面专项通过。
+- 相关文件：`src/protocol/types.ts`、`src/protocol/validation.ts`、`src/git/service.ts`、`src/extension/workbench.ts`、`webview/rpc.ts`、`webview/store.ts`、`webview/Details.tsx`、`webview/actionFeedback.ts`、`webview/ActionFeedbackBar.tsx`、`webview/styles.css`、`tests/git-service.test.ts`、`tests/ui-state.test.ts`、`tests/workbench-protocol.test.ts`、`scripts/test-stash-ui.mjs`、`scripts/test-feedback-ui.mjs`、`scripts/test-ui.mjs`、`docs/WORKBENCH_SPEC.md`、`docs/VALIDATION.md`。
+
 ## BUG-023：多窗口仓库目录不同步且写操作可能并发
 
 - 日期：2026-10-02

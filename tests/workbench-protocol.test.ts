@@ -20,6 +20,7 @@ describe('Workbench protocol validation', () => {
     expect(actionSchema.parse({ type: 'stash.apply', selector: 'stash@{0}', expectedOid: 'a'.repeat(40), pop: true })).toEqual({ type: 'stash.apply', selector: 'stash@{0}', expectedOid: 'a'.repeat(40), pop: true });
     expect(() => actionSchema.parse({ type: 'commit.checkout', target: '' })).toThrow();
     expect(actionSchema.parse({ type: 'checkout.stash', target: 'topic', includeUntracked: true })).toEqual({ type: 'checkout.stash', target: 'topic', includeUntracked: true });
+    expect(requestSchema.parse({id:'stash-details',method:'stashDetails',repoId:'fixture',payload:{oid:'a'.repeat(40)}}).method).toBe('stashDetails');
     expect(requestSchema.parse({ id: 'preview', method: 'diffPreview', repoId: 'fixture', payload: { kind: 'change', path: 'a.txt', area: 'staged' } }).method).toBe('diffPreview');
     expect(requestSchema.parse({id:'compare',method:'compare',repoId:'fixture',payload:{left:'abc',right:'def'}}).method).toBe('compare');
     expect(requestSchema.parse({id:'statuses',method:'repositoryStatuses'}).method).toBe('repositoryStatuses');

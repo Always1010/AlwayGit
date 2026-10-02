@@ -1,4 +1,4 @@
-import type { Commit, CommitComparison, CommitDetails, GitAction, HistoryPage, HistoryQuery, HostMessage, Repository, RepositoryCollection, RepositoryStatus, RpcRequest, Snapshot } from '../src/protocol/types';
+import type { Commit, CommitComparison, CommitDetails, GitAction, HistoryPage, HistoryQuery, HostMessage, Repository, RepositoryCollection, RepositoryStatus, RpcRequest, Snapshot, StashDetails } from '../src/protocol/types';
 import type { Appearance } from './appearance';
 
 export interface LayoutState { preset: 'workbench' | 'editor'; sidebar: number; details: number; diff: number; diffCollapsed: boolean; graph: number; author: number; date: number; font: number; row: number }
@@ -73,7 +73,10 @@ let demoSnapshot: Snapshot = { repository: repo, branch: 'main', head: commits[0
   { name: 'v0.1.0', fullName: 'refs/tags/v0.1.0', kind: 'tag', oid: commits[14].oid },
 ], stashes: [{ selector: 'stash@{0}', oid: commits[9].oid, subject: 'WIP: repository picker styling' }], worktrees: [{ path: repo.root, head: commits[0].oid, branch: 'refs/heads/main', bare: false, detached: false }, { path: 'D:\\Projects\\AlwayGit-graph', head: commits[3].oid, branch: 'refs/heads/feature/history-graph', bare: false, detached: false }], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 1 };
 const website:Repository={id:'demo-website',root:'D:\\Projects\\website',commonDir:'D:\\Projects\\website\\.git',name:'website'};
-const demoStores:Record<string,{snapshot:Snapshot;commits:Commit[];saved:Map<string,Snapshot['changes']>}>=Object.fromEntries([repo,website].map(repository=>[repository.id,{snapshot:{...structuredClone(demoSnapshot),repository,remotes:['origin'],worktrees:demoSnapshot.worktrees.map((tree,i)=>({...tree,path:i?repository.root+'-graph':repository.root}))},commits:structuredClone(commits),saved:new Map()}]));
+const demoStores:Record<string,{snapshot:Snapshot;commits:Commit[];saved:Map<string,Snapshot['changes']>}>=Object.fromEntries([repo,website].map(repository=>[
+  repository.id,
+  {snapshot:{...structuredClone(demoSnapshot),repository,remotes:['origin'],worktrees:demoSnapshot.worktrees.map((tree,i)=>({...tree,path:i?repository.root+'-graph':repository.root}))},commits:structuredClone(commits),saved:new Map([[commits[9].oid,[{path:'notes.txt',indexStatus:'?',worktreeStatus:'?',conflict:false,untracked:true}] ]])},
+]));
 const demoCollections:RepositoryCollection[]=[];
 async function demoRequest(method: RpcRequest['method'], payload: unknown, repoId?:string): Promise<unknown> {
   await new Promise(resolve => setTimeout(resolve, 110));
@@ -96,6 +99,13 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
   if (method === 'details') {
     const request = payload as { oid: string; parent?: string }; const commit = commits.find(c => c.oid === resolve(request.oid)) ?? commits[0];
     return { commit, body: `${commit.subject}\n\nImprove the repository experience with clear status feedback and consistent navigation.\n\nCloses #24`, parent: request.parent ?? commit.parents[0], files: [{ path: 'webview/App.tsx', status: 'M' }, { path: 'webview/styles.css', status: 'M' }, { path: 'src/git/service.ts', status: 'A' }] } satisfies CommitDetails;
+  }
+  if (method === 'stashDetails') {
+    const request=payload as {oid:string},stash=demoSnapshot.stashes.find(item=>item.oid===request.oid)??demoSnapshot.stashes[0],saved=data.saved.get(stash?.oid??'')??[];
+    const base=commits[0],indexCommit={...base,oid:'e'.repeat(40),parents:[base.oid],subject:`index on ${demoSnapshot.branch}`},untrackedCommit={...base,oid:'f'.repeat(40),parents:[],subject:`untracked files on ${demoSnapshot.branch}`},stashCommit={...base,oid:stash?.oid??request.oid,parents:[base.oid,indexCommit.oid,...(saved.some(file=>file.untracked)?[untrackedCommit.oid]:[])],subject:stash?.subject??'WIP'};
+    const detail=(commit:Commit,parent:string|undefined,files:typeof saved):CommitDetails=>({commit,body:commit.subject,...(parent?{parent}:{}),files:files.map(file=>({path:file.path,status:file.untracked?'A':file.indexStatus!==' '&&file.indexStatus!=='?'?file.indexStatus:file.worktreeStatus}))});
+    const working=detail(stashCommit,indexCommit.oid,saved.filter(file=>!file.untracked&&file.worktreeStatus!==' ')),index=detail(indexCommit,base.oid,saved.filter(file=>!file.untracked&&file.indexStatus!==' '&&file.indexStatus!=='?')),untracked=saved.some(file=>file.untracked)?detail(untrackedCommit,undefined,saved.filter(file=>file.untracked)):undefined;
+    return {commit:stashCommit,body:stashCommit.subject,sections:{working,index,...(untracked?{untracked}:{})},totalFiles:new Set(saved.map(file=>file.path)).size} satisfies StashDetails;
   }
   if(method==='compare'){const request=payload as {left:string;right:string},left=commits.find(commit=>commit.oid===resolve(request.left))??commits[1],right=commits.find(commit=>commit.oid===resolve(request.right))??commits[0];return {left,right,files:[{path:'webview/App.tsx',status:'M'},{path:'webview/styles.css',status:'M'},{path:'src/git/service.ts',status:'A'}]} satisfies CommitComparison;}
   if (method === 'operationReview') return { kind: demoSnapshot.operation.kind, token: `demo-${demoSnapshot.version}`, files: demoSnapshot.changes.filter(file=>file.indexStatus!==' '&&!file.untracked).map(file=>({path:file.path,lines:[]})) };

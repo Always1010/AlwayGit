@@ -81,6 +81,14 @@ describe('Git service integration', () => {
     expect(comparison.left.oid).toBe(base);expect(comparison.right.oid).toBe(latest);expect(comparison.files).toEqual([{status:expect.stringMatching(/^R/),previousPath:'old.txt',path:'new.txt'}]);
     const reversed=await service.compare(repo,latest,base,true);expect(reversed.left.oid).toBe(latest);expect(reversed.right.oid).toBe(base);
   });
+  it('describes Stash sections separately and counts unique saved files',async()=>{
+    const {root,service,repo}=await setup();await commit(root,'tracked.txt','base');
+    await writeFile(path.join(root,'tracked.txt'),'staged');await service.execute(repo,{type:'stage',paths:['tracked.txt']});await writeFile(path.join(root,'tracked.txt'),'working');await writeFile(path.join(root,'notes.txt'),'notes');
+    await service.execute(repo,{type:'stash.create',message:'pause notes',includeUntracked:true});const stash=(await service.snapshot(repo)).stashes[0],details=await service.stashDetails(repo,stash.oid);
+    expect(details.totalFiles).toBe(2);expect(details.commit.oid).toBe(stash.oid);
+    expect(details.sections.working.files.map(file=>file.path)).toEqual(['tracked.txt']);expect(details.sections.index.files.map(file=>file.path)).toEqual(['tracked.txt']);expect(details.sections.untracked?.files.map(file=>file.path)).toEqual(['notes.txt']);
+    expect((await service.snapshot(repo)).changes).toEqual([]);
+  });
   it('reports conflicts, index stages, operation controls and aborts merge', async () => {
     const { root, service, repo } = await setup(); await commit(root, 'same.txt', 'base'); await service.execute(repo, { type: 'branch.create', name: 'topic', checkout: true }); await commit(root, 'same.txt', 'topic'); await service.execute(repo, { type: 'branch.checkout', name: 'main' }); await commit(root, 'same.txt', 'main');
     await expect(service.execute(repo, { type: 'merge', target: 'topic' })).rejects.toThrow(); const snap = await service.snapshot(repo); expect(snap.operation).toMatchObject({ kind: 'merge', conflicts: 1, canContinue: false, canAbort: true, canSkip: false }); expect(snap.changes[0].conflict).toBe(true);
