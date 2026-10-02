@@ -11,6 +11,7 @@ import { verifyDiffNavigation } from './test-diff-ui.mjs';
 import { verifyWorktrees } from './test-worktrees-ui.mjs';
 import { verifyAppearance } from './test-appearance-ui.mjs';
 import { verifyRemoteTracking } from './test-remote-tracking-ui.mjs';
+import { verifyStash } from './test-stash-ui.mjs';
 
 const root = path.resolve('dist/webview');
 const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.ttf': 'font/ttf', '.woff2': 'font/woff2', '.svg': 'image/svg+xml' };
@@ -28,7 +29,10 @@ let browser;
 try {
   browser = await chromium.launch(process.env.ALWAYGIT_BROWSER_EXECUTABLE ? { executablePath: process.env.ALWAYGIT_BROWSER_EXECUTABLE } : process.platform === 'win32' ? { channel: 'msedge' } : {});
   const url = `http://127.0.0.1:${server.address().port}/?demo=1`;
-  if (process.argv.includes('--feedback-only')) {
+  if(process.argv.includes('--stash-only')){
+    await verifyStash(browser,url);
+    console.log('ALWAYGIT_UI_TESTS_PASSED: stash-only');
+  } else if (process.argv.includes('--feedback-only')) {
     await verifyFeedback(browser,url);
     console.log('ALWAYGIT_UI_TESTS_PASSED: feedback-only');
   } else if (process.argv.includes('--remote-tracking-only')) {
@@ -362,6 +366,7 @@ try {
   await verifyDiffNavigation(browser, url);
   await verifyWorktrees(browser, url);
   await verifyRemoteTracking(browser, url);
+  await verifyStash(browser,url);
   console.log('ALWAYGIT_UI_TESTS_PASSED: four-pane layout, complete context menus, focus/viewport keyboard behavior, targeted dialogs, resizing and header scroll sync, Locate HEAD, multi-ref filtering, language/session, Diff preview, compact themes');
   }
 } finally {

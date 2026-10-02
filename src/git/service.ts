@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { access, realpath, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { Change, CheckoutBlocker, Commit, CommitComparison, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationReview, OperationState, Repository, RepositoryStatus, Snapshot, Stash, Worktree } from '../protocol/types';
+import type { Change, CheckoutBlocker, Commit, CommitComparison, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationReview, OperationState, Repository, RepositoryStatus, Snapshot, Stash, StashDetails, Worktree } from '../protocol/types';
 import { inferDefaultBranch } from './default-branch';
 
 export interface GitServiceOptions {
@@ -210,6 +210,17 @@ export class GitService implements GitServiceContract {
     if (base && !commit.parents.includes(base)) throw new GitError('Selected parent is not a parent of this commit', 'INVALID_PARENT');
     const args = ['diff-tree', '--no-commit-id', '--name-status', '-z', '-r', '-M', ...(base ? [base, oid] : ['--root', oid]), '--']; const files=parseCommitFiles((await this.run(repo,args)).stdout);
     return { commit, body: data.slice(6).join('\0').trimEnd(), files, ...(base ? { parent: base } : {}) };
+  }
+  async stashDetails(repo: Repository, revision: string): Promise<StashDetails> {
+    const stash = await this.details(repo, revision), [, indexOid, untrackedOid] = stash.commit.parents;
+    if (!indexOid) throw new GitError('The selected object is not a Stash.', 'INVALID_STASH');
+    const [working, index, untracked] = await Promise.all([
+      this.details(repo, stash.commit.oid, indexOid),
+      this.details(repo, indexOid),
+      untrackedOid ? this.details(repo, untrackedOid) : Promise.resolve(undefined),
+    ]);
+    const paths = new Set([...working.files, ...index.files, ...(untracked?.files ?? [])].map(file => file.path));
+    return { commit: stash.commit, body: stash.body, sections: { working, index, ...(untracked ? { untracked } : {}) }, totalFiles: paths.size };
   }
   async compare(repo:Repository,leftRevision:string,rightRevision:string,preserveOrder=false):Promise<CommitComparison>{
     await this.verify(repo);let left=await this.oid(repo,leftRevision),right=await this.oid(repo,rightRevision);

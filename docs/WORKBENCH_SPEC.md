@@ -168,6 +168,8 @@ Merge 等操作暂停后，原发起对话框改为处理状态，主入口是�
 
 Working Tree 将文件分为 Conflicts、Unstaged 和 Staged。Stage、Unstage 与 Stash 是不同操作。`Discard Changes…` 只丢弃所选 Unstaged 修改，保留 Index 中同一文件的 Staged 修改；确认对话框必须准确描述受影响内容。
 
+Stash 详情按 Working Tree、Index 和 Untracked Files 分类展示并在页签标明数量；顶部按路径去重显示保存文件总数和未跟踪文件数。首次打开选择第一个非空分类。用户主动进入空分类时，空状态指出包含内容的分类及数量，并提供直接跳转。Stash 成功反馈同时说明保存文件数、未跟踪文件数和操作后的工作区状态。
+
 分组标题采用短标题与数量徽标，右侧 `Stage All` / `Unstage All` 为清晰的描边按钮；有选择时显示操作数量。Working Tree 不显示文件或分组复选框，Discard 为带悬停说明和可访问名称的图标按钮，仅在选中 Unstaged 文件后启用。空分组压缩提示，完整父目录和文件选择规则保持不变。
 
 文件行第一行显示文件名，第二行显示以 `./` 开头的完整仓库相对父目录链，不限制目录层级；根目录文件显示 `./`，子目录文件显示如 `./docs`、`./src/protocol`。长父目录换行，完整路径也可通过悬浮提示查看。Commit Details 和 Commit 比较的 Changed Files 支持按完整仓库相对路径进行大小写不敏感的关键字筛选；筛选仅影响可见文件和当前批量选择，不自动切换既有 Diff，切换 Commit 时保留查询，离开历史详情或切换仓库时清空。

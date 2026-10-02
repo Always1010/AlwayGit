@@ -63,6 +63,7 @@
 - 远程分支目录递归批量创建本地跟踪分支，保持当前 HEAD；批量名称、upstream、符号引用、远程来源和层级冲突在写入前完成验证。
 - `Stash Changes & Checkout` 分步结果；Checkout 失败时保留已经创建的 Stash。
 - Apply、Pop、Drop Stash 在列表变化后仍验证正确对象。
+- Stash 详情分别验证 Working Tree、Index 与 Untracked Files，按路径去重汇总文件数；仅含未跟踪文件时默认打开该分类，空分类给出内容位置与直接跳转，创建成功反馈说明保存范围和工作区状态。
 - 同一文件同时含 Staged / Unstaged 修改时，Discard 只处理工作区一侧。
 - Detached HEAD、Tracking Branch、Tag Checkout 和主 / 当前 / Locked Worktree 限制。
 - Push 目标配置解析、不同名称的本地 / 远端分支 refspec 及 upstream 建立。

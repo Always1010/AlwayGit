@@ -15,6 +15,8 @@ export interface HistoryQuery { offset?: number; limit?: number; tips?: string[]
 export interface HistoryPage { commits: Commit[]; nextOffset: number; hasMore: boolean; tips: string[]; head?: Commit }
 export interface CommitFile { path: string; previousPath?: string; status: string }
 export interface CommitDetails { commit: Commit; body: string; files: CommitFile[]; parent?: string }
+export type StashSection = 'working' | 'index' | 'untracked';
+export interface StashDetails { commit: Commit; body: string; sections: { working: CommitDetails; index: CommitDetails; untracked?: CommitDetails }; totalFiles: number }
 export interface CommitComparison { left: Commit; right: Commit; files: CommitFile[] }
 export type GitAction =
   | { type: 'stage' | 'resolve-and-stage' | 'unstage' | 'discard'; paths: string[] }
@@ -45,7 +47,7 @@ export type ContentSource = { kind: 'revision'; revision: string; path: string }
 export type DiffTarget = { kind: 'change'; path: string; area: 'staged' | 'unstaged' | 'conflict' } | { kind: 'commit'; oid: string; path: string; parent?: string; previousPath?: string } | { kind: 'comparison'; left: string; right: string; path: string; previousPath?: string };
 export interface DiffPreview { path: string; leftLabel: string; rightLabel: string; left: string; right: string; binary?: boolean; truncated?: boolean }
 export interface CheckoutBlocker { reason: 'local-changes' | 'conflicts' | 'operation-active' | 'worktree-occupied' | 'checkout-failed'; paths: string[]; target: string; worktreePath?: string; stashOid?: string; stashCreated?: boolean; trackBranches?: { source: string; name: string; expectedOid?: string }[] }
-export interface RpcRequest { id: string; method: 'repositories' | 'repositoryCollections' | 'repositoryStatuses' | 'addRepository' | 'removeRepositories' | 'createRepositoryCollection' | 'renameRepositoryCollection' | 'deleteRepositoryCollection' | 'moveRepositories' | 'snapshot' | 'operationReview' | 'history' | 'details' | 'compare' | 'action' | 'diff' | 'diffPreview' | 'copyText' | 'openWorkbench' | 'openRepository' | 'openProject' | 'openFile' | 'openWorktree' | 'pickWorktree' | 'showLog' | 'saveSession'; repoId?: string; payload?: unknown }
+export interface RpcRequest { id: string; method: 'repositories' | 'repositoryCollections' | 'repositoryStatuses' | 'addRepository' | 'removeRepositories' | 'createRepositoryCollection' | 'renameRepositoryCollection' | 'deleteRepositoryCollection' | 'moveRepositories' | 'snapshot' | 'operationReview' | 'history' | 'details' | 'stashDetails' | 'compare' | 'action' | 'diff' | 'diffPreview' | 'copyText' | 'openWorkbench' | 'openRepository' | 'openProject' | 'openFile' | 'openWorktree' | 'pickWorktree' | 'showLog' | 'saveSession'; repoId?: string; payload?: unknown }
 /** Missing paths means the source cannot limit which working files changed. */
 export interface RepositoryChanges { paths?: string[]; index?: boolean }
 export type HostMessage = { type: 'response'; id: string; result?: unknown; error?: { message: string; code?: string; details?: CheckoutBlocker } } | { type: 'changed'; repoId: string; changes?: RepositoryChanges } | { type: 'activity'; repoId: string; busy: boolean; label: string } | { type: 'repositoriesChanged' } | { type: 'selectRepository'; repoId: string };
@@ -56,6 +58,7 @@ export interface GitServiceContract {
   reviewOperation(repo: Repository): Promise<OperationReview>;
   history(repo: Repository, query?: HistoryQuery): Promise<HistoryPage>;
   details(repo: Repository, oid: string, parent?: string): Promise<CommitDetails>;
+  stashDetails(repo: Repository, oid: string): Promise<StashDetails>;
   compare(repo: Repository, left: string, right: string, preserveOrder?: boolean): Promise<CommitComparison>;
   content(repo: Repository, source: ContentSource, maxBytes?: number): Promise<Buffer>;
   execute(repo: Repository, action: GitAction): Promise<void>;

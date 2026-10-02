@@ -179,7 +179,11 @@ h1,h2,p {margin:0;}
 .status-A,.status-\? {color:var(--green);}
 .status-D,.status-U {color:var(--error);}
 .status-T {color:var(--yellow);}
-.stash-tabs {display:flex;gap:3px;flex-wrap:wrap;font-size:11px;}
+.stash-summary {margin-top:5px;color:var(--muted);font-size:11px;}
+.stash-tabs {display:flex;gap:3px;flex-wrap:wrap;font-size:11px;margin-top:2px;}
+.stash-tab {font-size:11px;min-height:24px;padding:2px 6px;}
+.stash-tab>span {display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;border:1px solid var(--border);border-radius:9px;font-variant-numeric:tabular-nums;}
+.stash-tab.selected {border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--panel));color:var(--fg);}
 .working-summary {display:flex;align-items:center;justify-content:space-between;gap:6px;padding:5px 9px;font-size:12px;border-bottom:1px solid var(--row-border);white-space:nowrap;}
 .working-summary>span {min-width:0;overflow:hidden;text-overflow:ellipsis;}
 .change-groups {overflow:auto;flex:1;min-height:60px;padding:2px 5px;}

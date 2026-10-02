@@ -139,6 +139,17 @@ describe('repository UI consistency', () => {
     await store.getState().selectRepository('a');await store.getState().selectCommit(commit.oid,undefined,commit.oid);expect(store.getState().selectedStashOid).toBe(commit.oid);
     exists=false;await store.getState().refresh();expect(store.getState().selectedStashOid).toBeUndefined();expect(store.getState().stashDetails).toBeUndefined();
   });
+  it('opens the first non-empty Stash section and keeps category counts together',async()=>{
+    const stash={...commit,oid:'stash',parents:['base','index','untracked'],subject:'pause notes'},index={...commit,oid:'index',parents:['base'],subject:'index'},untracked={...commit,oid:'untracked',subject:'untracked'},fallback=bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method,repoId,payload)=>{
+      if(method==='snapshot')return Promise.resolve({...snapshot(a),stashes:[{selector:'stash@{0}',oid:stash.oid,subject:stash.subject}]});
+      if(method==='stashDetails')return Promise.resolve({commit:stash,body:stash.subject,totalFiles:1,sections:{working:{commit:stash,body:stash.subject,parent:index.oid,files:[]},index:{commit:index,body:index.subject,parent:'base',files:[]},untracked:{commit:untracked,body:untracked.subject,files:[{path:'notes.txt',status:'A'}]}}});
+      return fallback(method,repoId,payload);
+    });
+    await store.getState().selectRepository('a');await store.getState().selectCommit(stash.oid,undefined,stash.oid);
+    expect(store.getState()).toMatchObject({selectedStashOid:'stash',selectedStashSection:'untracked',selectedOid:'untracked',selectedFile:'notes.txt',stashDetails:{totalFiles:1}});
+    store.getState().selectStashSection('working');expect(store.getState()).toMatchObject({selectedStashSection:'working',selectedOid:'stash',details:{files:[]},selectedFile:undefined});
+  });
   it('ignores details arriving after Working Tree was selected', async () => {
     await store.getState().selectRepository('a');const pending=deferred<{commit:Commit;body:string;files:[]}>(),fallback=bridge.rpc.getMockImplementation()!;
     bridge.rpc.mockImplementation((method,repoId,payload)=>method==='details'?pending.promise:fallback(method,repoId,payload));
@@ -190,6 +201,12 @@ describe('repository UI consistency', () => {
     expect(store.getState().actionFeedback?.status).toBe('success');
     await store.getState().refresh({ background: true }); expect(store.getState().actionFeedback?.status).toBe('success');
     store.getState().dismissFeedback(); expect(store.getState().actionFeedback).toBeUndefined();
+  });
+  it('summarizes saved and untracked files after creating a Stash',async()=>{
+    await store.getState().selectRepository('a');const before={...snapshot(a),changes:[{path:'notes.txt',indexStatus:'?',worktreeStatus:'?',conflict:false,untracked:true}]},after={...snapshot(a,2),stashes:[{selector:'stash@{0}',oid:'saved',subject:'pause notes'}]},fallback=bridge.rpc.getMockImplementation()!;
+    store.setState({snapshot:before});bridge.rpc.mockImplementation((method,...args)=>method==='snapshot'?Promise.resolve(after):fallback(method,...args));
+    expect(await store.getState().execute({type:'stash.create',message:'pause notes',includeUntracked:true})).toBe(true);
+    expect(store.getState().actionFeedback).toMatchObject({status:'success',result:{kind:'stash',files:1,untracked:1,clean:true}});
   });
 
   it('retains failed action details and refreshes conflicts after failure', async () => {

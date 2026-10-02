@@ -31,6 +31,12 @@ export async function verifyFeedback(browser, url) {
     await page.goto(url);
     await page.getByRole('option', { name: 'Feedback fixture' }).dblclick();
     const bar = page.getByTestId('action-feedback');
+    await page.evaluate(()=>{const fixture=window.__feedbackFixture;fixture.snapshot.changes=[{path:'notes.txt',indexStatus:'?',worktreeStatus:'?',conflict:false,untracked:true}];window.postMessage({type:'changed',repoId:'feedback'},'*');});
+    await page.locator('.toolbar').getByRole('button',{name:'Stash Changes…',exact:true}).click();
+    await page.getByRole('dialog',{name:'Stash Changes',exact:true}).getByRole('button',{name:'Stash Changes',exact:true}).click();
+    await page.waitForFunction(()=>window.__feedbackFixture.pending?.payload.type==='stash.create');
+    await page.evaluate(()=>{const fixture=window.__feedbackFixture;fixture.snapshot.stashes=[{selector:'stash@{0}',oid:'c'.repeat(40),subject:'pause notes'}];fixture.snapshot.changes=[];fixture.complete();});
+    await bar.getByText('1 file saved · 1 untracked · Working tree clean',{exact:true}).waitFor();await bar.getByRole('button',{name:'Dismiss notification'}).click();
     async function push() {
       await page.locator('.toolbar').getByRole('button', { name: /^Push/ }).click();
       await page.getByRole('dialog').getByRole('button', { name: 'Push', exact: true }).click();
