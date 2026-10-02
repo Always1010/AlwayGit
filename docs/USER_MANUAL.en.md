@@ -389,13 +389,13 @@ A branch is a movable reference to a version. Creating a branch, switching branc
 
 **Prerequisite:** Your target is an older Commit or Tag, and you do not intend to work directly without a branch.
 
-1. Double-click the older Commit, or choose Create Branch and Checkout… from the Tag menu.
+1. Double-click the older Commit, or choose Create Branch and Checkout… from its Commit or Tag context menu.
 2. If a local branch already points directly to the target, select that branch when prompted. Otherwise, enter a new branch name.
 3. Check the fixed starting point, create and switch to the branch, then inspect the files.
 
 **Result:** You are inspecting the older version on a named branch, so subsequent commits have a clearly identified branch to belong to.
 
-**Caution:** Entering Detached HEAD directly is disabled by default. If you deliberately enable the advanced option, you must still create a branch to retain any new commits made afterward. The original branch reference does not automatically move with them.
+**Caution:** Direct Detached HEAD Checkout is disabled by default. The Commit and Tag context menus show this action disabled with an explanation to create a branch. At a local branch tip, the Commit menu names that branch or asks you to select one. If you deliberately enable the advanced option, you must still create a branch to retain any new commits made afterward. The original branch reference does not automatically move with them.
 
 **Troubleshooting:** If you discover that you are already in Detached HEAD, create a branch for any new commits you need to keep before switching back to the original branch.
 

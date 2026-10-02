@@ -131,7 +131,7 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 | Remote Branch | `Show in Graph`、`Show Only This Branch`、`Checkout as Local Branch…`、`Merge…`、`Rebase…`、`Delete Branch from <remote>…`、`Copy Branch Name` |
 | Remote 分支目录 / 多选 | `Create Local Tracking Branches…`、Graph 批量筛选、远端批量删除和复制名称 |
 | Remote，例如 `origin` | `Fetch…`、`Create Local Tracking Branches…`、`Refresh` |
-| Tag | `Show in Graph`、`Show Only This Tag`、`Create Branch…`、`Create Branch and Checkout…`、条件显示的 `Checkout to Detached HEAD…`、`Delete Tag…`、`Copy Tag Name`、`Copy Commit ID` |
+| Tag | `Show in Graph`、`Show Only This Tag`、`Create Branch…`、`Create Branch and Checkout…`、关闭策略时置灰的 `Checkout to Detached HEAD…`、`Delete Tag…`、`Copy Tag Name`、`Copy Commit ID` |
 | Stash | `View Changes`、`Apply Stash`、`Pop Stash`、`Drop Stash…` |
 | 工作树 | `Open 工作树`、`Open 工作树 in New Project Window`、`Refresh`、`Remove 工作树…`、`Copy 工作树 Path` |
 | 工作树（多选） | `Refresh`、`Copy N 工作树 Paths` |
@@ -150,7 +150,7 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 | Stashes | `Stash All Changes…` |
 | 工作树 | `Add 工作树…` |
 
-Graph 中 Commit 的菜单集中提供 `Create Branch…`、`Create Tag…`、Cherry-pick、`Revert…`、`Reset…`、分支感知的 Checkout、条件显示的 `Checkout to Detached HEAD…`、`Copy Commit ID` 和 `Copy Commit Message`；顶部工具栏和 Commit Details 标题不重复提供这些入口。普通 Commit 的 Cherry-pick 点击后直接执行；Merge Commit 单独选择 Mainline Parent。多选 Commit 按当前拓扑列表从旧到新执行批量 Cherry-pick，且只处理明确选中的 Commit；包含 Merge Commit 时禁用批量操作并要求单独处理。具体项目根据提交、当前分支和仓库操作状态禁用。Cherry-pick 通过独立只读查询检查所选提交与当前 HEAD 的祖先关系，不依赖 Graph 分页或引用标签；检查期间和检查失败时禁用。当前 HEAD、当前分支已有的历史提交（包括通过 Merge 纳入的提交）均禁用普通入口，多选中包含这些提交时整体禁用且不自动跳过。已有历史提交可通过 `Reapply Historical Commits…` 明确勾选确认后重新应用；当前 HEAD 不提供此入口，包含 Merge Commit 的批量重新应用仍禁用。执行前复核真实提交关系及目标分支、HEAD；重新应用对话框绑定打开时的目标上下文，编辑提交或 Mainline Parent 后重新确认。
+Graph 中 Commit 的菜单集中提供 `Create Branch…`、`Create Tag…`、Cherry-pick、`Revert…`、`Reset…`、分支感知的 Checkout、关闭策略时置灰的 `Checkout to Detached HEAD…`、`Copy Commit ID` 和 `Copy Commit Message`；顶部工具栏和 Commit Details 标题不重复提供这些入口。普通 Commit 的 Cherry-pick 点击后直接执行；Merge Commit 单独选择 Mainline Parent。多选 Commit 按当前拓扑列表从旧到新执行批量 Cherry-pick，且只处理明确选中的 Commit；包含 Merge Commit 时禁用批量操作并要求单独处理。具体项目根据提交、当前分支和仓库操作状态禁用。Cherry-pick 通过独立只读查询检查所选提交与当前 HEAD 的祖先关系，不依赖 Graph 分页或引用标签；检查期间和检查失败时禁用。当前 HEAD、当前分支已有的历史提交（包括通过 Merge 纳入的提交）均禁用普通入口，多选中包含这些提交时整体禁用且不自动跳过。已有历史提交可通过 `Reapply Historical Commits…` 明确勾选确认后重新应用；当前 HEAD 不提供此入口，包含 Merge Commit 的批量重新应用仍禁用。执行前复核真实提交关系及目标分支、HEAD；重新应用对话框绑定打开时的目标上下文，编辑提交或 Mainline Parent 后重新确认。
 
 恰好选择两个 Commit 时自动进入 `Compare Commits`，右键菜单仍保留显式入口。存在祖先关系时祖先位于左侧；没有祖先关系时保持选择顺序。右侧显示两个 Commit 和差异文件列表，交换按钮可反转比较方向，文件 Diff 支持新增、删除和重命名。取消到一个 Commit 时恢复该提交详情；增加到三个以上时显示最后操作的提交并保留多选批量操作；清空选择时同步清空右侧详情。手动或后台刷新 History 时保留仍然有效的双 Commit 比较。
 
@@ -172,7 +172,7 @@ Merge 等操作暂停后，原发起对话框改为处理状态，主入口是�
 - 主 工作树 和当前 工作树不能移除；Locked 工作树 显示锁定原因。
 - Remote Branch 的 `Checkout as Local Branch…` 列出远程来源与本地名称，默认剥除 Remote 前缀并保持完整目录（`origin/feature/login/api` → `feature/login/api`），自动选择已有跟踪分支，允许改名。多个已有本地跟踪分支时提示用户选择名称。单项默认 Checkout，可取消切换；Remote 父级、Remotes 分组、分支目录和远程多选通过 `Create Local Tracking Branches…` 创建或复用全部后代，保持当前分支。对话框逐项显示将创建、已跟踪、同名 upstream 冲突、路径冲突与成功结果；名称冲突阻止执行，不覆盖已有分支或改写 upstream。使用最近 Fetch 的引用，不自动 Fetch/Pull；后端重新校验来源与 OID。`origin/HEAD` 等符号引用不可检出为本地分支，批量范围自动排除。
 - Local 与 Remote 的批量选择互相隔离；同一 Remote 下的普通分支可以批量 `Delete … from <remote>…`，操作明确显示远端和分支清单并二次确认，以确认时的远端 Commit 版本为执行条件逐项 Push 删除并汇总部分失败；远端版本或 Push 地址变化时拒绝执行，刷新后重新确认。`origin/HEAD` 等符号引用不可删除。
-- 默认禁止主动进入 Detached HEAD。旧 Commit 的分支感知 Checkout 与 Tag 的 `Create Branch and Checkout…` 进入固定起点的新建分支浮窗，仅提供取消和创建并切换；普通 Create Branch 保留仅创建。设置 → 高级 → Git 操作中的“允许直接进入 Detached HEAD”默认关闭，应用保存成功后即时生效；开启后 Commit 和 Tag 菜单额外显示 `Checkout to Detached HEAD…`，确认说明原分支位置不变、后续提交需要分支承接。关闭时不显示该入口和 工作树 的 Detached 选项；工作树 要求已有或新建分支。宿主执行前重新检查策略，Stash 重试在保存 Stash 前拦截，禁止显式和隐式 Detached 工作树。外部造成的已有 Detached HEAD 可以正常读取、返回分支和创建分支；Rebase 内部临时 Detached 状态不受此限制。
+- 默认禁止主动进入 Detached HEAD。旧 Commit 的分支感知 Checkout 与 Tag 的 `Create Branch and Checkout…` 进入固定起点的新建分支浮窗，仅提供取消和创建并切换；普通 Create Branch 保留仅创建。设置 → 高级 → Git 操作中的“允许直接进入 Detached HEAD”默认关闭，应用保存成功后即时生效；开启后 Commit 和 Tag 菜单的 `Checkout to Detached HEAD…` 操作可用，确认说明原分支位置不变、后续提交需要分支承接。关闭时 Commit 和 Tag 的直接 Detached HEAD 菜单置灰，并解释需要创建分支；历史 Commit 菜单紧邻提供创建并切换分支。Commit 顶端有本地分支直接指向时，普通切换入口显示分支名称或分支选择，不借用 Detached HEAD 文案；当前分支和被其他工作树占用的单一分支禁用。工作树 不显示 Detached 选项；工作树 要求已有或新建分支。宿主执行前重新检查策略，Stash 重试在保存 Stash 前拦截，禁止显式和隐式 Detached 工作树。外部造成的已有 Detached HEAD 可以正常读取、返回分支和创建分支；Rebase 内部临时 Detached 状态不受此限制。
 - 无变更、无 Staged 文件或没有可用目标时禁用对应操作并说明原因。Detached HEAD 禁用工具栏 Push。仓库没有远端时，Push 不显示无法完成的空选择器，而是说明本地 Commit 已保存、发送前需要连接远端，并直接进入 `Add Remote…`；添加成功后返回 Push。Push 对话框先显示实际的 `Local Branch → Remote/Remote Branch`；当前 upstream、`branch.*.pushRemote`、`remote.pushDefault` 或唯一远端可确定目标时不得显示空白可选项。用户通过 `Change Target…` 显式修改目标；首次 Push 说明会建立 upstream。多远端且没有配置目标时要求选择远端。`Force-with-lease` 位于默认折叠的高级选项，启用后显示确认的远端 Commit，远端仍与该版本一致才执行；目标在本地尚不存在时，仅允许远端也仍不存在。后台 Fetch 不改变已打开窗口的确认版本。Push 地址变化或配置多个 Push 地址时拒绝此危险操作，刷新并重新选择单一目标后确认。
 - 当前分支存在未推送提交时，工具栏 Push 与仓库导航项使用高饱和通知角标显示数量；用户可以在“界面 / 状态提醒”中选用预设色或输入 HEX，文字自动在黑白之间选择以保持对比，并使用亮色边缘增强辨识度。数量为零时不显示角标。仓库列表先显示，角标状态随后在后台加载，当前仓库的角标随状态刷新即时更新。
 - Checkout 可能覆盖修改时显示受影响文件，并提供查看文件与 `Stash Changes & Checkout`。

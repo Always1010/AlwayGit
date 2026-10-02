@@ -294,7 +294,7 @@ async function verifyWorkbench(browser, url) {
     await menu.getByRole('menuitem',{name:'Delete 2 Branches from origin…',exact:true}).click();dialog=page.getByRole('dialog');await dialog.getByText('Delete from origin',{exact:true}).waitFor();await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
     await assertIconActions(sidebar.getByRole('button', { name: 'Tags', exact: true }).locator('..'), ['Create Tag…']);
     const tag = sidebar.getByRole('button', { name: 'v0.1.0', exact: true });
-    await assertMenu(tag, ['Create Branch and Checkout…', 'Show in Graph', 'Show Only This Tag', 'Create Branch…', 'Delete Tag…', 'Copy Tag Name', 'Copy Commit ID']);
+    await assertMenu(tag, ['Create Branch and Checkout…', 'Checkout to Detached HEAD…', 'Show in Graph', 'Show Only This Tag', 'Create Branch…', 'Delete Tag…', 'Copy Tag Name', 'Copy Commit ID']);
     await assertIconActions(sidebar.getByRole('button', { name: 'Stashes', exact: true }).locator('..'), ['Stash All Changes…']);
     const stash = sidebar.getByRole('button').filter({ hasText: 'stash@{0}' });
     await assertMenu(stash, ['View Changes', 'Apply Stash', 'Pop Stash', 'Drop Stash…']);

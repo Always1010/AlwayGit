@@ -422,12 +422,6 @@
     "review": "translated",
     "context": "webview/menus.ts / menuFor"
   },
-  "menus.switchToCommit": {
-    "en": "Checkout…",
-    "zh-CN": "切换到此提交（Detached HEAD）…",
-    "review": "translated",
-    "context": "webview/menus.ts / menuFor"
-  },
   "menus.showInGraph": {
     "en": "Show in Graph",
     "zh-CN": "在 Graph 中显示",
@@ -649,5 +643,17 @@
     "zh-CN": "所选提交已不在当前列表中，请关闭菜单并重新选择。",
     "review": "translated",
     "context": "Commit selection invalidated while the context menu is open"
+  },
+  "menus.switchToNamedBranch": {
+    "en": "Switch to Branch \"{{name}}\"…",
+    "zh-CN": "切换到分支“{{name}}”…",
+    "review": "translated",
+    "context": "webview/menus.ts / Commit at a single local branch tip"
+  },
+  "menus.chooseBranchToCheckout": {
+    "en": "Choose Branch to Checkout…",
+    "zh-CN": "选择分支并切换…",
+    "review": "translated",
+    "context": "webview/menus.ts / Commit shared by multiple local branch tips"
   }
 }
