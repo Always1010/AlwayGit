@@ -17,11 +17,11 @@ import { hostText, preferredLanguage, type Language } from '../application/langu
 import type { ProjectWindows } from './project-windows';
 import { groupRepositories } from '../protocol/repositories';
 import { panelSession } from './workbench-entry';
-import { SessionWriter } from '../application/session-persistence';
+import { mergeSessionBaseline, SessionWriter } from '../application/session-persistence';
 import type { SessionState } from '../protocol/session';
 import { RepositoryOperationBusyError, RepositoryOperationRecoveryRequiredError } from '../application/operation-lock';
 
-interface WorkbenchPanel { panel: vscode.WebviewPanel; activeRepository?: string; blank: boolean; session?: SessionState }
+interface WorkbenchPanel { panel: vscode.WebviewPanel; activeRepository?: string; blank: boolean; session?: SessionState; savedSession?: SessionState }
 interface RepositoryDiscoverySession { source?: WorkbenchPanel; cancelled: boolean; root: string; discovery?: DiscoveryResult }
 export interface WorkbenchPresence { open: boolean; active: boolean }
 
@@ -65,7 +65,7 @@ export class Workbench implements vscode.Disposable {
     const options = { enableScripts: true, localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview')] };
     const panel = restoredPanel ?? vscode.window.createWebviewPanel('alwaygit.workbench', 'AlwayGit', vscode.ViewColumn.Active, options);
     panel.webview.options = options;
-    const entry:WorkbenchPanel={panel,activeRepository:repoId,blank};
+    const entry:WorkbenchPanel={panel,activeRepository:repoId,blank,savedSession:this.context.workspaceState.get<SessionState>('alwaygit.session',{})};
     this.panels.set(panel,entry);this.lastPanel=entry;this.updatePanelTitle(entry);this.presenceEmitter.fire(this.presence);
     panel.iconPath = vscode.Uri.joinPath(this.context.extensionUri, 'media', 'alwaygit.svg');
     panel.onDidDispose(() => { this.queries.cancelOwner(entry);this.panels.delete(panel);for(const [id,scan] of this.repositoryDiscoveries)if(scan.source===entry){scan.cancelled=true;this.repositoryDiscoveries.delete(id);}if(this.lastPanel===entry)this.lastPanel=[...this.panels.values()].at(-1);this.presenceEmitter.fire(this.presence); });
@@ -252,9 +252,9 @@ export class Workbench implements vscode.Disposable {
     }
   }
   private async saveSessionBaseline(session: SessionState, source?: WorkbenchPanel): Promise<void> {
-    const previous = this.context.workspaceState.get<SessionState>('alwaygit.session', {});
-    const persisted = source?.blank && !session.repoId && previous.repoId ? { ...session, repoId: previous.repoId } : session;
-    await this.sessions.save(persisted);
+    const panelBaseline = source?.savedSession, blank = source?.blank;
+    await this.sessions.save(() => mergeSessionBaseline(this.context.workspaceState.get<SessionState>('alwaygit.session', {}), session, panelBaseline, blank));
+    if (source) source.savedSession = session;
   }
   private async repositoryStatuses(): Promise<RepositoryStatus[]> {
     const repositories = this.repositories.list(), results: Array<RepositoryStatus | undefined> = new Array(repositories.length);
