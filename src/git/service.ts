@@ -1,11 +1,13 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { access, lstat, realpath, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { ActionBlocker, Change, CheckoutBlocker, Commit, CommitComparison, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationReview, OperationState, Repository, RepositoryStatus, Snapshot, Stash, StashApplyBlocker, StashDetails, Worktree } from '../protocol/types';
 import { branchNameConflict, branchNameConflictMessage, branchNameProblem, branchNameProblemMessage } from '../protocol/ref-name';
 import { remoteNameProblem, remoteUrlProblem } from '../protocol/remote';
 import { inferDefaultBranch } from './default-branch';
-import { GitError, GitTerminationError } from './error';
+import { GitError, GitReadTerminationError, GitTerminationError } from './error';
+import { isReadOnlyGitCommand } from './command-kind';
 import { runGitProcess, type GitResult } from './runner';
 export { GitError } from './error';
 import { createSelectedStash, preflightStash, StashStateError, type StashExecution } from './stash';
@@ -62,8 +64,14 @@ const commitFormat = '%H%x00%P%x00%an%x00%ae%x00%at%x00%s';
 export class GitService implements GitServiceContract {
   private version = 0;
   private readonly reviews = new Map<string, { token: string; fingerprint: string }>();
+  private readonly readSignal = new AsyncLocalStorage<AbortSignal>();
   constructor(private readonly options: GitServiceOptions = {}) {}
+  withReadSignal<T>(signal: AbortSignal, task: () => Promise<T>): Promise<T> { return this.readSignal.run(signal, task); }
   private async run(repo: Repository, args: string[], allowFailure = false, captureBytes?: number, execution: StashExecution & { signal?: AbortSignal } = {}): Promise<Result> {
+    const readOnly = isReadOnlyGitCommand(args), scopeSignal = this.readSignal.getStore();
+    if (!readOnly && scopeSignal) throw new GitError('A read-only request cannot run Git mutations', 'WRITE_IN_READ_SCOPE');
+    const unsafe = unsafeTerminations.get(normalized(repo.commonDir));
+    if (!readOnly && unsafe) throw unsafe;
     const adapter = this.options.environment;
     const supplied = execution.isolated ? undefined : typeof adapter === 'function' ? await adapter(repo, args) : adapter;
     const wrapped = supplied && 'env' in supplied && typeof supplied.env === 'object' ? supplied as { env: NodeJS.ProcessEnv; dispose?: () => void | Promise<void> } : undefined;
@@ -77,7 +85,7 @@ export class GitService implements GitServiceContract {
         executable: this.options.gitPath,
         args: ['-C', execution.root ?? repo.root, ...(args[0] === 'stash' ? [] : ['--literal-pathspecs']), ...args],
         env: { ...commandEnv, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never', GIT_EDITOR: 'true', GIT_SEQUENCE_EDITOR: 'true', ...(['status', 'log', 'show', 'ls-tree', 'ls-files', 'for-each-ref'].includes(args[0]) ? { GIT_OPTIONAL_LOCKS: '0' } : {}), ...execution.env },
-        input: execution.input, signal: execution.signal, captureBytes,
+        input: execution.input, signal: execution.signal ?? scopeSignal, readOnly, captureBytes,
         timeoutMs: this.options.timeoutMs, maxOutputBytes: this.options.maxOutputBytes,
         onStderr: execution.silent ? undefined : chunk => this.options.onOutput?.(repo, chunk.toString('utf8')),
       });
@@ -89,8 +97,8 @@ export class GitService implements GitServiceContract {
       }
       return result;
     } catch (error) {
-      if (error instanceof GitTerminationError) {
-        unsafeTerminations.set(normalized(repo.commonDir), error);
+      if (error instanceof GitTerminationError || error instanceof GitReadTerminationError) {
+        if (error instanceof GitTerminationError) unsafeTerminations.set(normalized(repo.commonDir), error);
         // Keep authentication until the known process and terminator handles close.
         // This does not lift isolation: closed handles don't prove every descendant exited.
         void error.completion.then(() => wrapped?.dispose?.()).catch(() => {});
@@ -287,7 +295,10 @@ export class GitService implements GitServiceContract {
   async execute(repo: Repository, action: GitAction): Promise<void> {
     const key = normalized(repo.commonDir); const prior = queues.get(key) ?? Promise.resolve();
     const operation = prior.catch(() => {}).then(async () => { const unsafe = unsafeTerminations.get(key); if (unsafe) throw unsafe; await this.verify(repo); await this.executeNow(repo, action); });
-    queues.set(key, operation); try { await operation; } catch (error) { if (error instanceof GitTerminationError) unsafeTerminations.set(key, error); throw error; } finally { if (queues.get(key) === operation) queues.delete(key); }
+    queues.set(key, operation);
+    try { await operation; const unsafe = unsafeTerminations.get(key); if (unsafe) throw unsafe; }
+    catch (error) { if (error instanceof GitTerminationError) unsafeTerminations.set(key, error); throw unsafeTerminations.get(key) ?? error; }
+    finally { if (queues.get(key) === operation) queues.delete(key); }
   }
   private async readOperationFile(gitDir: string, name: string): Promise<string> {
     try { return await readFile(path.join(gitDir, name), 'utf8'); }

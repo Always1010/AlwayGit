@@ -57,10 +57,10 @@
 - 日期：2026-10-03
 - 状态：已解决
 - 现象：超时或输出超限时，终止进程树仍在执行或失败，原逻辑已结束写队列，后续写操作可能与旧 Git 或 Hook 重叠。
-- 原因：停止请求被当作进程已结束，未等待 Git close 与 taskkill close，也未处理终止器非零退出。
-- 解决方案：提取进程 runner，等待已知进程与终止器关闭；支持 AbortSignal。5 秒终止宽限后无法确认时明确报错并隔离该公共仓库，认证资源延迟至已知句柄关闭才释放。
-- 验证方式：类型检查、6 项 runner 回归、真实 Git 超时/输出限额及既有写队列定向回归通过；终止未确认时验证禁止第二次写入、close 前不释放认证，避免把根进程退出当作整个进程树已结束。
-- 相关文件：`src/git/service.ts`、`src/git/runner.ts`、`src/git/error.ts`、`tests/git-runner.test.ts`、`tests/git-service.test.ts`。
+- 原因：停止请求被当作进程已结束，未等待 Git close 与 taskkill close，也未处理终止器非零退出；批量操作的局部 catch 还可能包装隔离错误并继续下一条写命令。
+- 解决方案：提取进程 runner，等待已知进程与终止器关闭；支持 AbortSignal。5 秒终止宽限后无法确认写命令停止时明确报错并隔离该公共仓库，认证资源延迟至已知句柄关闭才释放。run 和 execute 统一保留隔离标记并禁止后续写入；纯读取消保留错误与清理句柄，不隔离写操作，只读请求作用域拒绝运行写命令。
+- 验证方式：类型检查、8 项 runner 回归、真实 Git 超时/输出限额及既有写队列定向回归通过；覆盖包装错误、批量后续命令拒绝、只读取消与写入隔离、close 前不释放认证，避免把根进程退出当作整个进程树已结束。
+- 相关文件：`src/git/service.ts`、`src/git/runner.ts`、`src/git/error.ts`、`src/git/command-kind.ts`、`tests/git-runner.test.ts`、`tests/git-service.test.ts`。
 
 ## BUG-038：过期文件租约恢复可能误删新持有者的写锁
 

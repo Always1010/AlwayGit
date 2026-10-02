@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { GitError, GitTerminationError } from './error';
+import { GitError, GitReadTerminationError, GitTerminationError } from './error';
 
 export interface GitRunOptions {
   executable?: string;
@@ -11,6 +11,7 @@ export interface GitRunOptions {
   captureBytes?: number;
   onStderr?: (chunk: Buffer) => void;
   signal?: AbortSignal;
+  readOnly?: boolean;
 }
 export type GitResult = { stdout: Buffer; stderr: Buffer; code: number };
 
@@ -31,6 +32,9 @@ export function runGitProcess(options: GitRunOptions): Promise<GitResult> {
     let complete!: () => void;
     const completion = new Promise<void>(resolve => { complete = resolve; });
     let exitCode = 1;
+    const unconfirmed = (message: string) => options.readOnly
+      ? new GitReadTerminationError(`${failure?.message ?? 'Git query failed'}. ${message}; the read-only query did not confirm process-tree termination.`, failure?.code ?? 'GIT_FAILED', child.pid, completion)
+      : new GitTerminationError(`${failure?.message ?? 'Cannot stop Git'}. ${message}; further writes are blocked pending manual verification.`, child.pid, completion, failure?.code);
     const finish = () => {
       if (!closed || terminating) return;
       complete();
@@ -39,7 +43,7 @@ export function runGitProcess(options: GitRunOptions): Promise<GitResult> {
       clearTimeout(timer);
       clearTimeout(terminationTimer);
       options.signal?.removeEventListener('abort', abort);
-      if (terminationFailure) reject(new GitTerminationError(`${failure?.message ?? 'Cannot stop Git'}. Process-tree termination failed: ${terminationFailure}. Descendant termination could not be confirmed; further writes are blocked pending manual verification.`, child.pid, completion, failure?.code));
+      if (terminationFailure) reject(unconfirmed(`Process-tree termination failed: ${terminationFailure}`));
       else if (failure) reject(failure);
       else resolve({ stdout: Buffer.concat(out), stderr: Buffer.concat(err), code: exitCode });
     };
@@ -57,7 +61,7 @@ export function runGitProcess(options: GitRunOptions): Promise<GitResult> {
         if (settled) return;
         settled = true;
         options.signal?.removeEventListener('abort', abort);
-        reject(new GitTerminationError(`${error.message}. Git process-tree termination did not finish within 5 seconds${terminationFailure ? ` (${terminationFailure})` : ''}; further writes are blocked pending manual verification.`, child.pid, completion, error.code));
+        reject(unconfirmed(`Git process-tree termination did not finish within 5 seconds${terminationFailure ? ` (${terminationFailure})` : ''}`));
       }, 5000);
       if (!child.pid) return;
       if (process.platform === 'win32') {
