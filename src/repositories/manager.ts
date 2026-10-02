@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import path from 'node:path';
-import type { GitServiceContract, Repository, RepositoryChanges } from '../protocol/types';
+import { randomUUID } from 'node:crypto';
+import type { GitServiceContract, Repository, RepositoryChanges, RepositoryCollection } from '../protocol/types';
 import { groupRepositories, pathKey, repositoryGroupKey } from '../protocol/repositories';
 import { discoverRepositories, type DiscoveryOptions, type DiscoveryResult } from './discovery';
 
@@ -8,6 +9,8 @@ export interface AddDirectoryResult extends DiscoveryResult { added: number; exi
 
 const GLOBAL_ROOTS_KEY = 'alwaygit.repositoryRoots.v1';
 const GLOBAL_EXCLUDED_KEY = 'alwaygit.excludedRepositories.v1';
+const GLOBAL_COLLECTIONS_KEY = 'alwaygit.repositoryCollections.v1';
+const GLOBAL_COLLECTION_ASSIGNMENTS_KEY = 'alwaygit.repositoryCollectionAssignments.v1';
 const LEGACY_WORKSPACE_ROOTS_KEY = 'alwaygit.roots';
 
 export class RepositoryManager implements vscode.Disposable {
@@ -20,8 +23,15 @@ export class RepositoryManager implements vscode.Disposable {
   readonly onDidChange = this.changedEmitter.event;
   readonly onDidChangeRepositories = this.listEmitter.event;
   constructor(private readonly git: GitServiceContract, private readonly context: vscode.ExtensionContext, private readonly log: vscode.OutputChannel) {}
-  list(): Repository[] { return [...this.repositories.values()]; }
+  list(): Repository[] {
+    const assignments = this.context.globalState.get<Record<string, string>>(GLOBAL_COLLECTION_ASSIGNMENTS_KEY, {});
+    return [...this.repositories.values()].map(repo => {
+      const collectionId=assignments[repositoryGroupKey(repo)];
+      return collectionId?{...repo,collectionId}:repo;
+    });
+  }
   groups() { return groupRepositories(this.list()); }
+  collections(): RepositoryCollection[] { return this.context.globalState.get<RepositoryCollection[]>(GLOBAL_COLLECTIONS_KEY, []); }
   get(id: string | undefined): Repository {
     const repo = id && this.repositories.get(id);
     if (!repo) throw new Error('Select a registered repository first.');
@@ -115,10 +125,35 @@ export class RepositoryManager implements vscode.Disposable {
     const saved = this.context.globalState.get<string[]>(GLOBAL_ROOTS_KEY, []).filter(root => !rootKeys.has(pathKey(root)));
     const excluded = new Set(this.context.globalState.get<string[]>(GLOBAL_EXCLUDED_KEY, []));
     for (const group of groups) excluded.add(group.key);
+    const assignments = { ...this.context.globalState.get<Record<string, string>>(GLOBAL_COLLECTION_ASSIGNMENTS_KEY, {}) };
+    for (const group of groups) delete assignments[group.key];
     await this.context.globalState.update(GLOBAL_ROOTS_KEY, saved);
     await this.context.globalState.update(GLOBAL_EXCLUDED_KEY, [...excluded]);
+    await this.context.globalState.update(GLOBAL_COLLECTION_ASSIGNMENTS_KEY, assignments);
     this.listEmitter.fire();
     return groups.length;
+  }
+  async createCollection(name: string): Promise<RepositoryCollection> {
+    const normalized=name.trim();if(!normalized)throw new Error('Repository group name is required.');if(normalized.length>80)throw new Error('Repository group name is too long.');
+    const collections=this.collections();if(collections.some(item=>item.name.localeCompare(normalized,undefined,{sensitivity:'accent'})===0))throw new Error('A repository group with this name already exists.');
+    const collection={id:randomUUID(),name:normalized};await this.context.globalState.update(GLOBAL_COLLECTIONS_KEY,[...collections,collection]);this.listEmitter.fire();return collection;
+  }
+  async renameCollection(id: string, name: string): Promise<void> {
+    const normalized=name.trim(),collections=this.collections();if(!normalized)throw new Error('Repository group name is required.');if(normalized.length>80)throw new Error('Repository group name is too long.');
+    if(!collections.some(item=>item.id===id))throw new Error('Repository group no longer exists.');
+    if(collections.some(item=>item.id!==id&&item.name.localeCompare(normalized,undefined,{sensitivity:'accent'})===0))throw new Error('A repository group with this name already exists.');
+    await this.context.globalState.update(GLOBAL_COLLECTIONS_KEY,collections.map(item=>item.id===id?{...item,name:normalized}:item));this.listEmitter.fire();
+  }
+  async deleteCollection(id: string): Promise<void> {
+    const collections=this.collections();if(!collections.some(item=>item.id===id))return;
+    const assignments={...this.context.globalState.get<Record<string,string>>(GLOBAL_COLLECTION_ASSIGNMENTS_KEY,{})};for(const [key,value] of Object.entries(assignments))if(value===id)delete assignments[key];
+    await this.context.globalState.update(GLOBAL_COLLECTIONS_KEY,collections.filter(item=>item.id!==id));await this.context.globalState.update(GLOBAL_COLLECTION_ASSIGNMENTS_KEY,assignments);this.listEmitter.fire();
+  }
+  async move(keys: Iterable<string>, collectionId?: string): Promise<number> {
+    if(collectionId&&!this.collections().some(item=>item.id===collectionId))throw new Error('Repository group no longer exists.');
+    const available=new Set(this.groups().map(group=>group.key)),assignments={...this.context.globalState.get<Record<string,string>>(GLOBAL_COLLECTION_ASSIGNMENTS_KEY,{})};let moved=0;
+    for(const key of new Set(keys)){if(!available.has(key))continue;if(collectionId)assignments[key]=collectionId;else delete assignments[key];moved++;}
+    if(moved){await this.context.globalState.update(GLOBAL_COLLECTION_ASSIGNMENTS_KEY,assignments);this.listEmitter.fire();}return moved;
   }
   async scan(): Promise<void> {
     if (!vscode.workspace.isTrusted) return;
@@ -157,18 +192,27 @@ export class RepositoryManager implements vscode.Disposable {
   }
 }
 
-export class RepositoryTree implements vscode.TreeDataProvider<Repository> {
-  private readonly emitter = new vscode.EventEmitter<Repository | undefined>();
+export type RepositoryTreeNode = Repository | { id:string; name:string; collection:RepositoryCollection };
+
+export class RepositoryTree implements vscode.TreeDataProvider<RepositoryTreeNode> {
+  private readonly emitter = new vscode.EventEmitter<RepositoryTreeNode | undefined>();
   readonly onDidChangeTreeData = this.emitter.event;
   constructor(private readonly manager: RepositoryManager) {}
   refresh(): void { this.emitter.fire(undefined); }
-  getChildren(): Repository[] { return this.manager.groups().map(group => ({ ...group.repository, name: group.name })); }
-  getTreeItem(repo: Repository): vscode.TreeItem {
-    const item = new vscode.TreeItem(repo.name);
+  getChildren(parent?:RepositoryTreeNode): RepositoryTreeNode[] {
+    const groups=this.manager.groups();
+    if(parent&&'collection' in parent)return groups.filter(group=>group.collectionId===parent.collection.id).map(group=>({...group.repository,name:group.name}));
+    const collections=this.manager.collections().map(collection=>({id:collection.id,name:collection.name,collection}));
+    const roots=groups.filter(group=>!group.collectionId||!this.manager.collections().some(collection=>collection.id===group.collectionId)).map(group=>({...group.repository,name:group.name}));
+    return [...collections,...roots].sort((a,b)=>a.name.localeCompare(b.name));
+  }
+  getTreeItem(node: RepositoryTreeNode): vscode.TreeItem {
+    if('collection' in node){const item=new vscode.TreeItem(node.name,vscode.TreeItemCollapsibleState.Collapsed);item.contextValue='alwaygit.repositoryCollection';item.iconPath=new vscode.ThemeIcon('folder');item.tooltip=node.name;return item;}
+    const item = new vscode.TreeItem(node.name);
     item.contextValue = 'alwaygit.repository';
-    item.description = repo.root; item.tooltip = repo.root;
+    item.description = node.root; item.tooltip = node.root;
     item.iconPath = new vscode.ThemeIcon('repo');
-    item.command = { command: 'alwaygit.open', title: 'Open Workbench', arguments: [repo.id] };
+    item.command = { command: 'alwaygit.open', title: 'Open Workbench', arguments: [node.id] };
     return item;
   }
 }

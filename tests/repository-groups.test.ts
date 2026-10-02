@@ -27,4 +27,9 @@ describe('logical repository display groups', () => {
     expect(group.members.map(repo => repo.id)).toEqual(['main', 'linked']);
     expect(group.name).toBe('App'); expect(group.repository.root).toBe(linked.root);
   });
+  it('carries a user collection across the logical repository without changing operation targets', () => {
+    const group=groupRepositories([{...linked,collectionId:'client-project'},main])[0];
+    expect(group.collectionId).toBe('client-project');
+    expect(group.repository.id).toBe(main.id);
+  });
 });
