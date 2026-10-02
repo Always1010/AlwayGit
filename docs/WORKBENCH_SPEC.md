@@ -46,7 +46,7 @@ Repository 名称行普通单击立即切换当前仓库，并将操作选择收
 
 当焦点位于可多选区域或其标题、行内控件时，Ctrl/Cmd+A 只全选焦点所属作用域，Escape 只清除该作用域的操作选择；快捷键由区域容器捕获，不能落到整页文本选择。Repository 的范围是全部逻辑仓库；Local Branches 的范围是全部本地分支；每个 Remote 是独立范围，只包含该 Remote 下的分支；Worktrees 的范围是当前仓库的全部 Worktree。分支 action selection 与 Graph 筛选复选框相互独立，Ctrl/Cmd+A 和 Escape 都不改变 `checkedRefs`。History 的范围是当前已经加载的真实 Commit，不为全选隐式加载下一页，并排除 Working Tree 虚拟 Commit。Working Tree、Commit Details 和 Commit 比较的文件区域只处理当前面板可见文件。输入框、文本域和可编辑内容保留 Ctrl/Cmd+A 与 Escape 的原生行为。
 
-Working Tree 和提交文件列表使用不同形状的语义图标与 Git 状态颜色区分新增、修改、删除、重命名和冲突，悬停说明完整状态，不常驻显示字母缩写。没有选择文件时，分组按钮显示 `Stage All` 或 `Unstage All`，点击后先显示实际文件数量的确认浮窗，确认按钮默认获得焦点，可按 Enter 快速执行；Escape、点击遮罩或 Cancel 取消。已明确选择文件时，分组按钮以及右键菜单中的 Stage / Unstage 直接作用于所选范围，不重复确认。
+Working Tree、Commit Details 和 Commit 比较的文件列表统一使用中性的文件图标，右下角以彩色角标显示 Git 状态：黄色 M 修改、绿色 A 新增、红色 D 删除、紫色 R 重命名，未跟踪显示 ?、冲突显示 !，复制和类型变更分别显示 C 和 T。悬停角标或文件名可查看完整含义；列表不常驻显示状态图例。没有选择文件时，分组按钮显示 `Stage All` 或 `Unstage All`，点击后先显示实际文件数量的确认浮窗，确认按钮默认获得焦点，可按 Enter 快速执行；Escape、点击遮罩或 Cancel 取消。已明确选择文件时，分组按钮以及右键菜单中的 Stage / Unstage 直接作用于所选范围，不重复确认。
 
 分组应用于全部添加、恢复和自动发现入口。已有保存路径无需清除，工作目录 ID、各自的 Commit 草稿与视图继续保留；不将多个 Worktree 的文件或暂存区状态合并。
 

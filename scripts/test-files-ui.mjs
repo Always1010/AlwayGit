@@ -30,8 +30,9 @@ export async function verifyFiles(browser, url) {
     await panel.getByText('./src/features/auth', { exact: true }).waitFor();
     await panel.getByText('./src/services/auth', { exact: true }).waitFor();
     await panel.getByText('./', { exact: true }).waitFor();
-    assert.equal(await panel.locator('.file-status[aria-label="Modified"]').count(), 3, 'File states use compact semantic icons with accessible labels');
-    assert.equal((await panel.locator('.file-status').first().innerText()).trim(), '', 'File state abbreviations are not rendered as permanent text');
+    assert.equal(await panel.locator('.file-status[aria-label="Modified"]').count(), 3, 'File states expose accessible status labels');
+    assert.equal((await panel.locator('.file-status-badge').first().innerText()).trim(), 'M', 'Modification status appears in the file icon corner');
+    assert.equal(await panel.locator('.file-item > .codicon').count(), 0, 'Each row uses one file icon with a status badge');
     const filter = panel.getByRole('searchbox', { name: 'Filter changed file paths', exact: true });
     await filter.fill(' FEATURES/AUTH ');
     assert.equal(await panel.locator('.file-item').count(), 1, 'Directory fragments must filter the complete relative path case-insensitively');
@@ -118,6 +119,6 @@ export async function verifyFiles(browser, url) {
     await draft.click({ button: 'right' });
     assert.equal(await menu.isVisible(), false, 'Editable text keeps the native context menu');
     assert.deepEqual(errors, []);
-    console.log('ALWAYGIT_FILES_UI_TESTS_PASSED: semantic status icons, bulk Stage/Unstage confirmation with affirmative focus, selected-file direct actions, full-path filtering, context menus, explicit Discard and native text editing');
+    console.log('ALWAYGIT_FILES_UI_TESTS_PASSED: corner status badges, bulk Stage/Unstage confirmation with affirmative focus, selected-file direct actions, full-path filtering, context menus, explicit Discard and native text editing');
   } finally { await page.close(); }
 }
