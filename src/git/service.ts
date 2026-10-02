@@ -192,6 +192,19 @@ export class GitService implements GitServiceContract {
   private async oid(repo: Repository, revision: string): Promise<string> { token(revision, 'revision'); return this.text(repo, ['rev-parse', '--verify', '--end-of-options', `${revision}^{commit}`]); }
   private async refName(repo: Repository, name: string): Promise<string> { const problem=branchNameProblem(name);if(problem)throw new GitError(branchNameProblemMessage(problem),'INVALID_BRANCH_NAME');await this.run(repo, ['check-ref-format', `refs/heads/${name}`]); return name; }
   private async status(repo: Repository) { return parseStatus((await this.run(repo, ['status', '--porcelain=v2', '-z', '--branch', '--untracked-files=all'])).stdout); }
+  async cherryPickCheck(repo: Repository, commits: string[], context?: { expectedHead: string; expectedBranch: string }) {
+    const current = await this.status(repo);
+    if (context) this.requireActionContext(context, current);
+    if (!current.branch || !current.head) throw new GitError(localizeMessage('service.cherryPickNeedsBranch'), 'INVALID_ARGUMENT');
+    const included = await mapGitQueries([...new Set(commits)], async revision => {
+      const oid = await this.oid(repo, revision);
+      if (oid === current.head) return oid;
+      const result = await this.run(repo, ['merge-base', '--is-ancestor', oid, current.head!], true);
+      if (result.code !== 0 && result.code !== 1) throw new GitError(localizeMessage('service.cherryPickCheckFailed'), 'GIT_ERROR', result.stdout.toString('utf8'), result.stderr.toString('utf8'));
+      return result.code === 0 ? oid : undefined;
+    });
+    return { head: current.head, branch: current.branch, included: included.filter((oid): oid is string => !!oid) };
+  }
   private async unpushed(repo: Repository): Promise<number> {
     const result = await this.run(repo, ['rev-list', '--count', 'HEAD', '--not', '--remotes'], true);
     const count = Number.parseInt(result.stdout.toString('utf8').trim(), 10);
@@ -720,7 +733,16 @@ export class GitService implements GitServiceContract {
         if (!action.commits.length) throw new GitError(localizeMessage("service.selectCommits"), 'INVALID_ARGUMENT');
         if (action.mainline !== undefined && (!Number.isSafeInteger(action.mainline) || action.mainline < 1)) throw new GitError(localizeMessage("service.invalidMergeParentNumber"), 'INVALID_ARGUMENT');
         if(action.expectedHead||action.expectedBranch){const current=await this.status(repo);if(action.expectedHead&&current.head!==action.expectedHead||action.expectedBranch&&current.branch!==action.expectedBranch)throw new GitError(localizeMessage("service.theTargetBranchChangedBeforeTheOperationStartedSelect"), 'OPERATION_CHANGED');}
-        args = [action.type, ...(action.mainline ? ['-m', String(action.mainline)] : []), ...(await Promise.all(action.commits.map(x => this.oid(repo, x))))]; break;
+        const commits = await mapGitQueries(action.commits, x => this.oid(repo, x));
+        if (action.type === 'cherry-pick') {
+          const check = await this.cherryPickCheck(repo, commits);
+          if (check.included.includes(check.head)) throw new GitError(localizeMessage('service.cherryPickCurrentHead'), 'COMMIT_ALREADY_INCLUDED');
+          if (check.included.length && !action.allowIncluded) throw new GitError(localizeMessage('service.cherryPickAlreadyIncluded'), 'COMMIT_ALREADY_INCLUDED');
+          if (action.allowIncluded || action.expectedHead !== undefined || action.expectedBranch !== undefined) this.requireActionContext(action, check);
+          // Check again after the read-only preflight; never apply to a changed branch.
+          this.requireActionContext({ expectedHead: check.head, expectedBranch: check.branch }, await this.status(repo));
+        }
+        args = [action.type, ...(action.mainline ? ['-m', String(action.mainline)] : []), ...commits]; break;
       }
       case 'reset': if (!['soft', 'mixed', 'hard'].includes(action.mode)) throw new GitError(localizeMessage("service.invalidResetMode"), 'INVALID_ARGUMENT'); this.requireActionContext(action, await this.status(repo)); args = ['reset', `--${action.mode}`, await this.oid(repo, action.target), '--']; break;
       case 'operation.continue': case 'operation.abort': case 'operation.skip': {

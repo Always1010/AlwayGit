@@ -544,5 +544,29 @@
     "zh-CN": "\nStash {{oid}} was created and retained. Checkout did not complete; your saved changes remain in Stashes.",
     "review": "pending",
     "context": "src/git/service.ts / checkout"
+  },
+  "service.cherryPickNeedsBranch": {
+    "en": "Cherry-pick requires a local branch with a HEAD commit.",
+    "zh-CN": "Cherry-pick 需要当前处于已有提交的本地分支。",
+    "review": "translated",
+    "context": "Cherry-pick eligibility and explicit historical reapplication"
+  },
+  "service.cherryPickCurrentHead": {
+    "en": "This commit is the current branch HEAD and cannot be cherry-picked onto itself.",
+    "zh-CN": "该提交就是当前分支的最新提交，不能 Cherry-pick 到自身。",
+    "review": "translated",
+    "context": "Cherry-pick eligibility and explicit historical reapplication"
+  },
+  "service.cherryPickAlreadyIncluded": {
+    "en": "This branch already includes selected commits. Deselect them or explicitly confirm Reapply Historical Commits.",
+    "zh-CN": "当前分支已包含所选提交，请取消选择这些提交，或明确确认重新应用历史提交。",
+    "review": "translated",
+    "context": "Cherry-pick eligibility and explicit historical reapplication"
+  },
+  "service.cherryPickCheckFailed": {
+    "en": "Could not check whether this branch already includes the selected commits.",
+    "zh-CN": "无法检查当前分支是否已包含所选提交。",
+    "review": "translated",
+    "context": "Cherry-pick eligibility and explicit historical reapplication"
   }
 }

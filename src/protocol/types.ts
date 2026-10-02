@@ -24,6 +24,7 @@ export interface CommitDetails { commit: Commit; body: string; files: CommitFile
 export type StashSection = 'working' | 'index' | 'untracked';
 export interface StashDetails { commit: Commit; body: string; sections: { working: CommitDetails; index: CommitDetails; untracked?: CommitDetails }; totalFiles: number }
 export interface CommitComparison { left: Commit; right: Commit; files: CommitFile[] }
+export interface CherryPickCheck { head: string; branch: string; included: string[] }
 export type GitAction =
   | { type: 'stage' | 'resolve-and-stage' | 'unstage' | 'discard'; paths: string[] }
   | { type: 'commit'; message: string; amend?: boolean; reviewToken?: string }
@@ -46,7 +47,7 @@ export type GitAction =
   | { type: 'worktree.add'; path: string; branch?: string; newBranch?: string; start?: string; detach?: boolean }
   | { type: 'worktree.remove'; path: string; force?: boolean }
   | { type: 'merge' | 'rebase'; target: string; expectedHead?: string; expectedBranch?: string }
-  | { type: 'cherry-pick' | 'revert'; commits: string[]; mainline?: number; expectedHead?: string; expectedBranch?: string }
+  | { type: 'cherry-pick' | 'revert'; commits: string[]; mainline?: number; expectedHead?: string; expectedBranch?: string; allowIncluded?: boolean }
   | { type: 'reset'; target: string; mode: 'soft' | 'mixed' | 'hard'; expectedHead?: string; expectedBranch?: string }
   | { type: 'operation.continue'; kind: OperationKind; reviewToken?: string }
   | { type: 'operation.abort' | 'operation.skip'; kind: OperationKind };
@@ -57,7 +58,7 @@ export interface CheckoutBlocker { reason: 'local-changes' | 'conflicts' | 'oper
 export interface StashApplyBlocker { kind: 'stash-apply'; reason: 'untracked-path-exists' | 'restore-conflict' | 'restore-blocked' | 'state-changed'; paths: string[]; conflictPaths?: string[]; selector: string; stashOid: string; stashRetained: true; workingTreeUnchanged: true; output?: string }
 export type ActionBlocker = CheckoutBlocker | StashApplyBlocker;
 export interface OperationSettings { allowDetachedHead: boolean; scope: 'workspace' | 'user' }
-export interface RpcRequest { id: string; method: 'repositories' | 'repositoryCollections' | 'repositoryOrder' | 'reorderRepository' | 'repositoryStatuses' | 'pickRepositoryDirectory' | 'discoverRepositories' | 'cancelRepositoryDiscovery' | 'addRepository' | 'removeRepositories' | 'createRepositoryCollection' | 'renameRepositoryCollection' | 'deleteRepositoryCollection' | 'moveRepositories' | 'snapshot' | 'operationReview' | 'history' | 'details' | 'stashDetails' | 'compare' | 'cancelQuery' | 'action' | 'diff' | 'diffPreview' | 'copyText' | 'openWorkbench' | 'openRepository' | 'openProject' | 'openFile' | 'openWorktree' | 'pickWorktree' | 'showLog' | 'saveSession' | 'operationSettings' | 'saveOperationSettings'; repoId?: string; payload?: unknown }
+export interface RpcRequest { id: string; method: 'repositories' | 'repositoryCollections' | 'repositoryOrder' | 'reorderRepository' | 'repositoryStatuses' | 'pickRepositoryDirectory' | 'discoverRepositories' | 'cancelRepositoryDiscovery' | 'addRepository' | 'removeRepositories' | 'createRepositoryCollection' | 'renameRepositoryCollection' | 'deleteRepositoryCollection' | 'moveRepositories' | 'snapshot' | 'operationReview' | 'history' | 'details' | 'stashDetails' | 'compare' | 'cherryPickCheck' | 'cancelQuery' | 'action' | 'diff' | 'diffPreview' | 'copyText' | 'openWorkbench' | 'openRepository' | 'openProject' | 'openFile' | 'openWorktree' | 'pickWorktree' | 'showLog' | 'saveSession' | 'operationSettings' | 'saveOperationSettings'; repoId?: string; payload?: unknown }
 /** Missing paths means the source cannot limit which working files changed. */
 export interface RepositoryChanges { paths?: string[]; index?: boolean }
 export type HostMessage = { type: 'operationSettingsChanged'; settings: OperationSettings } | { type: 'response'; id: string; result?: unknown; error?: { message: string; code?: string; details?: ActionBlocker; localizedMessage?: MessageDescriptor } } | { type: 'changed'; repoId: string; changes?: RepositoryChanges; snapshot?: Snapshot } | { type: 'activity'; repoId: string; busy: boolean; label: string } | { type: 'repositoriesChanged' } | { type: 'selectRepository'; repoId: string } | { type: 'repositoryDiscoveryProgress'; scanId: string; scanned: number; found: number };
@@ -71,6 +72,7 @@ export interface GitServiceContract {
   details(repo: Repository, oid: string, parent?: string): Promise<CommitDetails>;
   stashDetails(repo: Repository, oid: string): Promise<StashDetails>;
   compare(repo: Repository, left: string, right: string, preserveOrder?: boolean): Promise<CommitComparison>;
+  cherryPickCheck(repo: Repository, commits: string[], context?: { expectedHead: string; expectedBranch: string }): Promise<CherryPickCheck>;
   content(repo: Repository, source: ContentSource, maxBytes?: number): Promise<Buffer>;
   prepareAction(repo: Repository, action: GitAction): Promise<GitAction>;
   execute(repo: Repository, action: GitAction): Promise<void>;

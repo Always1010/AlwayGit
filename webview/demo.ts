@@ -79,6 +79,12 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
     return {commit:stashCommit,body:stashCommit.subject,sections:{working,index,...(untracked?{untracked}:{})},totalFiles:new Set(saved.map(file=>file.path)).size} satisfies StashDetails;
   }
   if(method==='compare'){const request=payload as {left:string;right:string},left=commits.find(commit=>commit.oid===resolve(request.left))??commits[1],right=commits.find(commit=>commit.oid===resolve(request.right))??commits[0];return {left,right,files:[{path:'webview/App.tsx',status:'M'},{path:'webview/styles.css',status:'M'},{path:'src/git/service.ts',status:'A'}]} satisfies CommitComparison;}
+  if (method === 'cherryPickCheck') {
+    const {commits:selected}=payload as {commits:string[]};
+    const byId=new Map(commits.map(commit=>[commit.oid,commit])),included=new Set<string>(),pending=demoSnapshot.head?[demoSnapshot.head]:[];
+    while(pending.length){const oid=pending.pop()!;if(included.has(oid))continue;included.add(oid);pending.push(...(byId.get(oid)?.parents??[]));}
+    return {head:demoSnapshot.head,branch:demoSnapshot.branch,included:selected.filter(oid=>included.has(oid))};
+  }
   if (method === 'operationReview') return { kind: demoSnapshot.operation.kind, token: `demo-${demoSnapshot.version}`, files: demoSnapshot.changes.filter(file=>file.indexStatus!==' '&&!file.untracked).map(file=>({path:file.path,lines:[]})) };
   if (method === 'pickWorktree') return 'D:\\Projects\\AlwayGit-new';
   if(method==='diffPreview'){const target=payload as {path:string;kind:string;area?:string;oid?:string;parent?:string;left?:string;right?:string};return {path:target.path,leftLabel:target.kind==='comparison'?target.left?.slice(0,8):target.kind==='commit'?'Parent '+(target.parent??'').slice(0,8):target.area==='staged'?'HEAD':'Index',rightLabel:target.kind==='comparison'?target.right?.slice(0,8):target.kind==='commit'?target.oid?.slice(0,8):target.area==='staged'?'Index':'Working Tree',left:'export function Workbench() {\n  return <HistoryPanel />;\n}\n',right:'export function Workbench() {\n  return (\n    <WorkbenchLayout>\n      <HistoryPanel />\n      <CommitDetails />\n    </WorkbenchLayout>\n  );\n}\n'};}

@@ -991,5 +991,17 @@
     "zh-CN": "Cherry-pick {{target}} onto {{branch}}",
     "review": "pending",
     "context": "webview/ActionDialog.tsx"
+  },
+  "actions.cherryPickReapplyWarning": {
+    "en": "These commits are already in the branch history. Reapply only when their changes were reverted or removed. This can produce conflicts or an empty result.",
+    "zh-CN": "这些提交已经在当前分支历史中。仅在其改动曾被撤销或移除、确需恢复时重新应用；此操作仍可能产生冲突或空结果。",
+    "review": "translated",
+    "context": "Cherry-pick eligibility and explicit historical reapplication"
+  },
+  "actions.cherryPickReapplyConfirm": {
+    "en": "I confirm that I want to reapply changes from commits already in this branch.",
+    "zh-CN": "我确认要重新应用当前分支历史中已有提交的改动。",
+    "review": "translated",
+    "context": "Cherry-pick eligibility and explicit historical reapplication"
   }
 }

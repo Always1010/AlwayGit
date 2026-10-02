@@ -607,5 +607,41 @@
     "zh-CN": "Commit {{value}}",
     "review": "pending",
     "context": "webview/menus.ts / menuFor"
+  },
+  "menus.cherryPickCurrentHead": {
+    "en": "This commit is the current branch HEAD.",
+    "zh-CN": "该提交就是当前分支的最新提交。",
+    "review": "translated",
+    "context": "Cherry-pick eligibility and explicit historical reapplication"
+  },
+  "menus.cherryPickAlreadyIncluded": {
+    "en": "The selection contains commits already in this branch. Deselect them before cherry-picking.",
+    "zh-CN": "所选提交中包含当前分支已有的提交，请先取消选择这些提交。",
+    "review": "translated",
+    "context": "Cherry-pick eligibility and explicit historical reapplication"
+  },
+  "menus.cherryPickChecking": {
+    "en": "Checking whether this branch already includes the selected commits…",
+    "zh-CN": "正在检查当前分支是否已包含所选提交…",
+    "review": "translated",
+    "context": "Cherry-pick eligibility and explicit historical reapplication"
+  },
+  "menus.cherryPickCheckFailed": {
+    "en": "Could not check commit ancestry. Close the menu, refresh and try again.",
+    "zh-CN": "无法检查提交关系，请关闭菜单、刷新后重试。",
+    "review": "translated",
+    "context": "Cherry-pick eligibility and explicit historical reapplication"
+  },
+  "menus.cherryPickReapply": {
+    "en": "Reapply Historical Commits…",
+    "zh-CN": "重新应用历史提交…",
+    "review": "translated",
+    "context": "Cherry-pick eligibility and explicit historical reapplication"
+  },
+  "menus.cherryPickSelectionChanged": {
+    "en": "The selected commits are no longer loaded. Close this menu and select them again.",
+    "zh-CN": "所选提交已不在当前列表中，请关闭菜单并重新选择。",
+    "review": "translated",
+    "context": "Commit selection invalidated while the context menu is open"
   }
 }

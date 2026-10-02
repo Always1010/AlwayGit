@@ -800,6 +800,14 @@ export const catalog = {
     "en": "Cherry-pick {{target}} onto {{branch}}",
     "zh-CN": "Cherry-pick {{target}} onto {{branch}}"
   },
+  "actions.cherryPickReapplyWarning": {
+    "en": "These commits are already in the branch history. Reapply only when their changes were reverted or removed. This can produce conflicts or an empty result.",
+    "zh-CN": "这些提交已经在当前分支历史中。仅在其改动曾被撤销或移除、确需恢复时重新应用；此操作仍可能产生冲突或空结果。"
+  },
+  "actions.cherryPickReapplyConfirm": {
+    "en": "I confirm that I want to reapply changes from commits already in this branch.",
+    "zh-CN": "我确认要重新应用当前分支历史中已有提交的改动。"
+  },
   "arguments.gitCommandArgumentsAreTooLongSelectFewerItems": {
     "en": "Git command arguments are too long. Select fewer items or shorten the description and retry.",
     "zh-CN": "Git command arguments are too long. Select fewer items or shorten the description and retry."
@@ -2499,6 +2507,30 @@ export const catalog = {
     "en": "Commit {{value}}",
     "zh-CN": "Commit {{value}}"
   },
+  "menus.cherryPickCurrentHead": {
+    "en": "This commit is the current branch HEAD.",
+    "zh-CN": "该提交就是当前分支的最新提交。"
+  },
+  "menus.cherryPickAlreadyIncluded": {
+    "en": "The selection contains commits already in this branch. Deselect them before cherry-picking.",
+    "zh-CN": "所选提交中包含当前分支已有的提交，请先取消选择这些提交。"
+  },
+  "menus.cherryPickChecking": {
+    "en": "Checking whether this branch already includes the selected commits…",
+    "zh-CN": "正在检查当前分支是否已包含所选提交…"
+  },
+  "menus.cherryPickCheckFailed": {
+    "en": "Could not check commit ancestry. Close the menu, refresh and try again.",
+    "zh-CN": "无法检查提交关系，请关闭菜单、刷新后重试。"
+  },
+  "menus.cherryPickReapply": {
+    "en": "Reapply Historical Commits…",
+    "zh-CN": "重新应用历史提交…"
+  },
+  "menus.cherryPickSelectionChanged": {
+    "en": "The selected commits are no longer loaded. Close this menu and select them again.",
+    "zh-CN": "所选提交已不在当前列表中，请关闭菜单并重新选择。"
+  },
   "notices.theRepositoryWasRemovedFromAlwayGit": {
     "en": "The repository was removed from AlwayGit.",
     "zh-CN": "该仓库已从 AlwayGit 移除。"
@@ -3462,6 +3494,22 @@ export const catalog = {
   "service.retainedCheckoutStash": {
     "en": "\nStash {{oid}} was created and retained. Checkout did not complete; your saved changes remain in Stashes.",
     "zh-CN": "\nStash {{oid}} was created and retained. Checkout did not complete; your saved changes remain in Stashes."
+  },
+  "service.cherryPickNeedsBranch": {
+    "en": "Cherry-pick requires a local branch with a HEAD commit.",
+    "zh-CN": "Cherry-pick 需要当前处于已有提交的本地分支。"
+  },
+  "service.cherryPickCurrentHead": {
+    "en": "This commit is the current branch HEAD and cannot be cherry-picked onto itself.",
+    "zh-CN": "该提交就是当前分支的最新提交，不能 Cherry-pick 到自身。"
+  },
+  "service.cherryPickAlreadyIncluded": {
+    "en": "This branch already includes selected commits. Deselect them or explicitly confirm Reapply Historical Commits.",
+    "zh-CN": "当前分支已包含所选提交，请取消选择这些提交，或明确确认重新应用历史提交。"
+  },
+  "service.cherryPickCheckFailed": {
+    "en": "Could not check whether this branch already includes the selected commits.",
+    "zh-CN": "无法检查当前分支是否已包含所选提交。"
   },
   "session.lightAndDarkGraphPalettesMustHaveTheSame": {
     "en": "Light and dark graph palettes must have the same size",
@@ -4824,6 +4872,8 @@ export interface MessageParameters {
   "actions.fastForwardOnly": {  };
   "actions.resetBranchToTarget": { branch: ParameterValue; target: ParameterValue };
   "actions.cherryPickOnto": { target: ParameterValue; branch: ParameterValue };
+  "actions.cherryPickReapplyWarning": {  };
+  "actions.cherryPickReapplyConfirm": {  };
   "arguments.gitCommandArgumentsAreTooLongSelectFewerItems": {  };
   "arguments.messagesCannotContainNULCharacters": {  };
   "catalogStore.theSharedRepositoryCatalogIsDamagedOrUsesAn": {  };
@@ -5239,6 +5289,12 @@ export interface MessageParameters {
   "menus.reset": {  };
   "menus.copyCommitMessage": {  };
   "menus.commit": { value: ParameterValue };
+  "menus.cherryPickCurrentHead": {  };
+  "menus.cherryPickAlreadyIncluded": {  };
+  "menus.cherryPickChecking": {  };
+  "menus.cherryPickCheckFailed": {  };
+  "menus.cherryPickReapply": {  };
+  "menus.cherryPickSelectionChanged": {  };
   "notices.theRepositoryWasRemovedFromAlwayGit": {  };
   "notices.couldNotLocateThisCommitInTheFullHistory": {  };
   "notices.automaticLocateReachedItsReadLimitHistoryAndCommit": {  };
@@ -5480,6 +5536,10 @@ export interface MessageParameters {
   "service.unsupportedGitAction": {  };
   "service.retainedCheckoutBranch": { branch: ParameterValue };
   "service.retainedCheckoutStash": { oid: ParameterValue };
+  "service.cherryPickNeedsBranch": {  };
+  "service.cherryPickCurrentHead": {  };
+  "service.cherryPickAlreadyIncluded": {  };
+  "service.cherryPickCheckFailed": {  };
   "session.lightAndDarkGraphPalettesMustHaveTheSame": {  };
   "session.zhCN": {  };
   "session.sessionExceedsTheStorageLimit": {  };
