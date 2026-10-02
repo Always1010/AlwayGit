@@ -7,7 +7,7 @@ export interface RepositoryDiscoveryPreview { scanId: string; root: string; scan
 export interface AddRepositoriesResult { added: number; existing: number; skipped: number; collection?: RepositoryCollection }
 export interface RepositoryStatus { repositoryId: string; branch: string; upstream?: string; ahead: number; unpushed: number }
 export interface Change { path: string; originalPath?: string; indexStatus: string; worktreeStatus: string; conflict: boolean; untracked: boolean }
-export interface GitRef { name: string; fullName: string; kind: 'local' | 'remote' | 'tag'; oid: string; targetType?: 'commit' | 'tree' | 'blob' | 'tag'; upstream?: string; symbolicTarget?: string }
+export interface GitRef { name: string; fullName: string; kind: 'local' | 'remote' | 'tag'; oid: string; refOid?: string; targetType?: 'commit' | 'tree' | 'blob' | 'tag'; upstream?: string; symbolicTarget?: string }
 export interface Stash { selector: string; oid: string; subject: string }
 export interface Worktree { path: string; head: string; branch?: string; bare: boolean; detached: boolean; locked?: string; prunable?: string }
 export type OperationKind = 'merge' | 'rebase' | 'cherry-pick' | 'revert';
@@ -38,7 +38,7 @@ export type GitAction =
   | { type: 'branch.delete'; names: string[]; force?: boolean; expectedOids?: Record<string,string> }
   | { type: 'remote.delete'; remote:string; branches:string[]; expectedOids?:Record<string,string>; expectedDestination?: string }
   | { type: 'tag.create'; name: string; target?: string; message?: string }
-  | { type: 'tag.delete'; name: string }
+  | { type: 'tag.delete'; name: string; expectedOid: string }
   | { type: 'stash.create'; message?: string; includeUntracked?: boolean; paths?: string[] }
   | { type: 'stash.apply'; selector: string; pop?: boolean; expectedOid?: string }
   | { type: 'stash.drop'; selector: string; expectedOid?: string }

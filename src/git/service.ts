@@ -212,7 +212,7 @@ export class GitService implements GitServiceContract {
       // nested tags fully before deciding whether Commit actions are meaningful.
       const targetType = (peeledType === 'tag' ? await this.text(repo, ['cat-file', '-t', `${fullName}^{}`]) : peeledType || objectType) as GitRef['targetType'];
       const oid = targetType === 'commit' ? peeledType === 'commit' ? peeledOid : peeledType === 'tag' ? await this.oid(repo, fullName) : objectOid : objectOid;
-      return { fullName, name: fullName.replace(/^refs\/(heads|remotes|tags)\//, ''), kind, oid, targetType, ...(upstream ? { upstream } : {}), ...(symbolicTarget ? { symbolicTarget } : {}) };
+      return { fullName, name: fullName.replace(/^refs\/(heads|remotes|tags)\//, ''), kind, oid, ...(kind === 'tag' ? { refOid: objectOid } : {}), targetType, ...(upstream ? { upstream } : {}), ...(symbolicTarget ? { symbolicTarget } : {}) };
     })) : [];
     const stashes: Stash[] = stashOutput ? stashOutput.split('\n').map(line => { const [selector, oid, subject] = line.split('\0'); return { selector, oid, subject }; }) : [];
     const remotes = remoteOutput ? remoteOutput.split('\n') : [];
@@ -648,7 +648,22 @@ export class GitService implements GitServiceContract {
         return;
       }
       case 'tag.create': await this.run(repo, ['check-ref-format', `refs/tags/${token(action.name, 'tag name')}`]); args = ['tag', ...(action.message ? ['-a', '-m', action.message] : []), action.name, await this.oid(repo, action.target ?? 'HEAD')]; break;
-      case 'tag.delete': await this.run(repo, ['check-ref-format', `refs/tags/${token(action.name, 'tag name')}`]); args = ['tag', '-d', '--', action.name]; break;
+      case 'tag.delete': {
+        const ref = `refs/tags/${token(action.name, 'tag name')}`, expected = action.expectedOid;
+        await this.run(repo, ['check-ref-format', ref]);
+        if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(expected ?? '') || /^0+$/.test(expected)) throw new GitError('The Tag identity is missing or invalid. Refresh and reopen the deletion dialog.', 'OPERATION_CHANGED');
+        const current = await this.run(repo, ['show-ref', '--verify', '--hash', '--', ref], true);
+        if (current.code || current.stdout.toString('utf8').trim() !== expected) throw new GitError('The Tag changed. Refresh and reopen the deletion dialog.', 'OPERATION_CHANGED');
+        // Compare the raw ref object, including an annotated tag object, atomically.
+        // Do not dereference a symbolic tag and accidentally remove its target.
+        const deleted = await this.run(repo, ['update-ref', '--no-deref', '-d', ref, expected], true);
+        if (deleted.code) {
+          const latest = await this.run(repo, ['show-ref', '--verify', '--hash', '--', ref], true);
+          if (latest.code || latest.stdout.toString('utf8').trim() !== expected) throw new GitError('The Tag changed before deletion. Refresh and reopen the deletion dialog.', 'OPERATION_CHANGED', deleted.stdout.toString('utf8'), deleted.stderr.toString('utf8'));
+          throw new GitError(deleted.stderr.toString('utf8').trim() || 'Tag deletion failed.', 'GIT_FAILED', deleted.stdout.toString('utf8'), deleted.stderr.toString('utf8'));
+        }
+        return;
+      }
       case 'stash.create': {
         if (action.message?.includes('\0')) throw new GitError('Messages cannot contain NUL characters', 'INVALID_ARGUMENT');
         // store has no stdin message option. Check its worst-case command before

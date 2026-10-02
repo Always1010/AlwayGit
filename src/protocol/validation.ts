@@ -20,7 +20,7 @@ export const actionSchema = z.union([
   z.object({ type: z.literal('branch.delete'), names: z.array(text).min(1).max(1000), force: z.boolean().optional(), expectedOids:z.record(text,text).optional() }),
   z.object({ type:z.literal('remote.delete'), remote:text, branches:z.array(text).min(1).max(1000), expectedOids:z.record(text,z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})?$/)).optional(), expectedDestination:z.string().regex(/^[a-f0-9]{64}$/).optional() }),
   z.object({ type: z.literal('tag.create'), name: text, target: text.optional(), message: z.string().max(100000).optional() }),
-  z.object({ type: z.literal('tag.delete'), name: text }),
+  z.object({ type: z.literal('tag.delete'), name: text, expectedOid: z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/).refine(oid => !/^0+$/.test(oid)) }),
   z.object({ type: z.literal('stash.create'), message: z.string().max(10000).optional(), includeUntracked: z.boolean().optional(), paths: paths.optional() }),
   z.object({ type: z.literal('stash.apply'), selector: text, pop: z.boolean().optional(), expectedOid: text.optional() }),
   z.object({ type: z.literal('stash.drop'), selector: text, expectedOid: text.optional() }),

@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-052：按名称删除 Tag 可能删除确认后替换的引用
+
+- 日期：2026-10-03
+- 状态：已解决
+- 现象：Tag 在对话框等待期间被重建后仍可能删除；注解 Tag 即使指向同一 Commit，注解对象也可能已变化。
+- 原因：删除只携带名称，Snapshot 的 oid 是 peeled Commit，未保留原始引用身份。
+- 解决方案：Snapshot 提供 refOid，菜单与对话框捕获原始身份；宿主预检并使用 update-ref 的旧 OID 原子校验删除，拒绝缺失和陈旧身份；不解引用符号 Tag。
+- 验证方式：类型检查通过；四文件 Tag 定向 7 项测试通过，覆盖注解 Tag 同 Commit 重建、轻量 Tag 移动、缺失/zero/peeled 身份、预检后的删除竞态以及正常删除。
+- 相关文件：`src/git/service.ts`、`src/protocol/types.ts`、`src/protocol/validation.ts`、`webview/ActionDialog.tsx`、`webview/menus.ts`、`webview/demo.ts`、`tests/git-tag-delete.test.ts`、对应协议与菜单测试。
+
 ## BUG-053：网络超时层不一致且结束的命令可留下凭据输入框
 
 - 日期：2026-10-03
