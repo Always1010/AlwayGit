@@ -21,6 +21,30 @@ beforeEach(async () => {
 });
 afterEach(() => { vi.useRealTimers(); });
 describe('repository UI consistency', () => {
+  it('keeps the newest catalog and active repository when an older initialization finishes late', async () => {
+    await store.getState().selectRepository('b');
+    const old = deferred<Repository[]>(), latest = deferred<Repository[]>(), fallback = bridge.rpc.getMockImplementation()!;
+    let calls = 0;
+    bridge.rpc.mockImplementation((method, ...args) => method === 'repositories' ? (++calls === 1 ? old.promise : latest.promise) : fallback(method, ...args));
+    const first = store.getState().initialize(), second = store.getState().initialize();
+    latest.resolve([a, b]); await second;
+    old.resolve([a]); await first;
+    expect(store.getState().repositories).toEqual([a, b]);
+    expect(store.getState().repoId).toBe('b');
+    expect(store.getState().snapshot?.repository.id).toBe('b');
+    expect(store.getState().notice).toBeUndefined();
+  });
+  it('does not clear catalog loading while a newer initialization is pending', async () => {
+    const old = deferred<Repository[]>(), latest = deferred<Repository[]>(), fallback = bridge.rpc.getMockImplementation()!;
+    let calls = 0;
+    bridge.rpc.mockImplementation((method, ...args) => method === 'repositories' ? (++calls === 1 ? old.promise : latest.promise) : fallback(method, ...args));
+    const first = store.getState().initialize(), second = store.getState().initialize();
+    old.resolve([a]); await first;
+    expect(store.getState().loading).toBe(true);
+    latest.resolve([a, b]); await second;
+    expect(store.getState().loading).toBe(false);
+  });
+
   it('starts without choosing the first repository and clears a removed active repository', async()=>{
     await store.getState().initialize();
     expect(store.getState().repoId).toBeUndefined();

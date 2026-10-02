@@ -10,7 +10,7 @@ import type { ActionFeedback } from './actionFeedback';
 import { normalizeAppearance, type Appearance, type InterfaceSettings, type InterfaceSettingsUpdate } from './appearance';
 import { groupRepositories } from '../src/protocol/repositories';
 
-let repositoryEpoch = 0, repositoryStatusEpoch = 0, snapshotEpoch = 0, historyEpoch = 0, detailEpoch = 0;
+let catalogEpoch = 0, repositoryEpoch = 0, repositoryStatusEpoch = 0, snapshotEpoch = 0, historyEpoch = 0, detailEpoch = 0;
 let refreshInvalidation: { epoch: number; changes?: RepositoryChanges; forceHistory: boolean } | undefined;
 const session = readSession(), views = session.views ?? {}, executingRepositories = new Set<string>(), hostBusyRepositories = new Set<string>();
 const actionFeedbacks = new Map<string, ActionFeedback>();
@@ -45,10 +45,38 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   repositories: [], repositoryCollections:[], repositoryStatuses: {}, selectedRepositoryKeys:[], commits: [], selectedOids:[], selectedRefs:[], search: '', language: session.language === 'zh-CN' ? 'zh-CN' : 'en', layout: initialLayout, appearance: normalizeAppearance(session.appearance), locateToken:0,nextOffset: 0, tips: [], hasMore: false, loading: false, historyLoading: false, detailsLoading: false, diffRevision: 0, busy: false, activity: '', tab: 'history', drafts: session.drafts ?? {}, collapsedSidebarGroups:[],
   report(error) { set({ error: message(error) }); },
   async initialize() {
-    void get().loadOperationSettings().catch(error => get().report(error));
+    const request = ++catalogEpoch;
+    void get().loadOperationSettings().catch(error => { if (request === catalogEpoch) get().report(error); });
     set({ loading: true });
-    try { const [repositories,collectionsResult,orderResult] = await Promise.all([rpc<Repository[]>('repositories'),rpc<RepositoryCollection[]>('repositoryCollections'),rpc<RepositoryOrder>('repositoryOrder')]),repositoryCollections=Array.isArray(collectionsResult)?collectionsResult:[],currentId=get().repoId,keys=new Set(groupRepositories(repositories,currentId).map(group=>group.key)),selectedRepositoryKeys=get().selectedRepositoryKeys.filter(key=>keys.has(key)),repositorySelectionAnchor=selectedRepositoryKeys.includes(get().repositorySelectionAnchor??'')?get().repositorySelectionAnchor:undefined; set({ repositories,repositoryCollections,repositoryOrder:orderResult?.root?orderResult:undefined,selectedRepositoryKeys,repositorySelectionAnchor }); void get().loadRepositoryStatuses(); if (!repositories.some(r => r.id === currentId)) { const initial = currentId?undefined:repositories.find(r => r.id === session.repoId); if (initial) await get().selectRepository(initial.id); else { ++repositoryEpoch; ++historyEpoch; ++detailEpoch; set({ repoId: undefined, snapshot: undefined, commits: [], historyHead: undefined, details: undefined, comparison:undefined, selectedOid:undefined,selectedOids:[],selectedFile:undefined,diffTarget:undefined,busy:false,activity:'',...(currentId?{notice:get().language==='zh-CN'?'该仓库已从 AlwayGit 移除。':'The repository was removed from AlwayGit.'}:{}) }); } } }
-    catch (error) { get().report(error); } finally { set({ loading: false }); }
+    try {
+      const [repositories, collectionsResult, orderResult] = await Promise.all([
+        rpc<Repository[]>('repositories'), rpc<RepositoryCollection[]>('repositoryCollections'), rpc<RepositoryOrder>('repositoryOrder'),
+      ]);
+      if (request !== catalogEpoch) return;
+      const repositoryCollections = Array.isArray(collectionsResult) ? collectionsResult : [];
+      const currentId = get().repoId, keys = new Set(groupRepositories(repositories, currentId).map(group => group.key));
+      const selectedRepositoryKeys = get().selectedRepositoryKeys.filter(key => keys.has(key));
+      const repositorySelectionAnchor = selectedRepositoryKeys.includes(get().repositorySelectionAnchor ?? '') ? get().repositorySelectionAnchor : undefined;
+      const removed = !!currentId && !repositories.some(repo => repo.id === currentId);
+      if (removed) { ++repositoryEpoch; ++historyEpoch; ++detailEpoch; }
+      set({
+        repositories, repositoryCollections, repositoryOrder: orderResult?.root ? orderResult : undefined,
+        selectedRepositoryKeys, repositorySelectionAnchor,
+        ...(removed ? {
+          repoId: undefined, snapshot: undefined, commits: [], historyHead: undefined, details: undefined,
+          comparison: undefined, stashDetails: undefined, selectedStashOid: undefined, selectedStashSection: undefined,
+          selectedOid: undefined, selectedOids: [], selectedFile: undefined, diffTarget: undefined,
+          operationReview: undefined, busy: false, activity: '',
+          notice: get().language === 'zh-CN' ? '该仓库已从 AlwayGit 移除。' : 'The repository was removed from AlwayGit.',
+        } : {}),
+      });
+      void get().loadRepositoryStatuses();
+      if (!currentId) {
+        const initial = repositories.find(repo => repo.id === session.repoId);
+        if (initial) await get().selectRepository(initial.id);
+      }
+    } catch (error) { if (request === catalogEpoch) get().report(error); }
+    finally { if (request === catalogEpoch) set({ loading: false }); }
   },
   async reorderRepository(payload) {
     try { const order=await rpc<RepositoryOrder>('reorderRepository',undefined,payload); set({repositoryOrder:order}); } catch(error) { get().report(error); }
