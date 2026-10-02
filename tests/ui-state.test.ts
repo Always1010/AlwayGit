@@ -249,6 +249,29 @@ describe('repository UI consistency', () => {
     expect(store.getState()).toMatchObject({search:'',selectedOids:[old.oid],locatingOid:undefined,commits:[commit,old]});
     expect(bridge.rpc.mock.calls.filter(([method])=>method==='history').at(-1)?.[2]).toMatchObject({offset:1,tips:['full-tip']});
   });
+  it('debounces search and ignores a response already running before the input changed', async () => {
+    await store.getState().selectRepository('a'); vi.useFakeTimers();
+    const old=deferred<{commits:Commit[];tips:string[];nextOffset:number;hasMore:boolean}>(),fallback=bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method,repoId,payload)=>method==='history'&&!payload.search?old.promise:fallback(method,repoId,payload));
+    const pending=store.getState().loadHistory(); bridge.rpc.mockClear();
+    store.getState().setSearch('a'); store.getState().setSearch('ab'); store.getState().setSearch('abc');
+    old.resolve({commits:[{...commit,oid:'stale'}],tips:[],nextOffset:1,hasMore:false}); await pending;
+    expect(store.getState().commits).toEqual([]); expect(store.getState().historyLoading).toBe(true);
+    await vi.advanceTimersByTimeAsync(199); expect(bridge.rpc).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(bridge.rpc.mock.calls.filter(([method])=>method==='history')).toHaveLength(1);
+    expect(bridge.rpc).toHaveBeenCalledWith('history','a',expect.objectContaining({search:'abc'}));
+    store.getState().setSearch('cancelled'); await store.getState().selectRepository('b'); bridge.rpc.mockClear();
+    await vi.advanceTimersByTimeAsync(200); expect(bridge.rpc).not.toHaveBeenCalled();
+  });
+  it('bounds automatic deep locating while retaining loaded history and continuation', async () => {
+    await store.getState().selectRepository('a'); const fallback=bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method,repoId,payload)=>method==='history'?{commits:[{...commit,oid:`page-${payload.offset}`}],tips:['fixed'],nextOffset:payload.offset+1,hasMore:true}:fallback(method,repoId,payload));
+    bridge.rpc.mockClear(); await store.getState().locateCommit('very-old');
+    expect(bridge.rpc.mock.calls.filter(([method])=>method==='history')).toHaveLength(20);
+    expect(store.getState()).toMatchObject({hasMore:true,nextOffset:20,locatingOid:undefined,selectedOid:'very-old'});
+    expect(store.getState().commits).toHaveLength(20); expect(store.getState().notice).toContain('Load More');
+  });
   it('stops locating when a new search replaces the pending history request', async () => {
     await store.getState().selectRepository('a');
     const delayed=deferred<{commits:Commit[];tips:string[];nextOffset:number;hasMore:boolean}>(),fallback=bridge.rpc.getMockImplementation()!;
