@@ -28,9 +28,9 @@ export async function confirmAction(repo: Repository, action: GitAction, languag
   }
   const proceed = text('Proceed', '继续');
   if (warning) return (await vscode.window.showWarningMessage(warning, { modal: true, detail: text(`Repository: ${repo.root}`, `仓库：${repo.root}`) }, proceed)) === proceed;
-  if (action.type === 'commit') {
+  if (action.type === 'commit' || action.type === 'operation.continue') {
     const dirty = vscode.workspace.textDocuments.filter(d => d.isDirty && d.uri.scheme === 'file' && d.uri.fsPath.startsWith(repo.root + require('node:path').sep));
-    const button = text('Commit Staged Content', '提交 Staged Content');
+    const button = text('Use Staged Content', '使用暂存内容');
     if (dirty.length) return (await vscode.window.showWarningMessage(text(`${dirty.length} file(s) have unsaved editor changes. Git commits the staged disk content.`, `${dirty.length} 个文件在编辑器中有未保存修改。Git 提交的是磁盘上已暂存的内容。`), { modal: true }, button)) === button;
   }
   return true;

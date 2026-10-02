@@ -50,7 +50,9 @@ export function menuFor(target: MenuTarget, api: MenuApi): { caption: string; it
     const changes=unique.filter((file):file is FileMenuEntry & {target:Extract<DiffTarget,{kind:'change'}>}=>file.target.kind==='change'),stage=changes.filter(file=>file.target.area!=='staged').map(file=>file.path),unstage=changes.filter(file=>file.target.area==='staged').map(file=>file.path),discard=changes.filter(file=>file.target.area==='unstaged').map(file=>file.path),conflicts=changes.filter(file=>file.target.area==='conflict').map(file=>file.path);
     const items:MenuItem[]=[];
     if(unique.length===1)items.push(item(t('Open Diff in VS Code','在 VS Code 中打开 Diff'),()=>api.openDiff(target.primary.target),'diff'),item(t('Edit in VS Code','在 VS Code 中编辑'),()=>api.editFile(target.primary.target),'edit'));
-    if(stage.length)items.push(item(conflicts.length===stage.length?t(`Mark ${stage.length} Resolved`,`标记 ${stage.length} 个已解决`):t(`Stage ${stage.length} File${stage.length===1?'':'s'}`,`Stage ${stage.length} 个文件`),()=>{void state.execute({type:'stage',paths:stage});},'add',busy));
+    const ordinary=stage.filter(path=>!conflicts.includes(path));
+    if(conflicts.length)items.push(item(t(`Manually handled: Mark & Stage ${conflicts.length}`,`已手动处理，标记并暂存 ${conflicts.length} 个文件`),()=>{void state.execute({type:'resolve-and-stage',paths:conflicts});},'add',busy));
+    if(ordinary.length)items.push(item(t(`Stage ${ordinary.length} File${ordinary.length===1?'':'s'}`,`Stage ${ordinary.length} 个文件`),()=>{void state.execute({type:'stage',paths:ordinary});},'add',busy));
     if(unstage.length)items.push(item(t(`Unstage ${unstage.length} File${unstage.length===1?'':'s'}`,`Unstage ${unstage.length} 个文件`),()=>{void state.execute({type:'unstage',paths:unstage});},'remove',busy));
     if(discard.length)items.push(action(t(`Discard ${discard.length} File${discard.length===1?'':'s'}…`,`Discard ${discard.length} 个文件…`),{type:'discard',paths:discard},'discard',busy));
     items.push(copy(paths.length===1?t('Copy Path','复制路径'):t(`Copy ${paths.length} Paths`,`复制 ${paths.length} 个路径`),paths.join('\n')));

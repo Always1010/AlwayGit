@@ -28,7 +28,10 @@ let browser;
 try {
   browser = await chromium.launch(process.env.ALWAYGIT_BROWSER_EXECUTABLE ? { executablePath: process.env.ALWAYGIT_BROWSER_EXECUTABLE } : process.platform === 'win32' ? { channel: 'msedge' } : {});
   const url = `http://127.0.0.1:${server.address().port}/?demo=1`;
-  if (process.argv.includes('--remote-tracking-only')) {
+  if (process.argv.includes('--feedback-only')) {
+    await verifyFeedback(browser,url);
+    console.log('ALWAYGIT_UI_TESTS_PASSED: feedback-only');
+  } else if (process.argv.includes('--remote-tracking-only')) {
     await verifyRemoteTracking(browser,url);
     console.log('ALWAYGIT_UI_TESTS_PASSED: remote-tracking-only');
   } else if (process.argv.includes('--history-only')) {

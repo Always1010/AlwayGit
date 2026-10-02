@@ -10,7 +10,7 @@ export async function verifyFeedback(browser, url) {
       const repo = { id: 'feedback', root: '/feedback', commonDir: '/feedback/.git', name: 'Feedback fixture' };
       const commit = { oid: 'a'.repeat(40), parents: [], author: 'Fixture', email: 'test@example.com', timestamp: 0, subject: 'Test operations' };
       const fixture = window.__feedbackFixture = {
-        pending: undefined, calls: [],
+        pending: undefined, calls: [], cleanReview: false,
         snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 1, behind: 0, pushTarget: { localBranch: 'main', remote: 'origin', remoteBranch: 'release', configured: true }, remotes: ['origin'], changes: [], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
         complete(error) { window.postMessage({ type: 'response', id: this.pending.id, error: error ? { message: error } : undefined }, '*'); this.pending = undefined; },
       };
@@ -21,9 +21,10 @@ export async function verifyFeedback(browser, url) {
         let result;
         if (request.method === 'repositories') result = [repo];
         if (request.method === 'snapshot') result = structuredClone({ ...fixture.snapshot, version: ++fixture.snapshot.version });
+        if (request.method === 'operationReview') result = {kind:fixture.snapshot.operation.kind,token:'reviewed-index',files:fixture.snapshot.changes.filter(file=>!file.conflict&&file.indexStatus!==' ').map(file=>({path:file.path,lines:fixture.cleanReview?[]:[1,3,5]}))};
         if (request.method === 'history') result = { commits: [commit], tips: [commit.oid], nextOffset: 1, hasMore: false };
         if (request.method === 'details') result = { commit, body: '', files: [] };
-        if (request.method === 'diffPreview') result = { path: request.payload.path, leftLabel: 'Index', rightLabel: 'Working Tree', left: 'before', right: 'after' };
+        if (request.method === 'diffPreview') result = { path: request.payload.path, leftLabel: request.payload.area==='staged'?'HEAD':'Ours', rightLabel: request.payload.area==='staged'?'Index':'Theirs', left: 'before', right: request.payload.area==='staged'&&!fixture.cleanReview?'<<<<<<< HEAD\nmain-ready\n=======\nfeature-ready\n>>>>>>> feature/release':'feature-ready' };
         setTimeout(() => window.postMessage({ type: 'response', id: request.id, result }, '*'), 10);
       } });
     });
@@ -54,36 +55,70 @@ export async function verifyFeedback(browser, url) {
     assert.match(await bar.locator('pre').innerText(), /fatal: could not push/);
     await bar.getByRole('button', { name: 'Show Log', exact: true }).click();
     await page.waitForFunction(() => window.__feedbackFixture.calls.some(call => call.method === 'showLog'));
+    await page.getByTestId('history').locator('[data-oid]').first().click({button:'right'});
+    await page.getByRole('menuitem',{name:'Merge…',exact:true}).click();
+    await page.getByRole('dialog').getByRole('button',{name:'Merge',exact:true}).click();
+    await page.waitForFunction(()=>window.__feedbackFixture.pending?.payload.type==='merge');
     await page.evaluate(() => {
       const fixture = window.__feedbackFixture;
-      fixture.snapshot.operation = { kind: 'cherry-pick', conflicts: 2, canContinue: false, canAbort: true, canSkip: true };
+      fixture.snapshot.operation = { kind: 'merge', conflicts: 2, canContinue: false, canAbort: true, canSkip: false, originalHead:'a'.repeat(40) };
       fixture.snapshot.changes = ['src/features/auth/login.ts', 'webview/Details.tsx'].map(path => ({ path, indexStatus: 'U', worktreeStatus: 'U', conflict: true, untracked: false }));
-      window.postMessage({ type: 'changed', repoId: 'feedback' }, '*');
+      fixture.complete('CONFLICT: edit and stage the result');
     });
+    await page.getByRole('dialog',{name:'Merge',exact:true}).getByRole('button',{name:'Cancel',exact:true}).click();
     const operation = page.getByTestId('operation-notice');
-    await operation.getByText('Cherry-pick paused', { exact: true }).waitFor();
+    await operation.getByText('Merge paused', { exact: true }).waitFor();
     await operation.getByText('2 conflicts', { exact: true }).waitFor();
     assert.equal(await operation.getByRole('button', { name: 'Continue', exact: true }).isDisabled(), true);
     await operation.getByText('Resolve and Stage conflicting files before Continue.', { exact: true }).waitFor();
     await operation.getByRole('button', { name: 'View Conflicts', exact: true }).click();
     await page.waitForFunction(() => window.__feedbackFixture.calls.some(call => call.method === 'diffPreview' && call.payload.area === 'conflict' && call.payload.path === 'src/features/auth/login.ts'));
-    await page.getByTestId('details').locator('.change-group').first().getByText('src/features/auth', { exact: true }).waitFor();
-    await operation.getByRole('button', { name: 'Abort…', exact: true }).click();
+    await page.getByTestId('details').locator('.change-group').first().getByText('./src/features/auth', { exact: true }).waitFor();
+    await operation.getByRole('button', { name: 'Abort Merge…', exact: true }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
-    await page.screenshot({ path: 'artifacts/workbench-conflicts.png' });
+    const conflictGroup=page.getByTestId('details').locator('.change-group').first();
+    await conflictGroup.getByText('This does not choose the correct content or verify your resolution.',{exact:false}).waitFor();
+    await conflictGroup.getByRole('button',{name:/Manually handled: Mark & Stage/}).click();
+    await page.waitForFunction(()=>window.__feedbackFixture.pending?.payload.type==='resolve-and-stage');
     await page.evaluate(() => {
       const fixture = window.__feedbackFixture;
-      fixture.snapshot.operation = { kind: 'cherry-pick', conflicts: 0, canContinue: true, canAbort: true, canSkip: true };
+      fixture.snapshot.operation = { kind: 'merge', conflicts: 0, canContinue: true, canAbort: true, canSkip: false };
       fixture.snapshot.changes = fixture.snapshot.changes.map(file => ({ ...file, indexStatus: 'M', worktreeStatus: ' ', conflict: false }));
-      window.postMessage({ type: 'changed', repoId: 'feedback' }, '*');
+      fixture.complete();
     });
-    await operation.getByText('Ready to Continue', { exact: true }).waitFor();
+    await operation.getByText('Awaiting result review', { exact: true }).waitFor();
+    assert.equal(await operation.getByText('Conflicts resolved.',{exact:false}).count(),0);
+    await bar.getByText('Marked and staged; inspect the result before continuing.',{exact:true}).waitFor();
+    await operation.getByRole('button',{name:'Review Staged Result',exact:true}).waitFor();
     assert.equal(await operation.getByRole('button', { name: 'Continue', exact: true }).isEnabled(), true);
     await operation.getByRole('button', { name: 'Continue', exact: true }).click();
+    let review=page.getByRole('dialog',{name:'Inspect Staged Result',exact:true});
+    await review.getByText('Possible markers at lines: 1, 3, 5',{exact:true}).first().waitFor();
+    assert.equal(await review.getByRole('button',{name:'Continue Anyway',exact:true}).isDisabled(),true);
+    assert.equal(await page.evaluate(()=>window.__feedbackFixture.pending),undefined);
+    await review.getByRole('button',{name:'Return to Review',exact:true}).click();
+    await page.waitForFunction(()=>window.__feedbackFixture.calls.some(call=>call.method==='diffPreview'&&call.payload.area==='staged'));
+    await operation.getByRole('button',{name:'Continue',exact:true}).click();
+    review=page.getByRole('dialog',{name:'Inspect Staged Result',exact:true});
+    await review.getByRole('checkbox').check();
+    await review.getByRole('button',{name:'Continue Anyway',exact:true}).click();
     await page.waitForFunction(() => window.__feedbackFixture.pending?.payload.type === 'operation.continue');
+    assert.equal(await page.evaluate(()=>window.__feedbackFixture.pending.payload.reviewToken),'reviewed-index');
     await page.evaluate(() => { window.__feedbackFixture.snapshot.operation = { conflicts: 0, canContinue: false, canSkip: false, canAbort: false }; window.__feedbackFixture.complete(); });
     await operation.waitFor({ state: 'hidden' });
+    // Ordinary Commit during an active operation uses the same review boundary.
+    await page.evaluate(()=>{const fixture=window.__feedbackFixture;fixture.cleanReview=true;fixture.snapshot.operation={kind:'merge',conflicts:0,canContinue:true,canAbort:true,canSkip:false};window.postMessage({type:'changed',repoId:'feedback'},'*');});
+    await operation.waitFor();
+    await page.getByLabel('Commit message',{exact:true}).fill('Reviewed merge');
+    await page.locator('.commit-form').getByRole('button',{name:'Commit',exact:true}).click();
+    review=page.getByRole('dialog',{name:'Inspect Staged Result',exact:true});
+    await review.getByText('This does not verify content correctness.',{exact:false}).waitFor();
+    assert.equal(await review.getByRole('checkbox').count(),0);
+    await review.getByRole('button',{name:'Confirm & Continue',exact:true}).click();
+    await page.waitForFunction(()=>window.__feedbackFixture.pending?.payload.type==='commit');
+    await page.evaluate(()=>{const fixture=window.__feedbackFixture;fixture.snapshot.operation={conflicts:0,canContinue:false,canAbort:false,canSkip:false};fixture.snapshot.changes=[];fixture.complete();});
+    await page.waitForFunction(()=>document.querySelector('#ag-commit-message').value==='');
     assert.deepEqual(errors, []);
-    console.log('ALWAYGIT_FEEDBACK_UI_TESTS_PASSED: Push states and target, persistent results, error/log, conflicts navigation, disabled reason, resolved Continue');
+    console.log('ALWAYGIT_FEEDBACK_UI_TESTS_PASSED: feedback, manual staging, staged marker review, return, explicit override and Commit guard');
   } finally { await page.close(); }
 }

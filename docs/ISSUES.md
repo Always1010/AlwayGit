@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-019：冲突暂存被宣称为已解决且能直接完成操作
+
+- 日期：2026-10-02
+- 状态：已解决
+- 现象：未编辑冲突文件便点击 Mark Resolved，文件通过 `git add` 进入暂存；界面宣称 Conflicts resolved / Ready to Continue，随后可生成仍含冲突标记的提交。
+- 原因：冲突按钮与普通 Stage 共用动作；是否能 Continue 只根据 Git unmerged entries 是否归零，界面把 Index 状态当成内容正确性证明。Continue 和活动操作 Commit 没有结果检查。
+- 解决方案：新增人工标记并暂存动作与准确反馈；操作条显示待检查结果并保留暂存审阅入口。Continue / 活动操作 Commit 检查实际暂存内容，列出疑似标记行号及未扫描文件，有提示时明确确认后允许继续；无标记不保证正确。确认绑定操作及暂存版本，变化后重新检查，普通 Commit 不能绕过。
+- 验证方式：真实临时仓库覆盖 Merge / Rebase / Cherry-pick / Revert 的未编辑暂存、Continue 与 Commit 保护、明确确认继续、Index 与工作文件不同、确认后重新暂存、自定义及 diff3 标记、未扫描内容和 Abort；相关 4 个测试文件 70 项、类型检查、构建及无头操作反馈专项通过。原生 VS Code 窗口和非 Windows 环境未运行桌面集成复测。
+- 相关文件：`src/git/service.ts`、`src/protocol/types.ts`、`src/protocol/validation.ts`、`src/extension/workbench.ts`、`src/application/confirm.ts`、`webview/Details.tsx`、`webview/menus.ts`、`webview/OperationNotice.tsx`、`webview/OperationReviewDialog.tsx`、`webview/store.ts`、`webview/ActionFeedbackBar.tsx`、`tests/git-service.test.ts`、`tests/git-safety.test.ts`、`tests/ui-state.test.ts`、`tests/workbench-protocol.test.ts`、`scripts/test-feedback-ui.mjs`、`docs/WORKBENCH_SPEC.md`、`docs/ARCHITECTURE.md`、`docs/VALIDATION.md`。
+
 ## BUG-018：递归扫描会直接添加仓库且列表无法移除
 
 - 日期：2026-10-02

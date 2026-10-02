@@ -87,6 +87,48 @@ describe('Git service integration', () => {
     expect((await service.content(repo, { kind: 'index', path: 'same.txt', stage: 1 })).toString()).toBe('base'); expect((await service.content(repo, { kind: 'index', path: 'same.txt', stage: 2 })).toString()).toBe('main'); expect((await service.content(repo, { kind: 'index', path: 'same.txt', stage: 3 })).toString()).toBe('topic');
     await expect(service.execute(repo, { type: 'operation.continue', kind: 'merge' })).rejects.toThrow('Resolve conflicts'); await service.execute(repo, { type: 'operation.abort', kind: 'merge' }); expect((await service.snapshot(repo)).operation.kind).toBeUndefined();
   });
+  it.each(['merge', 'rebase', 'cherry-pick', 'revert'] as const)('requires review of unedited staged conflict markers before %s completion', async kind => {
+    const { root, service, repo } = await setup(); await commit(root, 'same.txt', 'base\n');
+    await git(root, 'switch', '-c', 'topic'); const topic = await commit(root, 'same.txt', 'topic\n');
+    await git(root, 'switch', 'main'); const originalHead = await commit(root, 'same.txt', 'main\n');
+    await expect(service.execute(repo, kind==='cherry-pick'||kind==='revert'?{type:kind,commits:[topic]}:{type:kind,target:'topic'})).rejects.toThrow();
+    await expect(service.reviewOperation(repo)).rejects.toMatchObject({code:'CONFLICTS'});
+    await service.execute(repo, { type:'resolve-and-stage', paths:['same.txt'] });
+    expect((await service.snapshot(repo)).operation).toMatchObject({kind,conflicts:0,canContinue:true});
+    await expect(service.execute(repo, {type:'operation.continue',kind})).rejects.toMatchObject({code:'REVIEW_REQUIRED'});
+    await expect(service.execute(repo, {type:'commit',message:'bypass'})).rejects.toMatchObject({code:'REVIEW_REQUIRED'});
+    const review=await service.reviewOperation(repo);
+    expect(review.files).toContainEqual({path:'same.txt',lines:[1,3,5]});
+    expect((await service.snapshot(repo)).head).toBe(kind==='rebase'?topic:originalHead);
+    await expect(service.execute(repo, {type:'operation.continue',kind,reviewToken:'fabricated'})).rejects.toMatchObject({code:'REVIEW_REQUIRED'});
+    // Literal markers are allowed only after explicitly accepting the inspected version.
+    await service.execute(repo,{type:'operation.continue',kind,reviewToken:review.token});
+    expect((await service.content(repo,{kind:'revision',revision:'HEAD',path:'same.txt'})).toString()).toContain('<<<<<<<');
+    expect((await service.snapshot(repo)).operation.kind).toBeUndefined();
+  });
+  it('scans the index rather than the edited working file and rejects changed review content', async()=>{
+    const {root,service,repo}=await setup();await commit(root,'same.txt','base\n');await git(root,'switch','-c','topic');await commit(root,'same.txt','topic\n');await git(root,'switch','main');await commit(root,'same.txt','main\n');
+    await expect(service.execute(repo,{type:'merge',target:'topic'})).rejects.toThrow();await service.execute(repo,{type:'resolve-and-stage',paths:['same.txt']});
+    await expect(service.execute(repo,{type:'resolve-and-stage',paths:['same.txt']})).rejects.toMatchObject({code:'OPERATION_CHANGED'});
+    await writeFile(path.join(root,'same.txt'),'topic-ready\n');const review=await service.reviewOperation(repo);
+    expect(review.files[0].lines).toEqual([1,3,5]);
+    await git(root,'add','--','same.txt');
+    await expect(service.execute(repo,{type:'operation.continue',kind:'merge',reviewToken:review.token})).rejects.toMatchObject({code:'REVIEW_CHANGED'});
+    const clean=await service.reviewOperation(repo);expect(clean.files).toEqual([{path:'same.txt',lines:[]}]);
+    await service.execute(repo,{type:'commit',message:'Reviewed merge',reviewToken:clean.token});
+    expect(await git(root,'show','HEAD:same.txt')).toBe('topic-ready');
+    await expect(service.execute(repo,{type:'commit',message:'stale',reviewToken:clean.token})).rejects.toMatchObject({code:'OPERATION_CHANGED'});
+  });
+  it('reports partial markers, diff3 custom widths and unscanned files without claiming correctness',async()=>{
+    const {root,service,repo}=await setup();await commit(root,'same.txt','base');await git(root,'switch','-c','topic');await commit(root,'same.txt','topic');await git(root,'switch','main');await commit(root,'same.txt','main');
+    await expect(service.execute(repo,{type:'merge',target:'topic'})).rejects.toThrow();
+    await writeFile(path.join(root,'same.txt'),'<<<<<<< ours\r\n||||||||| base\r\n=========\r\n>>>>>>>>> theirs\r\nlegitimate text');
+    await writeFile(path.join(root,'binary.bin'),Buffer.from([0,255,10]));await writeFile(path.join(root,'large.txt'),'x'.repeat(2*1024*1024+1));await writeFile(path.join(root,'encoded.txt'),Buffer.from([255,10]));
+    await git(root,'add','--','same.txt','binary.bin','large.txt','encoded.txt');const review=await service.reviewOperation(repo);
+    expect(review.files).toEqual(expect.arrayContaining([{path:'same.txt',lines:[1,2,3,4]},{path:'binary.bin',lines:[],skipped:'binary'},{path:'large.txt',lines:[],skipped:'large'},{path:'encoded.txt',lines:[],skipped:'encoding'}]));
+    const original=await git(root,'rev-parse','HEAD');await service.execute(repo,{type:'operation.abort',kind:'merge'});
+    expect(await git(root,'rev-parse','HEAD')).toBe(original);expect(await git(root,'status','--porcelain')).toBe('');
+  });
   it('implements branches, tags, stashes, reset, amend, cherry-pick, revert and rebase', async () => {
     const { root, service, repo } = await setup(); const base = await commit(root, 'base.txt', 'base');
     await service.execute(repo, { type: 'branch.create', name: 'topic', checkout: true }); const picked = await commit(root, 'picked.txt', 'pick'); await service.execute(repo, { type: 'branch.checkout', name: 'main' }); await commit(root, 'main.txt', 'main');

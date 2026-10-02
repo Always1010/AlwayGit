@@ -144,6 +144,7 @@ export class Workbench implements vscode.Disposable {
         const snapshot = await this.git.snapshot(repo); this.recordFingerprint(snapshot); return snapshot;
       }
       case 'history': return this.git.history(repo, { limit: vscode.workspace.getConfiguration('alwaygit').get<number>('historyPageSize', 300), ...historySchema.parse(request.payload ?? {}) });
+      case 'operationReview': return this.git.reviewOperation(repo);
       case 'details': { const data = detailsSchema.parse(request.payload); return this.git.details(repo, data.oid, data.parent); }
       case 'compare': { const data=comparisonSchema.parse(request.payload); return this.git.compare(repo,data.left,data.right,data.preserveOrder); }
       case 'diff': await this.projects.openDiff(repo.root, diffSchema.parse(request.payload)); return null;

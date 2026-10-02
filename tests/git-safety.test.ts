@@ -289,7 +289,8 @@ describe('Git safety regressions', () => {
     await expect(access(path.join(root, '.git', 'CHERRY_PICK_HEAD'))).rejects.toThrow();
     await access(path.join(root, '.git', 'sequencer', 'todo'));
     expect((await service.snapshot(repo)).operation).toMatchObject({ kind: 'cherry-pick', canContinue: true, canAbort: true });
-    await service.execute(repo, { type: 'operation.continue', kind: 'cherry-pick' });
+    const review=await service.reviewOperation(repo);
+    await service.execute(repo, { type: 'operation.continue', kind: 'cherry-pick', reviewToken:review.token });
     expect(await readFile(path.join(root, 'later.txt'), 'utf8')).toBe('later');
     expect((await service.snapshot(repo)).operation.kind).toBeUndefined();
   });
