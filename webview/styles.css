@@ -57,11 +57,16 @@ h1,h2,p {margin:0;}
 .button.sidebar-action:hover,.button.sidebar-action:focus-visible {border-color:var(--border);color:var(--fg);background:var(--hover);}
 .sidebar-list {padding:3px 4px 5px;}
 .sidebar-item {display:flex;align-items:center;gap:5px;text-align:left;width:100%;min-height:var(--row-height,24px);padding:2px 5px;min-width:0;border-radius:3px;user-select:none;}
-.sidebar-item.action-selected {background:color-mix(in srgb,var(--accent) 18%,var(--panel));outline:1px solid color-mix(in srgb,var(--accent) 52%,transparent);outline-offset:-1px;}
+.sidebar-item.action-selected,.repository-row.action-selected {background:color-mix(in srgb,var(--accent) 18%,var(--panel));outline:1px solid color-mix(in srgb,var(--accent) 52%,transparent);outline-offset:-1px;}
 .sidebar-item .notification-badge {margin-left:auto;flex:none;}
 .repository-collection-heading {font-weight:600;}
 .repository-collection-heading>.codicon-folder,.repository-collection-heading>.codicon-folder-opened {color:var(--yellow);}
-.repository-collection-member {padding-left:24px;}
+.repository-row {display:flex;align-items:center;min-width:0;min-height:var(--row-height,24px);border-radius:3px;}
+.repository-row>.sidebar-item {flex:1;width:auto;min-width:0;}
+.repository-collection-member {padding-left:19px;}
+.button.repository-drag-handle {flex:none;width:20px;min-height:20px;padding:0;color:var(--muted);opacity:.4;}
+.repository-row:hover>.repository-drag-handle,.repository-drag-handle:focus-visible {opacity:1;}
+.button.repository-drag-handle[aria-disabled="true"] {cursor:default;opacity:.25;}
 .repository-batch-list {display:flex;flex-direction:column;gap:5px;max-height:240px;overflow:auto;margin-top:10px;}
 .repository-batch-list>div {display:flex;flex-direction:column;padding:6px 8px;border:1px solid var(--border);border-radius:3px;background:var(--panel);}
 .repository-batch-list span {font-size:11px;color:var(--muted);word-break:break-all;}
@@ -414,8 +419,8 @@ h1,h2,p {margin:0;}
 /* Same-level repository ordering uses an insertion line without changing row size. */
 .repository-list [data-drop-position="before"]{box-shadow:inset 0 2px 0 var(--vscode-focusBorder,#0078d4)}
 .repository-list [data-drop-position="after"]{box-shadow:inset 0 -2px 0 var(--vscode-focusBorder,#0078d4)}
-.repository-list [draggable="true"]{cursor:grab}
-.repository-list [draggable="true"]:active{cursor:grabbing}
+.repository-drag-handle[draggable="true"]{cursor:grab}
+.repository-drag-handle[draggable="true"]:active{cursor:grabbing}
 
 .repository-add-tabs{align-self:flex-start}
 .repository-add-tabs button{display:flex;align-items:center;gap:6px}
