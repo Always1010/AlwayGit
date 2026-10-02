@@ -29,6 +29,7 @@ export async function verifyFeedback(browser, url) {
       } });
     });
     await page.goto(url);
+    await page.getByRole('option', { name: 'Feedback fixture' }).dblclick();
     const bar = page.getByTestId('action-feedback');
     async function push() {
       await page.locator('.toolbar').getByRole('button', { name: /^Push/ }).click();

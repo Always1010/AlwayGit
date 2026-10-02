@@ -65,7 +65,10 @@ try {
   const sidebar = page.getByTestId('sidebar');
   const history = page.getByTestId('history');
   const details = page.getByTestId('details');
-  await Promise.all([workbench.waitFor(), sidebar.waitFor(), history.waitFor(), details.waitFor()]);
+  await Promise.all([workbench.waitFor(), sidebar.waitFor()]);
+  assert.match(await page.locator('.branch-caption').innerText(), /No repository selected/, 'A fresh Workbench does not select a repository at the entry point');
+  await sidebar.getByRole('option', { name: /^AlwayGit/ }).dblclick();
+  await Promise.all([history.waitFor(), details.waitFor()]);
   assert.ok((await sidebar.locator('.sidebar-heading').first().boundingBox()).height <= 29, 'Sidebar section headers stay compact');
   assert.ok((await history.locator('.pane-heading').first().boundingBox()).height <= 29, 'Pane headers stay compact');
   await page.getByRole('table', { name: 'Commit history' }).waitFor();

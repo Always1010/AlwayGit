@@ -105,5 +105,6 @@ scripts/update-local.ps1 -InstallOnly
 | 仓库管理、完整 Git 行为及窗口桥接 | 上述 0.10.0 执行范围之外 | 该记录未包含相关复测、完整 Vitest 或 `test:windows` 的新结果 |
 | 文档整理 | 2026-10-01 / 源码 0.16.0 | Markdown 本地链接、标题锚点、图片及旧文件名引用检查通过；`git diff --check` 通过。未运行功能测试，未重新打包或安装扩展 |
 | 暂存确认与 Commit 结果反馈 | 2026-10-02 / 0.18.0 | 类型检查、生产构建、无头 `--files-only` 与 `--feedback-only` 通过；固定 VSIX 打包并通过官方 CLI 安装及身份/版本核对。未启动真实 VS Code 桌面集成测试 |
+| Workbench 唯一入口、多标签/窗口与跨窗口安全 | 2026-10-02 / 0.19.0 | 类型检查、6 个相关 Vitest 文件 40 项、生产构建与完整无头界面套件通过；界面脚本显式验证新 Workbench 初始不选择仓库，并适配各受控宿主在 Workbench 内选择仓库。固定 VSIX 打包并通过官方 CLI 安装及 `alwaygit-dev.alwaygit@0.19.0` 核对；按规则未启动会弹窗的真实多窗口 VS Code 集成测试 |
 
 macOS、Linux、WSL、Remote SSH、Dev Containers 和最低支持版本仍需相应环境的专项证据。验收矩阵、架构兼容性和测试文件的存在都不等同于这些环境已通过验收。
