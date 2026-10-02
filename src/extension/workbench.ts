@@ -1,3 +1,4 @@
+import { SnapshotCoordinator } from '../application/snapshot-coordinator';
 import * as vscode from 'vscode';
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -25,6 +26,7 @@ export class Workbench implements vscode.Disposable {
   private readonly panels = new Map<vscode.WebviewPanel, WorkbenchPanel>();
   private lastPanel?: WorkbenchPanel;
   private activeRepository?: string;
+  private readonly snapshots = new SnapshotCoordinator();
   private readonly fingerprints = new Map<string, string>();
   private readonly disposables: vscode.Disposable[] = [];
   private readonly busy = new Set<string>();
@@ -45,7 +47,7 @@ export class Workbench implements vscode.Disposable {
   private repositoryKey(commonDir: string): string { const resolved=path.resolve(commonDir);return process.platform==='win32'?resolved.toLowerCase():resolved; }
   private isBusy(commonDir: string): boolean { const key=this.repositoryKey(commonDir);return this.busy.has(key)||this.externalBusy.has(key); }
   constructor(private readonly context: vscode.ExtensionContext, private readonly git: GitServiceContract, private readonly repositories: RepositoryManager, private readonly documents: GitDocuments, private readonly output: vscode.OutputChannel, private readonly projects: ProjectWindows) {
-    this.disposables.push(repositories.onDidChange(event => this.post({ type: 'changed', ...event })), repositories.onDidChangeRepositories(() => this.post({ type: 'repositoriesChanged' })));
+    this.disposables.push(repositories.onDidChange(event => { this.snapshots.invalidate(event.repoId); this.post({ type: 'changed', ...event }); }), repositories.onDidChangeRepositories(() => this.post({ type: 'repositoriesChanged' })));
     this.disposables.push(vscode.workspace.onDidChangeConfiguration(event => { if (event.affectsConfiguration('alwaygit.allowDetachedHead')) this.post({ type: 'operationSettingsChanged', settings: this.operationSettings() }); }));
     const seconds = vscode.workspace.getConfiguration('alwaygit').get<number>('refreshInterval', 15);
     this.interval = setInterval(() => void this.poll(), seconds * 1000);
@@ -175,7 +177,7 @@ export class Workbench implements vscode.Disposable {
     switch (request.method) {
       case 'snapshot': {
         this.activeRepository = repo.id;if(source){source.activeRepository=repo.id;this.lastPanel=source;this.updatePanelTitle(source);}
-        const snapshot = await this.git.snapshot(repo); this.recordFingerprint(snapshot); return snapshot;
+        const snapshot = await this.snapshots.read(repo.id, () => this.git.snapshot(repo)); this.recordFingerprint(snapshot); return snapshot;
       }
       case 'history': return this.git.history(repo, { limit: vscode.workspace.getConfiguration('alwaygit').get<number>('historyPageSize', 300), ...historySchema.parse(request.payload ?? {}) });
       case 'operationReview': return this.git.reviewOperation(repo);
@@ -196,7 +198,7 @@ export class Workbench implements vscode.Disposable {
       case 'openProject': await this.projects.openProject(repo.root); return null;
       case 'openWorktree': {
         const data = openWorktreeSchema.parse(request.payload);
-        const snapshot = await this.git.snapshot(repo);
+        const snapshot = await this.snapshots.read(repo.id, () => this.git.snapshot(repo));
         const normalized = (value: string) => process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
         const worktree = snapshot.worktrees.find(w => normalized(w.path) === normalized(data.path));
         if (!worktree || worktree.bare) throw new Error(this.text('Select a registered non-bare Worktree.', '请选择已注册的非 bare Worktree。'));
@@ -211,11 +213,12 @@ export class Workbench implements vscode.Disposable {
         const action = actionSchema.parse(request.payload);
         await this.refreshExternalActivity(repo.commonDir);
         if (this.isBusy(repo.commonDir)) throw new Error(this.text('An operation is already running in this repository.', '此仓库已有正在执行的操作。'));
-        const operation = action.type === 'operation.abort' ? (await this.git.snapshot(repo)).operation : undefined;
+        const operation = action.type === 'operation.abort' ? (await this.snapshots.read(repo.id, () => this.git.snapshot(repo))).operation : undefined;
         if (!await confirmAction(repo, action, this.language(), operation)) throw new Error(this.text('Operation cancelled.', '操作已取消。'));
         await this.refreshExternalActivity(repo.commonDir);
         if (this.isBusy(repo.commonDir)) throw new Error(this.text('An operation is already running in this repository.', '此仓库已有正在执行的操作。'));
         const operationKey=this.repositoryKey(repo.commonDir);this.busy.add(operationKey);
+        for (const member of this.repositories.list().filter(member => member.commonDir === repo.commonDir)) this.snapshots.invalidate(member.id);
         for (const r of this.repositories.list().filter(r => r.commonDir === repo.commonDir)) this.post({ type: 'activity', repoId: r.id, busy: true, label: action.type });
         try { await this.projects.runRepositoryOperation(repo.commonDir,action.type,()=>this.git.execute(repo, action)); }
         catch(error){
@@ -230,9 +233,9 @@ export class Workbench implements vscode.Disposable {
         }
         finally {
           this.busy.delete(operationKey);
-          for (const r of this.repositories.list().filter(r => r.commonDir === repo.commonDir)) { this.post({ type: 'activity', repoId: r.id, busy: this.isBusy(repo.commonDir), label: action.type }); this.post({ type: 'changed', repoId: r.id }); }
+          for (const r of this.repositories.list().filter(r => r.commonDir === repo.commonDir)) { this.snapshots.invalidate(r.id); this.post({ type: 'activity', repoId: r.id, busy: this.isBusy(repo.commonDir), label: action.type }); this.post({ type: 'changed', repoId: r.id }); }
         }
-        const snapshot = await this.git.snapshot(repo); this.recordFingerprint(snapshot); return snapshot;
+        const snapshot = await this.snapshots.read(repo.id, () => this.git.snapshot(repo)); this.recordFingerprint(snapshot); return snapshot;
       }
     }
   }
@@ -262,7 +265,7 @@ export class Workbench implements vscode.Disposable {
     this.polling = true;
     try {
       await Promise.all([...this.externalBusy.keys()].map(key=>this.refreshExternalActivity(key).catch(error=>this.output.appendLine(redactSecrets(`[activity-refresh] ${error instanceof Error?error.message:String(error)}`)))));
-      for(const id of ids){try{const repo=this.repositories.get(id);if(this.isBusy(repo.commonDir))continue;const previous=this.fingerprints.get(repo.id),snapshot=await this.git.snapshot(repo);if(this.recordFingerprint(snapshot)!==previous)this.post({type:'changed',repoId:repo.id,changes:{paths:[]}});}catch(error){this.output.appendLine(redactSecrets(`[refresh] ${error instanceof Error?error.message:String(error)}`));}}
+      for(const id of ids){try{const repo=this.repositories.get(id);if(this.isBusy(repo.commonDir))continue;const previous=this.fingerprints.get(repo.id),snapshot=await this.snapshots.read(repo.id, () => this.git.snapshot(repo));if(this.recordFingerprint(snapshot)!==previous)this.post({type:'changed',repoId:repo.id,changes:{paths:[]},snapshot});}catch(error){this.output.appendLine(redactSecrets(`[refresh] ${error instanceof Error?error.message:String(error)}`));}}
     }
     finally { this.polling = false; }
   }

@@ -405,6 +405,15 @@ describe('repository UI consistency', () => {
     return current;
   }
 
+  it('uses the action snapshot without reading the same worktree again', async () => {
+    const current = await workingFixture(), fallback = bridge.rpc.getMockImplementation()!;
+    current.changes[0].indexStatus = 'A';
+    bridge.rpc.mockImplementation((method, ...args) => method === 'action' ? Promise.resolve(structuredClone(current)) : fallback(method, ...args));
+    expect(await store.getState().execute({ type: 'stage', paths: ['a.txt'] })).toBe(true);
+    expect(bridge.rpc.mock.calls.map(([method]) => method)).toEqual(['action']);
+    expect(store.getState().snapshot?.changes[0].indexStatus).toBe('A');
+  });
+
   it('keeps stable region data and skips history after a working-tree action', async () => {
     const current = await workingFixture(), before = store.getState();
     current.changes[0].indexStatus = 'A';
