@@ -1,6 +1,6 @@
 # AlwayGit
 
-AlwayGit 是运行在 VS Code 编辑器区域中的 Git 图形化工作台。它把仓库与引用导航、提交图、提交详情、工作区状态和只读 Diff 放在同一界面中；查看或修改完整文件时使用 VS Code 原生编辑器。
+AlwayGit 是运行在 VS Code 编辑器区域中的 Git 图形化工作台。它把仓库与引用导航、提交图、提交详情、工作区状态和只读 Diff 放在同一界面中；文本文件可继续使用 VS Code 原生编辑器，图片和其他二进制文件仅在工作台中预览。
 
 ## 安装与启动
 
@@ -19,12 +19,12 @@ npm run build
 
 - 多仓库和 工作树 导航、确认式递归发现、仓库移除与自定义项目分组、同窗口多个独立工作台标签。
 - 多引用筛选、递归分支树、可分页的拓扑提交图、消息搜索及 HEAD 定位。
-- Commit 详情、Merge Parent 选择、双 Commit 自动比较、文件路径筛选及只读 Diff。
+- Commit 详情、Merge Parent 选择、双 Commit 自动比较、文件路径筛选及文本与图片只读 Diff。
 - Working Tree 的冲突、Unstaged 和 Staged 管理，整文件及批量操作、Commit、Amend 与每仓库草稿。
 - 分支、远程分支、Tag、Stash 和 工作树 管理，以及 Fetch、Pull、Push、Merge、Rebase、Cherry-pick、Reset、Revert 与进行中操作处理。
 - 四区 Workbench 布局、可调面板与列宽、明暗主题、Graph 配色、字号、密度、English / 简体中文和会话恢复。
 - 工作台内离线帮助与指南，包含快速开始、常见任务、排错和完整中英文手册，支持主题筛选与章节跳转。
-- VS Code 原生文件编辑与 Diff，项目窗口复用及跨窗口打开。
+- 文本文件的 VS Code 原生编辑与 Diff、项目窗口复用及跨窗口打开。
 
 完整交互、配置和功能边界见 [工作台规格](docs/WORKBENCH_SPEC.md)。
 

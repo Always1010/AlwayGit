@@ -127,6 +127,53 @@ export async function verifyDiffNavigation(browser, url) {
     console.log('ALWAYGIT_DIFF_UI_TESTS_PASSED: initial reveal, cyclic/single-change navigation, tall blocks, collapse/restore, type summary, scrolling, refresh remap and truncation');
   } finally { await page.close(); }
   await verifyCommitNavigation(browser, url);
+  await verifyImagePreview(browser, url);
+}
+
+async function verifyImagePreview(browser, url) {
+  const page = await browser.newPage({ viewport: { width: 1200, height: 760 } }), errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  try {
+    await page.addInitScript(() => {
+      const repo={id:'images',root:'/images',commonDir:'/images/.git',name:'Image fixture'},commit={oid:'1'.repeat(40),parents:[],author:'Fixture',email:'fixture@example.com',timestamp:0,subject:'Images'};
+      const image='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+      const snapshot={repository:repo,branch:'main',head:commit.oid,ahead:0,behind:0,changes:[{path:'image.png',indexStatus:' ',worktreeStatus:'M',conflict:false,untracked:false},{path:'binary.bin',indexStatus:' ',worktreeStatus:'M',conflict:false,untracked:false}],refs:[{name:'main',fullName:'refs/heads/main',kind:'local',oid:commit.oid}],stashes:[],worktrees:[],operation:{conflicts:0,canContinue:false,canAbort:false,canSkip:false},version:1};
+      window.acquireVsCodeApi=()=>({getState:()=>null,setState(){},postMessage(request){let result;
+        if(request.method==='repositories')result=[repo];
+        if(request.method==='repositoryCollections')result=[];
+        if(request.method==='repositoryOrder')result={root:[],collections:{}};
+        if(request.method==='repositoryStatuses')result=[];
+        if(request.method==='operationSettings')result={allowDetachedHead:false,scope:'workspace'};
+        if(request.method==='snapshot')result=snapshot;
+        if(request.method==='history')result={commits:[commit],tips:[commit.oid],nextOffset:1,hasMore:false};
+        if(request.method==='details')result={commit,body:'',files:[]};
+        if(request.method==='diffPreview')result=request.payload.path==='image.png'?{kind:'image',path:'image.png',leftLabel:'Before',rightLabel:'After',left:{mimeType:'image/png',data:image,byteLength:68,width:1,height:1},right:{mimeType:'image/png',data:image,byteLength:68,width:1,height:1}}:{kind:'binary',reason:'unsupported',path:'binary.bin',leftLabel:'Before',rightLabel:'After'};
+        setTimeout(()=>window.postMessage({type:'response',id:request.id,result},'*'),0);
+      }});
+    });
+    await page.goto(url);
+    await page.getByRole('option',{name:'Image fixture'}).dblclick();
+    await page.getByTestId('history').locator('[data-working-tree]').click();
+    const diff=page.getByTestId('diff-preview');
+    await diff.locator('.image-diff img').first().waitFor();
+    await page.waitForFunction(()=>[...document.querySelectorAll('.image-diff img')].every(image=>image.complete&&image.naturalWidth===1));
+    assert.equal(await diff.locator('.image-diff img').count(),2);
+    assert.equal(await diff.getByTestId('diff-change-summary').locator('.diff-change-modified').innerText(),'~1');
+    assert.equal(await diff.getByTestId('diff-change-count').innerText(),'1/1');
+    assert.equal(await diff.getByRole('button',{name:'Open Diff'}).isDisabled(),true);
+    assert.equal(await diff.getByRole('button',{name:'Edit in VS Code'}).isDisabled(),true);
+    await diff.getByRole('button',{name:'Show images at actual size'}).click();
+    assert.equal(await diff.getByRole('button',{name:'Show images at actual size'}).getAttribute('aria-pressed'),'true');
+    await diff.getByRole('button',{name:'Maximize image preview'}).click();
+    assert.ok(await diff.evaluate(element=>element.classList.contains('diff-preview-maximized')));
+    await diff.getByRole('button',{name:'Restore image preview'}).click();
+    await page.getByTestId('details').getByRole('button',{name:'binary.bin',exact:true}).click();
+    await diff.getByText('Binary file: text preview unavailable',{exact:true}).waitFor();
+    assert.equal(await diff.getByRole('button',{name:'Open Diff'}).isDisabled(),true);
+    assert.equal(await diff.getByRole('button',{name:'Edit in VS Code'}).isDisabled(),true);
+    assert.deepEqual(errors,[]);
+    console.log('ALWAYGIT_IMAGE_DIFF_UI_TESTS_PASSED: side-by-side image preview, metadata, zoom, maximize and disabled native actions');
+  } finally { await page.close(); }
 }
 
 async function addDiffFixture(page, diffNavigationScope) {
@@ -153,7 +200,7 @@ async function addDiffFixture(page, diffNavigationScope) {
           fixture.previews.push(structuredClone(request.payload));
           if (fixture.failPath === path) { setTimeout(() => window.postMessage({ type: 'response', id: request.id, error: { message: 'Read failed' } }, '*'), 10); return; }
           const right = fixture.emptyFiles || path === 'same.txt' ? fixture.left : path === 'tail.txt' ? fixture.left.split('\n').map((line, i) => [30, 95].includes(i) ? `tail changed ${i}` : line).join('\n') : path === 'single.txt' || path === 'large.txt' ? fixture.left.split('\n').map((line, i) => i === 80 || path === 'large.txt' && i > 80 && i <= 125 ? `changed line ${i}` : line).join('\n') : fixture.right;
-          result = { path, leftLabel: 'Before', rightLabel: 'After', left: fixture.left, right, truncated: fixture.truncated, binary: path === 'binary.bin' };
+          result = path === 'binary.bin' ? { kind: 'binary', reason: 'unsupported', path, leftLabel: 'Before', rightLabel: 'After' } : { kind: 'text', path, leftLabel: 'Before', rightLabel: 'After', left: fixture.left, right, truncated: fixture.truncated };
           if (fixture.holdPath === path) { fixture.held.push(() => window.postMessage({ type: 'response', id: request.id, result }, '*')); return; }
         }
         setTimeout(() => window.postMessage({ type: 'response', id: request.id, result }, '*'), 10);

@@ -309,6 +309,16 @@ h1,h2,p {margin:0;}
 .diff-change-kind {font-weight:600;}
 .diff-change-added {color:var(--green);}.diff-change-modified {color:var(--yellow);}.diff-change-removed {color:var(--error);}
 .diff-change-count {min-width:32px;white-space:nowrap;font-size:11px;font-variant-numeric:tabular-nums;text-align:center;padding:0 2px;color:var(--fg);}
+.diff-preview-maximized {position:fixed;inset:0;z-index:90;box-shadow:0 0 0 1px var(--border),0 12px 36px color-mix(in srgb,#000 35%,transparent);}
+.image-actual-size {width:auto;min-width:42px;padding:0 6px;font-size:11px;font-variant-numeric:tabular-nums;}
+.image-diff {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);height:100%;min-height:0;overflow:hidden;}
+.image-diff-side {display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;}
+.image-diff-side+.image-diff-side {border-left:1px solid var(--border);}
+.image-diff-canvas {display:flex;flex:1;min-height:0;overflow:auto;background-color:var(--panel);background-image:linear-gradient(45deg,color-mix(in srgb,var(--border) 45%,transparent) 25%,transparent 25%),linear-gradient(-45deg,color-mix(in srgb,var(--border) 45%,transparent) 25%,transparent 25%),linear-gradient(45deg,transparent 75%,color-mix(in srgb,var(--border) 45%,transparent) 75%),linear-gradient(-45deg,transparent 75%,color-mix(in srgb,var(--border) 45%,transparent) 75%);background-position:0 0,0 8px,8px -8px,-8px 0;background-size:16px 16px;}
+.image-diff-canvas img {display:block;flex:none;margin:auto;image-rendering:auto;}
+.image-diff-canvas img.fit {max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;}
+.image-diff-empty {display:flex;align-items:center;justify-content:center;width:100%;height:100%;min-height:96px;color:var(--muted);background:color-mix(in srgb,var(--bg) 80%,transparent);}
+.image-diff-meta {flex:none;padding:3px 8px;border-top:1px solid var(--row-border);background:var(--panel);color:var(--muted);font-size:11px;text-align:center;font-variant-numeric:tabular-nums;}
 .diff-marker {display:inline-block;min-width:18px;flex:none;text-align:center;font-weight:700;user-select:none;}
 .line-number {display:inline-block;min-width:34px;flex:none;text-align:right;color:var(--muted);padding-right:8px;font-size:11px;user-select:none;}
 .added {background:var(--diff-added);box-shadow:inset 3px 0 var(--green)!important;}

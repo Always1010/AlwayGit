@@ -2,14 +2,51 @@ import { message as localizeMessage, MessageError, translate } from '../i18n/ind
 import * as vscode from 'vscode';
 import path from 'node:path';
 import { open, lstat, readlink } from 'node:fs/promises';
-import type { ContentSource, DiffPreview, DiffTarget, GitServiceContract, Repository } from '../protocol/types';
+import type { ContentSource, DiffImage, DiffPreview, DiffTarget, GitServiceContract, Repository } from '../protocol/types';
 import { safeWorkingPath } from './paths';
 
 const MAX_DOCUMENT = 8 * 1024 * 1024;
 const MAX_PREVIEW_BYTES = 256 * 1024;
 const MAX_PREVIEW_LINES = 4000;
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+const MAX_IMAGE_PIXELS = 24_000_000;
+const MAX_IMAGE_DIMENSION = 16_384;
 type Side = { source: ContentSource; label: string; path: string } | { workingPath: string; label: string; path: string } | { text: string; label: string; path: string };
 type Comparison = { left: Side; right: Side; label: string; path: string };
+
+type ImageHeader = Pick<DiffImage, 'mimeType' | 'width' | 'height'>;
+function imageHeader(bytes: Buffer): ImageHeader | undefined {
+  if (bytes.length >= 24 && bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) && bytes.toString('ascii', 12, 16) === 'IHDR') {
+    return { mimeType: 'image/png', width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+  }
+  if (bytes.length >= 10 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    let offset = 2;
+    while (offset + 8 < bytes.length) {
+      if (bytes[offset] !== 0xff) { offset++; continue; }
+      const marker = bytes[offset + 1];
+      if (marker === 0xd8 || marker === 0xd9 || marker >= 0xd0 && marker <= 0xd7) { offset += 2; continue; }
+      if (offset + 4 > bytes.length) break;
+      const length = bytes.readUInt16BE(offset + 2);
+      if (length < 2 || offset + 2 + length > bytes.length) break;
+      if ([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf].includes(marker)) {
+        return { mimeType: 'image/jpeg', width: bytes.readUInt16BE(offset + 7), height: bytes.readUInt16BE(offset + 5) };
+      }
+      offset += 2 + length;
+    }
+  }
+  if (bytes.length >= 30 && bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP') {
+    const format = bytes.toString('ascii', 12, 16);
+    if (format === 'VP8X') return { mimeType: 'image/webp', width: 1 + bytes.readUIntLE(24, 3), height: 1 + bytes.readUIntLE(27, 3) };
+    if (format === 'VP8 ' && bytes.length >= 30 && bytes[23] === 0x9d && bytes[24] === 0x01 && bytes[25] === 0x2a) return { mimeType: 'image/webp', width: bytes.readUInt16LE(26) & 0x3fff, height: bytes.readUInt16LE(28) & 0x3fff };
+    if (format === 'VP8L' && bytes[20] === 0x2f) return { mimeType: 'image/webp', width: 1 + bytes[21] + ((bytes[22] & 0x3f) << 8), height: 1 + ((bytes[22] >> 6) | (bytes[23] << 2) | ((bytes[24] & 0x0f) << 10)) };
+  }
+}
+
+function isBinary(bytes: Buffer, truncated: boolean): boolean {
+  if (bytes.includes(0)) return true;
+  try { new TextDecoder('utf-8', { fatal: true }).decode(bytes, { stream: truncated }); return false; }
+  catch { return true; }
+}
 export class GitDocuments implements vscode.TextDocumentContentProvider {
   private readonly entries = new Map<string, { repo: Repository; source: ContentSource } | { text: string }>();
   private sequence = 0;
@@ -31,24 +68,51 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
   }
   async openFile(repo: Repository, filename: string): Promise<void> {
     const full = await safeWorkingPath(repo.root, filename);
+    const prefix = await this.readWorking(full, MAX_PREVIEW_BYTES + 1);
+    if (imageHeader(prefix) || isBinary(prefix.subarray(0, MAX_PREVIEW_BYTES), prefix.length > MAX_PREVIEW_BYTES)) throw new MessageError(localizeMessage("documents.imagesAndBinaryFilesCanOnlyBeViewedInTheAlwayGitDiffPreview"));
     await vscode.window.showTextDocument(vscode.Uri.file(full), { viewColumn: vscode.ViewColumn.Active, preview: false, preserveFocus: false });
   }
   async diff(repo: Repository, target: DiffTarget): Promise<void> {
     const comparison = await this.comparison(repo, target);
+    const preview = await this.previewComparison(repo, comparison);
+    if (preview.kind !== 'text') throw new MessageError(localizeMessage("documents.imagesAndBinaryFilesCanOnlyBeViewedInTheAlwayGitDiffPreview"));
     const uri = (side: Side) => 'workingPath' in side ? vscode.Uri.file(side.workingPath) : this.uri(repo, 'text' in side ? side.text : side.source, side.label, side.path);
     await vscode.commands.executeCommand('vscode.diff', uri(comparison.left), uri(comparison.right), comparison.label, { viewColumn: vscode.ViewColumn.Active, preview: false, preserveFocus: false });
   }
   async preview(repo: Repository, target: DiffTarget): Promise<DiffPreview> {
     const comparison = await this.comparison(repo, target);
-    const read = async (side: Side) => {
-      if ('text' in side) return Buffer.from(side.text, 'utf8');
-      if ('source' in side) return this.git.content(repo, side.source, MAX_PREVIEW_BYTES + 1);
-      const file = await open(side.workingPath, 'r');
-      try { const buffer = Buffer.alloc(MAX_PREVIEW_BYTES + 1); let total = 0; while (total < buffer.length) { const { bytesRead } = await file.read(buffer, total, buffer.length - total, total); if (!bytesRead) break; total += bytesRead; } return buffer.subarray(0, total); }
-      finally { await file.close(); }
-    };
+    return this.previewComparison(repo, comparison);
+  }
+  private async readWorking(filename: string, maxBytes: number): Promise<Buffer> {
+    const file = await open(filename, 'r');
+    try { const buffer = Buffer.alloc(maxBytes); let total = 0; while (total < buffer.length) { const { bytesRead } = await file.read(buffer, total, buffer.length - total, total); if (!bytesRead) break; total += bytesRead; } return buffer.subarray(0, total); }
+    finally { await file.close(); }
+  }
+  private async readSide(repo: Repository, side: Side, maxBytes: number): Promise<Buffer> {
+    if ('text' in side) return Buffer.from(side.text, 'utf8');
+    if ('source' in side) return this.git.content(repo, side.source, maxBytes);
+    return this.readWorking(side.workingPath, maxBytes);
+  }
+  private async previewComparison(repo: Repository, comparison: Comparison): Promise<DiffPreview> {
+    const read = (side: Side, maxBytes = MAX_PREVIEW_BYTES + 1) => this.readSide(repo, side, maxBytes);
     const [left, right] = await Promise.all([read(comparison.left), read(comparison.right)]);
-    const binary = left.includes(0) || right.includes(0);
+    const initialHeaders = [left, right].map(bytes => bytes.length ? imageHeader(bytes) : undefined);
+    const nonempty = [left, right].map((bytes, index) => bytes.length ? initialHeaders[index] : true);
+    if (nonempty.every(Boolean) && initialHeaders.some(Boolean)) {
+      const [fullLeft, fullRight] = await Promise.all([left.length > MAX_PREVIEW_BYTES ? read(comparison.left, MAX_IMAGE_BYTES + 1) : left, right.length > MAX_PREVIEW_BYTES ? read(comparison.right, MAX_IMAGE_BYTES + 1) : right]);
+      if (fullLeft.length > MAX_IMAGE_BYTES || fullRight.length > MAX_IMAGE_BYTES) return { kind: 'binary', reason: 'image-too-large', path: comparison.path, leftLabel: comparison.left.label, rightLabel: comparison.right.label };
+      const side = (bytes: Buffer): DiffImage | undefined => {
+        if (!bytes.length) return;
+        const header = imageHeader(bytes);
+        if (!header) return;
+        return { ...header, data: bytes.toString('base64'), byteLength: bytes.length };
+      };
+      const leftImage = side(fullLeft), rightImage = side(fullRight);
+      if ((!leftImage && fullLeft.length) || (!rightImage && fullRight.length)) return { kind: 'binary', reason: 'unsupported', path: comparison.path, leftLabel: comparison.left.label, rightLabel: comparison.right.label };
+      if ([leftImage, rightImage].some(image => image && (!image.width || !image.height || image.width > MAX_IMAGE_DIMENSION || image.height > MAX_IMAGE_DIMENSION || image.width * image.height > MAX_IMAGE_PIXELS))) return { kind: 'binary', reason: 'image-dimensions-too-large', path: comparison.path, leftLabel: comparison.left.label, rightLabel: comparison.right.label };
+      return { kind: 'image', path: comparison.path, leftLabel: comparison.left.label, rightLabel: comparison.right.label, left: leftImage, right: rightImage };
+    }
+    const binary = isBinary(left.subarray(0, MAX_PREVIEW_BYTES), left.length > MAX_PREVIEW_BYTES) || isBinary(right.subarray(0, MAX_PREVIEW_BYTES), right.length > MAX_PREVIEW_BYTES);
     let truncated = left.length > MAX_PREVIEW_BYTES || right.length > MAX_PREVIEW_BYTES;
     const text = (bytes: Buffer) => {
       const decoder = new TextDecoder('utf-8');
@@ -57,8 +121,8 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
       const lines = value.split('\n'); if (lines.length > MAX_PREVIEW_LINES) truncated = true;
       return lines.slice(0, MAX_PREVIEW_LINES).join('\n');
     };
-    const result: DiffPreview = { path: comparison.path, leftLabel: comparison.left.label, rightLabel: comparison.right.label, left: binary ? '' : text(left), right: binary ? '' : text(right) };
-    if (binary) result.binary = true;
+    if (binary) return { kind: 'binary', reason: 'unsupported', path: comparison.path, leftLabel: comparison.left.label, rightLabel: comparison.right.label };
+    const result: DiffPreview = { kind: 'text', path: comparison.path, leftLabel: comparison.left.label, rightLabel: comparison.right.label, left: text(left), right: text(right) };
     if (truncated) result.truncated = true;
     return result;
   }

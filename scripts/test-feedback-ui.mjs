@@ -24,7 +24,7 @@ export async function verifyFeedback(browser, url) {
         if (request.method === 'operationReview') result = {kind:fixture.snapshot.operation.kind,token:'reviewed-index',files:fixture.snapshot.changes.filter(file=>!file.conflict&&file.indexStatus!==' ').map(file=>({path:file.path,lines:fixture.cleanReview?[]:[1,3,5]}))};
         if (request.method === 'history') result = { commits: [commit], tips: [commit.oid], nextOffset: 1, hasMore: false };
         if (request.method === 'details') result = { commit, body: '', files: [] };
-        if (request.method === 'diffPreview') result = { path: request.payload.path, leftLabel: request.payload.area==='staged'?'HEAD':'Ours', rightLabel: request.payload.area==='staged'?'Index':'Theirs', left: 'before', right: request.payload.area==='staged'&&!fixture.cleanReview?'<<<<<<< HEAD\nmain-ready\n=======\nfeature-ready\n>>>>>>> feature/release':'feature-ready' };
+        if (request.method === 'diffPreview') result = { kind: 'text', path: request.payload.path, leftLabel: request.payload.area==='staged'?'HEAD':'Ours', rightLabel: request.payload.area==='staged'?'Index':'Theirs', left: 'before', right: request.payload.area==='staged'&&!fixture.cleanReview?'<<<<<<< HEAD\nmain-ready\n=======\nfeature-ready\n>>>>>>> feature/release':'feature-ready' };
         setTimeout(() => window.postMessage({ type: 'response', id: request.id, result }, '*'), 10);
       } });
     });

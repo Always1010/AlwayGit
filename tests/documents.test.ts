@@ -6,6 +6,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { GitService } from '../src/git/service';
 import { GitDocuments } from '../src/editor/documents';
+import type { DiffPreview } from '../src/protocol/types';
 
 // Preview is a host operation with no editor UI dependency. Native editor calls
 // are verified separately in tests/extension/runner.ts against real VS Code.
@@ -20,6 +21,10 @@ async function setup() {
   return { root, service, repo, documents: new GitDocuments(service) };
 }
 async function commit(root: string, message: string) { await git(root, 'add', '-A'); await git(root, 'commit', '-m', message); return git(root, 'rev-parse', 'HEAD'); }
+function textPreview(preview: DiffPreview): Extract<DiffPreview, { kind: 'text' }> { expect(preview.kind).toBe('text'); if (preview.kind !== 'text') throw new Error(`Expected text preview, received ${preview.kind}`); return preview; }
+function png(width: number, height: number, bytes = 32): Buffer { const value=Buffer.alloc(Math.max(24,bytes));Buffer.from([137,80,78,71,13,10,26,10]).copy(value);value.write('IHDR',12,'ascii');value.writeUInt32BE(width,16);value.writeUInt32BE(height,20);return value; }
+function jpeg(width:number,height:number):Buffer { const value=Buffer.alloc(32);Buffer.from([0xff,0xd8,0xff,0xc0,0x00,0x11,0x08]).copy(value);value.writeUInt16BE(height,7);value.writeUInt16BE(width,9);return value; }
+function webp(width:number,height:number):Buffer { const value=Buffer.alloc(30);value.write('RIFF',0,'ascii');value.writeUInt32LE(22,4);value.write('WEBPVP8X',8,'ascii');value.writeUIntLE(width-1,24,3);value.writeUIntLE(height-1,27,3);return value; }
 afterEach(async () => { for (const root of roots.splice(0)) { if (path.dirname(root) !== os.tmpdir() || !path.basename(root).startsWith('alwaygit-preview-')) throw new Error('Unsafe cleanup target'); await rm(root, { recursive: true, force: true, maxRetries: 5 }); } });
 
 describe('Bounded Git Diff previews', () => {
@@ -30,7 +35,7 @@ describe('Bounded Git Diff previews', () => {
     const leaf = path.join(root, 'link');
     await symlink(outside, leaf, process.platform === 'win32' ? 'junction' : 'dir');
     const service = { snapshot: async () => ({ changes: [{ path: 'link', indexStatus: ' ', worktreeStatus: 'M', untracked: false }] }), content: async () => Buffer.from('old-target') };
-    const preview = await new GitDocuments(service as never).preview(repo, { kind: 'change', path: 'link', area: 'unstaged' });
+    const preview = textPreview(await new GitDocuments(service as never).preview(repo, { kind: 'change', path: 'link', area: 'unstaged' }));
     expect(preview.left).toBe('old-target');
     expect(preview.right).toBe(await readlink(leaf));
     expect(preview.rightLabel).toContain('Symbolic Link');
@@ -96,13 +101,38 @@ describe('Bounded Git Diff previews', () => {
     const { root, repo, documents } = await setup();
     await writeFile(path.join(root, 'base.txt'), 'base'); await commit(root, 'initial');
     await writeFile(path.join(root, 'large.txt'), 'x'.repeat(300000));
-    const large = await documents.preview(repo, { kind: 'change', path: 'large.txt', area: 'unstaged' });
+    const large = textPreview(await documents.preview(repo, { kind: 'change', path: 'large.txt', area: 'unstaged' }));
     expect(large.truncated).toBe(true); expect(Buffer.byteLength(large.right)).toBe(256 * 1024);
     await writeFile(path.join(root, 'lines.txt'), 'line\n'.repeat(5000));
-    const lines = await documents.preview(repo, { kind: 'change', path: 'lines.txt', area: 'unstaged' });
+    const lines = textPreview(await documents.preview(repo, { kind: 'change', path: 'lines.txt', area: 'unstaged' }));
     expect(lines.truncated).toBe(true); expect(lines.right.split('\n')).toHaveLength(4000);
     await writeFile(path.join(root, 'binary.bin'), Buffer.from([0, 255, 1]));
-    expect(await documents.preview(repo, { kind: 'change', path: 'binary.bin', area: 'unstaged' })).toMatchObject({ binary: true, left: '', right: '' });
+    expect(await documents.preview(repo, { kind: 'change', path: 'binary.bin', area: 'unstaged' })).toMatchObject({ kind: 'binary', reason: 'unsupported' });
+  });
+
+  it('previews bounded PNG changes and blocks images from native VS Code editors', async () => {
+    const { root, repo, documents } = await setup();
+    await writeFile(path.join(root, 'image.png'), png(2, 3)); await commit(root, 'image');
+    await writeFile(path.join(root, 'image.png'), png(4, 5, 64));
+    const preview = await documents.preview(repo, { kind: 'change', path: 'image.png', area: 'unstaged' });
+    expect(preview).toMatchObject({ kind: 'image', left: { mimeType: 'image/png', width: 2, height: 3, byteLength: 32 }, right: { mimeType: 'image/png', width: 4, height: 5, byteLength: 64 } });
+    if (preview.kind !== 'image') throw new Error('Expected image preview');
+    expect(Buffer.from(preview.right!.data, 'base64')).toEqual(png(4, 5, 64));
+    await expect(documents.openFile(repo, 'image.png')).rejects.toThrow('only be viewed');
+    await expect(documents.diff(repo, { kind: 'change', path: 'image.png', area: 'unstaged' })).rejects.toThrow('only be viewed');
+    await writeFile(path.join(root, 'large.png'), png(1, 1, 4 * 1024 * 1024 + 1));
+    expect(await documents.preview(repo, { kind: 'change', path: 'large.png', area: 'unstaged' })).toMatchObject({ kind: 'binary', reason: 'image-too-large' });
+    await writeFile(path.join(root, 'wide.png'), png(10_000, 5_000));
+    expect(await documents.preview(repo, { kind: 'change', path: 'wide.png', area: 'unstaged' })).toMatchObject({ kind: 'binary', reason: 'image-dimensions-too-large' });
+  });
+
+  it('recognizes JPEG and WebP by content instead of filename extension', async () => {
+    const { root, repo, documents } = await setup();
+    await writeFile(path.join(root, 'base.txt'), 'base'); await commit(root, 'initial');
+    await writeFile(path.join(root, 'photo.data'), jpeg(320, 240));
+    await writeFile(path.join(root, 'asset.bin'), webp(640, 360));
+    expect(await documents.preview(repo, { kind: 'change', path: 'photo.data', area: 'unstaged' })).toMatchObject({ kind: 'image', left: undefined, right: { mimeType: 'image/jpeg', width: 320, height: 240 } });
+    expect(await documents.preview(repo, { kind: 'change', path: 'asset.bin', area: 'unstaged' })).toMatchObject({ kind: 'image', left: undefined, right: { mimeType: 'image/webp', width: 640, height: 360 } });
   });
 
   it('compares a detected working rename against its original Index path', async () => {

@@ -27,7 +27,7 @@ export async function verifyShortcuts(browser, url) {
           if(request.method==='diffPreview'){
             const left=Array.from({length:32},(_,index)=>`line ${index}`),right=[...left];
             for(const index of request.payload.path==='a.ts'?[4,24]:[12])right[index]+=' changed';
-            result={path:request.payload.path,leftLabel:'Before',rightLabel:'After',left:left.join('\n'),right:right.join('\n')};
+            result={kind:'text',path:request.payload.path,leftLabel:'Before',rightLabel:'After',left:left.join('\n'),right:right.join('\n')};
           }
           if(request.method==='action')result=structuredClone(snapshot);
           setTimeout(()=>window.postMessage({type:'response',id:request.id,result},'*'),0);

@@ -53,7 +53,12 @@ export type GitAction =
   | { type: 'operation.abort' | 'operation.skip'; kind: OperationKind };
 export type ContentSource = { kind: 'revision'; revision: string; path: string } | { kind: 'index'; path: string; stage?: 0 | 1 | 2 | 3 } | { kind: 'empty' };
 export type DiffTarget = { kind: 'change'; path: string; area: 'staged' | 'unstaged' | 'conflict' } | { kind: 'commit'; oid: string; path: string; parent?: string; previousPath?: string } | { kind: 'comparison'; left: string; right: string; path: string; previousPath?: string } | { kind: 'stash-working'; stashOid: string; path: string };
-export interface DiffPreview { path: string; leftLabel: string; rightLabel: string; left: string; right: string; binary?: boolean; truncated?: boolean }
+export interface DiffImage { mimeType: 'image/png' | 'image/jpeg' | 'image/webp'; data: string; byteLength: number; width: number; height: number }
+interface DiffPreviewBase { path: string; leftLabel: string; rightLabel: string }
+export type DiffPreview =
+  | DiffPreviewBase & { kind: 'text'; left: string; right: string; truncated?: boolean }
+  | DiffPreviewBase & { kind: 'image'; left?: DiffImage; right?: DiffImage }
+  | DiffPreviewBase & { kind: 'binary'; reason: 'unsupported' | 'image-too-large' | 'image-dimensions-too-large' };
 export interface CheckoutBlocker { reason: 'local-changes' | 'conflicts' | 'operation-active' | 'worktree-occupied' | 'checkout-failed'; paths: string[]; target: string; worktreePath?: string; stashOid?: string; stashCreated?: boolean; branchCreated?: boolean; trackBranches?: { source: string; name: string; expectedOid?: string }[] }
 export interface StashApplyBlocker { kind: 'stash-apply'; reason: 'untracked-path-exists' | 'restore-conflict' | 'restore-blocked' | 'state-changed'; paths: string[]; conflictPaths?: string[]; selector: string; stashOid: string; stashRetained: true; workingTreeUnchanged: true; output?: string }
 export type ActionBlocker = CheckoutBlocker | StashApplyBlocker;
