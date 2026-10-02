@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useWorkbench } from './store';
 import { useTranslation } from './i18n';
 import type { Language } from './i18n';
-import { defaultBadgeColor, effectiveRowHeight, isLightTheme, presetColors, textColorForBackground, type ResolvedTheme, type ThemePreference } from './appearance';
+import { defaultBadgeColor, diffRowHeight, effectiveRowHeight, isLightTheme, presetColors, textColorForBackground, type ResolvedTheme, type ThemePreference } from './appearance';
 import { graphPalettes, type GraphPaletteId } from './graph/palettes';
 import { Button, Icon, Modal } from './ui';
 
@@ -22,6 +22,26 @@ const themes: { id: ThemePreference; label: string; labelZh: string; colors: rea
   { id: 'contrast', label: 'High Contrast', labelZh: '高对比', colors: ['#0C1016', '#FFE875', '#153F6B'] },
 ];
 const badgeColors = ['#D61F3C', '#FF5A00', '#006BFF', '#B900E6', '#008F5D', '#FFD400'] as const;
+
+function DiffHeightField({ value, onChange }: { value: number; onChange(value: number): void }) {
+  const t = useTranslation(), presets = [18, 20, 22, 24];
+  const [custom, setCustom] = useState(!presets.includes(value)), [draft, setDraft] = useState(String(value));
+  useEffect(() => setDraft(String(value)), [value]);
+  const commit = () => {
+    const next = draft.trim() ? Math.round(Math.max(16, Math.min(36, Number(draft)))) : value;
+    const valid = Number.isFinite(next) ? next : value;
+    setDraft(String(valid)); onChange(valid);
+  };
+  return <label>{t('Diff line height', 'Diff 行高')}<select aria-label={t('Diff line height', 'Diff 行高')} value={custom ? 'custom' : value} onChange={event => {
+    const isCustom = event.target.value === 'custom'; setCustom(isCustom);
+    if (!isCustom) onChange(Number(event.target.value));
+  }}>{presets.map(size => <option key={size} value={size}>{size}px{size === 18 ? t(' · Default', ' · 默认') : ''}</option>)}<option value="custom">{t('Custom', '自定义')}</option></select>
+    {custom && <input type="number" aria-label={t('Custom Diff line height', '自定义 Diff 行高')} min={16} max={36} step={1} value={draft} onChange={event => {
+      setDraft(event.target.value);
+      const next = Number(event.target.value);
+      if (event.target.value && Number.isInteger(next) && next >= 16 && next <= 36) onChange(next);
+    }} onBlur={commit} onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); }}/>}</label>;
+}
 
 function ColorField({ value, label, removable, onChange, onRemove }: { value: string; label: string; removable?: boolean; onChange(value: string): void; onRemove?(): void }) {
   const t = useTranslation();
@@ -124,10 +144,12 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
           <div className="settings-grid">
             <label>{t('Interface font', '界面字号')}<select aria-label={t('Interface font', '界面字号')} value={layout.font} onChange={event => state.previewSettings({ font: Number(event.target.value) })}>{[12,13,14,15,16].map(size => <option key={size} value={size}>{size}px{size === 13 ? t(' · Default', ' · 默认') : ''}</option>)}</select></label>
             <label>{t('Diff font', 'Diff 字号')}<select aria-label={t('Diff font', 'Diff 字号')} value={appearance.codeFont} onChange={event => updateAppearance({ ...appearance, codeFont: Number(event.target.value) })}>{[11,12,13,14,15,16,17,18].map(size => <option key={size} value={size}>{size}px</option>)}</select></label>
-            <label className="settings-full-width">{t('List density', '列表密度')}<select aria-label={t('List density', '列表密度')} value={layout.row} onChange={event => state.previewSettings({ row: Number(event.target.value) })}>{densityOptions.map(size => <option key={size} value={size}>{size === 22 ? t('Dense', '密集') : size === 24 ? t('Compact · Default', '紧凑 · 默认') : size === 28 ? t('Comfortable', '舒适') : t('Custom', '自定义')} · {size}px</option>)}</select></label>
+            <label>{t('List density', '列表密度')}<select aria-label={t('List density', '列表密度')} value={layout.row} onChange={event => state.previewSettings({ row: Number(event.target.value) })}>{densityOptions.map(size => <option key={size} value={size}>{size === 22 ? t('Dense', '密集') : size === 24 ? t('Compact · Default', '紧凑 · 默认') : size === 28 ? t('Comfortable', '舒适') : t('Custom', '自定义')} · {size}px</option>)}</select></label>
+            <DiffHeightField value={appearance.codeRowHeight} onChange={codeRowHeight => updateAppearance({ ...appearance, codeRowHeight })}/>
           </div>
           <div className="settings-row-preview" style={{ minHeight: effectiveRowHeight(layout) }}><Icon name="git-commit"/><span className="ref-badge local" aria-current="true">main</span><span className="truncate">feat: {t('Refine the workbench', '优化工作台体验')}</span><span className="muted">{effectiveRowHeight(layout)}px</span></div>
           <p className="settings-note">{t('Row height grows with larger text to keep every line readable.', '大字号会自动增加最小行高，避免文字被裁切。')}</p>
+          <p className="settings-note">{t('Diff line height', 'Diff 行高')}: {diffRowHeight(appearance.codeFont, appearance.codeRowHeight)}px · {t('Custom range: 16–36px; at least font size + 4px.', '自定义范围 16–36px；实际行高至少为字号 + 4px。')}</p>
         </section>}
 
         {page === 'status' && <section className="settings-page" aria-labelledby="status-heading">

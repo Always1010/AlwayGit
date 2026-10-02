@@ -10,6 +10,7 @@ export interface Appearance {
   theme: ThemePreference;
   palette: GraphPaletteId;
   codeFont: number;
+  codeRowHeight: number;
   badgeColor: string;
   colors: GraphPaletteColors;
   mainColors: { light: string; dark: string };
@@ -26,7 +27,7 @@ export function presetColors(id: GraphPaletteId): GraphPaletteColors {
 }
 
 export const defaultAppearance: Appearance = {
-  theme: 'system', palette: 'vivid', codeFont: 12, badgeColor: defaultBadgeColor, colors: presetColors('vivid'), mainColors: { ...defaultMainColors },
+  theme: 'system', palette: 'vivid', codeFont: 12, codeRowHeight: 18, badgeColor: defaultBadgeColor, colors: presetColors('vivid'), mainColors: { ...defaultMainColors },
 };
 
 function normalizeColors(value: Partial<GraphPaletteColors> | undefined, palette: GraphPaletteId): GraphPaletteColors {
@@ -42,6 +43,7 @@ export function normalizeAppearance(value: Partial<Appearance> = {}): Appearance
     theme: themePreferences.includes(value.theme as ThemePreference) ? value.theme! : 'system',
     palette,
     codeFont: Number.isFinite(value.codeFont) ? Math.round(Math.max(11, Math.min(18, value.codeFont!))) : 12,
+    codeRowHeight: Number.isFinite(value.codeRowHeight) ? Math.round(Math.max(16, Math.min(36, value.codeRowHeight!))) : 18,
     badgeColor: hexColor.test(value.badgeColor ?? '') ? value.badgeColor!.toUpperCase() : defaultBadgeColor,
     colors: normalizeColors(value.colors, palette),
     mainColors: {
@@ -51,7 +53,7 @@ export function normalizeAppearance(value: Partial<Appearance> = {}): Appearance
   };
 }
 export const effectiveRowHeight = (layout: Pick<LayoutState, 'font' | 'row'>) => Math.max(layout.row, Math.round(layout.font * 1.35) + 6);
-export const diffRowHeight = (font: number) => Math.max(22, Math.round(font * 1.6) + 3);
+export const diffRowHeight = (font: number, row = 18) => Math.max(row, font + 4);
 export const isLightTheme = (theme: ResolvedTheme) => ['light', 'paper', 'mist', 'hc-light'].includes(theme);
 export function textColorForBackground(hex: string): '#000000' | '#FFFFFF' {
   const channels = [1, 3, 5].map(offset => parseInt(hex.slice(offset, offset + 2), 16) / 255)

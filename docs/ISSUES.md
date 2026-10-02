@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-032：增加 Diff 行高时阅读位置被旧内容高度截断
+
+- 日期：2026-10-02
+- 状态：已解决
+- 现象：在靠近文件底部的位置增加 Diff 行高后，顶部阅读行向前跳动；无头验证中，第 80 行在行高从 18 px 增至 24 px 后变为约第 72 行。
+- 原因：虚拟列表重新测量后，同一轮立即恢复滚动，实际内容容器仍使用旧高度，浏览器把新滚动位置截断到旧容器底部。
+- 解决方案：保存顶部阅读行，等待重新测量后的内容高度生效，再按实际行高恢复滚动；收起时也按行高换算保存位置。Diff 行高设置、CSS、虚拟列表与跳转共享实际行高计算。
+- 验证方式：类型检查、生产构建、状态及设置单测 33 项、Diff 和外观无头界面专项通过；验证改变行高保留顶部行、大字号最低行高与 CSS 一致、取消设置后跳转正确，以及自定义范围、保存重载和旧设置兼容。
+- 相关文件：`webview/DiffPreview.tsx`、`webview/appearance.ts`、`webview/App.tsx`、`webview/SettingsDialog.tsx`、`webview/appearance.css`、`webview/styles.css`、`src/protocol/validation.ts`、`tests/ui-state.test.ts`、`scripts/test-diff-ui.mjs`、`scripts/test-appearance-ui.mjs`。
+
 ## BUG-031：Diff 未自动定位且单处修改无法重新跳转
 
 - 日期：2026-10-02

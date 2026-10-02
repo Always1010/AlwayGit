@@ -38,14 +38,26 @@ export function DiffPreview({ native, edit }: { native():void; edit():void }) {
     return()=>{live=false;};
   },[targetKey,revision]);
   const rows=useMemo(()=>preview&&!preview.binary?alignDiff(preview.left,preview.right):[],[preview]);
-  const ROW_HEIGHT=diffRowHeight(state.appearance.codeFont);
+  const ROW_HEIGHT=diffRowHeight(state.appearance.codeFont,state.appearance.codeRowHeight);
   const virtual=useVirtualizer({count:rows.length,getScrollElement:()=>viewport.current,estimateSize:()=>ROW_HEIGHT,overscan:8});
-  const previousRowHeight=useRef(ROW_HEIGHT);
+  const totalHeight=virtual.getTotalSize(),previousRowHeight=useRef(ROW_HEIGHT),pendingTopRow=useRef<number|undefined>(undefined);
   useLayoutEffect(()=>{
-    const element=viewport.current,topRow=(element?.scrollTop??0)/previousRowHeight.current;
+    const element=viewport.current,topRow=(element?.scrollTop??lastScrollTop.current)/previousRowHeight.current;
+    if(previousRowHeight.current!==ROW_HEIGHT){
+      if(element)pendingTopRow.current=topRow;
+      else lastScrollTop.current=topRow*ROW_HEIGHT;
+    }
     previousRowHeight.current=ROW_HEIGHT;virtual.measure();
-    if(element){element.scrollTop=topRow*ROW_HEIGHT;lastScrollTop.current=element.scrollTop;}
   },[ROW_HEIGHT]);
+  useLayoutEffect(()=>{
+    const element=viewport.current;
+    // Wait for the remeasured spacer; the old height can clamp the new offset.
+    if(!element||pendingTopRow.current===undefined||totalHeight!==rows.length*ROW_HEIGHT)return;
+    navigationScroll.current=Math.max(0,Math.min(pendingTopRow.current*ROW_HEIGHT,totalHeight-element.clientHeight));
+    pendingTopRow.current=undefined;
+    virtual.scrollToOffset(navigationScroll.current);
+    lastScrollTop.current=element.scrollTop;
+  },[ROW_HEIGHT,totalHeight,rows.length,collapsed]);
   const changes=useMemo(()=>changedRanges(rows),[rows]);
   const summary=useMemo(()=>summarizeChanges(rows,changes),[rows,changes]);
   const activeChange=selection?.key===targetKey?selection.rows===rows?Math.min(selection.index,changes.length-1):remapChange(selection.rows,rows,selection.index):changes.length?0:-1;
