@@ -6,7 +6,7 @@ import type { MenuTarget } from './menus';
 import { useSnapshotFields, useWorkbenchFields } from './subscriptions';
 import { useTranslation } from './i18n';
 import { Button, Icon } from './ui';
-import { RepositoryIcon } from './RepositoryIcon';
+import { RepositoryCollectionIcon, RepositoryIcon } from './RepositoryIcon';
 import { samePath } from './pathIdentity';
 import { buildRefTree, refsUnder, visibleRefs, type RefTreeNode } from './refTree';
 import { groupRepositories, type RepositoryGroup } from '../src/protocol/repositories';
@@ -120,8 +120,8 @@ function SidebarPanel({ context, actions, checkoutBranch, openWorktree }: { cont
       if(entry.kind==='repository')return repositoryButton(entry.group);
       const groups=repositoryCollectionGroups(repositoryGroups,entry.collection.id,state.repositoryOrder),collapsed=collapsedRepositoryCollections.includes(entry.collection.id),target:MenuTarget={kind:'repository-collection',collection:entry.collection},key=collectionOrderKey(entry.collection.id),toggle=()=>setCollapsedRepositoryCollections(current=>collapsed?current.filter(id=>id!==entry.collection.id):[...current,entry.collection.id]);
       return <div className="repository-collection" key={entry.collection.id} role="group" aria-label={entry.collection.name}>
-        <div className="repository-row" {...dropProps(key)} onContextMenu={event=>{event.currentTarget.querySelector<HTMLButtonElement>('.repository-collection-heading')?.focus({preventScroll:true});context(event,target);}}>
-          {dragHandle(key,entry.collection.name)}<button type="button" className="sidebar-item repository-collection-heading" aria-expanded={!collapsed} title={entry.collection.name} onClick={toggle} onKeyDown={event=>keyboard(event,target,toggle)}><Icon name={collapsed?'chevron-right':'chevron-down'}/><Icon name={collapsed?'folder':'folder-opened'}/><span className="truncate">{entry.collection.name}</span><span className="tree-count">{groups.length}</span></button>
+        <div className="repository-row repository-collection-header" {...dropProps(key)} onContextMenu={event=>{event.currentTarget.querySelector<HTMLButtonElement>('.repository-collection-heading')?.focus({preventScroll:true});context(event,target);}}>
+          {dragHandle(key,entry.collection.name)}<button type="button" className="sidebar-item repository-collection-heading" aria-expanded={!collapsed} title={entry.collection.name} onClick={toggle} onKeyDown={event=>keyboard(event,target,toggle)}><RepositoryCollectionIcon/><span className="truncate">{entry.collection.name}</span><span className="tree-count repository-collection-count">{groups.length}</span><Icon className="repository-collection-chevron" name={collapsed?'chevron-right':'chevron-down'}/></button>
         </div>{!collapsed&&<div className="repository-collection-members">{groups.map(group=>repositoryButton(group,true))}</div>}
       </div>;
     })}</div>}
