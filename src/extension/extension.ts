@@ -1,13 +1,12 @@
 import * as vscode from 'vscode';
 import { GitService } from '../git/service';
-import { RepositoryManager, RepositoryTree, type RepositoryTreeNode } from '../repositories/manager';
+import { RepositoryManager } from '../repositories/manager';
 import { GitDocuments } from '../editor/documents';
 import { Workbench } from './workbench';
 import { credentialEnvironment } from '../application/credentials';
 import { redactSecrets } from '../application/logging';
 import { ProjectWindows } from './project-windows';
-import type { Repository } from '../protocol/types';
-import { repositoryGroupKey } from '../protocol/repositories';
+import { statusBarPresentation } from './workbench-entry';
 
 export async function activate(context: vscode.ExtensionContext) {
   const output = vscode.window.createOutputChannel('AlwayGit');
@@ -32,28 +31,26 @@ export async function activate(context: vscode.ExtensionContext) {
   let workbench: Workbench;
   const projects = new ProjectWindows(context, output, manager, documents, repoId => workbench.open(repoId));
   workbench = new Workbench(context, git, manager, documents, output, projects);
-  const tree = new RepositoryTree(manager);
+  const launcher = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+  launcher.name = 'AlwayGit'; launcher.text = '$(git-merge) AlwayGit'; launcher.command = 'alwaygit.showWorkbench';
+  const updateLauncher = () => { const presentation=statusBarPresentation(workbench.presence);launcher.tooltip=presentation.tooltip;launcher.accessibilityInformation={label:presentation.tooltip};if(presentation.visible)launcher.show();else launcher.hide(); };
   context.subscriptions.push(output, manager, workbench, projects,
+    launcher,
     vscode.workspace.registerTextDocumentContentProvider('alwaygit-content', documents),
-    vscode.window.registerTreeDataProvider('alwaygit.repositories', tree),
-    manager.onDidChangeRepositories(() => tree.refresh()),
+    workbench.onDidChangePresence(updateLauncher),
     vscode.workspace.onDidCloseTextDocument(document => { if (document.uri.scheme === 'alwaygit-content') documents.release(document.uri); }),
     vscode.workspace.onDidChangeWorkspaceFolders(() => void manager.scan()),
     vscode.workspace.onDidGrantWorkspaceTrust(() => void manager.scan()),
+    vscode.commands.registerCommand('alwaygit.showWorkbench', () => workbench.open()),
     vscode.commands.registerCommand('alwaygit.open', (repoId?: string) => workbench.open(typeof repoId === 'string' ? repoId : undefined)),
-    vscode.commands.registerCommand('alwaygit.addRepository', async () => { await workbench.addRepository(); await workbench.open(); }),
-    vscode.commands.registerCommand('alwaygit.removeRepository', (repo?: Repository) => repo ? workbench.removeRepositories([repositoryGroupKey(repo)]) : undefined),
-    vscode.commands.registerCommand('alwaygit.createRepositoryCollection', () => workbench.createRepositoryCollection()),
-    vscode.commands.registerCommand('alwaygit.renameRepositoryCollection', (node?: RepositoryTreeNode) => node && 'collection' in node ? workbench.renameRepositoryCollection(node.collection.id) : undefined),
-    vscode.commands.registerCommand('alwaygit.deleteRepositoryCollection', (node?: RepositoryTreeNode) => node && 'collection' in node ? workbench.deleteRepositoryCollection(node.collection.id) : undefined),
-    vscode.commands.registerCommand('alwaygit.moveRepository', (repo?: Repository) => repo ? workbench.moveRepositories([repositoryGroupKey(repo)]) : undefined),
-    vscode.commands.registerCommand('alwaygit.refresh', async () => { await manager.scan(); for (const repo of manager.list()) manager.notify(repo.id); tree.refresh(); }),
+    vscode.commands.registerCommand('alwaygit.refresh', async () => { await manager.scan(); for (const repo of manager.list()) manager.notify(repo.id); }),
     vscode.commands.registerCommand('alwaygit.showLog', () => output.show(true)),
     vscode.workspace.onDidChangeConfiguration(e => { if (e.affectsConfiguration('alwaygit.gitPath') || e.affectsConfiguration('alwaygit.refreshInterval')) void vscode.window.showInformationMessage('Reload the VS Code window to apply AlwayGit runtime configuration changes.'); }),
     vscode.window.registerWebviewPanelSerializer('alwaygit.workbench', { async deserializeWebviewPanel(panel, state: { repoId?: string } | undefined) { await workbench.open(state?.repoId, panel); } }),
   );
   await projects.start();
   await manager.scan();
+  updateLauncher();
   output.appendLine('AlwayGit activated. Git operations run in the workspace extension host.');
   return { git, manager, documents, workbench, projects };
 }

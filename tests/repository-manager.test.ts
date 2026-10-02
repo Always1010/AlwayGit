@@ -6,7 +6,7 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { GitService } from '../src/git/service';
-import { RepositoryManager, RepositoryTree } from '../src/repositories/manager';
+import { RepositoryManager } from '../src/repositories/manager';
 import { Workbench } from '../src/extension/workbench';
 
 vi.mock('vscode', () => {
@@ -75,7 +75,7 @@ describe('batch repository registration', () => {
     const root = await fixture(); await worktree(root); const { manager } = setup();
     expect(await manager.addDirectory(root)).toMatchObject({ found: 2, added: 2, existing: 0 });
     expect(manager.list()).toHaveLength(3); expect(manager.groups()).toHaveLength(2);
-    expect(new RepositoryTree(manager).getChildren().map(repo => repo.name).sort()).toEqual(['A', 'B']);
+    expect(manager.groups().map(repo => repo.name).sort()).toEqual(['A', 'B']);
     expect(await manager.addDirectory(root)).toMatchObject({ found: 2, added: 0, existing: 2 });
   });
   it('discovers candidates without registering, watching or saving them until confirmed', async () => {
@@ -101,7 +101,7 @@ describe('batch repository registration', () => {
     values.set('alwaygit.roots', [linked, main]); values.set('alwaygit.session', session);
     vi.mocked(vscode.extensions.getExtension).mockReturnValue({ activate: async () => ({ getAPI: () => ({ repositories: [{ rootUri: { scheme: 'file', fsPath: linked } }, { rootUri: { scheme: 'file', fsPath: main } }] }) }) } as never);
     await manager.scan();
-    expect(manager.groups()).toHaveLength(1); expect(new RepositoryTree(manager).getChildren()[0].id).toBe(mainRepo.id);
+    expect(manager.groups()).toHaveLength(1); expect(manager.groups()[0].repository.id).toBe(mainRepo.id);
     expect(manager.get(linkedRepo.id).root).toBe(linkedRepo.root); expect(values.get('alwaygit.session')).toBe(session);
     expect(update).not.toHaveBeenCalled(); expect(globalUpdate).toHaveBeenCalledTimes(1);
     expect(globalValues.get('alwaygit.repositoryRoots.v1')).toEqual([linked, main]);
@@ -110,7 +110,7 @@ describe('batch repository registration', () => {
     const root = await fixture(), { linked } = await worktree(root), { manager } = setup();
     const repo = await manager.add(linked);
     expect(manager.groups()[0]).toMatchObject({ name: 'A', repository: repo });
-    expect(new RepositoryTree(manager).getChildren()[0]).toMatchObject({ id: repo.id, name: 'A' });
+    expect(manager.groups()[0]).toMatchObject({ name: 'A', repository: { id: repo.id } });
   });
   it('deduplicates, saves and notifies once, restores registered roots, and preserves session data', async () => {
     const root = await fixture(), shared = new Map<string, unknown>(), { manager, context, output, git, globalUpdate, globalValues, values } = setup(shared);
@@ -163,13 +163,13 @@ describe('batch repository registration', () => {
     const root=await fixture(),{manager,globalValues}=setup();await manager.addDirectory(root);
     const groups=manager.groups().sort((a,b)=>a.name.localeCompare(b.name)),collection=await manager.createCollection('Client Project');
     expect(await manager.move([groups[0].key],collection.id)).toBe(1);
-    const tree=new RepositoryTree(manager),roots=tree.getChildren(),folder=roots.find(node=>'collection' in node);
-    expect(roots.map(node=>node.name).sort()).toEqual(['B','Client Project']);
-    expect(folder&&tree.getChildren(folder).map(node=>node.name)).toEqual(['A']);
-    expect(roots.some(node=>node.name==='Ungrouped'||node.name==='未分组')).toBe(false);
+    const assigned=manager.groups().filter(group=>group.collectionId===collection.id),roots=manager.groups().filter(group=>!group.collectionId);
+    expect(roots.map(group=>group.name)).toEqual(['B']);
+    expect(assigned.map(group=>group.name)).toEqual(['A']);
+    expect(manager.collections().map(item=>item.name)).toEqual(['Client Project']);
     expect(globalValues.get('alwaygit.repositoryCollectionAssignments.v1')).toMatchObject({[groups[0].key]:collection.id});
     await manager.deleteCollection(collection.id);
-    expect(tree.getChildren().map(node=>node.name).sort()).toEqual(['A','B']);
+    expect(manager.groups().map(group=>group.name).sort()).toEqual(['A','B']);
   });
 
   it('does not scan or register in an untrusted workspace', async () => {

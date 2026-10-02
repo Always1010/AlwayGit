@@ -15,7 +15,7 @@ AlwayGit 是 Workspace 类型的 VS Code 扩展。每个 React WebviewPanel 提�
 | `src/extension` | `extension.ts`、`workbench.ts`、`project-windows.ts` | 扩展激活、面板集合、RPC 路由、VS Code 命令和生命周期 |
 | `src/application` | `confirm.ts`、`credentials.ts`、`window-bridge.ts`、`logging.ts` | 操作确认、认证与窗口 IPC、日志脱敏和用例协调 |
 | `src/git` | `service.ts`、`default-branch.ts` | 系统 Git 执行、结构化解析、查询、操作及共享仓库队列 |
-| `src/repositories` | `manager.ts`、`discovery.ts` | 仓库注册、递归发现、文件监听和活动栏仓库导航 |
+| `src/repositories` | `manager.ts`、`discovery.ts` | 仓库注册、递归发现、文件监听和持久化 |
 | `src/editor` | `paths.ts`、`documents.ts` | 安全路径解析、Git 内容文档、只读预览和 VS Code 原生 Diff |
 | `src/protocol` | `types.ts`、`validation.ts`、`repositories.ts` | 数据模型、RPC 请求响应、运行时校验和仓库展示分组 |
 | `webview` | `App.tsx`、`store.ts`、`rpc.ts` | React 组合、Zustand 状态、宿主桥接和 Demo |
@@ -30,7 +30,7 @@ AlwayGit 是 Workspace 类型的 VS Code 扩展。每个 React WebviewPanel 提�
 
 Repository 标识工作目录，`commonDir` 标识共享 Git 存储。同一存储的多个 Worktree 共用写操作队列，但保持独立的 HEAD、Index 和工作区状态。写操作在执行前重新验证仓库、引用和 Worktree 状态。
 
-Git 发现比较 Git 目录与共享目录识别主工作目录；linked Worktree 使用 `worktree list` 返回的主目录维护可选 `mainRoot`，独立存储的普通仓库仍使用自身工作目录。不根据 `.git` 文件类型或远端 URL 推断归属。共享纯函数 `src/protocol/repositories.ts` 按规范化 `commonDir` 派生逻辑仓库，供 Webview 与活动栏使用；活动工作目录仍为实际操作目标。用户创建的 Repository Collection 是独立的展示层级，以逻辑仓库键保存归属；没有 Collection 的仓库直接位于根层，不生成特殊的“未分组”节点。RepositoryManager 和 RPC 保留完整工作目录列表及原路径 ID，旧保存路径、会话和草稿无需重写；扫描数量以逻辑仓库计数，新增 Worktree 即使不增加仓库数也发布列表变化。
+Git 发现比较 Git 目录与共享目录识别主工作目录；linked Worktree 使用 `worktree list` 返回的主目录维护可选 `mainRoot`，独立存储的普通仓库仍使用自身工作目录。不根据 `.git` 文件类型或远端 URL 推断归属。共享纯函数 `src/protocol/repositories.ts` 按规范化 `commonDir` 派生逻辑仓库，供 Workbench 仓库导航使用；活动工作目录仍为实际操作目标。用户创建的 Repository Collection 是独立的展示层级，以逻辑仓库键保存归属；没有 Collection 的仓库直接位于根层，不生成特殊的“未分组”节点。RepositoryManager 和 RPC 保留完整工作目录列表及原路径 ID，旧保存路径、会话和草稿无需重写；扫描数量以逻辑仓库计数，新增 Worktree 即使不增加仓库数也发布列表变化。
 
 手动添加目录由 `src/repositories/discovery.ts` 使用异步迭代遍历，仅对有 `.git` 标记的候选目录调用 Git 验证，并在有效仓库处停止深入。发现阶段不注册监听或写入状态；宿主显示逻辑仓库级多选结果，用户确认后 RepositoryManager 才批量去重、注册监听、保存和发布一次列表变更。已有自定义分组时，确认前可选择目标分组或仓库根层。扫描取消或关闭确认列表均不注册。用户主动添加的仓库路径、Collection 和归属保存在扩展 `globalState` 中，在同一 VS Code Profile 和运行环境的窗口间共享；首次启动会合并旧 `workspaceState` 路径完成兼容迁移。移除仓库会释放其监听、删除保存路径和分组归属并保存逻辑仓库排除项，防止工作区或内置 Git 自动发现立即恢复；再次明确添加时解除排除。启动恢复只重新验证已保存路径及 VS Code 提供的仓库，不重复递归扫描分类目录。本地路径不参与 Settings Sync。
 
