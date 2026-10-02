@@ -27,7 +27,7 @@ let demoSnapshot: Snapshot = { repository: repo, branch: 'main', head: commits[0
   { name: 'origin/develop', fullName: 'refs/remotes/origin/develop', kind: 'remote', oid: commits[6].oid },
   { name: 'origin/feature/checkout', fullName: 'refs/remotes/origin/feature/checkout', kind: 'remote', oid: commits[7].oid },
   { name: 'origin/feature/subtree/api', fullName: 'refs/remotes/origin/feature/subtree/api', kind: 'remote', oid: commits[8].oid },
-  { name: 'v0.1.0', fullName: 'refs/tags/v0.1.0', kind: 'tag', oid: commits[14].oid },
+  { name: 'v0.1.0', fullName: 'refs/tags/v0.1.0', kind: 'tag', oid: commits[14].oid, refOid: commits[14].oid },
 ], stashes: [{ selector: 'stash@{0}', oid: commits[9].oid, subject: 'WIP: repository picker styling' }], worktrees: [{ path: repo.root, head: commits[0].oid, branch: 'refs/heads/main', bare: false, detached: false }, { path: 'D:\\Projects\\AlwayGit-graph', head: commits[3].oid, branch: 'refs/heads/feature/history-graph', bare: false, detached: false }], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 1 };
 const website:Repository={id:'demo-website',root:'D:\\Projects\\website',commonDir:'D:\\Projects\\website\\.git',name:'website'};
 const demoStores:Record<string,{snapshot:Snapshot;commits:Commit[];saved:Map<string,Snapshot['changes']>}>=Object.fromEntries([repo,website].map(repository=>[
@@ -113,8 +113,8 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
     else if (action.type === 'branch.delete') demoSnapshot.refs = demoSnapshot.refs.filter(r => !(r.kind === 'local' && action.names.includes(r.name)));
     else if(action.type==='remote.add'){demoSnapshot.remotes=[...new Set([...(demoSnapshot.remotes??[]),action.name])];}
     else if(action.type==='remote.delete')demoSnapshot.refs=demoSnapshot.refs.filter(r=>!(r.kind==='remote'&&action.branches.some(branch=>r.name===`${action.remote}/${branch}`)));
-    else if (action.type === 'tag.create') demoSnapshot.refs.push({ name: action.name, fullName: `refs/tags/${action.name}`, kind: 'tag', oid: resolve(action.target??'HEAD') });
-    else if (action.type === 'tag.delete') demoSnapshot.refs = demoSnapshot.refs.filter(r => !(r.kind === 'tag' && r.name === action.name));
+    else if (action.type === 'tag.create') { const oid=resolve(action.target??'HEAD'); demoSnapshot.refs.push({ name: action.name, fullName: `refs/tags/${action.name}`, kind: 'tag', oid, refOid: oid }); }
+    else if (action.type === 'tag.delete') { const tag=demoSnapshot.refs.find(r=>r.kind==='tag'&&r.name===action.name); if(!action.expectedOid||tag?.refOid!==action.expectedOid)throw new RpcError('The Tag changed. Refresh and reopen the deletion dialog.','OPERATION_CHANGED'); demoSnapshot.refs=demoSnapshot.refs.filter(r=>r!==tag); }
     else if (action.type === 'stash.create') {
       if(action.paths&&!action.paths.length)throw new Error('Select at least one file to Stash.');
       if(demoSnapshot.operation.kind||demoSnapshot.operation.conflicts)throw new Error('Resolve the current Git operation or conflicts before Stash.');

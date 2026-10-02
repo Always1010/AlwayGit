@@ -344,6 +344,17 @@ describe('repository UI consistency', () => {
     expect(menuFor({kind:'files',primary:historical,files:[historical]},api).items.some(item=>item.label==='Stash Selected Files…')).toBe(false);
   });
 
+  it('captures the raw Tag identity in its deletion menu before a snapshot refresh', async () => {
+    const {menuFor}=await import('../webview/menus'),open=vi.fn(),noop=vi.fn(),api={open,checkout:noop,openDiff:noop,editFile:noop,host:vi.fn().mockResolvedValue(undefined),addRepository:vi.fn().mockResolvedValue(undefined),removeRepositories:noop,fetchRepositories:noop};
+    const tag={kind:'tag' as const,name:'v1',fullName:'refs/tags/v1',oid:'a'.repeat(40),refOid:'b'.repeat(40)};
+    store.setState({snapshot:{...snapshot(a),refs:[tag]},language:'en'});
+    const menu=menuFor({kind:'ref',ref:tag},api).items.find(item=>item.label==='Delete Tag…')!;
+    store.setState({snapshot:{...snapshot(a,2),refs:[{...tag,refOid:'c'.repeat(40)}]}});
+    await menu.run();
+    expect(open).toHaveBeenCalledWith({type:'tag.delete',target:'v1',expectedOid:'b'.repeat(40)});
+    expect(menuFor({kind:'ref',ref:{...tag,refOid:undefined}},api).items.find(item=>item.label==='Delete Tag…')?.disabled).toBe(true);
+  });
+
   it('retains failed action details and refreshes conflicts after failure', async () => {
     await store.getState().selectRepository('a'); const fallback = bridge.rpc.getMockImplementation()!;
     bridge.rpc.mockImplementation((method, repoId, payload) => {

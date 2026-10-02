@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { actionSchema, createRepositoryCollectionSchema, reorderRepositorySchema, diffSchema, openRepositorySchema, openWorkbenchSchema, requestSchema, sessionSchema } from '../src/protocol/validation';
 
 describe('Workbench protocol validation', () => {
+  it('requires the raw Tag identity before deletion', () => {
+    for (const expectedOid of ['a'.repeat(40), 'b'.repeat(64)]) expect(actionSchema.parse({ type: 'tag.delete', name: 'v1', expectedOid })).toEqual({ type: 'tag.delete', name: 'v1', expectedOid });
+    for (const expectedOid of [undefined, '', 'HEAD', '0'.repeat(40)]) expect(actionSchema.safeParse({ type: 'tag.delete', name: 'v1', expectedOid }).success).toBe(false);
+  });
   it.each(['merge', 'rebase', 'reset'])('requires a captured branch and HEAD for %s', type => {
     const action = { type, target: 'HEAD', ...(type === 'reset' ? { mode: 'hard' } : {}) };
     expect(actionSchema.safeParse(action).success).toBe(false);

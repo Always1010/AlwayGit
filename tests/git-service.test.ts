@@ -159,9 +159,12 @@ describe('Git service integration', () => {
     const { root, service, repo } = await setup();
     const head = await commit(root, 'base.txt', 'base');
     await service.execute(repo, { type: 'tag.create', name: 'v1', message: 'release' });
-    expect((await service.snapshot(repo)).refs.find(ref => ref.kind === 'tag' && ref.name === 'v1')?.oid).toBe(head);
+    const tag = (await service.snapshot(repo)).refs.find(ref => ref.kind === 'tag' && ref.name === 'v1')!;
+    expect(tag.oid).toBe(head);
+    expect(tag.refOid).toBe(await git(root, 'rev-parse', 'refs/tags/v1'));
+    expect(tag.refOid).not.toBe(head);
     expect(await git(root, 'cat-file', '-t', 'refs/tags/v1')).toBe('tag');
-    await service.execute(repo, { type: 'tag.delete', name: 'v1' });
+    await service.execute(repo, { type: 'tag.delete', name: 'v1', expectedOid: tag.refOid! });
     expect((await service.snapshot(repo)).refs.some(ref => ref.kind === 'tag' && ref.name === 'v1')).toBe(false);
   });
 
