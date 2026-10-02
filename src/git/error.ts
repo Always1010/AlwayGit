@@ -8,3 +8,7 @@ export class GitTerminationError extends GitError {
   readonly terminationUnconfirmed = true;
   constructor(message: string, public readonly pid?: number, public readonly completion: Promise<void> = Promise.resolve(), public readonly triggerCode?: string) { super(message, 'GIT_TERMINATION_UNCONFIRMED'); }
 }
+
+export class GitReadTerminationError extends GitError {
+  constructor(message: string, code: string, public readonly pid: number | undefined, public readonly completion: Promise<void>) { super(message, code); }
+}
