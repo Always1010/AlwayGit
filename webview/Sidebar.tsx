@@ -1,3 +1,4 @@
+import { indexRefs } from './refIndex';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import type React from 'react';
 import type { GitRef } from '../src/protocol/types';
@@ -74,7 +75,7 @@ function SidebarPanel({ context, actions, checkoutBranch, openWorktree }: { cont
     onDrop:(event:React.DragEvent<HTMLDivElement>)=>{const source=dragging.current;if(ordering||!source||source.parent!==parent||source.key===key)return;event.preventDefault();const bounds=event.currentTarget.getBoundingClientRect(),position=event.clientY<bounds.top+bounds.height/2?'before':'after';dragging.current=undefined;setDropTarget(undefined);setOrdering(true);void state.reorderRepository({key:source.key,targetKey:key,position}).finally(()=>setOrdering(false));},
   });
   const groupOpen=(key:string)=>!state.collapsedSidebarGroups.includes(key);
-  const local=snapshot?.refs.filter(ref=>ref.kind==='local')??[],remoteRefs=snapshot?.refs.filter(ref=>ref.kind==='remote')??[],tags=snapshot?.refs.filter(ref=>ref.kind==='tag')??[];
+  const {local,remote:remoteRefs,tag:tags}=indexRefs(snapshot?.refs);
   const remotes=snapshot?.remotes??[...new Set(remoteRefs.map(ref=>ref.name.split('/')[0]))];
   const repositoryGroups=groupRepositories(state.repositories,state.repoId);
   const repositoryEntries=repositoryDisplayEntries(repositoryGroups,state.repositoryCollections,state.repositoryOrder);
