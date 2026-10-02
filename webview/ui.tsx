@@ -6,6 +6,7 @@ export function Icon({ name, className = '' }: { name: string; className?: strin
   return <i aria-hidden="true" className={`codicon codicon-${name} ${className}`} />;
 }
 export function Button({ children, icon, className = '', ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { icon?: string }) { return <button className={`button ${className}`} {...props}>{icon && <Icon name={icon} />}{children}</button>; }
+export function BranchIcon({remote=false}:{remote?:boolean}) { return <span className="branch-icon" aria-hidden="true"><Icon name={remote?'cloud':'git-branch'}/></span>; }
 export function Empty({ title, children }: { title: string; children?: React.ReactNode }) { return <div className="empty"><Icon name="git-commit" /><strong>{title}</strong>{children && <p>{children}</p>}</div>; }
 
 export function ResizeHandle({ axis, label, value, onChange, min, max, reverse = false, className = '' }: { axis: 'x' | 'y'; label: string; value: number; onChange(value: number): void; min: number; max: number; reverse?: boolean; className?: string }) {

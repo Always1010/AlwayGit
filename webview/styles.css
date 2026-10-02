@@ -96,10 +96,14 @@ h1,h2,p {margin:0;}
 .repository-batch-list span {font-size:11px;color:var(--muted);word-break:break-all;}
 .current-indicator {display:inline-flex;align-items:center;justify-content:center;width:12px;min-width:12px;}
 .current-indicator-glyph {width:0;height:0;border-top:6px solid transparent;border-bottom:6px solid transparent;border-left:9px solid var(--current-indicator-color,var(--fg));}
-.ref-row {display:flex;align-items:center;min-width:0;border-left:3px solid transparent;}
+.ref-row {display:flex;align-items:center;gap:1px;min-width:0;}
 .ref-row.action-selected {background:color-mix(in srgb,var(--accent) 18%,var(--panel));outline:1px solid color-mix(in srgb,var(--accent) 52%,transparent);outline-offset:-1px;}
-.ref-row .sidebar-item {flex:1;min-width:0;padding-left:2px;}
-.branch-check {display:flex;align-items:center;justify-content:center;width:23px;min-height:var(--row-height,24px);flex:none;}
+.ref-row .sidebar-item {flex:1;min-width:0;padding-left:0;padding-right:3px;}
+.ref-item>.truncate,.tree-folder-name>.truncate {flex:1;}
+.branch-check {display:flex;align-items:center;justify-content:center;width:20px;min-height:var(--row-height,24px);flex:none;}
+.branch-icon {display:inline-flex;align-items:center;justify-content:center;flex:none;width:18px;height:18px;color:var(--muted);}
+.ref-item[aria-current="true"]>.branch-icon {border-radius:50%;background:#2463C5;color:#FFFFFF;}
+.ref-item[aria-current="true"]>.branch-icon>.codicon {font-size:13px;}
 .branch-shortcuts {display:flex;align-items:center;gap:6px;padding:4px 5px;font-size:11px;border-bottom:1px solid var(--row-border);}
 .branch-shortcuts>.muted {color:var(--fg);font-weight:500;}
 .branch-shortcut-actions {gap:0;overflow:hidden;border:1px solid var(--border);border-radius:5px;background:var(--input);box-shadow:0 1px 2px color-mix(in srgb,var(--fg) 18%,transparent);}
@@ -107,16 +111,22 @@ h1,h2,p {margin:0;}
 .branch-shortcut-actions .button.sidebar-action+.button.sidebar-action {border-left:1px solid var(--border);}
 .branch-shortcut-actions .button.sidebar-action:hover:not(:disabled),.branch-shortcut-actions .button.sidebar-action:focus-visible {background:var(--hover);color:var(--fg);}
 .branch-shortcut-actions .button.sidebar-action[aria-pressed=true] {background:var(--selected);color:var(--accent);box-shadow:inset 0 -2px var(--accent);}
-.branch-tree {padding:3px 3px 7px;}
-.tree-row {padding-left:calc(var(--tree-depth) * 13px);}
-.tree-spacer,.tree-chevron {width:22px;min-width:22px;min-height:var(--row-height,24px);padding:0;display:flex;align-items:center;justify-content:center;}
+.branch-tree {padding:3px 4px 7px;}
+.tree-row {padding-left:calc(var(--tree-depth) * 20px);}
+.tree-chevron {width:14px;min-width:14px;min-height:var(--row-height,24px);padding:0;display:flex;align-items:center;justify-content:center;}
 .tree-chevron {color:var(--muted);}
-.tree-folder {display:flex;align-items:center;min-width:0;}
-.tree-folder-name {display:flex;align-items:center;gap:5px;flex:1;min-width:0;min-height:var(--row-height,24px);padding:2px 4px;text-align:left;}
-.tree-folder-name>.codicon {color:var(--yellow);}
+.tree-node {margin-top:3px;}
+.tree-folder {display:flex;align-items:center;gap:1px;min-width:0;background:color-mix(in srgb,var(--muted) 7%,var(--panel));background-clip:content-box;border-radius:3px;}
+.tree-folder-name {display:flex;align-items:center;gap:5px;flex:1;min-width:0;min-height:var(--row-height,24px);padding:2px 3px 2px 0;text-align:left;font-weight:600;}
+.tree-folder-name>.branch-icon {color:var(--fg);}
+.tree-children {position:relative;}
+.tree-children::before {content:'';position:absolute;left:calc(var(--tree-depth) * 20px + 20px);top:3px;bottom:3px;width:1px;background:color-mix(in srgb,var(--muted) 32%,var(--panel));pointer-events:none;}
+.tree-folder-name>.tree-count {display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:26px;height:18px;padding:0 3px;border-radius:4px;background:color-mix(in srgb,var(--muted) 10%,var(--panel));font-weight:400;}
+.workbench[data-theme^=hc-] .tree-folder {outline:1px solid var(--border);outline-offset:-1px;}
 .tree-count {margin-left:auto;color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums;}
 .remote-group {border-bottom:1px solid var(--row-border);}
-.remote-heading {display:flex;align-items:center;gap:2px;padding:2px 4px;color:var(--muted);}
+.remote-heading {display:flex;align-items:center;gap:1px;padding:2px 4px;color:var(--muted);}
+.remote-group>.branch-tree {padding-left:24px;}
 .remote-toggle {flex:1;justify-content:flex-start!important;min-width:0;font-weight:500;}
 .sidebar-empty {color:var(--muted);padding:7px 8px;font-size:12px;}
 .remote-empty {display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:10px 12px;}
