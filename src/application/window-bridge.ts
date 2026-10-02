@@ -1,3 +1,4 @@
+import { translate, message as localizeMessage, MessageError } from '../i18n/index';
 import { createServer, createConnection, type Server, type Socket } from 'node:net';
 import { randomBytes } from 'node:crypto';
 import { mkdir, readFile, readdir, rename, rm, realpath, writeFile } from 'node:fs/promises';
@@ -17,8 +18,8 @@ export const projectRequestSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('repository-activity'), commonDir: rootSchema, busy: z.boolean(), label: z.string().min(1).max(128) }).strict(),
   z.object({ root: rootSchema, action: z.literal('project') }).strict(),
   z.object({ root: rootSchema, action: z.literal('workbench') }).strict(),
-  z.object({ root: rootSchema, action: z.literal('file'), path: fileSchema.shape.path.refine(repositoryPath, 'File path is outside the repository.') }).strict(),
-  z.object({ root: rootSchema, action: z.literal('diff'), target: diffSchema.refine(target => repositoryPath(target.path), 'File path is outside the repository.') }).strict(),
+  z.object({ root: rootSchema, action: z.literal('file'), path: fileSchema.shape.path.refine(repositoryPath, translate('en', "windowBridge.filePathIsOutsideTheRepository")) }).strict(),
+  z.object({ root: rootSchema, action: z.literal('diff'), target: diffSchema.refine(target => repositoryPath(target.path), translate('en', "windowBridge.filePathIsOutsideTheRepository")) }).strict(),
 ]);
 export type ProjectRequest = z.infer<typeof projectRequestSchema>;
 
@@ -69,7 +70,7 @@ export class WindowBridge {
           else if (request.action === 'repository-activity') await this.execute({ ...request, commonDir: await canonicalPath(request.commonDir) });
           else {
             const root = await canonicalPath(request.root);
-            if (windowMatch(this.record, root) < 0) throw new Error('The project is no longer open in this window.');
+            if (windowMatch(this.record, root) < 0) throw new MessageError(localizeMessage("windowBridge.theProjectIsNoLongerOpenInThisWindow"));
             await this.execute({ ...request, root });
           }
           socket.end('{"ok":true}\n');
@@ -84,7 +85,7 @@ export class WindowBridge {
       this.server.listen(0, '127.0.0.1', () => { this.server.removeListener('error', reject); resolve(); });
     });
     const address = this.server.address();
-    if (!address || typeof address === 'string') throw new Error('Cannot register the project window.');
+    if (!address || typeof address === 'string') throw new MessageError(localizeMessage("windowBridge.cannotRegisterTheProjectWindow"));
     this.record.port = address.port;
     this.server.on('error', error => this.log(error.message));
     await this.update(roots, focused);
@@ -125,7 +126,7 @@ export class WindowBridge {
   }
   async broadcast(request: ProjectRequest): Promise<void> {
     const targets = (await this.windows()).filter(record => record.id !== this.record.id);
-    await Promise.all(targets.map(record => WindowBridge.send(record, request).catch(error => this.log(`Broadcast to ${record.id} failed: ${error instanceof Error ? error.message : String(error)}`))));
+    await Promise.all(targets.map(record => WindowBridge.send(record, request).catch(error => this.log(translate('en', "windowBridge.broadcastToFailed", { id: (record.id), value: (error instanceof Error ? error.message : String(error)) })))));
   }
   async candidates(root: string): Promise<WindowRecord[]> {
     const canonical = await canonicalPath(root);
@@ -136,20 +137,20 @@ export class WindowBridge {
       const socket = createConnection({ host: '127.0.0.1', port: record.port });
       let data = Buffer.alloc(0), settled = false;
       const finish = (error?: Error) => { if (settled) return; settled = true; socket.destroy(); if (error) reject(error); else resolve(); };
-      socket.setTimeout(timeout, () => finish(new WindowTransportError('The project window did not respond.')));
-      socket.once('error', () => finish(new WindowTransportError('The project window is unavailable.')));
-      socket.once('close', () => { if (!settled) finish(new WindowTransportError('The project window closed before responding.')); });
+      socket.setTimeout(timeout, () => finish(new WindowTransportError(translate('en', "windowBridge.theProjectWindowDidNotRespond"))));
+      socket.once('error', () => finish(new WindowTransportError(translate('en', "windowBridge.theProjectWindowIsUnavailable"))));
+      socket.once('close', () => { if (!settled) finish(new WindowTransportError(translate('en', "windowBridge.theProjectWindowClosedBeforeResponding"))); });
       socket.once('connect', () => socket.write(JSON.stringify({ token: record.token, ...(request ? { request } : { ping: true }) }) + '\n'));
       socket.on('data', chunk => {
         data = Buffer.concat([data, chunk]);
-        if (data.length > LIMIT) { finish(new WindowTransportError('Invalid project window response.')); return; }
+        if (data.length > LIMIT) { finish(new WindowTransportError(translate('en', "windowBridge.invalidProjectWindowResponse"))); return; }
         const end = data.indexOf(10);
         if (end < 0) return;
         try {
           const response = JSON.parse(data.subarray(0, end).toString('utf8'));
           if (response.ok === true) finish();
-          else finish(new Error(typeof response.error === 'string' ? response.error : 'The project window rejected the request.'));
-        } catch { finish(new WindowTransportError('Invalid project window response.')); }
+          else finish(new Error(typeof response.error === 'string' ? response.error : translate('en', "windowBridge.theProjectWindowRejectedTheRequest")));
+        } catch { finish(new WindowTransportError(translate('en', "windowBridge.invalidProjectWindowResponse"))); }
       });
     });
   }

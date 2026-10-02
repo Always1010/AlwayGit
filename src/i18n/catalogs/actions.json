@@ -1,0 +1,995 @@
+{
+  "actions.currentBranchCurrentVersion": {
+    "en": "Current branch {{name}} · current version",
+    "zh-CN": "当前分支 {{name}} · 当前版本",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / branchStartLabel"
+  },
+  "actions.branch": {
+    "en": "Branch {{name}}",
+    "zh-CN": "分支 {{name}}",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / branchStartLabel"
+  },
+  "actions.remoteBranch": {
+    "en": "Remote branch {{name}}",
+    "zh-CN": "远程分支 {{name}}",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / branchStartLabel"
+  },
+  "actions.currentBranchCurrentVersionVariant2": {
+    "en": "Current branch {{branch}} · current version",
+    "zh-CN": "当前分支 {{branch}} · 当前版本",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / branchStartLabel"
+  },
+  "actions.currentCommit": {
+    "en": "Current Commit",
+    "zh-CN": "当前 Commit",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / branchStartLabel"
+  },
+  "actions.noneAvailable": {
+    "en": "None available",
+    "zh-CN": "暂无可用项",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / field"
+  },
+  "actions.stashSelectedFiles": {
+    "en": "Stash Selected Files",
+    "zh-CN": "Stash 所选文件",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / title"
+  },
+  "actions.stashAllChanges": {
+    "en": "Stash All Changes",
+    "zh-CN": "Stash 全部修改",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / title"
+  },
+  "actions.createBranchAndCheckout": {
+    "en": "Create Branch and Checkout",
+    "zh-CN": "创建分支并切换",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / title"
+  },
+  "actions.enterABranchName": {
+    "en": "Enter a branch name.",
+    "zh-CN": "请输入分支名称。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / branchProblemText"
+  },
+  "actions.branchNamesCannotStartWithAHyphen": {
+    "en": "Branch names cannot start with a hyphen.",
+    "zh-CN": "分支名称不能以连字符开头。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / branchProblemText"
+  },
+  "actions.branchNamesCannotContainSpacesTryFeatureUxFlow": {
+    "en": "Branch names cannot contain spaces. Try feature/ux-flow.",
+    "zh-CN": "分支名称不能包含空格，可用 feature/ux-flow。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / branchProblemText"
+  },
+  "actions.branchNamesCannotContainControlCharacters": {
+    "en": "Branch names cannot contain control characters.",
+    "zh-CN": "分支名称不能包含控制字符。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / branchProblemText"
+  },
+  "actions.branchNamesCannotContainOrBackslash": {
+    "en": "Branch names cannot contain ~, ^, :, ?, *, [, or backslash.",
+    "zh-CN": "分支名称不能包含 ~、^、:、?、*、[ 或反斜杠。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / branchProblemText"
+  },
+  "actions.branchNamesCannotContainTwoConsecutiveDots": {
+    "en": "Branch names cannot contain two consecutive dots.",
+    "zh-CN": "分支名称不能包含连续两个点。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / branchProblemText"
+  },
+  "actions.branchNamesCannotContain": {
+    "en": "Branch names cannot contain @{.",
+    "zh-CN": "分支名称不能包含 @{。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / branchProblemText"
+  },
+  "actions.branchNamesCannotStartOrEndWithASlash": {
+    "en": "Branch names cannot start or end with a slash, or contain consecutive slashes.",
+    "zh-CN": "分支名称不能以斜杠开头或结尾，也不能包含连续斜杠。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / branchProblemText"
+  },
+  "actions.branchNameSegmentsCannotStartWithADot": {
+    "en": "Branch name segments cannot start with a dot.",
+    "zh-CN": "分支名称的各段不能以点开头。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / branchProblemText"
+  },
+  "actions.branchNameSegmentsCannotEndWithLock": {
+    "en": "Branch name segments cannot end with .lock.",
+    "zh-CN": "分支名称的各段不能以 .lock 结尾。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / branchProblemText"
+  },
+  "actions.branchNamesCannotEndWithADot": {
+    "en": "Branch names cannot end with a dot.",
+    "zh-CN": "分支名称不能以点结尾。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / branchProblemText"
+  },
+  "actions.aBranchNameCannotBeOnly": {
+    "en": "A branch name cannot be only @.",
+    "zh-CN": "分支名称不能只有 @。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / branchProblemText"
+  },
+  "actions.localBranchAlreadyExistsChooseAnotherBranchName": {
+    "en": "Local branch {{name}} already exists. Choose another branch name.",
+    "zh-CN": "本地分支 {{name}} 已存在，请使用其他名称。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / branchValidation"
+  },
+  "actions.branchNameConflictsWithExistingLocalBranchChooseAnother": {
+    "en": "Branch name conflicts with existing local branch {{name}}. Choose another branch name.",
+    "zh-CN": "分支名称与已有本地分支 {{name}} 的路径冲突，请使用其他名称。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / branchValidation"
+  },
+  "actions.selectALocalBranchRemoteAndRemoteBranch": {
+    "en": "Select a local branch, remote, and remote branch.",
+    "zh-CN": "请选择本地分支、远端和远端分支。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / executeAction"
+  },
+  "actions.refreshAndReopenTheRemoteTargetConfirmationBeforeForce": {
+    "en": "Refresh and reopen the remote target confirmation before Force-with-lease.",
+    "zh-CN": "请刷新并重新打开远端目标确认后，再执行 Force-with-lease。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / executeAction"
+  },
+  "actions.enterARemoteNameWithoutSpacesSuchAsOrigin": {
+    "en": "Enter a remote name without spaces, such as origin.",
+    "zh-CN": "请输入不含空格的远端名称，例如 origin。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / executeAction"
+  },
+  "actions.enterTheRemoteRepositoryURL": {
+    "en": "Enter the remote repository URL.",
+    "zh-CN": "请输入远程仓库地址。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / executeAction"
+  },
+  "actions.directDetachedHEADCheckoutIsDisabledCreateAndSwitch": {
+    "en": "Direct Detached HEAD Checkout is disabled. Create and switch to a branch.",
+    "zh-CN": "已禁止直接进入 Detached HEAD，请创建分支并切换。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / executeAction"
+  },
+  "actions.refreshAndReopenTheTagDeletionDialog": {
+    "en": "Refresh and reopen the Tag deletion dialog.",
+    "zh-CN": "请刷新并重新打开 Tag 删除窗口。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / executeAction"
+  },
+  "actions.selectAtLeastOneFileToStash": {
+    "en": "Select at least one file to Stash.",
+    "zh-CN": "请至少选择一个文件进行 Stash。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / executeAction"
+  },
+  "actions.selectAStashAndTryAgain": {
+    "en": "Select a Stash and try again.",
+    "zh-CN": "请选择 Stash 后重试。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / executeAction"
+  },
+  "actions.chooseAnExistingBranchOrEnterANewBranch": {
+    "en": "Choose an existing branch or enter a new branch name. Detached HEAD is disabled.",
+    "zh-CN": "请选择已有分支或输入新分支名称，当前已禁止 Detached HEAD。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / executeAction"
+  },
+  "actions.chooseAnExistingBranchANewBranchOrDetached": {
+    "en": "Choose an existing branch, a new branch, or Detached HEAD.",
+    "zh-CN": "请选择已有分支、新分支或 Detached HEAD 中的一项。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / executeAction"
+  },
+  "actions.mainlineParentMustBeAPositiveInteger": {
+    "en": "Mainline parent must be a positive integer.",
+    "zh-CN": "Mainline 父 Commit 序号必须为正整数。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / executeAction"
+  },
+  "actions.paused": {
+    "en": "{{kind}} paused",
+    "zh-CN": "{{kind}} 已暂停",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.closeThisWindow": {
+    "en": "Close This Window",
+    "zh-CN": "关闭此窗口",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.abort": {
+    "en": "Abort {{kind}}…",
+    "zh-CN": "中止本次 {{kind}}…",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.viewHandleConflicts": {
+    "en": "View & Handle Conflicts",
+    "zh-CN": "查看并处理冲突",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.reviewStagedResult": {
+    "en": "Review Staged Result",
+    "zh-CN": "检查暂存结果",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.closingThisWindowLeavesTheGitOperationPausedEdit": {
+    "en": "Closing this window leaves the Git operation paused. Edit and save conflicting files, then return to mark and stage the result.",
+    "zh-CN": "关闭此窗口后 Git 操作仍处于暂停状态。请编辑保存冲突文件，再返回这里标记并暂存结果。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.cancelAndKeepCurrentState": {
+    "en": "Cancel and keep current state",
+    "zh-CN": "取消并保留当前状态",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.addRemote": {
+    "en": "Add Remote…",
+    "zh-CN": "添加远端…",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.createOnly": {
+    "en": "Create Only",
+    "zh-CN": "仅创建",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.createAndCheckout": {
+    "en": "Create and Checkout",
+    "zh-CN": "创建并切换",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.branchName": {
+    "en": "Branch Name",
+    "zh-CN": "分支名称",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.startPoint": {
+    "en": "Start Point",
+    "zh-CN": "起始位置",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.createAndSwitchToABranchToWorkOn": {
+    "en": "Create and switch to a branch to work on this historical version.",
+    "zh-CN": "创建并切换到新分支，以使用这个历史版本。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.theNewBranchStartsFromThisSelectedVersion": {
+    "en": "The new branch starts from this selected version.",
+    "zh-CN": "新分支将从这个选定版本开始。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.branchVariant2": {
+    "en": "Branch",
+    "zh-CN": "分支",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.forceDeletionOfUnmergedBranches": {
+    "en": "Force deletion of unmerged branches",
+    "zh-CN": "强制删除尚未合并的分支",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.checkoutPreservesChangesWhenPossibleGitStopsIfThey": {
+    "en": "Checkout preserves changes when possible; Git stops if they would be overwritten.",
+    "zh-CN": "Checkout 会尽可能保留修改；可能覆盖修改时 Git 会停止操作。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.deleteFrom": {
+    "en": "Delete from {{remote}}",
+    "zh-CN": "从 {{remote}} 删除",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.thisDeletesBranchesFromTheSharedRemoteRepository": {
+    "en": "This deletes branches from the shared remote repository.",
+    "zh-CN": "此操作会从共享远端仓库删除分支。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.connectThisLocalRepositoryToARemoteRepositoryYour": {
+    "en": "Connect this local repository to a remote repository. Your local commits are already saved and will not be sent until you Push.",
+    "zh-CN": "将此本地仓库连接到远程仓库。本地 Commit 已经保存，只有执行 Push 后才会发送。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.remoteName": {
+    "en": "Remote Name",
+    "zh-CN": "远端名称",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.repositoryURL": {
+    "en": "Repository URL",
+    "zh-CN": "仓库地址",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.thisDirectlyEntersDetachedHEADTheOriginalBranchStays": {
+    "en": "This directly enters Detached HEAD. The original branch stays in place; create a branch to keep any new commits.",
+    "zh-CN": "此操作将直接进入 Detached HEAD。原分支位置不变；若要保留后续提交，请创建分支。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.directDetachedHEADCheckoutIsNowDisabled": {
+    "en": "Direct Detached HEAD Checkout is now disabled.",
+    "zh-CN": "当前已禁止直接进入 Detached HEAD。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.tagName": {
+    "en": "Tag Name",
+    "zh-CN": "Tag 名称",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.targetCommit": {
+    "en": "Target Commit",
+    "zh-CN": "目标 Commit",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.annotationOptional": {
+    "en": "Annotation (optional)",
+    "zh-CN": "说明（可选）",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.tag": {
+    "en": "Tag",
+    "zh-CN": "Tag",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.selectedFiles": {
+    "en": {
+      "one": "{{count}} selected file",
+      "other": "{{count}} selected files"
+    },
+    "zh-CN": "已选择 {{count}} 个文件",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.descriptionOptional": {
+    "en": "Description (optional)",
+    "zh-CN": "说明（可选）",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.includeUntrackedFiles": {
+    "en": "Include untracked files",
+    "zh-CN": "包含未跟踪文件",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.saveEachSelectedFileSCompleteIndexAndWorking": {
+    "en": "Save each selected file’s complete Index and Working Tree state, even when selected from only Staged or Unstaged Changes. Selected untracked files are included. Other files keep their changes.",
+    "zh-CN": "保存每个所选文件完整的 Index 和工作区状态，即使只在 Staged 或 Unstaged Changes 中选择。所选未跟踪文件一并保存，其他文件的修改保留。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.saveAllTrackedFilesIndexAndWorkingTreeChanges": {
+    "en": "Save all tracked files’ Index and Working Tree changes for later, then clear their saved changes from the project.",
+    "zh-CN": "保存全部已跟踪文件的 Index 和工作区修改供之后恢复，并清理这些已保存的修改。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.stash": {
+    "en": "Stash",
+    "zh-CN": "Stash",
+    "review": "keep",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.removeThisEntryItsSavedChangesMayBecomeUnreachable": {
+    "en": "Remove this entry. Its saved changes may become unreachable.",
+    "zh-CN": "移除此条目；其中保存的修改可能无法恢复。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.restoreTheSavedIndexAndWorkingTreeStateThen": {
+    "en": "Restore the saved Index and Working Tree state, then remove the Stash only on success. Preflight conflicts stop the entire restore and preserve the current state and entry.",
+    "zh-CN": "恢复保存的 Index 和工作区状态，仅在成功后删除 Stash。预检发现冲突时停止整次恢复，保留当前现场和存档。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.restoreTheSavedIndexAndWorkingTreeStateAnd": {
+    "en": "Restore the saved Index and Working Tree state and keep this Stash. Preflight conflicts stop the entire restore without changing the current state.",
+    "zh-CN": "恢复保存的 Index 和工作区状态，并保留此 Stash。预检发现冲突时停止整次恢复，当前现场不变。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.cannotRestoreBecauseTheseFilesAlreadyExistInThe": {
+    "en": "Cannot restore because these files already exist in the project.",
+    "zh-CN": "无法恢复，因为项目中已存在以下文件。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.restoreStoppedBecausePreflightFoundConflicts": {
+    "en": "Restore stopped because preflight found conflicts.",
+    "zh-CN": "预检发现冲突，已停止恢复。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.restoreStoppedBecauseTheProjectChangedDuringPreflight": {
+    "en": "Restore stopped because the project changed during preflight.",
+    "zh-CN": "预检期间项目发生变化，已停止恢复。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.restoreStoppedBecausePreflightCouldNotRestoreTheSaved": {
+    "en": "Restore stopped because preflight could not restore the saved state.",
+    "zh-CN": "预检无法恢复保存的现场，已停止恢复。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.thisRestoreDidNotChangeTheIndexOrWorking": {
+    "en": "This restore did not change the Index or Working Tree. The Stash is still saved. Compare or open a file before deciding how to resolve the blocker.",
+    "zh-CN": "本次恢复未改动 Index 和工作区，Stash 存档仍然保留。请先比较或打开文件，再决定如何处理阻碍。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.existingPathsBlockingThisRestore": {
+    "en": "Existing paths blocking this restore",
+    "zh-CN": "阻止恢复的现有路径",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.confirmedConflictingFiles": {
+    "en": "Confirmed conflicting files",
+    "zh-CN": "已确认的冲突文件",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.filesIncludedInThisRestore": {
+    "en": "Files included in this restore",
+    "zh-CN": "本次恢复涉及的文件",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.compareSavedAndExistingFile": {
+    "en": "Compare saved and existing file",
+    "zh-CN": "比较收起内容与现有文件",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.openExistingFile": {
+    "en": "Open existing file",
+    "zh-CN": "打开现有文件",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.resolveTheBlockerThenCloseAndRetryTheRestore": {
+    "en": "Resolve the blocker, then close and retry the restore to run preflight again.",
+    "zh-CN": "处理阻碍后，关闭弹窗并重新恢复，以再次预检。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.worktreeFolder": {
+    "en": "Worktree Folder",
+    "zh-CN": "Worktree 目录",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.browse": {
+    "en": "Browse…",
+    "zh-CN": "浏览…",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.existingBranch": {
+    "en": "Existing Branch",
+    "zh-CN": "已有分支",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.newBranchOptional": {
+    "en": "New Branch (optional)",
+    "zh-CN": "新分支",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.newBranch": {
+    "en": "New Branch",
+    "zh-CN": "新分支",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.detachedHEAD": {
+    "en": "Detached HEAD",
+    "zh-CN": "Detached HEAD",
+    "review": "keep",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.chooseAnExistingBranchOrCreateANewOne": {
+    "en": "Choose an existing branch or create a new one. Detached HEAD is disabled in Settings > Advanced.",
+    "zh-CN": "请选择已有分支或创建新分支；设置 → 高级中默认禁止 Detached HEAD。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.worktree": {
+    "en": "Worktree",
+    "zh-CN": "Worktree",
+    "review": "keep",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.removeEvenWithUncommittedChanges": {
+    "en": "Remove even with uncommitted changes",
+    "zh-CN": "强制移除，包括未提交修改",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.mergeSource": {
+    "en": "Merge Source",
+    "zh-CN": "Merge 来源",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.newBase": {
+    "en": "New Base",
+    "zh-CN": "新的基点",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.bringSelectedHistoryIntoTheCurrentBranch": {
+    "en": "Bring selected history into the current branch.",
+    "zh-CN": "将选中的历史 Merge 到当前分支。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.replayCurrentBranchCommitsOntoTheSelectedBaseReplayed": {
+    "en": "Replay current-branch commits onto the selected base. Replayed Commit IDs change.",
+    "zh-CN": "将当前分支的 Commit 重新应用到选定基点；这些 Commit 的 ID 会改变。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.commitIDs": {
+    "en": "Commit IDs",
+    "zh-CN": "Commit ID",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.mainlineParentMergeCommitsOnly": {
+    "en": "Mainline Parent (Merge Commits only)",
+    "zh-CN": "Mainline 父 Commit（仅 Merge Commit）",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.createNewCommitsReversingTheseChanges": {
+    "en": "Create new commits reversing these changes.",
+    "zh-CN": "生成新的 Commit 撤销这些修改。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.applyTheseCommitsToTheCurrentBranchInThe": {
+    "en": "Apply these commits to the current branch in the entered order.",
+    "zh-CN": "按输入顺序将这些 Commit 应用到当前分支。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.resetMode": {
+    "en": "Reset Mode",
+    "zh-CN": "Reset 模式",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.keepIndexAndWorkingTreeChanges": {
+    "en": "Keep Index and Working Tree changes.",
+    "zh-CN": "保留 Index 和工作区修改。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.resetIndexKeepWorkingTreeChanges": {
+    "en": "Reset Index; keep Working Tree changes.",
+    "zh-CN": "重置 Index；保留工作区修改。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.resetIndexAndTrackedWorkingTreeFilesUncommittedTracked": {
+    "en": "Reset Index and tracked Working Tree files. Uncommitted tracked changes will be lost.",
+    "zh-CN": "重置 Index 和工作区中的已跟踪文件；这些文件的未提交修改将丢失。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.remoteOptional": {
+    "en": "Remote (optional)",
+    "zh-CN": "远端（可选）",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.pullStrategy": {
+    "en": "Pull Strategy",
+    "zh-CN": "Pull 策略",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.noRemoteRepositoryIsConnectedYet": {
+    "en": "No remote repository is connected yet.",
+    "zh-CN": "尚未连接远程仓库。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.yourCommitsAreSavedLocallyAddARemoteAddress": {
+    "en": "Your commits are saved locally. Add a remote address before sending them with Push.",
+    "zh-CN": "你的 Commit 已保存在本地。请先添加远端地址，再通过 Push 发送。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.pushTarget": {
+    "en": "Push Target",
+    "zh-CN": "Push 目标",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.selectRemote": {
+    "en": "Select remote",
+    "zh-CN": "选择远端",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.localBranch": {
+    "en": "Local Branch",
+    "zh-CN": "本地分支",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.remote": {
+    "en": "Remote",
+    "zh-CN": "远端",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.remoteBranchVariant2": {
+    "en": "Remote Branch",
+    "zh-CN": "远端分支",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.useDefaultTarget": {
+    "en": "Use Default Target",
+    "zh-CN": "使用默认目标",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.changeTarget": {
+    "en": "Change Target…",
+    "zh-CN": "更改目标…",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.selectRemoteVariant2": {
+    "en": "Select remote…",
+    "zh-CN": "选择远端…",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.advancedOptions": {
+    "en": "Advanced Options",
+    "zh-CN": "高级选项",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.forceWithLease": {
+    "en": "Force-with-lease",
+    "zh-CN": "Force-with-lease",
+    "review": "keep",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.thisMayReplaceRemoteBranchHistoryButOnlyIf": {
+    "en": "This may replace remote branch history, but only if its version still matches the target confirmed in this dialog.",
+    "zh-CN": "这可能覆盖远端分支历史，但仅在远端版本仍与本窗口确认的目标版本一致时执行。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.expectedRemoteCommit": {
+    "en": "Expected remote Commit: ",
+    "zh-CN": "确认的远端 Commit：",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.createOnlyIfThisRemoteBranchIsStillAbsent": {
+    "en": "Create only if this remote branch is still absent.",
+    "zh-CN": "仅在此远端分支仍不存在时创建。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.thisPushWillSetTheSelectedTargetAsThe": {
+    "en": "This Push will set the selected target as the upstream branch.",
+    "zh-CN": "本次 Push 会将所选目标设置为 upstream 分支。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.discardUnstagedChangesAndSelectedUntrackedFilesStagedChanges": {
+    "en": "Discard Unstaged Changes and selected untracked files. Staged Changes remain in the Index.",
+    "zh-CN": "丢弃 Unstaged Changes 和选中的未跟踪文件。Index 中的 Staged Changes 保留。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.abortTheActiveEditsMadeWhileResolvingConflictsMay": {
+    "en": "Abort the active {{kind}}; edits made while resolving conflicts may be discarded. Closing this window does not abort.",
+    "zh-CN": "中止当前 {{kind}}；解决冲突期间的修改可能被丢弃。关闭此窗口不会中止操作。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.gitWillAttemptToRestoreTheOperationStartState": {
+    "en": "Git will attempt to restore the operation start state at Commit ",
+    "zh-CN": "Git 将尝试恢复到操作开始时的状态，Commit ",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.preExistingLocalChangesMayPreventAFullRestoration": {
+    "en": ". Pre-existing local changes may prevent a full restoration.",
+    "zh-CN": "。操作前已有的本地修改可能影响完整恢复。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.demoSampleDataOnly": {
+    "en": "Demo: sample data only.",
+    "zh-CN": "模拟操作：仅修改示例数据。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.createBranch": {
+    "en": "Create Branch",
+    "zh-CN": "Create Branch",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / actionTitles"
+  },
+  "actions.checkout": {
+    "en": "Checkout",
+    "zh-CN": "Checkout",
+    "review": "keep",
+    "context": "webview/ActionDialog.tsx / actionTitles"
+  },
+  "actions.checkoutToDetachedHEAD": {
+    "en": "Checkout to Detached HEAD",
+    "zh-CN": "Checkout to Detached HEAD",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / actionTitles"
+  },
+  "actions.deleteBranch": {
+    "en": "Delete Branch",
+    "zh-CN": "Delete Branch",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / actionTitles"
+  },
+  "actions.addRemoteVariant2": {
+    "en": "Add Remote",
+    "zh-CN": "Add Remote",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / actionTitles"
+  },
+  "actions.deleteRemoteBranches": {
+    "en": "Delete Remote Branches",
+    "zh-CN": "Delete Remote Branches",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / actionTitles"
+  },
+  "actions.createTag": {
+    "en": "Create Tag",
+    "zh-CN": "Create Tag",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / actionTitles"
+  },
+  "actions.deleteTag": {
+    "en": "Delete Tag",
+    "zh-CN": "Delete Tag",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / actionTitles"
+  },
+  "actions.stashChanges": {
+    "en": "Stash Changes",
+    "zh-CN": "Stash Changes",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / actionTitles"
+  },
+  "actions.applyStash": {
+    "en": "Apply Stash",
+    "zh-CN": "Apply Stash",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / actionTitles"
+  },
+  "actions.dropStash": {
+    "en": "Drop Stash",
+    "zh-CN": "Drop Stash",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / actionTitles"
+  },
+  "actions.addWorktree": {
+    "en": "Add Worktree",
+    "zh-CN": "Add Worktree",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / actionTitles"
+  },
+  "actions.removeWorktree": {
+    "en": "Remove Worktree",
+    "zh-CN": "Remove Worktree",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / actionTitles"
+  },
+  "actions.merge": {
+    "en": "Merge",
+    "zh-CN": "Merge",
+    "review": "keep",
+    "context": "webview/ActionDialog.tsx / actionTitles"
+  },
+  "actions.rebase": {
+    "en": "Rebase",
+    "zh-CN": "Rebase",
+    "review": "keep",
+    "context": "webview/ActionDialog.tsx / actionTitles"
+  },
+  "actions.cherryPick": {
+    "en": "Cherry-pick",
+    "zh-CN": "Cherry-pick",
+    "review": "keep",
+    "context": "webview/ActionDialog.tsx / actionTitles"
+  },
+  "actions.revert": {
+    "en": "Revert",
+    "zh-CN": "Revert",
+    "review": "keep",
+    "context": "webview/ActionDialog.tsx / actionTitles"
+  },
+  "actions.fetch": {
+    "en": "Fetch",
+    "zh-CN": "Fetch",
+    "review": "keep",
+    "context": "webview/ActionDialog.tsx / actionTitles"
+  },
+  "actions.pull": {
+    "en": "Pull",
+    "zh-CN": "Pull",
+    "review": "keep",
+    "context": "webview/ActionDialog.tsx / actionTitles"
+  },
+  "actions.push": {
+    "en": "Push",
+    "zh-CN": "Push",
+    "review": "keep",
+    "context": "webview/ActionDialog.tsx / actionTitles"
+  },
+  "actions.discardChanges": {
+    "en": "Discard Changes",
+    "zh-CN": "Discard Changes",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / actionTitles"
+  },
+  "actions.abortVariant2": {
+    "en": "Abort",
+    "zh-CN": "Abort",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / actionTitles"
+  },
+  "actions.tagVariant2": {
+    "en": "Tag {{name}}",
+    "zh-CN": "Tag {{name}}",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / branchStartLabel"
+  },
+  "actions.commit": {
+    "en": "Commit {{value}}",
+    "zh-CN": "Commit {{value}}",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / branchStartLabel"
+  },
+  "actions.popStash": {
+    "en": "Pop Stash",
+    "zh-CN": "Pop Stash",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / title"
+  },
+  "actions.deleteBranches": {
+    "en": "Delete Branches",
+    "zh-CN": "Delete Branches",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog / title"
+  },
+  "actions.hEAD": {
+    "en": " · HEAD: ",
+    "zh-CN": " · HEAD: ",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.branchNameVariant2": {
+    "en": "Branch Name",
+    "zh-CN": "Branch Name",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.featureMyChange": {
+    "en": "feature/my-change",
+    "zh-CN": "feature/my-change",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.checkoutVariant2": {
+    "en": "Checkout ",
+    "zh-CN": "Checkout ",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.mergeInto": {
+    "en": "Merge {{displayTarget}} into {{branch}}",
+    "zh-CN": "Merge {{displayTarget}} into {{branch}}",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.rebaseOnto": {
+    "en": "Rebase {{branch}} onto {{displayTarget}}",
+    "zh-CN": "Rebase {{branch}} onto {{displayTarget}}",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.revertOn": {
+    "en": "Revert {{displayTarget}} on {{branch}}",
+    "zh-CN": "Revert {{displayTarget}} on {{branch}}",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.soft": {
+    "en": "Soft",
+    "zh-CN": "Soft",
+    "review": "keep",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.mixed": {
+    "en": "Mixed",
+    "zh-CN": "Mixed",
+    "review": "keep",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.hard": {
+    "en": "Hard",
+    "zh-CN": "Hard",
+    "review": "keep",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.fastForwardOnly": {
+    "en": "Fast-forward Only",
+    "zh-CN": "Fast-forward Only",
+    "review": "keep",
+    "context": "webview/ActionDialog.tsx / StandardActionDialog"
+  },
+  "actions.resetBranchToTarget": {
+    "en": "Reset {{branch}} to {{target}}",
+    "zh-CN": "Reset {{branch}} to {{target}}",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx"
+  },
+  "actions.cherryPickOnto": {
+    "en": "Cherry-pick {{target}} onto {{branch}}",
+    "zh-CN": "Cherry-pick {{target}} onto {{branch}}",
+    "review": "pending",
+    "context": "webview/ActionDialog.tsx"
+  }
+}

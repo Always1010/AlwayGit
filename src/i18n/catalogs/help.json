@@ -1,0 +1,86 @@
+{
+  "help.quickStart": {
+    "en": "Quick start",
+    "zh-CN": "快速开始",
+    "review": "translated",
+    "context": "webview/HelpDialog.tsx / HelpDialog / categories"
+  },
+  "help.commonTasks": {
+    "en": "Common tasks",
+    "zh-CN": "常见任务",
+    "review": "translated",
+    "context": "webview/HelpDialog.tsx / HelpDialog / categories"
+  },
+  "help.commonQuestions": {
+    "en": "Common questions",
+    "zh-CN": "常见问题",
+    "review": "translated",
+    "context": "webview/HelpDialog.tsx / HelpDialog / categories"
+  },
+  "help.fullManual": {
+    "en": "Full manual",
+    "zh-CN": "完整手册",
+    "review": "translated",
+    "context": "webview/HelpDialog.tsx / HelpDialog / categories"
+  },
+  "help.helpGuide": {
+    "en": "Help & Guide",
+    "zh-CN": "帮助与指南",
+    "review": "translated",
+    "context": "webview/HelpDialog.tsx / HelpDialog"
+  },
+  "help.availableOfflineIncludedWithAlwayGit": {
+    "en": "Available offline · Included with AlwayGit",
+    "zh-CN": "离线可用 · 随 AlwayGit 更新",
+    "review": "translated",
+    "context": "webview/HelpDialog.tsx / HelpDialog"
+  },
+  "help.helpCategories": {
+    "en": "Help categories",
+    "zh-CN": "帮助分类",
+    "review": "translated",
+    "context": "webview/HelpDialog.tsx / HelpDialog"
+  },
+  "help.filterHelpTopics": {
+    "en": "Filter help topics",
+    "zh-CN": "筛选帮助主题",
+    "review": "translated",
+    "context": "webview/HelpDialog.tsx / HelpDialog"
+  },
+  "help.filterThisCategory": {
+    "en": "Filter this category…",
+    "zh-CN": "筛选当前分类…",
+    "review": "translated",
+    "context": "webview/HelpDialog.tsx / HelpDialog"
+  },
+  "help.helpTopics": {
+    "en": "Help topics",
+    "zh-CN": "帮助主题",
+    "review": "translated",
+    "context": "webview/HelpDialog.tsx / HelpDialog"
+  },
+  "help.noMatchingTopicsTryAnotherKeywordOrCategory": {
+    "en": "No matching topics. Try another keyword or category.",
+    "zh-CN": "没有匹配主题，请换个关键词或分类。",
+    "review": "translated",
+    "context": "webview/HelpDialog.tsx / HelpDialog"
+  },
+  "help.helpContent": {
+    "en": "Help content",
+    "zh-CN": "帮助内容",
+    "review": "translated",
+    "context": "webview/HelpDialog.tsx / HelpDialog"
+  },
+  "help.readTheFullChapter": {
+    "en": "Read the full chapter",
+    "zh-CN": "阅读完整章节",
+    "review": "translated",
+    "context": "webview/HelpDialog.tsx / HelpDialog"
+  },
+  "help.clearTheFilterToBrowseTheGuide": {
+    "en": "Clear the filter to browse the guide.",
+    "zh-CN": "清空筛选后可继续浏览指南。",
+    "review": "translated",
+    "context": "webview/HelpDialog.tsx / HelpDialog"
+  }
+}

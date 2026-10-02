@@ -1,0 +1,128 @@
+{
+  "tracking.enterALocalBranchName": {
+    "en": "Enter a local branch name.",
+    "zh-CN": "请输入本地分支名称。",
+    "review": "translated",
+    "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog / labels"
+  },
+  "tracking.duplicateLocalName": {
+    "en": "Duplicate local name.",
+    "zh-CN": "本地名称重复。",
+    "review": "translated",
+    "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog / labels"
+  },
+  "tracking.nameAlreadyExistsWithADifferentUpstream": {
+    "en": "Name already exists with a different upstream.",
+    "zh-CN": "同名本地分支已有其他 upstream。",
+    "review": "translated",
+    "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog / labels"
+  },
+  "tracking.branchNameConflictsWithAnotherBranchPath": {
+    "en": "Branch name conflicts with another branch path.",
+    "zh-CN": "分支名称与另一分支的路径冲突。",
+    "review": "translated",
+    "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog / labels"
+  },
+  "tracking.createLocalTrackingBranches": {
+    "en": "Create Local Tracking Branches",
+    "zh-CN": "创建本地跟踪分支",
+    "review": "translated",
+    "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog / title"
+  },
+  "tracking.checkoutAsLocalBranch": {
+    "en": "Checkout as Local Branch",
+    "zh-CN": "Checkout 到本地分支",
+    "review": "translated",
+    "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog / title"
+  },
+  "tracking.resolveTheBranchNameConflictsBeforeContinuing": {
+    "en": "Resolve the branch name conflicts before continuing.",
+    "zh-CN": "请先解决分支名称冲突。",
+    "review": "translated",
+    "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog / submit"
+  },
+  "tracking.alreadyTracked": {
+    "en": "Already tracked",
+    "zh-CN": "已跟踪",
+    "review": "translated",
+    "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog / submit"
+  },
+  "tracking.created": {
+    "en": "Created",
+    "zh-CN": "已创建",
+    "review": "translated",
+    "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog / submit"
+  },
+  "tracking.done": {
+    "en": "Done",
+    "zh-CN": "完成",
+    "review": "translated",
+    "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog"
+  },
+  "tracking.createCheckout": {
+    "en": "Create & Checkout",
+    "zh-CN": "创建并 Checkout",
+    "review": "translated",
+    "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog"
+  },
+  "tracking.createLocalBranches": {
+    "en": "Create Local Branches",
+    "zh-CN": "创建本地分支",
+    "review": "translated",
+    "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog"
+  },
+  "tracking.trackingIsEstablishedUsingTheLastFetch": {
+    "en": "Tracking is established using the last Fetch.",
+    "zh-CN": "使用最近一次 Fetch 的远程引用建立跟踪关系。",
+    "review": "translated",
+    "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog"
+  },
+  "tracking.localBranch": {
+    "en": "Local Branch",
+    "zh-CN": "本地分支",
+    "review": "translated",
+    "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog"
+  },
+  "tracking.alreadyTrackedReuseLocalBranch": {
+    "en": "Already tracked; reuse local branch",
+    "zh-CN": "已跟踪；使用已有本地分支",
+    "review": "translated",
+    "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog"
+  },
+  "tracking.willCreate": {
+    "en": "Will create",
+    "zh-CN": "将创建",
+    "review": "translated",
+    "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog"
+  },
+  "tracking.multipleLocalBranchesTrackThisSourceChooseOrEnter": {
+    "en": "Multiple local branches track this source; choose or enter a name.",
+    "zh-CN": "多个本地分支跟踪此来源；请选择或输入名称。",
+    "review": "translated",
+    "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog"
+  },
+  "tracking.checkoutLocalBranch": {
+    "en": "Checkout local branch",
+    "zh-CN": "Checkout 到本地分支",
+    "review": "translated",
+    "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog"
+  },
+  "tracking.createOrReuseAllBranchesInThisSelectionKeep": {
+    "en": "Create or reuse all branches in this selection; keep the current branch checked out. Symbolic remote references are excluded.",
+    "zh-CN": "创建或复用所选范围中的全部分支，当前分支保持不变；远端符号引用不参加此操作。",
+    "review": "translated",
+    "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog"
+  },
+  "tracking.checkedOut": {
+    "en": "Checked out {{value}}.",
+    "zh-CN": "已 Checkout 到 {{value}}。",
+    "review": "translated",
+    "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog"
+  },
+  "tracking.localBranchFor": {
+    "en": "Local branch for {{name}}",
+    "zh-CN": "Local branch for {{name}}",
+    "review": "pending",
+    "context": "webview/RemoteTrackingDialog.tsx / RemoteTrackingDialog"
+  }
+}

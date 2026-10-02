@@ -1,0 +1,32 @@
+{
+  "validation.checkoutRequiresExactlyOneBranch": {
+    "en": "Checkout requires exactly one branch",
+    "zh-CN": "Checkout requires exactly one branch",
+    "review": "pending",
+    "context": "src/protocol/validation.ts / actionSchema"
+  },
+  "validation.stashRequiresCheckout": {
+    "en": "Stash requires Checkout",
+    "zh-CN": "Stash requires Checkout",
+    "review": "pending",
+    "context": "src/protocol/validation.ts / actionSchema"
+  },
+  "validation.chooseAnExistingGroupOrCreateANewOne": {
+    "en": "Choose an existing group or create a new one, not both.",
+    "zh-CN": "Choose an existing group or create a new one, not both.",
+    "review": "pending",
+    "context": "src/protocol/validation.ts / addRepositoriesSchema"
+  },
+  "validation.chooseEitherANewTabOrANewWindow": {
+    "en": "Choose either a new tab or a new window.",
+    "zh-CN": "Choose either a new tab or a new window.",
+    "review": "pending",
+    "context": "src/protocol/validation.ts / openRepositorySchema"
+  },
+  "validation.chooseOneWorkbenchDestination": {
+    "en": "Choose one Workbench destination.",
+    "zh-CN": "Choose one Workbench destination.",
+    "review": "pending",
+    "context": "src/protocol/validation.ts / openWorkbenchSchema"
+  }
+}

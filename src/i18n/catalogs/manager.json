@@ -1,0 +1,56 @@
+{
+  "manager.theRepositoryOrGroupNoLongerExists": {
+    "en": "The repository or group no longer exists.",
+    "zh-CN": "The repository or group no longer exists.",
+    "review": "pending",
+    "context": "src/repositories/manager.ts / reorder"
+  },
+  "manager.reorderItemsWithinTheSameLevel": {
+    "en": "Reorder items within the same level.",
+    "zh-CN": "Reorder items within the same level.",
+    "review": "pending",
+    "context": "src/repositories/manager.ts / reorder"
+  },
+  "manager.selectARegisteredRepositoryFirst": {
+    "en": "Select a registered repository first.",
+    "zh-CN": "Select a registered repository first.",
+    "review": "pending",
+    "context": "src/repositories/manager.ts / get"
+  },
+  "manager.trustThisWorkspaceBeforeExecutingGit": {
+    "en": "Trust this workspace before executing Git.",
+    "zh-CN": "Trust this workspace before executing Git.",
+    "review": "pending",
+    "context": "src/repositories/manager.ts / add"
+  },
+  "manager.repositoryGroupNoLongerExists": {
+    "en": "Repository group no longer exists.",
+    "zh-CN": "Repository group no longer exists.",
+    "review": "pending",
+    "context": "src/repositories/manager.ts / registerDiscovered"
+  },
+  "manager.repositoryGroupNameIsRequired": {
+    "en": "Repository group name is required.",
+    "zh-CN": "Repository group name is required.",
+    "review": "pending",
+    "context": "src/repositories/manager.ts / newCollection"
+  },
+  "manager.repositoryGroupNameIsTooLong": {
+    "en": "Repository group name is too long.",
+    "zh-CN": "Repository group name is too long.",
+    "review": "pending",
+    "context": "src/repositories/manager.ts / newCollection"
+  },
+  "manager.aRepositoryGroupWithThisNameAlreadyExists": {
+    "en": "A repository group with this name already exists.",
+    "zh-CN": "A repository group with this name already exists.",
+    "review": "pending",
+    "context": "src/repositories/manager.ts / newCollection"
+  },
+  "manager.discovery": {
+    "en": "[discovery] {{root}}: {{value}}",
+    "zh-CN": "[discovery] {{root}}: {{value}}",
+    "review": "pending",
+    "context": "src/repositories/manager.ts / runScan"
+  }
+}

@@ -99,7 +99,8 @@ describe('Workbench entry presentation', () => {
     expect(manifest.contributes?.viewsContainers?.activitybar?.some(item => item.id === 'alwaygit')).toBe(true);
     expect(manifest.contributes?.views?.alwaygit?.some(item => item.id === 'alwaygit.workbenchLauncher')).toBe(true);
     expect(manifest.activationEvents).toContain('onView:alwaygit.workbenchLauncher');
-    expect(manifest.contributes?.viewsWelcome?.filter(item => item.view === 'alwaygit.workbenchLauncher').map(item => item.contents)).toEqual([
+    const english = JSON.parse(readFileSync(new URL('../package.nls.json', import.meta.url), 'utf8')) as Record<string, string>;
+    expect(manifest.contributes?.viewsWelcome?.filter(item => item.view === 'alwaygit.workbenchLauncher').map(item => item.contents?.replace(/^%(.*)%$/, (_, key: string) => english[key]))).toEqual([
       '[Show Git Workbench](command:alwaygit.showWorkbench)\n[Open Workbench in New Window](command:alwaygit.openWorkbenchInNewWindow)',
     ]);
   });

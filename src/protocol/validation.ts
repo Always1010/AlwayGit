@@ -1,3 +1,4 @@
+import { translate } from '../i18n/index';
 import { z } from 'zod';
 const text = z.string().min(1).max(4096);
 const paths = z.array(text).min(1).max(10000);
@@ -12,8 +13,8 @@ export const actionSchema = z.union([
   z.object({ type: z.literal('remote.add'), name: text, url: text }),
   z.object({ type: z.literal('branch.create'), name: text, start: text.optional(), checkout: z.boolean().optional() }),
   z.object({ type: z.literal('branch.track'), branches: z.array(z.object({ source: text, name: text, expectedOid: text.optional() })).min(1).max(1000), checkout: z.boolean().optional(), stashFirst: z.boolean().optional(), includeUntracked: z.boolean().optional() })
-    .refine(value => !value.checkout || value.branches.length === 1, 'Checkout requires exactly one branch')
-    .refine(value => !value.stashFirst || !!value.checkout, 'Stash requires Checkout'),
+    .refine(value => !value.checkout || value.branches.length === 1, translate('en', "validation.checkoutRequiresExactlyOneBranch"))
+    .refine(value => !value.stashFirst || !!value.checkout, translate('en', "validation.stashRequiresCheckout")),
   z.object({ type: z.literal('branch.checkout'), name: text }),
   z.object({ type: z.literal('commit.checkout'), target: text }),
   z.object({ type: z.literal('checkout.stash'), target: text, detached: z.boolean().optional(), includeUntracked: z.boolean().optional() }),
@@ -44,9 +45,9 @@ export const moveRepositoriesSchema = repositoryKeysSchema.extend({ collectionId
 const repositoryScanId = z.string().min(1).max(128).regex(/^[a-zA-Z0-9._-]+$/);
 export const repositoryDiscoverySchema = z.object({ scanId: repositoryScanId, path: text });
 export const cancelRepositoryDiscoverySchema = z.object({ scanId: repositoryScanId });
-export const addRepositoriesSchema = z.object({ scanId: repositoryScanId, keys: z.array(text).min(1).max(10000), collectionId: text.optional(), newCollectionName: z.string().trim().min(1).max(80).optional() }).refine(value=>!(value.collectionId&&value.newCollectionName),'Choose an existing group or create a new one, not both.');
-export const openRepositorySchema = z.object({ newWindow: z.boolean().optional(), newTab: z.boolean().optional() }).refine(value=>!value.newWindow||!value.newTab,'Choose either a new tab or a new window.');
-export const openWorkbenchSchema = z.object({ newTab: z.boolean().optional(), newWindow: z.boolean().optional() }).refine(value=>Number(!!value.newTab)+Number(!!value.newWindow)===1,'Choose one Workbench destination.');
+export const addRepositoriesSchema = z.object({ scanId: repositoryScanId, keys: z.array(text).min(1).max(10000), collectionId: text.optional(), newCollectionName: z.string().trim().min(1).max(80).optional() }).refine(value=>!(value.collectionId&&value.newCollectionName),translate('en', "validation.chooseAnExistingGroupOrCreateANewOne"));
+export const openRepositorySchema = z.object({ newWindow: z.boolean().optional(), newTab: z.boolean().optional() }).refine(value=>!value.newWindow||!value.newTab,translate('en', "validation.chooseEitherANewTabOrANewWindow"));
+export const openWorkbenchSchema = z.object({ newTab: z.boolean().optional(), newWindow: z.boolean().optional() }).refine(value=>Number(!!value.newTab)+Number(!!value.newWindow)===1,translate('en', "validation.chooseOneWorkbenchDestination"));
 export const openWorktreeSchema = z.object({ path: text, newWindow: z.boolean().optional() });
 export const historySchema = z.object({ offset: z.number().int().min(0).max(10000000).optional(), limit: z.number().int().min(1).max(1000).optional(), tips: z.array(text).max(10000).optional(), ref: text.optional(), search: z.string().max(1000).optional(), head: text.optional() });
 export const detailsSchema = z.object({ oid: text, parent: text.optional() });

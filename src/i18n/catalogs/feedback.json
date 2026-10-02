@@ -1,0 +1,119 @@
+{
+  "feedback.createdAndSwitchedTo": {
+    "en": "Created and switched to {{name}}",
+    "zh-CN": "已创建并切换到 {{name}}",
+    "review": "translated",
+    "context": "webview/ActionFeedbackBar.tsx / ActionFeedbackBar / title"
+  },
+  "feedback.createdStillOn": {
+    "en": "Created {{name}}; still on {{currentBranch}}",
+    "zh-CN": "已创建 {{name}}，当前仍在 {{currentBranch}}",
+    "review": "translated",
+    "context": "webview/ActionFeedbackBar.tsx / ActionFeedbackBar / title"
+  },
+  "feedback.commitAmended": {
+    "en": "Commit {{value}} amended",
+    "zh-CN": "Commit {{value}} 已修订",
+    "review": "translated",
+    "context": "webview/ActionFeedbackBar.tsx / ActionFeedbackBar / title"
+  },
+  "feedback.commitCreated": {
+    "en": "Commit {{value}} created",
+    "zh-CN": "Commit {{value}} 已创建",
+    "review": "translated",
+    "context": "webview/ActionFeedbackBar.tsx / ActionFeedbackBar / title"
+  },
+  "feedback.markedAndStagedInspectTheResultBeforeContinuing": {
+    "en": "Marked and staged; inspect the result before continuing.",
+    "zh-CN": "已标记并暂存；继续前请检查结果。",
+    "review": "translated",
+    "context": "webview/ActionFeedbackBar.tsx / ActionFeedbackBar / title"
+  },
+  "feedback.inProgress": {
+    "en": "{{name}} in progress…",
+    "zh-CN": "{{name}} 正在进行…",
+    "review": "translated",
+    "context": "webview/ActionFeedbackBar.tsx / ActionFeedbackBar / title"
+  },
+  "feedback.completed": {
+    "en": "{{name}} completed",
+    "zh-CN": "{{name}} 已完成",
+    "review": "translated",
+    "context": "webview/ActionFeedbackBar.tsx / ActionFeedbackBar / title"
+  },
+  "feedback.failed": {
+    "en": "{{name}} failed",
+    "zh-CN": "{{name}} 失败",
+    "review": "translated",
+    "context": "webview/ActionFeedbackBar.tsx / ActionFeedbackBar / title"
+  },
+  "feedback.filesCommitted": {
+    "en": {
+      "one": "{{count}} file committed",
+      "other": "{{count}} files committed"
+    },
+    "zh-CN": "已提交 {{count}} 个文件",
+    "review": "translated",
+    "context": "webview/ActionFeedbackBar.tsx / ActionFeedbackBar / commitSummary"
+  },
+  "feedback.changesRemaining": {
+    "en": {
+      "one": "{{count}} change remaining",
+      "other": "{{count}} changes remaining"
+    },
+    "zh-CN": "仍有 {{count}} 项更改",
+    "review": "translated",
+    "context": "webview/ActionFeedbackBar.tsx / ActionFeedbackBar / commitSummary"
+  },
+  "feedback.workingTreeClean": {
+    "en": "Working tree clean",
+    "zh-CN": "工作区干净",
+    "review": "translated",
+    "context": "webview/ActionFeedbackBar.tsx / ActionFeedbackBar / commitSummary"
+  },
+  "feedback.filesSaved": {
+    "en": {
+      "one": "{{count}} file saved",
+      "other": "{{count}} files saved"
+    },
+    "zh-CN": "已保存 {{count}} 个文件",
+    "review": "translated",
+    "context": "webview/ActionFeedbackBar.tsx / ActionFeedbackBar / stashSummary"
+  },
+  "feedback.untracked": {
+    "en": "{{untracked}} untracked",
+    "zh-CN": "未跟踪文件 {{untracked}} 个",
+    "review": "translated",
+    "context": "webview/ActionFeedbackBar.tsx / ActionFeedbackBar / stashSummary"
+  },
+  "feedback.errorDetails": {
+    "en": "Error details",
+    "zh-CN": "错误详情",
+    "review": "translated",
+    "context": "webview/ActionFeedbackBar.tsx / ActionFeedbackBar"
+  },
+  "feedback.demoSampleDataOnly": {
+    "en": "Demo · sample data only",
+    "zh-CN": "Demo · 仅示例数据",
+    "review": "translated",
+    "context": "webview/ActionFeedbackBar.tsx / ActionFeedbackBar"
+  },
+  "feedback.viewCommit": {
+    "en": "View Commit",
+    "zh-CN": "查看 Commit",
+    "review": "translated",
+    "context": "webview/ActionFeedbackBar.tsx / ActionFeedbackBar"
+  },
+  "feedback.showLog": {
+    "en": "Show Log",
+    "zh-CN": "查看日志",
+    "review": "translated",
+    "context": "webview/ActionFeedbackBar.tsx / ActionFeedbackBar"
+  },
+  "feedback.dismissNotification": {
+    "en": "Dismiss notification",
+    "zh-CN": "关闭提醒",
+    "review": "translated",
+    "context": "webview/ActionFeedbackBar.tsx / ActionFeedbackBar"
+  }
+}

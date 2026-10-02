@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtemp, rm, utimes, writeFile, mkdir, readFile, readdir } from 'node:fs/promises';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
-import { transformSync } from 'esbuild';
+import { build } from 'esbuild';
+import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { RepositoryOperationBusyError, RepositoryOperationRecoveryRequiredError, RepositoryOperationLock } from '../src/application/operation-lock';
@@ -19,9 +20,10 @@ afterEach(async () => {
 });
 async function fixture() { const root = await mkdtemp(path.join(tmpdir(), 'alwaygit-lock-test-')); roots.push(root); return root; }
 async function childLease(directory: string, repo: string, running = false) {
-  const source = await readFile(new URL('../src/application/operation-lock.ts', import.meta.url), 'utf8');
-  const compiled = transformSync(source, { loader: 'ts', format: 'esm', target: 'node20' }).code;
-  const child = spawn(process.execPath, ['--input-type=module', '-e', compiled + `\nconst lock = new RepositoryOperationLock(process.argv[1], "child"); const lease = await lock.acquire(process.argv[2], "commit"); ${running ? 'await lease.markRunning();' : ''} console.log("ready"); setInterval(() => {}, 1000);`, directory, repo], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  const result = await build({ entryPoints: [fileURLToPath(new URL('../src/application/operation-lock.ts', import.meta.url))], bundle: true, write: false, platform: 'node', format: 'esm', target: 'node20' });
+  const script = path.join(path.dirname(directory), 'lease-child.mjs');
+  await writeFile(script, result.outputFiles[0].text + `\nconst lock = new RepositoryOperationLock(process.argv[2], "child"); const lease = await lock.acquire(process.argv[3], "commit"); ${running ? 'await lease.markRunning();' : ''} console.log("ready"); setInterval(() => {}, 1000);`);
+  const child = spawn(process.execPath, [script, directory, repo], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   children.push(child);
   await new Promise<void>((resolve, reject) => {
     child.stdout!.once('data', () => resolve()); child.once('error', reject);

@@ -1,0 +1,38 @@
+{
+  "palettes.vivid12Colors": {
+    "en": "Vivid · 12 colors",
+    "zh-CN": "鲜明 · 12 色",
+    "review": "translated",
+    "context": "webview/graph/palettes.ts / graphPalettes / label"
+  },
+  "palettes.balancedColorsForEverydayBranchHistory": {
+    "en": "Balanced colors for everyday branch history.",
+    "zh-CN": "适合日常分支历史的均衡配色。",
+    "review": "translated",
+    "context": "webview/graph/palettes.ts / graphPalettes / description"
+  },
+  "palettes.distinct8Colors": {
+    "en": "Distinct · 8 colors",
+    "zh-CN": "高区分 · 8 色",
+    "review": "translated",
+    "context": "webview/graph/palettes.ts / graphPalettes / label"
+  },
+  "palettes.aSmallerSetWithStrongerHueSeparation": {
+    "en": "A smaller set with stronger hue separation.",
+    "zh-CN": "较少颜色，优先提高相邻路径的区分度。",
+    "review": "translated",
+    "context": "webview/graph/palettes.ts / graphPalettes / description"
+  },
+  "palettes.extended16Colors": {
+    "en": "Extended · 16 colors",
+    "zh-CN": "扩展 · 16 色",
+    "review": "translated",
+    "context": "webview/graph/palettes.ts / graphPalettes / label"
+  },
+  "palettes.moreColorsForHistoriesWithManyConcurrentPaths": {
+    "en": "More colors for histories with many concurrent paths.",
+    "zh-CN": "更多颜色，适合同时存在较多路径的历史。",
+    "review": "translated",
+    "context": "webview/graph/palettes.ts / graphPalettes / description"
+  }
+}

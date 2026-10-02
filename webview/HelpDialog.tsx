@@ -1,7 +1,9 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
+import { Button, Icon, Modal } from './ui';
+
 import { useWorkbench } from './store';
 import { useTranslation } from './i18n';
-import { Button, Icon, Modal } from './ui';
+
 import { findManualSection, topicsFor } from './help-content';
 import type { HelpCategory, ManualBlock } from './help-content';
 import { getManual, manualImage } from './help-manuals';
@@ -48,10 +50,10 @@ export default function HelpDialog({ onClose }: { onClose(): void }) {
   const article = useRef<HTMLElement>(null);
   const topics = topicsFor(manual, category, query), section = topics.find(topic => topic.id === selected) ?? topics[0];
   const categories: { id: HelpCategory; label: string; icon: string }[] = [
-    { id: 'start', label: t('Quick start', '快速开始'), icon: 'rocket' },
-    { id: 'tasks', label: t('Common tasks', '常见任务'), icon: 'checklist' },
-    { id: 'questions', label: t('Common questions', '常见问题'), icon: 'question' },
-    { id: 'manual', label: t('Full manual', '完整手册'), icon: 'book' },
+    { id: 'start', label: t("help.quickStart"), icon: 'rocket' },
+    { id: 'tasks', label: t("help.commonTasks"), icon: 'checklist' },
+    { id: 'questions', label: t("help.commonQuestions"), icon: 'question' },
+    { id: 'manual', label: t("help.fullManual"), icon: 'book' },
   ];
   useEffect(() => {
     const container = article.current;
@@ -65,16 +67,16 @@ export default function HelpDialog({ onClose }: { onClose(): void }) {
     if (!target) return;
     setCategory('manual'); setQuery(''); setSelected(target.chapterId); setAnchor(id);
   };
-  return <Modal title={t('Help & Guide', '帮助与指南')} className="help-dialog" onClose={onClose} footer={<><span className="help-footer-note">{t('Available offline · Included with AlwayGit', '离线可用 · 随 AlwayGit 更新')}</span><Button onClick={onClose}>{t('Close', '关闭')}</Button></>}>
-    <div className="help-categories" role="group" aria-label={t('Help categories', '帮助分类')}>{categories.map(item => <Button key={item.id} icon={item.icon} aria-pressed={category === item.id} className={category === item.id ? 'active' : ''} onClick={() => chooseCategory(item.id)}>{item.label}</Button>)}</div>
+  return <Modal title={t("help.helpGuide")} className="help-dialog" onClose={onClose} footer={<><span className="help-footer-note">{t("help.availableOfflineIncludedWithAlwayGit")}</span><Button onClick={onClose}>{t("common.close")}</Button></>}>
+    <div className="help-categories" role="group" aria-label={t("help.helpCategories")}>{categories.map(item => <Button key={item.id} icon={item.icon} aria-pressed={category === item.id} className={category === item.id ? 'active' : ''} onClick={() => chooseCategory(item.id)}>{item.label}</Button>)}</div>
     <div className="help-layout">
       <aside className="help-sidebar">
-        <label className="help-search"><Icon name="search"/><input type="search" aria-label={t('Filter help topics', '筛选帮助主题')} placeholder={t('Filter this category…', '筛选当前分类…')} value={query} onChange={event => setQuery(event.target.value)}/></label>
-        <nav aria-label={t('Help topics', '帮助主题')}>{topics.map(topic => <button type="button" key={topic.id} className={`help-topic${section?.id === topic.id ? ' selected' : ''}`} aria-current={section?.id === topic.id ? 'page' : undefined} onClick={() => { setSelected(topic.id); setAnchor(undefined); }}>{topic.title}</button>)}</nav>
-        {!topics.length && <p className="help-no-results" role="status">{t('No matching topics. Try another keyword or category.', '没有匹配主题，请换个关键词或分类。')}</p>}
+        <label className="help-search"><Icon name="search"/><input type="search" aria-label={t("help.filterHelpTopics")} placeholder={t("help.filterThisCategory")} value={query} onChange={event => setQuery(event.target.value)}/></label>
+        <nav aria-label={t("help.helpTopics")}>{topics.map(topic => <button type="button" key={topic.id} className={`help-topic${section?.id === topic.id ? ' selected' : ''}`} aria-current={section?.id === topic.id ? 'page' : undefined} onClick={() => { setSelected(topic.id); setAnchor(undefined); }}>{topic.title}</button>)}</nav>
+        {!topics.length && <p className="help-no-results" role="status">{t("help.noMatchingTopicsTryAnotherKeywordOrCategory")}</p>}
       </aside>
-      <article className="help-content" ref={article} tabIndex={0} aria-label={section?.title ?? t('Help content', '帮助内容')}>
-        {section ? <><Anchors ids={section.aliases}/><h2>{section.title}</h2>{section.blocks.some(block => block.kind === 'image') && <div className="help-screenshot-note"><Inline text={manual.screenshotNote} navigate={navigate}/></div>}{section.blocks.map((block, index) => <Fragment key={`${section.id}-${index}`}><ContentBlock block={block} navigate={navigate}/></Fragment>)}{category !== 'manual' && section.level !== 2 && <Button icon="book" className="help-read-more" onClick={() => navigate(section.id)}>{t('Read the full chapter', '阅读完整章节')}</Button>}</> : <p className="muted">{t('Clear the filter to browse the guide.', '清空筛选后可继续浏览指南。')}</p>}
+      <article className="help-content" ref={article} tabIndex={0} aria-label={section?.title ?? t("help.helpContent")}>
+        {section ? <><Anchors ids={section.aliases}/><h2>{section.title}</h2>{section.blocks.some(block => block.kind === 'image') && <div className="help-screenshot-note"><Inline text={manual.screenshotNote} navigate={navigate}/></div>}{section.blocks.map((block, index) => <Fragment key={`${section.id}-${index}`}><ContentBlock block={block} navigate={navigate}/></Fragment>)}{category !== 'manual' && section.level !== 2 && <Button icon="book" className="help-read-more" onClick={() => navigate(section.id)}>{t("help.readTheFullChapter")}</Button>}</> : <p className="muted">{t("help.clearTheFilterToBrowseTheGuide")}</p>}
       </article>
     </div>
   </Modal>;

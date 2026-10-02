@@ -1,8 +1,8 @@
 {
   "name": "alwaygit",
-  "displayName": "AlwayGit",
-  "description": "A professional Git workbench inside Visual Studio Code.",
-  "version": "0.36.0",
+  "displayName": "%manifest.displayName%",
+  "description": "%manifest.description%",
+  "version": "0.37.0",
   "publisher": "alwaygit-dev",
   "private": true,
   "type": "module",
@@ -32,7 +32,7 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": "limited",
-      "description": "Git execution requires a trusted workspace."
+      "description": "%manifest.capabilities.untrustedWorkspaces.description%"
     },
     "virtualWorkspaces": {
       "supported": false
@@ -42,14 +42,14 @@
     "commands": [
       {
         "command": "alwaygit.showWorkbench",
-        "title": "Show Workbench",
-        "category": "AlwayGit",
+        "title": "%manifest.contributes.commands.item0.title%",
+        "category": "%manifest.contributes.commands.item0.category%",
         "icon": "$(git-merge)"
       },
       {
         "command": "alwaygit.openWorkbenchInNewWindow",
-        "title": "Open Workbench in New Window",
-        "category": "AlwayGit",
+        "title": "%manifest.contributes.commands.item1.title%",
+        "category": "%manifest.contributes.commands.item1.category%",
         "icon": "$(window)"
       }
     ],
@@ -57,7 +57,7 @@
       "activitybar": [
         {
           "id": "alwaygit",
-          "title": "AlwayGit",
+          "title": "%manifest.contributes.viewsContainers.activitybar.item0.title%",
           "icon": "media/alwaygit.svg"
         }
       ]
@@ -66,18 +66,18 @@
       "alwaygit": [
         {
           "id": "alwaygit.workbenchLauncher",
-          "name": "Workbench"
+          "name": "%manifest.contributes.views.alwaygit.item0.name%"
         }
       ]
     },
     "viewsWelcome": [
       {
         "view": "alwaygit.workbenchLauncher",
-        "contents": "[Show Git Workbench](command:alwaygit.showWorkbench)\n[Open Workbench in New Window](command:alwaygit.openWorkbenchInNewWindow)"
+        "contents": "%manifest.contributes.viewsWelcome.item0.contents%"
       }
     ],
     "configuration": {
-      "title": "AlwayGit",
+      "title": "%manifest.contributes.configuration.title%",
       "properties": {
         "alwaygit.language": {
           "type": "string",
@@ -87,33 +87,33 @@
             "auto"
           ],
           "default": "en",
-          "description": "Workbench language. Git operation names remain in English. The in-workbench language selector is remembered for this workspace."
+          "description": "%manifest.contributes.configuration.properties.alwaygit.language.description%"
         },
         "alwaygit.gitPath": {
           "type": "string",
           "default": "",
           "scope": "machine",
-          "description": "Git executable path. Empty uses the built-in Git extension path or PATH."
+          "description": "%manifest.contributes.configuration.properties.alwaygit.gitPath.description%"
         },
         "alwaygit.historyPageSize": {
           "type": "number",
           "default": 300,
           "minimum": 50,
           "maximum": 1000,
-          "description": "Commits loaded per history page."
+          "description": "%manifest.contributes.configuration.properties.alwaygit.historyPageSize.description%"
         },
         "alwaygit.refreshInterval": {
           "type": "number",
           "default": 15,
           "minimum": 5,
           "maximum": 300,
-          "description": "Visible workbench refresh interval in seconds."
+          "description": "%manifest.contributes.configuration.properties.alwaygit.refreshInterval.description%"
         },
         "alwaygit.allowDetachedHead": {
           "type": "boolean",
           "default": false,
           "scope": "window",
-          "description": "Allow direct Detached HEAD Checkout. Disabled by default; create and switch to a local branch when inspecting historical versions."
+          "description": "%manifest.contributes.configuration.properties.alwaygit.allowDetachedHead.description%"
         }
       }
     }
@@ -123,22 +123,27 @@
     "build": "node scripts/build.mjs && vite build",
     "watch:extension": "node scripts/build.mjs --watch",
     "watch:webview": "vite build --watch",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "npm run i18n:check && tsc --noEmit",
     "test": "vitest run",
     "test:ui": "npm run build && node scripts/test-ui.mjs",
     "test:extension": "npm run build && node scripts/test-extension.mjs",
     "test:windows": "npm run build && node scripts/test-windows.mjs",
-    "package": "node scripts/package.mjs"
+    "package": "node scripts/package.mjs",
+    "i18n:generate": "node scripts/i18n.mjs generate",
+    "i18n:check": "node scripts/i18n.mjs check",
+    "i18n:export": "node scripts/i18n.mjs export"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.13",
     "@vscode/codicons": "^0.0.46-24",
+    "i18next": "^26.4.2",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "zod": "^4.6.5",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@babel/parser": "^7.29.9",
     "@types/node": "^24.19.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",

@@ -1,0 +1,68 @@
+{
+  "notices.theRepositoryWasRemovedFromAlwayGit": {
+    "en": "The repository was removed from AlwayGit.",
+    "zh-CN": "该仓库已从 AlwayGit 移除。",
+    "review": "translated",
+    "context": "webview/store.ts / useWorkbench"
+  },
+  "notices.couldNotLocateThisCommitInTheFullHistory": {
+    "en": "Could not locate this Commit in the full history of the selected refs.",
+    "zh-CN": "无法在当前引用的完整历史中定位该 Commit。",
+    "review": "translated",
+    "context": "webview/store.ts / useWorkbench"
+  },
+  "notices.automaticLocateReachedItsReadLimitHistoryAndCommit": {
+    "en": "Automatic locate reached its read limit. History and Commit details are preserved. Use Load More to continue, or narrow the selected refs and locate again.",
+    "zh-CN": "已达到自动定位的读取上限，保留当前历史和 Commit 详情。可使用 Load More 继续加载，或缩小引用范围后再定位。",
+    "review": "translated",
+    "context": "webview/store.ts / useWorkbench"
+  },
+  "notices.demoCompletedNoDiskChanges": {
+    "en": "Demo: {{kind}} completed. No disk changes.",
+    "zh-CN": "模拟操作：{{kind}}；未修改实际仓库。",
+    "review": "translated",
+    "context": "webview/store.ts / useWorkbench"
+  },
+  "notices.markedAndStagedInspectTheResultBeforeContinuing": {
+    "en": "Marked and staged; inspect the result before continuing.",
+    "zh-CN": "已标记并暂存；继续前请检查结果。",
+    "review": "translated",
+    "context": "webview/store.ts / useWorkbench"
+  },
+  "notices.couldNotSaveTheRecoveryBaselineDraftsRemainIn": {
+    "en": "Could not save the recovery baseline; drafts remain in this panel.",
+    "zh-CN": "恢复状态未能保存；当前标签仍保留草稿。",
+    "review": "translated",
+    "context": "webview/store.ts"
+  },
+  "notices.couldNotSaveGitOperationSettings": {
+    "en": "Could not save Git operation settings.",
+    "zh-CN": "Could not save Git operation settings.",
+    "review": "pending",
+    "context": "webview/store.ts / useWorkbench"
+  },
+  "notices.theSelectedStashHasNoReadableSections": {
+    "en": "The selected Stash has no readable sections.",
+    "zh-CN": "The selected Stash has no readable sections.",
+    "review": "pending",
+    "context": "webview/store.ts / useWorkbench"
+  },
+  "notices.inspectStagedResult": {
+    "en": "Inspect staged result",
+    "zh-CN": "Inspect staged result",
+    "review": "pending",
+    "context": "webview/store.ts / useWorkbench"
+  },
+  "notices.theGitOperationChangedRefreshBeforeContinuing": {
+    "en": "The Git operation changed. Refresh before continuing.",
+    "zh-CN": "The Git operation changed. Refresh before continuing.",
+    "review": "pending",
+    "context": "webview/store.ts / useWorkbench"
+  },
+  "notices.detachedHEAD": {
+    "en": "Detached HEAD",
+    "zh-CN": "Detached HEAD",
+    "review": "keep",
+    "context": "webview/store.ts / useWorkbench"
+  }
+}

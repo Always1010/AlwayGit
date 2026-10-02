@@ -1,0 +1,170 @@
+{
+  "stash.stashRequiresRepositoryPathsEncodedAsUTF8": {
+    "en": "Stash requires repository paths encoded as UTF-8.",
+    "zh-CN": "Stash requires repository paths encoded as UTF-8.",
+    "review": "pending",
+    "context": "src/git/stash.ts / paths"
+  },
+  "stash.cannotSafelyInspectAPathBelowASymbolicLink": {
+    "en": "Cannot safely inspect a path below a symbolic link: {{name}}",
+    "zh-CN": "Cannot safely inspect a path below a symbolic link: {{name}}",
+    "review": "pending",
+    "context": "src/git/stash.ts / fileState"
+  },
+  "stash.cannotSafelySnapshotThisFileUnsupportedTypeOrLarger": {
+    "en": "Cannot safely snapshot this file (unsupported type or larger than 32 MiB): {{name}}",
+    "zh-CN": "Cannot safely snapshot this file (unsupported type or larger than 32 MiB): {{name}}",
+    "review": "pending",
+    "context": "src/git/stash.ts / fileState"
+  },
+  "stash.stashPreflightIsNotSupportedInASparseCheckout": {
+    "en": "Stash preflight is not supported in a sparse checkout. Use Git directly for this repository.",
+    "zh-CN": "Stash preflight is not supported in a sparse checkout. Use Git directly for this repository.",
+    "review": "pending",
+    "context": "src/git/stash.ts / capture"
+  },
+  "stash.stashIsolationCannotSaveOrRestoreASubmoduleState": {
+    "en": "Stash isolation cannot save or restore a submodule state. Use Git directly for this path.",
+    "zh-CN": "Stash isolation cannot save or restore a submodule state. Use Git directly for this path.",
+    "review": "pending",
+    "context": "src/git/stash.ts / capture"
+  },
+  "stash.stashIsolationNeedsGit243OrNewerTo": {
+    "en": "Stash isolation needs Git 2.43 or newer to inspect attribute sources.",
+    "zh-CN": "Stash isolation needs Git 2.43 or newer to inspect attribute sources.",
+    "review": "pending",
+    "context": "src/git/stash.ts / capture"
+  },
+  "stash.cannotSafelySnapshotASymbolicLinkUsedAsAn": {
+    "en": "Cannot safely snapshot a symbolic link used as an attribute source: {{name}}",
+    "zh-CN": "Cannot safely snapshot a symbolic link used as an attribute source: {{name}}",
+    "review": "pending",
+    "context": "src/git/stash.ts / capture"
+  },
+  "stash.cannotSafelyInspectTheDirectoryOccupyingMoveItBefore": {
+    "en": "Cannot safely inspect the directory occupying {{name}}. Move it before restoring.",
+    "zh-CN": "Cannot safely inspect the directory occupying {{name}}. Move it before restoring.",
+    "review": "pending",
+    "context": "src/git/stash.ts / capture"
+  },
+  "stash.theWorkingStateIsLargerThanThe128MiB": {
+    "en": "The working state is larger than the 128 MiB Stash preflight limit. Use Git directly for this repository.",
+    "zh-CN": "The working state is larger than the 128 MiB Stash preflight limit. Use Git directly for this repository.",
+    "review": "pending",
+    "context": "src/git/stash.ts / capture"
+  },
+  "stash.stashIsolationCannotSafelyRunAnExternalDriverFor": {
+    "en": "Stash isolation cannot safely run an external {{attribute}} driver for {{name}}. Use Git directly for this file.",
+    "zh-CN": "Stash isolation cannot safely run an external {{attribute}} driver for {{name}}. Use Git directly for this file.",
+    "review": "pending",
+    "context": "src/git/stash.ts / checkAttributes"
+  },
+  "stash.unsafeStashTemporaryDirectory": {
+    "en": "Unsafe Stash temporary directory",
+    "zh-CN": "Unsafe Stash temporary directory",
+    "review": "pending",
+    "context": "src/git/stash.ts / makeSandbox / dispose"
+  },
+  "stash.stashIsolationCannotRunAnExternalDefaultMergeDriver": {
+    "en": "Stash isolation cannot run an external default merge driver. Use Git directly for this repository.",
+    "zh-CN": "Stash isolation cannot run an external default merge driver. Use Git directly for this repository.",
+    "review": "pending",
+    "context": "src/git/stash.ts / makeSandbox"
+  },
+  "stash.finishTheActiveGitOperationOrResolveExistingConflicts": {
+    "en": "Finish the active Git operation or resolve existing conflicts before restoring a Stash. The Index and Working Tree were not changed.",
+    "zh-CN": "Finish the active Git operation or resolve existing conflicts before restoring a Stash. The Index and Working Tree were not changed.",
+    "review": "pending",
+    "context": "src/git/stash.ts / preflightStash"
+  },
+  "stash.stashRestorationFailedInTheIsolatedTrial": {
+    "en": "Stash restoration failed in the isolated trial.",
+    "zh-CN": "Stash restoration failed in the isolated trial.",
+    "review": "pending",
+    "context": "src/git/stash.ts / preflightStash / output"
+  },
+  "stash.theStashCouldNotBeRestoredInTheIsolated": {
+    "en": "The Stash could not be restored in the isolated trial. The real Index and Working Tree were not changed, and the Stash is still saved.",
+    "zh-CN": "The Stash could not be restored in the isolated trial. The real Index and Working Tree were not changed, and the Stash is still saved.",
+    "review": "pending",
+    "context": "src/git/stash.ts / preflightStash"
+  },
+  "stash.theProjectChangedDuringStashInspectionRefreshAndRetry": {
+    "en": "The project changed during Stash inspection. Refresh and retry. This restore did not change the Index or Working Tree.",
+    "zh-CN": "The project changed during Stash inspection. Refresh and retry. This restore did not change the Index or Working Tree.",
+    "review": "pending",
+    "context": "src/git/stash.ts / preflightStash"
+  },
+  "stash.stashPreflightCouldNotCompleteTheIndexAndWorking": {
+    "en": "Stash preflight could not complete. The Index and Working Tree were not changed.",
+    "zh-CN": "Stash preflight could not complete. The Index and Working Tree were not changed.",
+    "review": "pending",
+    "context": "src/git/stash.ts / preflightStash"
+  },
+  "stash.theSelectedFileNoLongerHasChangesRefreshAnd": {
+    "en": "The selected file no longer has changes: {{name}}. Refresh and select it again.",
+    "zh-CN": "The selected file no longer has changes: {{name}}. Refresh and select it again.",
+    "review": "pending",
+    "context": "src/git/stash.ts / createSelectedStash"
+  },
+  "stash.commitTree": {
+    "en": "commit-tree",
+    "zh-CN": "commit-tree",
+    "review": "pending",
+    "context": "src/git/stash.ts / createSelectedStash / indexCommit"
+  },
+  "stash.p": {
+    "en": "-p",
+    "zh-CN": "-p",
+    "review": "pending",
+    "context": "src/git/stash.ts / createSelectedStash / indexCommit"
+  },
+  "stash.m": {
+    "en": "-m",
+    "zh-CN": "-m",
+    "review": "pending",
+    "context": "src/git/stash.ts / createSelectedStash / indexCommit"
+  },
+  "stash.alwayGitSavedIndex": {
+    "en": "AlwayGit: saved Index",
+    "zh-CN": "AlwayGit: saved Index",
+    "review": "pending",
+    "context": "src/git/stash.ts / createSelectedStash / indexCommit"
+  },
+  "stash.writeTree": {
+    "en": "write-tree",
+    "zh-CN": "write-tree",
+    "review": "pending",
+    "context": "src/git/stash.ts / createSelectedStash"
+  },
+  "stash.alwayGitSavedUntrackedFiles": {
+    "en": "AlwayGit: saved untracked files",
+    "zh-CN": "AlwayGit: saved untracked files",
+    "review": "pending",
+    "context": "src/git/stash.ts / createSelectedStash"
+  },
+  "stash.alwayGitSelectedFiles": {
+    "en": "AlwayGit: selected files",
+    "zh-CN": "AlwayGit: selected files",
+    "review": "pending",
+    "context": "src/git/stash.ts / createSelectedStash / stashMessage"
+  },
+  "stash.theProjectChangedWhileCreatingTheStashNoFiles": {
+    "en": "The project changed while creating the Stash. No files were cleaned; refresh and retry.",
+    "zh-CN": "The project changed while creating the Stash. No files were cleaned; refresh and retry.",
+    "review": "pending",
+    "context": "src/git/stash.ts / createSelectedStash"
+  },
+  "stash.theStashWasSavedButTheProjectChangedBefore": {
+    "en": "The Stash was saved, but the project changed before cleanup. The files were left in place.",
+    "zh-CN": "The Stash was saved, but the project changed before cleanup. The files were left in place.",
+    "review": "pending",
+    "context": "src/git/stash.ts / createSelectedStash"
+  },
+  "stash.theStashWasSavedAndRetainedButCleanupDid": {
+    "en": "The Stash was saved and retained, but cleanup did not complete. Inspect the remaining files.\n{{value}}",
+    "zh-CN": "The Stash was saved and retained, but cleanup did not complete. Inspect the remaining files.\n{{value}}",
+    "review": "pending",
+    "context": "src/git/stash.ts / createSelectedStash"
+  }
+}

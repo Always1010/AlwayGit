@@ -1,0 +1,110 @@
+{
+  "operationsReview.binaryFileNotScanned": {
+    "en": "Binary file: not scanned",
+    "zh-CN": "二进制文件：未扫描",
+    "review": "translated",
+    "context": "webview/OperationReviewDialog.tsx / OperationReviewDialog / skipped"
+  },
+  "operationsReview.over2MiBNotScanned": {
+    "en": "Over 2 MiB: not scanned",
+    "zh-CN": "超过 2 MiB：未扫描",
+    "review": "translated",
+    "context": "webview/OperationReviewDialog.tsx / OperationReviewDialog / skipped"
+  },
+  "operationsReview.unsupportedTextEncodingNotScanned": {
+    "en": "Unsupported text encoding: not scanned",
+    "zh-CN": "不支持的文本编码：未扫描",
+    "review": "translated",
+    "context": "webview/OperationReviewDialog.tsx / OperationReviewDialog / skipped"
+  },
+  "operationsReview.submoduleNotScanned": {
+    "en": "Submodule: not scanned",
+    "zh-CN": "子模块：未扫描",
+    "review": "translated",
+    "context": "webview/OperationReviewDialog.tsx / OperationReviewDialog / skipped"
+  },
+  "operationsReview.inspectionSizeLimitReachedNotScanned": {
+    "en": "Inspection size limit reached: not scanned",
+    "zh-CN": "已达检查大小上限：未扫描",
+    "review": "translated",
+    "context": "webview/OperationReviewDialog.tsx / OperationReviewDialog / skipped"
+  },
+  "operationsReview.inspectStagedResult": {
+    "en": "Inspect Staged Result",
+    "zh-CN": "检查暂存结果",
+    "review": "translated",
+    "context": "webview/OperationReviewDialog.tsx / OperationReviewDialog"
+  },
+  "operationsReview.returnToReview": {
+    "en": "Return to Review",
+    "zh-CN": "返回检查",
+    "review": "translated",
+    "context": "webview/OperationReviewDialog.tsx / OperationReviewDialog"
+  },
+  "operationsReview.continueAnyway": {
+    "en": "Continue Anyway",
+    "zh-CN": "仍然继续",
+    "review": "translated",
+    "context": "webview/OperationReviewDialog.tsx / OperationReviewDialog"
+  },
+  "operationsReview.confirmContinue": {
+    "en": "Confirm & Continue",
+    "zh-CN": "确认并继续",
+    "review": "translated",
+    "context": "webview/OperationReviewDialog.tsx / OperationReviewDialog"
+  },
+  "operationsReview.gitWillUseTheStagedContentEditingAFile": {
+    "en": "Git will use the staged content. Editing a file does not update its staged version; save and stage your final result before continuing.",
+    "zh-CN": "Git 使用的是暂存内容。编辑文件不会自动更新暂存版本；继续前请保存并暂存最终结果。",
+    "review": "translated",
+    "context": "webview/OperationReviewDialog.tsx / OperationReviewDialog"
+  },
+  "operationsReview.possibleConflictMarkersOrFilesThatCouldNotBe": {
+    "en": "Possible conflict markers or files that could not be scanned need your review.",
+    "zh-CN": "发现疑似冲突标记或未能扫描的文件，请检查。",
+    "review": "translated",
+    "context": "webview/OperationReviewDialog.tsx / OperationReviewDialog"
+  },
+  "operationsReview.noCommonConflictMarkersFoundInTheStagedChanged": {
+    "en": "No common conflict markers found in the staged changed text files. This does not verify content correctness.",
+    "zh-CN": "已扫描的暂存变更文本中未发现常见冲突标记；这不代表内容正确。",
+    "review": "translated",
+    "context": "webview/OperationReviewDialog.tsx / OperationReviewDialog"
+  },
+  "operationsReview.possibleMarkersAtLines": {
+    "en": "Possible markers at lines: ",
+    "zh-CN": "疑似标记行：",
+    "review": "translated",
+    "context": "webview/OperationReviewDialog.tsx / OperationReviewDialog"
+  },
+  "operationsReview.first100Shown": {
+    "en": " (first 100 shown)",
+    "zh-CN": "（仅显示前 100 处）",
+    "review": "translated",
+    "context": "webview/OperationReviewDialog.tsx / OperationReviewDialog"
+  },
+  "operationsReview.reviewStagedContent": {
+    "en": "Review staged content",
+    "zh-CN": "检查暂存内容",
+    "review": "translated",
+    "context": "webview/OperationReviewDialog.tsx / OperationReviewDialog"
+  },
+  "operationsReview.editInVSCodeThenSaveAndStage": {
+    "en": "Edit in VS Code, then save and stage",
+    "zh-CN": "在 VS Code 中编辑，然后保存并暂存",
+    "review": "translated",
+    "context": "webview/OperationReviewDialog.tsx / OperationReviewDialog"
+  },
+  "operationsReview.editInVSCode": {
+    "en": "Edit in VS Code",
+    "zh-CN": "在 VS Code 中编辑",
+    "review": "translated",
+    "context": "webview/OperationReviewDialog.tsx / OperationReviewDialog"
+  },
+  "operationsReview.iReviewedTheseWarningsAndIntendToKeepThis": {
+    "en": "I reviewed these warnings and intend to keep this staged content, including any literal markers.",
+    "zh-CN": "我已检查以上提示，确认保留当前暂存内容（包括需要保留的标记文本）。",
+    "review": "translated",
+    "context": "webview/OperationReviewDialog.tsx / OperationReviewDialog"
+  }
+}

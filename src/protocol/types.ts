@@ -1,3 +1,4 @@
+import type { MessageDescriptor } from '../i18n';
 export interface Repository { id: string; root: string; commonDir: string; gitDir?: string; name: string; mainRoot?: string; collectionId?: string }
 export interface RepositoryCollection { id: string; name: string }
 export interface RepositoryOrder { root: string[]; collections: Record<string, string[]> }
@@ -59,7 +60,7 @@ export interface OperationSettings { allowDetachedHead: boolean; scope: 'workspa
 export interface RpcRequest { id: string; method: 'repositories' | 'repositoryCollections' | 'repositoryOrder' | 'reorderRepository' | 'repositoryStatuses' | 'pickRepositoryDirectory' | 'discoverRepositories' | 'cancelRepositoryDiscovery' | 'addRepository' | 'removeRepositories' | 'createRepositoryCollection' | 'renameRepositoryCollection' | 'deleteRepositoryCollection' | 'moveRepositories' | 'snapshot' | 'operationReview' | 'history' | 'details' | 'stashDetails' | 'compare' | 'cancelQuery' | 'action' | 'diff' | 'diffPreview' | 'copyText' | 'openWorkbench' | 'openRepository' | 'openProject' | 'openFile' | 'openWorktree' | 'pickWorktree' | 'showLog' | 'saveSession' | 'operationSettings' | 'saveOperationSettings'; repoId?: string; payload?: unknown }
 /** Missing paths means the source cannot limit which working files changed. */
 export interface RepositoryChanges { paths?: string[]; index?: boolean }
-export type HostMessage = { type: 'operationSettingsChanged'; settings: OperationSettings } | { type: 'response'; id: string; result?: unknown; error?: { message: string; code?: string; details?: ActionBlocker } } | { type: 'changed'; repoId: string; changes?: RepositoryChanges; snapshot?: Snapshot } | { type: 'activity'; repoId: string; busy: boolean; label: string } | { type: 'repositoriesChanged' } | { type: 'selectRepository'; repoId: string } | { type: 'repositoryDiscoveryProgress'; scanId: string; scanned: number; found: number };
+export type HostMessage = { type: 'operationSettingsChanged'; settings: OperationSettings } | { type: 'response'; id: string; result?: unknown; error?: { message: string; code?: string; details?: ActionBlocker; localizedMessage?: MessageDescriptor } } | { type: 'changed'; repoId: string; changes?: RepositoryChanges; snapshot?: Snapshot } | { type: 'activity'; repoId: string; busy: boolean; label: string } | { type: 'repositoriesChanged' } | { type: 'selectRepository'; repoId: string } | { type: 'repositoryDiscoveryProgress'; scanId: string; scanned: number; found: number };
 export interface GitServiceContract {
   withReadSignal?<T>(signal: AbortSignal, task: () => Promise<T>): Promise<T>;
   discover(root: string): Promise<Repository>;

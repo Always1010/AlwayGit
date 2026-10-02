@@ -1,0 +1,20 @@
+{
+  "paths.invalidRepositoryRelativeFilePath": {
+    "en": "Invalid repository-relative file path.",
+    "zh-CN": "Invalid repository-relative file path.",
+    "review": "pending",
+    "context": "src/editor/paths.ts / safeWorkingPath"
+  },
+  "paths.filePathIsOutsideTheRepository": {
+    "en": "File path is outside the repository.",
+    "zh-CN": "File path is outside the repository.",
+    "review": "pending",
+    "context": "src/editor/paths.ts / safeWorkingPath"
+  },
+  "paths.fileResolvesOutsideTheRepository": {
+    "en": "File resolves outside the repository.",
+    "zh-CN": "File resolves outside the repository.",
+    "review": "pending",
+    "context": "src/editor/paths.ts / safeWorkingPath"
+  }
+}

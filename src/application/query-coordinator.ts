@@ -1,8 +1,9 @@
+import { translate, message as localizeMessage, MessageError } from '../i18n/index';
 import type { ReadQueryCategory } from '../protocol/queries';
 
 export class QueryCancelledError extends Error {
   readonly code = 'ABORTED';
-  constructor() { super('The read request was cancelled.'); }
+  constructor() { super(translate('en', "queryCoordinator.theReadRequestWasCancelled")); }
 }
 interface Query {
   owner: object;
@@ -22,7 +23,7 @@ export class QueryCoordinator {
   private active = 0;
   private disposed = false;
   constructor(private readonly limit = 3) {
-    if (!Number.isInteger(limit) || limit < 1) throw new Error('Query concurrency must be positive.');
+    if (!Number.isInteger(limit) || limit < 1) throw new MessageError(localizeMessage("queryCoordinator.queryConcurrencyMustBePositive"));
   }
   run<T>(owner: object, category: ReadQueryCategory, id: string, operation: (signal: AbortSignal) => Promise<T>): Promise<T> {
     if (this.disposed) return Promise.reject(new QueryCancelledError());

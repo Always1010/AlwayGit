@@ -1,5 +1,7 @@
 import { build, context } from 'esbuild';
+import { generate } from './i18n.mjs';
 import { mkdir, copyFile, chmod } from 'node:fs/promises';
+await generate();
 await mkdir('dist', { recursive: true });
 await copyFile('src/extension/askpass.cjs', 'dist/askpass.cjs');
 await copyFile('src/extension/askpass.sh', 'dist/askpass.sh');

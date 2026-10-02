@@ -1,3 +1,5 @@
+import { hostText, preferredLanguage } from '../application/language';
+import { translate } from '../i18n/index';
 import * as vscode from 'vscode';
 import { GitService } from '../git/service';
 import { RepositoryManager } from '../repositories/manager';
@@ -29,7 +31,7 @@ export async function activate(context: vscode.ExtensionContext) {
           const cancellation = new vscode.CancellationTokenSource(), cancel = () => cancellation.cancel();
           signal.addEventListener('abort', cancel, { once: true });
           if (signal.aborted) cancel();
-          try { return await vscode.window.showInputBox({ title: 'AlwayGit · Git Authentication', prompt: message, password, ignoreFocusOut: true }, cancellation.token); }
+          try { return await vscode.window.showInputBox({ title: hostText(preferredLanguage(), "extension.alwayGitGitAuthentication"), prompt: message, password, ignoreFocusOut: true }, cancellation.token); }
           finally { signal.removeEventListener('abort', cancel); cancellation.dispose(); }
         });
     },
@@ -45,8 +47,8 @@ export async function activate(context: vscode.ExtensionContext) {
   );
   workbench = new Workbench(context, git, manager, documents, output, projects);
   const launcher = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-  launcher.name = 'AlwayGit'; launcher.text = '$(git-merge) AlwayGit'; launcher.command = 'alwaygit.showWorkbench';
-  const updateLauncher = () => { const presentation=statusBarPresentation(workbench.presence);launcher.tooltip=presentation.tooltip;launcher.accessibilityInformation={label:presentation.tooltip};if(presentation.visible)launcher.show();else launcher.hide(); };
+  launcher.name = 'AlwayGit'; launcher.text = translate('en', "extension.gitMergeAlwayGit"); launcher.command = 'alwaygit.showWorkbench';
+  const updateLauncher = () => { const presentation=statusBarPresentation(workbench.presence, preferredLanguage());launcher.tooltip=presentation.tooltip;launcher.accessibilityInformation={label:presentation.tooltip};if(presentation.visible)launcher.show();else launcher.hide(); };
   context.subscriptions.push(output, manager, workbench, projects,
     launcher,
     vscode.workspace.registerTextDocumentContentProvider('alwaygit-content', documents),
@@ -60,13 +62,13 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('alwaygit.refresh', async () => { await manager.scan(); for (const repo of manager.list()) manager.notify(repo.id); }),
     vscode.commands.registerCommand('alwaygit.showLog', () => output.show(true)),
     createWorkbenchActivityLauncher(),
-    vscode.workspace.onDidChangeConfiguration(e => { if (e.affectsConfiguration('alwaygit.gitPath') || e.affectsConfiguration('alwaygit.refreshInterval')) void vscode.window.showInformationMessage('Reload the VS Code window to apply AlwayGit runtime configuration changes.'); }),
+    vscode.workspace.onDidChangeConfiguration(e => { if (e.affectsConfiguration('alwaygit.gitPath') || e.affectsConfiguration('alwaygit.refreshInterval')) void vscode.window.showInformationMessage(hostText(preferredLanguage(), "extension.reloadTheVSCodeWindowToApplyAlwayGitRuntime")); }),
     vscode.window.registerWebviewPanelSerializer('alwaygit.workbench', { async deserializeWebviewPanel(panel, state: { repoId?: string } | undefined) { await workbench.open(state?.repoId, panel, false, state?.repoId===undefined); } }),
   );
   await projects.start();
   await manager.scan();
   updateLauncher();
-  output.appendLine('AlwayGit activated. Git operations run in the workspace extension host.');
+  output.appendLine(translate('en', "extension.alwayGitActivatedGitOperationsRunInTheWorkspaceExtension"));
   return { git, manager, documents, workbench, projects };
 }
 export function deactivate(): void {}

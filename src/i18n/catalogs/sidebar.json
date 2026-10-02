@@ -1,0 +1,164 @@
+{
+  "sidebar.refreshRepositoryListAndStatusBadges": {
+    "en": "Refresh repository list and status badges",
+    "zh-CN": "刷新仓库列表和状态角标",
+    "review": "translated",
+    "context": "webview/Sidebar.tsx / SidebarActions / actionLabel"
+  },
+  "sidebar.collapse": {
+    "en": "Collapse",
+    "zh-CN": "收起",
+    "review": "translated",
+    "context": "webview/Sidebar.tsx / BranchNode"
+  },
+  "sidebar.expand": {
+    "en": "Expand",
+    "zh-CN": "展开",
+    "review": "translated",
+    "context": "webview/Sidebar.tsx / BranchNode"
+  },
+  "sidebar.addRemote": {
+    "en": "Add Remote…",
+    "zh-CN": "添加远端…",
+    "review": "translated",
+    "context": "webview/Sidebar.tsx / SidebarPanel / addRemote"
+  },
+  "sidebar.dragToReorderAltUpDownMovesWithinThe": {
+    "en": "Drag to reorder. Alt+Up/Down moves within the same level.",
+    "zh-CN": "拖动调整顺序；Alt+↑/↓ 可在同层移动。",
+    "review": "translated",
+    "context": "webview/Sidebar.tsx / dragHandle / hint"
+  },
+  "sidebar.reorder": {
+    "en": "Reorder {{label}}. {{hint}}",
+    "zh-CN": "调整 {{label}} 的顺序。{{hint}}",
+    "review": "translated",
+    "context": "webview/Sidebar.tsx / SidebarPanel / dragHandle"
+  },
+  "sidebar.unpushedCommits": {
+    "en": "{{name}}, {{unpushed}} unpushed commits",
+    "zh-CN": "{{name}}，{{unpushed}} 个未推送提交",
+    "review": "translated",
+    "context": "webview/Sidebar.tsx / repositoryButton / label"
+  },
+  "sidebar.doubleClickOrPressEnterToSwitchRepository": {
+    "en": "Double-click or press Enter to switch repository.",
+    "zh-CN": "双击或按 Enter 切换仓库。",
+    "review": "translated",
+    "context": "webview/Sidebar.tsx / SidebarPanel / repositoryButton"
+  },
+  "sidebar.repositories": {
+    "en": "Repositories",
+    "zh-CN": "仓库",
+    "review": "translated",
+    "context": "webview/Sidebar.tsx / SidebarPanel"
+  },
+  "sidebar.localBranches": {
+    "en": "Local Branches",
+    "zh-CN": "本地分支",
+    "review": "translated",
+    "context": "webview/Sidebar.tsx / SidebarPanel"
+  },
+  "sidebar.graphBranchDisplayPresets": {
+    "en": "Graph branch display presets",
+    "zh-CN": "Graph 分支显示预设",
+    "review": "translated",
+    "context": "webview/Sidebar.tsx / SidebarPanel"
+  },
+  "sidebar.remotes": {
+    "en": "Remotes",
+    "zh-CN": "远端",
+    "review": "translated",
+    "context": "webview/Sidebar.tsx / SidebarPanel"
+  },
+  "sidebar.noRemoteRepositoryConnected": {
+    "en": "No remote repository connected.",
+    "zh-CN": "尚未连接远程仓库。",
+    "review": "translated",
+    "context": "webview/Sidebar.tsx / SidebarPanel"
+  },
+  "sidebar.noTags": {
+    "en": "No tags",
+    "zh-CN": "暂无 Tag",
+    "review": "translated",
+    "context": "webview/Sidebar.tsx / SidebarPanel"
+  },
+  "sidebar.noSavedChanges": {
+    "en": "No saved changes",
+    "zh-CN": "暂无保存的修改",
+    "review": "translated",
+    "context": "webview/Sidebar.tsx / SidebarPanel"
+  },
+  "sidebar.doubleClickOrPressEnterToSwitchWorktree": {
+    "en": "Double-click or press Enter to switch Worktree.",
+    "zh-CN": "双击或按 Enter 切换 Worktree。",
+    "review": "translated",
+    "context": "webview/Sidebar.tsx / SidebarPanel"
+  },
+  "sidebar.selectARepositoryToBegin": {
+    "en": "Select a repository to begin.",
+    "zh-CN": "选择仓库以开始。",
+    "review": "translated",
+    "context": "webview/Sidebar.tsx / SidebarPanel"
+  },
+  "sidebar.showBranch": {
+    "en": "Show branch {{name}}",
+    "zh-CN": "Show branch {{name}}",
+    "review": "pending",
+    "context": "webview/Sidebar.tsx / BranchLeaf"
+  },
+  "sidebar.branch": {
+    "en": "Branch {{name}}",
+    "zh-CN": "Branch {{name}}",
+    "review": "pending",
+    "context": "webview/Sidebar.tsx / BranchLeaf"
+  },
+  "sidebar.hEAD": {
+    "en": " · HEAD",
+    "zh-CN": " · HEAD",
+    "review": "pending",
+    "context": "webview/Sidebar.tsx / BranchLeaf"
+  },
+  "sidebar.showBranchGroup": {
+    "en": "Show branch group {{label}}",
+    "zh-CN": "Show branch group {{label}}",
+    "review": "pending",
+    "context": "webview/Sidebar.tsx / BranchNode"
+  },
+  "sidebar.graph": {
+    "en": "Graph:",
+    "zh-CN": "Graph:",
+    "review": "pending",
+    "context": "webview/Sidebar.tsx / SidebarPanel"
+  },
+  "sidebar.tags": {
+    "en": "Tags",
+    "zh-CN": "Tags",
+    "review": "keep",
+    "context": "webview/Sidebar.tsx / SidebarPanel"
+  },
+  "sidebar.stashes": {
+    "en": "Stashes",
+    "zh-CN": "Stashes",
+    "review": "keep",
+    "context": "webview/Sidebar.tsx / SidebarPanel"
+  },
+  "sidebar.worktrees": {
+    "en": "Worktrees",
+    "zh-CN": "Worktrees",
+    "review": "keep",
+    "context": "webview/Sidebar.tsx / SidebarPanel"
+  },
+  "sidebar.detachedHEAD": {
+    "en": "Detached HEAD",
+    "zh-CN": "Detached HEAD",
+    "review": "keep",
+    "context": "webview/Sidebar.tsx / SidebarPanel / label"
+  },
+  "sidebar.locked": {
+    "en": " · Locked",
+    "zh-CN": " · Locked",
+    "review": "pending",
+    "context": "webview/Sidebar.tsx / SidebarPanel"
+  }
+}

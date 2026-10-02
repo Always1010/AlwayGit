@@ -1,0 +1,56 @@
+{
+  "projectWindows.repositoryActivity": {
+    "en": "[repository-activity] {{value}}",
+    "zh-CN": "[repository-activity] {{value}}",
+    "review": "pending",
+    "context": "src/extension/project-windows.ts / notifyActivity"
+  },
+  "projectWindows.trustTheProjectWorkspaceBeforeOpeningItFromAlwayGit": {
+    "en": "Trust the project workspace before opening it from AlwayGit.",
+    "zh-CN": "Trust the project workspace before opening it from AlwayGit.",
+    "review": "pending",
+    "context": "src/extension/project-windows.ts / execute"
+  },
+  "projectWindows.theRepositoryDirectoryChangedReopenItFromAlwayGit": {
+    "en": "The repository directory changed. Reopen it from AlwayGit.",
+    "zh-CN": "The repository directory changed. Reopen it from AlwayGit.",
+    "review": "pending",
+    "context": "src/extension/project-windows.ts / execute"
+  },
+  "projectWindows.theProjectWindowHasNoWorkspaceToActivate": {
+    "en": "The project window has no workspace to activate.",
+    "zh-CN": "The project window has no workspace to activate.",
+    "review": "pending",
+    "context": "src/extension/project-windows.ts / focus"
+  },
+  "projectWindows.vSCodeCouldNotActivateTheSelectedProjectWindow": {
+    "en": "VS Code could not activate the selected project window. Switch to that window and try again.",
+    "zh-CN": "VS Code could not activate the selected project window. Switch to that window and try again.",
+    "review": "pending",
+    "context": "src/extension/project-windows.ts / focus"
+  },
+  "projectWindows.aWindowLevelRequestCannotBeRoutedAsA": {
+    "en": "A window-level request cannot be routed as a project request.",
+    "zh-CN": "A window-level request cannot be routed as a project request.",
+    "review": "pending",
+    "context": "src/extension/project-windows.ts / route"
+  },
+  "projectWindows.theProjectWasOpenedButAlwayGitDidNotRespond": {
+    "en": "The project was opened, but AlwayGit did not respond. Enable AlwayGit and trust that project window, then try again.",
+    "zh-CN": "The project was opened, but AlwayGit did not respond. Enable AlwayGit and trust that project window, then try again.",
+    "review": "pending",
+    "context": "src/extension/project-windows.ts / openAndWait"
+  },
+  "projectWindows.theProjectWasOpenedInANewWindowBut": {
+    "en": "The project was opened in a new window, but AlwayGit did not respond. Enable AlwayGit and trust that project window, then try again.",
+    "zh-CN": "The project was opened in a new window, but AlwayGit did not respond. Enable AlwayGit and trust that project window, then try again.",
+    "review": "pending",
+    "context": "src/extension/project-windows.ts / openNewAndWait"
+  },
+  "projectWindows.theNewWindowOpenedButAlwayGitDidNotRespond": {
+    "en": "The new window opened, but AlwayGit did not respond. Enable AlwayGit in that window, then try again.",
+    "zh-CN": "The new window opened, but AlwayGit did not respond. Enable AlwayGit in that window, then try again.",
+    "review": "pending",
+    "context": "src/extension/project-windows.ts / openBlankAndWait"
+  }
+}
