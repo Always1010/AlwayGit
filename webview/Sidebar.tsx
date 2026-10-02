@@ -21,8 +21,9 @@ export type ContextHandler = (event: React.MouseEvent | React.KeyboardEvent, tar
 export type SidebarActionProvider = (target: MenuTarget) => MenuItem[];
 type Group = Extract<MenuTarget,{kind:'group'}>['group'];
 
-function SidebarActions({items,className='',label}:{items:MenuItem[];className?:string;label?:string}) {
-  return <div className={`sidebar-actions ${className}`.trim()} role={label?'group':undefined} aria-label={label}>{items.map(item=>{const hint=item.disabled&&item.reason?`${item.label} — ${item.reason}`:item.label;return <Button key={item.label} className="icon-only sidebar-action" icon={item.icon??'circle-small'} title={hint} aria-label={item.label} aria-pressed={item.pressed} disabled={item.disabled} onClick={()=>void item.run()}/>;})}</div>;
+function SidebarActions({items,className='',label,allowRefresh=false}:{items:MenuItem[];className?:string;label?:string;allowRefresh?:boolean}) {
+  const t=useTranslation();
+  return <div className={`sidebar-actions ${className}`.trim()} role={label?'group':undefined} aria-label={label}>{items.filter(item=>allowRefresh||item.icon!=='refresh').map(item=>{const actionLabel=item.icon==='refresh'?t('Refresh repository list and status badges','刷新仓库列表和状态角标'):item.label,hint=item.disabled&&item.reason?`${actionLabel} — ${item.reason}`:actionLabel;return <Button key={item.label} className="icon-only sidebar-action" icon={item.icon??'circle-small'} title={hint} aria-label={actionLabel} aria-pressed={item.pressed} disabled={item.disabled} onClick={()=>void item.run()}/>;})}</div>;
 }
 
 function CurrentIndicator({current}:{current:boolean}) {
@@ -94,7 +95,7 @@ function SidebarPanel({ context, actions, checkoutBranch, openWorktree }: { cont
     const names=buildRefTree(refs,scope,scope.startsWith('remote:')?scope.slice(7):'').flatMap(refsUnder).map(ref=>ref.fullName);
     handleSelectionKeyboard(event,()=>state.setRefSelection(names,names[0]),()=>state.setRefSelection([]));
   };
-  const heading=(label:string,group:Group)=>{const target:MenuTarget={kind:'group',group},collapsed=state.collapsedSidebarGroups.includes(group),items=actions(target),selectionScope=['repositories','local','worktree'].includes(group)?group==='worktree'?'worktrees':group:undefined;return <div className="sidebar-heading" data-selection-scope={selectionScope} onContextMenu={event=>context(event,target)}><Button className="heading-toggle" icon={collapsed?'chevron-right':'chevron-down'} title={label} aria-expanded={!collapsed} onClick={()=>state.toggleSidebarGroup(group)}><span className="truncate">{label}</span></Button><SidebarActions items={group==='local'||group==='remote'?items.slice(0,1):items}/></div>;};
+  const heading=(label:string,group:Group)=>{const target:MenuTarget={kind:'group',group},collapsed=state.collapsedSidebarGroups.includes(group),items=actions(target),selectionScope=['repositories','local','worktree'].includes(group)?group==='worktree'?'worktrees':group:undefined;return <div className="sidebar-heading" data-selection-scope={selectionScope} onContextMenu={event=>context(event,target)}><Button className="heading-toggle" icon={collapsed?'chevron-right':'chevron-down'} title={label} aria-expanded={!collapsed} onClick={()=>state.toggleSidebarGroup(group)}><span className="truncate">{label}</span></Button><SidebarActions items={group==='local'||group==='remote'?items.slice(0,1):items} allowRefresh={group==='repositories'}/></div>;};
   const dragHandle=(key:string,label:string,parent?:string)=>{
     const hint=t('Drag to reorder. Alt+Up/Down moves within the same level.','拖动调整顺序；Alt+↑/↓ 可在同层移动。');
     return <Button className="icon-only repository-drag-handle" icon="gripper" title={hint} aria-label={t(`Reorder ${label}. ${hint}`,`调整 ${label} 的顺序。${hint}`)} aria-disabled={ordering} draggable={!ordering} onClick={event=>event.stopPropagation()} onDoubleClick={event=>event.stopPropagation()} onDragStart={event=>{

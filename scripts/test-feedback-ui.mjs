@@ -67,7 +67,7 @@ export async function verifyFeedback(browser, url) {
     await page.evaluate(() => window.__feedbackFixture.complete());
     await bar.getByText('Push completed', { exact: true }).waitFor();
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
-    await page.locator('.toolbar').getByRole('button', { name: 'Refresh', exact: true }).click();
+    await page.locator('.toolbar').getByRole('button', { name: 'Refresh current repository status and history', exact: true }).click();
     await bar.getByText('Push completed', { exact: true }).waitFor();
     await bar.getByRole('button', { name: 'Dismiss notification' }).click();
     await bar.waitFor({ state: 'hidden' });

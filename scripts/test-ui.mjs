@@ -201,7 +201,7 @@ async function verifyWorkbench(browser, url) {
     await sidebar.getByRole('button', { name: /^AlwayGit/ }).waitFor({ state: 'hidden' });
     assert.equal(await menu.isVisible(), false, 'A section title click must collapse the section without opening its menu');
     await repositoriesHeading.click();
-    await assertIconActions(repositoriesHeading.locator('..'), ['Add…', 'Refresh']);
+    await assertIconActions(repositoriesHeading.locator('..'), ['Add…', 'Refresh repository list and status badges']);
     assert.equal(await sidebar.locator('.codicon-ellipsis').count(), 0, 'Sidebar retains the original actions without repository ellipsis controls');
     await assertMenu(repositoriesHeading, ['Add…', 'Refresh']);
     await assertMenu(sidebar.getByRole('option', { name: /^AlwayGit/ }), ['Switch to Repository', 'Open in New AlwayGit Tab', 'Open Repository in New Project Window', 'Fetch…', 'Refresh Status', 'Copy Repository Path', 'Move to Repository Group…', 'Remove from AlwayGit…']);
@@ -271,7 +271,7 @@ async function verifyWorkbench(browser, url) {
     assert.ok((await menu.getByRole('menuitem').allTextContents()).some(value=>value.trim()==='Copy Branch Names'),'Branch folders use the custom branch menu');
     await page.keyboard.press('Escape');
     await assertIconActions(sidebar.getByRole('button', { name: 'Remotes', exact: true }).locator('..'), ['Add Remote…']);
-    await assertIconActions(sidebar.getByRole('button', { name: 'origin', exact: true }).locator('..'), ['Fetch…', 'Refresh']);
+    await assertIconActions(sidebar.getByRole('button', { name: 'origin', exact: true }).locator('..'), ['Fetch…']);
     const remoteBranch = sidebar.getByRole('button', { name: 'Branch origin/develop', exact: true });
     await assertMenu(remoteBranch, ['Show in Graph', 'Show Only This Branch', 'Checkout as Local Branch…', 'Merge…', 'Rebase…', 'Delete Branch from origin…', 'Copy Branch Name']);
     const remoteTree = sidebar.locator('.branch-tree[data-ref-kind="remote"]');
@@ -287,13 +287,13 @@ async function verifyWorkbench(browser, url) {
     await remoteBranch.click();await remoteMain.click({modifiers:['Control']});await openMenu(remoteBranch);
     assert.ok((await menu.getByRole('menuitem').allTextContents()).some(value=>value.trim()==='Delete 2 Branches from origin…'),'Remote multi-selection exposes an explicit remote deletion action');
     await menu.getByRole('menuitem',{name:'Delete 2 Branches from origin…',exact:true}).click();dialog=page.getByRole('dialog');await dialog.getByText('Delete from origin',{exact:true}).waitFor();await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
-    await assertIconActions(sidebar.getByRole('button', { name: 'Tags', exact: true }).locator('..'), ['Create Tag…', 'Refresh']);
+    await assertIconActions(sidebar.getByRole('button', { name: 'Tags', exact: true }).locator('..'), ['Create Tag…']);
     const tag = sidebar.getByRole('button', { name: 'v0.1.0', exact: true });
     await assertMenu(tag, ['Create Branch and Checkout…', 'Show in Graph', 'Show Only This Tag', 'Create Branch…', 'Delete Tag…', 'Copy Tag Name', 'Copy Commit ID']);
-    await assertIconActions(sidebar.getByRole('button', { name: 'Stashes', exact: true }).locator('..'), ['Stash All Changes…', 'Refresh']);
+    await assertIconActions(sidebar.getByRole('button', { name: 'Stashes', exact: true }).locator('..'), ['Stash All Changes…']);
     const stash = sidebar.getByRole('button').filter({ hasText: 'stash@{0}' });
     await assertMenu(stash, ['View Changes', 'Apply Stash', 'Pop Stash', 'Drop Stash…']);
-    await assertIconActions(sidebar.getByRole('button', { name: 'Worktrees', exact: true }).locator('..'), ['Add Worktree…', 'Refresh']);
+    await assertIconActions(sidebar.getByRole('button', { name: 'Worktrees', exact: true }).locator('..'), ['Add Worktree…']);
     const secondaryWorktree = sidebar.locator('.worktree-list [data-worktree-path]').last();
     await assertMenu(secondaryWorktree, ['Open Worktree', 'Open Worktree in New Project Window', 'Refresh', 'Remove Worktree…', 'Copy Worktree Path']);
 
