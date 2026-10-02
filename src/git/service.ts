@@ -8,6 +8,7 @@ import { remoteNameProblem, remoteUrlProblem } from '../protocol/remote';
 import { inferDefaultBranch } from './default-branch';
 import { GitError, GitReadTerminationError, GitTerminationError } from './error';
 import { isReadOnlyGitCommand } from './command-kind';
+import { assertGitArgumentBudget, prepareGitArguments, splitCleanArguments } from './arguments';
 import { runGitProcess, type GitResult } from './runner';
 export { GitError } from './error';
 import { createSelectedStash, preflightStash, StashStateError, type StashExecution } from './stash';
@@ -86,6 +87,24 @@ export class GitService implements GitServiceContract {
     if (!readOnly && scopeSignal) throw new GitError('A read-only request cannot run Git mutations', 'WRITE_IN_READ_SCOPE');
     const unsafe = unsafeTerminations.get(normalized(repo.commonDir));
     if (!readOnly && unsafe) throw unsafe;
+    const prefix = ['-C', execution.root ?? repo.root, ...(args[0] === 'stash' ? [] : ['--literal-pathspecs'])];
+    const batches = splitCleanArguments(this.options.gitPath ?? 'git', prefix, args);
+    if (batches.length > 1) {
+      const results: Result[] = [];
+      try {
+        for (const batch of batches) {
+          const result = await this.run(repo, batch, allowFailure, captureBytes, execution);
+          results.push(result);
+          if (result.code) break;
+        }
+      } catch (error) {
+        if (error instanceof GitTerminationError || !results.length) throw error;
+        throw new GitError(`${results.length} clean batch(es) completed; a later batch failed and may have partially removed files. Inspect the remaining files before retrying.\n${error instanceof Error ? error.message : String(error)}`, 'PARTIAL_FAILURE');
+      }
+      return { stdout: Buffer.concat(results.map(result => result.stdout)), stderr: Buffer.concat(results.map(result => result.stderr)), code: results.at(-1)?.code ?? 0 };
+    }
+    const prepared = prepareGitArguments(args, execution.input);
+    assertGitArgumentBudget(this.options.gitPath ?? 'git', [...prefix, ...prepared.args]);
     const adapter = this.options.environment;
     const supplied = execution.isolated ? undefined : typeof adapter === 'function' ? await adapter(repo, args) : adapter;
     const wrapped = supplied && 'env' in supplied && typeof supplied.env === 'object' ? supplied as { env: NodeJS.ProcessEnv; dispose?: () => void | Promise<void> } : undefined;
@@ -97,9 +116,9 @@ export class GitService implements GitServiceContract {
       // Stash cleanup uses Git pathspec matching; all other commands use literal paths.
       const gitProcess = runGitProcess({
         executable: this.options.gitPath,
-        args: ['-C', execution.root ?? repo.root, ...(args[0] === 'stash' ? [] : ['--literal-pathspecs']), ...args],
+        args: [...prefix, ...prepared.args],
         env: { ...commandEnv, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never', GIT_EDITOR: 'true', GIT_SEQUENCE_EDITOR: 'true', ...(['status', 'log', 'show', 'ls-tree', 'ls-files', 'for-each-ref'].includes(args[0]) ? { GIT_OPTIONAL_LOCKS: '0' } : {}), ...execution.env },
-        input: execution.input, signal: execution.signal && scopeSignal ? AbortSignal.any([execution.signal,scopeSignal]) : execution.signal ?? scopeSignal, readOnly, captureBytes,
+        input: prepared.input, signal: execution.signal && scopeSignal ? AbortSignal.any([execution.signal,scopeSignal]) : execution.signal ?? scopeSignal, readOnly, captureBytes,
         timeoutMs: this.options.timeoutMs, maxOutputBytes: this.options.maxOutputBytes,
         onStderr: execution.silent ? undefined : chunk => this.options.onOutput?.(repo, chunk.toString('utf8')),
       });
@@ -588,6 +607,10 @@ export class GitService implements GitServiceContract {
       case 'tag.create': await this.run(repo, ['check-ref-format', `refs/tags/${token(action.name, 'tag name')}`]); args = ['tag', ...(action.message ? ['-a', '-m', action.message] : []), action.name, await this.oid(repo, action.target ?? 'HEAD')]; break;
       case 'tag.delete': await this.run(repo, ['check-ref-format', `refs/tags/${token(action.name, 'tag name')}`]); args = ['tag', '-d', '--', action.name]; break;
       case 'stash.create': {
+        if (action.message?.includes('\0')) throw new GitError('Messages cannot contain NUL characters', 'INVALID_ARGUMENT');
+        // store has no stdin message option. Check its worst-case command before
+        // preparing any snapshot or changing the source repository.
+        if (action.message) assertGitArgumentBudget(this.options.gitPath ?? 'git', ['-C', repo.root, 'stash', 'store', '-m', action.message, '0'.repeat(64)]);
         if (action.paths) {
           if (!action.paths.length) throw new GitError('Select at least one file', 'INVALID_ARGUMENT');
           const snapshot = await this.snapshot(repo);
