@@ -2,7 +2,7 @@ import { it, expect, afterEach } from 'vitest';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { gitFixtures, git, commitFile } from './support/git-fixture';
-import { captureRemoteLease } from '../webview/remoteLease';
+import { captureRemoteLease, updateRemoteLease } from '../webview/remoteLease';
 import { actionSchema } from '../src/protocol/validation';
 const fixtures = gitFixtures('alwaygit-lease-test-');
 afterEach(fixtures.cleanup);
@@ -54,4 +54,12 @@ it('binds absent refs and destination configuration to the original confirmation
   await expect(service.execute(repo, { type: 'push', remote: 'origin', branch: 'main', remoteBranch: 'new', forceWithLease: true, expectedOid: head, expectedDestination: lease.expectedDestination })).rejects.toMatchObject({ code: 'OPERATION_CHANGED' });
   await git(root, 'config', 'remote.origin.pushurl', bare); await git(root, 'config', '--add', 'remote.origin.pushurl', bare);
   await expect(service.execute(repo, { type: 'remote.delete', remote: 'origin', branches: ['new'], expectedOids: { new: head }, expectedDestination: lease.expectedDestination })).rejects.toMatchObject({ code: 'MULTIPLE_PUSH_DESTINATIONS' });
+});
+
+it('retains confirmation when editing whitespace or selecting the same normalized destination', () => {
+  const previous = { remote: 'origin', remoteBranch: 'main', expectedOid: 'old', expectedDestination: 'original' };
+  const snapshot = { refs: [{ fullName: 'refs/remotes/origin/main', oid: 'new' }], remoteDestinations: { origin: 'changed' } } as unknown as import('../src/protocol/types').Snapshot;
+  expect(updateRemoteLease(previous, snapshot, ' origin ', 'main ')).toBe(previous);
+  expect(updateRemoteLease(previous, snapshot, 'origin', 'main')).toBe(previous);
+  expect(updateRemoteLease(previous, snapshot, 'origin', 'new-branch')).toMatchObject({ remoteBranch: 'new-branch', expectedOid: '', expectedDestination: 'changed' });
 });
