@@ -58,6 +58,12 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "alwaygit.removeRepository",
+        "title": "Remove from AlwayGit…",
+        "category": "AlwayGit",
+        "icon": "$(close)"
+      },
+      {
         "command": "alwaygit.showLog",
         "title": "Show Git Output",
         "category": "AlwayGit"
@@ -90,14 +96,31 @@
     "menus": {
       "view/title": [
         {
-          "command": "alwaygit.open",
+          "command": "alwaygit.addRepository",
           "when": "view == alwaygit.repositories",
           "group": "navigation@1"
         },
         {
-          "command": "alwaygit.refresh",
+          "command": "alwaygit.open",
           "when": "view == alwaygit.repositories",
           "group": "navigation@2"
+        },
+        {
+          "command": "alwaygit.refresh",
+          "when": "view == alwaygit.repositories",
+          "group": "navigation@3"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "alwaygit.removeRepository",
+          "when": "view == alwaygit.repositories && viewItem == alwaygit.repository",
+          "group": "inline@1"
+        },
+        {
+          "command": "alwaygit.removeRepository",
+          "when": "view == alwaygit.repositories && viewItem == alwaygit.repository",
+          "group": "navigation@90"
         }
       ],
       "editor/title": [

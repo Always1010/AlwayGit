@@ -1,12 +1,13 @@
 import * as vscode from 'vscode';
 import path from 'node:path';
 import type { GitServiceContract, Repository, RepositoryChanges } from '../protocol/types';
-import { groupRepositories, repositoryGroupKey } from '../protocol/repositories';
+import { groupRepositories, pathKey, repositoryGroupKey } from '../protocol/repositories';
 import { discoverRepositories, type DiscoveryOptions, type DiscoveryResult } from './discovery';
 
 export interface AddDirectoryResult extends DiscoveryResult { added: number; existing: number }
 
 const GLOBAL_ROOTS_KEY = 'alwaygit.repositoryRoots.v1';
+const GLOBAL_EXCLUDED_KEY = 'alwaygit.excludedRepositories.v1';
 const LEGACY_WORKSPACE_ROOTS_KEY = 'alwaygit.roots';
 
 export class RepositoryManager implements vscode.Disposable {
@@ -30,7 +31,7 @@ export class RepositoryManager implements vscode.Disposable {
     if (!vscode.workspace.isTrusted) throw new Error('Trust this workspace before executing Git.');
     const repo = await this.git.discover(root);
     if (this.register(repo)) this.listEmitter.fire();
-    if (remember) await this.remember([repo.root]);
+    if (remember) { await this.remember([repo.root]); await this.include([repositoryGroupKey(repo)]); }
     return repo;
   }
   async discoverDirectory(root: string, options: DiscoveryOptions = {}): Promise<DiscoveryResult> {
@@ -48,6 +49,12 @@ export class RepositoryManager implements vscode.Disposable {
     const saved = new Set(this.context.globalState.get<string[]>(GLOBAL_ROOTS_KEY, []));
     for (const root of roots) saved.add(root);
     await this.context.globalState.update(GLOBAL_ROOTS_KEY, [...saved]);
+  }
+  private async include(keys: Iterable<string>): Promise<void> {
+    const excluded = new Set(this.context.globalState.get<string[]>(GLOBAL_EXCLUDED_KEY, []));
+    let changed = false;
+    for (const key of keys) changed = excluded.delete(key) || changed;
+    if (changed) await this.context.globalState.update(GLOBAL_EXCLUDED_KEY, [...excluded]);
   }
   private register(repo: Repository): boolean {
     if (!this.repositories.has(repo.id)) {
@@ -72,6 +79,11 @@ export class RepositoryManager implements vscode.Disposable {
     }
     return false;
   }
+  private unregister(id: string): void {
+    clearTimeout(this.timers.get(id)); this.timers.delete(id); this.pendingChanges.delete(id);
+    for (const watcher of this.watchers.get(id) ?? []) watcher.dispose();
+    this.watchers.delete(id); this.repositories.delete(id);
+  }
   async addDirectory(root: string, options: DiscoveryOptions = {}): Promise<AddDirectoryResult> {
     const discovery = await this.discoverDirectory(root, options);
     return this.registerDiscovered(discovery, options);
@@ -90,14 +102,28 @@ export class RepositoryManager implements vscode.Disposable {
     for (const key of successfulGroups) { if (existingGroups.has(key)) result.existing++; else result.added++; }
     // Persist once and notify once, regardless of the number of discovered repositories.
     if (remembered.length) {
-      try { await this.remember(remembered); }
+      try { await this.remember(remembered); await this.include(successfulGroups); }
       finally { if (registered) this.listEmitter.fire(); }
     }
     return result;
   }
+  async remove(keys: Iterable<string>): Promise<number> {
+    const removing = new Set(keys), groups = this.groups().filter(group => removing.has(group.key));
+    if (!groups.length) return 0;
+    const rootKeys = new Set(groups.flatMap(group => group.members.map(repo => pathKey(repo.root))));
+    for (const group of groups) for (const repo of group.members) this.unregister(repo.id);
+    const saved = this.context.globalState.get<string[]>(GLOBAL_ROOTS_KEY, []).filter(root => !rootKeys.has(pathKey(root)));
+    const excluded = new Set(this.context.globalState.get<string[]>(GLOBAL_EXCLUDED_KEY, []));
+    for (const group of groups) excluded.add(group.key);
+    await this.context.globalState.update(GLOBAL_ROOTS_KEY, saved);
+    await this.context.globalState.update(GLOBAL_EXCLUDED_KEY, [...excluded]);
+    this.listEmitter.fire();
+    return groups.length;
+  }
   async scan(): Promise<void> {
     if (!vscode.workspace.isTrusted) return;
     const roots = await this.rememberedRoots();
+    const excluded = new Set(this.context.globalState.get<string[]>(GLOBAL_EXCLUDED_KEY, []));
     for (const folder of vscode.workspace.workspaceFolders ?? []) if (folder.uri.scheme === 'file') roots.add(folder.uri.fsPath);
     try {
       const ext = vscode.extensions.getExtension<{ getAPI(version: number): { repositories: { rootUri: vscode.Uri }[] } }>('vscode.git');
@@ -105,7 +131,10 @@ export class RepositoryManager implements vscode.Disposable {
       for (const repo of api?.repositories ?? []) if (repo.rootUri.scheme === 'file') roots.add(repo.rootUri.fsPath);
     } catch { /* Git extension is optional. */ }
     for (const root of roots) {
-      try { await this.add(root, false); }
+      try {
+        const repo = await this.git.discover(root);
+        if (!excluded.has(repositoryGroupKey(repo)) && this.register(repo)) this.listEmitter.fire();
+      }
       catch (error) { this.log.appendLine(`[discovery] ${root}: ${error instanceof Error ? error.message : String(error)}`); }
     }
   }
@@ -136,6 +165,7 @@ export class RepositoryTree implements vscode.TreeDataProvider<Repository> {
   getChildren(): Repository[] { return this.manager.groups().map(group => ({ ...group.repository, name: group.name })); }
   getTreeItem(repo: Repository): vscode.TreeItem {
     const item = new vscode.TreeItem(repo.name);
+    item.contextValue = 'alwaygit.repository';
     item.description = repo.root; item.tooltip = repo.root;
     item.iconPath = new vscode.ThemeIcon('repo');
     item.command = { command: 'alwaygit.open', title: 'Open Workbench', arguments: [repo.id] };

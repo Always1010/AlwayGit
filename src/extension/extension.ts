@@ -6,6 +6,8 @@ import { Workbench } from './workbench';
 import { credentialEnvironment } from '../application/credentials';
 import { redactSecrets } from '../application/logging';
 import { ProjectWindows } from './project-windows';
+import type { Repository } from '../protocol/types';
+import { repositoryGroupKey } from '../protocol/repositories';
 
 export async function activate(context: vscode.ExtensionContext) {
   const output = vscode.window.createOutputChannel('AlwayGit');
@@ -40,6 +42,7 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.workspace.onDidGrantWorkspaceTrust(() => void manager.scan()),
     vscode.commands.registerCommand('alwaygit.open', (repoId?: string) => workbench.open(typeof repoId === 'string' ? repoId : undefined)),
     vscode.commands.registerCommand('alwaygit.addRepository', async () => { await workbench.addRepository(); await workbench.open(); }),
+    vscode.commands.registerCommand('alwaygit.removeRepository', (repo: Repository) => workbench.removeRepositories([repositoryGroupKey(repo)])),
     vscode.commands.registerCommand('alwaygit.refresh', async () => { await manager.scan(); for (const repo of manager.list()) manager.notify(repo.id); tree.refresh(); }),
     vscode.commands.registerCommand('alwaygit.showLog', () => output.show(true)),
     vscode.workspace.onDidChangeConfiguration(e => { if (e.affectsConfiguration('alwaygit.gitPath') || e.affectsConfiguration('alwaygit.refreshInterval')) void vscode.window.showInformationMessage('Reload the VS Code window to apply AlwayGit runtime configuration changes.'); }),

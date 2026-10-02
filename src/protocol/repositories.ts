@@ -1,7 +1,7 @@
 import type { Repository } from './types';
 
 // Git and VS Code can spell the same Windows path with different case/separators.
-const pathKey = (value: string) => {
+export const pathKey = (value: string) => {
   const normalized = value.replace(/\\/g, '/').replace(/\/+$/, '');
   return /^[a-z]:\//i.test(normalized) || normalized.startsWith('//') ? normalized.toLowerCase() : normalized;
 };
