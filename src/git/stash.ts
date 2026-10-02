@@ -159,7 +159,7 @@ async function makeSandbox(repo: Repository, state: Captured, run: Run): Promise
 }
 
 export async function preflightStash(repo: Repository, selector: string, stashOid: string, affected: string[], operation: OperationState, run: Run): Promise<void> {
-  const block = (reason: StashApplyBlocker['reason'], names: string[], message: string, output = '') => new StashStateError(message, 'STASH_RESTORE_BLOCKED', '', output, { kind: 'stash-apply', reason, paths: names, selector, stashOid, stashRetained: true, workingTreeUnchanged: true, ...(output ? { output } : {}) });
+  const block = (reason: StashApplyBlocker['reason'], names: string[], message: string, output = '', conflictPaths?: string[]) => new StashStateError(message, 'STASH_RESTORE_BLOCKED', '', output, { kind: 'stash-apply', reason, paths: names, ...(conflictPaths ? { conflictPaths } : {}), selector, stashOid, stashRetained: true, workingTreeUnchanged: true, ...(output ? { output } : {}) });
   if (operation.kind || operation.conflicts) throw block('restore-blocked', affected, 'Finish the active Git operation or resolve existing conflicts before restoring a Stash. The Index and Working Tree were not changed.');
   let sandbox: Awaited<ReturnType<typeof makeSandbox>> | undefined;
   try {
@@ -173,12 +173,14 @@ export async function preflightStash(repo: Repository, selector: string, stashOi
       const failure = error as { stdout?: string; stderr?: string; message?: string };
       const output = [failure.stdout, failure.stderr].filter(Boolean).join('\n') || failure.message || 'Stash restoration failed in the isolated trial.';
       const conflicts = paths((await sandbox.git(['diff', '--name-only', '--diff-filter=U', '-z'])).stdout);
-      throw block(/conflict|patch.*(?:fail|does not apply)|would be overwritten/i.test(output) ? 'restore-conflict' : 'restore-blocked', conflicts.length ? conflicts : affected, 'The Stash could not be restored in the isolated trial. The real Index and Working Tree were not changed, and the Stash is still saved.', output);
+      throw block(conflicts.length ? 'restore-conflict' : 'restore-blocked', affected, 'The Stash could not be restored in the isolated trial. The real Index and Working Tree were not changed, and the Stash is still saved.', output, conflicts);
     }
     if (before.fingerprint !== (await capture(repo, affected, run)).fingerprint) throw block('state-changed', affected, 'The project changed during Stash inspection. Refresh and retry. This restore did not change the Index or Working Tree.');
   } catch (error) {
     if (error instanceof StashStateError && error.details) throw error;
-    throw block('restore-blocked', affected, `Stash preflight could not complete. The Index and Working Tree were not changed.\n${error instanceof Error ? error.message : String(error)}`);
+    const failure = error as { stdout?: string; stderr?: string };
+    const output = [failure?.stdout, failure?.stderr].filter(Boolean).join('\n') || (error instanceof Error ? error.message : String(error));
+    throw block('restore-blocked', affected, 'Stash preflight could not complete. The Index and Working Tree were not changed.', output);
   } finally { await sandbox?.dispose(); }
 }
 
