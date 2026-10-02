@@ -131,6 +131,7 @@ export class GitService implements GitServiceContract {
     provisional.id = createHash('sha256').update(normalized(provisional.root)).digest('hex').slice(0, 24);
     provisional.name = path.basename(provisional.root);
     const gitDir = await realpath(await this.text(provisional, ['rev-parse', '--path-format=absolute', '--git-dir']));
+    provisional.gitDir = gitDir;
     if (normalized(gitDir) === normalized(provisional.commonDir)) provisional.mainRoot = provisional.root;
     else {
       const [main] = await this.worktrees(provisional);

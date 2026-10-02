@@ -9,6 +9,7 @@ import { GitService } from '../src/git/service';
 import { RepositoryManager } from '../src/repositories/manager';
 import { collectionOrderKey, repositoryOrderKey } from '../src/protocol/repository-order';
 import { Workbench } from '../src/extension/workbench';
+import type { Repository } from '../src/protocol/types';
 
 vi.mock('vscode', () => {
   class EventEmitter<T> {
@@ -19,7 +20,7 @@ vi.mock('vscode', () => {
   }
   return {
     EventEmitter, RelativePattern: class { constructor(public base: string, public pattern: string) {} },
-    workspace: { isTrusted: true, workspaceFolders: [], createFileSystemWatcher: vi.fn(), getConfiguration: () => ({ get: (_key: string, fallback: unknown) => fallback }) },
+    workspace: { isTrusted: true, workspaceFolders: [], createFileSystemWatcher: vi.fn(), onDidChangeConfiguration: () => ({ dispose() {} }), getConfiguration: () => ({ get: (_key: string, fallback: unknown) => fallback }) },
     extensions: { getExtension: vi.fn() }, ProgressLocation: { Notification: 15 },
     window: { showInputBox: vi.fn(), showOpenDialog: vi.fn(), showQuickPick: vi.fn(), withProgress: vi.fn(), showInformationMessage: vi.fn(), showWarningMessage: vi.fn() },
   };
@@ -221,6 +222,44 @@ describe('batch repository registration', () => {
     Object.assign(vscode.workspace, { isTrusted: false });
     await expect(manager.addDirectory('unused')).rejects.toThrow('Trust');
     expect(discover).not.toHaveBeenCalled(); expect(globalUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe('repository scan coordination',()=>{
+  function deferred<T>(){let resolve!:(value:T)=>void;const promise=new Promise<T>(done=>{resolve=done;});return{promise,resolve};}
+  function repository(name:string):Repository{const root=path.resolve(`scan-${name}`);return{id:name,root,commonDir:path.join(root,'.git'),gitDir:path.join(root,'.git'),name};}
+  it('shares one discovery flight across simultaneous scans',async()=>{
+    const {manager,git}=setup(),repo=repository('one'),gate=deferred<Repository>(),entered=deferred<void>();
+    Object.assign(vscode.workspace,{workspaceFolders:[{uri:{scheme:'file',fsPath:repo.root}}]});
+    const discover=vi.spyOn(git,'discover').mockImplementation(async()=>{entered.resolve();return gate.promise;});
+    const first=manager.scan(),second=manager.scan();expect(second).toBe(first);await entered.promise;gate.resolve(repo);await Promise.all([first,second]);
+    expect(discover).toHaveBeenCalledOnce();expect(manager.list()).toEqual([repo]);
+  });
+  it('does not restore a repository removed while discovery is pending',async()=>{
+    const {manager,git}=setup(),repo=repository('removed');const discover=vi.spyOn(git,'discover').mockResolvedValue(repo);await manager.add(repo.root);
+    Object.assign(vscode.workspace,{workspaceFolders:[{uri:{scheme:'file',fsPath:repo.root}}]});
+    const gate=deferred<Repository>(),entered=deferred<void>();discover.mockImplementationOnce(async()=>{entered.resolve();return gate.promise;});
+    const scanning=manager.scan();await entered.promise;await manager.remove([manager.groups()[0].key]);gate.resolve(repo);await scanning;
+    expect(manager.list()).toEqual([]);
+  });
+  it('discards results from an obsolete workspace root and reruns the shared flight',async()=>{
+    const {manager,git}=setup(),oldRepo=repository('old'),newRepo=repository('new'),gate=deferred<Repository>(),entered=deferred<void>();
+    Object.assign(vscode.workspace,{workspaceFolders:[{uri:{scheme:'file',fsPath:oldRepo.root}}]});
+    const discover=vi.spyOn(git,'discover').mockResolvedValue(newRepo).mockImplementationOnce(async()=>{entered.resolve();return gate.promise;});
+    const first=manager.scan();await entered.promise;Object.assign(vscode.workspace,{workspaceFolders:[{uri:{scheme:'file',fsPath:newRepo.root}}]});
+    const following=manager.scan();expect(following).toBe(first);gate.resolve(oldRepo);await following;
+    expect(discover).toHaveBeenCalledTimes(2);expect(manager.list()).toEqual([newRepo]);
+  });
+  it('keeps newly remembered repositories when catalog synchronization is invalidated by an add',async()=>{
+    const {manager,git}=setup(),oldRepo=repository('existing'),added=repository('added'),gate=deferred<Repository>(),entered=deferred<void>();
+    Object.assign(vscode.workspace,{workspaceFolders:[{uri:{scheme:'file',fsPath:oldRepo.root}}]});
+    vi.spyOn(git,'discover').mockImplementation(async root=>root===added.root?added:oldRepo).mockImplementationOnce(async()=>{entered.resolve();return gate.promise;});
+    const scanning=manager.synchronizeSharedState();await entered.promise;await manager.add(added.root);gate.resolve(oldRepo);await scanning;
+    expect(manager.list().map(repo=>repo.id).sort()).toEqual([added.id,oldRepo.id].sort());
+  });
+  it('retains a remembered repository that is temporarily unavailable during synchronization',async()=>{
+    const {manager,git}=setup(),repo=repository('unavailable'),discover=vi.spyOn(git,'discover').mockResolvedValue(repo);await manager.add(repo.root);
+    discover.mockRejectedValue(new Error('temporarily unavailable'));await manager.synchronizeSharedState();expect(manager.list()).toEqual([repo]);
   });
 });
 

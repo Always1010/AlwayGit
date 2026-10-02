@@ -18,6 +18,14 @@ const LEGACY_WORKSPACE_ROOTS_KEY = 'alwaygit.roots';
 export class RepositoryManager implements vscode.Disposable {
   private readonly repositories = new Map<string, Repository>();
   private readonly watchers = new Map<string, vscode.Disposable[]>();
+  private readonly commonWatchers = new Map<string, { ids: Set<string>; disposables: vscode.Disposable[] }>();
+  private readonly removedGroups = new Set<string>();
+  private scanFlight?: Promise<void>;
+  private scanGeneration = 0;
+  private scanDirty = false;
+  private scanSynchronizing = false;
+  private scanWorkspace = '';
+  private disposed = false;
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly pendingChanges = new Map<string, RepositoryChanges>();
   private readonly changedEmitter = new vscode.EventEmitter<{ repoId: string; changes: RepositoryChanges }>();
@@ -59,10 +67,12 @@ export class RepositoryManager implements vscode.Disposable {
   }
   async add(root: string, remember = true): Promise<Repository> {
     if (!vscode.workspace.isTrusted) throw new Error('Trust this workspace before executing Git.');
+    this.invalidateScan();
     const repo = await this.git.discover(root);
     const order = this.order(), registered = this.register(repo);
     if (remember) { await this.remember([repo.root]); await this.include([repositoryGroupKey(repo)]); }
     await this.saveOrder(order);
+    this.invalidateScan();
     if (registered) this.listEmitter.fire();
     return repo;
   }
@@ -85,25 +95,28 @@ export class RepositoryManager implements vscode.Disposable {
   private async include(keys: Iterable<string>): Promise<void> {
     const excluded = new Set(this.context.globalState.get<string[]>(GLOBAL_EXCLUDED_KEY, []));
     let changed = false;
-    for (const key of keys) changed = excluded.delete(key) || changed;
+    for (const key of keys) { this.removedGroups.delete(key); changed = excluded.delete(key) || changed; }
     if (changed) await this.context.globalState.update(GLOBAL_EXCLUDED_KEY, [...excluded]);
   }
   private register(repo: Repository): boolean {
+    if (this.disposed) return false;
+    const previous = this.repositories.get(repo.id);
+    if (previous && (pathKey(previous.root) !== pathKey(repo.root) || pathKey(previous.commonDir) !== pathKey(repo.commonDir) || pathKey(previous.gitDir ?? previous.commonDir) !== pathKey(repo.gitDir ?? repo.commonDir))) this.unregister(repo.id);
     if (!this.repositories.has(repo.id)) {
       const disposables: vscode.Disposable[] = [];
-      const listen = (base: string, pattern: string, worktree: boolean) => {
+      const listen = (base: string, pattern: string) => {
         const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(base, pattern));
         disposables.push(watcher);
         const notify = (uri: vscode.Uri) => {
-          if (worktree && /[\\/](node_modules|\.git)[\\/]/.test(uri.fsPath)) return;
-          const relative = path.relative(worktree ? repo.root : repo.commonDir, uri.fsPath).replace(/\\/g, '/');
-          this.notify(repo.id, { paths: worktree ? [relative] : [], index: !worktree && /(^|\/)index$/.test(relative) });
+          if (/[\\/](node_modules|\.git)([\\/]|$)/.test(uri.fsPath)) return;
+          const relative = path.relative(repo.root, uri.fsPath).replace(/\\/g, '/');
+          this.notify(repo.id, { paths: [relative] });
         };
         for (const event of [watcher.onDidChange, watcher.onDidCreate, watcher.onDidDelete]) disposables.push(event(notify));
       };
       try {
-        listen(repo.root, '**/*', true);
-        listen(repo.commonDir, '{HEAD,index,packed-refs,refs/**,worktrees/**,MERGE_HEAD,CHERRY_PICK_HEAD,REVERT_HEAD,rebase-merge/**,rebase-apply/**,sequencer/**}', false);
+        listen(repo.root, '**/*');
+        this.attachCommonWatcher(repo);
       } catch (error) { for (const disposable of disposables) disposable.dispose(); throw error; }
       this.watchers.set(repo.id, disposables);
       this.repositories.set(repo.id, repo);
@@ -111,9 +124,33 @@ export class RepositoryManager implements vscode.Disposable {
     }
     return false;
   }
+  private attachCommonWatcher(repo: Repository): void {
+    const key=pathKey(path.resolve(repo.commonDir)), existing=this.commonWatchers.get(key);
+    if(existing){existing.ids.add(repo.id);return;}
+    const entry={ids:new Set([repo.id]),disposables:[] as vscode.Disposable[]};
+    try{
+      const watcher=vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(repo.commonDir,'{HEAD,index,packed-refs,refs/**,worktrees/**,MERGE_HEAD,CHERRY_PICK_HEAD,REVERT_HEAD,rebase-merge/**,rebase-apply/**,sequencer/**}'));
+      entry.disposables.push(watcher);
+      const notify=(uri:vscode.Uri)=>{
+        const relative=path.relative(repo.commonDir,uri.fsPath).replace(/\\/g,'/');
+        const privateMetadata=(value:string)=>/^(?:HEAD|index|MERGE_HEAD|CHERRY_PICK_HEAD|REVERT_HEAD)$/.test(value)||/^(?:rebase-merge|rebase-apply|sequencer)(?:\/|$)/.test(value);
+        const shared=/^(?:packed-refs|refs(?:\/|$))/.test(relative)||/^worktrees(?:\/[^/]+)?(?:\/(?:gitdir|commondir|locked|prunable))?$/.test(relative);
+        for(const id of entry.ids){
+          const member=this.repositories.get(id);if(!member)continue;
+          const memberDir=member.gitDir??(!member.mainRoot||pathKey(member.root)===pathKey(member.mainRoot)?member.commonDir:undefined);
+          const local=memberDir&&path.relative(memberDir,uri.fsPath).replace(/\\/g,'/');
+          if(shared||local&&privateMetadata(local))this.notify(id,{paths:[],index:local==='index'});
+        }
+      };
+      for(const event of [watcher.onDidChange,watcher.onDidCreate,watcher.onDidDelete])entry.disposables.push(event(notify));
+      this.commonWatchers.set(key,entry);
+    }catch(error){for(const item of entry.disposables)item.dispose();throw error;}
+  }
   private unregister(id: string): void {
     clearTimeout(this.timers.get(id)); this.timers.delete(id); this.pendingChanges.delete(id);
     for (const watcher of this.watchers.get(id) ?? []) watcher.dispose();
+    const repo=this.repositories.get(id),key=repo&&pathKey(path.resolve(repo.commonDir)),shared=key&&this.commonWatchers.get(key);
+    if(shared){shared.ids.delete(id);if(!shared.ids.size){for(const item of shared.disposables)item.dispose();this.commonWatchers.delete(key!);}}
     this.watchers.delete(id); this.repositories.delete(id);
   }
   async addDirectory(root: string, options: DiscoveryOptions = {}): Promise<AddDirectoryResult> {
@@ -124,6 +161,7 @@ export class RepositoryManager implements vscode.Disposable {
     const result: AddDirectoryResult = { ...discovery, added: 0, existing: 0 };
     if (result.cancelled || options.isCancelled?.()) { result.cancelled = true; return result; }
     if (!vscode.workspace.isTrusted) throw new Error('Trust this workspace before executing Git.');
+    this.invalidateScan();
     const order = this.order(), existingGroups = new Set(this.groups().map(group => group.key)), successfulGroups = new Set<string>();
     let registered = false;
     const remembered: string[] = [];
@@ -137,11 +175,14 @@ export class RepositoryManager implements vscode.Disposable {
       try { await this.remember(remembered); await this.include(successfulGroups); await this.saveOrder(order); }
       finally { if (registered) this.listEmitter.fire(); }
     }
+    this.invalidateScan();
     return result;
   }
   async remove(keys: Iterable<string>): Promise<number> {
     const removing = new Set(keys), groups = this.groups().filter(group => removing.has(group.key));
     if (!groups.length) return 0;
+    this.invalidateScan();
+    for(const group of groups)this.removedGroups.add(group.key);
     const order = forgetRepositoryOrderKeys(this.order(), new Set(groups.map(group => repositoryOrderKey(group.key))));
     const rootKeys = new Set(groups.flatMap(group => group.members.map(repo => pathKey(repo.root))));
     for (const group of groups) for (const repo of group.members) this.unregister(repo.id);
@@ -190,39 +231,45 @@ export class RepositoryManager implements vscode.Disposable {
     } catch { /* Git extension is optional. */ }
     return roots;
   }
-  async scan(): Promise<void> {
-    if (!vscode.workspace.isTrusted) return;
-    const roots = await this.discoveryRoots();
-    const excluded = new Set(this.context.globalState.get<string[]>(GLOBAL_EXCLUDED_KEY, []));
-    for (const root of roots) {
-      try {
-        const repo = await this.git.discover(root);
-        if (!excluded.has(repositoryGroupKey(repo)) && this.register(repo)) this.listEmitter.fire();
-      }
-      catch (error) { this.log.appendLine(`[discovery] ${root}: ${error instanceof Error ? error.message : String(error)}`); }
-    }
-    await this.saveOrder();
-    this.listEmitter.fire();
-  }
+  private workspaceKey(): string {return JSON.stringify((vscode.workspace.workspaceFolders??[]).filter(folder=>folder.uri.scheme==='file').map(folder=>pathKey(folder.uri.fsPath)).sort());}
+  private rootsKey(roots:Set<string>):string{return JSON.stringify([...roots].map(pathKey).sort());}
+  private invalidateScan():void{this.scanGeneration++;if(this.scanFlight)this.scanDirty=true;}
+  scan(): Promise<void> { return this.scheduleScan(false); }
   /** Reconciles this extension host after another VS Code window changes the shared catalog. */
-  async synchronizeSharedState(): Promise<void> {
-    if (!vscode.workspace.isTrusted) { this.listEmitter.fire(); return; }
-    const roots = await this.discoveryRoots(), desiredRoots = new Set([...roots].map(pathKey));
-    const excluded = new Set(this.context.globalState.get<string[]>(GLOBAL_EXCLUDED_KEY, []));
-    for (const root of roots) {
-      try {
-        const repo = await this.git.discover(root);
-        desiredRoots.add(pathKey(repo.root));
-        if (!excluded.has(repositoryGroupKey(repo))) this.register(repo);
-      } catch (error) { this.log.appendLine(`[catalog-sync] ${root}: ${error instanceof Error ? error.message : String(error)}`); }
+  synchronizeSharedState(): Promise<void> { return this.scheduleScan(true); }
+  private scheduleScan(synchronize:boolean):Promise<void>{
+    if(this.disposed||!vscode.workspace.isTrusted){if(synchronize&&!this.disposed)this.listEmitter.fire();return Promise.resolve();}
+    if(this.scanFlight){
+      if(synchronize||this.workspaceKey()!==this.scanWorkspace)this.invalidateScan();
+      this.scanSynchronizing ||= synchronize;
+      return this.scanFlight;
     }
-    for (const repo of [...this.repositories.values()]) {
-      if (excluded.has(repositoryGroupKey(repo)) || !desiredRoots.has(pathKey(repo.root))) this.unregister(repo.id);
-    }
-    // Collection names and assignments are read lazily from globalState, so one notification refreshes all panels.
-    this.listEmitter.fire();
+    this.scanSynchronizing=synchronize;
+    this.scanFlight=this.runScan().finally(()=>{this.scanFlight=undefined;this.scanSynchronizing=false;});
+    return this.scanFlight;
+  }
+  private async runScan():Promise<void>{
+    do{
+      this.scanDirty=false;
+      const generation=this.scanGeneration;this.scanWorkspace=this.workspaceKey();
+      const roots=await this.discoveryRoots(),desiredRoots=new Set([...roots].map(pathKey)),discovered:Repository[]=[];
+      for(const root of roots){
+        if(this.disposed||generation!==this.scanGeneration)break;
+        try{const repo=await this.git.discover(root);if(generation===this.scanGeneration&&!this.disposed){discovered.push(repo);desiredRoots.add(pathKey(repo.root));}}
+        catch(error){this.log.appendLine(`[discovery] ${root}: ${error instanceof Error?error.message:String(error)}`);}
+      }
+      if(this.disposed)return;
+      const currentRoots=await this.discoveryRoots();
+      if(generation!==this.scanGeneration||this.workspaceKey()!==this.scanWorkspace||this.rootsKey(currentRoots)!==this.rootsKey(roots)){this.scanDirty=true;continue;}
+      const excluded=new Set([...this.context.globalState.get<string[]>(GLOBAL_EXCLUDED_KEY,[]),...this.removedGroups]);
+      for(const repo of discovered)if(!excluded.has(repositoryGroupKey(repo)))this.register(repo);
+      if(this.scanSynchronizing)for(const repo of [...this.repositories.values()])if(excluded.has(repositoryGroupKey(repo))||!desiredRoots.has(pathKey(repo.root)))this.unregister(repo.id);
+      await this.saveOrder();
+      if(!this.disposed)this.listEmitter.fire();
+    }while(this.scanDirty&&!this.disposed&&vscode.workspace.isTrusted);
   }
   notify(id: string, changes: RepositoryChanges = {}): void {
+    if(this.disposed||!this.repositories.has(id))return;
     clearTimeout(this.timers.get(id));
     const previous = this.pendingChanges.get(id);
     this.pendingChanges.set(id, !previous ? changes : !previous.paths || !changes.paths ? {} : { paths: [...new Set([...previous.paths, ...changes.paths])], index: !!(previous.index || changes.index) });
@@ -234,9 +281,10 @@ export class RepositoryManager implements vscode.Disposable {
     }, 300));
   }
   dispose(): void {
+    if(this.disposed)return;this.disposed=true;this.invalidateScan();
     for (const timer of this.timers.values()) clearTimeout(timer);
     this.pendingChanges.clear();
-    for (const items of this.watchers.values()) for (const item of items) item.dispose();
+    for (const id of [...this.repositories.keys()]) this.unregister(id);
     this.changedEmitter.dispose(); this.listEmitter.dispose();
   }
 }

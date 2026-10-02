@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-043：共享 Git 监听误刷新其他 Worktree 且扫描可恢复已移除仓库
+
+- 日期：2026-10-03
+- 状态：已解决
+- 现象：一个 Worktree 修改 Index 会触发同仓库其他 Worktree 的 Index 刷新；重叠目录扫描可能重复发现，或把扫描期间移除的仓库重新注册。
+- 原因：每个工作目录重复监听整个 commonDir，私有元数据未按 gitDir 分流；异步扫描没有共享任务、失效代数或移除标记。
+- 解决方案：同 commonDir 共用引用计数监听，refs 广播，HEAD、Index 和操作元数据只通知所属工作目录；扫描共用任务，目录变化废弃旧结果并重新读取，移除立即记录标记。
+- 验证方式：类型检查通过；仓库管理与监听共 31 项相关回归通过，覆盖共享监听释放、私有事件、路径重新绑定、交叠扫描、移除和新增并发。
+- 相关文件：`src/repositories/manager.ts`、`src/git/service.ts`、`src/protocol/types.ts`、`tests/repository-watch.test.ts`、`tests/repository-manager.test.ts`。
+
 ## BUG-042：远端删除与强推未绑定确认时的远端版本
 
 - 日期：2026-10-03

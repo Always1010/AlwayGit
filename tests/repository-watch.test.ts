@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GitServiceContract, Repository } from '../src/protocol/types';
+import * as vscode from 'vscode';
 
 const surfaces = vi.hoisted(() => ({ watchers: [] as any[] }));
 vi.mock('vscode', () => {
@@ -13,7 +14,7 @@ vi.mock('vscode', () => {
   return {
     EventEmitter,
     RelativePattern: class { constructor(public base: string, public pattern: string) {} },
-    workspace: { isTrusted: true, createFileSystemWatcher: (pattern: unknown) => {
+    workspace: { isTrusted: true, workspaceFolders: [], createFileSystemWatcher: (pattern: unknown) => {
       const change = new EventEmitter<any>(), create = new EventEmitter<any>(), remove = new EventEmitter<any>();
       const watcher = { pattern, change, create, remove, onDidChange: change.event, onDidCreate: create.event, onDidDelete: remove.event, dispose: vi.fn() };
       surfaces.watchers.push(watcher); return watcher;
@@ -25,9 +26,12 @@ import { RepositoryManager } from '../src/repositories/manager';
 const root = path.join(process.cwd(), 'fixture');
 const repo: Repository = { id: 'fixture', root, commonDir: path.join(root, '.git'), name: 'Fixture' };
 let manager: RepositoryManager;
+let discover: ReturnType<typeof vi.fn>;
 beforeEach(async () => {
   vi.useFakeTimers(); surfaces.watchers.length = 0;
-  manager = new RepositoryManager({ discover: async () => repo } as unknown as GitServiceContract, { workspaceState: { get: vi.fn((_key, fallback) => fallback), update: vi.fn() }, globalState: { get: vi.fn((_key, fallback) => fallback), update: vi.fn() } } as any, { appendLine: vi.fn() } as any);
+  Object.assign(vscode.workspace,{workspaceFolders:[]});
+  discover=vi.fn(async()=>repo);
+  manager = new RepositoryManager({ discover } as unknown as GitServiceContract, { workspaceState: { get: vi.fn((_key, fallback) => fallback), update: vi.fn() }, globalState: { get: vi.fn((_key, fallback) => fallback), update: vi.fn() } } as any, { appendLine: vi.fn() } as any);
   await manager.add(root);
 });
 afterEach(() => { manager.dispose(); vi.useRealTimers(); });
@@ -53,7 +57,7 @@ describe('repository change scope', () => {
     expect(listener).toHaveBeenLastCalledWith({ repoId: repo.id, changes: { paths: [], index: false } });
     surfaces.watchers[1].change.fire({ fsPath: path.join(repo.commonDir, 'worktrees', 'linked', 'index') });
     await vi.advanceTimersByTimeAsync(300);
-    expect(listener).toHaveBeenLastCalledWith({ repoId: repo.id, changes: { paths: [], index: true } });
+    expect(listener).toHaveBeenCalledOnce();
   });
 
   it('retains unbounded invalidation when a command and file event overlap', async () => {
@@ -69,5 +73,29 @@ describe('repository change scope', () => {
     manager.notify(repo.id, { paths: ['a.txt'] }); manager.dispose();
     await vi.advanceTimersByTimeAsync(300);
     expect(listener).not.toHaveBeenCalled(); expect(surfaces.watchers.every(watcher => watcher.dispose.mock.calls.length === 1)).toBe(true);
+  });
+  it('shares metadata listeners while routing each Index to its owning Worktree',async()=>{
+    const linked:Repository={...repo,id:'linked',root:path.join(process.cwd(),'linked'),gitDir:path.join(repo.commonDir,'worktrees','linked'),mainRoot:repo.root};
+    discover.mockImplementation(async()=>linked);await manager.add(linked.root);
+    expect(surfaces.watchers).toHaveLength(3);
+    const listener=vi.fn();manager.onDidChange(listener);
+    surfaces.watchers[1].change.fire({fsPath:path.join(linked.gitDir!,'index')});await vi.advanceTimersByTimeAsync(300);
+    expect(listener.mock.calls).toEqual([[{repoId:linked.id,changes:{paths:[],index:true}}]]);
+    listener.mockClear();surfaces.watchers[1].change.fire({fsPath:path.join(repo.commonDir,'index')});await vi.advanceTimersByTimeAsync(300);
+    expect(listener.mock.calls).toEqual([[{repoId:repo.id,changes:{paths:[],index:true}}]]);
+    listener.mockClear();surfaces.watchers[1].change.fire({fsPath:path.join(repo.commonDir,'refs','heads','main')});await vi.advanceTimersByTimeAsync(300);
+    expect(listener.mock.calls.map(([event])=>event.repoId).sort()).toEqual([repo.id,linked.id].sort());
+    expect(listener.mock.calls.every(([event])=>event.changes.index===false)).toBe(true);
+    Object.assign(vscode.workspace,{workspaceFolders:[{uri:{scheme:'file',fsPath:linked.root}}]});await manager.synchronizeSharedState();
+    expect(manager.list().map(member=>member.id)).toEqual([linked.id]);expect(surfaces.watchers[1].dispose).not.toHaveBeenCalled();
+    await manager.remove([manager.groups()[0].key]);expect(surfaces.watchers[1].dispose).toHaveBeenCalledOnce();
+  });
+  it('replaces stale metadata listeners when a registered root changes its Git directory',async()=>{
+    const replacement={...repo,commonDir:path.join(root,'other-git'),gitDir:path.join(root,'other-git')};
+    discover.mockResolvedValue(replacement);await manager.add(root);
+    expect(manager.get(repo.id).commonDir).toBe(replacement.commonDir);
+    expect(surfaces.watchers[0].dispose).toHaveBeenCalledOnce();expect(surfaces.watchers[1].dispose).toHaveBeenCalledOnce();
+    const listener=vi.fn();manager.onDidChange(listener);surfaces.watchers[3].change.fire({fsPath:path.join(replacement.commonDir,'index')});await vi.advanceTimersByTimeAsync(300);
+    expect(listener).toHaveBeenCalledWith({repoId:repo.id,changes:{paths:[],index:true}});
   });
 });
