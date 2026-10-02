@@ -7,6 +7,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { GitService } from '../src/git/service';
 import { RepositoryManager } from '../src/repositories/manager';
+import { collectionOrderKey, repositoryOrderKey } from '../src/protocol/repository-order';
 import { Workbench } from '../src/extension/workbench';
 
 vi.mock('vscode', () => {
@@ -103,7 +104,7 @@ describe('batch repository registration', () => {
     await manager.scan();
     expect(manager.groups()).toHaveLength(1); expect(manager.groups()[0].repository.id).toBe(mainRepo.id);
     expect(manager.get(linkedRepo.id).root).toBe(linkedRepo.root); expect(values.get('alwaygit.session')).toBe(session);
-    expect(update).not.toHaveBeenCalled(); expect(globalUpdate).toHaveBeenCalledTimes(1);
+    expect(update).not.toHaveBeenCalled(); expect(globalUpdate.mock.calls.filter(([key])=>key==='alwaygit.repositoryRoots.v1')).toHaveLength(1);
     expect(globalValues.get('alwaygit.repositoryRoots.v1')).toEqual([linked, main]);
   });
   it('shows the main repository name when directly adding only its linked directory', async () => {
@@ -116,7 +117,7 @@ describe('batch repository registration', () => {
     const root = await fixture(), shared = new Map<string, unknown>(), { manager, context, output, git, globalUpdate, globalValues, values } = setup(shared);
     const session = values.get('alwaygit.session'), changed = vi.fn(); manager.onDidChangeRepositories(changed);
     expect(await manager.addDirectory(root)).toMatchObject({ found: 2, added: 2, existing: 0, cancelled: false });
-    expect(changed).toHaveBeenCalledTimes(1); expect(globalUpdate).toHaveBeenCalledTimes(1);
+    expect(changed).toHaveBeenCalledTimes(1); expect(globalUpdate.mock.calls.filter(([key])=>key==='alwaygit.repositoryRoots.v1')).toHaveLength(1);
     expect(vscode.workspace.createFileSystemWatcher).toHaveBeenCalledTimes(4);
     expect(await manager.addDirectory(root)).toMatchObject({ found: 2, added: 0, existing: 2 });
     expect(changed).toHaveBeenCalledTimes(1); expect(vscode.workspace.createFileSystemWatcher).toHaveBeenCalledTimes(4);
@@ -184,6 +185,35 @@ describe('batch repository registration', () => {
     expect(globalValues.get('alwaygit.repositoryCollectionAssignments.v1')).toMatchObject({[groups[0].key]:collection.id});
     await manager.deleteCollection(collection.id);
     expect(manager.groups().map(group=>group.name).sort()).toEqual(['A','B']);
+  });
+
+  it('persists mixed root order, appends additions, and reorders only siblings across restarts', async () => {
+    const root=await fixture(), shared=new Map<string,unknown>(), {manager}=setup(shared);
+    const b=await manager.add(path.join(root,'category/B')),a=await manager.add(path.join(root,'A')),bk=repositoryOrderKey(manager.groups().find(group=>group.name==='B')!.key),ak=repositoryOrderKey(manager.groups().find(group=>group.name==='A')!.key);
+    const collection=await manager.createCollection('Other'),ck=collectionOrderKey(collection.id);
+    expect(manager.order().root).toEqual([bk,ak,ck]);
+    await manager.reorder({key:ck,targetKey:bk,position:'before'});
+    await manager.renameCollection(collection.id,'Renamed');
+    expect(manager.order().root).toEqual([ck,bk,ak]);
+    const restored=setup(shared).manager;await restored.scan();expect(restored.order()).toEqual(manager.order());
+    await manager.move([manager.groups().find(group=>group.name==='B')!.key],collection.id);
+    await expect(manager.reorder({key:bk,targetKey:ak,position:'after'})).rejects.toThrow('same level');
+    await manager.move([manager.groups().find(group=>group.name==='A')!.key],collection.id);
+    expect(manager.order().collections[collection.id]).toEqual([bk,ak]);
+    await manager.reorder({key:ak,targetKey:bk,position:'before'});
+    await manager.deleteCollection(collection.id);expect(manager.order()).toEqual({root:[ak,bk],collections:{}});
+    await manager.remove([manager.groups().find(group=>group.name==='A')!.key]);
+    await manager.add(a.root);expect(manager.order().root).toEqual([bk,ak]);
+    expect(manager.get(b.id).root).toBe(b.root);
+  });
+  it('migrates legacy roots without losing creation order or unavailable saved positions', async () => {
+    const root=await fixture(),{manager,globalValues}=setup();
+    globalValues.set('alwaygit.repositoryRoots.v1',[path.join(root,'category/B'),path.join(root,'A')]);
+    globalValues.set('alwaygit.repositoryCollections.v1',[{id:'z',name:'Zulu'},{id:'a',name:'Alpha'}]);
+    await manager.scan();const keys=manager.groups().sort((a,b)=>a.name.localeCompare(b.name)).map(group=>repositoryOrderKey(group.key));
+    expect(manager.order().root).toEqual([...keys,'collection:z','collection:a']);
+    globalValues.set('alwaygit.repositoryOrder.v1',{root:['repository:unavailable',...manager.order().root],collections:{z:[],a:[]}});
+    await manager.scan();expect(manager.order().root[0]).toBe('repository:unavailable');
   });
 
   it('does not scan or register in an untrusted workspace', async () => {

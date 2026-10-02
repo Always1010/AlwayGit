@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { groupRepositories } from '../src/protocol/repositories';
 import type { Repository, RepositoryCollection } from '../src/protocol/types';
+import { repositoryOrderKey } from '../src/protocol/repository-order';
 import { repositoryDisplayEntries, visibleRepositoryKeys } from '../webview/repositoryOrder';
 
 const main: Repository = { id: 'main', root: 'D:/Projects/App', commonDir: 'D:/Projects/App/.git', name: 'App', mainRoot: 'D:/Projects/App' };
@@ -39,6 +40,15 @@ describe('logical repository display groups', () => {
     const entries=repositoryDisplayEntries(groups,[]);
     expect(entries.map(entry=>entry.label)).toEqual(['BreakReminder','CaptionRoll','LibreCAD','llvm-project','MySkill','NotesAnywhere','SchedulePin','SwiftResume']);
     expect(visibleRepositoryKeys(entries,groups,[]).map(key=>groups.find(group=>group.key===key)?.name)).toEqual(entries.map(entry=>entry.label));
+  });
+  it('uses saved mixed root and member order for rendering and visible selection', () => {
+    const clone={...main,id:'clone',root:'D:/Clone',commonDir:'D:/Clone/.git',mainRoot:'D:/Clone',name:'Clone'},other={...linked,id:'other',commonDir:'D:/Other/.git',collectionId:'client'};
+    const groups=groupRepositories([{...main,collectionId:'client'},other,clone]),keys=groups.map(group=>repositoryOrderKey(group.key));
+    const collections=[{id:'client',name:'Client'},{id:'other',name:'Other'}],order={root:['collection:other',keys[2],'collection:client'],collections:{client:[keys[1],keys[0]],other:[]}};
+    const entries=repositoryDisplayEntries(groups,collections,order);
+    expect(entries.map(entry=>entry.label)).toEqual(['Other','Clone','Client']);
+    expect(visibleRepositoryKeys(entries,groups,[],order)).toEqual([groups[2].key,groups[1].key,groups[0].key]);
+    expect(visibleRepositoryKeys(entries,groups,['client'],order)).toEqual([groups[2].key]);
   });
   it('excludes collapsed collection members from the visible repository range', () => {
     const collections:RepositoryCollection[]=[{id:'client',name:'Client'}];

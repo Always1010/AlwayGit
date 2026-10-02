@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import type { GitServiceContract, Repository, RepositoryChanges, RepositoryCollection } from '../protocol/types';
+import type { GitServiceContract, Repository, RepositoryChanges, RepositoryCollection, RepositoryOrder, ReorderRepository } from '../protocol/types';
+import { collectionOrderKey, repositoryOrderKey, reconcileRepositoryOrder, forgetRepositoryOrderKeys } from '../protocol/repository-order';
 import { groupRepositories, pathKey, repositoryGroupKey } from '../protocol/repositories';
 import { discoverRepositories, type DiscoveryOptions, type DiscoveryResult } from './discovery';
 
@@ -11,6 +12,7 @@ const GLOBAL_ROOTS_KEY = 'alwaygit.repositoryRoots.v1';
 const GLOBAL_EXCLUDED_KEY = 'alwaygit.excludedRepositories.v1';
 const GLOBAL_COLLECTIONS_KEY = 'alwaygit.repositoryCollections.v1';
 const GLOBAL_COLLECTION_ASSIGNMENTS_KEY = 'alwaygit.repositoryCollectionAssignments.v1';
+const GLOBAL_ORDER_KEY = 'alwaygit.repositoryOrder.v1';
 const LEGACY_WORKSPACE_ROOTS_KEY = 'alwaygit.roots';
 
 export class RepositoryManager implements vscode.Disposable {
@@ -32,6 +34,24 @@ export class RepositoryManager implements vscode.Disposable {
   }
   groups() { return groupRepositories(this.list()); }
   collections(): RepositoryCollection[] { return this.context.globalState.get<RepositoryCollection[]>(GLOBAL_COLLECTIONS_KEY, []); }
+  order(): RepositoryOrder { return reconcileRepositoryOrder(this.groups(), this.collections(), this.context.globalState.get<RepositoryOrder>(GLOBAL_ORDER_KEY)); }
+  private async saveOrder(order = this.order()): Promise<void> {
+    const next = reconcileRepositoryOrder(this.groups(), this.collections(), order);
+    if (JSON.stringify(next) !== JSON.stringify(this.context.globalState.get(GLOBAL_ORDER_KEY))) await this.context.globalState.update(GLOBAL_ORDER_KEY, next);
+  }
+  async reorder({ key, targetKey, position }: ReorderRepository): Promise<void> {
+    const collections = this.collections(), ids = new Set(collections.map(collection => collection.id));
+    const parents = new Map<string, string | undefined>(collections.map(collection => [collectionOrderKey(collection.id), undefined]));
+    for (const group of this.groups()) parents.set(repositoryOrderKey(group.key), group.collectionId && ids.has(group.collectionId) ? group.collectionId : undefined);
+    if (!parents.has(key) || !parents.has(targetKey)) throw new Error('The repository or group no longer exists.');
+    if (parents.get(key) !== parents.get(targetKey)) throw new Error('Reorder items within the same level.');
+    if (key === targetKey) return;
+    const order = this.order(), parent = parents.get(key), entries = parent ? order.collections[parent] : order.root;
+    const next = entries.filter(entry => entry !== key), target = next.indexOf(targetKey);
+    next.splice(target + Number(position === 'after'), 0, key);
+    if (parent) order.collections[parent] = next; else order.root = next;
+    await this.saveOrder(order); this.listEmitter.fire();
+  }
   get(id: string | undefined): Repository {
     const repo = id && this.repositories.get(id);
     if (!repo) throw new Error('Select a registered repository first.');
@@ -40,8 +60,10 @@ export class RepositoryManager implements vscode.Disposable {
   async add(root: string, remember = true): Promise<Repository> {
     if (!vscode.workspace.isTrusted) throw new Error('Trust this workspace before executing Git.');
     const repo = await this.git.discover(root);
-    if (this.register(repo)) this.listEmitter.fire();
+    const order = this.order(), registered = this.register(repo);
     if (remember) { await this.remember([repo.root]); await this.include([repositoryGroupKey(repo)]); }
+    await this.saveOrder(order);
+    if (registered) this.listEmitter.fire();
     return repo;
   }
   async discoverDirectory(root: string, options: DiscoveryOptions = {}): Promise<DiscoveryResult> {
@@ -102,7 +124,7 @@ export class RepositoryManager implements vscode.Disposable {
     const result: AddDirectoryResult = { ...discovery, added: 0, existing: 0 };
     if (result.cancelled || options.isCancelled?.()) { result.cancelled = true; return result; }
     if (!vscode.workspace.isTrusted) throw new Error('Trust this workspace before executing Git.');
-    const existingGroups = new Set(this.groups().map(group => group.key)), successfulGroups = new Set<string>();
+    const order = this.order(), existingGroups = new Set(this.groups().map(group => group.key)), successfulGroups = new Set<string>();
     let registered = false;
     const remembered: string[] = [];
     for (const repo of result.repositories) {
@@ -112,7 +134,7 @@ export class RepositoryManager implements vscode.Disposable {
     for (const key of successfulGroups) { if (existingGroups.has(key)) result.existing++; else result.added++; }
     // Persist once and notify once, regardless of the number of discovered repositories.
     if (remembered.length) {
-      try { await this.remember(remembered); await this.include(successfulGroups); }
+      try { await this.remember(remembered); await this.include(successfulGroups); await this.saveOrder(order); }
       finally { if (registered) this.listEmitter.fire(); }
     }
     return result;
@@ -120,6 +142,7 @@ export class RepositoryManager implements vscode.Disposable {
   async remove(keys: Iterable<string>): Promise<number> {
     const removing = new Set(keys), groups = this.groups().filter(group => removing.has(group.key));
     if (!groups.length) return 0;
+    const order = forgetRepositoryOrderKeys(this.order(), new Set(groups.map(group => repositoryOrderKey(group.key))));
     const rootKeys = new Set(groups.flatMap(group => group.members.map(repo => pathKey(repo.root))));
     for (const group of groups) for (const repo of group.members) this.unregister(repo.id);
     const saved = this.context.globalState.get<string[]>(GLOBAL_ROOTS_KEY, []).filter(root => !rootKeys.has(pathKey(root)));
@@ -130,13 +153,14 @@ export class RepositoryManager implements vscode.Disposable {
     await this.context.globalState.update(GLOBAL_ROOTS_KEY, saved);
     await this.context.globalState.update(GLOBAL_EXCLUDED_KEY, [...excluded]);
     await this.context.globalState.update(GLOBAL_COLLECTION_ASSIGNMENTS_KEY, assignments);
+    await this.saveOrder(order);
     this.listEmitter.fire();
     return groups.length;
   }
   async createCollection(name: string): Promise<RepositoryCollection> {
     const normalized=name.trim();if(!normalized)throw new Error('Repository group name is required.');if(normalized.length>80)throw new Error('Repository group name is too long.');
     const collections=this.collections();if(collections.some(item=>item.name.localeCompare(normalized,undefined,{sensitivity:'accent'})===0))throw new Error('A repository group with this name already exists.');
-    const collection={id:randomUUID(),name:normalized};await this.context.globalState.update(GLOBAL_COLLECTIONS_KEY,[...collections,collection]);this.listEmitter.fire();return collection;
+    const order=this.order(),collection={id:randomUUID(),name:normalized};await this.context.globalState.update(GLOBAL_COLLECTIONS_KEY,[...collections,collection]);await this.saveOrder(order);this.listEmitter.fire();return collection;
   }
   async renameCollection(id: string, name: string): Promise<void> {
     const normalized=name.trim(),collections=this.collections();if(!normalized)throw new Error('Repository group name is required.');if(normalized.length>80)throw new Error('Repository group name is too long.');
@@ -146,14 +170,15 @@ export class RepositoryManager implements vscode.Disposable {
   }
   async deleteCollection(id: string): Promise<void> {
     const collections=this.collections();if(!collections.some(item=>item.id===id))return;
+    const order=this.order(),members=order.collections[id]??[];delete order.collections[id];order.root=order.root.filter(key=>key!==collectionOrderKey(id));order.root.push(...members);
     const assignments={...this.context.globalState.get<Record<string,string>>(GLOBAL_COLLECTION_ASSIGNMENTS_KEY,{})};for(const [key,value] of Object.entries(assignments))if(value===id)delete assignments[key];
-    await this.context.globalState.update(GLOBAL_COLLECTIONS_KEY,collections.filter(item=>item.id!==id));await this.context.globalState.update(GLOBAL_COLLECTION_ASSIGNMENTS_KEY,assignments);this.listEmitter.fire();
+    await this.context.globalState.update(GLOBAL_COLLECTIONS_KEY,collections.filter(item=>item.id!==id));await this.context.globalState.update(GLOBAL_COLLECTION_ASSIGNMENTS_KEY,assignments);await this.saveOrder(order);this.listEmitter.fire();
   }
   async move(keys: Iterable<string>, collectionId?: string): Promise<number> {
     if(collectionId&&!this.collections().some(item=>item.id===collectionId))throw new Error('Repository group no longer exists.');
-    const available=new Set(this.groups().map(group=>group.key)),assignments={...this.context.globalState.get<Record<string,string>>(GLOBAL_COLLECTION_ASSIGNMENTS_KEY,{})};let moved=0;
-    for(const key of new Set(keys)){if(!available.has(key))continue;if(collectionId)assignments[key]=collectionId;else delete assignments[key];moved++;}
-    if(moved){await this.context.globalState.update(GLOBAL_COLLECTION_ASSIGNMENTS_KEY,assignments);this.listEmitter.fire();}return moved;
+    const order=this.order(),available=new Set(this.groups().map(group=>group.key)),assignments={...this.context.globalState.get<Record<string,string>>(GLOBAL_COLLECTION_ASSIGNMENTS_KEY,{})};let moved=0;
+    for(const key of new Set(keys)){if(!available.has(key)||assignments[key]===collectionId)continue;if(collectionId)assignments[key]=collectionId;else delete assignments[key];moved++;}
+    if(moved){await this.context.globalState.update(GLOBAL_COLLECTION_ASSIGNMENTS_KEY,assignments);await this.saveOrder(order);this.listEmitter.fire();}return moved;
   }
   private async discoveryRoots(): Promise<Set<string>> {
     const roots = await this.rememberedRoots();
@@ -176,6 +201,8 @@ export class RepositoryManager implements vscode.Disposable {
       }
       catch (error) { this.log.appendLine(`[discovery] ${root}: ${error instanceof Error ? error.message : String(error)}`); }
     }
+    await this.saveOrder();
+    this.listEmitter.fire();
   }
   /** Reconciles this extension host after another VS Code window changes the shared catalog. */
   async synchronizeSharedState(): Promise<void> {

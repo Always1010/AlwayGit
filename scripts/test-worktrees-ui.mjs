@@ -11,7 +11,7 @@ export async function verifyWorktrees(browser, url) {
       const clone = { id: 'clone', root: 'D:/Other/App', commonDir: 'D:/Other/App/.git', name: 'App', mainRoot: 'D:/Other/App' };
       const repositories = [linked, main, clone];
       const session = { version: 2, repoId: linked.id, drafts: { main: 'Main draft', linked: 'Linked draft' }, views: { main: { tab: 'changes', search: '' }, linked: { tab: 'changes', search: '' } } };
-      const fixture = window.__worktreeFixture = { session, calls: [], version: 0 };
+      const fixture = window.__worktreeFixture = { session, calls: [], version: 0, order:{root:['repository:d:/other/app/.git','collection:client'],collections:{client:['repository:d:/projects/app/.git']}} };
       window.acquireVsCodeApi = () => ({ getState: () => fixture.session, setState: value => { fixture.session = value; }, postMessage(request) {
         if (request.method === 'saveSession') return;
         fixture.calls.push(request);
@@ -21,6 +21,8 @@ export async function verifyWorktrees(browser, url) {
         let result;
         if (request.method === 'repositories') result = repositories;
         if (request.method === 'repositoryCollections') result = [{ id: 'client', name: 'Client Project' }];
+        if(request.method==='repositoryOrder')result=structuredClone(fixture.order);
+        if(request.method==='reorderRepository'){const {key,targetKey,position}=request.payload,entries=fixture.order.root.filter(entry=>entry!==key);entries.splice(entries.indexOf(targetKey)+Number(position==='after'),0,key);fixture.order.root=entries;result=structuredClone(fixture.order);}
         if (request.method === 'pickRepositoryDirectory') result = 'D:/Scan';
         if (request.method === 'discoverRepositories') result = { scanId: request.payload.scanId, root: request.payload.path, scanned: 8, found: 4, cancelled: false, candidates: [{ key: 'existing-app', name: 'App', path: 'D:/Projects/App', existing: true }, { key: 'notes', name: 'NotesAnywhere', path: 'D:/Scan/NotesAnywhere', existing: false }, { key: 'schedule', name: 'SchedulePin', path: 'D:/Scan/SchedulePin', existing: false }, { key: 'resume', name: 'SwiftResume', path: 'D:/Scan/SwiftResume', existing: false }], issues: [{ path: 'D:/Scan/broken', message: 'Invalid Git directory' }] };
         if (request.method === 'cancelRepositoryDiscovery') result = null;
@@ -124,6 +126,19 @@ export async function verifyWorktrees(browser, url) {
     assert.equal(await draft.inputValue(), 'Edited linked draft');
     assert.equal(await page.evaluate(() => window.__worktreeFixture.session.repoId), 'linked');
     assert.equal(await page.evaluate(() => window.__worktreeFixture.session.drafts.main), 'Main draft');
+    const currentBeforeOrder=await page.evaluate(()=>window.__worktreeFixture.session.repoId);
+    const collectionHeading=sidebar.locator('.repository-collection-heading');
+    await clone.dragTo(collectionHeading);
+    await page.waitForFunction(()=>window.__worktreeFixture.order.root[0]==='collection:client');
+    await page.waitForFunction(()=>document.querySelector('[data-repository-order-key]')?.getAttribute('data-repository-order-key')==='collection:client');
+    assert.equal(await sidebar.locator('[data-repository-order-key]').first().getAttribute('data-repository-order-key'),'collection:client','Dragging persists mixed root order');
+    assert.equal(await page.evaluate(()=>window.__worktreeFixture.session.repoId),currentBeforeOrder,'Sorting does not switch the active repository');
+    await collectionHeading.click({button:'right'});
+    await page.getByRole('menuitem',{name:'Move Down',exact:true}).click();
+    await page.waitForFunction(()=>window.__worktreeFixture.order.root[0]==='repository:d:/other/app/.git');
+    await page.waitForFunction(()=>document.querySelector('[data-repository-order-key]')?.getAttribute('data-repository-order-key')==='repository:d:/other/app/.git');
+    assert.equal(await sidebar.locator('[data-repository-order-key]').first().getAttribute('data-repository-order-key'),'repository:d:/other/app/.git','Menu movement shares the persisted drag order');
+
     await sidebar.getByRole('button',{name:'Add Repository…',exact:true}).click();
     const repositoryDialog=page.getByRole('dialog',{name:'Add Repositories',exact:true});
     await repositoryDialog.getByRole('button',{name:'Choose Folder…',exact:true}).click();
