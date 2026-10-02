@@ -23,7 +23,7 @@ interface WorkbenchState {
   beginSettings(): void; previewSettings(value: InterfaceSettingsUpdate): void; finishSettings(apply: boolean): void; restoreLayout(): void;
   repositories: Repository[]; repositoryCollections:RepositoryCollection[]; repositoryStatuses: Record<string, RepositoryStatus>; selectedRepositoryKeys:string[]; repositorySelectionAnchor?:string; repoId?: string; snapshot?: Snapshot; commits: Commit[]; historyHead?: Commit; details?: CommitDetails; comparison?: CommitComparison; selectedOid?: string; selectedOids: string[]; selectionAnchor?: string; selectedRefs:string[]; refSelectionAnchor?:string; selectedParent?: string; selectedStashOid?: string; selectedStashSection?:StashSection; stashDetails?: StashDetails; selectedFile?: string; diffTarget?: DiffTarget; diffRevision: number;
   ref?: string; checkedRefs?: string[]; expandedRefGroups?:string[]; collapsedSidebarGroups:string[]; search: string; language: Language; layout: LayoutState; checkoutFailure?: CheckoutFailure; stashApplyFailure?: StashApplyBlocker; actionFeedback?: ActionFeedback; locateToken:number;
-  nextOffset: number; hasMore: boolean; tips: string[]; loading: boolean; historyLoading: boolean; detailsLoading: boolean; busy: boolean; activity: string; error?: string; notice?: string; tab: 'history' | 'changes'; drafts: Record<string, string>;
+  nextOffset: number; hasMore: boolean; tips: string[]; loading: boolean; historyLoading: boolean; locatingOid?: string; locateCommit(oid: string): Promise<void>; detailsLoading: boolean; busy: boolean; activity: string; error?: string; notice?: string; tab: 'history' | 'changes'; drafts: Record<string, string>;
   initialize(): Promise<void>; loadRepositoryStatuses(): Promise<void>; selectRepository(id: string): Promise<void>; refresh(options?: { background?: boolean; changes?: RepositoryChanges }): Promise<void>; loadHistory(append?: boolean): Promise<void>; selectCommit(oid: string, parent?: string, stashOid?: string, preserveSelection?: boolean): Promise<void>; selectStashSection(section:StashSection):void; compareCommits(left:string,right:string,preserveOrder?:boolean):Promise<void>; setCommitSelection(oids:string[],anchor?:string,primary?:string):void; setRefSelection(refs:string[],anchor?:string):void; setRepositorySelection(keys:string[],anchor?:string):void;
   setFilter(ref?: string, search?: string): void; setCheckedRefs(refs: string[]): void; setExpandedRefGroup(key:string,expanded:boolean):void; toggleSidebarGroup(key:string):void; setSearch(value: string): void; selectWorking(): void; selectFile(target: DiffTarget): void; locateHead():void;
   execute(action: GitAction): Promise<boolean>; dismissFeedback(): void; setDraft(value: string): void; setLanguage(value: Language): void; setLayout(value: Partial<LayoutState>): void; report(error: unknown): void;
@@ -60,7 +60,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   async selectRepository(id) {
     ++repositoryEpoch; ++historyEpoch; ++detailEpoch; const view = views[id];
     set({ operationReview: undefined });
-    set({ repoId: id, snapshot: undefined, commits: [], historyHead: undefined, selectedOids:[], selectionAnchor:undefined, selectedRefs:[],refSelectionAnchor:undefined, tips: [], details: undefined, comparison:undefined, stashDetails: undefined, selectedStashSection:undefined, diffTarget: undefined, diffRevision:0, selectedFile: view?.selectedFile, selectedOid: view?.selectedOid, selectedParent: view?.selectedParent, selectedStashOid: view?.selectedStashOid, ref: view?.ref, checkedRefs: view?.checkedRefs ? [...view.checkedRefs] : view?.ref ? [view.ref] : undefined, expandedRefGroups:view?.expandedRefGroups?[...view.expandedRefGroups]:undefined,collapsedSidebarGroups:[...(view?.collapsedSidebarGroups??[])], search: view?.search ?? '', tab: view?.tab ?? 'history', checkoutFailure: undefined, stashApplyFailure: undefined, error: undefined, notice: undefined, actionFeedback: actionFeedbacks.get(id), loading: true, busy: executingRepositories.has(id) || hostBusyRepositories.has(id), activity: '', detailsLoading: false, historyLoading: false });
+    set({ repoId: id, locatingOid: undefined, snapshot: undefined, commits: [], historyHead: undefined, selectedOids:[], selectionAnchor:undefined, selectedRefs:[],refSelectionAnchor:undefined, tips: [], details: undefined, comparison:undefined, stashDetails: undefined, selectedStashSection:undefined, diffTarget: undefined, diffRevision:0, selectedFile: view?.selectedFile, selectedOid: view?.selectedOid, selectedParent: view?.selectedParent, selectedStashOid: view?.selectedStashOid, ref: view?.ref, checkedRefs: view?.checkedRefs ? [...view.checkedRefs] : view?.ref ? [view.ref] : undefined, expandedRefGroups:view?.expandedRefGroups?[...view.expandedRefGroups]:undefined,collapsedSidebarGroups:[...(view?.collapsedSidebarGroups??[])], search: view?.search ?? '', tab: view?.tab ?? 'history', checkoutFailure: undefined, stashApplyFailure: undefined, error: undefined, notice: undefined, actionFeedback: actionFeedbacks.get(id), loading: true, busy: executingRepositories.has(id) || hostBusyRepositories.has(id), activity: '', detailsLoading: false, historyLoading: false });
     await get().refresh();
   },
   async refresh(options = {}) {
@@ -107,6 +107,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     finally { if (epoch === historyEpoch && repoEpoch === repositoryEpoch) set({ historyLoading: false }); }
   },
   async selectCommit(oid, parent, stashOid, preserveSelection=false) {
+    if(get().locatingOid&&get().locatingOid!==oid)set({locatingOid:undefined});
     const repoEpoch = repositoryEpoch, repoId = get().repoId, same = oid === get().selectedOid;
     parent ??= same ? get().selectedParent : undefined;
     const selectedStashOid = stashOid ?? (same ? get().selectedStashOid : undefined);
@@ -156,24 +157,47 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   },
   setCommitSelection(oids,selectionAnchor,primary){
     const selectedOids=[...new Set(oids)],anchor=selectionAnchor&&selectedOids.includes(selectionAnchor)?selectionAnchor:undefined;
-    set({selectedOids,selectionAnchor:anchor});
+    set({selectedOids,selectionAnchor:anchor,locatingOid:undefined});
     if(selectedOids.length===2){void get().compareCommits(selectedOids[0],selectedOids[1]);return;}
     if(selectedOids.length){const oid=primary&&selectedOids.includes(primary)?primary:anchor??selectedOids.at(-1)!;void get().selectCommit(oid,undefined,undefined,true);return;}
     ++detailEpoch;set({selectedOid:undefined,selectedParent:undefined,selectedStashOid:undefined,selectedStashSection:undefined,details:undefined,comparison:undefined,stashDetails:undefined,detailsLoading:false,selectedFile:undefined,diffTarget:undefined});
   },
   setRefSelection(selectedRefs,refSelectionAnchor){set({selectedRefs:[...new Set(selectedRefs)],refSelectionAnchor});},
   setRepositorySelection(selectedRepositoryKeys,repositorySelectionAnchor){set({selectedRepositoryKeys:[...new Set(selectedRepositoryKeys)],repositorySelectionAnchor});},
-  setFilter(ref, search = get().search) { set({ ref, checkedRefs: ref ? [ref] : get().snapshot?.refs.filter(r => r.kind !== 'tag').map(r => r.fullName) ?? [], search, tips: [], selectedOids:[], selectionAnchor:undefined, comparison:undefined, selectedStashOid: undefined,selectedStashSection:undefined,stashDetails:undefined }); void get().loadHistory(); },
-  setCheckedRefs(refs) { set({ checkedRefs: [...new Set(refs)], ref: undefined, tips: [], selectedOids:[], selectionAnchor:undefined, comparison:undefined }); void get().loadHistory(); },
+  setFilter(ref, search = get().search) { set({ ref, locatingOid: undefined, checkedRefs: ref ? [ref] : get().snapshot?.refs.filter(r => r.kind !== 'tag').map(r => r.fullName) ?? [], search, tips: [], selectedOids:[], selectionAnchor:undefined, comparison:undefined, selectedStashOid: undefined,selectedStashSection:undefined,stashDetails:undefined }); void get().loadHistory(); },
+  setCheckedRefs(refs) { set({ locatingOid: undefined, checkedRefs: [...new Set(refs)], ref: undefined, tips: [], selectedOids:[], selectionAnchor:undefined, comparison:undefined }); void get().loadHistory(); },
   setExpandedRefGroup(key,expanded){set({expandedRefGroups:expanded?[...new Set([...(get().expandedRefGroups??[]),key])]:(get().expandedRefGroups??[]).filter(item=>item!==key)});},
   toggleSidebarGroup(key){set({collapsedSidebarGroups:get().collapsedSidebarGroups.includes(key)?get().collapsedSidebarGroups.filter(item=>item!==key):[...get().collapsedSidebarGroups,key]});},
-  setSearch(search) { set({ search, tips: [], selectedOids:[], selectionAnchor:undefined, comparison:undefined }); void get().loadHistory(); },
+  setSearch(search) { set({ search, commits: [], historyHead: undefined, tips: [], nextOffset: 0, hasMore: false, locatingOid: undefined, selectedOids:[], selectionAnchor:undefined, comparison:undefined }); void get().loadHistory(); },
   selectWorking() {
-    ++detailEpoch; const snapshot = get().snapshot, target = snapshot && workingTarget(snapshot, get().diffTarget, get().selectedFile); set({ tab: 'changes', selectedOids:[], selectionAnchor:undefined, comparison:undefined, detailsLoading: false });
+    ++detailEpoch; const snapshot = get().snapshot, target = snapshot && workingTarget(snapshot, get().diffTarget, get().selectedFile); set({ tab: 'changes', locatingOid:undefined, selectedOids:[], selectionAnchor:undefined, comparison:undefined, detailsLoading: false });
     if (target) get().selectFile(target); else set({ selectedFile: undefined, diffTarget: undefined });
   },
   selectFile(target) { if (diffKey(target) !== diffKey(get().diffTarget)) set({ selectedFile: target.path, diffTarget: target }); },
-  locateHead(){const snapshot=get().snapshot;if(!snapshot?.head)return;const ref=snapshot.refs.find(r=>r.kind==='local'&&r.name===snapshot.branch)?.fullName??'HEAD';set({checkedRefs:[...new Set([...(get().checkedRefs??[]),ref])],search:'',locateToken:get().locateToken+1,selectedStashOid:undefined,selectedStashSection:undefined,stashDetails:undefined});void get().loadHistory();void get().selectCommit(snapshot.head);},
+  locateHead(){const snapshot=get().snapshot;if(!snapshot?.head)return;const ref=snapshot.refs.find(r=>r.kind==='local'&&r.name===snapshot.branch)?.fullName??'HEAD';set({checkedRefs:[...new Set([...(get().checkedRefs??[]),ref])],search:'',commits:[],historyHead:undefined,nextOffset:0,hasMore:false,locatingOid:undefined,locateToken:get().locateToken+1,selectedStashOid:undefined,selectedStashSection:undefined,stashDetails:undefined});void get().loadHistory();void get().selectCommit(snapshot.head);},
+  async locateCommit(oid) {
+    if(!get().repoId)return;
+    const repoEpoch=repositoryEpoch,token=get().locateToken+1;
+    set({search:'',commits:[],historyHead:undefined,tips:[],nextOffset:0,hasMore:false,locateToken:token,locatingOid:oid,selectedStashOid:undefined,selectedStashSection:undefined,stashDetails:undefined,notice:undefined});
+    void get().selectCommit(oid);
+    const current=()=>repositoryEpoch===repoEpoch&&get().locateToken===token&&get().locatingOid===oid&&get().selectedOid===oid&&!get().search&&get().tab==='history';
+    try {
+      let append=false;
+      while(current()) {
+        const offset=get().nextOffset,expectedEpoch=historyEpoch+1;
+        await get().loadHistory(append);
+        if(!current()||historyEpoch!==expectedEpoch)return;
+        if(get().commits.some(commit=>commit.oid===oid))return;
+        if(!get().hasMore||get().nextOffset<=offset) {
+          set({notice:get().language==='zh-CN'?'无法在当前引用的完整历史中定位该 Commit。':'Could not locate this Commit in the full history of the selected refs.'});
+          return;
+        }
+        append=true;
+      }
+    } finally {
+      if(repositoryEpoch===repoEpoch&&get().locateToken===token)set({locatingOid:undefined});
+    }
+  },
   async execute(action) {
     const repoId = get().repoId, epoch = repositoryEpoch; if (!repoId || get().busy) return false;
     if ((action.type === 'operation.continue' || action.type === 'commit' && get().snapshot?.operation.kind) && !action.reviewToken) {
