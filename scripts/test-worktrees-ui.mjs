@@ -143,7 +143,7 @@ export async function verifyWorktrees(browser, url) {
     await page.waitForFunction(()=>document.querySelector('[data-repository-order-key]')?.getAttribute('data-repository-order-key')==='repository:d:/other/app/.git');
     assert.equal(await sidebar.locator('[data-repository-order-key]').first().getAttribute('data-repository-order-key'),'repository:d:/other/app/.git','Keyboard movement shares the persisted drag order');
 
-    assert.deepEqual(await sidebar.locator('.sidebar-heading').first().locator('.sidebar-actions button').evaluateAll(buttons=>buttons.map(button=>button.getAttribute('aria-label'))),['Add…','Refresh'],'One plus handles repositories and groups');
+    assert.deepEqual(await sidebar.locator('.sidebar-heading').first().locator('.sidebar-actions button').evaluateAll(buttons=>buttons.map(button=>button.getAttribute('aria-label'))),['Add…','Refresh repository list and status badges'],'One plus handles repositories and groups');
     await sidebar.getByRole('button',{name:'Add…',exact:true}).click();
     const groupDialog=page.getByRole('dialog',{name:'Add',exact:true});
     await groupDialog.getByRole('tab',{name:'Add Group',exact:true}).click();

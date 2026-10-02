@@ -100,7 +100,7 @@ Local Branches 和 Remote Branches 按分支名中的 `/` 构成递归目录，�
 
 ## 自动更新与查看状态
 
-工作区文件变化会更新当前仓库的状态；已选引用变化时更新 History。查看历史 Commit 时，无关的文件、Index 或引用变化不会清空 Commit 详情和 Diff，也不会重置已选 Merge Parent、文件及 Diff 滚动位置。手动 Refresh 会重查仓库状态和历史，同时保留同一个历史比较。
+工作区文件变化会更新当前仓库的状态；已选引用变化时更新 History。查看历史 Commit 时，无关的文件、Index 或引用变化不会清空 Commit 详情和 Diff，也不会重置已选 Merge Parent、文件及 Diff 滚动位置。常驻刷新图标只保留两个：顶部工具栏提示“刷新当前仓库状态和提交历史”，重查当前仓库状态和历史，同时保留同一个历史比较；Repositories 标题提示“刷新仓库列表和状态角标”，重新读取已登记仓库、分组、排序及各仓库状态，不扫描新仓库。Tags、Stashes、Worktrees 和各 Remote 的重复刷新入口只保留在右键菜单中。两种刷新均不执行 Fetch。
 
 Working Tree 中所选文件或相关 Index 内容变化时更新该比较，包括文件一直处于 modified 状态而内容再次改变的情况。有效的 Staged / Unstaged / Conflicts 选择继续保留；比较区域或文件消失时才回退到有效目标。后台更新同一个 Diff 时保留现有画面和滚动位置，切换比较目标时在内容加载后自动定位第一处修改；收起面板时暂缓，首次展开后定位。
 
@@ -135,16 +135,16 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 
 ## 左侧分组操作
 
-分组标题不使用省略号菜单；项目少且含义明确的操作直接显示为纯图标按钮，并通过悬浮提示、键盘焦点和无障碍名称说明用途。右键标题仍可打开同一组操作。Local Branches 的 Graph 筛选位于标题下方的分段图标控件，提供全部本地分支和仅当前分支两个预设；当前预设以强调状态显示，自定义勾选组合时两项均不激活。
+分组标题不使用省略号菜单；项目少且含义明确的操作直接显示为纯图标按钮，并通过悬浮提示、键盘焦点和无障碍名称说明用途。右键标题仍可打开该分组的完整操作，包括不再常驻显示的 `Refresh`。Local Branches 的 Graph 筛选位于标题下方的分段图标控件，提供全部本地分支和仅当前分支两个预设；当前预设以强调状态显示，自定义勾选组合时两项均不激活。
 
 | 标题 | 项目 |
 | --- | --- |
 | Repositories | `Add…`、`Refresh` |
 | Local Branches | 标题：`Create Branch…`；Graph 预设：`Show All Local Branches in Graph`、`Show Current Branch Only in Graph` |
 | Remotes | 标题行仅显示 `＋` 添加远端图标，悬浮提示与无障碍名称为 `Add Remote…`；右键菜单提供 `Add Remote…`、`Create Local Tracking Branches…`、`Refresh`。Fetch 位于各 Remote 行；没有远端时正文说明尚未连接并保留文字入口 |
-| Tags | `Create Tag…`、`Refresh` |
-| Stashes | `Stash All Changes…`、`Refresh` |
-| Worktrees | `Add Worktree…`、`Refresh` |
+| Tags | `Create Tag…` |
+| Stashes | `Stash All Changes…` |
+| Worktrees | `Add Worktree…` |
 
 Graph 中 Commit 的菜单集中提供 `Create Branch…`、`Create Tag…`、Cherry-pick、`Revert…`、`Reset…`、分支感知的 Checkout、条件显示的 `Checkout to Detached HEAD…`、`Copy Commit ID` 和 `Copy Commit Message`；顶部工具栏和 Commit Details 标题不重复提供这些入口。普通 Commit 的 Cherry-pick 点击后直接执行；Merge Commit 单独选择 Mainline Parent。多选 Commit 按当前拓扑列表从旧到新执行批量 Cherry-pick，且只处理明确选中的 Commit；包含 Merge Commit 时禁用批量操作并要求单独处理。具体项目根据提交、当前分支和仓库操作状态禁用。
 
