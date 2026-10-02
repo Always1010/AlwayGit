@@ -22,27 +22,39 @@ vi.mock('vscode', () => {
 
 function panelFixture() {
   const closed = new vscode.EventEmitter<void>(), stateChanged = new vscode.EventEmitter<vscode.WebviewPanelOnDidChangeViewStateEvent>();
+  let receive!: (message: unknown) => Promise<void>;
   const panel = {
     active: true, visible: true, title: '',
-    webview: { options: {}, html: '', onDidReceiveMessage: () => ({ dispose() {} }), postMessage: vi.fn(async () => true) },
+    webview: { options: {}, html: '', onDidReceiveMessage: (listener: typeof receive) => { receive = listener; return { dispose() {} }; }, postMessage: vi.fn(async (_message: unknown) => true) },
     reveal: vi.fn(), dispose: () => closed.fire(), onDidDispose: closed.event, onDidChangeViewState: stateChanged.event,
   };
-  return { panel, stateChanged };
+  return { panel, stateChanged, receive: (message: unknown) => receive(message) };
 }
 
 const workbenches: Workbench[] = [];
 beforeEach(() => vi.clearAllMocks());
 afterEach(() => { for (const workbench of workbenches.splice(0)) workbench.dispose(); vi.useRealTimers(); });
 
-function workbenchFixture() {
+function workbenchFixture(output = { appendLine: vi.fn() }) {
   const repositories = { scan: vi.fn(async () => {}), list: () => [], onDidChange: () => ({ dispose() {} }), onDidChangeRepositories: () => ({ dispose() {} }) };
-  const workbench = new Workbench({ extensionUri: {}, workspaceState: { get: (_key: string, fallback: unknown) => fallback, update: async () => {} } } as unknown as vscode.ExtensionContext, {} as never, repositories as never, {} as never, {} as never, {} as never);
+  const workbench = new Workbench({ extensionUri: {}, workspaceState: { get: (_key: string, fallback: unknown) => fallback, update: async () => {} } } as unknown as vscode.ExtensionContext, {} as never, repositories as never, {} as never, output as never, {} as never);
   vi.spyOn(workbench as unknown as { html(): Promise<string> }, 'html').mockResolvedValue('<html></html>');
   workbenches.push(workbench);
   return workbench;
 }
 
 describe('Workbench entry presentation', () => {
+  it('sends and logs the same sanitized underlying Stash failure through the actual message bridge', async () => {
+    const fixture = panelFixture(), output = { appendLine: vi.fn() }, workbench = workbenchFixture(output);
+    vi.mocked(vscode.window.createWebviewPanel).mockReturnValue(fixture.panel as unknown as vscode.WebviewPanel);
+    const details = { kind: 'stash-apply', reason: 'restore-blocked', paths: ['notes.txt'], conflictPaths: [], selector: 'stash@{0}', stashOid: 'saved', stashRetained: true, workingTreeUnchanged: true, output: 'staged-only.txt: Index was not unstashed. https://user:secret@example.test/repo' };
+    vi.spyOn(workbench as unknown as { handleRequest(): Promise<unknown> }, 'handleRequest').mockRejectedValue(Object.assign(new Error('Restore blocked; Stash retained.'), { code: 'STASH_RESTORE_BLOCKED', details }));
+    await workbench.open();
+    await fixture.receive({ id: 'blocked', method: 'action', repoId: 'fixture', payload: { type: 'stash.apply', selector: 'stash@{0}' } });
+    const response = fixture.panel.webview.postMessage.mock.calls.at(-1)?.[0] as { error: { details: { output: string } } };
+    expect(response).toMatchObject({ type: 'response', id: 'blocked', error: { code: 'STASH_RESTORE_BLOCKED', details: { output: 'staged-only.txt: Index was not unstashed. https://***@example.test/repo' } } });
+    expect(output.appendLine).toHaveBeenCalledWith(`[request:action] Restore blocked; Stash retained.\n${response.error.details.output}`);
+  });
   it('opens a missing workbench and focuses an existing hidden workbench', () => {
     expect(statusBarPresentation({ open: false, active: false })).toEqual({ visible: true, tooltip: 'Open AlwayGit Workbench' });
     expect(statusBarPresentation({ open: true, active: false })).toEqual({ visible: true, tooltip: 'Show AlwayGit Workbench' });

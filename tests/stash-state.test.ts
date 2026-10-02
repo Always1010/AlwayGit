@@ -154,7 +154,7 @@ describe('Stash saved state and restore preflight', () => {
     const before = await state(root, files);
     await expect(service.execute(repo, { type: 'stash.apply', selector: saved.selector, expectedOid: saved.oid })).rejects.toMatchObject({
       code: 'STASH_RESTORE_BLOCKED',
-      details: { kind: 'stash-apply', reason: 'restore-conflict', paths: expect.arrayContaining(['a.txt']), stashOid: saved.oid, workingTreeUnchanged: true, stashRetained: true },
+      details: { kind: 'stash-apply', reason: 'restore-conflict', paths: ['a.txt', 'b.txt'], conflictPaths: ['a.txt'], output: expect.stringContaining('a.txt'), stashOid: saved.oid, workingTreeUnchanged: true, stashRetained: true },
     });
     expect(await state(root, files)).toEqual(before);
   });
@@ -172,7 +172,7 @@ describe('Stash saved state and restore preflight', () => {
     const before = await state(root, ['same.txt', 'other.txt']);
     await expect(service.execute(repo, { type: 'stash.apply', selector: saved.selector, expectedOid: saved.oid })).rejects.toMatchObject({
       code: 'STASH_RESTORE_BLOCKED',
-      details: { kind: 'stash-apply', reason: 'restore-conflict', workingTreeUnchanged: true, stashRetained: true },
+      details: { kind: 'stash-apply', reason: 'restore-blocked', conflictPaths: [], output: expect.stringContaining('same.txt'), workingTreeUnchanged: true, stashRetained: true },
     });
     expect(await state(root, ['same.txt', 'other.txt'])).toEqual(before);
   });
@@ -184,15 +184,15 @@ describe('Stash saved state and restore preflight', () => {
     await writeFile(path.join(root, 'saved.txt'), 'saved working');
     await service.execute(repo, { type: 'stash.create' });
     const saved = (await service.snapshot(repo)).stashes[0];
-    await writeFile(path.join(root, 'local.txt'), 'local index');
-    await git(root, 'add', '--', 'local.txt');
+    await writeFile(path.join(root, 'staged-only.txt'), 'local index');
+    await git(root, 'add', '--', 'staged-only.txt');
     await writeFile(path.join(root, 'local.txt'), 'local working');
-    const before = await state(root, ['saved.txt', 'local.txt']);
+    const before = await state(root, ['saved.txt', 'local.txt', 'staged-only.txt']);
     await expect(service.execute(repo, { type: 'stash.apply', selector: saved.selector, expectedOid: saved.oid })).rejects.toMatchObject({
-      code: 'STASH_RESTORE_BLOCKED', details: { workingTreeUnchanged: true, stashRetained: true },
+      code: 'STASH_RESTORE_BLOCKED', details: { reason: 'restore-blocked', paths: ['saved.txt'], conflictPaths: [], output: expect.stringContaining('staged-only.txt'), workingTreeUnchanged: true, stashRetained: true },
     });
-    expect(await state(root, ['saved.txt', 'local.txt'])).toEqual(before);
-    expect(await git(root, 'show', ':local.txt')).toBe('local index');
+    expect(await state(root, ['saved.txt', 'local.txt', 'staged-only.txt'])).toEqual(before);
+    expect(await git(root, 'show', ':staged-only.txt')).toBe('local index');
     expect(await readFile(path.join(root, 'local.txt'), 'utf8')).toBe('local working');
     expect((await service.snapshot(repo)).stashes).toEqual([saved]);
   });

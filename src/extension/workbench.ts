@@ -6,13 +6,13 @@ import * as vscode from 'vscode';
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { ActionBlocker, AddRepositoriesResult, GitAction, GitServiceContract, HostMessage, RepositoryCollection, RepositoryDiscoveryPreview, RepositoryStatus, RpcRequest, Snapshot, OperationSettings } from '../protocol/types';
+import type { AddRepositoriesResult, GitAction, GitServiceContract, HostMessage, RepositoryCollection, RepositoryDiscoveryPreview, RepositoryStatus, RpcRequest, Snapshot, OperationSettings } from '../protocol/types';
 import { actionSchema, operationSettingsSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema, repositoryDiscoverySchema, cancelRepositoryDiscoverySchema, addRepositoriesSchema, reorderRepositorySchema, createRepositoryCollectionSchema } from '../protocol/validation';
 import type { RepositoryManager } from '../repositories/manager';
 import type { DiscoveryResult } from '../repositories/discovery';
 import type { GitDocuments } from '../editor/documents';
 import { confirmAction } from '../application/confirm';
-import { redactSecrets } from '../application/logging';
+import { redactSecrets, requestErrorText, serializeRequestError } from '../application/logging';
 import { hostText, preferredLanguage, type Language } from '../application/language';
 import type { ProjectWindows } from './project-windows';
 import { groupRepositories } from '../protocol/repositories';
@@ -75,10 +75,9 @@ export class Workbench implements vscode.Disposable {
       this.requestCount++;
       try { const result = await this.handleRequest(parsed.data,entry); this.post({ type: 'response', id: parsed.data.id, result },entry); }
       catch (error) {
-        const message = redactSecrets(error instanceof Error ? error.message : String(error));
-        this.output.appendLine(`[request:${parsed.data.method}] ${message}`);
-        const details = (error as { details?: ActionBlocker }).details;
-        this.post({ type: 'response', id: parsed.data.id, error: { message, code: String((error as { code?: unknown }).code ?? 'FAILED'), ...(details ? { details } : {}) } },entry);
+        const failure = serializeRequestError(error);
+        this.output.appendLine(`[request:${parsed.data.method}] ${requestErrorText(failure)}`);
+        this.post({ type: 'response', id: parsed.data.id, error: failure },entry);
       }
     });
     panel.onDidChangeViewState(event => { if (event.webviewPanel.active) { this.lastPanel=entry; if(entry.session)void this.saveSessionBaseline(entry.session,entry).catch(error=>this.output.appendLine(`[session] ${redactSecrets(String(error))}`)); } if (event.webviewPanel.visible) { this.post({ type: 'repositoriesChanged' },entry); if (entry.activeRepository) this.post({ type: 'changed', repoId: entry.activeRepository },entry); } this.presenceEmitter.fire(this.presence); });

@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-055：Stash 预检隐藏底层诊断并将涉及文件误作冲突路径
+
+- 日期：2026-10-03
+- 状态：已解决
+- 现象：恢复因无关的新增暂存文件受阻，Git 实际指向 staged-only.txt 并报告 Index was not unstashed，Git details 与 Show Log 却只显示通用摘要；路径列表显示存档涉及的文件。对应 0.29.0 报告 B02，现场与 Stash 保留保护有效。
+- 原因：隔离命令静默运行；结构化 output 未用于前端详情或 RPC 日志。失败分类依赖错误文字，未区分实际 unmerged 路径与 affected 回退清单。
+- 解决方案：RPC 统一脱敏结构化输出，详情与日志使用同一份诊断；仅实际 unmerged 路径判为已确认冲突，其余阻碍列为恢复涉及文件。保留全部恢复预检与现场保护，不自动清理其他修改。
+- 验证方式：类型检查、Stash 状态/日志/宿主入口/Demo 四文件 34 项回归与无头 Stash 专项通过；真实 Git 覆盖新增暂存文件引起的 Index 阻碍及实际冲突路径，保留 HEAD、Index、文件与存档。消息桥检查详情和日志使用相同脱敏输出；界面检查具体错误、日志入口和路径分组。真实 VS Code 桌面集成未运行。
+- 相关文件：`src/git/stash.ts`、`src/protocol/types.ts`、`src/application/logging.ts`、`src/extension/workbench.ts`、`webview/ActionDialog.tsx`、`tests/stash-state.test.ts`、`tests/logging.test.ts`、`tests/workbench-entry.test.ts`、`scripts/test-stash-ui.mjs`、`docs/WORKBENCH_SPEC.md`。
+
 ## BUG-054：Commit 与 Amend 成功反馈可能引用另一轮刷新结果
 
 - 日期：2026-10-03
