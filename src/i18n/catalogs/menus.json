@@ -679,5 +679,29 @@
     "zh-CN": "选择分支并切换…",
     "review": "translated",
     "context": "webview/menus.ts / Commit shared by multiple local branch tips"
+  },
+  "menus.pushTag": {
+    "en": "Push Tag…",
+    "zh-CN": "推送标签…",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.pushTags": {
+    "en": "Push {{count}} Tags…",
+    "zh-CN": "推送 {{count}} 个标签…",
+    "review": "translated",
+    "context": "webview/menus.ts / refBatch"
+  },
+  "menus.refreshToCaptureThisTagBeforePush": {
+    "en": "Refresh to capture this Tag before pushing.",
+    "zh-CN": "请刷新后再推送此标签。",
+    "review": "translated",
+    "context": "webview/menus.ts / menuFor"
+  },
+  "menus.refreshToCaptureTagsBeforePush": {
+    "en": "Refresh to capture all selected Tags before pushing.",
+    "zh-CN": "请刷新后再推送全部所选标签。",
+    "review": "translated",
+    "context": "webview/menus.ts / refBatch"
   }
 }

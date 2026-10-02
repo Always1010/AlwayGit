@@ -6,6 +6,12 @@ describe('Workbench protocol validation', () => {
     for (const expectedOid of ['a'.repeat(40), 'b'.repeat(64)]) expect(actionSchema.parse({ type: 'tag.delete', name: 'v1', expectedOid })).toEqual({ type: 'tag.delete', name: 'v1', expectedOid });
     for (const expectedOid of [undefined, '', 'HEAD', '0'.repeat(40)]) expect(actionSchema.safeParse({ type: 'tag.delete', name: 'v1', expectedOid }).success).toBe(false);
   });
+  it('requires names and raw identities for Tag Push', () => {
+    const action={type:'tag.push' as const,remote:'origin',names:['v1','v2'],expectedOids:{v1:'a'.repeat(40),v2:'b'.repeat(40)}};
+    expect(actionSchema.parse(action)).toEqual(action);
+    expect(actionSchema.safeParse({...action,names:[]}).success).toBe(false);
+    expect(actionSchema.safeParse({...action,expectedOids:{v1:'HEAD'}}).success).toBe(false);
+  });
   it.each(['merge', 'rebase', 'reset'])('requires a captured branch and HEAD for %s', type => {
     const action = { type, target: 'HEAD', ...(type === 'reset' ? { mode: 'hard' } : {}) };
     expect(actionSchema.safeParse(action).success).toBe(false);

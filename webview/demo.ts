@@ -120,6 +120,7 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
     else if(action.type==='remote.add'){demoSnapshot.remotes=[...new Set([...(demoSnapshot.remotes??[]),action.name])];}
     else if(action.type==='remote.delete')demoSnapshot.refs=demoSnapshot.refs.filter(r=>!(r.kind==='remote'&&action.branches.some(branch=>r.name===`${action.remote}/${branch}`)));
     else if (action.type === 'tag.create') { const oid=resolve(action.target??'HEAD'); demoSnapshot.refs.push({ name: action.name, fullName: `refs/tags/${action.name}`, kind: 'tag', oid, refOid: oid }); }
+    else if (action.type === 'tag.push') { /* Demo keeps remote Tag state implicit. */ }
     else if (action.type === 'tag.delete') { const tag=demoSnapshot.refs.find(r=>r.kind==='tag'&&r.name===action.name); if(!action.expectedOid||tag?.refOid!==action.expectedOid)throw new RpcError('The Tag changed. Refresh and reopen the deletion dialog.','OPERATION_CHANGED'); demoSnapshot.refs=demoSnapshot.refs.filter(r=>r!==tag); }
     else if (action.type === 'stash.create') {
       if(action.paths&&!action.paths.length)throw new Error('Select at least one file to Stash.');

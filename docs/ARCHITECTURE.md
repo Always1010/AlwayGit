@@ -124,6 +124,8 @@ Fetch、Pull 和 Push 沿用系统 Git Credential Helper、SSH Agent 和配置�
 
 Snapshot 为当前分支解析 Push 目标，依次考虑 `branch.<name>.pushRemote`、`remote.pushDefault`、分支 remote、upstream 和唯一远端，并把本地分支、远端分支及 upstream 状态作为结构化数据交给 Webview。Push 对话框提交明确的本地与远端 refspec；远端分支名可以与本地分支名不同。首次建立跟踪时才请求 `--set-upstream`，已有 upstream 的普通 Push 不隐式改变跟踪关系。
 
+Tag Push 使用独立的 `tag.push` 动作和完整 `refs/tags/<name>:refs/tags/<name>` refspec，可从单个或多选 Tag 菜单进入。对话框绑定打开时捕获的原始 Tag 对象 OID，宿主在任何网络写入前复核全部选择；注解 Tag 不使用 peeled Commit OID。每个 Tag 单独推送并汇总部分失败，显式 `--no-follow-tags` 防止 Git 配置附带未选择的 Tag；远端同名 Tag 不同且未明确提供替换操作时由 Git 拒绝覆盖。
+
 本地 Tag 删除绑定打开对话框时的原始引用对象 OID（注解 Tag 不使用 peeled Commit OID）。宿主预检后通过 `update-ref --no-deref -d <ref> <expectedOid>` 原子比较删除，陈旧或缺失身份拒绝操作；符号引用不递归删除目标。
 
 远端删除与 Force-with-lease 在确认时固定远端 OID 和 Push 地址指纹；执行使用显式 `--force-with-lease=<ref>:<oid>`，空 OID 表示仅允许仍不存在的目标。后台 Fetch 不更新已确认 OID；地址变化、缺少确认或多个 Push 地址拒绝危险操作。指纹不向 Webview 暴露含凭据的地址。批量删除逐项报告成功与失败，终止未确认立即停止后续操作。

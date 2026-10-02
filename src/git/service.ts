@@ -662,6 +662,23 @@ export class GitService implements GitServiceContract {
         return;
       }
       case 'tag.create': await this.run(repo, ['check-ref-format', `refs/tags/${token(action.name, 'tag name')}`]); args = ['tag', ...(action.message ? ['-a', '-m', action.message] : []), action.name, await this.oid(repo, action.target ?? 'HEAD')]; break;
+      case 'tag.push': {
+        const destination=token(action.remote,'remote'),configured=(await this.text(repo,['remote'])).split('\n').filter(Boolean);
+        if(!configured.includes(destination))throw new GitError(localizeMessage("service.unknownRemote", { destination: (destination) }),'INVALID_ARGUMENT');
+        const names=[...new Set(action.names.map(name=>token(name,'tag name')))];
+        if(!names.length)throw new GitError(localizeMessage("service.selectAtLeastOneTag"),'INVALID_ARGUMENT');
+        for(const name of names){
+          const ref=`refs/tags/${name}`;await this.run(repo,['check-ref-format',ref]);
+          const expected=Object.hasOwn(action.expectedOids,name)?action.expectedOids[name]:undefined;
+          if(!expected||!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(expected)||/^0+$/.test(expected))throw new GitError(localizeMessage("service.theTagIdentityIsMissingOrInvalidRefreshAnd"),'OPERATION_CHANGED');
+          const current=await this.run(repo,['show-ref','--verify','--hash','--',ref],true);
+          if(current.code||current.stdout.toString('utf8').trim()!==expected)throw new GitError(localizeMessage("service.theTagChangedRefreshAndReopenThePushDialog", { name: (name) }),'OPERATION_CHANGED');
+        }
+        const failures:string[]=[];let pushed=0;
+        for(const name of names){try{await this.run(repo,['push','--no-follow-tags',destination,`refs/tags/${name}:refs/tags/${name}`]);pushed++;}catch(error){if(error instanceof GitTerminationError)throw error;failures.push(`${destination}/${name}: ${error instanceof Error?error.message:String(error)}`);}}
+        if(failures.length)throw new GitError(localizeMessage("service.tagEsPushedFailed", { pushed: (pushed), count: (failures.length), value: (failures.join('\n')) }),'PARTIAL_FAILURE');
+        return;
+      }
       case 'tag.delete': {
         const ref = `refs/tags/${token(action.name, 'tag name')}`, expected = action.expectedOid;
         await this.run(repo, ['check-ref-format', ref]);

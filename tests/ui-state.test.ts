@@ -31,6 +31,8 @@ describe('repository UI consistency', () => {
     expect(tagMenu.some(item=>item.label.includes('Remote Branch'))).toBe(false);
     expect(tagMenu.some(item=>item.label.includes('Delete'))).toBe(false);
     expect(tagMenu.at(-1)?.label).toBe('Copy Tag Names');
+    const pushTags=tagMenu.find(item=>item.label==='Push 2 Tags…')!;expect(pushTags.disabled).toBe(false);pushTags.run();
+    expect(api.open).toHaveBeenCalledWith({type:'tag.push',names:['v1','v2'],expectedOids:{v1:'1'.repeat(40),v2:'2'.repeat(40)}});
     const mixed=menuFor({kind:'ref',ref:tags[0],refs:[tags[0],local]},api).items;
     expect(mixed.some(item=>item.label.includes('Delete'))).toBe(false);
     expect(mixed.at(-1)?.label).toBe('Copy Reference Names');
@@ -495,6 +497,8 @@ describe('repository UI consistency', () => {
     const tag={kind:'tag' as const,name:'v1',fullName:'refs/tags/v1',oid:'a'.repeat(40),refOid:'b'.repeat(40)};
     store.setState({snapshot:{...snapshot(a),refs:[tag]},language:'en'});
     const menu=menuFor({kind:'ref',ref:tag},api).items.find(item=>item.label==='Delete Tag…')!;
+    const push=menuFor({kind:'ref',ref:tag},api).items.find(item=>item.label==='Push Tag…')!;push.run();
+    expect(open).toHaveBeenCalledWith({type:'tag.push',names:['v1'],expectedOids:{v1:'b'.repeat(40)}});
     store.setState({snapshot:{...snapshot(a,2),refs:[{...tag,refOid:'c'.repeat(40)}]}});
     await menu.run();
     expect(open).toHaveBeenCalledWith({type:'tag.delete',target:'v1',expectedOid:'b'.repeat(40)});

@@ -656,18 +656,19 @@ Use the operations in this chapter only after you understand the relationships i
 
 <a id="section-09-01"></a>
 
-### Create and delete local Tags
+### Create, push, and delete Tags
 
 **Prerequisite:** Identify the version you want to tag.
 
 1. Right-click the target Commit or branch and choose Create Tag…, or use the entry point in the Tags heading.
 2. Enter a name, such as v1.1.0, in Tag Name and verify Target Commit. If you need a description, fill in Annotation, then click Create Tag.
 3. Check the new tag under Tags and use Show in Graph to locate it.
-4. To delete a tag, right-click the target Tag, choose Delete Tag…, verify the name, and confirm.
+4. To publish tags, right-click one or more Tags, choose Push Tag… or Push N Tags…, then verify the complete Tag list and Remote.
+5. To delete a local tag, right-click the target Tag, choose Delete Tag…, verify the name, and confirm.
 
-**Result:** The local Tag points to the specified version, or the target local Tag has been removed.
+**Result:** The local Tag points to the specified version, the explicitly selected Tags are published to the Remote, or the target local Tag has been removed.
 
-**Caution:** This version does not provide remote Tag management. Do not assume that a change in the local list also changes the tags on the server.
+**Caution:** Tag Push sends only the Tags listed in the dialog, supports lightweight and annotated Tags, does not include other local Tags, and does not overwrite a differently identified remote Tag with the same name. Local deletion does not delete a remote Tag; this version does not provide remote Tag deletion or replacement.
 
 ![Create Tag dialog showing Tag Name, Target Commit, and Annotation](images/user-manual/figure-28.png)
 
@@ -954,7 +955,7 @@ Basic functionality requires VS Code 1.95+ and Git 2.40+. Saving selected files 
 
 Git runs in the VS Code extension host where the repository resides. The product architecture is designed for local environments, WSL, Remote SSH, and Dev Containers; Git, paths, permissions, and authentication still need to be verified separately in each environment. Git is not executed in untrusted workspaces, and browser-only virtual workspaces are not supported.
 
-Current scope: whole-file staging, standard Rebase, and remote branch management. Not currently provided: hunk staging, interactive Rebase, commit reordering, Squash, Fixup, Format Patch, remote Tag management, or freely floating panels.
+Current scope: whole-file staging, standard Rebase, remote branch management, and explicit Tag Push. Not currently provided: hunk staging, interactive Rebase, commit reordering, Squash, Fixup, Format Patch, remote Tag deletion or replacement, or freely floating panels.
 
 | Setting | Default or range | Description |
 | --- | --- | --- |

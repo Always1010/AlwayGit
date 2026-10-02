@@ -1003,5 +1003,35 @@
     "zh-CN": "我确认要重新应用当前分支历史中已有提交的改动。",
     "review": "translated",
     "context": "Cherry-pick eligibility and explicit historical reapplication"
+  },
+  "actions.pushTag": {
+    "en": "Push Tag",
+    "zh-CN": "推送标签",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx"
+  },
+  "actions.pushTags": {
+    "en": "Push {{count}} Tags",
+    "zh-CN": "推送 {{count}} 个标签",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx"
+  },
+  "actions.selectTagsAndRemote": {
+    "en": "Select at least one Tag and a Remote.",
+    "zh-CN": "请选择至少一个标签和一个远程仓库。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx"
+  },
+  "actions.selectedTags": {
+    "en": "Selected Tags · {{count}}",
+    "zh-CN": "所选标签 · {{count}}",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx"
+  },
+  "actions.pushesOnlyTheListedTags": {
+    "en": "Only the listed Tags will be pushed. Existing remote Tags with different identities are not overwritten.",
+    "zh-CN": "只会推送上面列出的标签；不会覆盖远端已有但身份不同的同名标签。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx"
   }
 }

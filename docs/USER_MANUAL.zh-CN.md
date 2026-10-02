@@ -656,18 +656,19 @@ Stash 用于暂时保存尚未提交的修改。它与 Stage 完全不同：Stag
 
 <a id="section-09-01"></a>
 
-### 创建和删除本地 Tag
+### 创建、推送和删除 Tag
 
 **前提：** 明确要标记的版本。
 
 1. 右键目标 Commit 或分支选择 Create Tag…，或使用 Tags 标题入口。
 2. 在 Tag Name 输入名称，例如 v1.1.0；核对 Target Commit。需要说明时填写 Annotation，再点击 Create Tag。
 3. 在 Tags 中检查新标签，使用 Show in Graph 定位。
-4. 删除时右键目标 Tag 选择 Delete Tag…，核对名称后确认。
+4. 要发布标签时，右键单个或多选 Tag，选择 Push Tag… / Push N Tags…，核对完整标签清单和 Remote 后执行。
+5. 删除本地标签时，右键目标 Tag 选择 Delete Tag…，核对名称后确认。
 
-**结果：** 本地 Tag 指向指定版本，或目标本地 Tag 被移除。
+**结果：** 本地 Tag 指向指定版本、明确选择的 Tag 已发布到 Remote，或目标本地 Tag 被移除。
 
-**注意：** 本版本不提供远程 Tag 管理。不要从本地列表变化推断服务器标签同步变化。
+**注意：** Tag Push 只发送对话框列出的标签，支持轻量和注解 Tag，不会附带其他本地 Tag，也不会覆盖远端身份不同的同名 Tag。本地删除不会删除远端 Tag；本版本不提供远端 Tag 删除或替换。
 
 ![图 28  Tag Name 与 Target Commit 确定版本 Annotation 为可选说明](images/user-manual/figure-28.png)
 
@@ -954,7 +955,7 @@ Stash 用于暂时保存尚未提交的修改。它与 Stage 完全不同：Stag
 
 Git 在仓库所在的 VS Code 扩展宿主中执行。产品架构面向本地、WSL、Remote SSH 与 Dev Containers；不同环境仍需分别确认 Git、路径、权限和认证。未受信任工作区不执行 Git，纯浏览器虚拟工作区不受支持。
 
-当前范围：整文件暂存、普通 Rebase、远程分支管理。当前不提供：分块暂存、交互式 Rebase、提交重排、Squash、Fixup、Format Patch、远程 Tag 管理和自由浮动面板。
+当前范围：整文件暂存、普通 Rebase、远程分支管理和显式 Tag 推送。当前不提供：分块暂存、交互式 Rebase、提交重排、Squash、Fixup、Format Patch、远端 Tag 删除或替换和自由浮动面板。
 
 | 配置项 | 默认值或范围 | 说明 |
 | --- | --- | --- |
