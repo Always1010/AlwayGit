@@ -34,7 +34,7 @@ function DiffHeightField({ value, onChange }: { value: number; onChange(value: n
     const valid = Number.isFinite(next) ? next : value;
     setDraft(String(valid)); onChange(valid);
   };
-  return <label>{t('Diff line height', 'Diff 行高')}<select aria-label={t('Diff line height', 'Diff 行高')} value={custom ? 'custom' : value} onChange={event => {
+  return <label>{t('Line height', '行高')}<select aria-label={t('Diff line height', 'Diff 行高')} value={custom ? 'custom' : value} onChange={event => {
     const isCustom = event.target.value === 'custom'; setCustom(isCustom);
     if (!isCustom) onChange(Number(event.target.value));
   }}>{presets.map(size => <option key={size} value={size}>{size}px{size === 18 ? t(' · Default', ' · 默认') : ''}</option>)}<option value="custom">{t('Custom', '自定义')}</option></select>
@@ -155,11 +155,32 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
         <header className="settings-page-heading"><span>{page === 'advanced' ? t('Advanced', '高级') : page === 'language' ? t('General', '常规') : page === 'colors' ? t('Commit graph', '提交图') : t('Interface', '界面')} › {pageLabel}</span><small>{page === 'advanced' ? t('Git options take effect only after Apply.', 'Git 操作选项在应用后生效。') : t('Changes preview immediately. Apply to save.', '调整会立即预览，应用后保存。')}</small></header>
 
         {saveError&&<p role="alert" className="form-error">{saveError}</p>}
-        {page === 'diff' && <section className="settings-page" aria-labelledby="diff-heading">
-          <h3 id="diff-heading">Diff</h3>
-          <label className="settings-control">{t('Diff navigation scope', 'Diff 导航范围')}<select aria-label={t('Diff navigation scope', 'Diff 导航范围')} value={state.diffNavigationScope} onChange={event=>state.previewSettings({ diffNavigationScope: event.target.value as DiffNavigationScope })}><option value="commit">{t('Entire Commit · Default', '整个 Commit · 默认')}</option><option value="file">{t('Current file', '当前文件')}</option></select></label>
-          <p className="settings-page-copy">{t('Entire Commit follows the changed-file order. Next moves to the first change in the next file; Previous moves to the last change in the previous file. The first and last changes of the Commit wrap around.', '整个 Commit 按变更文件顺序导航。下一处跨文件定位第一处修改，上一处跨文件定位最后一处修改，Commit 的首尾循环衔接。')}</p>
-          <p className="settings-note">{t('Navigates all files in the current Commit and selected Parent, including files hidden by the path filter. Binary files and files without text change blocks are skipped; truncated files only include previewed changes. Working Tree, Stash and comparisons continue to cycle within the current file.', '范围为当前 Commit 和所选 Parent 的全部文件，包括路径筛选隐藏的文件。跳过二进制文件及没有文本修改块的文件；截断文件仅导航预览中的修改。Working Tree、Stash 和 Commit 比较仍在当前文件内循环。')}</p>
+        {page === 'diff' && <section className="settings-page settings-diff-page" aria-label="Diff">
+          <section className="settings-section" aria-labelledby="diff-display-heading">
+            <h3 id="diff-display-heading">{t('Display', '显示')}</h3>
+            <div className="settings-grid">
+              <label>{t('Font size', '字号')}<select aria-label={t('Diff font', 'Diff 字号')} value={appearance.codeFont} onChange={event => updateAppearance({ ...appearance, codeFont: Number(event.target.value) })}>{[11,12,13,14,15,16,17,18].map(size => <option key={size} value={size}>{size}px{size === 12 ? t(' · Default', ' · 默认') : ''}</option>)}</select></label>
+              <DiffHeightField value={appearance.codeRowHeight} onChange={codeRowHeight => updateAppearance({ ...appearance, codeRowHeight })}/>
+            </div>
+            <figure className="settings-preview">
+              <figcaption><span>{t('Preview', '预览')}</span><span>{t('Rendered line height', '实际行高')} · {diffRowHeight(appearance.codeFont, appearance.codeRowHeight)}px</span></figcaption>
+              <div className="diff-content settings-diff-preview" role="region" aria-label={t('Diff text preview', 'Diff 文字预览')}>
+                <div className="settings-diff-preview-line"><span className="line-number">12</span><span className="diff-marker"> </span><code>const title = 'AlwayGit';</code></div>
+                <div className="settings-diff-preview-line removed"><span className="line-number">13</span><span className="diff-marker">−</span><code>const count = 1;</code></div>
+                <div className="settings-diff-preview-line added"><span className="line-number">13</span><span className="diff-marker">+</span><code>const count = 2;</code></div>
+              </div>
+            </figure>
+          </section>
+          <section className="settings-section" aria-labelledby="diff-navigation-heading">
+            <h3 id="diff-navigation-heading">{t('Navigation', '导航')}</h3>
+            <label className="settings-control">{t('Navigation scope', '导航范围')}<select aria-label={t('Diff navigation scope', 'Diff 导航范围')} value={state.diffNavigationScope} onChange={event=>state.previewSettings({ diffNavigationScope: event.target.value as DiffNavigationScope })}><option value="commit">{t('Entire Commit · Default', '整个 Commit · 默认')}</option><option value="file">{t('Current file', '当前文件')}</option></select></label>
+            <p className="settings-note">{state.diffNavigationScope === 'commit' ? t('Navigate changes across all files in the Commit, wrapping at either end.', '在整个提交的变更文件之间跳转，首尾循环。') : t('Navigate changes within the current file, wrapping at either end.', '在当前文件的修改之间跳转，首尾循环。')}</p>
+            <details className="settings-rules">
+              <summary>{t('Detailed rules', '详细规则')}</summary>
+              <p className="settings-note">{t('Entire Commit follows the changed-file order. Next moves to the first change in the next file; Previous moves to the last change in the previous file. The first and last changes of the Commit wrap around.', '整个 Commit 按变更文件顺序导航。下一处跨文件定位第一处修改，上一处跨文件定位最后一处修改，Commit 的首尾循环衔接。')}</p>
+              <p className="settings-note">{t('Navigates all files in the current Commit and selected Parent, including files hidden by the path filter. Binary files and files without text change blocks are skipped; truncated files only include previewed changes. Working Tree, Stash and comparisons continue to cycle within the current file.', '范围为当前 Commit 和所选 Parent 的全部文件，包括路径筛选隐藏的文件。跳过二进制文件及没有文本修改块的文件；截断文件仅导航预览中的修改。Working Tree、Stash 和 Commit 比较仍在当前文件内循环。')}</p>
+            </details>
+          </section>
         </section>}
         {page === 'advanced' && <section className="settings-page" aria-labelledby="advanced-heading">
           <h3 id="advanced-heading">{t('Git operations','Git 操作')}</h3>
@@ -184,20 +205,19 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
           </div>
         </section>}
 
-        {page === 'density' && <section className="settings-page" aria-labelledby="density-heading">
-          <h3 id="density-heading">{t('Text & density', '字号与密度')}</h3>
+        {page === 'density' && <section className="settings-page" aria-label={t('Text & density', '字号与密度')}>
           <div className="settings-grid">
             <label>{t('Interface font', '界面字号')}<select aria-label={t('Interface font', '界面字号')} value={layout.font} onChange={event => state.previewSettings({ font: Number(event.target.value) })}>{[12,13,14,15,16].map(size => <option key={size} value={size}>{size}px{size === 13 ? t(' · Default', ' · 默认') : ''}</option>)}</select></label>
-            <label>{t('Diff font', 'Diff 字号')}<select aria-label={t('Diff font', 'Diff 字号')} value={appearance.codeFont} onChange={event => updateAppearance({ ...appearance, codeFont: Number(event.target.value) })}>{[11,12,13,14,15,16,17,18].map(size => <option key={size} value={size}>{size}px</option>)}</select></label>
             <label>{t('List density', '列表密度')}<select aria-label={t('List density', '列表密度')} value={layout.row} onChange={event => state.previewSettings({ row: Number(event.target.value) })}>{densityOptions.map(size => <option key={size} value={size}>{size === 22 ? t('Dense', '密集') : size === 24 ? t('Compact · Default', '紧凑 · 默认') : size === 28 ? t('Comfortable', '舒适') : t('Custom', '自定义')} · {size}px</option>)}</select></label>
-            <DiffHeightField value={appearance.codeRowHeight} onChange={codeRowHeight => updateAppearance({ ...appearance, codeRowHeight })}/>
             <FileSpacingField value={appearance.fileSpacing} onChange={fileSpacing => updateAppearance({ ...appearance, fileSpacing })}/>
           </div>
-          <div className="settings-row-preview" style={{ minHeight: effectiveRowHeight(layout) }}><Icon name="git-commit"/><span className="ref-badge local" aria-current="true">main</span><span className="truncate">feat: {t('Refine the workbench', '优化工作台体验')}</span><span className="muted">{effectiveRowHeight(layout)}px</span></div>
-          <div className="file-item settings-file-preview"><span className="file-status status-M" title={t('Modified', '已修改')} role="img" aria-label={t('Modified', '已修改')}><Icon name="file-code"/><span className="file-status-badge" aria-hidden="true">M</span></span><span className="file-label"><span className="file-basename">App.tsx</span><span className="file-parent-path">./webview</span></span><span className="muted">{fileRowHeight(layout.font, appearance.fileSpacing)}px</span></div>
+          <figure className="settings-preview">
+            <figcaption>{t('Preview', '预览')}</figcaption>
+            <div className="settings-row-preview" style={{ minHeight: effectiveRowHeight(layout) }}><Icon name="git-commit"/><span className="ref-badge local" aria-current="true">main</span><span className="truncate">feat: {t('Refine the workbench', '优化工作台体验')}</span><span className="muted">{effectiveRowHeight(layout)}px</span></div>
+            <div className="file-item settings-file-preview"><span className="file-status status-M" title={t('Modified', '已修改')} role="img" aria-label={t('Modified', '已修改')}><Icon name="file-code"/><span className="file-status-badge" aria-hidden="true">M</span></span><span className="file-label"><span className="file-basename">App.tsx</span><span className="file-parent-path">./webview</span></span><span className="muted">{fileRowHeight(layout.font, appearance.fileSpacing)}px</span></div>
+          </figure>
           <p className="settings-note">{t('File spacing sets the padding above and below each file in Commit Details, comparisons and Working Tree. The filename and path remain on two lines; long paths expand as needed.', '文件间距控制 Commit 详情、比较和 Working Tree 文件行的上下留白。保留文件名与路径两行，长路径自动增高。')}</p>
           <p className="settings-note">{t('Row height grows with larger text to keep every line readable.', '大字号会自动增加最小行高，避免文字被裁切。')}</p>
-          <p className="settings-note">{t('Diff line height', 'Diff 行高')}: {diffRowHeight(appearance.codeFont, appearance.codeRowHeight)}px · {t('Custom range: 16–36px; at least font size + 4px.', '自定义范围 16–36px；实际行高至少为字号 + 4px。')}</p>
         </section>}
 
         {page === 'status' && <section className="settings-page" aria-labelledby="status-heading">
