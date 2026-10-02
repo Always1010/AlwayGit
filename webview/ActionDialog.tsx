@@ -99,9 +99,9 @@ function StandardActionDialog({ dialog, onClose, openAbort, replaceDialog }: { d
         if (v.branch && v.newBranch || checks.detach && (v.branch || v.newBranch)) { setValidation(t('Choose an existing branch, a new branch, or Detached HEAD.','请选择已有分支、新分支或 Detached HEAD 中的一项。')); return; }
         action={type,path:v.path,branch:v.branch || undefined,newBranch:v.newBranch || undefined,start:v.start || undefined,detach:!!checks.detach}; break;
       case 'worktree.remove': action={type,path:v.path,force:!!checks.force}; break;
-      case 'merge': case 'rebase': action={type,target:v.target}; break;
+      case 'merge': case 'rebase': action={type,target:v.target,expectedHead:snapshot.head??'',expectedBranch:snapshot.branch}; break;
       case 'cherry-pick': case 'revert': { const mainline=v.mainline?Number(v.mainline):undefined; if(mainline!==undefined && (!Number.isInteger(mainline)||mainline<1)){setValidation(t('Mainline parent must be a positive integer.','Mainline 父 Commit 序号必须为正整数。'));return;} action={type,commits:v.target.split(/[\s,]+/).filter(Boolean),mainline,expectedHead:snapshot.head,expectedBranch:snapshot.branch||undefined}; break; }
-      case 'reset': action={type,target:v.target,mode:v.mode as 'soft'|'mixed'|'hard'}; break;
+      case 'reset': action={type,target:v.target,mode:v.mode as 'soft'|'mixed'|'hard',expectedHead:snapshot.head??'',expectedBranch:snapshot.branch}; break;
       case 'discard': action={type,paths:dialog.paths ?? []}; break;
       case 'operation.abort': if(!snapshot.operation.kind)return; action={type,kind:snapshot.operation.kind}; break;
       default: return;

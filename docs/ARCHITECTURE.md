@@ -106,6 +106,8 @@ Snapshot 为当前分支解析 Push 目标，依次考虑 `branch.<name>.pushRem
 
 远端删除与 Force-with-lease 在确认时固定远端 OID 和 Push 地址指纹；执行使用显式 `--force-with-lease=<ref>:<oid>`，空 OID 表示仅允许仍不存在的目标。后台 Fetch 不更新已确认 OID；地址变化、缺少确认或多个 Push 地址拒绝危险操作。指纹不向 Webview 暴露含凭据的地址。批量删除逐项报告成功与失败，终止未确认立即停止后续操作。
 
+Reset、Merge 和 Rebase 在确认前将目标解析为固定 Commit OID，并绑定用户看到的当前分支与 HEAD；宿主确认后在共享写队列内再次核对，现场变化时拒绝操作，要求刷新后重新确认。Reset 原生确认显示当前分支、HEAD 与固定目标。外部 Git 仍可能在最后核对后竞争，Git 锁与执行错误继续生效。
+
 高风险操作由宿主执行明确确认。提交遇到未保存编辑器内容时说明 Git 提交的是 Index。Git hooks、签名、认证和网络错误反馈真实失败，不尝试绕过。
 
 ## 安全边界

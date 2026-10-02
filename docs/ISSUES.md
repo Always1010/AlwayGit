@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-051：Reset、Merge 和 Rebase 确认后可能作用于已改变的分支
+
+- 日期：2026-10-03
+- 状态：已解决
+- 现象：对话框打开或原生确认等待期间切换分支、移动 HEAD 或目标引用，执行仍可能作用于新的现场或引用。
+- 原因：请求仅携带目标名称，没有绑定确认时的分支、HEAD 和固定目标。
+- 解决方案：RPC 要求当前分支与 HEAD；确认前解析固定 Commit，写队列中重新校验现场，变化或缺失上下文拒绝操作；Reset 原生确认展示分支、HEAD 和目标。
+- 验证方式：类型检查通过；相关四文件 46 项检查通过（其中修正旧测试调用后定向重跑 4 项），另通过 Checkout 冲突保护 1 项；真实 Git 覆盖三种操作期间分支切换、目标移动及 HEAD 变化。
+- 相关文件：`src/git/service.ts`、`src/protocol/types.ts`、`src/protocol/validation.ts`、`src/extension/workbench.ts`、`src/application/confirm.ts`、`webview/ActionDialog.tsx`、对应回归测试。
+
 ## BUG-049：忽略的属性文件缺失使所选 Stash 保存错误编码并阻止恢复
 
 - 日期：2026-10-03

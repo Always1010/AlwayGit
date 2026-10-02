@@ -8,6 +8,11 @@ vi.mock('vscode',()=>({window:{showWarningMessage:host.warning},workspace:{get t
 const repo:Repository={id:'repo',root:path.resolve('test-repo'),commonDir:path.resolve('test-repo/.git'),name:'Test'};
 beforeEach(()=>{host.warning.mockReset();host.documents=[];});
 describe('operation confirmation',()=>{
+  it('shows the frozen branch and HEAD in the native Reset confirmation', async () => {
+    const expectedHead = 'a'.repeat(40);
+    await confirmAction(repo, { type: 'reset', mode: 'hard', target: 'b'.repeat(40), expectedBranch: 'main', expectedHead }, 'zh-CN');
+    expect(host.warning.mock.calls[0][0]).toContain(`当前分支：main · HEAD：${expectedHead}`);
+  });
   it('names the known Abort restore target without promising full restoration',async()=>{
     const originalHead='a'.repeat(40),operation={kind:'merge' as const,conflicts:1,canContinue:false,canAbort:true,canSkip:false,originalHead};
     expect(await confirmAction(repo,{type:'operation.abort',kind:'merge'},'zh-CN',operation)).toBe(false);

@@ -44,9 +44,9 @@ export type GitAction =
   | { type: 'stash.drop'; selector: string; expectedOid?: string }
   | { type: 'worktree.add'; path: string; branch?: string; newBranch?: string; start?: string; detach?: boolean }
   | { type: 'worktree.remove'; path: string; force?: boolean }
-  | { type: 'merge' | 'rebase'; target: string }
+  | { type: 'merge' | 'rebase'; target: string; expectedHead?: string; expectedBranch?: string }
   | { type: 'cherry-pick' | 'revert'; commits: string[]; mainline?: number; expectedHead?: string; expectedBranch?: string }
-  | { type: 'reset'; target: string; mode: 'soft' | 'mixed' | 'hard' }
+  | { type: 'reset'; target: string; mode: 'soft' | 'mixed' | 'hard'; expectedHead?: string; expectedBranch?: string }
   | { type: 'operation.continue'; kind: OperationKind; reviewToken?: string }
   | { type: 'operation.abort' | 'operation.skip'; kind: OperationKind };
 export type ContentSource = { kind: 'revision'; revision: string; path: string } | { kind: 'index'; path: string; stage?: 0 | 1 | 2 | 3 } | { kind: 'empty' };
@@ -71,5 +71,6 @@ export interface GitServiceContract {
   stashDetails(repo: Repository, oid: string): Promise<StashDetails>;
   compare(repo: Repository, left: string, right: string, preserveOrder?: boolean): Promise<CommitComparison>;
   content(repo: Repository, source: ContentSource, maxBytes?: number): Promise<Buffer>;
+  prepareAction(repo: Repository, action: GitAction): Promise<GitAction>;
   execute(repo: Repository, action: GitAction): Promise<void>;
 }

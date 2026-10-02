@@ -25,7 +25,8 @@ describe('editor file boundary', () => {
 });
 describe('webview input validation', () => {
   it('rejects malformed actions, arbitrary commands and excessive inputs', () => {
-    expect(actionSchema.safeParse({ type: 'reset', target: 'HEAD', mode: 'hard' }).success).toBe(true);
+    expect(actionSchema.safeParse({ type: 'reset', target: 'HEAD', mode: 'hard', expectedHead: 'a'.repeat(40), expectedBranch: 'main' }).success).toBe(true);
+    expect(actionSchema.safeParse({ type: 'reset', target: 'HEAD', mode: 'hard' }).success).toBe(false);
     expect(actionSchema.safeParse({ type: 'reset', target: 'HEAD', mode: 'invented' }).success).toBe(false);
     expect(actionSchema.safeParse({ type: 'stage', paths: [] }).success).toBe(false);
     expect(actionSchema.safeParse({ type: 'shell', command: 'delete everything' }).success).toBe(false);

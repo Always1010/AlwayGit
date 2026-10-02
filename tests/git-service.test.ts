@@ -64,7 +64,7 @@ describe('Git service integration', () => {
   it('keeps history pagination fixed to captured tips as branches advance and selects merge parents', async () => {
     const { root, service, repo } = await setup(); const first = await commit(root, 'root.txt', 'one', 'root');
     await service.execute(repo, { type: 'branch.create', name: 'topic', checkout: true }); const side = await commit(root, 'side.txt', 'side', 'side');
-    await service.execute(repo, { type: 'branch.checkout', name: 'main' }); const main = await commit(root, 'main.txt', 'main', 'main'); await service.execute(repo, { type: 'merge', target: 'topic' });
+    await service.execute(repo, { type: 'branch.checkout', name: 'main' }); const main = await commit(root, 'main.txt', 'main', 'main'); await service.execute(repo, await service.prepareAction(repo, { type: 'merge', target: 'topic' }));
     const merge = await git(root, 'rev-parse', 'HEAD'); const page = await service.history(repo, { limit: 2 }); expect(page.hasMore).toBe(true); expect(page.commits[0].oid).toBe(merge);
     await commit(root, 'later.txt', 'later', 'later'); const second = await service.history(repo, { limit: 2, offset: page.nextOffset, tips: page.tips }); const combined = [...page.commits, ...second.commits].map(x => x.oid); expect(new Set(combined).size).toBe(4); expect(combined).toContain(first); expect(second.hasMore).toBe(false);
     const detail = await service.details(repo, merge, side); expect(detail.parent).toBe(side); expect(detail.files.map(x => x.path)).toEqual(['main.txt']); await expect(service.details(repo, merge, first)).rejects.toThrow('not a parent');
@@ -93,7 +93,7 @@ describe('Git service integration', () => {
   });
   it('reports conflicts, index stages, operation controls and aborts merge', async () => {
     const { root, service, repo } = await setup(); await commit(root, 'same.txt', 'base'); await service.execute(repo, { type: 'branch.create', name: 'topic', checkout: true }); await commit(root, 'same.txt', 'topic'); await service.execute(repo, { type: 'branch.checkout', name: 'main' }); await commit(root, 'same.txt', 'main');
-    await expect(service.execute(repo, { type: 'merge', target: 'topic' })).rejects.toThrow(); const snap = await service.snapshot(repo); expect(snap.operation).toMatchObject({ kind: 'merge', conflicts: 1, canContinue: false, canAbort: true, canSkip: false }); expect(snap.changes[0].conflict).toBe(true);
+    await expect(service.execute(repo, await service.prepareAction(repo, { type: 'merge', target: 'topic' }))).rejects.toThrow(); const snap = await service.snapshot(repo); expect(snap.operation).toMatchObject({ kind: 'merge', conflicts: 1, canContinue: false, canAbort: true, canSkip: false }); expect(snap.changes[0].conflict).toBe(true);
     expect((await service.content(repo, { kind: 'index', path: 'same.txt', stage: 1 })).toString()).toBe('base'); expect((await service.content(repo, { kind: 'index', path: 'same.txt', stage: 2 })).toString()).toBe('main'); expect((await service.content(repo, { kind: 'index', path: 'same.txt', stage: 3 })).toString()).toBe('topic');
     await expect(service.execute(repo, { type: 'operation.continue', kind: 'merge' })).rejects.toThrow('Resolve conflicts'); await service.execute(repo, { type: 'operation.abort', kind: 'merge' }); expect((await service.snapshot(repo)).operation.kind).toBeUndefined();
   });
@@ -101,7 +101,7 @@ describe('Git service integration', () => {
     const { root, service, repo } = await setup(); await commit(root, 'same.txt', 'base\n');
     await git(root, 'switch', '-c', 'topic'); const topic = await commit(root, 'same.txt', 'topic\n');
     await git(root, 'switch', 'main'); const originalHead = await commit(root, 'same.txt', 'main\n');
-    await expect(service.execute(repo, kind==='cherry-pick'||kind==='revert'?{type:kind,commits:[topic]}:{type:kind,target:'topic'})).rejects.toThrow();
+    await expect(service.execute(repo, await service.prepareAction(repo, kind==='cherry-pick'||kind==='revert'?{type:kind,commits:[topic]}:{type:kind,target:'topic'}))).rejects.toThrow();
     await expect(service.reviewOperation(repo)).rejects.toMatchObject({code:'CONFLICTS'});
     await service.execute(repo, { type:'resolve-and-stage', paths:['same.txt'] });
     expect((await service.snapshot(repo)).operation).toMatchObject({kind,conflicts:0,canContinue:true});
@@ -118,7 +118,7 @@ describe('Git service integration', () => {
   });
   it('scans the index rather than the edited working file and rejects changed review content', async()=>{
     const {root,service,repo}=await setup();await commit(root,'same.txt','base\n');await git(root,'switch','-c','topic');await commit(root,'same.txt','topic\n');await git(root,'switch','main');await commit(root,'same.txt','main\n');
-    await expect(service.execute(repo,{type:'merge',target:'topic'})).rejects.toThrow();await service.execute(repo,{type:'resolve-and-stage',paths:['same.txt']});
+    await expect(service.execute(repo,await service.prepareAction(repo,{type:'merge',target:'topic'}))).rejects.toThrow();await service.execute(repo,{type:'resolve-and-stage',paths:['same.txt']});
     await expect(service.execute(repo,{type:'resolve-and-stage',paths:['same.txt']})).rejects.toMatchObject({code:'OPERATION_CHANGED'});
     await writeFile(path.join(root,'same.txt'),'topic-ready\n');const review=await service.reviewOperation(repo);
     expect(review.files[0].lines).toEqual([1,3,5]);
@@ -131,7 +131,7 @@ describe('Git service integration', () => {
   });
   it('reports partial markers, diff3 custom widths and unscanned files without claiming correctness',async()=>{
     const {root,service,repo}=await setup();await commit(root,'same.txt','base');await git(root,'switch','-c','topic');await commit(root,'same.txt','topic');await git(root,'switch','main');await commit(root,'same.txt','main');
-    await expect(service.execute(repo,{type:'merge',target:'topic'})).rejects.toThrow();
+    await expect(service.execute(repo,await service.prepareAction(repo,{type:'merge',target:'topic'}))).rejects.toThrow();
     await writeFile(path.join(root,'same.txt'),'<<<<<<< ours\r\n||||||||| base\r\n=========\r\n>>>>>>>>> theirs\r\nlegitimate text');
     await writeFile(path.join(root,'binary.bin'),Buffer.from([0,255,10]));await writeFile(path.join(root,'large.txt'),'x'.repeat(2*1024*1024+1));await writeFile(path.join(root,'encoded.txt'),Buffer.from([255,10]));
     await git(root,'add','--','same.txt','binary.bin','large.txt','encoded.txt');const review=await service.reviewOperation(repo);
@@ -201,12 +201,44 @@ describe('Git service integration', () => {
     const { root, service, repo } = await setup();
     const base = await commit(root, 'base.txt', 'base');
     await commit(root, 'later.txt', 'later');
-    await service.execute(repo, { type: 'reset', mode: 'hard', target: base });
+    await service.execute(repo, await service.prepareAction(repo, { type: 'reset', mode: 'hard', target: base }));
     expect(await git(root, 'rev-parse', 'HEAD')).toBe(base);
     await expect(readFile(path.join(root, 'later.txt'))).rejects.toThrow();
     await service.execute(repo, { type: 'commit', message: 'amended base', amend: true });
     expect((await service.details(repo, 'HEAD')).commit.subject).toBe('amended base');
     expect(await readFile(path.join(root, 'base.txt'), 'utf8')).toBe('base');
+  });
+
+  it.each(['merge', 'rebase', 'reset'] as const)('rejects %s after the confirmed current branch changes', async type => {
+    const { root, service, repo } = await setup();
+    const target = await commit(root, 'base.txt', 'base');
+    const head = await commit(root, 'base.txt', 'later');
+    const action = await service.prepareAction(repo, type === 'reset' ? { type, target, mode: 'hard' } : { type, target });
+    await git(root, 'switch', '-c', 'other');
+    await writeFile(path.join(root, 'base.txt'), 'other staged content');
+    await git(root, 'add', '--', 'base.txt');
+    const index = await git(root, 'ls-files', '--stage');
+    await expect(service.execute(repo, action)).rejects.toMatchObject({ code: 'OPERATION_CHANGED' });
+    expect(await git(root, 'symbolic-ref', '--short', 'HEAD')).toBe('other');
+    expect(await git(root, 'rev-parse', 'HEAD')).toBe(head);
+    expect(await git(root, 'ls-files', '--stage')).toBe(index);
+    expect(await readFile(path.join(root, 'base.txt'), 'utf8')).toBe('other staged content');
+  });
+
+  it('pins a prepared Reset target and rejects a newer current HEAD before execution', async () => {
+    const { root, service, repo } = await setup();
+    const target = await commit(root, 'base.txt', 'base');
+    await git(root, 'branch', 'selected-target', target);
+    const head = await commit(root, 'later.txt', 'later');
+    const action = await service.prepareAction(repo, { type: 'reset', target: 'selected-target', mode: 'soft' });
+    expect(action).toMatchObject({ target, expectedHead: head, expectedBranch: 'main' });
+    await git(root, 'branch', '-f', 'selected-target', head);
+    await service.execute(repo, action);
+    expect(await git(root, 'rev-parse', 'HEAD')).toBe(target);
+    const stale = await service.prepareAction(repo, { type: 'reset', target: head, mode: 'hard' });
+    await git(root, 'reset', '--mixed', head);
+    await expect(service.execute(repo, stale)).rejects.toMatchObject({ code: 'OPERATION_CHANGED' });
+    await expect(service.execute(repo, { type: 'reset', target, mode: 'hard' })).rejects.toMatchObject({ code: 'OPERATION_CHANGED' });
   });
 
   it('rebases a topic onto main while preserving both branches of content', async () => {
@@ -217,7 +249,7 @@ describe('Git service integration', () => {
     await git(root, 'switch', 'main');
     const main = await commit(root, 'main.txt', 'main');
     await git(root, 'switch', 'topic');
-    await service.execute(repo, { type: 'rebase', target: 'main' });
+    await service.execute(repo, await service.prepareAction(repo, { type: 'rebase', target: 'main' }));
     expect((await service.snapshot(repo)).operation.kind).toBeUndefined();
     expect(await git(root, 'rev-parse', 'HEAD^')).toBe(main);
     expect(await readFile(path.join(root, 'topic.txt'), 'utf8')).toBe('topic');
@@ -248,7 +280,7 @@ describe('Git service integration', () => {
   it('rejects path traversal/options and surfaces external locks, hooks, and bounded output failures', async () => {
     const { root, service, repo } = await setup(); await commit(root, 'a.txt', 'a');
     for (const file of ['../outside', 'C:\\outside', '/outside', '.git/config', 'dir/../../out', '.']) expect(() => validateFilePath(file)).toThrow();
-    await expect(service.execute(repo, { type: 'branch.create', name: 'bad name' })).rejects.toThrow('Branch names cannot contain spaces'); await expect(service.execute(repo, { type: 'branch.create', name: '--bad' })).rejects.toThrow('cannot start with a hyphen'); await expect(service.execute(repo, { type: 'merge', target: '--help' })).rejects.toThrow();
+    await expect(service.execute(repo, { type: 'branch.create', name: 'bad name' })).rejects.toThrow('Branch names cannot contain spaces'); await expect(service.execute(repo, { type: 'branch.create', name: '--bad' })).rejects.toThrow('cannot start with a hyphen'); await expect(service.prepareAction(repo, { type: 'merge', target: '--help' })).rejects.toThrow();
     await writeFile(path.join(root, '.git', 'index.lock'), ''); await writeFile(path.join(root, 'a.txt'), 'edited'); await expect(service.execute(repo, { type: 'stage', paths: ['a.txt'] })).rejects.toThrow('Another Git process'); await rm(path.join(root, '.git', 'index.lock'));
     await service.execute(repo, { type: 'stage', paths: ['a.txt'] }); await writeFile(path.join(root, '.git', 'hooks', 'pre-commit'), '#!/bin/sh\necho rejected-by-test-hook >&2\nexit 1\n'); await expect(service.execute(repo, { type: 'commit', message: 'blocked' })).rejects.toThrow('rejected-by-test-hook');
     await writeFile(path.join(root, '.git', 'hooks', 'pre-commit'), '#!/bin/sh\nsleep 10\n'); let calls = 0; let disposed = 0;
