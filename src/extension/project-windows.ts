@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { WindowBridge, canonicalPath, type ProjectRequest, type WindowRecord } from '../application/window-bridge';
+import { RepositoryOperationLock } from '../application/operation-lock';
 import type { GitDocuments } from '../editor/documents';
 import type { RepositoryManager } from '../repositories/manager';
 import type { DiffTarget } from '../protocol/types';
@@ -10,12 +11,14 @@ import type { DiffTarget } from '../protocol/types';
 /** Routes only to windows where the repository is part of the actual workspace. */
 export class ProjectWindows implements vscode.Disposable {
   readonly bridge: WindowBridge;
+  private readonly operationLock: RepositoryOperationLock;
   private readonly disposables: vscode.Disposable[] = [];
   private focusCommand = false;
   private readonly opening = new Map<string, Promise<WindowRecord>>();
-  constructor(context: vscode.ExtensionContext, private readonly log: vscode.OutputChannel, private readonly repositories: RepositoryManager, private readonly documents: GitDocuments, private readonly showWorkbench: (repoId?: string, blank?: boolean) => Promise<void>) {
+  constructor(context: vscode.ExtensionContext, private readonly log: vscode.OutputChannel, private readonly repositories: RepositoryManager, private readonly documents: GitDocuments, private readonly showWorkbench: (repoId?: string, blank?: boolean) => Promise<void>, private readonly synchronizeRepositories: () => Promise<void> = async () => {}, private readonly repositoryActivity: (commonDir: string, busy: boolean, label: string) => void = () => {}) {
     const scope = createHash('sha256').update([context.globalStorageUri.toString(), vscode.env.appRoot, vscode.env.remoteName ?? '', process.env.VSCODE_IPC_HOOK ?? ''].join('|')).digest('hex').slice(0, 24);
     this.bridge = new WindowBridge(path.join(tmpdir(), 'alwaygit-windows-' + scope), request => this.execute(request), message => this.log.appendLine('[project-window] ' + message));
+    this.operationLock = new RepositoryOperationLock(path.join(this.bridge.directory, 'operation-locks'), this.bridge.record.id);
   }
   private roots(): string[] { return (vscode.workspace.workspaceFolders ?? []).filter(folder => folder.uri.scheme === 'file').map(folder => folder.uri.fsPath); }
   async start(): Promise<void> {
@@ -47,7 +50,19 @@ export class ProjectWindows implements vscode.Disposable {
   }
   async openFile(root: string, filename: string): Promise<void> { await this.route({ root, action: 'file', path: filename }); }
   async openDiff(root: string, target: DiffTarget): Promise<void> { await this.route({ root, action: 'diff', target }); }
+  async notifyCatalogChanged(): Promise<void> { await this.bridge.broadcast({ action: 'catalog-changed' }); }
+  async runRepositoryOperation<T>(commonDir: string, label: string, task: () => Promise<T>): Promise<T> {
+    const canonical = await canonicalPath(commonDir), lease = await this.operationLock.acquire(canonical, label);
+    await this.bridge.broadcast({ action: 'repository-activity', commonDir: canonical, busy: true, label });
+    try { return await task(); }
+    finally {
+      await this.bridge.broadcast({ action: 'repository-activity', commonDir: canonical, busy: false, label });
+      await lease.release();
+    }
+  }
   private async execute(request: ProjectRequest): Promise<void> {
+    if (request.action === 'catalog-changed') { await this.synchronizeRepositories(); return; }
+    if (request.action === 'repository-activity') { this.repositoryActivity(request.commonDir, request.busy, request.label); return; }
     if (!vscode.workspace.isTrusted) throw new Error('Trust the project workspace before opening it from AlwayGit.');
     if (request.action === 'show-workbench') {
       await this.showWorkbench(undefined, true);
@@ -77,7 +92,7 @@ export class ProjectWindows implements vscode.Disposable {
     if (!vscode.window.state.focused) throw new Error('VS Code could not activate the selected project window. Switch to that window and try again.');
   }
   private async route(request: ProjectRequest): Promise<void> {
-    if (request.action === 'show-workbench') throw new Error('A blank Workbench must be routed to a new window.');
+    if (request.action === 'show-workbench' || request.action === 'catalog-changed' || request.action === 'repository-activity') throw new Error('A window-level request cannot be routed as a project request.');
     const root = await canonicalPath(request.root);
     const existing = await this.find(root);
     if (existing) { await WindowBridge.send(existing, { ...request, root }); return; }
@@ -137,5 +152,5 @@ export class ProjectWindows implements vscode.Disposable {
     }
     throw new Error('The new window opened, but AlwayGit did not respond. Enable AlwayGit in that window, then try again.');
   }
-  dispose(): void { this.bridge.dispose(); for (const disposable of this.disposables) disposable.dispose(); }
+  dispose(): void { this.operationLock.dispose();this.bridge.dispose(); for (const disposable of this.disposables) disposable.dispose(); }
 }

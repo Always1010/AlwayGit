@@ -29,7 +29,12 @@ export async function activate(context: vscode.ExtensionContext) {
   const manager = new RepositoryManager(git, context, output);
   const documents = new GitDocuments(git);
   let workbench: Workbench;
-  const projects = new ProjectWindows(context, output, manager, documents, (repoId, blank) => workbench.open(repoId, undefined, false, blank));
+  const projects = new ProjectWindows(
+    context, output, manager, documents,
+    (repoId, blank) => workbench.open(repoId, undefined, false, blank),
+    () => manager.synchronizeSharedState(),
+    (commonDir, busy, label) => workbench.externalRepositoryActivity(commonDir, busy, label),
+  );
   workbench = new Workbench(context, git, manager, documents, output, projects);
   const launcher = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   launcher.name = 'AlwayGit'; launcher.text = '$(git-merge) AlwayGit'; launcher.command = 'alwaygit.showWorkbench';

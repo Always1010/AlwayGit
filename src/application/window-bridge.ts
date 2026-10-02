@@ -13,6 +13,8 @@ const rootSchema = z.string().min(1).max(4096).refine(value => path.isAbsolute(v
 const repositoryPath = (value: string) => !path.isAbsolute(value) && !/^[a-z]:/i.test(value) && !value.includes('\0') && !value.split(/[\\/]/).includes('..');
 export const projectRequestSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('show-workbench') }).strict(),
+  z.object({ action: z.literal('catalog-changed') }).strict(),
+  z.object({ action: z.literal('repository-activity'), commonDir: rootSchema, busy: z.boolean(), label: z.string().min(1).max(128) }).strict(),
   z.object({ root: rootSchema, action: z.literal('project') }).strict(),
   z.object({ root: rootSchema, action: z.literal('workbench') }).strict(),
   z.object({ root: rootSchema, action: z.literal('file'), path: fileSchema.shape.path.refine(repositoryPath, 'File path is outside the repository.') }).strict(),
@@ -63,7 +65,8 @@ export class WindowBridge {
           if (envelope.token !== this.record.token) { socket.destroy(); return; }
           if (envelope.ping === true) { socket.end('{"ok":true}\n'); return; }
           const request = projectRequestSchema.parse(envelope.request);
-          if (request.action === 'show-workbench') await this.execute(request);
+          if (request.action === 'show-workbench' || request.action === 'catalog-changed') await this.execute(request);
+          else if (request.action === 'repository-activity') await this.execute({ ...request, commonDir: await canonicalPath(request.commonDir) });
           else {
             const root = await canonicalPath(request.root);
             if (windowMatch(this.record, root) < 0) throw new Error('The project is no longer open in this window.');
@@ -119,6 +122,10 @@ export class WindowBridge {
   }
   async windows(): Promise<WindowRecord[]> {
     return (await this.records()).sort((a, b) => b.focusedAt - a.focusedAt || a.id.localeCompare(b.id));
+  }
+  async broadcast(request: ProjectRequest): Promise<void> {
+    const targets = (await this.windows()).filter(record => record.id !== this.record.id);
+    await Promise.all(targets.map(record => WindowBridge.send(record, request).catch(error => this.log(`Broadcast to ${record.id} failed: ${error instanceof Error ? error.message : String(error)}`))));
   }
   async candidates(root: string): Promise<WindowRecord[]> {
     const canonical = await canonicalPath(root);

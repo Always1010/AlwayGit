@@ -129,6 +129,20 @@ describe('batch repository registration', () => {
     expect(otherWindow.list()).toEqual(manager.list());
   });
 
+  it('reconciles additions, removals and groups changed by another window', async () => {
+    const root = await fixture(), shared = new Map<string, unknown>(), first = setup(shared).manager, second = setup(shared).manager;
+    await first.addDirectory(root);
+    await second.synchronizeSharedState();
+    expect(second.groups().map(group => group.name).sort()).toEqual(['A', 'B']);
+    const group = first.groups().find(item => item.name === 'A')!, collection = await first.createCollection('Client');
+    await first.move([group.key], collection.id);
+    await second.synchronizeSharedState();
+    expect(second.groups().find(item => item.name === 'A')?.collectionId).toBe(collection.id);
+    await first.remove([group.key]);
+    await second.synchronizeSharedState();
+    expect(second.groups().map(item => item.name)).toEqual(['B']);
+  });
+
   it('cancels after finding one repository without registering or saving a partial batch', async () => {
     const root = await fixture(), { manager, globalUpdate } = setup(); let cancelled = false;
     expect(await manager.addDirectory(root, { isCancelled: () => cancelled, onProgress: ({ found }) => { if (found) cancelled = true; } })).toMatchObject({ found: 1, added: 0, cancelled: true });
@@ -183,16 +197,18 @@ describe('batch repository registration', () => {
 describe('Add Repository host entry', () => {
   function workbench() {
     const { manager, context, git, output } = setup();
-    const value = new Workbench(context, git, manager, {} as never, output, {} as never); workbenches.push(value); return { value, manager, output };
+    const projects={notifyCatalogChanged:vi.fn(async()=>{}),runRepositoryOperation:vi.fn(async(_commonDir:string,_label:string,task:()=>Promise<unknown>)=>task())};
+    const value = new Workbench(context, git, manager, {} as never, output, projects as never); workbenches.push(value); return { value, manager, output, projects };
   }
   it('uses cancellable progress and reports a bulk result through the existing RPC', async () => {
-    const root = await fixture(), { value, manager } = workbench();
+    const root = await fixture(), { value, manager, projects } = workbench();
     vi.mocked(vscode.window.showOpenDialog).mockResolvedValue([{ fsPath: root }] as vscode.Uri[]);
     expect(await value.handle({ id: 'add', method: 'addRepository' })).toEqual({ added: 2, existing: 0, skipped: 0, cancelled: false });
     expect(manager.list()).toHaveLength(2);
     expect(vscode.window.showQuickPick).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ description: '可添加', picked: true })]),expect.objectContaining({canPickMany:true}));
     expect(vscode.window.withProgress).toHaveBeenCalledWith(expect.objectContaining({ cancellable: true }), expect.any(Function));
     expect(vscode.window.showInformationMessage).toHaveBeenCalledWith('新增 2 个仓库，0 个已存在。');
+    expect(projects.notifyCatalogChanged).toHaveBeenCalledTimes(1);
   });
 
   it('does not register scan results when the review picker is dismissed', async () => {

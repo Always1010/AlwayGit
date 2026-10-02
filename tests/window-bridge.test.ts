@@ -29,6 +29,8 @@ describe('Project window routing', () => {
     expect(projectRequestSchema.safeParse({ root, action: 'workbench' }).success).toBe(true);
     expect(projectRequestSchema.safeParse({ action: 'show-workbench' }).success).toBe(true);
     expect(projectRequestSchema.safeParse({ root, action: 'show-workbench' }).success).toBe(false);
+    expect(projectRequestSchema.safeParse({ action: 'catalog-changed' }).success).toBe(true);
+    expect(projectRequestSchema.safeParse({ action: 'repository-activity', commonDir: root, busy: true, label: 'commit' }).success).toBe(true);
     expect(projectRequestSchema.safeParse({ root, action: 'file', path: '../outside.ts' }).success).toBe(false);
     expect(projectRequestSchema.safeParse({ root, action: 'command', command: 'workbench.action.closeWindow' }).success).toBe(false);
     expect(projectRequestSchema.safeParse({ root, action: 'diff', target: { kind: 'change', path: 'sample.ts', area: 'invalid' } }).success).toBe(false);
@@ -39,6 +41,14 @@ describe('Project window routing', () => {
     expect((await source.windows()).map(window => window.id)).toContain(target.record.id);
     await WindowBridge.send(target.record, { action: 'show-workbench' });
     expect(received).toEqual([{ action: 'show-workbench' }]);
+  });
+  it('broadcasts catalog and operation activity without requiring matching workspace roots', async () => {
+    const { registry, root, other } = await setup(), received: ProjectRequest[] = [];
+    const source = await start(registry, [root]), target = await start(registry, [other], async request => { received.push(request); });
+    await source.broadcast({ action: 'catalog-changed' });
+    await source.broadcast({ action: 'repository-activity', commonDir: root, busy: true, label: 'pull' });
+    expect(received).toEqual([{ action: 'catalog-changed' }, { action: 'repository-activity', commonDir: await canonicalPath(root), busy: true, label: 'pull' }]);
+    expect(received).not.toContainEqual(expect.objectContaining({ action: 'catalog-changed', source: source.record.id }));
   });
   it('delivers only to the project workspace, not a different active window', async () => {
     const { registry, root, other } = await setup(), received: ProjectRequest[] = [];
