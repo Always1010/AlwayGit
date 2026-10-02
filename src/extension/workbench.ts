@@ -113,8 +113,6 @@ export class Workbench implements vscode.Disposable {
     const groups=this.repositories.groups().filter(group=>keys.includes(group.key));
     if(!groups.length)return 0;
     if(groups.some(group=>group.members.some(repo=>this.isBusy(repo.commonDir))))throw new Error(this.text('Wait for the running Git operation before removing this repository.','请等待正在执行的 Git 操作完成后再移除仓库。'));
-    const remove=this.text('Remove','移除'),confirmed=await vscode.window.showWarningMessage(this.text(`Remove ${groups.length} ${groups.length===1?'repository':'repositories'} from AlwayGit? Files on disk will not be deleted.`,`从 AlwayGit 移除 ${groups.length} 个仓库？不会删除磁盘上的文件。`),{modal:true},remove);
-    if(confirmed!==remove)return 0;
     const removed=await this.repositories.remove(groups.map(group=>group.key));if(removed)await this.projects.notifyCatalogChanged();return removed;
   }
   async createRepositoryCollection(): Promise<RepositoryCollection|undefined> {

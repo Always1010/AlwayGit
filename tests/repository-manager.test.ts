@@ -221,13 +221,12 @@ describe('Add Repository host entry', () => {
     expect(vscode.workspace.createFileSystemWatcher).not.toHaveBeenCalled();
   });
 
-  it('confirms removal without deleting files and excludes the repository from later scans', async () => {
+  it('removes host-validated repositories after the embedded confirmation', async () => {
     const root=await fixture(),{value,manager}=workbench();
     await manager.addDirectory(root);const group=manager.groups()[0];
-    vi.mocked(vscode.window.showWarningMessage).mockResolvedValue('移除' as never);
     expect(await value.handle({id:'remove',method:'removeRepositories',payload:{keys:[group.key]}})).toBe(1);
     expect(manager.groups().some(item=>item.key===group.key)).toBe(false);
-    expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(expect.stringContaining('不会删除磁盘上的文件'),{modal:true},'移除');
+    expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
   });
 
   it('reports no repositories and a damaged repository without silently succeeding', async () => {
