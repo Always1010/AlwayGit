@@ -87,7 +87,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       set(state => ({ snapshot, checkedRefs: shareValue(state.checkedRefs, checkedRefs), expandedRefGroups, selectedRefs: shareValue(state.selectedRefs, selectedRefs), refSelectionAnchor, repositoryStatuses: shareValue(state.repositoryStatuses, { ...state.repositoryStatuses, [snapshot.repository.id]: { repositoryId: snapshot.repository.id, branch: snapshot.branch, ...(snapshot.upstream ? { upstream: snapshot.upstream } : {}), ahead: snapshot.ahead, unpushed: snapshot.unpushed ?? snapshot.ahead } }) }));
       if (get().tab === 'changes') {
         const target = workingTarget(snapshot, get().diffTarget, get().selectedFile);
-        if (target) get().selectFile(target); else if (get().diffTarget) set({ selectedFile: undefined, diffTarget: undefined });
+        if (target) get().selectFile(target); else if (get().diffTarget || get().selectedFile) set({ selectedFile: undefined, diffTarget: undefined });
         if (target && diffKey(target) === diffKey(previousTarget) && affectsWorkingDiff(previous, snapshot, target, invalidation.changes)) set({ diffRevision: get().diffRevision + 1 });
       }
       if (reloadHistory) await get().loadHistory();
