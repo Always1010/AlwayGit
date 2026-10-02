@@ -44,13 +44,15 @@ export type GitAction =
   | { type: 'operation.continue'; kind: OperationKind; reviewToken?: string }
   | { type: 'operation.abort' | 'operation.skip'; kind: OperationKind };
 export type ContentSource = { kind: 'revision'; revision: string; path: string } | { kind: 'index'; path: string; stage?: 0 | 1 | 2 | 3 } | { kind: 'empty' };
-export type DiffTarget = { kind: 'change'; path: string; area: 'staged' | 'unstaged' | 'conflict' } | { kind: 'commit'; oid: string; path: string; parent?: string; previousPath?: string } | { kind: 'comparison'; left: string; right: string; path: string; previousPath?: string };
+export type DiffTarget = { kind: 'change'; path: string; area: 'staged' | 'unstaged' | 'conflict' } | { kind: 'commit'; oid: string; path: string; parent?: string; previousPath?: string } | { kind: 'comparison'; left: string; right: string; path: string; previousPath?: string } | { kind: 'stash-working'; stashOid: string; path: string };
 export interface DiffPreview { path: string; leftLabel: string; rightLabel: string; left: string; right: string; binary?: boolean; truncated?: boolean }
 export interface CheckoutBlocker { reason: 'local-changes' | 'conflicts' | 'operation-active' | 'worktree-occupied' | 'checkout-failed'; paths: string[]; target: string; worktreePath?: string; stashOid?: string; stashCreated?: boolean; trackBranches?: { source: string; name: string; expectedOid?: string }[] }
+export interface StashApplyBlocker { kind: 'stash-apply'; reason: 'untracked-path-exists'; paths: string[]; selector: string; stashOid: string; stashRetained: true; workingTreeUnchanged: true }
+export type ActionBlocker = CheckoutBlocker | StashApplyBlocker;
 export interface RpcRequest { id: string; method: 'repositories' | 'repositoryCollections' | 'repositoryStatuses' | 'addRepository' | 'removeRepositories' | 'createRepositoryCollection' | 'renameRepositoryCollection' | 'deleteRepositoryCollection' | 'moveRepositories' | 'snapshot' | 'operationReview' | 'history' | 'details' | 'stashDetails' | 'compare' | 'action' | 'diff' | 'diffPreview' | 'copyText' | 'openWorkbench' | 'openRepository' | 'openProject' | 'openFile' | 'openWorktree' | 'pickWorktree' | 'showLog' | 'saveSession'; repoId?: string; payload?: unknown }
 /** Missing paths means the source cannot limit which working files changed. */
 export interface RepositoryChanges { paths?: string[]; index?: boolean }
-export type HostMessage = { type: 'response'; id: string; result?: unknown; error?: { message: string; code?: string; details?: CheckoutBlocker } } | { type: 'changed'; repoId: string; changes?: RepositoryChanges } | { type: 'activity'; repoId: string; busy: boolean; label: string } | { type: 'repositoriesChanged' } | { type: 'selectRepository'; repoId: string };
+export type HostMessage = { type: 'response'; id: string; result?: unknown; error?: { message: string; code?: string; details?: ActionBlocker } } | { type: 'changed'; repoId: string; changes?: RepositoryChanges } | { type: 'activity'; repoId: string; busy: boolean; label: string } | { type: 'repositoriesChanged' } | { type: 'selectRepository'; repoId: string };
 export interface GitServiceContract {
   discover(root: string): Promise<Repository>;
   repositoryStatus(repo: Repository): Promise<RepositoryStatus>;

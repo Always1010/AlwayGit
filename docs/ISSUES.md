@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-025：重复恢复未跟踪文件时缺少安全下一步
+
+- 日期：2026-10-02
+- 状态：已解决
+- 现象：含未跟踪 `notes.txt` 的 Stash 首次 Apply 成功后，再次 Apply 同一记录会因文件已存在而失败；对话框只显示 Git 输出，仍保留 Cancel 和 Apply Stash，用户需要自行判断现有文件与 Stash 是否安全，也容易重复无效提交。
+- 原因：恢复直接交给 `git stash apply`，没有在写入前识别 Stash 未跟踪文件与工作区路径冲突；错误协议只支持 Checkout 阻塞信息，操作对话框无法得到可确认的安全状态和具体处理入口。
+- 解决方案：Apply / Pop 在调用 Git 前读取 Stash 的未跟踪文件分类，逐路径检查现有文件、非目录父级和符号链接；命中时不执行 Apply，并返回“工作区未变、Stash 保留”的结构化结果。对话框明确说明原因与安全状态，移除无效重复提交，按冲突文件提供比较收起内容和打开现有文件的图标入口，只保留“取消并保留当前状态”；更换 Stash 后可重新尝试。
+- 验证方式：真实 Git 回归覆盖首次 Apply、继续编辑现有文件、再次 Pop 被预检阻止、文件内容不变和 Stash 保留；文档预览测试覆盖 Stash 与 Working Tree 两份内容的比较；状态与协议测试覆盖结构化阻塞结果；类型检查、生产构建及无头 Stash 专项通过，无头场景确认原因无需查看日志、无重复 Apply 按钮、比较与打开入口均可用。
+- 相关文件：`src/protocol/types.ts`、`src/protocol/validation.ts`、`src/git/service.ts`、`src/editor/documents.ts`、`src/extension/workbench.ts`、`webview/rpc.ts`、`webview/store.ts`、`webview/App.tsx`、`webview/ActionDialog.tsx`、`webview/refresh.ts`、`webview/styles.css`、`tests/git-safety.test.ts`、`tests/documents.test.ts`、`tests/ui-state.test.ts`、`tests/workbench-protocol.test.ts`、`scripts/test-stash-ui.mjs`、`docs/WORKBENCH_SPEC.md`、`docs/ARCHITECTURE.md`、`docs/VALIDATION.md`。
+
 ## BUG-024：仅含未跟踪文件的 Stash 默认显示为空
 
 - 日期：2026-10-02

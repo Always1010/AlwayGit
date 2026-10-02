@@ -63,7 +63,14 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
     let left: Side;
     let right: Side;
     let label: string;
-    if (target.kind === 'commit') {
+    if (target.kind === 'stash-working') {
+      const details = await this.git.stashDetails(repo, target.stashOid), untracked = details.sections.untracked;
+      const file = untracked?.files.find(item => item.path === target.path);
+      if (!untracked || !file) throw new Error('This file is not part of the saved untracked files.');
+      left = { source: { kind: 'revision', revision: untracked.commit.oid, path: file.path }, label: 'Stash', path: file.path };
+      right = { workingPath: await safeWorkingPath(repo.root, file.path), label: 'Working Tree', path: file.path };
+      label = `${path.basename(file.path)} · Stash ↔ Working Tree`;
+    } else if (target.kind === 'commit') {
       const details = await this.git.details(repo, target.oid, target.parent);
       const file = details.files.find(f => f.path === target.path);
       if (!file) throw new Error('This file is not part of the selected comparison.');

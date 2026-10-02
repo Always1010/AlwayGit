@@ -50,4 +50,5 @@ export const diffSchema = z.union([
   z.object({ kind: z.literal('change'), path: text, area: z.enum(['staged', 'unstaged', 'conflict']) }),
   z.object({ kind: z.literal('commit'), oid: text, path: text, parent: text.optional(), previousPath: text.optional() }),
   z.object({ kind: z.literal('comparison'), left: text, right: text, path: text, previousPath: text.optional() }),
+  z.object({ kind: z.literal('stash-working'), stashOid: text, path: text }),
 ]);

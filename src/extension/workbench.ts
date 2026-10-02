@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { CheckoutBlocker, GitServiceContract, HostMessage, RepositoryCollection, RepositoryStatus, RpcRequest, Snapshot } from '../protocol/types';
+import type { ActionBlocker, GitServiceContract, HostMessage, RepositoryCollection, RepositoryStatus, RpcRequest, Snapshot } from '../protocol/types';
 import { actionSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema } from '../protocol/validation';
 import type { RepositoryManager } from '../repositories/manager';
 import type { GitDocuments } from '../editor/documents';
@@ -64,7 +64,7 @@ export class Workbench implements vscode.Disposable {
       catch (error) {
         const message = redactSecrets(error instanceof Error ? error.message : String(error));
         this.output.appendLine(`[request:${parsed.data.method}] ${message}`);
-        const details = (error as { details?: CheckoutBlocker }).details;
+        const details = (error as { details?: ActionBlocker }).details;
         this.post({ type: 'response', id: parsed.data.id, error: { message, code: String((error as { code?: unknown }).code ?? 'FAILED'), ...(details ? { details } : {}) } },entry);
       }
     });
