@@ -6,7 +6,7 @@ export async function verifyWorktrees(browser, url) {
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   try {
     await page.addInitScript(() => {
-      const main = { id: 'main', root: 'D:/Projects/App', commonDir: 'D:/Projects/App/.git', name: 'App', mainRoot: 'D:/Projects/App' };
+      const main = { id: 'main', root: 'D:/Projects/App', commonDir: 'D:/Projects/App/.git', name: 'App', mainRoot: 'D:/Projects/App', collectionId: 'client' };
       const linked = { ...main, id: 'linked', root: 'D:/Projects/App-feature', name: 'App-feature' };
       const clone = { id: 'clone', root: 'D:/Other/App', commonDir: 'D:/Other/App/.git', name: 'App', mainRoot: 'D:/Other/App' };
       const repositories = [linked, main, clone];
@@ -20,6 +20,7 @@ export async function verifyWorktrees(browser, url) {
         const worktrees = repo.id === clone.id ? [] : [{ path: main.root, branch: 'main', head: 'a'.repeat(40), bare: false, detached: false }, { path: linked.root, branch: 'feature', head: 'b'.repeat(40), bare: false, detached: false }];
         let result;
         if (request.method === 'repositories') result = repositories;
+        if (request.method === 'repositoryCollections') result = [{ id: 'client', name: 'Client Project' }];
         if (request.method === 'snapshot') result = { repository: repo, branch, head: undefined, ahead: 0, behind: 0, changes: [{ path: `${repo.id}.txt`, indexStatus: ' ', worktreeStatus: 'M', untracked: false, conflict: false }], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: 'a'.repeat(40) }, { name: 'feature', fullName: 'refs/heads/feature', kind: 'local', oid: 'b'.repeat(40) }], stashes: [], worktrees, operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: ++fixture.version };
         if (request.method === 'history') result = { commits: [], tips: [], nextOffset: 0, hasMore: false };
         if (request.method === 'diffPreview') result = { path: request.payload.path, leftLabel: 'Index', rightLabel: 'Working Tree', left: 'before', right: repo.id };
@@ -35,13 +36,15 @@ export async function verifyWorktrees(browser, url) {
     await draft.waitFor();
     assert.equal(await groups.count(), 2, 'Main and linked directory share one entry; a separate clone keeps its own entry');
     const sidebar = page.getByTestId('sidebar');
-    const app = groups.filter({ has: page.locator('span.truncate', { hasText: /^App$/ }) }).first();
+    await sidebar.getByRole('button',{name:/Client Project/}).waitFor();
+    assert.equal(await sidebar.getByText('Ungrouped',{exact:true}).count(),0,'Repositories without a group stay at the root without an Ungrouped folder');
+    const app = sidebar.locator('.repository-collection-members [data-repository-group]');
     const clone = page.locator('[data-repository-group][title^="D:/Other/App"]');
     assert.equal(await app.innerText(), 'App'); assert.equal((await app.getAttribute('title'))?.split('\n')[0], 'D:/Projects/App-feature');
     assert.equal(await app.getAttribute('aria-current'), 'true'); assert.equal(await app.locator('.current-indicator-glyph').count(), 1);
     assert.equal(await sidebar.getByRole('button', { name: 'Branch feature', exact: true }).getAttribute('aria-current'), 'true');
     assert.equal(await sidebar.getByRole('button', { name: 'Branch feature', exact: true }).innerText(), 'feature', 'The current branch uses an icon instead of a Current label');
-    assert.equal(await sidebar.getByRole('button', { name: 'feature · App-feature', exact: true }).getAttribute('aria-current'), 'true');
+    assert.equal(await sidebar.locator('[data-worktree-path="D:/Projects/App-feature"]').getAttribute('aria-current'), 'true');
     assert.equal(await draft.inputValue(), 'Linked draft');
     await app.click({ button: 'right' });
     await page.getByRole('menuitem', { name: 'Open in New AlwayGit Tab', exact: true }).click();
@@ -68,7 +71,7 @@ export async function verifyWorktrees(browser, url) {
     assert.equal(await page.locator('.repository-list [aria-selected="true"]').count(), 2, 'Ctrl+click toggles repository action selection');
     await app.click({ button: 'right' });
     const batchMenu=page.getByTestId('context-menu');
-    assert.deepEqual((await batchMenu.getByRole('menuitem').allTextContents()).map(value=>value.trim()),['Fetch 2 Repositories…','Refresh Status for 2 Repositories','Copy 2 Repository Paths']);
+    assert.deepEqual((await batchMenu.getByRole('menuitem').allTextContents()).map(value=>value.trim()),['Fetch 2 Repositories…','Refresh Status for 2 Repositories','Copy 2 Repository Paths','Move to Repository Group…','Remove from AlwayGit…']);
     await batchMenu.getByRole('menuitem',{name:'Fetch 2 Repositories…',exact:true}).click();
     const fetchDialog=page.getByRole('dialog',{name:'Fetch 2 Repositories',exact:true});
     await fetchDialog.getByText('D:/Projects/App-feature',{exact:true}).waitFor();
@@ -88,8 +91,8 @@ export async function verifyWorktrees(browser, url) {
     await app.dblclick();
     await page.waitForFunction(() => document.querySelector('#ag-commit-message')?.value === 'Main draft');
     assert.equal(await groups.count(), 2); assert.equal((await app.getAttribute('title'))?.split('\n')[0], 'D:/Projects/App');
-    const mainWorktree = sidebar.getByRole('button', { name: 'main · App', exact: true });
-    const featureWorktree = sidebar.getByRole('button', { name: 'feature · App-feature', exact: true });
+    const mainWorktree = sidebar.locator('[data-worktree-path="D:/Projects/App"]');
+    const featureWorktree = sidebar.locator('[data-worktree-path="D:/Projects/App-feature"]');
     assert.equal(await mainWorktree.getAttribute('aria-current'), 'true');
     await featureWorktree.click();
     await page.waitForTimeout(30);

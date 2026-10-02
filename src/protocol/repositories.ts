@@ -6,7 +6,7 @@ export const pathKey = (value: string) => {
   return /^[a-z]:\//i.test(normalized) || normalized.startsWith('//') ? normalized.toLowerCase() : normalized;
 };
 export const repositoryGroupKey = (repo: Repository): string => pathKey(repo.commonDir);
-export interface RepositoryGroup { key: string; name: string; repository: Repository; members: Repository[] }
+export interface RepositoryGroup { key: string; name: string; repository: Repository; members: Repository[]; collectionId?: string }
 
 /** Group display entries without changing working-directory IDs or action targets. */
 export function groupRepositories(repositories: Repository[], activeId?: string): RepositoryGroup[] {
@@ -21,6 +21,7 @@ export function groupRepositories(repositories: Repository[], activeId?: string)
     const representative = main || members[0];
     const repository = members.find(repo => repo.id === activeId) ?? representative;
     const name = mainRoot?.replace(/\\/g, '/').replace(/\/+$/, '').split('/').at(-1) || representative.name;
-    return { key, name, repository, members };
+    const collectionId = members.find(repo => repo.collectionId)?.collectionId;
+    return { key, name, repository, members, ...(collectionId ? { collectionId } : {}) };
   });
 }

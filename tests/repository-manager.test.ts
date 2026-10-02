@@ -159,6 +159,19 @@ describe('batch repository registration', () => {
     expect(manager.groups().some(item => item.key === group.key)).toBe(false);
   });
 
+  it('shows grouped repositories below their folder while ungrouped repositories remain at the root', async () => {
+    const root=await fixture(),{manager,globalValues}=setup();await manager.addDirectory(root);
+    const groups=manager.groups().sort((a,b)=>a.name.localeCompare(b.name)),collection=await manager.createCollection('Client Project');
+    expect(await manager.move([groups[0].key],collection.id)).toBe(1);
+    const tree=new RepositoryTree(manager),roots=tree.getChildren(),folder=roots.find(node=>'collection' in node);
+    expect(roots.map(node=>node.name).sort()).toEqual(['B','Client Project']);
+    expect(folder&&tree.getChildren(folder).map(node=>node.name)).toEqual(['A']);
+    expect(roots.some(node=>node.name==='Ungrouped'||node.name==='未分组')).toBe(false);
+    expect(globalValues.get('alwaygit.repositoryCollectionAssignments.v1')).toMatchObject({[groups[0].key]:collection.id});
+    await manager.deleteCollection(collection.id);
+    expect(tree.getChildren().map(node=>node.name).sort()).toEqual(['A','B']);
+  });
+
   it('does not scan or register in an untrusted workspace', async () => {
     const { manager, git, globalUpdate } = setup(), discover = vi.spyOn(git, 'discover');
     Object.assign(vscode.workspace, { isTrusted: false });

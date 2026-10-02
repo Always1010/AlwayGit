@@ -2,8 +2,8 @@ import * as vscode from 'vscode';
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { CheckoutBlocker, GitServiceContract, HostMessage, RepositoryStatus, RpcRequest, Snapshot } from '../protocol/types';
-import { actionSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorktreeSchema, repositoryKeysSchema } from '../protocol/validation';
+import type { CheckoutBlocker, GitServiceContract, HostMessage, RepositoryCollection, RepositoryStatus, RpcRequest, Snapshot } from '../protocol/types';
+import { actionSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema } from '../protocol/validation';
 import type { RepositoryManager } from '../repositories/manager';
 import type { GitDocuments } from '../editor/documents';
 import { confirmAction } from '../application/confirm';
@@ -92,7 +92,10 @@ export class Workbench implements vscode.Disposable {
       const picked=await vscode.window.showQuickPick(candidates,{canPickMany:true,title:this.text(`Found ${discoveredGroups.length} repositories`,`扫描到 ${discoveredGroups.length} 个仓库`),placeHolder:this.text('Select repositories to add','选择要添加的仓库')});
       if(!picked)return {added:0,existing:discoveredGroups.filter(group=>existingKeys.has(group.key)).length,skipped:discovery.issues.length,cancelled:true};
       const selectedKeys=new Set(picked.map(item=>item.key).filter(key=>!existingKeys.has(key))),repositories=discoveredGroups.filter(group=>selectedKeys.has(group.key)).flatMap(group=>group.members);
+      let collectionId:string|undefined;
+      if(selectedKeys.size&&this.repositories.collections().length){type Destination=vscode.QuickPickItem&{collectionId?:string};const destinations:Destination[]=[{label:this.text('Repository root','仓库根目录'),description:this.text('Keep alongside repository groups','与仓库分组目录同级')} ,...this.repositories.collections().map(collection=>({label:collection.name,collectionId:collection.id}))];const destination=await vscode.window.showQuickPick(destinations,{title:this.text('Choose a repository group','选择仓库分组'),placeHolder:this.text('Repositories without a group stay at the root','不选择分组的仓库保留在根层')});if(!destination)return {added:0,existing:discoveredGroups.filter(group=>existingKeys.has(group.key)).length,skipped:discovery.issues.length,cancelled:true};collectionId=destination.collectionId;}
       const result=await this.repositories.registerDiscovered({...discovery,repositories,found:selectedKeys.size});
+      if(selectedKeys.size)await this.repositories.move(selectedKeys,collectionId);
       result.existing=discoveredGroups.filter(group=>existingKeys.has(group.key)).length;
       const summary=this.text(`Added ${result.added} repositories; ${result.existing} already registered.`,`新增 ${result.added} 个仓库，${result.existing} 个已存在。`);
       if(discovery.issues.length)void vscode.window.showWarningMessage(summary+this.text(` Skipped ${discovery.issues.length} folders or repositories. See AlwayGit output for details.`,` 跳过 ${discovery.issues.length} 个异常目录或仓库，详情请查看 AlwayGit 输出。`));else void vscode.window.showInformationMessage(summary);
@@ -107,6 +110,13 @@ export class Workbench implements vscode.Disposable {
     if(confirmed!==remove)return 0;
     return this.repositories.remove(groups.map(group=>group.key));
   }
+  async createRepositoryCollection(): Promise<RepositoryCollection|undefined> {
+    const name=await vscode.window.showInputBox({title:this.text('Create Repository Group','新建仓库分组'),prompt:this.text('Repositories can be moved into this group after it is created.','创建后可将仓库移动到该分组。'),validateInput:value=>this.collectionNameProblem(value)});if(name===undefined)return undefined;return this.repositories.createCollection(name);
+  }
+  async renameRepositoryCollection(id:string):Promise<void>{const collection=this.repositories.collections().find(item=>item.id===id);if(!collection)return;const name=await vscode.window.showInputBox({title:this.text('Rename Repository Group','重命名仓库分组'),value:collection.name,validateInput:value=>this.collectionNameProblem(value,id)});if(name!==undefined)await this.repositories.renameCollection(id,name);}
+  async deleteRepositoryCollection(id:string):Promise<void>{const collection=this.repositories.collections().find(item=>item.id===id);if(!collection)return;const remove=this.text('Delete Group','删除分组'),confirmed=await vscode.window.showWarningMessage(this.text(`Delete repository group "${collection.name}"? Its repositories will remain at the repository root.`,`删除仓库分组“${collection.name}”？其中的仓库会保留在仓库根层。`),{modal:true},remove);if(confirmed===remove)await this.repositories.deleteCollection(id);}
+  async moveRepositories(keys:string[]):Promise<number>{const collections=this.repositories.collections();type Destination=vscode.QuickPickItem&{collectionId?:string};const choices:Destination[]=[{label:this.text('Repository root','仓库根目录'),description:this.text('Place alongside repository groups','与仓库分组目录同级')},...collections.map(collection=>({label:collection.name,collectionId:collection.id}))];const destination=await vscode.window.showQuickPick(choices,{title:this.text(`Move ${keys.length} ${keys.length===1?'repository':'repositories'}`,`移动 ${keys.length} 个仓库`),placeHolder:this.text('Choose a repository group or the repository root','选择仓库分组或仓库根目录')});return destination?this.repositories.move(keys,destination.collectionId):0;}
+  private collectionNameProblem(value:string,currentId?:string):string|undefined{const name=value.trim();if(!name)return this.text('Enter a group name.','请输入分组名称。');if(name.length>80)return this.text('Use no more than 80 characters.','分组名称不能超过 80 个字符。');if(this.repositories.collections().some(item=>item.id!==currentId&&item.name.localeCompare(name,undefined,{sensitivity:'accent'})===0))return this.text('A group with this name already exists.','已存在同名分组。');return undefined;}
   /** All UI requests go through the same validated, trusted application boundary. */
   async handle(request: RpcRequest): Promise<unknown> { return this.handleRequest(request); }
   private async handleRequest(request: RpcRequest, source?:WorkbenchPanel): Promise<unknown> {
@@ -115,9 +125,14 @@ export class Workbench implements vscode.Disposable {
     if (request.method === 'copyText') { await vscode.env.clipboard.writeText(copySchema.parse(request.payload).text); return null; }
     if (!vscode.workspace.isTrusted) throw new Error(this.text('Git execution requires a trusted workspace.', '请先信任工作区，再执行 Git 操作。'));
     if (request.method === 'repositories') { const list = this.repositories.list(),active=source?.activeRepository??this.activeRepository; return active ? list.sort((a, b) => Number(b.id === active) - Number(a.id === active)) : list; }
+    if (request.method === 'repositoryCollections') return this.repositories.collections();
     if (request.method === 'repositoryStatuses') return this.repositoryStatuses();
     if (request.method === 'addRepository') return this.addRepository();
     if (request.method === 'removeRepositories') return this.removeRepositories(repositoryKeysSchema.parse(request.payload).keys);
+    if (request.method === 'createRepositoryCollection') return this.createRepositoryCollection();
+    if (request.method === 'renameRepositoryCollection') { await this.renameRepositoryCollection(repositoryCollectionSchema.parse(request.payload).id); return null; }
+    if (request.method === 'deleteRepositoryCollection') { await this.deleteRepositoryCollection(repositoryCollectionSchema.parse(request.payload).id); return null; }
+    if (request.method === 'moveRepositories') { const data=moveRepositoriesSchema.parse(request.payload); return data.collectionId===undefined?this.moveRepositories(data.keys):this.repositories.move(data.keys,data.collectionId); }
     if (request.method === 'pickWorktree') {
       const value = await vscode.window.showSaveDialog({ title: 'New Worktree Directory', saveLabel: 'Use Directory', defaultUri: vscode.Uri.file(path.join(path.dirname(this.repositories.get(request.repoId).root), 'new-worktree')) });
       return value?.fsPath;

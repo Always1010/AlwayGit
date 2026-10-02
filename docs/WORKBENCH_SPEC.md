@@ -34,6 +34,8 @@ Repositories 顶层列表和活动栏按共享 Git 存储归并，同一仓库�
 
 `Add Repository…` 选择目录后先递归发现并显示逻辑仓库级多选结果，分别标记“可添加”和“已添加”；扫描和结果查看不改变列表，只有确认的可添加仓库才注册。取消扫描或关闭结果列表不产生部分添加。仓库行及多选菜单提供 `Remove from AlwayGit…`，该操作只移除导航与持久化记录、释放监听并阻止自动发现立即恢复，不删除磁盘目录或 Git 数据；再次明确添加会恢复显示。
 
+用户可以创建、重命名和删除仓库分组，并将单个或多个逻辑仓库移动到分组。分组在活动栏与工作台 Repositories 中显示为可折叠目录；没有归属的仓库不创建“未分组”目录，直接与分组目录同处 Repositories 根层。删除分组只删除组织结构，其中仓库回到根层，不从 AlwayGit 移除。分组名称和归属随仓库路径在同一 VS Code Profile 与运行环境内共享。
+
 Repository 和 Worktree 名称行单击只改变操作选择，不切换当前仓库或工作目录；普通单击单选，Ctrl/Cmd 单击切换单项，Shift 单击选择连续范围，Ctrl/Cmd+Shift 将连续范围加入既有选择。右键已选项保留批量选择，右键未选项先切为单选。双击或键盘 Enter 才切换仓库或 Worktree。当前 Repository、Worktree 和本地分支统一在内容排头显示实心播放三角形，浅色背景使用纯黑、深色背景使用纯白；蓝色选择背景只表示操作范围，当前状态与操作选择可以同时存在。非当前行保留同宽空位以对齐内容。分支复选框属于 Graph 筛选控件，三角形位于复选框之后、分支图标之前。当前状态使用 `aria-current` 暴露给辅助技术，不重复显示 `Current` 文字徽标。Detached HEAD 时不标记本地分支，但仍标记当前 Worktree。
 
 当焦点位于可多选区域或其标题、行内控件时，Ctrl/Cmd+A 只全选焦点所属作用域，Escape 只清除该作用域的操作选择；快捷键由区域容器捕获，不能落到整页文本选择。Repository 的范围是全部逻辑仓库；Local Branches 的范围是全部本地分支；每个 Remote 是独立范围，只包含该 Remote 下的分支；Worktrees 的范围是当前仓库的全部 Worktree。分支 action selection 与 Graph 筛选复选框相互独立，Ctrl/Cmd+A 和 Escape 都不改变 `checkedRefs`。History 的范围是当前已经加载的真实 Commit，不为全选隐式加载下一页，并排除 Working Tree 虚拟 Commit。Working Tree、Commit Details 和 Commit 比较的文件区域只处理当前面板可见文件。输入框、文本域和可编辑内容保留 Ctrl/Cmd+A 与 Escape 的原生行为。
@@ -102,8 +104,9 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 
 | 对象 | 项目 |
 | --- | --- |
-| Repository（单选） | `Switch to Repository`、`Open in New AlwayGit Tab`、`Open in New Window`、`Fetch…`、`Refresh Status`、`Copy Repository Path`、`Remove from AlwayGit…` |
-| Repository（多选） | `Fetch N Repositories…`、`Refresh Status for N Repositories`、`Copy N Repository Paths`、`Remove from AlwayGit…` |
+| Repository（单选） | `Switch to Repository`、`Open in New AlwayGit Tab`、`Open in New Window`、`Fetch…`、`Refresh Status`、`Copy Repository Path`、`Move to Repository Group…`、`Remove from AlwayGit…` |
+| Repository（多选） | `Fetch N Repositories…`、`Refresh Status for N Repositories`、`Copy N Repository Paths`、`Move to Repository Group…`、`Remove from AlwayGit…` |
+| Repository Group | `Rename Repository Group…`、`Delete Repository Group…` |
 | Local Branch | `Checkout…`、`Show in Graph`、`Show Only This Branch`、`Create Branch…`、`Create Tag…`、`Merge…`、`Rebase…`、`Push…`、`Delete Branch…`、`Copy Branch Name` |
 | Remote Branch | `Show in Graph`、`Show Only This Branch`、`Checkout as Local Branch…`、`Merge…`、`Rebase…`、`Delete Branch from <remote>…`、`Copy Branch Name` |
 | Remote 分支目录 / 多选 | `Create Local Tracking Branches…`、Graph 批量筛选、远端批量删除和复制名称 |
@@ -119,7 +122,7 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 
 | 标题 | 项目 |
 | --- | --- |
-| Repositories | `Add Repository…`、`Refresh` |
+| Repositories | `Add Repository…`、`Create Repository Group`、`Refresh` |
 | Local Branches | 标题：`Create Branch…`；Graph 预设：`Show All Local Branches in Graph`、`Show Current Branch Only in Graph` |
 | Remotes | `Fetch…`、`Create Local Tracking Branches…`、`Refresh` |
 | Tags | `Create Tag…`、`Refresh` |

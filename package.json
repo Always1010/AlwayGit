@@ -2,7 +2,7 @@
   "name": "alwaygit",
   "displayName": "AlwayGit",
   "description": "A professional Git workbench inside Visual Studio Code.",
-  "version": "0.16.3",
+  "version": "0.17.0",
   "publisher": "alwaygit-dev",
   "private": true,
   "type": "module",
@@ -64,6 +64,30 @@
         "icon": "$(close)"
       },
       {
+        "command": "alwaygit.createRepositoryCollection",
+        "title": "Create Repository Group",
+        "category": "AlwayGit",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "alwaygit.renameRepositoryCollection",
+        "title": "Rename Repository Group…",
+        "category": "AlwayGit",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "alwaygit.deleteRepositoryCollection",
+        "title": "Delete Repository Group…",
+        "category": "AlwayGit",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "alwaygit.moveRepository",
+        "title": "Move to Repository Group…",
+        "category": "AlwayGit",
+        "icon": "$(folder-opened)"
+      },
+      {
         "command": "alwaygit.showLog",
         "title": "Show Git Output",
         "category": "AlwayGit"
@@ -103,15 +127,25 @@
         {
           "command": "alwaygit.open",
           "when": "view == alwaygit.repositories",
+          "group": "navigation@3"
+        },
+        {
+          "command": "alwaygit.createRepositoryCollection",
+          "when": "view == alwaygit.repositories",
           "group": "navigation@2"
         },
         {
           "command": "alwaygit.refresh",
           "when": "view == alwaygit.repositories",
-          "group": "navigation@3"
+          "group": "navigation@4"
         }
       ],
       "view/item/context": [
+        {
+          "command": "alwaygit.moveRepository",
+          "when": "view == alwaygit.repositories && viewItem == alwaygit.repository",
+          "group": "navigation@80"
+        },
         {
           "command": "alwaygit.removeRepository",
           "when": "view == alwaygit.repositories && viewItem == alwaygit.repository",
@@ -120,6 +154,16 @@
         {
           "command": "alwaygit.removeRepository",
           "when": "view == alwaygit.repositories && viewItem == alwaygit.repository",
+          "group": "navigation@90"
+        },
+        {
+          "command": "alwaygit.renameRepositoryCollection",
+          "when": "view == alwaygit.repositories && viewItem == alwaygit.repositoryCollection",
+          "group": "navigation@10"
+        },
+        {
+          "command": "alwaygit.deleteRepositoryCollection",
+          "when": "view == alwaygit.repositories && viewItem == alwaygit.repositoryCollection",
           "group": "navigation@90"
         }
       ],

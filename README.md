@@ -17,7 +17,7 @@ npm run build
 
 ## 主要功能
 
-- 多仓库和 Worktree 导航、分类目录递归发现、同窗口多个独立工作台标签。
+- 多仓库和 Worktree 导航、确认式递归发现、仓库移除与自定义项目分组、同窗口多个独立工作台标签。
 - 多引用筛选、递归分支树、可分页的拓扑提交图、消息搜索及 HEAD 定位。
 - Commit 详情、Merge Parent 选择、双 Commit 自动比较、文件路径筛选及只读 Diff。
 - Working Tree 的冲突、Unstaged 和 Staged 管理，整文件及批量操作、Commit、Amend 与每仓库草稿。

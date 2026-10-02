@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { GitService } from '../git/service';
-import { RepositoryManager, RepositoryTree } from '../repositories/manager';
+import { RepositoryManager, RepositoryTree, type RepositoryTreeNode } from '../repositories/manager';
 import { GitDocuments } from '../editor/documents';
 import { Workbench } from './workbench';
 import { credentialEnvironment } from '../application/credentials';
@@ -42,7 +42,11 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.workspace.onDidGrantWorkspaceTrust(() => void manager.scan()),
     vscode.commands.registerCommand('alwaygit.open', (repoId?: string) => workbench.open(typeof repoId === 'string' ? repoId : undefined)),
     vscode.commands.registerCommand('alwaygit.addRepository', async () => { await workbench.addRepository(); await workbench.open(); }),
-    vscode.commands.registerCommand('alwaygit.removeRepository', (repo: Repository) => workbench.removeRepositories([repositoryGroupKey(repo)])),
+    vscode.commands.registerCommand('alwaygit.removeRepository', (repo?: Repository) => repo ? workbench.removeRepositories([repositoryGroupKey(repo)]) : undefined),
+    vscode.commands.registerCommand('alwaygit.createRepositoryCollection', () => workbench.createRepositoryCollection()),
+    vscode.commands.registerCommand('alwaygit.renameRepositoryCollection', (node?: RepositoryTreeNode) => node && 'collection' in node ? workbench.renameRepositoryCollection(node.collection.id) : undefined),
+    vscode.commands.registerCommand('alwaygit.deleteRepositoryCollection', (node?: RepositoryTreeNode) => node && 'collection' in node ? workbench.deleteRepositoryCollection(node.collection.id) : undefined),
+    vscode.commands.registerCommand('alwaygit.moveRepository', (repo?: Repository) => repo ? workbench.moveRepositories([repositoryGroupKey(repo)]) : undefined),
     vscode.commands.registerCommand('alwaygit.refresh', async () => { await manager.scan(); for (const repo of manager.list()) manager.notify(repo.id); tree.refresh(); }),
     vscode.commands.registerCommand('alwaygit.showLog', () => output.show(true)),
     vscode.workspace.onDidChangeConfiguration(e => { if (e.affectsConfiguration('alwaygit.gitPath') || e.affectsConfiguration('alwaygit.refreshInterval')) void vscode.window.showInformationMessage('Reload the VS Code window to apply AlwayGit runtime configuration changes.'); }),
