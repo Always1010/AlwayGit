@@ -123,9 +123,13 @@ export async function verifyFeedback(browser, url) {
     assert.equal(await review.getByRole('checkbox').count(),0);
     await review.getByRole('button',{name:'Confirm & Continue',exact:true}).click();
     await page.waitForFunction(()=>window.__feedbackFixture.pending?.payload.type==='commit');
-    await page.evaluate(()=>{const fixture=window.__feedbackFixture;fixture.snapshot.operation={conflicts:0,canContinue:false,canAbort:false,canSkip:false};fixture.snapshot.changes=[];fixture.complete();});
+    await page.evaluate(()=>{const fixture=window.__feedbackFixture;fixture.snapshot.head='b'.repeat(40);fixture.snapshot.operation={conflicts:0,canContinue:false,canAbort:false,canSkip:false};fixture.snapshot.changes=[{path:'notes.txt',indexStatus:'?',worktreeStatus:'?',conflict:false,untracked:true}];fixture.complete();});
     await page.waitForFunction(()=>document.querySelector('#ag-commit-message').value==='');
+    await bar.getByText(`Commit ${'b'.repeat(8)} created`,{exact:true}).waitFor();
+    await bar.getByText('2 files committed · 1 change remaining',{exact:true}).waitFor();
+    await bar.getByRole('button',{name:'View Commit',exact:true}).click();
+    await page.waitForFunction(()=>window.__feedbackFixture.calls.some(call=>call.method==='details'&&call.payload.oid==='b'.repeat(40)));
     assert.deepEqual(errors, []);
-    console.log('ALWAYGIT_FEEDBACK_UI_TESTS_PASSED: feedback, paused Merge exit/abort, manual staging, staged marker review, return, explicit override and Commit guard');
+    console.log('ALWAYGIT_FEEDBACK_UI_TESTS_PASSED: feedback, Commit result summary and View Commit, paused Merge exit/abort, manual staging, staged marker review, return, explicit override and Commit guard');
   } finally { await page.close(); }
 }

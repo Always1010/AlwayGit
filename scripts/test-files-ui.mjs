@@ -10,7 +10,7 @@ export async function verifyFiles(browser, url) {
       const commit = { oid: 'a'.repeat(40), parents: [], author: 'Fixture', email: 'test@example.com', timestamp: 0, subject: 'File selection' };
       const paths = ['src/features/auth/login.ts', 'src/services/auth/login.ts', 'README.md'];
       const fixture = window.__filesFixture = { calls: [], paths,
-        snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 0, behind: 0, changes: paths.map((path, i) => ({ path, indexStatus: i === 0 ? 'M' : ' ', worktreeStatus: 'M', conflict: false, untracked: false })), refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
+        snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 0, behind: 0, changes: paths.map((path, i) => ({ path, indexStatus: i === 0 ? 'M' : i === 2 ? '?' : ' ', worktreeStatus: i === 2 ? '?' : 'M', conflict: false, untracked: i === 2 })), refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
       };
       window.acquireVsCodeApi = () => ({ getState: () => ({}), setState: () => {}, postMessage(request) {
         if (request.method === 'saveSession') return;
@@ -29,6 +29,8 @@ export async function verifyFiles(browser, url) {
     await panel.getByText('./src/features/auth', { exact: true }).waitFor();
     await panel.getByText('./src/services/auth', { exact: true }).waitFor();
     await panel.getByText('./', { exact: true }).waitFor();
+    assert.equal(await panel.locator('.file-status[aria-label="Modified"]').count(), 3, 'File states use compact semantic icons with accessible labels');
+    assert.equal((await panel.locator('.file-status').first().innerText()).trim(), '', 'File state abbreviations are not rendered as permanent text');
     const filter = panel.getByRole('searchbox', { name: 'Filter changed file paths', exact: true });
     await filter.fill(' FEATURES/AUTH ');
     assert.equal(await panel.locator('.file-item').count(), 1, 'Directory fragments must filter the complete relative path case-insensitively');
@@ -63,19 +65,39 @@ export async function verifyFiles(browser, url) {
     await page.keyboard.press('Escape');
     await page.getByTestId('history').locator('[data-working-tree]').click();
     const groups = details.locator('.change-groups'), unstaged = groups.locator('.change-group:has(.change-heading-unstaged)'), staged = groups.locator('.change-group:has(.change-heading-staged)');
-    await unstaged.getByRole('button', { name: 'Stage All', exact: true }).waitFor();
+    const stageAll = unstaged.getByRole('button', { name: 'Stage All', exact: true });
+    await stageAll.waitFor();
+    await unstaged.locator('.file-status[aria-label="Untracked"]').waitFor();
     assert.equal(await unstaged.getByRole('button', { name: 'Discard selected files…', exact: true }).isDisabled(), true);
+    await stageAll.click();
+    let bulkDialog = page.getByRole('dialog', { name: 'Stage all 3 files?', exact: true });
+    await bulkDialog.waitFor();
+    assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), 'Stage All', 'Bulk confirmation focuses the affirmative action');
+    await page.keyboard.press('Escape');
+    assert.equal(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action').length), 0, 'Escape cancels Stage All');
+    await stageAll.click();
+    bulkDialog = page.getByRole('dialog', { name: 'Stage all 3 files?', exact: true });
+    await bulkDialog.waitFor();
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => window.__filesFixture.calls.filter(call => call.method === 'action').length === 1);
+    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action')[0].payload), { type: 'stage', paths: ['src/features/auth/login.ts', 'src/services/auth/login.ts', 'README.md'] });
+    await page.getByTestId('action-feedback').getByText('Stage completed', { exact: true }).waitFor();
+    await staged.getByRole('button', { name: 'Unstage All', exact: true }).click();
+    bulkDialog = page.getByRole('dialog', { name: 'Unstage all 1 file?', exact: true });
+    await bulkDialog.waitFor();
+    assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), 'Unstage All', 'Unstage All uses the same affirmative default focus');
+    await bulkDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     await unstaged.getByRole('button', { name: 'src/features/auth/login.ts', exact: true }).click();
     await page.keyboard.press('Control+a');
     assert.equal(await groups.locator('.change-file[aria-selected="true"]').count(), 4);
     assert.equal(await page.evaluate(() => window.getSelection().toString()), '');
     await unstaged.getByRole('button', { name: 'Stage (3)', exact: true }).click();
-    await page.waitForFunction(() => window.__filesFixture.calls.some(call => call.method === 'action'));
-    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.find(call => call.method === 'action').payload), { type: 'stage', paths: ['src/features/auth/login.ts', 'src/services/auth/login.ts', 'README.md'] });
+    await page.waitForFunction(() => window.__filesFixture.calls.filter(call => call.method === 'action').length === 2);
+    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action')[1].payload), { type: 'stage', paths: ['src/features/auth/login.ts', 'src/services/auth/login.ts', 'README.md'] });
     await page.getByTestId('action-feedback').getByText('Stage completed', { exact: true }).waitFor();
     await staged.getByRole('button', { name: 'Unstage (1)', exact: true }).click();
-    await page.waitForFunction(() => window.__filesFixture.calls.filter(call => call.method === 'action').length === 2);
-    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action')[1].payload), { type: 'unstage', paths: ['src/features/auth/login.ts'] });
+    await page.waitForFunction(() => window.__filesFixture.calls.filter(call => call.method === 'action').length === 3);
+    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action')[2].payload), { type: 'unstage', paths: ['src/features/auth/login.ts'] });
     await page.getByTestId('action-feedback').getByText('Unstage completed', { exact: true }).waitFor();
     await groups.focus(); await page.keyboard.press('Escape');
     assert.equal(await groups.locator('.change-file[aria-selected="true"]').count(), 0);
@@ -95,6 +117,6 @@ export async function verifyFiles(browser, url) {
     await draft.click({ button: 'right' });
     assert.equal(await menu.isVisible(), false, 'Editable text keeps the native context menu');
     assert.deepEqual(errors, []);
-    console.log('ALWAYGIT_FILES_UI_TESTS_PASSED: full-path filtering, full parent paths, scoped select-all, file context menus, group actions, explicit Discard and native text editing');
+    console.log('ALWAYGIT_FILES_UI_TESTS_PASSED: semantic status icons, bulk Stage/Unstage confirmation with affirmative focus, selected-file direct actions, full-path filtering, context menus, explicit Discard and native text editing');
   } finally { await page.close(); }
 }

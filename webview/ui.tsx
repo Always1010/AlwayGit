@@ -25,7 +25,7 @@ export function Modal({ title, children, onClose, busy = false, footer }: { titl
   const t = useTranslation(), panel = useRef<HTMLDivElement>(null), callback = useRef(onClose); callback.current = onClose;
   useEffect(() => {
     const previous = document.activeElement as HTMLElement;
-    panel.current?.querySelector<HTMLElement>('input:not([type=checkbox]),select,textarea,button')?.focus();
+    (panel.current?.querySelector<HTMLElement>('[data-autofocus="true"]') ?? panel.current?.querySelector<HTMLElement>('input:not([type=checkbox]),select,textarea,button'))?.focus();
     const key = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !panel.current?.getAttribute('aria-busy')?.includes('true')) callback.current();
       if (event.key !== 'Tab') return;

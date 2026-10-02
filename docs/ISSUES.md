@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-021：批量暂存可误触且提交结果缺少范围反馈
+
+- 日期：2026-10-02
+- 状态：已解决
+- 现象：Working Tree 中最醒目的 `Stage All` / `Unstage All` 会立即改变整个分组，误触时没有范围确认；文件状态只显示字母和颜色。Commit 完成后只有通用成功提示，不能直接确认新提交、提交文件数以及仍未提交的内容。
+- 原因：分组按钮把“没有选择”直接解释为“操作全部”，与明确选择文件的操作共用执行路径；文件状态和通用操作反馈没有针对范围核对设计语义化呈现。
+- 解决方案：仅对无选择状态下的 `Stage All` / `Unstage All` 增加带实际文件数的确认浮窗，确认按钮默认聚焦以支持 Enter，选择文件和右键操作继续直接执行。文件状态改为不同形状、语义色和 Tooltip 的紧凑图标。Commit 成功反馈显示短哈希、提交文件数、剩余变更或干净状态，并提供 `View Commit`；失败继续保留草稿和详细错误反馈。
+- 验证方式：类型检查和生产构建通过；无头文件专项覆盖状态图标及无常驻字母、Stage All / Unstage All 数量确认、确认按钮默认焦点、Enter 执行、Escape 取消和所选文件直接操作；无头反馈专项覆盖 Commit 短哈希、2 个提交文件、1 项剩余变更及 `View Commit`。0.18.0 固定 VSIX 已打包，并通过官方 CLI 安装和扩展身份/版本核对。未启动真实 VS Code 桌面集成测试。
+- 相关文件：`webview/Details.tsx`、`webview/ui.tsx`、`webview/styles.css`、`webview/actionFeedback.ts`、`webview/ActionFeedbackBar.tsx`、`webview/store.ts`、`scripts/test-files-ui.mjs`、`scripts/test-feedback-ui.mjs`、`docs/WORKBENCH_SPEC.md`、`docs/VALIDATION.md`。
+
 ## BUG-020：冲突后的发起窗口混淆关闭与中止
 
 - 日期：2026-10-02
