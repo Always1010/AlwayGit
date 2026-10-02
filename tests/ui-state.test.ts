@@ -344,6 +344,34 @@ describe('repository UI consistency', () => {
     return current;
   }
 
+  it('keeps stable region data and skips history after a working-tree action', async () => {
+    const current = await workingFixture(), before = store.getState();
+    current.changes[0].indexStatus = 'A';
+    expect(await store.getState().execute({ type: 'stage', paths: ['a.txt'] })).toBe(true);
+    expect(bridge.rpc.mock.calls.map(([method]) => method)).toEqual(['action', 'snapshot']);
+    const after = store.getState();
+    expect(after.snapshot?.changes).not.toBe(before.snapshot?.changes);
+    expect(after.snapshot?.refs).toBe(before.snapshot?.refs);
+    expect(after.snapshot?.stashes).toBe(before.snapshot?.stashes);
+    expect(after.repositoryStatuses).toBe(before.repositoryStatuses);
+    expect(after.checkedRefs).toBe(before.checkedRefs);
+    expect(after.selectedOids).toBe(before.selectedOids);
+    expect(after.commits).toBe(before.commits);
+  });
+
+  it('refreshes pushed markers when an unchecked remote moves and the HEAD node when HEAD changes', async () => {
+    const current = await workingFixture();
+    current.refs.push({ kind: 'remote', name: 'origin/main', fullName: 'refs/remotes/origin/main', oid: 'remote-tip' });
+    await store.getState().refresh({ background: true, changes: { paths: [] } });
+    bridge.rpc.mockClear();
+    current.refs[0].oid = 'pushed-tip';
+    await store.getState().refresh({ background: true, changes: { paths: [] } });
+    expect(bridge.rpc.mock.calls.map(([method]) => method)).toEqual(['snapshot', 'history']);
+    bridge.rpc.mockClear(); current.head = 'detached-tip';
+    await store.getState().refresh({ background: true, changes: { paths: [] } });
+    expect(bridge.rpc.mock.calls.map(([method]) => method)).toEqual(['snapshot', 'history']);
+  });
+
   it('updates the selected working file even when its dirty status stays unchanged', async () => {
     await workingFixture(); const revision = store.getState().diffRevision, target = store.getState().diffTarget;
     await store.getState().refresh({ background: true, changes: { paths: ['b.txt'] } });

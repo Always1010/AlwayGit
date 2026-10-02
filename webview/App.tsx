@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type React from 'react';
 import type { Repository, RpcRequest } from '../src/protocol/types';
 import { connected, demoMode, rpc } from './rpc';
 import { useWorkbench } from './store';
+import { useWorkbenchFields } from './subscriptions';
 import { diffRowHeight, effectiveRowHeight, fileRowHeight, isLightTheme, textColorForBackground, useResolvedTheme } from './appearance';
 import { SettingsDialog } from './SettingsDialog';
 import { useTranslation } from './i18n';
@@ -26,7 +27,7 @@ import { Button, Empty, Icon, Modal, ResizeHandle } from './ui';
 import { repositoryViewState } from './repositoryState';
 
 export function App() {
-  const state=useWorkbench(),t=useTranslation(),[dialog,setDialog]=useState<DialogRequest>(),[repositoryDialog,setRepositoryDialog]=useState(false),[repositoryRemoval,setRepositoryRemoval]=useState<RepositoryGroup[]>(),[repositoryFetch,setRepositoryFetch]=useState<Repository[]>(),[context,setContext]=useState<{x:number;y:number;target:MenuTarget}>();
+  const state=useWorkbenchFields('repoId','language','appearance','layout','snapshot','loading','repositories','busy','diffTarget','historyLoading','notice','activity','error','actionFeedback','checkoutFailure','stashApplyFailure','operationReview','settingsBaseline','locateHead','refresh','execute','selectWorking','restoreLayout','beginSettings','setLayout'),t=useTranslation(),[dialog,setDialog]=useState<DialogRequest>(),[repositoryDialog,setRepositoryDialog]=useState(false),[repositoryRemoval,setRepositoryRemoval]=useState<RepositoryGroup[]>(),[repositoryFetch,setRepositoryFetch]=useState<Repository[]>(),[context,setContext]=useState<{x:number;y:number;target:MenuTarget;anchor:HTMLElement}>();
   const mainPanel=useRef<HTMLElement>(null),[mainPanelHeight,setMainPanelHeight]=useState(0);
   const theme=useResolvedTheme(state.appearance.theme),lightTheme=isLightTheme(theme);
   const paletteColors=lightTheme?state.appearance.colors.light:state.appearance.colors.dark;
@@ -36,27 +37,31 @@ export function App() {
   const host=useCallback(async(method:RpcRequest['method'],payload?:unknown,repoId?:string)=>{
     const current=useWorkbench.getState();try{await rpc(method,repoId??current.repoId,payload);if(demoMode&&method!=='copyText')useWorkbench.setState({notice:current.language==='zh-CN'?'模拟原生 VS Code 操作；未修改实际文件。':'Demo: native VS Code command preview.'});if(method==='copyText')useWorkbench.setState({notice:current.language==='zh-CN'?'已复制。':'Copied.'});}catch(error){current.report(error);}
   },[]);
-  async function addRepository(){setContext(undefined);setRepositoryDialog(true);}
-  const open=(request:DialogRequest)=>{setContext(undefined);useWorkbench.setState({error:undefined,checkoutFailure:undefined,stashApplyFailure:undefined});setDialog(request);};
-  const showContext:ContextHandler=(event,target)=>{
+  const addRepository=useCallback(async()=>{setContext(undefined);setRepositoryDialog(true);},[]);
+  const open=useCallback((request:DialogRequest)=>{setContext(undefined);useWorkbench.setState({error:undefined,checkoutFailure:undefined,stashApplyFailure:undefined});setDialog(request);},[]);
+  const showContext:ContextHandler=useCallback((event,target)=>{
     event.preventDefault();event.stopPropagation();const rect=event.currentTarget.getBoundingClientRect();
     const point='clientX' in event&&event.clientX!==0?{x:event.clientX,y:event.clientY}:{x:rect.left+Math.min(40,rect.width/2),y:rect.bottom};
-    setContext({...point,target});
-  };
-  async function checkoutBranch(name:string,remote=false){if(state.busy||!remote&&name===state.snapshot?.branch)return;if(remote){const ref=state.snapshot?.refs.find(ref=>ref.fullName===name);if(ref&&!ref.symbolicTarget&&(ref.targetType===undefined||ref.targetType==='commit'))open({type:'branch.track',target:name,checkout:true});return;}setDialog(undefined);const repoId=state.repoId;if(await state.execute({type:'branch.checkout',name})&&useWorkbench.getState().repoId===repoId){const head=useWorkbench.getState().snapshot?.head;if(head)void state.selectCommit(head);}}
-  function checkout(oid:string){
+    setContext({...point,target,anchor:event.currentTarget as HTMLElement});
+  },[]);
+  const checkoutBranch=useCallback(async(name:string,remote=false)=>{const state=useWorkbench.getState();if(state.busy||!remote&&name===state.snapshot?.branch)return;if(remote){const ref=state.snapshot?.refs.find(ref=>ref.fullName===name);if(ref&&!ref.symbolicTarget&&(ref.targetType===undefined||ref.targetType==='commit'))open({type:'branch.track',target:name,checkout:true});return;}setDialog(undefined);const repoId=state.repoId;if(await state.execute({type:'branch.checkout',name})&&useWorkbench.getState().repoId===repoId){const head=useWorkbench.getState().snapshot?.head;if(head)void state.selectCommit(head);}},[open]);
+  const checkout=useCallback((oid:string)=>{
+    const state=useWorkbench.getState();
     const candidates=state.snapshot?.refs.filter(r=>r.kind==='local'&&r.oid===oid)??[];
     if(candidates.length===1)void checkoutBranch(candidates[0].name);
     else if(candidates.length>1)open({type:'branch.checkout',target:candidates[0].name,candidates:candidates.map(r=>r.name)});
     else open({type:'commit.checkout',target:oid});
-  }
-  async function edit(target=useWorkbench.getState().diffTarget){const current=useWorkbench.getState();if(!target)return;if(target.kind==='comparison'){await host('diff',target,current.repoId);return;}try{await rpc('openFile',current.repoId,{path:target.path});if(demoMode)useWorkbench.setState({notice:t('Demo: edit in VS Code.','模拟：在 VS Code 中编辑。')});}catch(error){if(target.kind==='commit')await host('diff',target,current.repoId);else current.report(error);}}
-  const native=()=>{if(state.diffTarget)void host('diff',state.diffTarget);};
+  },[checkoutBranch,open]);
+  const edit=useCallback(async(target=useWorkbench.getState().diffTarget)=>{const current=useWorkbench.getState();if(!target)return;if(target.kind==='comparison'){await host('diff',target,current.repoId);return;}try{await rpc('openFile',current.repoId,{path:target.path});if(demoMode)useWorkbench.setState({notice:current.language==='zh-CN'?'模拟：在 VS Code 中编辑。':'Demo: edit in VS Code.'});}catch(error){if(target.kind==='commit')await host('diff',target,current.repoId);else current.report(error);}},[host]);
+  const editSelected=useCallback(()=>void edit(),[edit]);
+  const native=useCallback(()=>{const state=useWorkbench.getState();if(state.diffTarget)void host('diff',state.diffTarget);},[host]);
+  const openWorktree=useCallback((path:string)=>void host('openWorktree',{path,newWindow:false}),[host]);
   useEffect(()=>{const key=(event:KeyboardEvent)=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='r'){event.preventDefault();void useWorkbench.getState().refresh();}};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);},[]);
   useLayoutEffect(()=>{const element=mainPanel.current;if(!element)return;const measure=()=>setMainPanelHeight(element.clientHeight);measure();const observer=new ResizeObserver(measure);observer.observe(element);return()=>observer.disconnect();},[]);
   const snapshot=state.snapshot,layout=state.layout,unpushed=snapshot?.unpushed??snapshot?.ahead??0,repositoryState=repositoryViewState(snapshot,!!state.repoId,state.loading),hasRepositories=state.repositories.length>0;
   const maxDiffHeight=Math.max(130,(mainPanelHeight||576)-126),diffHeight=Math.min(layout.diff,maxDiffHeight);
-  const menuApi:MenuApi={open,checkout,openDiff:target=>void host('diff',target),editFile:target=>void edit(target),host,addRepository,removeRepositories:groups=>{setContext(undefined);setRepositoryRemoval(groups);},fetchRepositories:repositories=>setRepositoryFetch(repositories)};
+  const menuApi=useMemo<MenuApi>(()=>({open,checkout,openDiff:target=>void host('diff',target),editFile:target=>void edit(target),host,addRepository,removeRepositories:groups=>{setContext(undefined);setRepositoryRemoval(groups);},fetchRepositories:repositories=>setRepositoryFetch(repositories)}),[open,checkout,host,edit,addRepository]);
+  const sidebarActions=useCallback((target:MenuTarget)=>menuFor(target,menuApi).items,[menuApi]);
   const menu=context?menuFor(context.target,menuApi):undefined;
   if(!connected)return <div className="connection-screen"><Icon name="git-branch"/><h1>AlwayGit</h1><p>{t('Your Git workbench, inside VS Code.','VS Code 中的 Git 工作台。')}</p><a className="button primary" href="?demo=1">{t('Explore Demo','查看示例')}</a></div>;
   return <div className="workbench layout-workbench" data-testid="workbench" data-theme={theme} onContextMenu={event=>{if(event.defaultPrevented)return;const target=event.target as HTMLElement,editable=!!target.closest('input:not([type=checkbox]),textarea,[contenteditable]:not([contenteditable="false"])'),selection=window.getSelection();if(!editable&&(!selection||selection.isCollapsed))event.preventDefault();}} style={{'--sidebar-width':`${layout.sidebar}px`,'--details-width':`${layout.details}px`,'--diff-height':`${layout.diff}px`,'--workbench-font':`${layout.font}px`,'--row-height':`${effectiveRowHeight(layout)}px`,'--file-row-height':`${fileRowHeight(layout.font,state.appearance.fileSpacing)}px`,'--file-row-padding':`${state.appearance.fileSpacing}px`,'--control-height':`${Math.max(24,Math.round(layout.font*1.35)+6)}px`,'--diff-font':`${state.appearance.codeFont}px`,'--diff-row-height':`${diffRowHeight(state.appearance.codeFont,state.appearance.codeRowHeight)}px`,'--notification-badge':state.appearance.badgeColor,'--notification-badge-fg':textColorForBackground(state.appearance.badgeColor),'--graph-main':lightTheme?state.appearance.mainColors.light:state.appearance.mainColors.dark,...Object.fromEntries(paletteColors.map((color,index)=>[`--graph-lane-${index}`,color]))} as React.CSSProperties}>
@@ -71,10 +76,10 @@ export function App() {
     <OperationNotice abort={()=>open({type:'operation.abort'})}/>
     <ActionFeedbackBar showLog={()=>void host('showLog')}/>
     {state.error&&state.error!==state.actionFeedback?.error&&!state.checkoutFailure&&!state.stashApplyFailure&&<div className="banner error" role="alert"><Icon name="error"/><span>{state.error}</span><Button onClick={()=>void host('showLog')}>{t('Show Log','查看日志')}</Button><Button icon="close" aria-label="Dismiss error" onClick={()=>useWorkbench.setState({error:undefined})}/></div>}
-    <div className="workspace"><Sidebar context={showContext} actions={target=>menuFor(target,menuApi).items} checkoutBranch={(name,remote)=>void checkoutBranch(name,remote)} openWorktree={path=>void host('openWorktree',{path,newWindow:false})}/><ResizeHandle axis="x" label="Resize repository sidebar" value={layout.sidebar} min={160} max={360} onChange={sidebar=>state.setLayout({sidebar})}/><main ref={mainPanel} className={`main-panel${layout.diffCollapsed?' diff-collapsed':''}`} style={{'--diff-height':`${diffHeight}px`} as React.CSSProperties}>
+    <div className="workspace"><Sidebar context={showContext} actions={sidebarActions} checkoutBranch={checkoutBranch} openWorktree={openWorktree}/><ResizeHandle axis="x" label="Resize repository sidebar" value={layout.sidebar} min={160} max={360} onChange={sidebar=>state.setLayout({sidebar})}/><main ref={mainPanel} className={`main-panel${layout.diffCollapsed?' diff-collapsed':''}`} style={{'--diff-height':`${diffHeight}px`} as React.CSSProperties}>
       {!snapshot?<Empty title={repositoryState==='opening'?t('Opening repository…','正在打开仓库…'):repositoryState==='unavailable'?t('Repository unavailable','仓库不可用'):hasRepositories?t('No repository selected','尚未选择仓库'):t('No repositories added','尚未添加仓库')}>{repositoryState!=='opening'&&<>{repositoryState==='unavailable'?<span>{t('The repository folder no longer exists or cannot be accessed. Choose another repository from the Workbench sidebar.','仓库目录不存在或暂时无法访问。请从 Workbench 左侧选择其他仓库。')}</span>:hasRepositories?<span>{t('Choose a repository from the Workbench sidebar to begin.','请从 Workbench 左侧选择一个仓库开始。')}</span>:<span>{t('Scan a folder and choose which Git repositories AlwayGit should manage. Scanning does not add them automatically.','扫描文件夹并选择要由 AlwayGit 管理的 Git 仓库。扫描不会自动添加。')}</span>}<Button className={!hasRepositories?'primary':''} icon="folder-opened" onClick={()=>void addRepository()}>{hasRepositories?t('Add Repositories…','添加仓库…'):t('Find and Add Repositories…','查找并添加仓库…')}</Button></>}</Empty>:<>
-        <div className="top-panels"><History context={showContext} checkout={checkout} checkoutBranch={(name,remote)=>void checkoutBranch(name,remote)}/><ResizeHandle axis="x" label="Resize details panel" value={layout.details} min={230} max={480} reverse onChange={details=>state.setLayout({details})}/><Details open={open} edit={()=>void edit()} context={showContext}/></div>
-        {!layout.diffCollapsed&&<ResizeHandle axis="y" label="Resize Diff panel" value={diffHeight} min={130} max={maxDiffHeight} reverse onChange={diff=>state.setLayout({diff})}/>}<DiffPreview native={native} edit={()=>void edit()}/>
+        <div className="top-panels"><History context={showContext} checkout={checkout} checkoutBranch={checkoutBranch}/><ResizeHandle axis="x" label="Resize details panel" value={layout.details} min={230} max={480} reverse onChange={details=>state.setLayout({details})}/><Details open={open} edit={editSelected} context={showContext}/></div>
+        {!layout.diffCollapsed&&<ResizeHandle axis="y" label="Resize Diff panel" value={diffHeight} min={130} max={maxDiffHeight} reverse onChange={diff=>state.setLayout({diff})}/>}<DiffPreview native={native} edit={editSelected}/>
       </>}
     </main></div>
     <footer className="statusbar" role="status"><span>{state.busy?state.activity:state.historyLoading?t('Loading history…','正在读取历史…'):state.notice??t('Ready','就绪')}</span><span>{layout.font}px / {effectiveRowHeight(layout)}px · Workbench</span></footer>
@@ -82,7 +87,7 @@ export function App() {
     {repositoryDialog&&<RepositoryDialog onClose={()=>setRepositoryDialog(false)}/>}
     {repositoryRemoval&&<RepositoryRemoveDialog groups={repositoryRemoval} onClose={()=>setRepositoryRemoval(undefined)}/>}
     {state.operationReview&&snapshot&&<OperationReviewDialog key={state.operationReview.review.token} edit={path=>void edit({kind:'change',path,area:'staged'})}/>}
-    {context&&menu&&<ContextMenu x={context.x} y={context.y} caption={menu.caption} items={menu.items} close={closeMenu}/>}
+    {context&&menu&&<ContextMenu x={context.x} y={context.y} caption={menu.caption} items={menu.items} anchor={context.anchor} close={closeMenu}/>}
     {repositoryFetch&&<RepositoryFetchDialog repositories={repositoryFetch} onClose={()=>setRepositoryFetch(undefined)}/>}
     {state.checkoutFailure&&snapshot&&<CheckoutFailureDialog onClose={()=>{setDialog(undefined);useWorkbench.setState({checkoutFailure:undefined,error:undefined});}} host={host}/>}
     {state.settingsBaseline&&<SettingsDialog theme={theme}/>}

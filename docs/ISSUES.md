@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-035：Diff 加载关闭 Graph 菜单且面板更新范围过大
+
+- 日期：2026-10-02
+- 状态：已解决
+- 现象：在 Graph 中打开提交右键菜单后，底部 Diff 延迟加载并自动定位会关闭菜单；主要面板全量订阅工作台状态，无关字段更新也触发计算，Stage/Unstage 成功后还强制重读 History。
+- 原因：菜单在窗口捕获所有滚动事件，没有区分来源区域；面板直接调用全量 Store，父组件向面板传递新回调；快照、引用选择和仓库摘要每次重建，刷新调用主动 Working Tree 选择逻辑，操作成功走手动刷新路径。
+- 解决方案：菜单保存来源元素，仅来源及祖先滚动关闭；面板按字段浅比较订阅，稳定父层回调并使用 memo，快照未变化字段及选择/摘要复用引用。工作区刷新只协调比较目标，不重新选择区域；操作后按所选引用、HEAD 与远端引用变化失效历史，手动刷新仍强制查询。
+- 验证方式：类型检查、生产构建、状态/历史项/Diff 导航单测 47 项通过；刷新、History、文件和 Diff 四个无头专项通过。回归复现 600 ms 延迟预览自动定位第 150 行后菜单保留，其他区域滚动不关闭，来源滚动/Escape/点击外部正常关闭；验证暂存后不重读历史、未勾选远端移动和 HEAD 变化更新历史、Parent/文件/滚动及多选保持。未启动真实 VS Code 桌面集成测试。
+- 相关文件：`webview/ContextMenu.tsx`、`webview/subscriptions.ts`、`webview/App.tsx`、`webview/History.tsx`、`webview/Sidebar.tsx`、`webview/Details.tsx`、`webview/DiffPreview.tsx`、`webview/store.ts`、`webview/refresh.ts`、`tests/ui-state.test.ts`、`scripts/test-refresh-ui.mjs`、`scripts/test-ui.mjs`、`docs/ARCHITECTURE.md`。
+
 ## BUG-033：Commit 搜索结果的 Graph 累积悬空轨道
 
 - 日期：2026-10-02

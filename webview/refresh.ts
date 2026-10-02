@@ -14,7 +14,21 @@ export function mergeChanges(a?: RepositoryChanges, b?: RepositoryChanges): Repo
 }
 
 export function historyKey(snapshot: Snapshot, refs: string[]): string {
-  return JSON.stringify(refs.map(name => [name, name === 'HEAD' ? snapshot.head : snapshot.refs.find(ref => ref.fullName === name)?.oid]));
+  // HEAD supplies the Working Tree node; all remote tips determine pushed markers.
+  return JSON.stringify([snapshot.head, refs.map(name => [name, name === 'HEAD' ? snapshot.head : snapshot.refs.find(ref => ref.fullName === name)?.oid]), snapshot.refs.filter(ref => ref.kind === 'remote').map(ref => [ref.fullName, ref.oid]).sort()]);
+}
+
+export function shareSnapshot(previous: Snapshot | undefined, incoming: Snapshot): Snapshot {
+  if (!previous) return incoming;
+  const next = { ...incoming };
+  for (const key of Object.keys(incoming) as (keyof Snapshot)[]) {
+    Object.assign(next, { [key]: shareValue(previous[key], incoming[key]) });
+  }
+  return next;
+}
+
+export function shareValue<T>(previous: T, incoming: T): T {
+  return JSON.stringify(previous) === JSON.stringify(incoming) ? previous : incoming;
 }
 
 export function hasArea(change: Change, area: Extract<DiffTarget, { kind: 'change' }>['area']): boolean {

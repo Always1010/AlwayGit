@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import type React from 'react';
 import type { GitRef } from '../src/protocol/types';
 import type { MenuTarget } from './menus';
-import { useWorkbench } from './store';
+import { useSnapshotFields, useWorkbenchFields } from './subscriptions';
 import { useTranslation } from './i18n';
 import { Button, Icon } from './ui';
 import { samePath } from './pathIdentity';
@@ -33,7 +33,7 @@ function TreeCheckbox({label,checked,mixed,onChange}:{label:string;checked:boole
 }
 
 function BranchLeaf({refItem,depth,order,context,checkoutBranch}:{refItem:GitRef;depth:number;order:GitRef[];context:ContextHandler;checkoutBranch(name:string,remote?:boolean):void}) {
-  const state=useWorkbench(),current=refItem.kind==='local'&&refItem.name===state.snapshot?.branch,selected=state.selectedRefs.includes(refItem.fullName);
+  const state={ ...useWorkbenchFields('checkedRefs', 'refSelectionAnchor', 'selectCommit', 'selectedRefs', 'setCheckedRefs', 'setRefSelection'), snapshot: useSnapshotFields('branch') },current=refItem.kind==='local'&&refItem.name===state.snapshot?.branch,selected=state.selectedRefs.includes(refItem.fullName);
   const choose=(event:React.MouseEvent|React.KeyboardEvent)=>{const names=order.map(ref=>ref.fullName),existing=state.selectedRefs.filter(name=>names.includes(name)),next=selectionForClick(names,existing,state.refSelectionAnchor,refItem.fullName,{toggle:event.ctrlKey||event.metaKey,range:event.shiftKey});state.setRefSelection(next.selected,next.anchor);void state.selectCommit(refItem.oid);};
   const openContext=(event:React.MouseEvent|React.KeyboardEvent)=>{const refs=selected?order.filter(ref=>state.selectedRefs.includes(ref.fullName)):[refItem];if(!selected)state.setRefSelection([refItem.fullName],refItem.fullName);context(event,{kind:'ref',ref:refItem,refs});};
   return <div className={`ref-row tree-row ${selected?'action-selected':''}`} style={{'--tree-depth':depth} as React.CSSProperties} onContextMenu={event=>{event.currentTarget.querySelector<HTMLButtonElement>('.ref-item')?.focus({preventScroll:true});openContext(event);}} role="treeitem" aria-selected={selected}>
@@ -43,7 +43,7 @@ function BranchLeaf({refItem,depth,order,context,checkoutBranch}:{refItem:GitRef
 }
 
 function BranchNode({node,depth,order,context,checkoutBranch}:{node:RefTreeNode;depth:number;order:GitRef[];context:ContextHandler;checkoutBranch(name:string,remote?:boolean):void}) {
-  const state=useWorkbench(),t=useTranslation(),hasChildren=node.children.length>0;
+  const state=useWorkbenchFields('checkedRefs', 'expandedRefGroups', 'setCheckedRefs', 'setExpandedRefGroup', 'setRefSelection'),t=useTranslation(),hasChildren=node.children.length>0;
   if(!hasChildren&&node.ref)return <BranchLeaf refItem={node.ref} depth={depth} order={order} context={context} checkoutBranch={checkoutBranch}/>;
   const refs=refsUnder(node),selected=refs.filter(ref=>state.checkedRefs?.includes(ref.fullName)).length,expanded=state.expandedRefGroups?.includes(node.key)??false;
   const update=(checked:boolean)=>{const names=new Set(state.checkedRefs??[]);for(const ref of refs)checked?names.add(ref.fullName):names.delete(ref.fullName);state.setCheckedRefs([...names]);};
@@ -58,12 +58,12 @@ function BranchNode({node,depth,order,context,checkoutBranch}:{node:RefTreeNode;
 }
 
 function BranchTree({refs,keyPrefix,stripPrefix='',context,checkoutBranch}:{refs:GitRef[];keyPrefix:string;stripPrefix?:string;context:ContextHandler;checkoutBranch(name:string,remote?:boolean):void}) {
-  const state=useWorkbench(),nodes=buildRefTree(refs,keyPrefix,stripPrefix),order=visibleRefs(nodes,state.expandedRefGroups??[]);
+  const state=useWorkbenchFields('expandedRefGroups'),nodes=useMemo(()=>buildRefTree(refs,keyPrefix,stripPrefix),[refs,keyPrefix,stripPrefix]),order=visibleRefs(nodes,state.expandedRefGroups??[]);
   return <div className="branch-tree" data-ref-kind={refs[0]?.kind} data-selection-scope={keyPrefix} tabIndex={0} role="tree" aria-multiselectable="true">{nodes.map(node=><BranchNode key={node.key} node={node} depth={0} order={order} context={context} checkoutBranch={checkoutBranch}/>)}</div>;
 }
 
-export function Sidebar({ context, actions, checkoutBranch, openWorktree }: { context: ContextHandler; actions:SidebarActionProvider; checkoutBranch(name:string,remote?:boolean):void; openWorktree(path:string):void }) {
-  const state=useWorkbench(),snapshot=state.snapshot,t=useTranslation();
+function SidebarPanel({ context, actions, checkoutBranch, openWorktree }: { context: ContextHandler; actions:SidebarActionProvider; checkoutBranch(name:string,remote?:boolean):void; openWorktree(path:string):void }) {
+  const state={ ...useWorkbenchFields('busy', 'checkedRefs', 'collapsedSidebarGroups', 'reorderRepository', 'repoId', 'repositories', 'repositoryCollections', 'repositoryOrder', 'repositorySelectionAnchor', 'repositoryStatuses', 'selectCommit', 'selectRepository', 'selectedRepositoryKeys', 'setRefSelection', 'setRepositorySelection', 'toggleSidebarGroup'), snapshot: useSnapshotFields('branch', 'changes', 'operation', 'refs', 'remotes', 'repository', 'stashes', 'worktrees') },snapshot=state.snapshot,t=useTranslation();
   const [worktreeSelection,setWorktreeSelection]=useState<{repoId?:string;paths:string[];anchor?:string}>({paths:[]});
   const [collapsedRepositoryCollections,setCollapsedRepositoryCollections]=useState<string[]>([]);
   const dragging=useRef<{key:string;parent?:string}>(undefined),[dropTarget,setDropTarget]=useState<{key:string;position:'before'|'after'}>(),[ordering,setOrdering]=useState(false);
@@ -108,3 +108,5 @@ export function Sidebar({ context, actions, checkoutBranch, openWorktree }: { co
     {!snapshot&&<div className="sidebar-empty">{t('Select a repository to begin.','选择仓库以开始。')}</div>}
   </aside>;
 }
+
+export const Sidebar = memo(SidebarPanel);

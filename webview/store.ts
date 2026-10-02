@@ -4,7 +4,7 @@ import { demoMode, readSession, rpc, saveSession, subscribe } from './rpc';
 import type { LayoutState } from './rpc';
 import type { Language } from './i18n';
 import { folderKeys } from './refTree';
-import { affectsWorkingDiff, diffKey, historyKey, mergeChanges, workingTarget } from './refresh';
+import { affectsWorkingDiff, diffKey, historyKey, mergeChanges, shareSnapshot, shareValue, workingTarget } from './refresh';
 import { actionTarget } from './actionFeedback';
 import type { ActionFeedback } from './actionFeedback';
 import { normalizeAppearance, type Appearance, type InterfaceSettings, type InterfaceSettingsUpdate } from './appearance';
@@ -57,7 +57,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       const repositoryStatuses = Object.fromEntries(statuses.filter(status => known.has(status.repositoryId)).map(status => [status.repositoryId, status]));
       const snapshot = get().snapshot;
       if (snapshot && known.has(snapshot.repository.id)) repositoryStatuses[snapshot.repository.id] = { repositoryId: snapshot.repository.id, branch: snapshot.branch, ...(snapshot.upstream ? { upstream: snapshot.upstream } : {}), ahead: snapshot.ahead, unpushed: snapshot.unpushed ?? snapshot.ahead };
-      set({ repositoryStatuses });
+      set(state => ({ repositoryStatuses: shareValue(state.repositoryStatuses, repositoryStatuses) }));
     } catch { /* Repository badges are supplementary; the selected repository still refreshes normally. */ }
   },
   async selectRepository(id) {
@@ -74,7 +74,8 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       forceHistory: !options.background || (refreshInvalidation?.epoch === epoch && refreshInvalidation.forceHistory),
     };
     try {
-      const snapshot = await rpc<Snapshot>('snapshot', repoId); if (epoch !== repositoryEpoch || request !== snapshotEpoch || snapshot.version < (get().snapshot?.version ?? -1)) return;
+      const incoming = await rpc<Snapshot>('snapshot', repoId); if (epoch !== repositoryEpoch || request !== snapshotEpoch || incoming.version < (get().snapshot?.version ?? -1)) return;
+      const snapshot = shareSnapshot(get().snapshot, incoming);
       const invalidation = refreshInvalidation!; refreshInvalidation = undefined;
       const previous = get().snapshot, previousRefs = get().checkedRefs ?? [], previousTarget = get().diffTarget;
       const initial = get().checkedRefs === undefined,previousBranch=previous?.branch;
@@ -83,10 +84,10 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       const stashDisappeared = !!get().selectedStashOid && !snapshot.stashes.some(stash => stash.oid === get().selectedStashOid);
       const reloadHistory = !previous || invalidation.forceHistory || stashDisappeared || historyKey(previous, previousRefs) !== historyKey(snapshot, checkedRefs);
       const selectedRefs=get().selectedRefs.filter(ref=>snapshot.refs.some(item=>item.fullName===ref)),refSelectionAnchor=get().refSelectionAnchor&&selectedRefs.includes(get().refSelectionAnchor!)?get().refSelectionAnchor:undefined;
-      set(state => ({ snapshot, checkedRefs,expandedRefGroups,selectedRefs,refSelectionAnchor, repositoryStatuses: { ...state.repositoryStatuses, [snapshot.repository.id]: { repositoryId: snapshot.repository.id, branch: snapshot.branch, ...(snapshot.upstream ? { upstream: snapshot.upstream } : {}), ahead: snapshot.ahead, unpushed: snapshot.unpushed ?? snapshot.ahead } } }));
+      set(state => ({ snapshot, checkedRefs: shareValue(state.checkedRefs, checkedRefs), expandedRefGroups, selectedRefs: shareValue(state.selectedRefs, selectedRefs), refSelectionAnchor, repositoryStatuses: shareValue(state.repositoryStatuses, { ...state.repositoryStatuses, [snapshot.repository.id]: { repositoryId: snapshot.repository.id, branch: snapshot.branch, ...(snapshot.upstream ? { upstream: snapshot.upstream } : {}), ahead: snapshot.ahead, unpushed: snapshot.unpushed ?? snapshot.ahead } }) }));
       if (get().tab === 'changes') {
-        get().selectWorking();
-        const target = get().diffTarget;
+        const target = workingTarget(snapshot, get().diffTarget, get().selectedFile);
+        if (target) get().selectFile(target); else if (get().diffTarget) set({ selectedFile: undefined, diffTarget: undefined });
         if (target && diffKey(target) === diffKey(previousTarget) && affectsWorkingDiff(previous, snapshot, target, invalidation.changes)) set({ diffRevision: get().diffRevision + 1 });
       }
       if (reloadHistory) await get().loadHistory();
@@ -230,7 +231,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     try {
       await rpc('action', repoId, action);
       if (epoch === repositoryEpoch) {
-        await get().refresh();
+        await get().refresh({ background: true });
         if(epoch===repositoryEpoch) {
           const checkout = ['branch.checkout', 'commit.checkout', 'checkout.stash'].includes(action.type) || (action.type === 'branch.create' || action.type === 'branch.track') && action.checkout;
           if (checkout) { const snap = get().snapshot; const ref = snap?.refs.find(r => r.kind === 'local' && r.name === snap.branch)?.fullName ?? (snap?.head ? 'HEAD' : undefined); if (ref && !get().checkedRefs?.includes(ref)) get().setCheckedRefs([...(get().checkedRefs ?? []), ref]); }

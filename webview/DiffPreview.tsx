@@ -1,6 +1,6 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useWorkbench } from './store';
+import { useWorkbenchFields } from './subscriptions';
 import { useTranslation } from './i18n';
 import { rpc } from './rpc';
 import { alignDiff, changeAtRow, changedParts, changedRanges, remapChange, summarizeChanges, type DiffRow } from './diff';
@@ -17,8 +17,8 @@ function content(value:string|undefined,other:string|undefined,changed:boolean,s
   const parts=changedParts(side==='before'?value:other,side==='before'?other:value),middle=side==='before'?parts.before:parts.after;
   return <code style={style}>{parts.prefix}{middle&&<mark className={side==='before'?'diff-word-removed':'diff-word-added'}>{middle}</mark>}{parts.suffix}</code>;
 }
-export function DiffPreview({ native, edit }: { native():void; edit():void }) {
-  const state=useWorkbench(),t=useTranslation(),[preview,setPreview]=useState<Preview>(),[error,setError]=useState<string>(),[loading,setLoading]=useState(false),[selection,setSelection]=useState<Selection>(),[horizontalScroll,setHorizontalScroll]=useState(0),[viewportWidth,setViewportWidth]=useState(0),viewport=useRef<HTMLDivElement>(null),displayedKey=useRef(''),lastScrollTop=useRef(0),navigationScroll=useRef<number|undefined>(undefined);
+function DiffPreviewPanel({ native, edit }: { native():void; edit():void }) {
+  const state=useWorkbenchFields('appearance', 'diffRevision', 'diffTarget', 'layout', 'repoId', 'selectedFile', 'setLayout'),t=useTranslation(),[preview,setPreview]=useState<Preview>(),[error,setError]=useState<string>(),[loading,setLoading]=useState(false),[selection,setSelection]=useState<Selection>(),[horizontalScroll,setHorizontalScroll]=useState(0),[viewportWidth,setViewportWidth]=useState(0),viewport=useRef<HTMLDivElement>(null),displayedKey=useRef(''),lastScrollTop=useRef(0),navigationScroll=useRef<number|undefined>(undefined);
   const collapsed=state.layout.diffCollapsed;
   const initiallyPositioned=useRef(false);
   useLayoutEffect(()=>{
@@ -117,3 +117,5 @@ export function DiffPreview({ native, edit }: { native():void; edit():void }) {
     </div></>}
   </section>;
 }
+
+export const DiffPreview = memo(DiffPreviewPanel);

@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { Icon } from './ui';
 
 export interface MenuItem { label: string; icon?: string; disabled?: boolean; reason?: string; pressed?: boolean; run(): void | Promise<void> }
-export function ContextMenu({ x, y, caption, items, close }: { x: number; y: number; caption: string; items: MenuItem[]; close(): void }) {
+export function ContextMenu({ x, y, caption, items, anchor, close }: { x: number; y: number; caption: string; items: MenuItem[]; anchor: HTMLElement; close(): void }) {
   const menu = useRef<HTMLDivElement>(null), [position, setPosition] = useState({ x: Math.max(6, x), y: Math.max(6, y) });
   useLayoutEffect(() => {
     const previous = document.activeElement as HTMLElement, element = menu.current!;
@@ -11,10 +11,11 @@ export function ContextMenu({ x, y, caption, items, close }: { x: number; y: num
     element.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus({ preventScroll: true });
     const outside = (event: PointerEvent) => { if (!element.contains(event.target as Node)) close(); };
     const resize = () => close();
-    const scroll = (event: Event) => { if (!element.contains(event.target as Node)) close(); };
+    // Diff positioning and other panels' scrolling do not move this menu's source.
+    const scroll = (event: Event) => { if (event.target === document || event.target === window || event.target instanceof Element && event.target.contains(anchor)) close(); };
     window.addEventListener('pointerdown', outside); window.addEventListener('resize', resize); window.addEventListener('scroll', scroll, true);
     return () => { window.removeEventListener('pointerdown', outside); window.removeEventListener('resize', resize); window.removeEventListener('scroll', scroll, true); if ((element.contains(document.activeElement)||document.activeElement===document.body) && previous?.isConnected) previous.focus({ preventScroll: true }); };
-  }, [x, y]);
+  }, [x, y, anchor, close]);
   return <div ref={menu} data-testid="context-menu" className="context-menu" role="menu" aria-label={caption} style={{ left: position.x, top: position.y }} onContextMenu={event => event.preventDefault()} onKeyDown={event => {
     const buttons = [...menu.current!.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')], index = buttons.indexOf(document.activeElement as HTMLButtonElement);
     if (event.key === 'Escape' || event.key === 'Tab') { close(); return; }

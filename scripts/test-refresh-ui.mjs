@@ -9,9 +9,10 @@ export async function verifyRefresh(browser, url) {
     await page.addInitScript(() => {
       const repo = { id: 'refresh', root: '/fixture', commonDir: '/fixture/.git', name: 'Refresh fixture' };
       const commit = { oid: 'a'.repeat(40), parents: ['b'.repeat(40), 'c'.repeat(40)], author: 'Fixture', email: 'fixture@example.com', timestamp: 0, subject: 'Historical merge' };
+      const other = { ...commit, oid: 'e'.repeat(40), subject: 'Another commit' };
       const content = Array.from({ length: 180 }, (_, i) => `line ${i}`).join('\n');
       const fixture = window.__refreshFixture = {
-        calls: [], detailsCleared: false, loadingShown: false, diffDelay: 30, right: content,
+        calls: [], detailsCleared: false, loadingShown: false, diffDelay: 30, right: content.replace('line 150', 'changed line 150'),
         snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 0, behind: 0, changes: [{ path: 'a.txt', indexStatus: 'M', worktreeStatus: 'M', untracked: false, conflict: false }, { path: 'b.txt', indexStatus: ' ', worktreeStatus: 'M', untracked: false, conflict: false }], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
         emit(changes) { window.postMessage({ type: 'changed', repoId: repo.id, changes }, '*'); },
       };
@@ -21,8 +22,8 @@ export async function verifyRefresh(browser, url) {
         let result;
         if (request.method === 'repositories') result = [repo];
         if (request.method === 'snapshot') result = structuredClone({ ...fixture.snapshot, version: ++fixture.snapshot.version });
-        if (request.method === 'history') result = { commits: [commit], tips: [fixture.snapshot.head], nextOffset: 1, hasMore: false };
-        if (request.method === 'details') result = { commit, body: 'Historical merge body', parent: request.payload.parent ?? commit.parents[0], files: [{ path: 'a.txt', status: 'M' }] };
+        if (request.method === 'history') result = { commits: [commit, other], tips: [fixture.snapshot.head], nextOffset: 2, hasMore: false };
+        if (request.method === 'details') result = { commit: request.payload.oid === other.oid ? other : commit, body: 'Historical merge body', parent: request.payload.parent ?? commit.parents[0], files: [{ path: 'a.txt', status: 'M' }] };
         if (request.method === 'diffPreview') result = { path: request.payload.path, leftLabel: request.payload.kind === 'commit' ? request.payload.parent.slice(0, 8) : request.payload.area === 'staged' ? 'HEAD' : 'Index', rightLabel: request.payload.kind === 'commit' ? 'Commit' : request.payload.area === 'staged' ? 'Index' : 'Working Tree', left: content, right: fixture.right };
         setTimeout(() => window.postMessage({ type: 'response', id: request.id, result }, '*'), request.method === 'diffPreview' ? fixture.diffDelay : 30);
       } });
@@ -32,6 +33,24 @@ export async function verifyRefresh(browser, url) {
     const details = page.getByTestId('details'), diff = page.getByTestId('diff-preview'), viewport = diff.locator('.diff-viewport');
     await details.getByText('Historical merge body', { exact: true }).waitFor();
     await diff.locator('.diff-line').first().waitFor();
+    const history = page.getByTestId('history'), otherRow = history.locator('[data-oid="' + 'e'.repeat(40) + '"]'), menu = page.getByTestId('context-menu');
+    await page.evaluate(() => { window.__refreshFixture.diffDelay = 600; });
+    await otherRow.click({ button: 'right' });
+    await menu.waitFor();
+    await diff.getByText('changed line 150', { exact: true }).waitFor();
+    assert.ok(await viewport.evaluate(element => element.scrollTop) > 1000, 'Delayed Diff positions its first change');
+    assert.equal(await menu.count(), 1, 'Diff loading and automatic positioning preserve the Graph context menu');
+    await page.getByTestId('sidebar').evaluate(element => element.dispatchEvent(new Event('scroll')));
+    assert.equal(await menu.count(), 1, 'Another region scrolling preserves the menu');
+    await history.locator('.history-viewport').evaluate(element => element.dispatchEvent(new Event('scroll')));
+    assert.equal(await menu.count(), 0, 'Scrolling the source region still closes the menu');
+    await otherRow.click({ button: 'right' }); await menu.waitFor();
+    await page.keyboard.press('Escape'); assert.equal(await menu.count(), 0);
+    await otherRow.click({ button: 'right' }); await menu.waitFor();
+    await page.locator('.brand').click(); assert.equal(await menu.count(), 0, 'Outside clicks still close the menu');
+    await page.evaluate(() => { window.__refreshFixture.diffDelay = 30; });
+    await history.locator('[data-oid="' + 'a'.repeat(40) + '"]').click();
+    await details.locator('.commit-metadata').getByText('Historical merge', { exact: true }).waitFor();
     await page.getByLabel('Compare parent').selectOption('c'.repeat(40));
     await diff.locator('.diff-labels').getByText('cccccccc', { exact: true }).waitFor();
     await viewport.evaluate(element => { element.scrollTop = 600; element.dispatchEvent(new Event('scroll')); });
@@ -86,6 +105,6 @@ export async function verifyRefresh(browser, url) {
     assert.deepEqual(await page.evaluate(() => window.__refreshFixture.calls), ['snapshot', 'diffPreview']);
     await diff.locator('.diff-labels').getByText('HEAD', { exact: true }).waitFor();
     assert.deepEqual(errors, [], 'Refresh must not throw runtime errors');
-    console.log('ALWAYGIT_REFRESH_UI_TESTS_PASSED: historical details/parent/scroll retained, scoped history and working Diff refresh, unchanged dirty status, visible background updates, Staged selection');
+    console.log('ALWAYGIT_REFRESH_UI_TESTS_PASSED: scoped menu dismissal and delayed Diff positioning, historical details/parent/scroll retained, scoped history and working Diff refresh, unchanged dirty status, visible background updates, Staged selection');
   } finally { await page.close(); }
 }
