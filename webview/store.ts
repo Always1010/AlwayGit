@@ -312,10 +312,14 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     set(apply ? { settingsBaseline: undefined } : { settingsBaseline: undefined, language: baseline.language, appearance: baseline.appearance, layout: layout({ ...get().layout, font: baseline.font, row: baseline.row }) });
   },
 }));
+let persistedSelection: unknown[] = [];
 useWorkbench.subscribe(state => {
+  const selection = [state.repoId, state.drafts, state.ref, state.checkedRefs, state.expandedRefGroups, state.collapsedSidebarGroups, state.search, state.selectedOid, state.selectedParent, state.selectedStashOid, state.selectedFile, state.tab, state.language, state.layout, state.appearance, state.settingsBaseline];
+  if (selection.every((value, index) => Object.is(value, persistedSelection[index]))) return;
+  persistedSelection = selection;
   if (state.repoId) views[state.repoId] = { ref: state.ref, checkedRefs: state.checkedRefs, expandedRefGroups:state.expandedRefGroups,collapsedSidebarGroups:state.collapsedSidebarGroups, search: state.search, selectedOid: state.selectedOid, selectedParent: state.selectedParent, selectedStashOid: state.selectedStashOid, selectedFile: state.selectedFile, tab: state.tab };
   const baseline = state.settingsBaseline;
-  saveSession({ version: 2, repoId: state.repoId, drafts: state.drafts, views, language: baseline?.language ?? state.language, layout: baseline ? { ...state.layout, font: baseline.font, row: baseline.row } : state.layout, appearance: baseline?.appearance ?? state.appearance });
+  saveSession({ version: 2, repoId: state.repoId, drafts: state.drafts, views, language: baseline?.language ?? state.language, layout: baseline ? { ...state.layout, font: baseline.font, row: baseline.row } : state.layout, appearance: baseline?.appearance ?? state.appearance }, error => useWorkbench.getState().report(new Error(`${state.language === 'zh-CN' ? '恢复状态未能保存；当前标签仍保留草稿。' : 'Could not save the recovery baseline; drafts remain in this panel.'} ${error.message}`)));
 });
 let changedTimer: ReturnType<typeof setTimeout>;
 let pendingChange: { repoId: string; changes?: RepositoryChanges } | undefined;

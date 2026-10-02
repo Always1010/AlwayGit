@@ -2,10 +2,10 @@ import { groupRepositories } from '../src/protocol/repositories';
 import { branchNameConflict, branchNameConflictMessage } from '../src/protocol/ref-name';
 import { reconcileRepositoryOrder } from '../src/protocol/repository-order';
 import type { RepositoryOrder, ReorderRepository, ActionBlocker, Commit, CommitComparison, CommitDetails, GitAction, HistoryPage, HistoryQuery, HostMessage, Repository, RepositoryCollection, RepositoryStatus, RpcRequest, Snapshot, OperationSettings, StashDetails } from '../src/protocol/types';
-import type { Appearance } from './appearance';
+import type { SessionState } from '../src/protocol/session';
+export type { LayoutState, SessionState } from '../src/protocol/session';
+import { SessionPersistence } from './session-persistence';
 
-export interface LayoutState { preset: 'workbench' | 'editor'; sidebar: number; details: number; diff: number; diffCollapsed: boolean; graph: number; author: number; date: number; font: number; row: number }
-export interface SessionState { version?: number; language?: 'en' | 'zh-CN'; layout?: LayoutState; appearance?: Appearance; repoId?: string; drafts?: Record<string, string>; views?: Record<string, { ref?: string; checkedRefs?: string[]; expandedRefGroups?: string[]; collapsedSidebarGroups?: string[]; search: string; selectedOid?: string; selectedParent?: string; selectedStashOid?: string; selectedFile?: string; tab: 'history' | 'changes' }> }
 export class RpcError extends Error {
   constructor(message: string, public code?: string, public details?: ActionBlocker) { super(message); this.name = 'RpcError'; }
 }
@@ -19,14 +19,12 @@ export function readSession(): SessionState {
   if (demoMode) try { return JSON.parse(localStorage.getItem('alwaygit.demo-session') || '{}'); } catch { return {}; }
   return {};
 }
-let previousSession = '';
-export function saveSession(state: SessionState) {
-  if (vscode) {
-    const serialized = JSON.stringify(state); if (serialized === previousSession) return;
-    previousSession = serialized; vscode.setState?.(state);
-    vscode.postMessage({ id: `session-${++sequence}`, method: 'saveSession', payload: state }); return;
-  }
-  if (demoMode) try { localStorage.setItem('alwaygit.demo-session', JSON.stringify(state)); } catch { /* The live session still keeps drafts. */ }
+const sessions = new SessionPersistence<SessionState>(
+  state => { if (vscode) vscode.setState?.(state); else if (demoMode) localStorage.setItem('alwaygit.demo-session', JSON.stringify(state)); },
+  async state => { if (vscode) await rpc('saveSession', undefined, state); },
+);
+export function saveSession(state: SessionState, onError?: (error: Error) => void) {
+  sessions.save(state, onError);
 }
 const listeners = new Set<(event: HostMessage) => void>();
 const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer?: ReturnType<typeof setTimeout> }>();
@@ -48,7 +46,7 @@ export async function rpc<T>(method: RpcRequest['method'], repoId?: string, payl
   const id = `webview-${++sequence}`;
   return new Promise<T>((resolve, reject) => {
     // Folder selection and cancellable recursive discovery can outlive a Git request.
-    const timer = ['pickRepositoryDirectory','discoverRepositories','addRepository'].includes(method) ? undefined : setTimeout(() => { pending.delete(id); reject(new Error('The Git operation timed out. Refresh to check its result before retrying.')); }, 180_000);
+    const timer = ['pickRepositoryDirectory','discoverRepositories','addRepository'].includes(method) ? undefined : setTimeout(() => { pending.delete(id); reject(new Error('The Git operation timed out. Refresh to check its result before retrying.')); }, method === 'saveSession' ? 10_000 : 180_000);
     pending.set(id, { resolve: value => resolve(value as T), reject, timer });
     vscode.postMessage({ id, method, repoId, payload } satisfies RpcRequest);
   });
@@ -84,7 +82,7 @@ const demoStores:Record<string,{snapshot:Snapshot;commits:Commit[];saved:Map<str
 if(noRemoteDemo)for(const store of Object.values(demoStores)){store.snapshot.remotes=[];store.snapshot.refs=store.snapshot.refs.filter(ref=>ref.kind!=='remote');delete store.snapshot.upstream;delete store.snapshot.pushTarget;}
 const demoCollections:RepositoryCollection[]=[];
 let demoOrder:RepositoryOrder|undefined;
-let demoOperationSettings: OperationSettings = { allowDetachedHead: localStorage.getItem('alwaygit.demo-allowDetachedHead') === 'true', scope: 'workspace' };
+let demoOperationSettings: OperationSettings = { allowDetachedHead: demoMode && localStorage.getItem('alwaygit.demo-allowDetachedHead') === 'true', scope: 'workspace' };
 async function demoRequest(method: RpcRequest['method'], payload: unknown, repoId?:string): Promise<unknown> {
   await new Promise(resolve => setTimeout(resolve, 110));
   const data=demoStores[repoId??repo.id]??demoStores[repo.id],demoSnapshot=data.snapshot,commits=data.commits;

@@ -13,9 +13,11 @@ import { hostText, preferredLanguage, type Language } from '../application/langu
 import type { ProjectWindows } from './project-windows';
 import { groupRepositories } from '../protocol/repositories';
 import { panelSession } from './workbench-entry';
+import { SessionWriter } from '../application/session-persistence';
+import type { SessionState } from '../protocol/session';
 import { RepositoryOperationBusyError, RepositoryOperationRecoveryRequiredError } from '../application/operation-lock';
 
-interface WorkbenchPanel { panel: vscode.WebviewPanel; activeRepository?: string; blank: boolean }
+interface WorkbenchPanel { panel: vscode.WebviewPanel; activeRepository?: string; blank: boolean; session?: SessionState }
 interface RepositoryDiscoverySession { source?: WorkbenchPanel; cancelled: boolean; root: string; discovery?: DiscoveryResult }
 export interface WorkbenchPresence { open: boolean; active: boolean }
 
@@ -36,6 +38,7 @@ export class Workbench implements vscode.Disposable {
   /** Diagnostic count used to verify the real Webview message bridge. */
   get receivedWebviewRequests(): number { return this.requestCount; }
   private readonly interval: ReturnType<typeof setInterval>;
+  private readonly sessions = new SessionWriter(session => this.context.workspaceState.update('alwaygit.session', session));
   private operationSettings(): OperationSettings { return { allowDetachedHead: vscode.workspace.getConfiguration('alwaygit').get<boolean>('allowDetachedHead', false) === true, scope: vscode.workspace.workspaceFile || vscode.workspace.workspaceFolders?.length ? 'workspace' : 'user' }; }
   private language(): Language { return this.context.workspaceState.get<{ language?: Language }>('alwaygit.session', {}).language ?? preferredLanguage(); }
   private text(english: string, chinese: string): string { return hostText(english, chinese, this.language()); }
@@ -72,7 +75,7 @@ export class Workbench implements vscode.Disposable {
         this.post({ type: 'response', id: parsed.data.id, error: { message, code: String((error as { code?: unknown }).code ?? 'FAILED'), ...(details ? { details } : {}) } },entry);
       }
     });
-    panel.onDidChangeViewState(event => { if (event.webviewPanel.active) this.lastPanel=entry; if (event.webviewPanel.visible) { this.post({ type: 'repositoriesChanged' },entry); if (entry.activeRepository) this.post({ type: 'changed', repoId: entry.activeRepository },entry); } this.presenceEmitter.fire(this.presence); });
+    panel.onDidChangeViewState(event => { if (event.webviewPanel.active) { this.lastPanel=entry; if(entry.session)void this.saveSessionBaseline(entry.session,entry).catch(error=>this.output.appendLine(`[session] ${redactSecrets(String(error))}`)); } if (event.webviewPanel.visible) { this.post({ type: 'repositoriesChanged' },entry); if (entry.activeRepository) this.post({ type: 'changed', repoId: entry.activeRepository },entry); } this.presenceEmitter.fire(this.presence); });
     panel.webview.html = await this.html(panel.webview,repoId,blank);
   }
   async pickRepositoryDirectory():Promise<string|undefined>{
@@ -135,7 +138,18 @@ export class Workbench implements vscode.Disposable {
       const saved = this.operationSettings(); this.post({ type: 'operationSettingsChanged', settings: saved }); return saved;
     }
     if (request.method === 'showLog') { this.output.show(true); return null; }
-    if (request.method === 'saveSession') { const session=sessionSchema.parse(request.payload),previous=this.context.workspaceState.get<Record<string,unknown>>('alwaygit.session',{}),persisted=source?.blank&&!session.repoId&&typeof previous.repoId==='string'?{...session,repoId:previous.repoId}:session;await this.context.workspaceState.update('alwaygit.session',persisted);if(source){source.activeRepository=session.repoId;source.blank=source.blank&&!session.repoId;this.updatePanelTitle(source);}return null; }
+    if (request.method === 'saveSession') {
+      const session = sessionSchema.parse(request.payload);
+      if (source) {
+        source.session = session;
+        source.activeRepository = session.repoId;
+        source.blank = source.blank && !session.repoId;
+        this.updatePanelTitle(source);
+      }
+      // Hidden panels retain their own Webview state without replacing the active baseline.
+      if (!source || source.panel.active) await this.saveSessionBaseline(session, source);
+      return null;
+    }
     if (request.method === 'copyText') { await vscode.env.clipboard.writeText(copySchema.parse(request.payload).text); return null; }
     if (!vscode.workspace.isTrusted) throw new Error(this.text('Git execution requires a trusted workspace.', '请先信任工作区，再执行 Git 操作。'));
     if (request.method === 'repositories') { const list = this.repositories.list(),active=source?.activeRepository??this.activeRepository; return active ? list.sort((a, b) => Number(b.id === active) - Number(a.id === active)) : list; }
@@ -221,6 +235,11 @@ export class Workbench implements vscode.Disposable {
         const snapshot = await this.git.snapshot(repo); this.recordFingerprint(snapshot); return snapshot;
       }
     }
+  }
+  private async saveSessionBaseline(session: SessionState, source?: WorkbenchPanel): Promise<void> {
+    const previous = this.context.workspaceState.get<SessionState>('alwaygit.session', {});
+    const persisted = source?.blank && !session.repoId && previous.repoId ? { ...session, repoId: previous.repoId } : session;
+    await this.sessions.save(persisted);
   }
   private async repositoryStatuses(): Promise<RepositoryStatus[]> {
     const repositories = this.repositories.list(), results: Array<RepositoryStatus | undefined> = new Array(repositories.length);

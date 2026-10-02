@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-041：会话恢复基线保存失败无法反馈且重复全量发送
+
+- 日期：2026-10-03
+- 状态：已解决
+- 现象：宿主保存被拒绝或失败后，前端仍将已发送状态当成保存完成；新标签可能使用旧恢复基线，高频界面变化反复整理会话。
+- 原因：保存绕过 RPC 响应表，在确认前更新去重标志；全 Store 订阅与多个标签写入没有独立协调。
+- 解决方案：共享会话 Schema 和类型，本标签立即保存；宿主请求采用确认、短防抖、串行最新待写及两次有限重试，失败明确提示。只订阅持久字段，宿主串行写基线，非活动标签保留自己的状态，重新激活时保存其最新基线；不删除草稿。
+- 验证方式：会话持久化 3 项、状态 45 项、RPC/宿主协议 7 项回归及类型检查通过，覆盖迟到确认、连续更新、写失败重试和失败后继续保存。
+- 相关文件：`src/protocol/session.ts`、`src/protocol/validation.ts`、`src/application/session-persistence.ts`、`src/extension/workbench.ts`、`webview/session-persistence.ts`、`webview/rpc.ts`、`webview/store.ts`、`tests/session-persistence.test.ts`。
+
 ## BUG-040：跨窗口忙碌状态与写保护无法可靠恢复
 
 - 日期：2026-10-03
