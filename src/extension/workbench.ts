@@ -174,7 +174,8 @@ export class Workbench implements vscode.Disposable {
       case 'action': {
         const action = actionSchema.parse(request.payload);
         if (this.busy.has(repo.commonDir)) throw new Error(this.text('An operation is already running in this repository.', '此仓库已有正在执行的操作。'));
-        if (!await confirmAction(repo, action, this.language())) throw new Error(this.text('Operation cancelled.', '操作已取消。'));
+        const operation = action.type === 'operation.abort' ? (await this.git.snapshot(repo)).operation : undefined;
+        if (!await confirmAction(repo, action, this.language(), operation)) throw new Error(this.text('Operation cancelled.', '操作已取消。'));
         if (this.busy.has(repo.commonDir)) throw new Error(this.text('An operation is already running in this repository.', '此仓库已有正在执行的操作。'));
         this.busy.add(repo.commonDir);
         for (const r of this.repositories.list().filter(r => r.commonDir === repo.commonDir)) this.post({ type: 'activity', repoId: r.id, busy: true, label: action.type });

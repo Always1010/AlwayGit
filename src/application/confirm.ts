@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
-import type { GitAction, Repository } from '../protocol/types';
+import type { GitAction, OperationState, Repository } from '../protocol/types';
 import { hostText, type Language } from './language';
 
-export async function confirmAction(repo: Repository, action: GitAction, language?: Language): Promise<boolean> {
+export async function confirmAction(repo: Repository, action: GitAction, language?: Language, operation?: OperationState): Promise<boolean> {
   const text = (english: string, chinese: string) => hostText(english, chinese, language);
   let warning: string | undefined;
   if (action.type === 'discard') warning = text(`Discard Unstaged Changes in ${action.paths.length} file(s)? Untracked files will be deleted; Index content and Staged Changes remain.`, `Discard ${action.paths.length} 个文件的 Unstaged Changes？未跟踪文件将被删除；Index 中的 Staged Changes 保留。`);
@@ -27,6 +27,7 @@ export async function confirmAction(repo: Repository, action: GitAction, languag
     if (action.type === 'reset') warning = `Reset ${repo.name} 到 ${action.target}（${action.mode}）？${action.mode === 'hard' ? 'HEAD、Index 和工作区文件都将改变，未提交内容可能丢失。' : action.mode === 'mixed' ? 'HEAD 和 Index 将改变，工作区文件保留。' : 'HEAD 将改变，Index 和工作区文件保留。'}`;
   }
   const proceed = text('Proceed', '继续');
+  if (action.type === 'operation.abort' && operation?.originalHead) warning += text(`\nGit will attempt to restore the operation start state at ${operation.originalHead}. Pre-existing local changes may prevent full restoration.`, `\nGit 将尝试恢复到操作开始时的 ${operation.originalHead}；操作前已有的本地修改可能影响完整恢复。`);
   if (warning) return (await vscode.window.showWarningMessage(warning, { modal: true, detail: text(`Repository: ${repo.root}`, `仓库：${repo.root}`) }, proceed)) === proceed;
   if (action.type === 'commit' || action.type === 'operation.continue') {
     const dirty = vscode.workspace.textDocuments.filter(d => d.isDirty && d.uri.scheme === 'file' && d.uri.fsPath.startsWith(repo.root + require('node:path').sep));

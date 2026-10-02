@@ -126,7 +126,7 @@ describe('Git service integration', () => {
     await writeFile(path.join(root,'binary.bin'),Buffer.from([0,255,10]));await writeFile(path.join(root,'large.txt'),'x'.repeat(2*1024*1024+1));await writeFile(path.join(root,'encoded.txt'),Buffer.from([255,10]));
     await git(root,'add','--','same.txt','binary.bin','large.txt','encoded.txt');const review=await service.reviewOperation(repo);
     expect(review.files).toEqual(expect.arrayContaining([{path:'same.txt',lines:[1,2,3,4]},{path:'binary.bin',lines:[],skipped:'binary'},{path:'large.txt',lines:[],skipped:'large'},{path:'encoded.txt',lines:[],skipped:'encoding'}]));
-    const original=await git(root,'rev-parse','HEAD');await service.execute(repo,{type:'operation.abort',kind:'merge'});
+    const original=(await service.snapshot(repo)).operation.originalHead;await service.execute(repo,{type:'operation.abort',kind:'merge'});
     expect(await git(root,'rev-parse','HEAD')).toBe(original);expect(await git(root,'status','--porcelain')).toBe('');
   });
   it('implements branches, tags, stashes, reset, amend, cherry-pick, revert and rebase', async () => {

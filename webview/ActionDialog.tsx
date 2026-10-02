@@ -18,11 +18,11 @@ function pushDefaults(snapshot: Snapshot, dialog: DialogRequest) {
   const remoteBranch=current?.remoteBranch??(upstreamRemote?upstream!.slice(upstreamRemote.length+1):localBranch);
   return {localBranch,remote,remoteBranch,configured:current?.configured??!!upstream};
 }
-export function ActionDialog({ dialog, onClose }: { dialog: DialogRequest; onClose(): void }) {
+export function ActionDialog({ dialog, onClose, openAbort }: { dialog: DialogRequest; onClose(): void; openAbort(): void }) {
   if(dialog.type==='branch.track')return <RemoteTrackingDialog dialog={dialog} onClose={onClose}/>;
-  return <StandardActionDialog dialog={dialog} onClose={onClose}/>;
+  return <StandardActionDialog dialog={dialog} onClose={onClose} openAbort={openAbort}/>;
 }
-function StandardActionDialog({ dialog, onClose }: { dialog: DialogRequest; onClose(): void }) {
+function StandardActionDialog({ dialog, onClose, openAbort }: { dialog: DialogRequest; onClose(): void; openAbort(): void }) {
   const state = useWorkbench(), snapshot = state.snapshot!, t = useTranslation(), { type } = dialog;
   const local = snapshot.refs.filter(r => r.kind === 'local'), tags = snapshot.refs.filter(r => r.kind === 'tag');
   const push=pushDefaults(snapshot,dialog);
@@ -71,6 +71,14 @@ function StandardActionDialog({ dialog, onClose }: { dialog: DialogRequest; onCl
     if(await state.execute(action)){if(['branch.checkout','commit.checkout'].includes(type)||type==='branch.create'&&checks.checkout){const latest=useWorkbench.getState();if(latest.repoId===state.repoId&&latest.snapshot?.head)void latest.selectCommit(latest.snapshot.head);}onClose();}
   }
   const destructive = ['discard','branch.delete','remote.delete','tag.delete','stash.drop','worktree.remove','operation.abort'].includes(type) || type==='reset' && values.mode==='hard';
+  if (snapshot.operation.kind && ['merge','rebase','cherry-pick','revert','pull'].includes(type)) {
+    const kind=snapshot.operation.kind, files=snapshot.changes.filter(file=>file.conflict);
+    return <Modal title={t(`${kind} paused`,`${kind} 已暂停`)} busy={state.busy} onClose={onClose} footer={<>
+      <Button disabled={state.busy} onClick={onClose}>{t('Close This Window','关闭此窗口')}</Button>
+      <Button className="danger" disabled={state.busy} onClick={openAbort}>{t(`Abort ${kind}…`,`中止本次 ${kind}…`)}</Button>
+      <Button className="primary" icon="files" disabled={state.busy} onClick={()=>{onClose();state.selectWorking();const file=files[0]??snapshot.changes.find(file=>file.indexStatus!==' '&&!file.untracked);if(file)state.selectFile({kind:'change',path:file.path,area:file.conflict?'conflict':'staged'});state.setLayout({diffCollapsed:false});}}>{files.length?t('View & Handle Conflicts','查看并处理冲突'):t('Review Staged Result','检查暂存结果')}</Button>
+    </>}><p>{snapshot.repository.name} · {branch}</p><p>{t('Closing this window leaves the Git operation paused. Edit and save conflicting files, then return to mark and stage the result.','关闭此窗口后 Git 操作仍处于暂停状态。请编辑保存冲突文件，再返回这里标记并暂存结果。')}</p>{state.error&&<details><summary>{t('Git details','Git 详情')}</summary><pre>{state.error}</pre></details>}</Modal>;
+  }
   return <Modal title={title} busy={state.busy} onClose={onClose} footer={<><Button onClick={onClose} disabled={state.busy}>{t('Cancel','取消')}</Button><Button type="submit" form="ag-action-form" className={destructive?'danger':'primary'} disabled={state.busy}>{state.busy?t('Working…','处理中…'):title}</Button></>}><form id="ag-action-form" className="action-form" onSubmit={event=>void submit(event)}>
     <p className="muted">{snapshot.repository.name} · {branch}</p>
     {type==='branch.create' && <>{field('name','Branch Name','分支名称',undefined,true,'feature/my-change')}{field('start','Start Point','起始位置',undefined,true)}{checkbox('checkout','Checkout new branch','Checkout 到新分支')}</>}
@@ -89,7 +97,7 @@ function StandardActionDialog({ dialog, onClose }: { dialog: DialogRequest; onCl
     {['fetch','pull'].includes(type)&&<>{field('remote','Remote (optional)','远端（可选）')}{type==='pull'&&field('strategy','Pull Strategy','Pull 策略',[{value:'ff-only',label:'Fast-forward Only'},{value:'merge',label:'Merge'},{value:'rebase',label:'Rebase'}])}</>}
     {type==='push'&&<><div className="push-target"><span>{t('Push Target','Push 目标')}</span><strong>{values.branch} <span aria-hidden="true">→</span> {values.remote?`${values.remote}/${values.remoteBranch}`:t('Select remote','选择远端')}</strong><dl><div><dt>{t('Local Branch','本地分支')}</dt><dd>{values.branch}</dd></div><div><dt>{t('Remote','远端')}</dt><dd>{values.remote||'—'}</dd></div><div><dt>{t('Remote Branch','远端分支')}</dt><dd>{values.remoteBranch||'—'}</dd></div></dl></div>{(!customizePush||!!push.remote)&&<Button type="button" icon="settings-gear" onClick={()=>{setCustomizePush(value=>!value);if(customizePush){set('remote',push.remote);set('remoteBranch',push.remoteBranch);}}}>{customizePush?t('Use Default Target','使用默认目标'):t('Change Target…','更改目标…')}</Button>}{customizePush&&<>{field('remote','Remote','远端',[{value:'',label:t('Select remote…','选择远端…')},...[...new Set([values.remote,...(snapshot.remotes??[])].filter(Boolean))].map(remote=>({value:remote,label:remote}))],true)}{field('remoteBranch','Remote Branch','远端分支',undefined,true)}</>}{checkbox('forceWithLease','Force-with-lease')}{!push.configured&&<p className="muted">{t('This Push will set the selected target as the upstream branch.','本次 Push 会将所选目标设置为 upstream 分支。')}</p>}</>}
     {type==='discard'&&<><div className="discard-paths">{dialog.paths?.map(path=><div key={path}>{path}</div>)}</div><p className="warning-text">{t('Discard Unstaged Changes and selected untracked files. Staged Changes remain in the Index.','丢弃 Unstaged Changes 和选中的未跟踪文件。Index 中的 Staged Changes 保留。')}</p></>}
-    {type==='operation.abort'&&<p>{t('Abort the active operation; conflict-resolution changes may be lost.','Abort 当前操作；冲突解决过程中产生的修改可能丢失。')}</p>}
+    {type==='operation.abort'&&<><p className="warning-text">{t(`Abort the active ${snapshot.operation.kind}; edits made while resolving conflicts may be discarded. Closing this window does not abort.`,`中止当前 ${snapshot.operation.kind}；解决冲突期间的修改可能被丢弃。关闭此窗口不会中止操作。`)}</p>{snapshot.operation.originalHead&&<p>{t('Git will attempt to restore the operation start state at Commit ','Git 将尝试恢复到操作开始时的状态，Commit ')}<code>{snapshot.operation.originalHead}</code>{t('. Pre-existing local changes may prevent a full restoration.','。操作前已有的本地修改可能影响完整恢复。')}</p>}</>}
     {validation&&<p role="alert" className="form-error">{validation}</p>}{state.error&&<p role="alert" className="form-error">{state.error}</p>}{demoMode&&<p className="muted">{t('Demo: sample data only.','模拟操作：仅修改示例数据。')}</p>}
   </form></Modal>;
 }

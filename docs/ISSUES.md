@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-020：冲突后的发起窗口混淆关闭与中止
+
+- 日期：2026-10-02
+- 状态：已解决
+- 现象：Merge 发生冲突后，原窗口继续保留 Merge 和 Cancel；Cancel 只关闭对话框，合并仍处于暂停状态，真正的 Abort 位于窗口后面的操作条。用户不易判断取消是否已经中止合并，或如何恢复到合并前状态。
+- 原因：对话框只在 Git 成功时关闭，失败并产生活动操作后仍保留发起状态；关闭与中止共用模糊的取消表述，中止说明没有可确认的操作起点。
+- 解决方案：Merge / Rebase / Cherry-pick / Revert / Pull 发起窗口在活动操作出现后转换成暂停处理状态；主入口为查看并处理冲突，关闭写明“关闭此窗口”且明确操作依旧暂停，同窗口直接提供中止入口。宿主读取可确认的 Merge / Rebase / Sequencer 原始 HEAD，工作台与原生 Abort 确认显示 Git 将尝试恢复的 Commit 和可能丢弃的修改，不保证操作前本地修改一定可以完整恢复。
+- 验证方式：无头操作反馈专项通过，检查暂停窗口不再保留 Merge/Cancel、关闭不发出 Abort、后台操作条继续存在和 Abort 显示恢复 Commit；真实 Git 验证中止恢复 HEAD 与干净工作区。原生确认适配器测试覆盖恢复起点、取消与未保存编辑提示；针对性 5 项、类型检查和构建通过。未启动真实 VS Code 桌面集成测试。
+- 相关文件：`webview/ActionDialog.tsx`、`webview/App.tsx`、`src/protocol/types.ts`、`src/git/service.ts`、`src/extension/workbench.ts`、`src/application/confirm.ts`、`scripts/test-feedback-ui.mjs`、`tests/git-service.test.ts`、`tests/confirm.test.ts`、`docs/WORKBENCH_SPEC.md`、`docs/VALIDATION.md`。
+
 ## BUG-019：冲突暂存被宣称为已解决且能直接完成操作
 
 - 日期：2026-10-02

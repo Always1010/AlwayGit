@@ -6,7 +6,7 @@ export interface GitRef { name: string; fullName: string; kind: 'local' | 'remot
 export interface Stash { selector: string; oid: string; subject: string }
 export interface Worktree { path: string; head: string; branch?: string; bare: boolean; detached: boolean; locked?: string; prunable?: string }
 export type OperationKind = 'merge' | 'rebase' | 'cherry-pick' | 'revert';
-export interface OperationState { kind?: OperationKind; conflicts: number; canContinue: boolean; canAbort: boolean; canSkip: boolean }
+export interface OperationState { kind?: OperationKind; conflicts: number; canContinue: boolean; canAbort: boolean; canSkip: boolean; originalHead?: string }
 export interface OperationReview { kind: OperationKind; token: string; files: { path: string; lines: number[]; more?: boolean; skipped?: 'binary' | 'large' | 'encoding' | 'submodule' | 'limit' }[] }
 export interface PushTarget { localBranch: string; remote?: string; remoteBranch: string; configured: boolean }
 export interface Snapshot { repository: Repository; branch: string; head?: string; upstream?: string; defaultBranch?: string; pushTarget?: PushTarget; ahead: number; behind: number; unpushed?: number; changes: Change[]; refs: GitRef[]; remotes?: string[]; stashes: Stash[]; worktrees: Worktree[]; operation: OperationState; version: number }

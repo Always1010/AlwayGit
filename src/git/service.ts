@@ -146,7 +146,11 @@ export class GitService implements GitServiceContract {
     if (markers[0] || markers[1]) operation.kind = 'rebase'; else if (markers[2]) operation.kind = 'merge'; else if (markers[3]) operation.kind = 'cherry-pick'; else if (markers[4]) operation.kind = 'revert'; else if (markers[5]) {
       const todo = await readFile(path.join(gitDir, 'sequencer', 'todo'), 'utf8'); if (/^pick /m.test(todo)) operation.kind = 'cherry-pick'; else if (/^revert /m.test(todo)) operation.kind = 'revert';
     }
-    if (operation.kind) { operation.canContinue = operation.conflicts === 0; operation.canAbort = true; operation.canSkip = operation.kind !== 'merge'; }
+    if (operation.kind) {
+      operation.canContinue = operation.conflicts === 0; operation.canAbort = true; operation.canSkip = operation.kind !== 'merge';
+      const original = operation.kind === 'merge' ? status.head : await this.readOperationFile(gitDir, markers[0] ? 'rebase-merge/orig-head' : markers[1] ? 'rebase-apply/orig-head' : 'sequencer/head');
+      if (original && /^[a-f0-9]{40,64}$/.test(original.trim())) operation.originalHead = original.trim();
+    }
     let pushTarget: Snapshot['pushTarget'];
     if (status.branch) {
       const [branchPushRemote, defaultPushRemote, branchRemote, mergeRef] = await Promise.all([

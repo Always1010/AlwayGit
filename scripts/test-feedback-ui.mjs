@@ -65,7 +65,13 @@ export async function verifyFeedback(browser, url) {
       fixture.snapshot.changes = ['src/features/auth/login.ts', 'webview/Details.tsx'].map(path => ({ path, indexStatus: 'U', worktreeStatus: 'U', conflict: true, untracked: false }));
       fixture.complete('CONFLICT: edit and stage the result');
     });
-    await page.getByRole('dialog',{name:'Merge',exact:true}).getByRole('button',{name:'Cancel',exact:true}).click();
+    const paused=page.getByRole('dialog',{name:'merge paused',exact:true});
+    await paused.waitFor();
+    assert.equal(await paused.getByRole('button',{name:'Merge',exact:true}).count(),0);
+    assert.equal(await paused.getByRole('button',{name:'Cancel',exact:true}).count(),0);
+    await paused.getByRole('button',{name:'Abort merge…',exact:true}).waitFor();
+    await paused.getByRole('button',{name:'Close This Window',exact:true}).click();
+    assert.equal(await page.evaluate(()=>window.__feedbackFixture.calls.filter(call=>call.payload?.type==='operation.abort').length),0);
     const operation = page.getByTestId('operation-notice');
     await operation.getByText('Merge paused', { exact: true }).waitFor();
     await operation.getByText('2 conflicts', { exact: true }).waitFor();
@@ -75,6 +81,7 @@ export async function verifyFeedback(browser, url) {
     await page.waitForFunction(() => window.__feedbackFixture.calls.some(call => call.method === 'diffPreview' && call.payload.area === 'conflict' && call.payload.path === 'src/features/auth/login.ts'));
     await page.getByTestId('details').locator('.change-group').first().getByText('./src/features/auth', { exact: true }).waitFor();
     await operation.getByRole('button', { name: 'Abort Merge…', exact: true }).click();
+    await page.getByRole('dialog').getByText('a'.repeat(40),{exact:true}).waitFor();
     await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
     const conflictGroup=page.getByTestId('details').locator('.change-group').first();
     await conflictGroup.getByText('This does not choose the correct content or verify your resolution.',{exact:false}).waitFor();
@@ -119,6 +126,6 @@ export async function verifyFeedback(browser, url) {
     await page.evaluate(()=>{const fixture=window.__feedbackFixture;fixture.snapshot.operation={conflicts:0,canContinue:false,canAbort:false,canSkip:false};fixture.snapshot.changes=[];fixture.complete();});
     await page.waitForFunction(()=>document.querySelector('#ag-commit-message').value==='');
     assert.deepEqual(errors, []);
-    console.log('ALWAYGIT_FEEDBACK_UI_TESTS_PASSED: feedback, manual staging, staged marker review, return, explicit override and Commit guard');
+    console.log('ALWAYGIT_FEEDBACK_UI_TESTS_PASSED: feedback, paused Merge exit/abort, manual staging, staged marker review, return, explicit override and Commit guard');
   } finally { await page.close(); }
 }
