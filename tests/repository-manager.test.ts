@@ -200,22 +200,23 @@ describe('Add Repository host entry', () => {
     const projects={notifyCatalogChanged:vi.fn(async()=>{}),runRepositoryOperation:vi.fn(async(_commonDir:string,_label:string,task:()=>Promise<unknown>)=>task())};
     const value = new Workbench(context, git, manager, {} as never, output, projects as never); workbenches.push(value); return { value, manager, output, projects };
   }
-  it('uses cancellable progress and reports a bulk result through the existing RPC', async () => {
+  it('discovers candidates without registration and adds only the confirmed keys', async () => {
     const root = await fixture(), { value, manager, projects } = workbench();
     vi.mocked(vscode.window.showOpenDialog).mockResolvedValue([{ fsPath: root }] as vscode.Uri[]);
-    expect(await value.handle({ id: 'add', method: 'addRepository' })).toEqual({ added: 2, existing: 0, skipped: 0, cancelled: false });
+    expect(await value.handle({id:'pick',method:'pickRepositoryDirectory'})).toBe(root);
+    const preview=await value.handle({id:'discover',method:'discoverRepositories',payload:{scanId:'scan-1',path:root}}) as {candidates:{key:string;existing:boolean}[]};
+    expect(preview.candidates).toHaveLength(2);expect(preview.candidates.every(candidate=>!candidate.existing)).toBe(true);
+    expect(manager.list()).toEqual([]);
+    expect(await value.handle({id:'add',method:'addRepository',payload:{scanId:'scan-1',keys:preview.candidates.map(candidate=>candidate.key)}})).toEqual({added:2,existing:0,skipped:0});
     expect(manager.list()).toHaveLength(2);
-    expect(vscode.window.showQuickPick).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ description: '可添加', picked: true })]),expect.objectContaining({canPickMany:true}));
-    expect(vscode.window.withProgress).toHaveBeenCalledWith(expect.objectContaining({ cancellable: true }), expect.any(Function));
-    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith('新增 2 个仓库，0 个已存在。');
+    expect(vscode.window.showQuickPick).not.toHaveBeenCalled();expect(vscode.window.withProgress).not.toHaveBeenCalled();
     expect(projects.notifyCatalogChanged).toHaveBeenCalledTimes(1);
   });
 
-  it('does not register scan results when the review picker is dismissed', async () => {
+  it('does not register scan results when the embedded review is closed', async () => {
     const root=await fixture(),{value,manager}=workbench();
-    vi.mocked(vscode.window.showOpenDialog).mockResolvedValue([{fsPath:root}] as vscode.Uri[]);
-    vi.mocked(vscode.window.showQuickPick).mockResolvedValue(undefined);
-    expect(await value.addRepository()).toMatchObject({added:0,cancelled:true});
+    const preview=await value.discoverRepositories('scan-close',root);
+    expect(preview.candidates).toHaveLength(2);value.cancelRepositoryDiscovery('scan-close');
     expect(manager.list()).toEqual([]);
     expect(vscode.workspace.createFileSystemWatcher).not.toHaveBeenCalled();
   });
@@ -232,23 +233,18 @@ describe('Add Repository host entry', () => {
   it('reports no repositories and a damaged repository without silently succeeding', async () => {
     const root = await fixture(), { value, output } = workbench();
     const empty = path.join(root, 'empty'); await mkdir(empty);
-    vi.mocked(vscode.window.showOpenDialog).mockResolvedValue([{ fsPath: empty }] as vscode.Uri[]);
-    await value.addRepository();
-    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith('所选目录中没有找到 Git 仓库。');
+    expect((await value.discoverRepositories('scan-empty',empty)).candidates).toEqual([]);
     await writeFile(path.join(empty, '.git'), 'invalid gitfile');
-    expect(await value.addRepository()).toMatchObject({ added: 0, skipped: 1 });
-    expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(expect.stringContaining('跳过 1 个异常目录或仓库'));
+    const damaged=await value.discoverRepositories('scan-damaged',empty);expect(damaged.candidates).toEqual([]);expect(damaged.issues).toHaveLength(1);expect(path.basename(damaged.issues[0].path)).toBe('empty');
     expect(output.appendLine).toHaveBeenCalledTimes(1);
   });
 
-  it('does not scan when the folder picker is dismissed or progress is cancelled', async () => {
+  it('does not scan when the folder picker is dismissed and cancels an active embedded scan', async () => {
     const { value, manager } = workbench(), add = vi.spyOn(manager, 'discoverDirectory');
     vi.mocked(vscode.window.showOpenDialog).mockResolvedValue(undefined);
-    expect(await value.addRepository()).toBeUndefined(); expect(add).not.toHaveBeenCalled();
+    expect(await value.pickRepositoryDirectory()).toBeUndefined(); expect(add).not.toHaveBeenCalled();
     const root = await fixture();
-    vi.mocked(vscode.window.showOpenDialog).mockResolvedValue([{ fsPath: root }] as vscode.Uri[]);
-    vi.mocked(vscode.window.withProgress).mockImplementation(async (_options, task) => task({ report: vi.fn() }, { isCancellationRequested: true, onCancellationRequested: () => ({ dispose() {} }) }));
-    expect(await value.addRepository()).toMatchObject({ added: 0, cancelled: true }); expect(manager.list()).toEqual([]);
-    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith('已取消仓库扫描，未添加任何仓库。');
+    const scanning=value.discoverRepositories('scan-cancel',root);value.cancelRepositoryDiscovery('scan-cancel');
+    expect(await scanning).toMatchObject({cancelled:true,candidates:[]});expect(manager.list()).toEqual([]);
   });
 });

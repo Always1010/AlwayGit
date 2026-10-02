@@ -9,6 +9,7 @@ import { useTranslation } from './i18n';
 import { ActionDialog } from './ActionDialog';
 import type { DialogRequest } from './ActionDialog';
 import { ContextMenu } from './ContextMenu';
+import { RepositoryDialog } from './RepositoryDialog';
 import { menuFor } from './menus';
 import type { MenuApi, MenuTarget } from './menus';
 import { Sidebar } from './Sidebar';
@@ -23,7 +24,7 @@ import { Button, Empty, Icon, Modal, ResizeHandle } from './ui';
 import { repositoryViewState } from './repositoryState';
 
 export function App() {
-  const state=useWorkbench(),t=useTranslation(),[dialog,setDialog]=useState<DialogRequest>(),[repositoryFetch,setRepositoryFetch]=useState<Repository[]>(),[context,setContext]=useState<{x:number;y:number;target:MenuTarget}>();
+  const state=useWorkbench(),t=useTranslation(),[dialog,setDialog]=useState<DialogRequest>(),[repositoryDialog,setRepositoryDialog]=useState(false),[repositoryFetch,setRepositoryFetch]=useState<Repository[]>(),[context,setContext]=useState<{x:number;y:number;target:MenuTarget}>();
   const mainPanel=useRef<HTMLElement>(null),[mainPanelHeight,setMainPanelHeight]=useState(0);
   const theme=useResolvedTheme(state.appearance.theme),lightTheme=isLightTheme(theme);
   const paletteColors=lightTheme?state.appearance.colors.light:state.appearance.colors.dark;
@@ -33,7 +34,7 @@ export function App() {
   const host=useCallback(async(method:RpcRequest['method'],payload?:unknown,repoId?:string)=>{
     const current=useWorkbench.getState();try{await rpc(method,repoId??current.repoId,payload);if(demoMode&&method!=='copyText')useWorkbench.setState({notice:current.language==='zh-CN'?'模拟原生 VS Code 操作；未修改实际文件。':'Demo: native VS Code command preview.'});if(method==='copyText')useWorkbench.setState({notice:current.language==='zh-CN'?'已复制。':'Copied.'});}catch(error){current.report(error);}
   },[]);
-  async function addRepository(){try{await rpc('addRepository');await state.initialize();}catch(error){state.report(error);}}
+  async function addRepository(){setContext(undefined);setRepositoryDialog(true);}
   const open=(request:DialogRequest)=>{setContext(undefined);useWorkbench.setState({error:undefined,checkoutFailure:undefined,stashApplyFailure:undefined});setDialog(request);};
   const showContext:ContextHandler=(event,target)=>{
     event.preventDefault();event.stopPropagation();const rect=event.currentTarget.getBoundingClientRect();
@@ -76,6 +77,7 @@ export function App() {
     </main></div>
     <footer className="statusbar" role="status"><span>{state.busy?state.activity:state.historyLoading?t('Loading history…','正在读取历史…'):state.notice??t('Ready','就绪')}</span><span>{layout.font}px / {effectiveRowHeight(layout)}px · Workbench</span></footer>
     {dialog&&snapshot&&!state.checkoutFailure&&!state.operationReview&&<ActionDialog key={`${state.repoId}-${dialog.type}-${dialog.target}-${dialog.sources?.join('|')}-${dialog.names?.join('|')}-${dialog.remoteBranches?.join('|')}-${dialog.pop}`} dialog={dialog} onClose={()=>setDialog(undefined)} openAbort={()=>open({type:'operation.abort'})} replaceDialog={setDialog}/>}
+    {repositoryDialog&&<RepositoryDialog onClose={()=>setRepositoryDialog(false)}/>}
     {state.operationReview&&snapshot&&<OperationReviewDialog key={state.operationReview.review.token} edit={path=>void edit({kind:'change',path,area:'staged'})}/>}
     {context&&menu&&<ContextMenu x={context.x} y={context.y} caption={menu.caption} items={menu.items} close={closeMenu}/>}
     {repositoryFetch&&<RepositoryFetchDialog repositories={repositoryFetch} onClose={()=>setRepositoryFetch(undefined)}/>}

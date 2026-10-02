@@ -31,7 +31,7 @@ export const actionSchema = z.union([
   z.object({ type: z.literal('operation.continue'), kind, reviewToken: text.optional() }),
   z.object({ type: z.enum(['operation.abort', 'operation.skip']), kind }),
 ]);
-export const requestSchema = z.object({ id: z.string().min(1).max(128), method: z.enum(['repositories', 'repositoryCollections', 'repositoryStatuses', 'addRepository', 'removeRepositories', 'createRepositoryCollection', 'renameRepositoryCollection', 'deleteRepositoryCollection', 'moveRepositories', 'snapshot', 'operationReview', 'history', 'details', 'stashDetails', 'compare', 'action', 'diff', 'diffPreview', 'copyText', 'openWorkbench', 'openRepository', 'openProject', 'openFile', 'openWorktree', 'pickWorktree', 'showLog', 'saveSession']), repoId: text.optional(), payload: z.unknown().optional() });
+export const requestSchema = z.object({ id: z.string().min(1).max(128), method: z.enum(['repositories', 'repositoryCollections', 'repositoryStatuses', 'pickRepositoryDirectory', 'discoverRepositories', 'cancelRepositoryDiscovery', 'addRepository', 'removeRepositories', 'createRepositoryCollection', 'renameRepositoryCollection', 'deleteRepositoryCollection', 'moveRepositories', 'snapshot', 'operationReview', 'history', 'details', 'stashDetails', 'compare', 'action', 'diff', 'diffPreview', 'copyText', 'openWorkbench', 'openRepository', 'openProject', 'openFile', 'openWorktree', 'pickWorktree', 'showLog', 'saveSession']), repoId: text.optional(), payload: z.unknown().optional() });
 const graphColor = z.string().regex(/^#[0-9a-f]{6}$/i);
 const graphColors = z.object({ light: z.array(graphColor).min(4).max(16), dark: z.array(graphColor).min(4).max(16) })
   .refine(colors => colors.light.length === colors.dark.length, 'Light and dark graph palettes must have the same size');
@@ -40,6 +40,10 @@ export const copySchema = z.object({ text: z.string().max(1000000) });
 export const repositoryKeysSchema = z.object({ keys: z.array(text).min(1).max(10000) });
 export const repositoryCollectionSchema = z.object({ id: text });
 export const moveRepositoriesSchema = repositoryKeysSchema.extend({ collectionId: text.optional() });
+const repositoryScanId = z.string().min(1).max(128).regex(/^[a-zA-Z0-9._-]+$/);
+export const repositoryDiscoverySchema = z.object({ scanId: repositoryScanId, path: text });
+export const cancelRepositoryDiscoverySchema = z.object({ scanId: repositoryScanId });
+export const addRepositoriesSchema = z.object({ scanId: repositoryScanId, keys: z.array(text).min(1).max(10000), collectionId: text.optional(), newCollectionName: z.string().trim().min(1).max(80).optional() }).refine(value=>!(value.collectionId&&value.newCollectionName),'Choose an existing group or create a new one, not both.');
 export const openRepositorySchema = z.object({ newWindow: z.boolean().optional(), newTab: z.boolean().optional() }).refine(value=>!value.newWindow||!value.newTab,'Choose either a new tab or a new window.');
 export const openWorkbenchSchema = z.object({ newTab: z.boolean().optional(), newWindow: z.boolean().optional() }).refine(value=>Number(!!value.newTab)+Number(!!value.newWindow)===1,'Choose one Workbench destination.');
 export const openWorktreeSchema = z.object({ path: text, newWindow: z.boolean().optional() });

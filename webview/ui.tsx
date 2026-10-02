@@ -21,7 +21,7 @@ export function ResizeHandle({ axis, label, value, onChange, min, max, reverse =
   }} />;
 }
 
-export function Modal({ title, children, onClose, busy = false, footer }: { title: string; children: React.ReactNode; onClose(): void; busy?: boolean; footer?: React.ReactNode }) {
+export function Modal({ title, children, onClose, busy = false, footer, className='' }: { title: string; children: React.ReactNode; onClose(): void; busy?: boolean; footer?: React.ReactNode; className?:string }) {
   const t = useTranslation(), panel = useRef<HTMLDivElement>(null), callback = useRef(onClose); callback.current = onClose;
   useEffect(() => {
     const previous = document.activeElement as HTMLElement;
@@ -36,5 +36,5 @@ export function Modal({ title, children, onClose, busy = false, footer }: { titl
     };
     window.addEventListener('keydown', key); return () => { window.removeEventListener('keydown', key); if (previous?.isConnected) previous.focus(); };
   }, []);
-  return <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !busy) onClose(); }}><div className="modal" ref={panel} role="dialog" aria-modal="true" aria-label={title} aria-busy={busy}><div className="modal-heading"><h2>{title}</h2><Button icon="close" aria-label={t('Close','关闭')} onClick={onClose} disabled={busy} /></div><div className="modal-body">{children}</div><div className="modal-footer">{footer ?? <Button onClick={onClose} disabled={busy}>{t('Close','关闭')}</Button>}</div></div></div>;
+  return <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !busy) onClose(); }}><div className={`modal ${className}`.trim()} ref={panel} role="dialog" aria-modal="true" aria-label={title} aria-busy={busy}><div className="modal-heading"><h2>{title}</h2><Button icon="close" aria-label={t('Close','关闭')} title={t('Close','关闭')} onClick={onClose} disabled={busy} /></div><div className="modal-body">{children}</div><div className="modal-footer">{footer ?? <Button onClick={onClose} disabled={busy}>{t('Close','关闭')}</Button>}</div></div></div>;
 }

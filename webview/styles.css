@@ -303,6 +303,43 @@ h1,h2,p {margin:0;}
 .modal-heading {display:flex;align-items:center;justify-content:space-between;padding:10px 13px;border-bottom:1px solid var(--border);}
 .modal-heading h2 {font-size:16px;font-weight:600;}
 .modal-body {padding:12px 14px;overflow:auto;display:flex;flex-direction:column;gap:10px;font-size:13px;overflow-wrap:anywhere;}
+.repository-dialog {width:720px;}
+.repository-dialog-intro {margin:0;color:var(--muted);}
+.repository-folder-empty,.repository-result-empty {display:flex;flex-direction:column;align-items:center;gap:8px;padding:24px 12px;text-align:center;color:var(--muted);}
+.repository-folder-empty>.codicon,.repository-result-empty>.codicon {font-size:28px;}
+.repository-folder-empty strong,.repository-result-empty strong {color:var(--fg);}
+.repository-folder-empty code {max-width:100%;overflow-wrap:anywhere;}
+.repository-scanning {display:flex;align-items:flex-start;gap:12px;padding:20px 10px;}
+.repository-scanning>.codicon {font-size:24px;color:var(--accent);}
+.repository-scanning>div {display:flex;flex-direction:column;gap:5px;min-width:0;}
+.repository-scanning code,.repository-scan-header code,.repository-candidate code,.repository-scan-issues code {font:11px/1.45 var(--vscode-editor-font-family,Consolas,monospace);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.repository-scanning span,.repository-result-summary span {color:var(--muted);font-size:11px;}
+.repository-scan-header {display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--section-border);background:color-mix(in srgb,var(--panel) 76%,var(--bg));}
+.repository-scan-header>div {display:flex;flex-direction:column;gap:3px;min-width:0;flex:1;}
+.repository-scan-header>div>span {color:var(--muted);font-size:11px;}
+.repository-result-summary {display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.repository-result-tools {display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.repository-result-tools>label:first-child {display:flex;align-items:center;gap:6px;min-width:180px;flex:1;border:1px solid var(--input-border);background:var(--input-bg);padding:0 7px;}
+.repository-result-tools input[type=search] {width:100%;border:0;outline:0;background:transparent;padding:6px 0;}
+.repository-candidate-list {border:1px solid var(--section-border);max-height:285px;overflow:auto;}
+.repository-filter-empty {padding:24px;color:var(--muted);text-align:center;}
+.repository-candidate {display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;gap:8px;min-height:48px;padding:5px 9px;border-bottom:1px solid var(--row-border);}
+.repository-candidate:last-child {border-bottom:0;}
+.repository-candidate:hover:not(.existing) {background:var(--hover);}
+.repository-candidate[aria-selected=true] {background:color-mix(in srgb,var(--accent) 10%,var(--bg));}
+.repository-candidate>span {display:flex;flex-direction:column;gap:2px;min-width:0;}
+.repository-candidate strong {font-weight:500;}
+.repository-candidate small {color:var(--green);font-size:11px;white-space:nowrap;}
+.repository-candidate.existing {color:var(--muted);opacity:.72;}
+.repository-candidate.existing small {color:var(--muted);}
+.repository-scan-issues {font-size:11px;}
+.repository-scan-issues summary {color:var(--muted);cursor:pointer;}
+.repository-scan-issues>div {display:grid;gap:2px;padding:5px 8px;border-left:2px solid var(--error);}
+.repository-scan-issues span {color:var(--error);overflow-wrap:anywhere;}
+.repository-destination {display:grid;grid-template-columns:minmax(190px,1fr) auto minmax(190px,1fr);align-items:end;gap:8px;padding-top:2px;}
+.repository-new-group {align-self:end;}
+.repository-add-summary {margin-right:auto;color:var(--muted);font-size:12px;}
+@media (max-width:620px){.repository-result-summary {align-items:flex-start;flex-direction:column;}.repository-destination {grid-template-columns:1fr;}.repository-new-group {justify-self:start;}.repository-candidate-list {max-height:240px;}}
 .action-form {display:flex;flex-direction:column;gap:12px;}
 .form-field {display:flex;flex-direction:column;gap:5px;}
 .form-field input,.form-field select {padding:6px 8px;width:100%;}
