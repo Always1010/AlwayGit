@@ -411,7 +411,7 @@ export class GitService implements GitServiceContract {
     if (review.fingerprint !== await this.reviewFingerprint(repo, snapshot, await this.text(repo, ['write-tree']))) throw new GitError('Staged content or the operation changed. Inspect the result again.', 'REVIEW_CHANGED');
     this.reviews.delete(repo.id);
   }
-  private async checkout(repo: Repository, target: string, detached = false, stashFirst = false, includeUntracked = false, createFrom?: string): Promise<void> {
+  private async checkout(repo: Repository, target: string, detached = false, stashFirst = false, includeUntracked = false, createFrom?: { oid: string; upstream: string }): Promise<void> {
     if (detached) this.requireDetachedHead();
     const resolved = detached ? await this.oid(repo, target) : await this.refName(repo, target);
     if (!detached && !createFrom) await this.oid(repo, `refs/heads/${resolved}`);
@@ -422,6 +422,17 @@ export class GitService implements GitServiceContract {
     }
     const occupied = !detached && snapshot.worktrees.find(tree => tree.branch === target && normalized(tree.path) !== normalized(repo.root));
     if (occupied) throw new GitError(`Branch ${target} is checked out in ${occupied.path}. Open that Worktree to use this branch.`, 'WORKTREE_OCCUPIED', '', '', { reason: 'worktree-occupied', paths: [], target, worktreePath: occupied.path });
+    let branchCreated = false;
+    if (createFrom) {
+      // Create the ref before touching the Index or Working Tree. switch -c can
+      // update both even when an external ref namespace collision makes it fail.
+      await this.run(repo, ['branch', '--no-track', '--', resolved, createFrom.oid]);
+      branchCreated = true;
+      try { await this.run(repo, ['branch', `--set-upstream-to=${createFrom.upstream}`, '--', resolved]); }
+      catch (error) {
+        throw new GitError(`Branch ${resolved} was created and retained, but upstream configuration failed. Checkout and Stash did not run.\n${error instanceof Error ? error.message : String(error)}`, 'PARTIAL_FAILURE', '', '', { reason: 'checkout-failed', target, paths: [], branchCreated: true });
+      }
+    }
     let stashOid: string | undefined;
     if (detached) this.requireDetachedHead();
     if (stashFirst) {
@@ -433,7 +444,7 @@ export class GitService implements GitServiceContract {
     }
     try {
       if (detached) this.requireDetachedHead();
-      await this.run(repo, ['-c', 'core.quotePath=false', 'switch', ...(createFrom ? ['-c', resolved, '--track', '--', createFrom] : [...(detached ? ['--detach'] : []), '--', resolved])]);
+      await this.run(repo, ['-c', 'core.quotePath=false', 'switch', ...(detached ? ['--detach'] : []), '--', resolved]);
     } catch (error) {
       const cause = error instanceof Error ? error.message : String(error);
       const blocked = /would be overwritten|local changes|needs merge|unmerged/i.test(cause);
@@ -442,8 +453,8 @@ export class GitService implements GitServiceContract {
       // Porcelain paths are authoritative even for filenames which Git quotes in its diagnostic.
       const affected = listed.length ? current.changes.filter(change => listed.includes(change.path) || listed.includes(change.originalPath ?? '')).map(change => change.path) : [];
       const paths = blocked ? (affected.length ? affected : current.changes.map(change => change.path)) : [];
-      const details: CheckoutBlocker = { reason: blocked ? 'local-changes' : 'checkout-failed', paths, target, ...(stashOid ? { stashCreated: true, stashOid } : stashFirst ? { stashCreated: false } : {}) };
-      const message = `${cause}${stashOid ? `\nStash ${stashOid} was created and retained. Checkout did not complete; your saved changes remain in Stashes.` : ''}`;
+      const details: CheckoutBlocker = { reason: blocked ? 'local-changes' : 'checkout-failed', paths, target, ...(branchCreated ? { branchCreated: true } : {}), ...(stashOid ? { stashCreated: true, stashOid } : stashFirst ? { stashCreated: false } : {}) };
+      const message = `${branchCreated ? `Branch ${resolved} was created and retained, but Checkout did not complete.\n` : ''}${cause}${stashOid ? `\nStash ${stashOid} was created and retained. Checkout did not complete; your saved changes remain in Stashes.` : ''}`;
       throw new GitError(message, blocked ? 'CHECKOUT_BLOCKED' : error instanceof GitError ? error.code : 'CHECKOUT_FAILED', error instanceof GitError ? error.stdout : '', error instanceof GitError ? error.stderr : '', details);
     }
   }
@@ -460,7 +471,7 @@ export class GitService implements GitServiceContract {
     ]);
     const refs = new Map(output.split('\n').filter(Boolean).map(line => { const [fullName, oid, upstream, symbolicTarget, type] = line.split('\0'); return [fullName, { oid, upstream, symbolicTarget, type }] as const; }));
     const remotes = remoteOutput.split('\n').filter(Boolean);
-    const plan: { source: string; name: string; exists: boolean }[] = [];
+    const plan: { source: string; oid: string; name: string; exists: boolean }[] = [];
     const names = new Map<string, string>();
     for (const branch of action.branches) {
       const name = await this.refName(repo, branch.name), source = token(branch.source, 'remote reference');
@@ -477,11 +488,11 @@ export class GitService implements GitServiceContract {
       // before creating any branch, including collisions within the batch.
       const collision = branchNameConflict(name, [...refs.keys()].filter(ref => ref.startsWith('refs/heads/')).map(ref => ref.slice('refs/heads/'.length)).concat([...names.keys()]).filter(other => other !== name));
       if (collision) throw new GitError(branchNameConflictMessage(name, collision), 'BRANCH_EXISTS');
-      plan.push({ source, name, exists: !!local });
+      plan.push({ source, oid: remoteRef.oid, name, exists: !!local });
     }
     if (action.checkout) {
       const branch = plan[0];
-      try { await this.checkout(repo, branch.name, false, action.stashFirst, action.includeUntracked, branch.exists ? undefined : branch.source); }
+      try { await this.checkout(repo, branch.name, false, action.stashFirst, action.includeUntracked, branch.exists ? undefined : { oid: branch.oid, upstream: branch.source }); }
       catch (error) {
         if (error instanceof GitError && error.details && 'target' in error.details) throw new GitError(error.message, error.code, error.stdout, error.stderr, { ...error.details, trackBranches: action.branches });
         throw error;

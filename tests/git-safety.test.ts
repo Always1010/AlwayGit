@@ -61,6 +61,49 @@ describe('Git safety regressions', () => {
     await expect(git(root, 'show-ref', '--verify', 'refs/heads/race')).rejects.toThrow();
   });
 
+  it('does not change files or create a Stash when remote tracking ref creation races preflight', async () => {
+    const { root, repo } = await setup();
+    const old = await commit(root, 'a.txt', 'old');
+    await commit(root, 'a.txt', 'current');
+    const current = await commit(root, 'new.txt', 'new');
+    await git(root, 'remote', 'add', 'origin', path.join(root, 'unused.git'));
+    await git(root, 'update-ref', 'refs/remotes/origin/topic', old);
+    await writeFile(path.join(root, 'a.txt'), 'local edit');
+    const before = await git(root, 'status', '--porcelain=v1');
+    const service = new GitService({ environment: async (_repo, args) => {
+      if (args[0] === 'branch' && args.includes('--no-track')) await git(root, 'branch', 'race/child');
+      return {};
+    } });
+    await expect(service.execute(repo, { type: 'branch.track', branches: [{ source: 'refs/remotes/origin/topic', name: 'race', expectedOid: old }], checkout: true, stashFirst: true })).rejects.toThrow('cannot lock ref');
+    expect(await service.snapshot(repo)).toMatchObject({ branch: 'main', head: current, stashes: [] });
+    expect(await git(root, 'status', '--porcelain=v1')).toBe(before);
+    expect(await git(root, 'show', ':a.txt')).toBe('current');
+    expect(await readFile(path.join(root, 'a.txt'), 'utf8')).toBe('local edit');
+    expect(await readFile(path.join(root, 'new.txt'), 'utf8')).toBe('new');
+  });
+
+  it.each([false, true])('pins the remote tracking start and retains a branch on upstream failure (failure: %s)', async failUpstream => {
+    const { root, repo } = await setup();
+    const old = await commit(root, 'a.txt', 'old');
+    const current = await commit(root, 'a.txt', 'current');
+    await git(root, 'remote', 'add', 'origin', path.join(root, 'unused.git'));
+    await git(root, 'update-ref', 'refs/remotes/origin/topic', old);
+    const service = new GitService({ environment: async (_repo, args) => {
+      if (args[0] === 'branch' && args.includes('--no-track')) await git(root, 'update-ref', 'refs/remotes/origin/topic', current);
+      if (failUpstream && args.some(arg => arg.startsWith('--set-upstream-to='))) throw new Error('upstream configuration failed');
+      return {};
+    } });
+    const operation = service.execute(repo, { type: 'branch.track', branches: [{ source: 'refs/remotes/origin/topic', name: 'tracked', expectedOid: old }], checkout: true, stashFirst: failUpstream });
+    if (failUpstream) {
+      await expect(operation).rejects.toMatchObject({ code: 'PARTIAL_FAILURE', details: { branchCreated: true } });
+      expect(await service.snapshot(repo)).toMatchObject({ branch: 'main', head: current, changes: [], stashes: [] });
+    } else {
+      await operation;
+      expect(await service.snapshot(repo)).toMatchObject({ branch: 'tracked', head: old, upstream: 'origin/topic', changes: [] });
+    }
+    expect(await git(root, 'rev-parse', 'refs/heads/tracked')).toBe(old);
+  });
+
   it('retains a created branch and reports a blocked Checkout while preserving local edits', async () => {
     const { root, service, repo } = await setup();
     const old = await commit(root, 'a.txt', 'old');
@@ -209,7 +252,7 @@ describe('Git safety regressions', () => {
     expect(await service.snapshot(repo)).toMatchObject({ branch: 'new-local', upstream: 'backup/feature/a' });
   });
 
-  it('keeps failed remote Checkout atomic and retries the original tracking action after Stash', async () => {
+  it('retains the tracking branch on blocked Checkout and retries the original action after Stash', async () => {
     const { root, service, repo } = await setup();
     await commit(root, 'same.txt', 'base');
     await git(root, 'branch', 'base');
@@ -219,8 +262,8 @@ describe('Git safety regressions', () => {
     await git(root, 'switch', 'base');
     await writeFile(path.join(root, 'same.txt'), 'local edit');
     const branches = [{ source: 'refs/remotes/origin/feature/a', name: 'feature/a', expectedOid: remoteOid }];
-    await expect(service.execute(repo, { type: 'branch.track', branches, checkout: true })).rejects.toMatchObject({ code: 'CHECKOUT_BLOCKED', details: { reason: 'local-changes', paths: ['same.txt'], target: 'feature/a', trackBranches: branches } });
-    await expect(git(root, 'show-ref', '--verify', 'refs/heads/feature/a')).rejects.toThrow();
+    await expect(service.execute(repo, { type: 'branch.track', branches, checkout: true })).rejects.toMatchObject({ code: 'CHECKOUT_BLOCKED', details: { reason: 'local-changes', paths: ['same.txt'], target: 'feature/a', branchCreated: true, trackBranches: branches } });
+    expect(await git(root, 'rev-parse', 'refs/heads/feature/a')).toBe(remoteOid);
     expect(await readFile(path.join(root, 'same.txt'), 'utf8')).toBe('local edit');
     await service.execute(repo, { type: 'branch.track', branches, checkout: true, stashFirst: true });
     const snapshot = await service.snapshot(repo);
