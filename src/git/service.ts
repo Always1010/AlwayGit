@@ -1,4 +1,3 @@
-import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { access, lstat, realpath, readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -6,6 +5,9 @@ import type { ActionBlocker, Change, CheckoutBlocker, Commit, CommitComparison, 
 import { branchNameConflict, branchNameConflictMessage, branchNameProblem, branchNameProblemMessage } from '../protocol/ref-name';
 import { remoteNameProblem, remoteUrlProblem } from '../protocol/remote';
 import { inferDefaultBranch } from './default-branch';
+import { GitError, GitTerminationError } from './error';
+import { runGitProcess, type GitResult } from './runner';
+export { GitError } from './error';
 import { createSelectedStash, preflightStash, StashStateError, type StashExecution } from './stash';
 
 export interface GitServiceOptions {
@@ -16,11 +18,9 @@ export interface GitServiceOptions {
   maxOutputBytes?: number;
   environment?: NodeJS.ProcessEnv | ((repo: Repository, args: readonly string[]) => Promise<NodeJS.ProcessEnv | { env: NodeJS.ProcessEnv; dispose?: () => void | Promise<void> }>);
 }
-export class GitError extends Error {
-  constructor(message: string, public readonly code: string, public readonly stdout = '', public readonly stderr = '', public readonly details?: ActionBlocker) { super(message); this.name = 'GitError'; }
-}
-type Result = { stdout: Buffer; stderr: Buffer; code: number };
+type Result = GitResult;
 const queues = new Map<string, Promise<unknown>>();
+const unsafeTerminations = new Map<string, GitTerminationError>();
 const normalized = (p: string) => process.platform === 'win32' ? path.resolve(p).toLowerCase() : path.resolve(p);
 const canonicalPath = async (p: string) => { try { return await realpath(p); } catch (e) { if ((e as NodeJS.ErrnoException).code === 'ENOENT') return path.resolve(p); throw e; } };
 function decodePaths(buffer: Buffer): string {
@@ -63,27 +63,23 @@ export class GitService implements GitServiceContract {
   private version = 0;
   private readonly reviews = new Map<string, { token: string; fingerprint: string }>();
   constructor(private readonly options: GitServiceOptions = {}) {}
-  private async run(repo: Repository, args: string[], allowFailure = false, captureBytes?: number, execution: StashExecution = {}): Promise<Result> {
+  private async run(repo: Repository, args: string[], allowFailure = false, captureBytes?: number, execution: StashExecution & { signal?: AbortSignal } = {}): Promise<Result> {
     const adapter = this.options.environment;
     const supplied = execution.isolated ? undefined : typeof adapter === 'function' ? await adapter(repo, args) : adapter;
     const wrapped = supplied && 'env' in supplied && typeof supplied.env === 'object' ? supplied as { env: NodeJS.ProcessEnv; dispose?: () => void | Promise<void> } : undefined;
     const env = wrapped?.env ?? supplied as NodeJS.ProcessEnv | undefined;
     const commandEnv: NodeJS.ProcessEnv = { ...process.env, ...env };
     if (execution.isolated) for (const key of Object.keys(commandEnv)) if (/^GIT_/i.test(key)) delete commandEnv[key];
+    let preserveEnvironment = false;
     try {
-      const result = await new Promise<Result>((resolve, reject) => {
-        // Stash accepts no user pathspecs in this API. Its internal cleanup relies on
-        // Git pathspec matching; inheriting --literal-pathspecs leaves saved untracked
-        // files behind on Git for Windows. All file actions still use literal paths.
-        const child = spawn(this.options.gitPath ?? 'git', ['-C', execution.root ?? repo.root, ...(args[0] === 'stash' ? [] : ['--literal-pathspecs']), ...args], { shell: false, windowsHide: true, detached: process.platform !== 'win32', env: { ...commandEnv, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never', GIT_EDITOR: 'true', GIT_SEQUENCE_EDITOR: 'true', ...(['status', 'log', 'show', 'ls-tree', 'ls-files', 'for-each-ref'].includes(args[0]) ? { GIT_OPTIONAL_LOCKS: '0' } : {}), ...execution.env }, stdio: [execution.input ? 'pipe' : 'ignore', 'pipe', 'pipe'] });
-        if (execution.input) { child.stdin?.on('error', () => {}); child.stdin?.end(execution.input); }
-        const out: Buffer[] = []; const err: Buffer[] = []; let size = 0; let captured = 0; let failure: GitError | undefined;
-        const stop = (error: GitError) => { failure = error; if (child.pid) { if (process.platform === 'win32') { const killer = spawn('taskkill', ['/PID', String(child.pid), '/T', '/F'], { shell: false, windowsHide: true, stdio: 'ignore' }); killer.on('error', () => child.kill()); } else { try { process.kill(-child.pid, 'SIGKILL'); } catch { child.kill(); } } } child.stdout!.destroy(); child.stderr!.destroy(); reject(error); };
-        const timer = setTimeout(() => stop(new GitError('Git timed out. Check credentials, hooks, or another Git process, then retry.', 'TIMEOUT')), this.options.timeoutMs ?? 60000);
-        const collect = (bucket: Buffer[], chunk: Buffer) => { if (bucket === out && captureBytes !== undefined) { const remaining = captureBytes - captured; if (remaining > 0) { const piece = chunk.subarray(0, remaining); bucket.push(piece); captured += piece.length; } return; } size += chunk.length; if (size > (this.options.maxOutputBytes ?? 32 * 1024 * 1024)) { clearTimeout(timer); stop(new GitError('Git output exceeded the configured limit', 'OUTPUT_LIMIT')); return; } bucket.push(chunk); if (bucket === err && !execution.silent) this.options.onOutput?.(repo, chunk.toString('utf8')); };
-        child.stdout!.on('data', chunk => collect(out, chunk)); child.stderr!.on('data', chunk => collect(err, chunk));
-        child.once('error', e => { clearTimeout(timer); reject(new GitError(`Cannot run Git: ${e.message}`, 'GIT_UNAVAILABLE')); });
-        child.once('close', code => { clearTimeout(timer); if (failure) reject(failure); else resolve({ stdout: Buffer.concat(out), stderr: Buffer.concat(err), code: code ?? 1 }); });
+      // Stash cleanup uses Git pathspec matching; all other commands use literal paths.
+      const result = await runGitProcess({
+        executable: this.options.gitPath,
+        args: ['-C', execution.root ?? repo.root, ...(args[0] === 'stash' ? [] : ['--literal-pathspecs']), ...args],
+        env: { ...commandEnv, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never', GIT_EDITOR: 'true', GIT_SEQUENCE_EDITOR: 'true', ...(['status', 'log', 'show', 'ls-tree', 'ls-files', 'for-each-ref'].includes(args[0]) ? { GIT_OPTIONAL_LOCKS: '0' } : {}), ...execution.env },
+        input: execution.input, signal: execution.signal, captureBytes,
+        timeoutMs: this.options.timeoutMs, maxOutputBytes: this.options.maxOutputBytes,
+        onStderr: execution.silent ? undefined : chunk => this.options.onOutput?.(repo, chunk.toString('utf8')),
       });
       if (!execution.silent && result.stdout.length && ['add', 'restore', 'rm', 'clean', 'commit', 'fetch', 'pull', 'push', 'branch', 'switch', 'tag', 'stash', 'worktree', 'merge', 'rebase', 'cherry-pick', 'revert', 'reset'].includes(args[0]) && !(args[0] === 'stash' && args[1] === 'list') && !(args[0] === 'worktree' && args[1] === 'list')) this.options.onOutput?.(repo, result.stdout.toString('utf8'));
       if (result.code && !allowFailure && !execution.allowFailure) {
@@ -92,7 +88,16 @@ export class GitService implements GitServiceContract {
         throw new GitError((stderr.trim() || stdout.trim() || `Git exited with status ${result.code}`) + hint, 'GIT_FAILED', stdout, stderr);
       }
       return result;
-    } finally { await wrapped?.dispose?.(); }
+    } catch (error) {
+      if (error instanceof GitTerminationError) {
+        unsafeTerminations.set(normalized(repo.commonDir), error);
+        // Keep authentication until the known process and terminator handles close.
+        // This does not lift isolation: closed handles don't prove every descendant exited.
+        void error.completion.then(() => wrapped?.dispose?.()).catch(() => {});
+        preserveEnvironment = true;
+      }
+      throw error;
+    } finally { if (!preserveEnvironment) await wrapped?.dispose?.(); }
   }
   private async text(repo: Repository, args: string[]): Promise<string> { return (await this.run(repo, args)).stdout.toString('utf8').trim(); }
   private async optionalConfig(repo: Repository, key: string): Promise<string | undefined> {
@@ -264,8 +269,8 @@ export class GitService implements GitServiceContract {
   }
   async execute(repo: Repository, action: GitAction): Promise<void> {
     const key = normalized(repo.commonDir); const prior = queues.get(key) ?? Promise.resolve();
-    const operation = prior.catch(() => {}).then(async () => { await this.verify(repo); await this.executeNow(repo, action); });
-    queues.set(key, operation); try { await operation; } finally { if (queues.get(key) === operation) queues.delete(key); }
+    const operation = prior.catch(() => {}).then(async () => { const unsafe = unsafeTerminations.get(key); if (unsafe) throw unsafe; await this.verify(repo); await this.executeNow(repo, action); });
+    queues.set(key, operation); try { await operation; } catch (error) { if (error instanceof GitTerminationError) unsafeTerminations.set(key, error); throw error; } finally { if (queues.get(key) === operation) queues.delete(key); }
   }
   private async readOperationFile(gitDir: string, name: string): Promise<string> {
     try { return await readFile(path.join(gitDir, name), 'utf8'); }

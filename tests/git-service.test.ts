@@ -253,8 +253,20 @@ describe('Git service integration', () => {
     await service.execute(repo, { type: 'stage', paths: ['a.txt'] }); await writeFile(path.join(root, '.git', 'hooks', 'pre-commit'), '#!/bin/sh\necho rejected-by-test-hook >&2\nexit 1\n'); await expect(service.execute(repo, { type: 'commit', message: 'blocked' })).rejects.toThrow('rejected-by-test-hook');
     await writeFile(path.join(root, '.git', 'hooks', 'pre-commit'), '#!/bin/sh\nsleep 10\n'); let calls = 0; let disposed = 0;
     const bounded = new GitService({ timeoutMs: 1500, environment: async () => { calls++; return { env: {}, dispose: () => { disposed++; } }; } });
-    const started = Date.now(); await expect(bounded.execute(repo, { type: 'commit', message: 'timeout' })).rejects.toMatchObject({ code: 'TIMEOUT' }); expect(Date.now() - started).toBeLessThan(7000); expect(disposed).toBe(calls);
-    const limited = new GitService({ maxOutputBytes: 1 }); await expect(limited.snapshot(repo)).rejects.toMatchObject({ code: 'OUTPUT_LIMIT' });
+    const started = Date.now(); const timeout = await bounded.execute(repo, { type: 'commit', message: 'timeout' }).catch(error => error);
+    expect(Date.now() - started).toBeLessThan(9000); // Includes repository verification and the 5-second termination grace.
+    if (timeout?.terminationUnconfirmed) {
+      expect(timeout).toMatchObject({ code: 'GIT_TERMINATION_UNCONFIRMED', triggerCode: 'TIMEOUT' });
+      let closed = false; void timeout.completion.then(() => { closed = true; }); await Promise.resolve();
+      if (!closed) expect(disposed).toBe(calls - 1);
+      await expect(bounded.execute(repo, { type: 'stage', paths: ['a.txt'] })).rejects.toMatchObject({ code: 'GIT_TERMINATION_UNCONFIRMED' });
+      await timeout.completion;
+    }
+    else expect(timeout).toMatchObject({ code: 'TIMEOUT' });
+    expect(disposed).toBe(calls);
+    const limited = new GitService({ maxOutputBytes: 1 }); const output = await limited.snapshot(repo).catch(error => error);
+    if (output?.terminationUnconfirmed) expect(output).toMatchObject({ code: 'GIT_TERMINATION_UNCONFIRMED', triggerCode: 'OUTPUT_LIMIT' });
+    else expect(output).toMatchObject({ code: 'OUTPUT_LIMIT' });
   });
   it('parses porcelain records with embedded whitespace and two-path renames', () => {
     const parsed = parseStatus(Buffer.from(['# branch.oid (initial)', '# branch.head main', '2 R. N... 100644 100644 100644 abc abc R100 new\tname', 'old\nname', 'u UU N... 100644 100644 100644 100644 aaa bbb ccc conflict file', ''].join('\0')));
