@@ -7,6 +7,7 @@ tests/**
 scripts/**
 node_modules/**
 artifacts/**
+TMP/**
 test-results/**
 playwright-report/**
 coverage/**
