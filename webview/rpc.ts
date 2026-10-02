@@ -98,7 +98,7 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
     if(method==='reorderRepository'){const {key,targetKey,position}=payload as ReorderRepository,entries=demoOrder.root.filter(entry=>entry!==key);entries.splice(entries.indexOf(targetKey)+Number(position==='after'),0,key);demoOrder.root=entries;}
     return structuredClone(demoOrder);
   }
-  if(method==='createRepositoryCollection'){const collection={id:`demo-group-${demoCollections.length+1}`,name:'Demo Group'};demoCollections.push(collection);return collection;}
+  if(method==='createRepositoryCollection'){const collection={id:`demo-group-${demoCollections.length+1}`,name:(payload as {name:string}).name};demoCollections.push(collection);return collection;}
   if (method === 'repositoryStatuses') return Object.values(demoStores).map(({ snapshot }) => ({ repositoryId: snapshot.repository.id, branch: snapshot.branch, upstream: snapshot.upstream, ahead: snapshot.ahead, unpushed: snapshot.unpushed ?? snapshot.ahead } satisfies RepositoryStatus));
   if (method === 'snapshot') return structuredClone(demoSnapshot);
   if (method === 'history') {

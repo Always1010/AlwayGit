@@ -411,3 +411,9 @@ h1,h2,p {margin:0;}
 .repository-list [data-drop-position="after"]{box-shadow:inset 0 -2px 0 var(--vscode-focusBorder,#0078d4)}
 .repository-list [draggable="true"]{cursor:grab}
 .repository-list [draggable="true"]:active{cursor:grabbing}
+
+.repository-add-tabs{align-self:flex-start}
+.repository-add-tabs button{display:flex;align-items:center;gap:6px}
+.repository-add-panel,.repository-group-form{display:flex;flex-direction:column;gap:12px}
+.repository-group-form{padding:4px 0 16px}
+.repository-name-error{color:var(--vscode-errorForeground,#c33)}

@@ -166,9 +166,9 @@ try {
   await sidebar.getByRole('button', { name: /^AlwayGit/ }).waitFor({ state: 'hidden' });
   assert.equal(await menu.isVisible(), false, 'A section title click must collapse the section without opening its menu');
   await repositoriesHeading.click();
-  await assertIconActions(repositoriesHeading.locator('..'), ['Add Repository…', 'Create Repository Group', 'Refresh']);
+  await assertIconActions(repositoriesHeading.locator('..'), ['Add…', 'Refresh']);
   assert.equal(await sidebar.locator('.codicon-ellipsis').count(), 0, 'Sidebar retains the original actions without repository ellipsis controls');
-  await assertMenu(repositoriesHeading, ['Add Repository…', 'Create Repository Group', 'Refresh']);
+  await assertMenu(repositoriesHeading, ['Add…', 'Refresh']);
   await assertMenu(sidebar.getByRole('option', { name: /^AlwayGit/ }), ['Switch to Repository', 'Open in New AlwayGit Tab', 'Open Repository in New Project Window', 'Fetch…', 'Refresh Status', 'Copy Repository Path', 'Move to Repository Group…', 'Remove from AlwayGit…']);
   const localHeading = sidebar.getByRole('button', { name: 'Local Branches', exact: true });
   await localHeading.click();
