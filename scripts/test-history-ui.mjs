@@ -168,7 +168,17 @@ async function verifyDetachedHeadPolicy(page) {
   const menu = page.getByTestId('context-menu');
   const detached = 'Checkout to Detached HEAD…';
   await old.click({button:'right'});
-  assert.equal(await menu.getByRole('menuitem',{name:detached,exact:true}).count(),0);
+  const detachedItem=menu.getByRole('menuitem',{name:detached,exact:true});
+  assert.equal(await detachedItem.isDisabled(),true,'Direct Detached Checkout stays visible but disabled by default');
+  assert.match(await detachedItem.getAttribute('title'),/disabled.*branch/i);
+  await page.keyboard.press('ArrowDown');
+  assert.notEqual(await page.evaluate(()=>document.activeElement?.textContent?.trim()),detached,'Keyboard navigation skips disabled Detached Checkout');
+  await menu.getByRole('menuitem',{name:'Create Branch and Checkout…',exact:true}).click();
+  let creation=page.getByRole('dialog');
+  await creation.getByRole('textbox',{name:'Branch Name',exact:true}).waitFor();
+  assert.equal(await creation.getByRole('button',{name:'Create Only',exact:true}).count(),0);
+  await creation.getByRole('button',{name:'Cancel',exact:true}).click();
+  await old.click({button:'right'});
   await page.keyboard.press('Escape');
   const settings = async () => {
     await page.getByRole('button',{name:'Settings',exact:true}).click();

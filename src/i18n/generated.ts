@@ -2435,10 +2435,6 @@ export const catalog = {
     "en": "Checkout…",
     "zh-CN": "切换到此分支…"
   },
-  "menus.switchToCommit": {
-    "en": "Checkout…",
-    "zh-CN": "切换到此提交（Detached HEAD）…"
-  },
   "menus.showInGraph": {
     "en": "Show in Graph",
     "zh-CN": "在 Graph 中显示"
@@ -2586,6 +2582,14 @@ export const catalog = {
   "menus.cherryPickSelectionChanged": {
     "en": "The selected commits are no longer loaded. Close this menu and select them again.",
     "zh-CN": "所选提交已不在当前列表中，请关闭菜单并重新选择。"
+  },
+  "menus.switchToNamedBranch": {
+    "en": "Switch to Branch \"{{name}}\"…",
+    "zh-CN": "切换到分支“{{name}}”…"
+  },
+  "menus.chooseBranchToCheckout": {
+    "en": "Choose Branch to Checkout…",
+    "zh-CN": "选择分支并切换…"
   },
   "notices.theRepositoryWasRemovedFromAlwayGit": {
     "en": "The repository was removed from AlwayGit.",
@@ -5327,7 +5331,6 @@ export interface MessageParameters {
   "menus.stashes": {  };
   "menus.worktrees": {  };
   "menus.switchToBranch": {  };
-  "menus.switchToCommit": {  };
   "menus.showInGraph": {  };
   "menus.showOnlyThisTag": {  };
   "menus.showOnlyThisBranch": {  };
@@ -5365,6 +5368,8 @@ export interface MessageParameters {
   "menus.cherryPickCheckFailed": {  };
   "menus.cherryPickReapply": {  };
   "menus.cherryPickSelectionChanged": {  };
+  "menus.switchToNamedBranch": { name: ParameterValue };
+  "menus.chooseBranchToCheckout": {  };
   "notices.theRepositoryWasRemovedFromAlwayGit": {  };
   "notices.couldNotLocateThisCommitInTheFullHistory": {  };
   "notices.automaticLocateReachedItsReadLimitHistoryAndCommit": {  };

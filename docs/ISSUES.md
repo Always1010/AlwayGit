@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-058：历史提交右键入口未表达 Detached HEAD 禁用策略
+
+- 日期：2026-10-03
+- 状态：已解决
+- 现象：高级开关关闭时，历史 Commit 菜单仍显示可点击的“切换到此提交（Detached HEAD）”，点击却进入创建分支流程；目标存在本地分支时也借用相同文案，菜单与操作含义不一致。
+- 原因：Commit 主菜单没有依据目标本地分支及 Detached HEAD 开关计算名称和禁用状态，只有额外的直接切换入口检查开关。
+- 解决方案：没有本地分支直接指向时，直接 Detached Checkout 按策略置灰并说明原因，邻接提供创建并切换分支；开启后该项明确执行直接 Checkout。Commit 顶端的本地分支切换显示名称或选择分支，保留当前分支和 Worktree 占用保护；Tag 同步显示被策略禁用的入口，继续保留后端拦截。
+- 验证方式：62 项 UI 状态单元测试、TypeScript 类型检查和 1172 条双语资源检查通过；无头 History 专项通过，覆盖置灰原因、键盘跳过、创建分支入口和开关开启后的直接切换；0.38.1 构建打包通过。
+- 相关文件：`webview/menus.ts`、`src/i18n/catalogs/menus.json`、`tests/ui-state.test.ts`、`scripts/test-history-ui.mjs`、`scripts/test-ui.mjs`、工作台规格与用户手册。
+
 ## BUG-057：Cherry-pick 普通入口允许重复应用当前分支已有提交
 
 - 日期：2026-10-03
