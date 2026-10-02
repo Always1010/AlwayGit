@@ -25,6 +25,7 @@ export async function verifyWorktrees(browser, url) {
         if (request.method === 'discoverRepositories') result = { scanId: request.payload.scanId, root: request.payload.path, scanned: 8, found: 4, cancelled: false, candidates: [{ key: 'existing-app', name: 'App', path: 'D:/Projects/App', existing: true }, { key: 'notes', name: 'NotesAnywhere', path: 'D:/Scan/NotesAnywhere', existing: false }, { key: 'schedule', name: 'SchedulePin', path: 'D:/Scan/SchedulePin', existing: false }, { key: 'resume', name: 'SwiftResume', path: 'D:/Scan/SwiftResume', existing: false }], issues: [{ path: 'D:/Scan/broken', message: 'Invalid Git directory' }] };
         if (request.method === 'cancelRepositoryDiscovery') result = null;
         if (request.method === 'addRepository') result = { added: request.payload.keys.length, existing: 0, skipped: 1, collection: request.payload.newCollectionName ? { id: 'created', name: request.payload.newCollectionName } : undefined };
+        if (request.method === 'removeRepositories') result = request.payload.keys.length;
         if (request.method === 'snapshot') result = { repository: repo, branch, head: undefined, ahead: 0, behind: 0, changes: [{ path: `${repo.id}.txt`, indexStatus: ' ', worktreeStatus: 'M', untracked: false, conflict: false }], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: 'a'.repeat(40) }, { name: 'feature', fullName: 'refs/heads/feature', kind: 'local', oid: 'b'.repeat(40) }], stashes: [], worktrees, operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: ++fixture.version };
         if (request.method === 'history') result = { commits: [], tips: [], nextOffset: 0, hasMore: false };
         if (request.method === 'diffPreview') result = { path: request.payload.path, leftLabel: 'Index', rightLabel: 'Working Tree', left: 'before', right: repo.id };
@@ -140,6 +141,15 @@ export async function verifyWorktrees(browser, url) {
     const addCall=await page.evaluate(() => window.__worktreeFixture.calls.find(call=>call.method==='addRepository'));
     assert.deepEqual(addCall.payload.keys,['notes','schedule','resume']);assert.equal(addCall.payload.newCollectionName,'Imported');
     await page.getByText('Added 3 repositories to Imported. Skipped 1.',{exact:true}).waitFor();
+    await clone.click({button:'right'});
+    await page.getByRole('menuitem',{name:'Remove from AlwayGit…',exact:true}).click();
+    const removeDialog=page.getByRole('dialog',{name:'Remove Repository',exact:true});
+    await removeDialog.getByText('Files on disk and Git history will not be deleted. You can add these repositories again later.',{exact:true}).waitFor();
+    await removeDialog.getByRole('button',{name:'Remove Repository',exact:true}).click();
+    await removeDialog.waitFor({state:'hidden'});
+    const removeCall=await page.evaluate(() => window.__worktreeFixture.calls.find(call=>call.method==='removeRepositories'));
+    assert.equal(removeCall.payload.keys.length,1,'Embedded removal confirmation submits only the reviewed repository');
+    await page.getByText('Removed 1 repository from AlwayGit.',{exact:true}).waitFor();
     assert.deepEqual(errors, []);
     console.log('ALWAYGIT_WORKTREES_UI_TESTS_PASSED: grouped repository entries, double-click switching, keyboard switching, current markers, legacy Worktree drafts and repository refresh');
   } finally { await page.close(); }
