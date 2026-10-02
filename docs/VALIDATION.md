@@ -117,6 +117,25 @@ scripts/update-local.ps1 -InstallOnly
 
 扩展身份保持不变，功能版本正常递增，不通过卸载或删除用户数据更新。全部安装包、本机安装记录、构建输出、截图、报告、trace、缓存和日志均不提交。文档整理无需触发扩展重新打包安装。
 
+## 远程 Tag 发布
+
+推送格式为 `vMAJOR.MINOR.PATCH` 的稳定版本 Tag 后，GitHub Actions 工作流 `.github/workflows/release.yml` 会自动验证并发布可安装的 VSIX。Tag 去掉 `v` 后必须与 `package.json`、`package-lock.json` 及其根包记录中的版本完全一致，且 Tag 指向的 Commit 必须已经包含在远程 `main` 中；任一条件不满足时停止，不创建 Release。
+
+发布工作流使用 Node.js 24 执行 `npm ci`、类型与翻译检查、全量 Vitest，并通过 `node scripts/package.mjs` 完成正式构建和打包。打包成功后继续核对 VSIX 内的扩展身份 `alwaygit-dev.alwaygit` 和版本，生成 SHA-256 校验文件。构建 Job 只有仓库只读权限；全部检查通过后，独立发布 Job 才使用 `contents: write` 创建同名 GitHub Release，并上传 `alwaygit-<版本>.vsix` 与 `alwaygit-<版本>.vsix.sha256`。已有同名 Release 时拒绝覆盖。
+
+发布前先按 Conventional Commits 提交版本文件，再创建附注 Tag；不要使用 `npm version` 自动生成不符合项目提交格式的提交。以下版本号仅为示例：
+
+```powershell
+npm version 0.39.0 --no-git-tag-version
+git add package.json package-lock.json
+git commit -m "chore: 发布 0.39.0"
+git tag -a v0.39.0 -m "AlwayGit 0.39.0"
+git push origin main
+git push origin v0.39.0
+```
+
+必须先让发布工作流进入 Tag 指向的 Commit，再推送 Tag；历史 Tag 不会因后来加入工作流而自动补发。已发布的 Tag 和 Release 不复用、不覆盖；发现问题时修复并递增版本重新发布。GitHub Release 提供可下载的 VSIX，但不等同于发布到 VS Code Marketplace，也不会让 VS Code 自动获取更新。
+
 ## 验证证据与覆盖边界
 
 下表保留不同版本实际执行过的检查范围，不把旧版本结果视为当前版本的全量验证。问题级回归摘要见 [问题日志](ISSUES.md)。
