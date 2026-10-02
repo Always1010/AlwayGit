@@ -1,4 +1,6 @@
-import type { ActionBlocker, Commit, CommitComparison, CommitDetails, GitAction, HistoryPage, HistoryQuery, HostMessage, Repository, RepositoryCollection, RepositoryStatus, RpcRequest, Snapshot, StashDetails } from '../src/protocol/types';
+import { groupRepositories } from '../src/protocol/repositories';
+import { reconcileRepositoryOrder } from '../src/protocol/repository-order';
+import type { RepositoryOrder, ReorderRepository, ActionBlocker, Commit, CommitComparison, CommitDetails, GitAction, HistoryPage, HistoryQuery, HostMessage, Repository, RepositoryCollection, RepositoryStatus, RpcRequest, Snapshot, StashDetails } from '../src/protocol/types';
 import type { Appearance } from './appearance';
 
 export interface LayoutState { preset: 'workbench' | 'editor'; sidebar: number; details: number; diff: number; diffCollapsed: boolean; graph: number; author: number; date: number; font: number; row: number }
@@ -80,6 +82,7 @@ const demoStores:Record<string,{snapshot:Snapshot;commits:Commit[];saved:Map<str
 ]));
 if(noRemoteDemo)for(const store of Object.values(demoStores)){store.snapshot.remotes=[];store.snapshot.refs=store.snapshot.refs.filter(ref=>ref.kind!=='remote');delete store.snapshot.upstream;delete store.snapshot.pushTarget;}
 const demoCollections:RepositoryCollection[]=[];
+let demoOrder:RepositoryOrder|undefined;
 async function demoRequest(method: RpcRequest['method'], payload: unknown, repoId?:string): Promise<unknown> {
   await new Promise(resolve => setTimeout(resolve, 110));
   const data=demoStores[repoId??repo.id]??demoStores[repo.id],demoSnapshot=data.snapshot,commits=data.commits;
@@ -90,6 +93,11 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
   if(method==='cancelRepositoryDiscovery')return null;
   if(method==='addRepository')return {added:2,existing:0,skipped:0};
   if(method==='repositoryCollections')return demoCollections;
+  if(method==='repositoryOrder'||method==='reorderRepository'){
+    demoOrder=reconcileRepositoryOrder(groupRepositories([repo,website]),demoCollections,demoOrder);
+    if(method==='reorderRepository'){const {key,targetKey,position}=payload as ReorderRepository,entries=demoOrder.root.filter(entry=>entry!==key);entries.splice(entries.indexOf(targetKey)+Number(position==='after'),0,key);demoOrder.root=entries;}
+    return structuredClone(demoOrder);
+  }
   if(method==='createRepositoryCollection'){const collection={id:`demo-group-${demoCollections.length+1}`,name:'Demo Group'};demoCollections.push(collection);return collection;}
   if (method === 'repositoryStatuses') return Object.values(demoStores).map(({ snapshot }) => ({ repositoryId: snapshot.repository.id, branch: snapshot.branch, upstream: snapshot.upstream, ahead: snapshot.ahead, unpushed: snapshot.unpushed ?? snapshot.ahead } satisfies RepositoryStatus));
   if (method === 'snapshot') return structuredClone(demoSnapshot);

@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { ActionBlocker, AddRepositoriesResult, GitServiceContract, HostMessage, RepositoryCollection, RepositoryDiscoveryPreview, RepositoryStatus, RpcRequest, Snapshot } from '../protocol/types';
-import { actionSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema, repositoryDiscoverySchema, cancelRepositoryDiscoverySchema, addRepositoriesSchema } from '../protocol/validation';
+import { actionSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema, repositoryDiscoverySchema, cancelRepositoryDiscoverySchema, addRepositoriesSchema, reorderRepositorySchema } from '../protocol/validation';
 import type { RepositoryManager } from '../repositories/manager';
 import type { DiscoveryResult } from '../repositories/discovery';
 import type { GitDocuments } from '../editor/documents';
@@ -131,6 +131,8 @@ export class Workbench implements vscode.Disposable {
     if (!vscode.workspace.isTrusted) throw new Error(this.text('Git execution requires a trusted workspace.', '请先信任工作区，再执行 Git 操作。'));
     if (request.method === 'repositories') { const list = this.repositories.list(),active=source?.activeRepository??this.activeRepository; return active ? list.sort((a, b) => Number(b.id === active) - Number(a.id === active)) : list; }
     if (request.method === 'repositoryCollections') return this.repositories.collections();
+    if (request.method === 'repositoryOrder') return this.repositories.order();
+    if (request.method === 'reorderRepository') { await this.repositories.reorder(reorderRepositorySchema.parse(request.payload)); await this.projects.notifyCatalogChanged(); return this.repositories.order(); }
     if (request.method === 'repositoryStatuses') return this.repositoryStatuses();
     if(request.method==='pickRepositoryDirectory')return this.pickRepositoryDirectory();
     if(request.method==='discoverRepositories'){const data=repositoryDiscoverySchema.parse(request.payload);return this.discoverRepositories(data.scanId,data.path,source);}

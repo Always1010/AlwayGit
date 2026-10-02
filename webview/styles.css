@@ -405,3 +405,9 @@ h1,h2,p {margin:0;}
 @media(max-width:780px) {.top-panels{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(160px,1fr) minmax(170px,1fr);}.top-panels>.resize-handle{display:none;}.details-panel{border-top:1px solid var(--border);}.commit-metadata{max-height:110px;}.branch-bar .muted{display:none;}.app-chrome .workbench-tab{display:none;}}
 @media(max-width:560px) {.workspace{grid-template-columns:minmax(0,1fr);grid-template-rows:125px minmax(0,1fr);}.workspace>.resize-handle{display:none;}.sidebar{border-bottom:1px solid var(--border);}.main-panel:not(.diff-collapsed){grid-template-rows:minmax(0,1fr) 6px min(150px,var(--diff-height));}.layout-editor .main-panel{grid-template-rows:minmax(0,1fr);}.app-chrome>.button{font-size:11px;}.app-chrome{gap:3px;}.app-chrome select{max-width:120px;}.toolbar-divider{margin:0 2px;}.toolbar .button{font-size:12px;padding:2px 5px;}.statusbar>span:last-child{display:none;}.ref-badge{max-width:90px;}}
 @media(prefers-reduced-motion:reduce) {*{scroll-behavior:auto;transition:none!important;animation:none!important;}}
+
+/* Same-level repository ordering uses an insertion line without changing row size. */
+.repository-list [data-drop-position="before"]{box-shadow:inset 0 2px 0 var(--vscode-focusBorder,#0078d4)}
+.repository-list [data-drop-position="after"]{box-shadow:inset 0 -2px 0 var(--vscode-focusBorder,#0078d4)}
+.repository-list [draggable="true"]{cursor:grab}
+.repository-list [draggable="true"]:active{cursor:grabbing}
