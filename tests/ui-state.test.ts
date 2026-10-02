@@ -77,7 +77,7 @@ describe('repository UI consistency', () => {
     await store.getState().selectRepository('a'); store.getState().setDraft('keep my draft');
     const original = store.getState(), target = original.diffTarget;
     original.beginSettings();
-    store.getState().previewSettings({ language: 'zh-CN', font: 16, row: 28, appearance: { theme: 'light', palette: 'extended', codeFont: 18 } });
+    store.getState().previewSettings({ language: 'zh-CN', font: 16, row: 28, appearance: { theme: 'light', palette: 'extended', codeFont: 18, codeRowHeight: 24 } });
     expect(store.getState().appearance.palette).toBe('extended');
     expect(bridge.save.mock.calls.at(-1)?.[0]).toMatchObject({ language: original.language, layout: original.layout, appearance: original.appearance });
     // A background refresh/save during preview must still persist committed settings.
@@ -89,15 +89,27 @@ describe('repository UI consistency', () => {
   it('applies settings through host session validation and restores only panel geometry', async () => {
     const { sessionSchema } = await import('../src/protocol/validation');
     store.getState().beginSettings();
-    store.getState().previewSettings({ language: 'zh-CN', font: 15, row: 28, appearance: { theme: 'contrast', palette: 'distinct', codeFont: 17, badgeColor: '#006BFF' } });
+    store.getState().previewSettings({ language: 'zh-CN', font: 15, row: 28, appearance: { theme: 'contrast', palette: 'distinct', codeFont: 17, codeRowHeight: 23, badgeColor: '#006BFF' } });
     store.getState().finishSettings(true);
     const saved = bridge.save.mock.calls.at(-1)?.[0];
-    expect(sessionSchema.parse(saved).appearance).toMatchObject({ theme: 'contrast', palette: 'distinct', codeFont: 17, badgeColor: '#006BFF' });
+    expect(sessionSchema.parse(saved).appearance).toMatchObject({ theme: 'contrast', palette: 'distinct', codeFont: 17, codeRowHeight: 23, badgeColor: '#006BFF' });
     expect(saved.appearance.colors.light).toHaveLength(8);
     expect(saved.appearance.colors.dark).toHaveLength(8);
     store.getState().setLayout({ sidebar: 260, details: 350, diff: 900, diffCollapsed: true }); store.getState().restoreLayout();
     expect(store.getState()).toMatchObject({ language: 'zh-CN', layout: { sidebar: 210, details: 300, diff: 220, diffCollapsed: false, font: 15, row: 28 }, appearance: saved.appearance });
     expect(store.getState().settingsBaseline).toBeUndefined();
+  });
+  it('restores legacy Diff settings without losing the font and validates custom line heights', async () => {
+    const { normalizeAppearance } = await import('../webview/appearance');
+    const { sessionSchema } = await import('../src/protocol/validation');
+    const legacy = { theme: 'light' as const, palette: 'vivid' as const, codeFont: 15 };
+    expect(sessionSchema.safeParse({ appearance: legacy }).success).toBe(true);
+    expect(normalizeAppearance(legacy)).toMatchObject({ theme: 'light', codeFont: 15, codeRowHeight: 18 });
+    for (const codeRowHeight of [15, 37, 19.5]) {
+      expect(sessionSchema.safeParse({ appearance: { ...legacy, codeRowHeight } }).success).toBe(false);
+    }
+    expect(normalizeAppearance({ ...legacy, codeRowHeight: NaN }).codeRowHeight).toBe(18);
+    expect(normalizeAppearance({ ...legacy, codeRowHeight: 100 }).codeRowHeight).toBe(36);
   });
   it('opens and preserves a comparison when exactly two commits are selected',async()=>{
     await store.getState().selectRepository('a');const left={...commit,oid:'left',subject:'Left'},right={...commit,oid:'right',subject:'Right'},fallback=bridge.rpc.getMockImplementation()!;

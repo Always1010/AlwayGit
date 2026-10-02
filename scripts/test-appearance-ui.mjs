@@ -110,7 +110,7 @@ export async function verifyAppearance(browser, url) {
 
     await history.locator('[data-working-tree]').click();
     assert.equal(await details.getByRole('textbox', { name: 'Commit message' }).inputValue(), 'Legacy draft survives migration', 'Legacy drafts survive appearance migration');
-    await history.locator('.head-row').click();
+    await history.locator('[data-head-commit="true"]').click();
     const migrated = await readSession(page);
     assert.equal(migrated.layout.preset, 'workbench');
     assert.equal(migrated.layout.row, 24, 'Legacy default row 26 migrates to compact row 24');
@@ -118,8 +118,10 @@ export async function verifyAppearance(browser, url) {
     assert.equal(migrated.layout.sidebar, 248, 'Migration retains custom panel widths');
     assert.equal(migrated.layout.details, 330, 'Migration retains the custom details width');
     assert.equal(migrated.drafts['demo-alwaygit'], 'Legacy draft survives migration');
+    assert.equal(migrated.appearance.codeRowHeight, 18, 'Legacy settings use the compact default Diff height');
+    assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--diff-row-height').trim()), '18px');
 
-    const headRow = history.locator('.head-row').first();
+    const headRow = history.locator('[data-head-commit="true"]').first();
     assert.equal(Math.round((await requiredBox(headRow, 'Default commit row')).height), 24, 'Default effective history row is 24px');
     const node = await requiredBox(headRow.locator('.git-graph-node'), 'HEAD graph node'), nodeCenter = centerY(node);
     await assertCentered(headRow.locator('.commit-message-button'), nodeCenter, 'Commit message');
@@ -144,6 +146,8 @@ export async function verifyAppearance(browser, url) {
     await settings.getByRole('radio', { name: 'Deep Night', exact: true }).click();
     await settings.getByRole('button', { name: 'Text & density', exact: true }).click();
     await settings.getByLabel('Interface font', { exact: true }).selectOption('15');
+    await settings.getByLabel('Diff line height', { exact: true }).selectOption('22');
+    assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--diff-row-height').trim()), '22px', 'Diff height previews immediately');
     await settings.getByRole('button', { name: 'Colors', exact: true }).click();
     await settings.getByRole('radio', { name: /Distinct/ }).click();
     assert.equal(await workbench.getAttribute('data-theme'), 'dark', 'Theme previews live');
@@ -154,11 +158,13 @@ export async function verifyAppearance(browser, url) {
     assert.equal(previewSession.appearance.theme, 'system', 'Theme preview is not persisted before Apply');
     assert.equal(previewSession.appearance.palette, 'vivid', 'Palette preview is not persisted before Apply');
     assert.equal(previewSession.layout.font, 13, 'Font preview is not persisted before Apply');
+    assert.equal(previewSession.appearance.codeRowHeight, 18, 'Diff height preview is not persisted before Apply');
     await page.screenshot({ path: 'artifacts/appearance-settings.png' });
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     assert.equal(await workbench.getAttribute('data-theme'), 'hc-dark', 'Cancel restores the host-resolved high-contrast theme');
     await assertCurrentIndicator(currentIndicator, 'rgb(255, 255, 255)', 'High-contrast dark current marker');
     assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--workbench-font').trim()), '13px', 'Cancel restores interface font');
+    assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--diff-row-height').trim()), '18px', 'Cancel restores Diff height');
     await page.evaluate(() => {
       document.body.classList.remove('vscode-high-contrast');
       document.body.classList.add('vscode-light');
@@ -173,6 +179,15 @@ export async function verifyAppearance(browser, url) {
     await settings.getByRole('button', { name: 'Text & density', exact: true }).click();
     await settings.getByLabel('Interface font', { exact: true }).selectOption('16');
     await settings.getByLabel('Diff font', { exact: true }).selectOption('15');
+    await settings.getByLabel('Diff line height', { exact: true }).selectOption('custom');
+    const customHeight = settings.getByRole('spinbutton', { name: 'Custom Diff line height', exact: true });
+    await customHeight.fill('');
+    await customHeight.press('Tab');
+    assert.equal(await customHeight.inputValue(), '18', 'Empty custom input restores the previous value');
+    await customHeight.fill('100');
+    await customHeight.press('Tab');
+    assert.equal(await customHeight.inputValue(), '36', 'Custom input is clamped to its supported range');
+    await customHeight.fill('23');
     await settings.getByLabel('List density', { exact: true }).selectOption('22');
     await settings.getByRole('button', { name: 'Status indicators', exact: true }).click();
     await settings.getByRole('radio', { name: '#006BFF', exact: true }).click();
@@ -187,6 +202,7 @@ export async function verifyAppearance(browser, url) {
     assert.equal(applied.appearance.badgeColor, '#006BFF');
     assert.equal(applied.appearance.palette, 'extended');
     assert.equal(applied.appearance.codeFont, 15);
+    assert.equal(applied.appearance.codeRowHeight, 23);
     assert.equal(applied.appearance.colors.light[0], '#0066DD');
     assert.equal(applied.appearance.colors.light.length, 16);
     assert.equal(applied.appearance.colors.dark.length, 16);
@@ -202,6 +218,7 @@ export async function verifyAppearance(browser, url) {
     assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--graph-lane-0').trim()), '#4DA3FF', 'The paired dark color survives reload alongside the edited light color');
     assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--workbench-font').trim()), '16px');
     assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--row-height').trim()), '28px', '16px interface font raises effective row height to 28px');
+    assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--diff-row-height').trim()), '23px', 'Custom Diff height survives reload');
     assert.equal(await details.getByRole('textbox', { name: 'Commit message' }).count(), 0, 'Reload restores the saved history view');
 
     await restore.click();
@@ -214,6 +231,7 @@ export async function verifyAppearance(browser, url) {
     applied = await readSession(page);
     assert.equal(applied.appearance.theme, 'berry');
     assert.equal(applied.layout.font, 16);
+    assert.equal(applied.appearance.codeRowHeight, 23, 'Restore Layout preserves custom Diff height');
 
     const largeRow = history.locator('[data-oid]').first(), largeRowBox = await requiredBox(largeRow, '16px commit row');
     assert.equal(Math.round(largeRowBox.height), 28);
