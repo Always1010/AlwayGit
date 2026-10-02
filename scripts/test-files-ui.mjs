@@ -69,6 +69,13 @@ export async function verifyFiles(browser, url) {
     const groups = details.locator('.change-groups'), unstaged = groups.locator('.change-group:has(.change-heading-unstaged)'), staged = groups.locator('.change-group:has(.change-heading-staged)');
     const stageAll = unstaged.getByRole('button', { name: 'Stage All', exact: true });
     await stageAll.waitFor();
+    await unstaged.getByRole('button', { name: 'Collapse Unstaged', exact: true }).click();
+    assert.equal(await unstaged.locator('.change-file').first().isVisible(), false);
+    await groups.focus(); await page.keyboard.press('Control+a');
+    assert.equal(await staged.locator('.change-file[aria-selected="true"]').count(), 1, 'Select All excludes collapsed groups');
+    await page.keyboard.press('Escape');
+    await unstaged.getByRole('button', { name: 'Expand Unstaged', exact: true }).click();
+    assert.equal(await unstaged.locator('.change-file').first().isVisible(), true);
     await unstaged.locator('.file-status[aria-label="Untracked"]').waitFor();
     assert.equal(await unstaged.getByRole('button', { name: 'Discard selected files…', exact: true }).isDisabled(), true);
     await stageAll.click();
@@ -119,6 +126,6 @@ export async function verifyFiles(browser, url) {
     await draft.click({ button: 'right' });
     assert.equal(await menu.isVisible(), false, 'Editable text keeps the native context menu');
     assert.deepEqual(errors, []);
-    console.log('ALWAYGIT_FILES_UI_TESTS_PASSED: corner status badges, bulk Stage/Unstage confirmation with affirmative focus, selected-file direct actions, full-path filtering, context menus, explicit Discard and native text editing');
+    console.log('ALWAYGIT_FILES_UI_TESTS_PASSED: corner status badges, collapsible groups, bulk Stage/Unstage confirmation with affirmative focus, selected-file direct actions, full-path filtering, context menus, explicit Discard and native text editing');
   } finally { await page.close(); }
 }
