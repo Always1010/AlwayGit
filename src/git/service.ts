@@ -8,6 +8,7 @@ import { remoteNameProblem, remoteUrlProblem } from '../protocol/remote';
 import { inferDefaultBranch } from './default-branch';
 
 export interface GitServiceOptions {
+  allowDetachedHead?: () => boolean;
   gitPath?: string;
   onOutput?: (repo: Repository, text: string) => void;
   timeoutMs?: number;
@@ -319,6 +320,7 @@ export class GitService implements GitServiceContract {
     this.reviews.delete(repo.id);
   }
   private async checkout(repo: Repository, target: string, detached = false, stashFirst = false, includeUntracked = false, createFrom?: string): Promise<void> {
+    if (detached) this.requireDetachedHead();
     const resolved = detached ? await this.oid(repo, target) : await this.refName(repo, target);
     if (!detached && !createFrom) await this.oid(repo, `refs/heads/${resolved}`);
     const snapshot = await this.snapshot(repo);
@@ -329,6 +331,7 @@ export class GitService implements GitServiceContract {
     const occupied = !detached && snapshot.worktrees.find(tree => tree.branch === target && normalized(tree.path) !== normalized(repo.root));
     if (occupied) throw new GitError(`Branch ${target} is checked out in ${occupied.path}. Open that Worktree to use this branch.`, 'WORKTREE_OCCUPIED', '', '', { reason: 'worktree-occupied', paths: [], target, worktreePath: occupied.path });
     let stashOid: string | undefined;
+    if (detached) this.requireDetachedHead();
     if (stashFirst) {
       const previous = snapshot.stashes[0]?.oid;
       await this.run(repo, ['stash', 'push', ...(includeUntracked ? ['--include-untracked'] : []), '-m', `AlwayGit: before Checkout ${target}`]);
@@ -337,6 +340,7 @@ export class GitService implements GitServiceContract {
       if (saved !== previous) stashOid = saved;
     }
     try {
+      if (detached) this.requireDetachedHead();
       await this.run(repo, ['-c', 'core.quotePath=false', 'switch', ...(createFrom ? ['-c', resolved, '--track', '--', createFrom] : [...(detached ? ['--detach'] : []), '--', resolved])]);
     } catch (error) {
       const cause = error instanceof Error ? error.message : String(error);
@@ -350,6 +354,9 @@ export class GitService implements GitServiceContract {
       const message = `${cause}${stashOid ? `\nStash ${stashOid} was created and retained. Checkout did not complete; your saved changes remain in Stashes.` : ''}`;
       throw new GitError(message, blocked ? 'CHECKOUT_BLOCKED' : error instanceof GitError ? error.code : 'CHECKOUT_FAILED', error instanceof GitError ? error.stdout : '', error instanceof GitError ? error.stderr : '', details);
     }
+  }
+  private requireDetachedHead(): void {
+    if (this.options.allowDetachedHead?.() !== true) throw new GitError('Direct Detached HEAD Checkout is disabled. Create and switch to a branch, or enable it in Settings > Advanced.', 'DETACHED_HEAD_DISABLED');
   }
   private async trackBranches(repo: Repository, action: Extract<GitAction, { type: 'branch.track' }>): Promise<void> {
     if (!action.branches.length || action.branches.length > 1000 || (action.checkout && action.branches.length !== 1) || (action.stashFirst && !action.checkout)) throw new GitError('Select up to 1000 branches; Checkout and Stash require a single branch.', 'INVALID_ARGUMENT');
@@ -545,6 +552,8 @@ export class GitService implements GitServiceContract {
       }
       case 'stash.drop': args = ['stash', 'drop', await this.validateStash(repo, action.selector, action.expectedOid)]; break;
       case 'worktree.add': {
+        // A revision without -b or an existing branch implicitly creates a detached Worktree.
+        if (action.detach || !action.branch && !action.newBranch && !!action.start) this.requireDetachedHead();
         token(action.path, 'worktree path'); if (action.detach && (action.branch || action.newBranch)) throw new GitError('Detached worktrees cannot also select a branch', 'INVALID_ARGUMENT'); if (action.branch && action.newBranch) throw new GitError('Choose an existing or a new branch', 'INVALID_ARGUMENT');
         const target = path.resolve(repo.root, action.path); const current = await this.worktrees(repo); if (current.some(x => normalized(x.path) === normalized(target))) throw new GitError('Worktree already registered', 'INVALID_WORKTREE');
         args = ['worktree', 'add', ...(action.detach ? ['--detach'] : []), ...(action.newBranch ? ['-b', await this.refName(repo, action.newBranch)] : []), '--', target];
@@ -569,6 +578,7 @@ export class GitService implements GitServiceContract {
       }
       default: throw new GitError('Unsupported Git action', 'INVALID_ARGUMENT');
     }
+    if (action.type === 'worktree.add' && (action.detach || !action.branch && !action.newBranch && !!action.start)) this.requireDetachedHead();
     await this.run(repo, args);
   }
 }

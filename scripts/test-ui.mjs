@@ -341,7 +341,7 @@ try {
   await history.locator('[data-working-tree]').click();
   const draft = page.getByRole('textbox', { name: 'Commit message' });
   await draft.fill('Persistent bilingual draft');
-  await page.getByRole('button', { name: 'Interface Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByTestId('interface-settings').getByRole('button',{name:'Language',exact:true}).click();
   await page.getByTestId('interface-settings').getByRole('combobox',{name:'Language'}).selectOption('zh-CN');
   await page.getByRole('dialog').locator('.modal-footer .primary').click();
@@ -356,7 +356,7 @@ try {
   assert.equal(await page.getByRole('textbox', { name: 'Commit message' }).inputValue(), 'Persistent bilingual draft');
   assert.equal(await page.getByRole('textbox', { name: 'Search commit history' }).inputValue(), 'native diff');
   assert.equal(await page.getByLabel('Show branch feature/history-graph', { exact: true }).isChecked(), true);
-  await page.getByRole('button', { name: '界面设置', exact: true }).click();
+  await page.getByRole('button', { name: '设置', exact: true }).click();
   await page.getByTestId('interface-settings').getByRole('button',{name:'语言',exact:true}).click();
   assert.equal(await page.getByTestId('interface-settings').getByRole('combobox',{name:'Language'}).inputValue(), 'zh-CN');
   await page.getByTestId('interface-settings').getByRole('combobox',{name:'Language'}).selectOption('en');

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { CheckoutBlocker, Commit, CommitComparison, CommitDetails, DiffTarget, GitAction, HistoryPage, HistoryQuery, OperationReview, Repository, RepositoryChanges, RepositoryCollection, RepositoryOrder, ReorderRepository, RepositoryStatus, Snapshot, StashApplyBlocker, StashDetails, StashSection } from '../src/protocol/types';
+import type { CheckoutBlocker, Commit, CommitComparison, CommitDetails, DiffTarget, GitAction, HistoryPage, HistoryQuery, OperationReview, OperationSettings, Repository, RepositoryChanges, RepositoryCollection, RepositoryOrder, ReorderRepository, RepositoryStatus, Snapshot, StashApplyBlocker, StashDetails, StashSection } from '../src/protocol/types';
 import { demoMode, readSession, rpc, saveSession, subscribe } from './rpc';
 import type { LayoutState } from './rpc';
 import type { Language } from './i18n';
@@ -19,6 +19,7 @@ export const defaultLayout: LayoutState = { preset: 'workbench', sidebar: 210, d
 export type CheckoutFailure = CheckoutBlocker & { detached?: boolean };
 interface WorkbenchState {
   operationReview?: { repoId: string; action: Extract<GitAction, { type: 'commit' | 'operation.continue' }>; review: OperationReview };
+  operationSettings: OperationSettings; loadOperationSettings(): Promise<void>; saveOperationSettings(allowDetachedHead: boolean): Promise<void>;
   appearance: Appearance; settingsBaseline?: InterfaceSettings;
   beginSettings(): void; previewSettings(value: InterfaceSettingsUpdate): void; finishSettings(apply: boolean): void; restoreLayout(): void;
   repositories: Repository[]; repositoryCollections:RepositoryCollection[]; repositoryOrder?:RepositoryOrder; reorderRepository(payload:ReorderRepository):Promise<void>; repositoryStatuses: Record<string, RepositoryStatus>; selectedRepositoryKeys:string[]; repositorySelectionAnchor?:string; repoId?: string; snapshot?: Snapshot; commits: Commit[]; historyHead?: Commit; details?: CommitDetails; comparison?: CommitComparison; selectedOid?: string; selectedOids: string[]; selectionAnchor?: string; selectedRefs:string[]; refSelectionAnchor?:string; selectedParent?: string; selectedStashOid?: string; selectedStashSection?:StashSection; stashDetails?: StashDetails; selectedFile?: string; diffTarget?: DiffTarget; diffRevision: number;
@@ -38,9 +39,13 @@ const initialLayout = layout(session.layout);
 // Only the old default density migrates; custom dimensions and drafts are kept.
 if (!session.appearance && initialLayout.row === 26) initialLayout.row = 24;
 export const useWorkbench = create<WorkbenchState>((set, get) => ({
+  operationSettings: { allowDetachedHead: false, scope: 'workspace' },
+  async loadOperationSettings() { const settings = await rpc<OperationSettings>('operationSettings'); if (typeof settings?.allowDetachedHead === 'boolean') set({ operationSettings: settings }); },
+  async saveOperationSettings(allowDetachedHead) { const settings = await rpc<OperationSettings>('saveOperationSettings', undefined, { allowDetachedHead }); if (typeof settings?.allowDetachedHead !== 'boolean' || settings.allowDetachedHead !== allowDetachedHead) throw new Error('Could not save Git operation settings.'); set({ operationSettings: settings }); },
   repositories: [], repositoryCollections:[], repositoryStatuses: {}, selectedRepositoryKeys:[], commits: [], selectedOids:[], selectedRefs:[], search: '', language: session.language === 'zh-CN' ? 'zh-CN' : 'en', layout: initialLayout, appearance: normalizeAppearance(session.appearance), locateToken:0,nextOffset: 0, tips: [], hasMore: false, loading: false, historyLoading: false, detailsLoading: false, diffRevision: 0, busy: false, activity: '', tab: 'history', drafts: session.drafts ?? {}, collapsedSidebarGroups:[],
   report(error) { set({ error: message(error) }); },
   async initialize() {
+    void get().loadOperationSettings().catch(error => get().report(error));
     set({ loading: true });
     try { const [repositories,collectionsResult,orderResult] = await Promise.all([rpc<Repository[]>('repositories'),rpc<RepositoryCollection[]>('repositoryCollections'),rpc<RepositoryOrder>('repositoryOrder')]),repositoryCollections=Array.isArray(collectionsResult)?collectionsResult:[],currentId=get().repoId,keys=new Set(groupRepositories(repositories,currentId).map(group=>group.key)),selectedRepositoryKeys=get().selectedRepositoryKeys.filter(key=>keys.has(key)),repositorySelectionAnchor=selectedRepositoryKeys.includes(get().repositorySelectionAnchor??'')?get().repositorySelectionAnchor:undefined; set({ repositories,repositoryCollections,repositoryOrder:orderResult?.root?orderResult:undefined,selectedRepositoryKeys,repositorySelectionAnchor }); void get().loadRepositoryStatuses(); if (!repositories.some(r => r.id === currentId)) { const initial = currentId?undefined:repositories.find(r => r.id === session.repoId); if (initial) await get().selectRepository(initial.id); else { ++repositoryEpoch; ++historyEpoch; ++detailEpoch; set({ repoId: undefined, snapshot: undefined, commits: [], historyHead: undefined, details: undefined, comparison:undefined, selectedOid:undefined,selectedOids:[],selectedFile:undefined,diffTarget:undefined,busy:false,activity:'',...(currentId?{notice:get().language==='zh-CN'?'该仓库已从 AlwayGit 移除。':'The repository was removed from AlwayGit.'}:{}) }); } } }
     catch (error) { get().report(error); } finally { set({ loading: false }); }
@@ -286,7 +291,8 @@ useWorkbench.subscribe(state => {
 let changedTimer: ReturnType<typeof setTimeout>;
 let pendingChange: { repoId: string; changes?: RepositoryChanges } | undefined;
 subscribe(event => {
-  const state = useWorkbench.getState(); if (event.type === 'repositoriesChanged') void state.initialize();
+  const state = useWorkbench.getState(); if (event.type === 'operationSettingsChanged') useWorkbench.setState({ operationSettings: event.settings });
+  if (event.type === 'repositoriesChanged') void state.initialize();
   if (event.type === 'changed' && event.repoId === state.repoId) {
     clearTimeout(changedTimer);
     pendingChange = { repoId: event.repoId, changes: pendingChange?.repoId === event.repoId ? mergeChanges(pendingChange.changes, event.changes) : event.changes };

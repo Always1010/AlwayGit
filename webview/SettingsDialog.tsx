@@ -6,7 +6,7 @@ import { defaultBadgeColor, diffRowHeight, effectiveRowHeight, fileRowHeight, is
 import { graphPalettes, type GraphPaletteId } from './graph/palettes';
 import { Button, Icon, Modal } from './ui';
 
-type SettingsPage = 'language' | 'theme' | 'density' | 'status' | 'colors';
+type SettingsPage = 'language' | 'theme' | 'density' | 'status' | 'colors' | 'advanced';
 type ColorTheme = 'light' | 'dark';
 const defaultMainColors = { light: '#283447', dark: '#EDF3FF' } as const;
 const themes: { id: ThemePreference; label: string; labelZh: string; colors: readonly [string, string, string] }[] = [
@@ -113,7 +113,15 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
   const state = useWorkbench(), t = useTranslation(), { appearance, layout } = state;
   const [page, setPage] = useState<SettingsPage>('theme');
   const [colorTheme, setColorTheme] = useState<ColorTheme>(isLightTheme(theme) ? 'light' : 'dark');
-  const close = () => state.finishSettings(false);
+  const [allowDetachedHead, setAllowDetachedHead] = useState(state.operationSettings.allowDetachedHead), [advancedDirty, setAdvancedDirty] = useState(false), [saving, setSaving] = useState(false), [saveError, setSaveError] = useState<string>();
+  useEffect(() => { if (!advancedDirty) setAllowDetachedHead(state.operationSettings.allowDetachedHead); }, [advancedDirty, state.operationSettings.allowDetachedHead]);
+  const close = () => { if (!saving) state.finishSettings(false); };
+  const apply = async () => {
+    setSaving(true); setSaveError(undefined);
+    try { if (advancedDirty) await state.saveOperationSettings(allowDetachedHead); state.finishSettings(true); }
+    catch (error) { setSaveError(error instanceof Error ? error.message : String(error)); }
+    finally { setSaving(false); }
+  };
   const densityOptions = [22, 24, 28];
   if (!densityOptions.includes(layout.row)) densityOptions.push(layout.row);
   const updateAppearance = (next: typeof appearance) => state.previewSettings({ appearance: next });
@@ -128,21 +136,29 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
   };
   const presetBase = presetColors(appearance.palette);
   const customized = appearance.colors.light.some((color, index) => color !== presetBase.light[index]) || appearance.colors.dark.some((color, index) => color !== presetBase.dark[index]) || appearance.colors.light.length !== presetBase.light.length;
-  const pageLabel = page === 'language' ? t('Language', '语言') : page === 'theme' ? t('Theme', '主题') : page === 'density' ? t('Text & density', '字号与密度') : page === 'status' ? t('Status indicators', '状态提醒') : t('Graph colors', '提交图配色');
+  const pageLabel = page === 'advanced' ? t('Git operations', 'Git 操作') : page === 'language' ? t('Language', '语言') : page === 'theme' ? t('Theme', '主题') : page === 'density' ? t('Text & density', '字号与密度') : page === 'status' ? t('Status indicators', '状态提醒') : t('Graph colors', '提交图配色');
   const navItem = (id: SettingsPage, icon: string, en: string, zh: string) => <button type="button" className={`settings-nav-item ${page === id ? 'is-active' : ''}`} aria-current={page === id ? 'page' : undefined} onClick={() => setPage(id)}><Icon name={icon}/><span>{t(en, zh)}</span></button>;
 
-  return <Modal title={t('Interface Settings', '界面设置')} onClose={close} footer={
-    <><span className="settings-save-hint"><Icon name="check"/>{t('Applies to this workspace', '保存在当前工作区')}</span><Button className="settings-cancel" onClick={close}>{t('Cancel', '取消')}</Button><Button className="primary" onClick={() => state.finishSettings(true)}>{t('Apply', '应用')}</Button></>
+  return <Modal title={t('Settings', '设置')} busy={saving} onClose={close} footer={
+    <><span className="settings-save-hint"><Icon name="check"/>{page === 'advanced' && state.operationSettings.scope === 'user' ? t('Git options are saved in user settings', 'Git 选项保存在用户设置') : t('Applies to this workspace', '保存在当前工作区')}</span><Button className="settings-cancel" disabled={saving} onClick={close}>{t('Cancel', '取消')}</Button><Button className="primary" disabled={saving} onClick={()=>void apply()}>{saving?t('Saving…','保存中…'):t('Apply', '应用')}</Button></>
   }>
     <div className="interface-settings" data-testid="interface-settings">
       <nav className="settings-nav" aria-label={t('Settings categories', '设置分类')}>
         <div className="settings-nav-group"><strong>{t('General', '常规')}</strong>{navItem('language', 'globe', 'Language', '语言')}</div>
         <div className="settings-nav-group"><strong>{t('Interface', '界面')}</strong>{navItem('theme', 'color-mode', 'Theme', '主题')}{navItem('density', 'text-size', 'Text & density', '字号与密度')}{navItem('status', 'bell-dot', 'Status indicators', '状态提醒')}</div>
         <div className="settings-nav-group"><strong>{t('Commit graph', '提交图')}</strong>{navItem('colors', 'git-merge', 'Colors', '配色')}</div>
+        <div className="settings-nav-group">{navItem('advanced', 'tools', 'Advanced', '高级')}</div>
       </nav>
       <main className="settings-content">
-        <header className="settings-page-heading"><span>{page === 'language' ? t('General', '常规') : page === 'colors' ? t('Commit graph', '提交图') : t('Interface', '界面')} › {pageLabel}</span><small>{t('Changes preview immediately. Apply to save.', '调整会立即预览，应用后保存。')}</small></header>
+        <header className="settings-page-heading"><span>{page === 'advanced' ? t('Advanced', '高级') : page === 'language' ? t('General', '常规') : page === 'colors' ? t('Commit graph', '提交图') : t('Interface', '界面')} › {pageLabel}</span><small>{page === 'advanced' ? t('Git options take effect only after Apply.', 'Git 操作选项在应用后生效。') : t('Changes preview immediately. Apply to save.', '调整会立即预览，应用后保存。')}</small></header>
 
+        {saveError&&<p role="alert" className="form-error">{saveError}</p>}
+        {page === 'advanced' && <section className="settings-page" aria-labelledby="advanced-heading">
+          <h3 id="advanced-heading">{t('Git operations','Git 操作')}</h3>
+          <label className="form-checkbox"><input type="checkbox" aria-label={t('Allow direct Detached HEAD Checkout','允许直接进入 Detached HEAD')} checked={allowDetachedHead} disabled={saving} onChange={event=>{setAdvancedDirty(true);setAllowDetachedHead(event.target.checked);}}/>{t('Allow direct Detached HEAD Checkout','允许直接进入 Detached HEAD')}</label>
+          <p className="settings-page-copy">{t('Disabled by default. Create and switch to a local branch when checking out a historical Commit or Tag. Enabling this option allows direct Checkout; new commits will not automatically belong to a branch.','默认关闭。切换到历史 Commit 或 Tag 时，请创建并切换到本地分支。开启后允许直接 Checkout；新提交不会自动归属于任何分支。')}</p>
+          <p className="settings-note">{t('This also controls Detached Worktrees. Internal Rebase steps and existing Detached HEAD repositories remain usable.','此选项同时控制 Detached Worktree；不影响 Rebase 内部步骤或已经处于 Detached HEAD 的仓库。')}</p>
+        </section>}
         {page === 'language' && <section className="settings-page" aria-labelledby="language-heading">
           <h3 id="language-heading">{t('Language', '语言')}</h3>
           <p className="settings-page-copy">{t('Choose the language used throughout the workbench.', '选择工作台界面使用的语言。')}</p>

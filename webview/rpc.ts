@@ -1,7 +1,7 @@
 import { groupRepositories } from '../src/protocol/repositories';
 import { branchNameConflict, branchNameConflictMessage } from '../src/protocol/ref-name';
 import { reconcileRepositoryOrder } from '../src/protocol/repository-order';
-import type { RepositoryOrder, ReorderRepository, ActionBlocker, Commit, CommitComparison, CommitDetails, GitAction, HistoryPage, HistoryQuery, HostMessage, Repository, RepositoryCollection, RepositoryStatus, RpcRequest, Snapshot, StashDetails } from '../src/protocol/types';
+import type { RepositoryOrder, ReorderRepository, ActionBlocker, Commit, CommitComparison, CommitDetails, GitAction, HistoryPage, HistoryQuery, HostMessage, Repository, RepositoryCollection, RepositoryStatus, RpcRequest, Snapshot, OperationSettings, StashDetails } from '../src/protocol/types';
 import type { Appearance } from './appearance';
 
 export interface LayoutState { preset: 'workbench' | 'editor'; sidebar: number; details: number; diff: number; diffCollapsed: boolean; graph: number; author: number; date: number; font: number; row: number }
@@ -84,10 +84,13 @@ const demoStores:Record<string,{snapshot:Snapshot;commits:Commit[];saved:Map<str
 if(noRemoteDemo)for(const store of Object.values(demoStores)){store.snapshot.remotes=[];store.snapshot.refs=store.snapshot.refs.filter(ref=>ref.kind!=='remote');delete store.snapshot.upstream;delete store.snapshot.pushTarget;}
 const demoCollections:RepositoryCollection[]=[];
 let demoOrder:RepositoryOrder|undefined;
+let demoOperationSettings: OperationSettings = { allowDetachedHead: localStorage.getItem('alwaygit.demo-allowDetachedHead') === 'true', scope: 'workspace' };
 async function demoRequest(method: RpcRequest['method'], payload: unknown, repoId?:string): Promise<unknown> {
   await new Promise(resolve => setTimeout(resolve, 110));
   const data=demoStores[repoId??repo.id]??demoStores[repo.id],demoSnapshot=data.snapshot,commits=data.commits;
   const resolve=(ref:string)=>ref==='HEAD'?demoSnapshot.head!:demoSnapshot.refs.find(r=>r.name===ref||r.fullName===ref)?.oid??ref;
+  if (method === 'operationSettings') return { ...demoOperationSettings };
+  if (method === 'saveOperationSettings') { demoOperationSettings = { allowDetachedHead: (payload as { allowDetachedHead: boolean }).allowDetachedHead, scope: 'workspace' }; localStorage.setItem('alwaygit.demo-allowDetachedHead', String(demoOperationSettings.allowDetachedHead)); listeners.forEach(listener => listener({ type: 'operationSettingsChanged', settings: { ...demoOperationSettings } })); return { ...demoOperationSettings }; }
   if (method === 'repositories') return [repo,website];
   if(method==='pickRepositoryDirectory')return 'D:\\Projects';
   if(method==='discoverRepositories'){const scanId=(payload as {scanId:string}).scanId;return {scanId,root:'D:\\Projects',scanned:8,found:3,cancelled:false,candidates:[{key:'demo-existing',name:'AlwayGit',path:repo.root,existing:true},{key:'demo-notes',name:'NotesAnywhere',path:'D:\\Projects\\NotesAnywhere',existing:false},{key:'demo-resume',name:'SwiftResume',path:'D:\\Projects\\SwiftResume',existing:false}],issues:[]};}
@@ -139,6 +142,7 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
       const commit = { ...commits[0], oid: oid(999 + demoSnapshot.version), parents: action.amend ? commits[0].parents : [commits[0].oid], subject: action.message.split('\n')[0], timestamp: Math.floor(Date.now() / 1000), pushed: false }; if (action.amend) commits.shift(); commits.unshift(commit);
       demoSnapshot.head = commit.oid;const branch=demoSnapshot.refs.find(r=>r.kind==='local'&&r.name===demoSnapshot.branch);if(branch)branch.oid=commit.oid; demoSnapshot.changes = demoSnapshot.changes.filter(c => c.worktreeStatus !== ' ' || c.untracked).map(c => ({ ...c, indexStatus: ' ' })); demoSnapshot.ahead++;
     } else if (action.type === 'branch.checkout'||action.type==='commit.checkout'||action.type==='checkout.stash') {
+      if ((action.type === 'commit.checkout' || action.type === 'checkout.stash' && action.detached) && !demoOperationSettings.allowDetachedHead) throw new RpcError('Direct Detached HEAD Checkout is disabled. Create and switch to a branch.', 'DETACHED_HEAD_DISABLED');
       const detached=action.type==='commit.checkout'||action.type==='checkout.stash'&&action.detached,target=action.type==='branch.checkout'?action.name:action.target;
       const occupied=demoSnapshot.worktrees.find(tree=>tree.branch?.replace(/^refs\/heads\//,'')===target&&tree.path!==demoSnapshot.repository.root);
       if(!detached&&occupied)throw new RpcError('Branch is in use by another Worktree.','WORKTREE_OCCUPIED',{reason:'worktree-occupied',target,paths:[],worktreePath:occupied.path});
@@ -160,7 +164,7 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
     else if (action.type === 'tag.delete') demoSnapshot.refs = demoSnapshot.refs.filter(r => !(r.kind === 'tag' && r.name === action.name));
     else if (action.type === 'stash.create') {const stash={selector:'stash@{0}',oid:oid(2000+demoSnapshot.version),subject:action.message||'WIP on '+demoSnapshot.branch};data.saved.set(stash.oid,structuredClone(demoSnapshot.changes));demoSnapshot.stashes.unshift(stash);demoSnapshot.changes=[];}
     else if(action.type==='stash.apply'||action.type==='stash.drop'){const stash=demoSnapshot.stashes.find(s=>s.selector===action.selector);if(!stash||action.expectedOid&&stash.oid!==action.expectedOid)throw new RpcError('Stash changed. Refresh and retry.','STASH_CHANGED');if(action.type==='stash.apply'){const saved=data.saved.get(stash.oid)??[{path:'webview/styles.css',indexStatus:' ',worktreeStatus:'M',conflict:false,untracked:false}],collisions=saved.filter(file=>file.untracked&&demoSnapshot.changes.some(change=>change.path===file.path));if(collisions.length)throw new RpcError(`Cannot restore the Stash because the project already contains ${collisions[0].path}. Existing files were not overwritten, and the Stash is still saved.`,'STASH_UNTRACKED_CONFLICT',{kind:'stash-apply',reason:'untracked-path-exists',paths:collisions.map(file=>file.path),selector:stash.selector,stashOid:stash.oid,stashRetained:true,workingTreeUnchanged:true});if(saved.some(f=>demoSnapshot.changes.some(c=>c.path===f.path)))throw new Error('Stash overlaps with local changes; entry preserved.');demoSnapshot.changes.push(...saved.map(c=>({...c,indexStatus:' ',worktreeStatus:'M'})));}if(action.type==='stash.drop'||action.pop)demoSnapshot.stashes=demoSnapshot.stashes.filter(s=>s.oid!==stash.oid);}
-    else if (action.type === 'worktree.add') demoSnapshot.worktrees.push({ path: action.path, head: commits[0].oid, branch: action.branch || action.newBranch, bare: false, detached: !!action.detach });
+    else if (action.type === 'worktree.add') { if ((action.detach || !action.branch && !action.newBranch && action.start) && !demoOperationSettings.allowDetachedHead) throw new RpcError('Detached Worktrees are disabled. Choose a branch.', 'DETACHED_HEAD_DISABLED'); demoSnapshot.worktrees.push({ path: action.path, head: commits[0].oid, branch: action.branch || action.newBranch, bare: false, detached: !!action.detach || !action.branch && !action.newBranch && !!action.start }); }
     else if (action.type === 'worktree.remove') demoSnapshot.worktrees = demoSnapshot.worktrees.filter(w => w.path !== action.path);
     else if (action.type === 'push') { demoSnapshot.ahead = 0; commits.forEach(commit => { commit.pushed = true; }); }
     else if (action.type === 'pull') demoSnapshot.behind = 0;

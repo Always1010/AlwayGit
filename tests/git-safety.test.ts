@@ -111,13 +111,61 @@ describe('Git safety regressions', () => {
     expect(await service.snapshot(repo)).toMatchObject({ branch: 'new-branch', head: old, changes: [] });
   });
 
-  it('checks out a commit in Detached HEAD and returns to a local branch without moving its tip', async () => {
+  it('blocks direct Commit, Tag, Stash retry and implicit Detached Worktrees before any writes by default', async () => {
     const { root, service, repo } = await setup();
+    const old = await commit(root, 'a.txt', 'old');
+    const current = await commit(root, 'a.txt', 'current');
+    await git(root, 'tag', 'old-version', old);
+    await writeFile(path.join(root, 'a.txt'), 'local edit');
+    await writeFile(path.join(root, 'new.txt'), 'untracked edit');
+    const status = await git(root, 'status', '--porcelain=v1');
+    const linked = path.join(root, 'detached-tree');
+    for (const action of [
+      { type: 'commit.checkout', target: old } as const,
+      { type: 'commit.checkout', target: 'refs/tags/old-version' } as const,
+      { type: 'checkout.stash', target: old, detached: true, includeUntracked: true } as const,
+      { type: 'worktree.add', path: linked, detach: true } as const,
+      { type: 'worktree.add', path: linked, start: old } as const,
+    ]) await expect(service.execute(repo, action)).rejects.toMatchObject({ code: 'DETACHED_HEAD_DISABLED' });
+    expect(await git(root, 'status', '--porcelain=v1')).toBe(status);
+    expect(await git(root, 'show', ':a.txt')).toBe('current');
+    expect(await readFile(path.join(root, 'a.txt'), 'utf8')).toBe('local edit');
+    expect(await readFile(path.join(root, 'new.txt'), 'utf8')).toBe('untracked edit');
+    expect(await service.snapshot(repo)).toMatchObject({ branch: 'main', head: current, stashes: [] });
+    await expect(access(linked)).rejects.toThrow();
+    await service.execute(repo, { type: 'branch.create', name: 'inspect-old', start: old, checkout: false });
+    expect(await git(root, 'rev-parse', 'refs/heads/inspect-old')).toBe(old);
+    await service.execute(repo, { type: 'checkout.stash', target: 'inspect-old', includeUntracked: true });
+    expect(await service.snapshot(repo)).toMatchObject({ branch: 'inspect-old', head: old });
+    expect(await git(root, 'rev-parse', 'refs/heads/main')).toBe(current);
+  });
+
+  it('rechecks permission after preflight and before creating a Stash', async () => {
+    const { root, repo } = await setup();
+    const old = await commit(root, 'a.txt', 'old');
+    const current = await commit(root, 'a.txt', 'current');
+    await writeFile(path.join(root, 'a.txt'), 'local edit');
+    let allowed = true;
+    const service = new GitService({ allowDetachedHead: () => allowed, environment: async (_repo, args) => {
+      if (args[0] === 'status') allowed = false;
+      return {};
+    } });
+    await expect(service.execute(repo, { type: 'checkout.stash', target: old, detached: true, includeUntracked: true })).rejects.toMatchObject({ code: 'DETACHED_HEAD_DISABLED' });
+    expect(await service.snapshot(repo)).toMatchObject({ branch: 'main', head: current, stashes: [] });
+    expect(await readFile(path.join(root, 'a.txt'), 'utf8')).toBe('local edit');
+  });
+
+  it('checks out a commit in Detached HEAD and returns to a local branch without moving its tip', async () => {
+    const { root, repo } = await setup();
+    let allowed = true;
+    const service = new GitService({ allowDetachedHead: () => allowed });
     const first = await commit(root, 'a.txt', 'first');
     const second = await commit(root, 'a.txt', 'second');
     await service.execute(repo, { type: 'commit.checkout', target: first });
     expect(await service.snapshot(repo)).toMatchObject({ branch: '', head: first, unpushed: 0 });
     expect(await git(root, 'rev-parse', 'refs/heads/main')).toBe(second);
+    allowed = false;
+    await expect(service.execute(repo, { type: 'commit.checkout', target: second })).rejects.toMatchObject({ code: 'DETACHED_HEAD_DISABLED' });
     await service.execute(repo, { type: 'branch.checkout', name: 'main' });
     expect(await service.snapshot(repo)).toMatchObject({ branch: 'main', head: second });
   });

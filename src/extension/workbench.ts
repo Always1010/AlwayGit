@@ -2,8 +2,8 @@ import * as vscode from 'vscode';
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { ActionBlocker, AddRepositoriesResult, GitServiceContract, HostMessage, RepositoryCollection, RepositoryDiscoveryPreview, RepositoryStatus, RpcRequest, Snapshot } from '../protocol/types';
-import { actionSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema, repositoryDiscoverySchema, cancelRepositoryDiscoverySchema, addRepositoriesSchema, reorderRepositorySchema, createRepositoryCollectionSchema } from '../protocol/validation';
+import type { ActionBlocker, AddRepositoriesResult, GitServiceContract, HostMessage, RepositoryCollection, RepositoryDiscoveryPreview, RepositoryStatus, RpcRequest, Snapshot, OperationSettings } from '../protocol/types';
+import { actionSchema, operationSettingsSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema, repositoryDiscoverySchema, cancelRepositoryDiscoverySchema, addRepositoriesSchema, reorderRepositorySchema, createRepositoryCollectionSchema } from '../protocol/validation';
 import type { RepositoryManager } from '../repositories/manager';
 import type { DiscoveryResult } from '../repositories/discovery';
 import type { GitDocuments } from '../editor/documents';
@@ -36,12 +36,14 @@ export class Workbench implements vscode.Disposable {
   /** Diagnostic count used to verify the real Webview message bridge. */
   get receivedWebviewRequests(): number { return this.requestCount; }
   private readonly interval: ReturnType<typeof setInterval>;
+  private operationSettings(): OperationSettings { return { allowDetachedHead: vscode.workspace.getConfiguration('alwaygit').get<boolean>('allowDetachedHead', false) === true, scope: vscode.workspace.workspaceFile || vscode.workspace.workspaceFolders?.length ? 'workspace' : 'user' }; }
   private language(): Language { return this.context.workspaceState.get<{ language?: Language }>('alwaygit.session', {}).language ?? preferredLanguage(); }
   private text(english: string, chinese: string): string { return hostText(english, chinese, this.language()); }
   private repositoryKey(commonDir: string): string { const resolved=path.resolve(commonDir);return process.platform==='win32'?resolved.toLowerCase():resolved; }
   private isBusy(commonDir: string): boolean { const key=this.repositoryKey(commonDir);return this.busy.has(key)||this.externalBusy.has(key); }
   constructor(private readonly context: vscode.ExtensionContext, private readonly git: GitServiceContract, private readonly repositories: RepositoryManager, private readonly documents: GitDocuments, private readonly output: vscode.OutputChannel, private readonly projects: ProjectWindows) {
     this.disposables.push(repositories.onDidChange(event => this.post({ type: 'changed', ...event })), repositories.onDidChangeRepositories(() => this.post({ type: 'repositoriesChanged' })));
+    this.disposables.push(vscode.workspace.onDidChangeConfiguration(event => { if (event.affectsConfiguration('alwaygit.allowDetachedHead')) this.post({ type: 'operationSettingsChanged', settings: this.operationSettings() }); }));
     const seconds = vscode.workspace.getConfiguration('alwaygit').get<number>('refreshInterval', 15);
     this.interval = setInterval(() => void this.poll(), seconds * 1000);
   }
@@ -126,6 +128,12 @@ export class Workbench implements vscode.Disposable {
   /** All UI requests go through the same validated, trusted application boundary. */
   async handle(request: RpcRequest): Promise<unknown> { return this.handleRequest(request); }
   private async handleRequest(request: RpcRequest, source?:WorkbenchPanel): Promise<unknown> {
+    if (request.method === 'operationSettings') return this.operationSettings();
+    if (request.method === 'saveOperationSettings') {
+      const settings = operationSettingsSchema.parse(request.payload);
+      await vscode.workspace.getConfiguration('alwaygit').update('allowDetachedHead', settings.allowDetachedHead, this.operationSettings().scope === 'workspace' ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global);
+      const saved = this.operationSettings(); this.post({ type: 'operationSettingsChanged', settings: saved }); return saved;
+    }
     if (request.method === 'showLog') { this.output.show(true); return null; }
     if (request.method === 'saveSession') { const session=sessionSchema.parse(request.payload),previous=this.context.workspaceState.get<Record<string,unknown>>('alwaygit.session',{}),persisted=source?.blank&&!session.repoId&&typeof previous.repoId==='string'?{...session,repoId:previous.repoId}:session;await this.context.workspaceState.update('alwaygit.session',persisted);if(source){source.activeRepository=session.repoId;source.blank=source.blank&&!session.repoId;this.updatePanelTitle(source);}return null; }
     if (request.method === 'copyText') { await vscode.env.clipboard.writeText(copySchema.parse(request.payload).text); return null; }

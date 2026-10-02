@@ -20,6 +20,7 @@ export async function activate(context: vscode.ExtensionContext) {
   }
   const git = new GitService({
     gitPath,
+    allowDetachedHead: () => vscode.workspace.getConfiguration('alwaygit').get<boolean>('allowDetachedHead', false) === true,
     onOutput: (repo, text) => output.append(redactSecrets(`[${repo.name}] ${text}`)),
     environment: async (_repo, args) => {
       if (!['fetch', 'pull', 'push'].includes(args[0])) return {};

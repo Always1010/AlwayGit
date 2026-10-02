@@ -14,7 +14,7 @@ Workbench 顶部的分栏图标显式创建一个新标签。新标签继承界�
 
 使用统一的内容、侧栏、标题和工具栏表面层级，按钮采用小圆角、边界和短时悬停反馈；当前分支独立显示，普通状态、操作进度和冲突使用不同语义。标题默认约 26 px、按钮约 24 px；文件两行信息和操作说明保持可读，不为压缩高度隐藏完整父目录。分区标题保留展开/收起和独立图标操作，具体入口见 [左侧分组操作](#左侧分组操作)。减少动态效果设置关闭过渡与旋转。
 
-右上角齿轮图标打开“界面设置”浮窗，按钮通过悬浮说明和无障碍名称表达用途，不重复显示文字。浮窗约 760 px 宽，左侧以“常规 / 界面 / 提交图”为一级分组，包含语言、主题、字号与密度、配色等二级入口；右侧一次只显示当前设置页并标明层级路径。主题以可预览卡片选择，可跟随 VS Code 明暗/高对比模式，也可独立选择清透亮色、暖纸、雾蓝、深夜、午夜蓝、石墨、森林、莓紫或高对比；AlwayGit 使用每套主题统一的表面、文字、边框和选中颜色。界面字号支持 12–16 px，Diff 字号支持 11–18 px（默认 12 px）；列表密度为 22/24/28 px。文件列表间距独立控制文件行的上下留白，默认每侧 1 px，提供 0/1/3/5 px 预设与 0–8 px 自定义值；13 px 字号下默认两行文件列表约 32 px 高，Commit Details、Commit 比较和 Working Tree 一致使用。长路径换行或大字号时自动增高，旧会话使用新默认间距并保留其他设置。Diff 行高独立设置，默认 18 px，提供 18/20/22/24 px 预设及 16–36 px 自定义值，实际行高至少为 Diff 字号 + 4 px；旧会话缺少此设置时使用新默认值，保留已有字号。大字号自动增加最小行高，虚拟列表同步测量并保留顶部阅读位置。
+右上角齿轮图标打开“设置”浮窗，按钮通过悬浮说明和无障碍名称表达用途，不重复显示文字。浮窗约 760 px 宽，左侧以“常规 / 界面 / 提交图 / 高级”为一级分组，包含语言、主题、字号与密度、配色等二级入口；右侧一次只显示当前设置页并标明层级路径。主题以可预览卡片选择，可跟随 VS Code 明暗/高对比模式，也可独立选择清透亮色、暖纸、雾蓝、深夜、午夜蓝、石墨、森林、莓紫或高对比；AlwayGit 使用每套主题统一的表面、文字、边框和选中颜色。界面字号支持 12–16 px，Diff 字号支持 11–18 px（默认 12 px）；列表密度为 22/24/28 px。文件列表间距独立控制文件行的上下留白，默认每侧 1 px，提供 0/1/3/5 px 预设与 0–8 px 自定义值；13 px 字号下默认两行文件列表约 32 px 高，Commit Details、Commit 比较和 Working Tree 一致使用。长路径换行或大字号时自动增高，旧会话使用新默认间距并保留其他设置。Diff 行高独立设置，默认 18 px，提供 18/20/22/24 px 预设及 16–36 px 自定义值，实际行高至少为 Diff 字号 + 4 px；旧会话缺少此设置时使用新默认值，保留已有字号。大字号自动增加最小行高，虚拟列表同步测量并保留顶部阅读位置。
 
 调整立即预览；“应用”保存，无需重启。“取消”、关闭、Esc 或点击遮罩还原未应用的预览。预览期间后台刷新仍保存已应用设置；提交草稿、仓库选择和文件内容不受设置影响。设置存于当前工作区，对其全部仓库生效。顶部工具栏移除重复的 Stage、Unstage、Discard，文件操作集中于 Working Tree 分组。
 
@@ -78,7 +78,7 @@ Working Tree、Commit Details 和 Commit 比较的文件列表统一使用中性
 | `Ctrl` / `Cmd` + `Shift` + 单击 Commit | 在现有集合上追加连续区间 |
 | History 中按 `Ctrl` / `Cmd` + `A`；按 `Escape` | 全选当前已加载的真实 Commit 或清空 Commit 多选；不加载更多，不包含 Working Tree |
 | 右键已选 Commit | 保留当前多选集合并显示适用操作 |
-| 双击 Commit | 关联一个本地分支时 Checkout；关联多个时选择；没有时确认 Detached HEAD |
+| 双击 Commit | 顶端有一个本地分支直接指向时 Checkout；有多个时选择；没有时创建并切换新分支，开启高级选项后也沿用此默认路径 |
 | 单击 Working Tree 虚拟节点 | 单选 Working Tree 并显示工作区状态；不加入 Commit 多选 |
 | Working Tree / HEAD 获得焦点后按上下方向键 | 在虚拟节点与真实 Commit 间连续选择和移动焦点 |
 | 单击详情中的文件 | 在底部预览 Diff |
@@ -121,7 +121,7 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 | Remote Branch | `Show in Graph`、`Show Only This Branch`、`Checkout as Local Branch…`、`Merge…`、`Rebase…`、`Delete Branch from <remote>…`、`Copy Branch Name` |
 | Remote 分支目录 / 多选 | `Create Local Tracking Branches…`、Graph 批量筛选、远端批量删除和复制名称 |
 | Remote，例如 `origin` | `Fetch…`、`Create Local Tracking Branches…`、`Refresh` |
-| Tag | `Show in Graph`、`Show Only This Tag`、`Create Branch…`、`Checkout…`、`Delete Tag…`、`Copy Tag Name`、`Copy Commit ID` |
+| Tag | `Show in Graph`、`Show Only This Tag`、`Create Branch…`、`Create Branch and Checkout…`、条件显示的 `Checkout to Detached HEAD…`、`Delete Tag…`、`Copy Tag Name`、`Copy Commit ID` |
 | Stash | `View Changes`、`Apply Stash`、`Pop Stash`、`Drop Stash…` |
 | Worktree | `Open Worktree`、`Open Worktree in New Project Window`、`Refresh`、`Remove Worktree…`、`Copy Worktree Path` |
 | Worktree（多选） | `Refresh`、`Copy N Worktree Paths` |
@@ -139,7 +139,7 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 | Stashes | `Stash Changes…`、`Refresh` |
 | Worktrees | `Add Worktree…`、`Refresh` |
 
-Graph 中 Commit 的菜单集中提供 `Create Branch…`、`Create Tag…`、Cherry-pick、`Revert…`、`Reset…`、Checkout / Detached HEAD、`Copy Commit ID` 和 `Copy Commit Message`；顶部工具栏和 Commit Details 标题不重复提供这些入口。普通 Commit 的 Cherry-pick 点击后直接执行；Merge Commit 单独选择 Mainline Parent。多选 Commit 按当前拓扑列表从旧到新执行批量 Cherry-pick，且只处理明确选中的 Commit；包含 Merge Commit 时禁用批量操作并要求单独处理。具体项目根据提交、当前分支和仓库操作状态禁用。
+Graph 中 Commit 的菜单集中提供 `Create Branch…`、`Create Tag…`、Cherry-pick、`Revert…`、`Reset…`、分支感知的 Checkout、条件显示的 `Checkout to Detached HEAD…`、`Copy Commit ID` 和 `Copy Commit Message`；顶部工具栏和 Commit Details 标题不重复提供这些入口。普通 Commit 的 Cherry-pick 点击后直接执行；Merge Commit 单独选择 Mainline Parent。多选 Commit 按当前拓扑列表从旧到新执行批量 Cherry-pick，且只处理明确选中的 Commit；包含 Merge Commit 时禁用批量操作并要求单独处理。具体项目根据提交、当前分支和仓库操作状态禁用。
 
 恰好选择两个 Commit 时自动进入 `Compare Commits`，右键菜单仍保留显式入口。存在祖先关系时祖先位于左侧；没有祖先关系时保持选择顺序。右侧显示两个 Commit 和差异文件列表，交换按钮可反转比较方向，文件 Diff 支持新增、删除和重命名。取消到一个 Commit 时恢复该提交详情；增加到三个以上时显示最后操作的提交并保留多选批量操作；清空选择时同步清空右侧详情。手动或后台刷新 History 时保留仍然有效的双 Commit 比较。
 
@@ -161,7 +161,7 @@ Merge 等操作暂停后，原发起对话框改为处理状态，主入口是�
 - 主 Worktree 和当前 Worktree不能移除；Locked Worktree 显示锁定原因。
 - Remote Branch 的 `Checkout as Local Branch…` 列出远程来源与本地名称，默认剥除 Remote 前缀并保持完整目录（`origin/feature/login/api` → `feature/login/api`），自动选择已有跟踪分支，允许改名。多个已有本地跟踪分支时提示用户选择名称。单项默认 Checkout，可取消切换；Remote 父级、Remotes 分组、分支目录和远程多选通过 `Create Local Tracking Branches…` 创建或复用全部后代，保持当前分支。对话框逐项显示将创建、已跟踪、同名 upstream 冲突、路径冲突与成功结果；名称冲突阻止执行，不覆盖已有分支或改写 upstream。使用最近 Fetch 的引用，不自动 Fetch/Pull；后端重新校验来源与 OID。`origin/HEAD` 等符号引用不可检出为本地分支，批量范围自动排除。
 - Local 与 Remote 的批量选择互相隔离；同一 Remote 下的普通分支可以批量 `Delete … from <remote>…`，操作明确显示远端和分支清单并二次确认，通过逐项 Push 删除并汇总部分失败。`origin/HEAD` 等符号引用不可删除。
-- Tag 的 `Checkout…` 明确提示进入 Detached HEAD。
+- 默认禁止主动进入 Detached HEAD。旧 Commit 的分支感知 Checkout 与 Tag 的 `Create Branch and Checkout…` 进入固定起点的新建分支浮窗，仅提供取消和创建并切换；普通 Create Branch 保留仅创建。设置 → 高级 → Git 操作中的“允许直接进入 Detached HEAD”默认关闭，应用保存成功后即时生效；开启后 Commit 和 Tag 菜单额外显示 `Checkout to Detached HEAD…`，确认说明原分支位置不变、后续提交需要分支承接。关闭时不显示该入口和 Worktree 的 Detached 选项；Worktree 要求已有或新建分支。宿主执行前重新检查策略，Stash 重试在保存 Stash 前拦截，禁止显式和隐式 Detached Worktree。外部造成的已有 Detached HEAD 可以正常读取、返回分支和创建分支；Rebase 内部临时 Detached 状态不受此限制。
 - 无变更、无 Staged 文件或没有可用目标时禁用对应操作并说明原因。Detached HEAD 禁用工具栏 Push。仓库没有远端时，Push 不显示无法完成的空选择器，而是说明本地 Commit 已保存、发送前需要连接远端，并直接进入 `Add Remote…`；添加成功后返回 Push。Push 对话框先显示实际的 `Local Branch → Remote/Remote Branch`；当前 upstream、`branch.*.pushRemote`、`remote.pushDefault` 或唯一远端可确定目标时不得显示空白可选项。用户通过 `Change Target…` 显式修改目标；首次 Push 说明会建立 upstream。多远端且没有配置目标时要求选择远端。`Force-with-lease` 位于默认折叠的高级选项，启用后说明可能覆盖远端历史以及只在远端未发生未知变化时执行的保护条件。
 - 当前分支存在未推送提交时，工具栏 Push 与仓库导航项使用高饱和通知角标显示数量；用户可以在“界面 / 状态提醒”中选用预设色或输入 HEX，文字自动在黑白之间选择以保持对比，并使用亮色边缘增强辨识度。数量为零时不显示角标。仓库列表先显示，角标状态随后在后台加载，当前仓库的角标随状态刷新即时更新。
 - Checkout 可能覆盖修改时显示受影响文件，并提供查看文件与 `Stash Changes & Checkout`。
@@ -208,6 +208,7 @@ Diff 标题栏平铺显示新增、修改、删除块数量及“当前/总修�
 | `alwaygit.gitPath` | 空字符串；机器级设置 | 依次使用显式路径、VS Code 内置 Git 扩展提供的路径和 PATH |
 | `alwaygit.historyPageSize` | 300；50–1000 | 每次历史分页加载的真实 Commit 数量上限 |
 | `alwaygit.refreshInterval` | 15 秒；5–300 秒 | 对可见工作台当前仓库进行补偿刷新 |
+| `alwaygit.allowDetachedHead` | `false`；布尔值 | 高级设置的唯一配置来源；有工作区时保存到工作区，无工作区时保存到用户设置；应用后同步各工作台，禁止未应用预览放开操作 |
 | `alwaygit.language` | `en`；`en` / `zh-CN` / `auto` | 初始语言；`auto` 跟随 VS Code，界面设置中的工作区语言选择优先 |
 
 修改 Git 路径或刷新间隔后需要重新加载 VS Code 窗口。界面设置中的主题、配色、字号、密度和语言应用后即时生效。

@@ -57,7 +57,9 @@ export async function verifyHistoryRows(page) {
     await second.locator(cell).dblclick();
     const dialog = page.getByRole('dialog');
     await dialog.waitFor();
-    await dialog.getByText(`Checkout ${secondOid}`, { exact: true }).waitFor();
+    await dialog.getByRole('textbox', { name: 'Branch Name', exact: true }).waitFor();
+    await dialog.getByText(`Commit ${secondOid.slice(0,12)}`, { exact: true }).waitFor();
+    assert.equal(await dialog.getByRole('button', { name: 'Create Only', exact: true }).count(),0,'Historical Checkout must create and switch');
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
   }
   await first.locator('.history-author').click();
@@ -102,5 +104,57 @@ export async function verifyHistoryRows(page) {
   await search.fill('');
   await history.getByRole('columnheader',{name:/^Graph/}).waitFor();
   await first.locator('.graph-cell').waitFor();
+  await verifyDetachedHeadPolicy(page);
   console.log('ALWAYGIT_HISTORY_UI_TESTS_PASSED: Working Tree and Commit interactions; search hides Graph and preserves status; full-history location and Graph width restoration; empty search results');
+}
+
+async function verifyDetachedHeadPolicy(page) {
+  const old = page.getByTestId('history').locator('[data-oid]').nth(1);
+  const oid = await old.getAttribute('data-oid');
+  const menu = page.getByTestId('context-menu');
+  const detached = 'Checkout to Detached HEAD…';
+  await old.click({button:'right'});
+  assert.equal(await menu.getByRole('menuitem',{name:detached,exact:true}).count(),0);
+  await page.keyboard.press('Escape');
+  const settings = async () => {
+    await page.getByRole('button',{name:'Settings',exact:true}).click();
+    const dialog = page.getByRole('dialog',{name:'Settings',exact:true});
+    await dialog.getByRole('button',{name:'Advanced',exact:true}).click();
+    return dialog;
+  };
+  let dialog = await settings();
+  const checkbox = dialog.getByRole('checkbox',{name:'Allow direct Detached HEAD Checkout',exact:true});
+  assert.equal(await checkbox.isChecked(),false);
+  await checkbox.check();
+  assert.equal(await page.evaluate(()=>localStorage.getItem('alwaygit.demo-allowDetachedHead')),null,'Draft settings must not enable Detached Checkout');
+  await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
+  dialog = await settings();
+  assert.equal(await dialog.getByRole('checkbox').isChecked(),false);
+  await dialog.getByRole('checkbox').check();
+  await dialog.getByRole('button',{name:'Apply',exact:true}).click();
+  await dialog.waitFor({state:'hidden'});
+  await page.reload();
+  await old.waitFor();
+  await old.dblclick();
+  dialog = page.getByRole('dialog');
+  await dialog.getByRole('textbox',{name:'Branch Name',exact:true}).waitFor();
+  await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
+  await old.click({button:'right'});
+  await menu.getByRole('menuitem',{name:detached,exact:true}).click();
+  dialog = page.getByRole('dialog',{name:'Checkout to Detached HEAD',exact:true});
+  await dialog.getByText(`Checkout ${oid.slice(0,12)}`,{exact:true}).waitFor();
+  await dialog.getByRole('button',{name:'Checkout to Detached HEAD',exact:true}).click();
+  await dialog.waitFor({state:'hidden'});
+  await page.getByText('Detached HEAD',{exact:true}).first().waitFor();
+  dialog = await settings();
+  await dialog.getByRole('checkbox').uncheck();
+  await dialog.getByRole('button',{name:'Apply',exact:true}).click();
+  await dialog.waitFor({state:'hidden'});
+  await old.dblclick();
+  dialog = page.getByRole('dialog');
+  await dialog.getByRole('textbox',{name:'Branch Name',exact:true}).fill('inspect-history');
+  await dialog.getByRole('button',{name:'Create and Checkout',exact:true}).click();
+  await dialog.waitFor({state:'hidden'});
+  await page.waitForFunction(()=>document.querySelector('[data-testid="current-branch"]')?.textContent==='inspect-history');
+  assert.equal(await page.getByText('Detached HEAD',{exact:true}).count(),0);
 }

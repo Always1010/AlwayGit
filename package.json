@@ -2,7 +2,7 @@
   "name": "alwaygit",
   "displayName": "AlwayGit",
   "description": "A professional Git workbench inside Visual Studio Code.",
-  "version": "0.27.2",
+  "version": "0.28.0",
   "publisher": "alwaygit-dev",
   "private": true,
   "type": "module",
@@ -108,6 +108,12 @@
           "minimum": 5,
           "maximum": 300,
           "description": "Visible workbench refresh interval in seconds."
+        },
+        "alwaygit.allowDetachedHead": {
+          "type": "boolean",
+          "default": false,
+          "scope": "window",
+          "description": "Allow direct Detached HEAD Checkout. Disabled by default; create and switch to a local branch when inspecting historical versions."
         }
       }
     }
