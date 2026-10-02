@@ -7,7 +7,7 @@ export const actionSchema = z.union([
   z.object({ type: z.literal('commit'), message: z.string().min(1).max(100000), amend: z.boolean().optional(), reviewToken: text.optional() }),
   z.object({ type: z.literal('fetch'), remote: text.optional() }),
   z.object({ type: z.literal('pull'), strategy: z.enum(['ff-only', 'merge', 'rebase']), remote: text.optional() }),
-  z.object({ type: z.literal('push'), remote: text.optional(), branch: text.optional(), remoteBranch: text.optional(), setUpstream: z.boolean().optional(), forceWithLease: z.boolean().optional() }),
+  z.object({ type: z.literal('push'), remote: text.optional(), branch: text.optional(), remoteBranch: text.optional(), setUpstream: z.boolean().optional(), forceWithLease: z.boolean().optional(), expectedOid: z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})?$/).optional(), expectedDestination: z.string().regex(/^[a-f0-9]{64}$/).optional() }),
   z.object({ type: z.literal('remote.add'), name: text, url: text }),
   z.object({ type: z.literal('branch.create'), name: text, start: text.optional(), checkout: z.boolean().optional() }),
   z.object({ type: z.literal('branch.track'), branches: z.array(z.object({ source: text, name: text, expectedOid: text.optional() })).min(1).max(1000), checkout: z.boolean().optional(), stashFirst: z.boolean().optional(), includeUntracked: z.boolean().optional() })
@@ -17,7 +17,7 @@ export const actionSchema = z.union([
   z.object({ type: z.literal('commit.checkout'), target: text }),
   z.object({ type: z.literal('checkout.stash'), target: text, detached: z.boolean().optional(), includeUntracked: z.boolean().optional() }),
   z.object({ type: z.literal('branch.delete'), names: z.array(text).min(1).max(1000), force: z.boolean().optional(), expectedOids:z.record(text,text).optional() }),
-  z.object({ type:z.literal('remote.delete'), remote:text, branches:z.array(text).min(1).max(1000), expectedOids:z.record(text,text).optional() }),
+  z.object({ type:z.literal('remote.delete'), remote:text, branches:z.array(text).min(1).max(1000), expectedOids:z.record(text,z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})?$/)).optional(), expectedDestination:z.string().regex(/^[a-f0-9]{64}$/).optional() }),
   z.object({ type: z.literal('tag.create'), name: text, target: text.optional(), message: z.string().max(100000).optional() }),
   z.object({ type: z.literal('tag.delete'), name: text }),
   z.object({ type: z.literal('stash.create'), message: z.string().max(10000).optional(), includeUntracked: z.boolean().optional(), paths: paths.optional() }),

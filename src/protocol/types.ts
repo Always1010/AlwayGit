@@ -14,7 +14,7 @@ export type OperationKind = 'merge' | 'rebase' | 'cherry-pick' | 'revert';
 export interface OperationState { kind?: OperationKind; conflicts: number; canContinue: boolean; canAbort: boolean; canSkip: boolean; originalHead?: string }
 export interface OperationReview { kind: OperationKind; token: string; files: { path: string; lines: number[]; more?: boolean; skipped?: 'binary' | 'large' | 'encoding' | 'submodule' | 'limit' }[] }
 export interface PushTarget { localBranch: string; remote?: string; remoteBranch: string; configured: boolean }
-export interface Snapshot { repository: Repository; branch: string; head?: string; upstream?: string; defaultBranch?: string; pushTarget?: PushTarget; ahead: number; behind: number; unpushed?: number; changes: Change[]; refs: GitRef[]; remotes?: string[]; stashes: Stash[]; worktrees: Worktree[]; operation: OperationState; version: number }
+export interface Snapshot { repository: Repository; branch: string; head?: string; upstream?: string; defaultBranch?: string; pushTarget?: PushTarget; ahead: number; behind: number; unpushed?: number; changes: Change[]; refs: GitRef[]; remotes?: string[]; remoteDestinations?: Record<string, string>; stashes: Stash[]; worktrees: Worktree[]; operation: OperationState; version: number }
 export interface Commit { oid: string; parents: string[]; author: string; email: string; timestamp: number; subject: string; pushed?: boolean }
 export interface HistoryQuery { offset?: number; limit?: number; tips?: string[]; ref?: string; search?: string; head?: string }
 export interface HistoryPage { commits: Commit[]; nextOffset: number; hasMore: boolean; tips: string[]; head?: Commit }
@@ -28,7 +28,7 @@ export type GitAction =
   | { type: 'commit'; message: string; amend?: boolean; reviewToken?: string }
   | { type: 'fetch'; remote?: string }
   | { type: 'pull'; strategy: 'ff-only' | 'merge' | 'rebase'; remote?: string }
-  | { type: 'push'; remote?: string; branch?: string; remoteBranch?: string; setUpstream?: boolean; forceWithLease?: boolean }
+  | { type: 'push'; remote?: string; branch?: string; remoteBranch?: string; setUpstream?: boolean; forceWithLease?: boolean; expectedOid?: string; expectedDestination?: string }
   | { type: 'remote.add'; name: string; url: string }
   | { type: 'branch.create'; name: string; start?: string; checkout?: boolean }
   | { type: 'branch.track'; branches: { source: string; name: string; expectedOid?: string }[]; checkout?: boolean; stashFirst?: boolean; includeUntracked?: boolean }
@@ -36,7 +36,7 @@ export type GitAction =
   | { type: 'commit.checkout'; target: string }
   | { type: 'checkout.stash'; target: string; detached?: boolean; includeUntracked?: boolean }
   | { type: 'branch.delete'; names: string[]; force?: boolean; expectedOids?: Record<string,string> }
-  | { type: 'remote.delete'; remote:string; branches:string[]; expectedOids?:Record<string,string> }
+  | { type: 'remote.delete'; remote:string; branches:string[]; expectedOids?:Record<string,string>; expectedDestination?: string }
   | { type: 'tag.create'; name: string; target?: string; message?: string }
   | { type: 'tag.delete'; name: string }
   | { type: 'stash.create'; message?: string; includeUntracked?: boolean; paths?: string[] }
