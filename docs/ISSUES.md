@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-061：Reset 模式固定回到 Mixed 且无法保存默认值
+
+- 日期：2026-10-03
+- 状态：已解决
+- 现象：每次打开 Reset 对话框都会重新选中 Mixed；设置中没有 Soft、Mixed、Hard 的默认模式，用户反复执行同类重置时必须重复切换。
+- 原因：Reset 对话框把 `mode` 初始值硬编码为 `mixed`，高级 Git 操作设置也没有对应配置字段。
+- 解决方案：新增 `alwaygit.defaultResetMode`，设置页提供 Soft、Mixed、Hard 选择；Reset 对话框读取已应用默认值，并允许通过“记住为默认”在提交本次操作前持久化。Hard 仍按破坏性操作显示警告与确认。
+- 验证方式：协议限制默认值只能是 Soft、Mixed 或 Hard；设置状态测试覆盖读取、变更广播、保存失败不生效与成功持久化；类型检查验证 Reset 动作仍只接受三种模式。
+- 相关文件：`package.json`、`src/protocol/types.ts`、`src/protocol/validation.ts`、`src/extension/workbench.ts`、`webview/ActionDialog.tsx`、`webview/SettingsDialog.tsx`、`webview/store.ts`、`tests/ui-state.test.ts`、`tests/workbench-protocol.test.ts`。
+
 ## BUG-060：分支 Push 可能被 Git 配置隐式附带 Tag
 
 - 日期：2026-10-03

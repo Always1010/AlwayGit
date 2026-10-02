@@ -119,12 +119,12 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
   const state = useWorkbench(), t = useTranslation(), { appearance, layout } = state;
   const [page, setPage] = useState<SettingsPage>('theme');
   const [colorTheme, setColorTheme] = useState<ColorTheme>(isLightTheme(theme) ? 'light' : 'dark');
-  const [allowDetachedHead, setAllowDetachedHead] = useState(state.operationSettings.allowDetachedHead),[pushFollowTags,setPushFollowTags]=useState(state.operationSettings.pushFollowTags),[pushTagAfterCreate,setPushTagAfterCreate]=useState(state.operationSettings.pushTagAfterCreate), [advancedDirty, setAdvancedDirty] = useState(false), [saving, setSaving] = useState(false), [saveError, setSaveError] = useState<string>();
-  useEffect(() => { if (!advancedDirty){setAllowDetachedHead(state.operationSettings.allowDetachedHead);setPushFollowTags(state.operationSettings.pushFollowTags);setPushTagAfterCreate(state.operationSettings.pushTagAfterCreate);} }, [advancedDirty, state.operationSettings.allowDetachedHead,state.operationSettings.pushFollowTags,state.operationSettings.pushTagAfterCreate]);
+  const [allowDetachedHead, setAllowDetachedHead] = useState(state.operationSettings.allowDetachedHead),[pushFollowTags,setPushFollowTags]=useState(state.operationSettings.pushFollowTags),[pushTagAfterCreate,setPushTagAfterCreate]=useState(state.operationSettings.pushTagAfterCreate),[defaultResetMode,setDefaultResetMode]=useState(state.operationSettings.defaultResetMode), [advancedDirty, setAdvancedDirty] = useState(false), [saving, setSaving] = useState(false), [saveError, setSaveError] = useState<string>();
+  useEffect(() => { if (!advancedDirty){setAllowDetachedHead(state.operationSettings.allowDetachedHead);setPushFollowTags(state.operationSettings.pushFollowTags);setPushTagAfterCreate(state.operationSettings.pushTagAfterCreate);setDefaultResetMode(state.operationSettings.defaultResetMode);} }, [advancedDirty, state.operationSettings.allowDetachedHead,state.operationSettings.pushFollowTags,state.operationSettings.pushTagAfterCreate,state.operationSettings.defaultResetMode]);
   const close = () => { if (!saving) state.finishSettings(false); };
   const apply = async () => {
     setSaving(true); setSaveError(undefined);
-    try { if (advancedDirty) await state.saveOperationSettings({allowDetachedHead,pushFollowTags,pushTagAfterCreate}); state.finishSettings(true); }
+    try { if (advancedDirty) await state.saveOperationSettings({allowDetachedHead,pushFollowTags,pushTagAfterCreate,defaultResetMode}); state.finishSettings(true); }
     catch (error) { setSaveError(error instanceof Error ? error.message : String(error)); }
     finally { setSaving(false); }
   };
@@ -201,6 +201,8 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
           <p className="settings-page-copy">{t("settings.branchPushUsesFollowTagsWhenEnabled")}</p>
           <label className="form-checkbox"><input type="checkbox" aria-label={t("settings.pushNewTagsAfterCreationByDefault")} checked={pushTagAfterCreate} disabled={saving} onChange={event=>{setAdvancedDirty(true);setPushTagAfterCreate(event.target.checked);}}/>{t("settings.pushNewTagsAfterCreationByDefault")}</label>
           <p className="settings-page-copy">{t("settings.tagCreationOffersTheSelectedRemoteAndKeepsThe")}</p>
+          <label className="settings-control">{t("settings.defaultResetMode")}<select aria-label={t("settings.defaultResetMode")} value={defaultResetMode} disabled={saving} onChange={event=>{setAdvancedDirty(true);setDefaultResetMode(event.target.value as typeof defaultResetMode);}}><option value="soft">{uiText("actions.soft")}</option><option value="mixed">{uiText("actions.mixed")}</option><option value="hard">{uiText("actions.hard")}</option></select></label>
+          <p className="settings-page-copy">{t("settings.resetDialogStartsWithThisModeHardStillRequires")}</p>
         </section>}
         {page === 'language' && <section className="settings-page" aria-labelledby="language-heading">
           <h3 id="language-heading">{t("common.language")}</h3>

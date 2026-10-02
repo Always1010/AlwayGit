@@ -717,7 +717,7 @@ Use the operations in this chapter only after you understand the relationships i
 
 1. Confirm that the current branch is the branch you intend to reset.
 2. Right-click the target Commit and choose Reset….
-3. In the dialog, verify the target and mode: Soft preserves the Index and working files; Mixed resets the Index and preserves working files; Hard also resets working files.
+3. In the dialog, verify the target and mode: Soft preserves the Index and working files; Mixed resets the Index and preserves working files; Hard also resets working files. To reuse the current mode, enable “Remember this Reset mode as default”; you can also change it under Settings → Advanced → Git Operations.
 4. Read all warnings and execute Reset only when the mode matches your intent exactly. If a native VS Code Proceed confirmation appears, verify the target again before continuing.
 5. Check where the current branch points, along with Staged and Unstaged, to confirm the actual result.
 
@@ -965,6 +965,7 @@ Current scope: whole-file staging, standard Rebase, remote branch management, an
 | alwaygit.allowDetachedHead | false | Advanced policy for entering Detached HEAD directly |
 | alwaygit.pushFollowTags | false | Whether normal Push includes related annotated Tags by default |
 | alwaygit.pushTagAfterCreate | false | Whether a new Tag is pushed to the selected Remote by default |
+| alwaygit.defaultResetMode | mixed | Soft, Mixed, or Hard initially selected in the Reset dialog |
 | alwaygit.language | en / zh-CN / auto | Initial language; the choice saved in the workbench takes precedence |
 
 Reload the VS Code window after changing the Git path or refresh interval. Theme, color scheme, font size, density, and language settings within the workbench take effect immediately after you apply them.

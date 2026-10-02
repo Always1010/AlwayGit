@@ -126,6 +126,13 @@
           "default": false,
           "scope": "window",
           "description": "%manifest.contributes.configuration.properties.alwaygit.pushTagAfterCreate.description%"
+        },
+        "alwaygit.defaultResetMode": {
+          "type": "string",
+          "enum": ["soft", "mixed", "hard"],
+          "default": "mixed",
+          "scope": "window",
+          "description": "%manifest.contributes.configuration.properties.alwaygit.defaultResetMode.description%"
         }
       }
     }
