@@ -141,6 +141,26 @@ export const catalog = {
     "en": "Push Tags",
     "zh-CN": "推送标签"
   },
+  "actions.discardAllChanges": {
+    "en": "Discard All Changes",
+    "zh-CN": "丢弃全部更改"
+  },
+  "actions.discardAllCounts": {
+    "en": "{{total}} paths: restore or remove {{tracked}} tracked paths; delete {{untracked}} untracked files.",
+    "zh-CN": "共 {{total}} 个路径：恢复或删除 {{tracked}} 个已跟踪路径，删除 {{untracked}} 个未跟踪文件。"
+  },
+  "actions.discardAllWarning": {
+    "en": "Discard ALL staged and unstaged changes and delete untracked files. Restore tracked content to the current commit; newly added files will be removed. Committed history and ignored files remain.",
+    "zh-CN": "丢弃全部暂存和未暂存更改，并删除未跟踪文件。已跟踪内容恢复至当前提交，新增文件将被删除。已提交历史及其他忽略文件保留。"
+  },
+  "actions.discardUnbornWarning": {
+    "en": "This repository has no commit yet. Clear the Index and delete its added files and untracked files. Other ignored files remain.",
+    "zh-CN": "此仓库尚无提交。将清空暂存区，并删除其中的新增文件及未跟踪文件。其他忽略文件保留。"
+  },
+  "actions.batchFileCount": {
+    "en": "Apply to all {{count}} files in the current repository, independently of file filters and selection.",
+    "zh-CN": "操作当前仓库的全部 {{count}} 个目标文件，不受文件筛选和选择影响。"
+  },
   "actions.preparingDiscard": {
     "en": "Checking the files to discard…",
     "zh-CN": "正在检查将丢弃的文件…"
@@ -987,6 +1007,10 @@ export const catalog = {
   "common.refresh": {
     "en": "Refresh",
     "zh-CN": "刷新"
+  },
+  "confirm.discardAll": {
+    "en": "Discard ALL staged and unstaged changes in {{count}} paths? Added and untracked files will be deleted; tracked content returns to the current commit (or an empty Index before the first commit).",
+    "zh-CN": "丢弃 {{count}} 个路径中的全部暂存和未暂存更改？新增文件和未跟踪文件将删除；已跟踪内容恢复至当前提交，尚无提交时清空暂存区。"
   },
   "confirm.detachedHead": {
     "en": "Detached HEAD",
@@ -2532,6 +2556,14 @@ export const catalog = {
     "en": "Default mode selected when opening Reset. The dialog can override and remember Soft, Mixed, or Hard.",
     "zh-CN": "打开重置对话框时默认选择的模式；可在对话框中覆盖并记住 Soft、Mixed 或 Hard。"
   },
+  "menus.discardAllUnstaged": {
+    "en": "Discard All Unstaged Changes…",
+    "zh-CN": "丢弃全部未暂存更改…"
+  },
+  "menus.discardAllChanges": {
+    "en": "Discard All Changes…",
+    "zh-CN": "丢弃全部更改…"
+  },
   "menus.createLocalTrackingBranches": {
     "en": "Create Local Tracking Branches…",
     "zh-CN": "创建本地跟踪分支…"
@@ -3614,6 +3646,14 @@ export const catalog = {
   "runner.cannotRunGit": {
     "en": "Cannot run Git: {{message}}",
     "zh-CN": "无法运行 Git：{{message}}"
+  },
+  "service.discardFilesRemain": {
+    "en": "Some confirmed paths still contain changes or could not be deleted (for example, a protected nested repository). Inspect them before retrying:\n{{paths}}",
+    "zh-CN": "部分已确认路径仍有更改或未能删除（例如受保护的嵌套仓库）。请检查后重试：\n{{paths}}"
+  },
+  "service.discardAllOperationBlocked": {
+    "en": "Finish or abort the active Git operation and resolve conflicts before discarding all staged and unstaged changes.",
+    "zh-CN": "请先完成或中止当前 Git 操作并处理冲突，再丢弃全部暂存和未暂存更改。"
   },
   "service.discardPlanExpired": {
     "en": "Discard confirmation expired. Recheck the remaining changes before retrying.",
@@ -5244,6 +5284,11 @@ export interface MessageParameters {
   "actionNames.abort": { value: ParameterValue };
   "actionNames.skip": { value: ParameterValue };
   "actionNames.pushTags": {  };
+  "actions.discardAllChanges": {  };
+  "actions.discardAllCounts": { total: ParameterValue; tracked: ParameterValue; untracked: ParameterValue };
+  "actions.discardAllWarning": {  };
+  "actions.discardUnbornWarning": {  };
+  "actions.batchFileCount": { count: number };
   "actions.preparingDiscard": {  };
   "actions.discardCounts": { total: ParameterValue; tracked: ParameterValue; untracked: ParameterValue };
   "actions.recheckDiscard": {  };
@@ -5455,6 +5500,7 @@ export interface MessageParameters {
   "common.apply": {  };
   "common.languageVariant2": {  };
   "common.refresh": {  };
+  "confirm.discardAll": { count: number };
   "confirm.detachedHead": {  };
   "confirm.discard": { count: number };
   "confirm.reset": { name: ParameterValue; target: ParameterValue; mode: ParameterValue; effect: ParameterValue };
@@ -5835,6 +5881,8 @@ export interface MessageParameters {
   "manifest.contributes.configuration.properties.alwaygit.pushFollowTags.description": {  };
   "manifest.contributes.configuration.properties.alwaygit.pushTagAfterCreate.description": {  };
   "manifest.contributes.configuration.properties.alwaygit.defaultResetMode.description": {  };
+  "menus.discardAllUnstaged": {  };
+  "menus.discardAllChanges": {  };
   "menus.createLocalTrackingBranches": {  };
   "menus.checkoutAsLocalBranch": {  };
   "menus.repositoriesSelected": { count: number };
@@ -6102,6 +6150,8 @@ export interface MessageParameters {
   "runner.gitTimedOutCheckCredentialsHooksOrAnotherGit": {  };
   "runner.gitOutputExceededTheConfiguredLimit": {  };
   "runner.cannotRunGit": { message: ParameterValue };
+  "service.discardFilesRemain": { paths: ParameterValue };
+  "service.discardAllOperationBlocked": {  };
   "service.discardPlanExpired": {  };
   "service.discardPlanChanged": {  };
   "service.discardIncomplete": { completed: ParameterValue; total: ParameterValue; value: ParameterValue };

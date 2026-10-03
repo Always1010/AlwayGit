@@ -1,4 +1,9 @@
 {
+  "actions.discardAllChanges": { "en": "Discard All Changes", "zh-CN": "丢弃全部更改", "review": "translated", "context": "webview/DiscardDialog.tsx" },
+  "actions.discardAllCounts": { "en": "{{total}} paths: restore or remove {{tracked}} tracked paths; delete {{untracked}} untracked files.", "zh-CN": "共 {{total}} 个路径：恢复或删除 {{tracked}} 个已跟踪路径，删除 {{untracked}} 个未跟踪文件。", "review": "translated", "context": "webview/DiscardDialog.tsx" },
+  "actions.discardAllWarning": { "en": "Discard ALL staged and unstaged changes and delete untracked files. Restore tracked content to the current commit; newly added files will be removed. Committed history and ignored files remain.", "zh-CN": "丢弃全部暂存和未暂存更改，并删除未跟踪文件。已跟踪内容恢复至当前提交，新增文件将被删除。已提交历史及其他忽略文件保留。", "review": "translated", "context": "webview/DiscardDialog.tsx" },
+  "actions.discardUnbornWarning": { "en": "This repository has no commit yet. Clear the Index and delete its added files and untracked files. Other ignored files remain.", "zh-CN": "此仓库尚无提交。将清空暂存区，并删除其中的新增文件及未跟踪文件。其他忽略文件保留。", "review": "translated", "context": "webview/DiscardDialog.tsx" },
+  "actions.batchFileCount": { "en": "Apply to all {{count}} files in the current repository, independently of file filters and selection.", "zh-CN": "操作当前仓库的全部 {{count}} 个目标文件，不受文件筛选和选择影响。", "review": "translated", "context": "webview/ActionDialog.tsx" },
   "actions.preparingDiscard": { "en": "Checking the files to discard…", "zh-CN": "正在检查将丢弃的文件…", "review": "translated", "context": "webview/DiscardDialog.tsx" },
   "actions.discardCounts": { "en": "{{total}} files: restore {{tracked}} tracked files; delete {{untracked}} untracked files.", "zh-CN": "共 {{total}} 个文件：还原 {{tracked}} 个已跟踪文件，删除 {{untracked}} 个未跟踪文件。", "review": "translated", "context": "webview/DiscardDialog.tsx" },
   "actions.recheckDiscard": { "en": "Recheck Remaining Changes", "zh-CN": "重新检查剩余更改", "review": "translated", "context": "webview/DiscardDialog.tsx" },

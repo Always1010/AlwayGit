@@ -8,6 +8,12 @@ vi.mock('vscode',()=>({window:{showWarningMessage:host.warning},workspace:{get t
 const repo:Repository={id:'repo',root:path.resolve('test-repo'),commonDir:path.resolve('test-repo/.git'),name:'Test'};
 beforeEach(()=>{host.warning.mockReset();host.documents=[];});
 describe('operation confirmation',()=>{
+  it('distinguishes keeping staged content from discarding all staged and unstaged changes', async () => {
+    await confirmAction(repo, { type: 'discard', paths: ['a.txt'] }, 'zh-CN');
+    expect(host.warning.mock.calls[0][0]).toContain('已暂存的更改会保留');
+    await confirmAction(repo, { type: 'discard', paths: ['a.txt'], mode: 'all', planToken: 'checked' }, 'zh-CN');
+    expect(host.warning.mock.calls[1][0]).toContain('全部暂存和未暂存更改');
+  });
   it('shows the frozen branch and HEAD in the native Reset confirmation', async () => {
     const expectedHead = 'a'.repeat(40);
     await confirmAction(repo, { type: 'reset', mode: 'hard', target: 'b'.repeat(40), expectedBranch: 'main', expectedHead }, 'zh-CN');

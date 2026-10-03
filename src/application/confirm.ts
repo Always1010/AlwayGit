@@ -8,7 +8,7 @@ export async function confirmAction(repo: Repository, action: GitAction, languag
   // Existing callers without an explicit language retain English destructive warnings.
   const warningText = translator(language ?? 'en');
   let warning: string | undefined;
-  if (action.type === 'discard') warning = text('confirm.discard', { count: action.paths.length });
+  if (action.type === 'discard') warning = text(action.mode === 'all' ? 'confirm.discardAll' : 'confirm.discard', { count: action.paths.length });
   if (action.type === 'reset') warning = warningText('confirm.reset', { name: repo.name, target: action.target, mode: action.mode, effect: warningText(action.mode === 'hard' ? 'confirm.resetHard' : action.mode === 'mixed' ? 'confirm.resetMixed' : 'confirm.resetSoft') });
   if (action.type === 'push' && action.forceWithLease) warning = warningText('confirm.forcePush');
   if (action.type === 'branch.delete') warning = warningText('confirm.deleteBranches', { count: action.names.length, names: action.names.join('\n'), effect: action.force ? warningText('confirm.forceDeleteBranches') : '' });

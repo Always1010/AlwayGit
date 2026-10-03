@@ -370,7 +370,12 @@ export class GitService implements GitServiceContract {
   /** Freeze the selected target before a native confirmation can outlive its snapshot. */
   private discardChanges(status: Awaited<ReturnType<GitService['status']>>, request: DiscardRequest): Change[] {
     const selected = request.paths && new Set(request.paths.map(validateFilePath));
-    return status.changes.filter(change => !change.conflict && (selected ? selected.has(change.path) || !!change.originalPath && selected.has(change.originalPath) : change.untracked || change.worktreeStatus !== ' '));
+    return status.changes.filter(change => !change.conflict && (request.scope === 'all' || change.untracked || change.worktreeStatus !== ' ') && (!selected || selected.has(change.path) || !!change.originalPath && selected.has(change.originalPath)));
+  }
+  private async requireDiscardAllAvailable(repo: Repository, status: Awaited<ReturnType<GitService['status']>>): Promise<void> {
+    const gitDir = repo.gitDir ?? await this.text(repo, ['rev-parse', '--path-format=absolute', '--git-dir']);
+    const markers = await Promise.all(['rebase-merge', 'rebase-apply', 'MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'sequencer'].map(name => exists(path.join(gitDir, name))));
+    if (status.changes.some(change => change.conflict) || markers.some(Boolean)) throw new GitError(localizeMessage('service.discardAllOperationBlocked'), 'OPERATION_ACTIVE');
   }
   private async discardFingerprint(repo: Repository, status: Awaited<ReturnType<GitService['status']>>, changes: Change[]): Promise<string> {
     const index = await this.run(repo, ['diff', '--cached', '--raw', '--no-abbrev', '--no-renames', '-z']);
@@ -380,7 +385,10 @@ export class GitService implements GitServiceContract {
     await this.verify(repo);
     if ((request.paths !== undefined) === (request.scope !== undefined) || request.paths && !request.paths.length) throw new GitError(localizeMessage('service.selectAtLeastOneFile'), 'INVALID_ARGUMENT');
     const status = await this.status(repo), changes = this.discardChanges(status, request);
-    const plan: DiscardPlan = { token: randomUUID(), paths: [...new Set(changes.map(change => validateFilePath(change.path)))], tracked: changes.filter(change => !change.untracked).length, untracked: changes.filter(change => change.untracked).length, staged: changes.filter(change => !change.untracked && change.indexStatus !== ' ').length, branch: status.branch };
+    if (request.scope === 'all') await this.requireDiscardAllAvailable(repo, status);
+    const paths = [...new Set(changes.flatMap(change => [validateFilePath(change.path), ...(change.originalPath && (request.scope === 'all' && change.indexStatus === 'R' || change.worktreeStatus === 'R') ? [validateFilePath(change.originalPath)] : [])]))];
+    const untracked = changes.filter(change => change.untracked).length;
+    const plan: DiscardPlan = { token: randomUUID(), scope: request.scope === 'all' ? 'all' : 'unstaged', paths, tracked: paths.length - untracked, untracked, staged: changes.filter(change => !change.untracked && change.indexStatus !== ' ').length, branch: status.branch, ...(status.head ? { head: status.head } : {}) };
     const fingerprint = await this.discardFingerprint(repo, status, changes);
     for (const [key, entry] of this.discards) if (entry.expires < Date.now()) this.discards.delete(key);
     while (this.discards.size >= 64) this.discards.delete(this.discards.keys().next().value!);
@@ -391,13 +399,14 @@ export class GitService implements GitServiceContract {
     const entry = this.discards.get(token);
     if (!entry || entry.root !== normalized(repo.root) || entry.expires < Date.now()) throw new GitError(localizeMessage('service.discardPlanExpired'), 'DISCARD_CHANGED');
     const status = await this.status(repo), changes = this.discardChanges(status, entry.request);
+    if (entry.plan.scope === 'all') await this.requireDiscardAllAvailable(repo, status);
     if (await this.discardFingerprint(repo, status, changes) !== entry.fingerprint) throw new GitError(localizeMessage('service.discardPlanChanged'), 'DISCARD_CHANGED');
     return { plan: entry.plan, status };
   }
   async prepareAction(repo: Repository, action: GitAction): Promise<GitAction> {
     if (action.type === 'discard' && action.planToken) {
       const { plan } = await this.checkedDiscard(repo, action.planToken);
-      return { ...action, paths: plan.paths };
+      return { ...action, paths: plan.paths, mode: plan.scope === 'all' ? 'all' : undefined };
     }
     if (!['merge', 'rebase', 'reset'].includes(action.type)) return action;
     const guarded = action as Extract<GitAction, { type: 'merge' | 'rebase' | 'reset' }>;
@@ -609,43 +618,51 @@ export class GitService implements GitServiceContract {
   }
   private async discard(repo: Repository, action: Extract<GitAction, { type: 'discard' }>, onProgress?: (progress: FileOperationProgress) => void): Promise<void> {
     const prepared = action.planToken ? await this.checkedDiscard(repo, action.planToken) : undefined;
+    if (action.mode && !prepared) throw new GitError(localizeMessage('service.discardPlanExpired'), 'DISCARD_CHANGED');
+    const all = prepared?.plan.scope === 'all';
     const paths = [...new Set((prepared?.plan.paths ?? action.paths).map(validateFilePath))], selected = new Set(paths);
     if (!paths.length) throw new GitError(localizeMessage('service.selectAtLeastOneFile'), 'INVALID_ARGUMENT');
     const status = prepared?.status ?? await this.status(repo), byPath = new Map(status.changes.map(change => [change.path, change]));
     if (paths.some(name => byPath.get(name)?.conflict)) throw new GitError(localizeMessage('service.resolveConflictsBeforeContinuing'), 'CONFLICTS');
-    const renames = status.changes.filter(change => change.worktreeStatus === 'R' && change.originalPath && (selected.has(change.path) || selected.has(change.originalPath)));
-    if (renames.length) {
+    const renames = status.changes.filter(change => (change.worktreeStatus === 'R' || all && change.indexStatus === 'R') && change.originalPath && (selected.has(change.path) || selected.has(change.originalPath)));
+    if (!all && renames.length) {
       const visible = new Set(decodePaths((await this.run(repo, ['diff', '--cached', '--ita-visible-in-index', '--name-only', '-z'])).stdout).split('\0'));
       const invisible = new Set(decodePaths((await this.run(repo, ['diff', '--cached', '--ita-invisible-in-index', '--name-only', '-z'])).stdout).split('\0'));
       if (renames.some(rename => !visible.has(rename.path) || invisible.has(rename.path))) throw new GitError(localizeMessage('service.theRenameDestinationHasStagedContentUnstageTheRename'), 'STAGED_RENAME_DESTINATION');
     }
-    const destinations = renames.map(rename => validateFilePath(rename.path)), destinationSet = new Set(destinations);
+    const destinations = all ? [] : renames.map(rename => validateFilePath(rename.path)), destinationSet = new Set(destinations);
     const untracked = new Set([...paths.filter(name => byPath.get(name)?.untracked), ...destinations]);
     const tracked = [...new Set([...paths.filter(name => !untracked.has(name)), ...renames.map(rename => validateFilePath(rename.originalPath!))])];
     const prefix = ['-C', repo.root, '--literal-pathspecs'];
+    const indexedNewFiles = all && !status.head ? tracked : destinations;
     const clean = [
-      ...(destinations.length ? splitCleanArguments(this.options.gitPath ?? 'git', prefix, ['clean', '-f', '-x', '--', ...destinations]) : []),
+      ...(indexedNewFiles.length ? splitCleanArguments(this.options.gitPath ?? 'git', prefix, ['clean', '-f', '-x', '--', ...indexedNewFiles]) : []),
       ...(untracked.size > destinations.length ? splitCleanArguments(this.options.gitPath ?? 'git', prefix, ['clean', '-f', '--', ...[...untracked].filter(name => !destinationSet.has(name))]) : []),
     ];
-    const total = tracked.length + untracked.size; let completed = 0;
+    const total = tracked.length + untracked.size; let completed = 0, indexCleared = false;
     if (action.planToken) this.discards.delete(action.planToken);
     try {
       onProgress?.({ completed, total, phase: 'restoring' });
       for (let start = 0; start < tracked.length; start += 2000) {
         const batch = tracked.slice(start, start + 2000);
-        await this.run(repo, ['restore', '--worktree', '--', ...batch]);
-        completed += batch.length; onProgress?.({ completed, total, phase: 'restoring' });
+        if (all && !status.head) { await this.run(repo, ['rm', '-f', '--cached', '--ignore-unmatch', '--', ...batch]); indexCleared = true; }
+        else { await this.run(repo, ['restore', ...(all ? ['--source=HEAD', '--staged'] : []), '--worktree', '--', ...batch]); completed += batch.length; }
+        onProgress?.({ completed, total, phase: 'restoring' });
       }
       if (destinations.length) await this.run(repo, ['rm', '-f', '--cached', '--', ...destinations]);
       for (const batch of clean) {
         onProgress?.({ completed, total, phase: 'cleaning' });
         await this.run(repo, batch);
+        const remaining = await Promise.all(batch.slice(batch.indexOf('--') + 1).map(async name => { try { await lstat(path.join(repo.root, name)); return name; } catch (error) { if (['ENOENT', 'ENOTDIR'].includes((error as NodeJS.ErrnoException).code ?? '')) return undefined; throw error; } }));
+        if (remaining.some(Boolean)) throw new GitError(localizeMessage('service.discardFilesRemain', { paths: remaining.filter(Boolean).slice(0, 10).join('\n') }), 'DISCARD_INCOMPLETE');
         completed += batch.length - batch.indexOf('--') - 1;
         onProgress?.({ completed, total, phase: 'cleaning' });
       }
+      const remaining = (await this.status(repo)).changes.filter(change => (selected.has(change.path) || !!change.originalPath && selected.has(change.originalPath)) && (all || change.conflict || change.untracked || change.worktreeStatus !== ' '));
+      if (remaining.length) throw new GitError(localizeMessage('service.discardFilesRemain', { paths: remaining.slice(0, 10).map(change => change.path).join('\n') }), 'DISCARD_INCOMPLETE');
     } catch (error) {
       if (error instanceof GitTerminationError) throw error;
-      throw new GitError(localizeMessage('service.discardIncomplete', { completed, total, value: error instanceof Error ? error.message : String(error) }), completed ? 'PARTIAL_FAILURE' : 'DISCARD_FAILED');
+      throw new GitError(localizeMessage('service.discardIncomplete', { completed, total, value: error instanceof Error ? error.message : String(error) }), completed || indexCleared ? 'PARTIAL_FAILURE' : 'DISCARD_FAILED');
     }
   }
   private async executeNow(repo: Repository, action: GitAction, onProgress?: (progress: FileOperationProgress) => void): Promise<void | PushResult> {

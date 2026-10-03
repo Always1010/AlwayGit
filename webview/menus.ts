@@ -12,7 +12,7 @@ import { cherryPickOrder } from './commitSelection';
 import type { CherryPickMenuCheck } from './useCherryPickCheck';
 
 export interface FileMenuEntry { path: string; target: DiffTarget }
-export type MenuTarget = { kind: 'repository'; group: RepositoryGroup; groups?:RepositoryGroup[] } | {kind:'repository-collection';collection:RepositoryCollection}| { kind: 'ref'; ref: GitRef; refs?:GitRef[] } | { kind: 'ref-folder'; label: string; refs: GitRef[] } | { kind: 'files'; primary: FileMenuEntry; files: FileMenuEntry[] } | { kind: 'commit'; oid: string; oids?: string[] } | { kind: 'stash'; stash: Stash } | { kind: 'worktree'; worktree: Worktree; worktrees?:Worktree[] } | { kind: 'remote'; name: string } | { kind: 'group'; group: 'repositories' | 'local' | 'remote' | 'tag' | 'stash' | 'worktree' };
+export type MenuTarget = { kind: 'working-tree' } | { kind: 'repository'; group: RepositoryGroup; groups?:RepositoryGroup[] } | {kind:'repository-collection';collection:RepositoryCollection}| { kind: 'ref'; ref: GitRef; refs?:GitRef[] } | { kind: 'ref-folder'; label: string; refs: GitRef[] } | { kind: 'files'; primary: FileMenuEntry; files: FileMenuEntry[] } | { kind: 'commit'; oid: string; oids?: string[] } | { kind: 'stash'; stash: Stash } | { kind: 'worktree'; worktree: Worktree; worktrees?:Worktree[] } | { kind: 'remote'; name: string } | { kind: 'group'; group: 'repositories' | 'local' | 'remote' | 'tag' | 'stash' | 'worktree' };
 export interface MenuApi { open(dialog: DialogRequest): void; checkout(oid: string): void; openDiff(target: DiffTarget): void; editFile(target: DiffTarget): void; host(method: 'copyText'|'openRepository'|'openWorktree'|'renameRepositoryCollection'|'deleteRepositoryCollection'|'moveRepositories', payload: unknown, repoId?: string):Promise<void>; addRepository():Promise<void>; removeRepositories(groups:RepositoryGroup[]):void; fetchRepositories(repositories:Repository[]):void }
 export function menuFor(target: MenuTarget, api: MenuApi, check?: CherryPickMenuCheck): { caption: string; items: MenuItem[] } {
   const state=useWorkbench.getState(), snapshot=state.snapshot, busy=state.busy;
@@ -25,6 +25,16 @@ export function menuFor(target: MenuTarget, api: MenuApi, check?: CherryPickMenu
   const refresh=item(t("common.refresh"),()=>{void state.refresh();},'refresh',busy);
   const track=(refs:GitRef[],batch=true)=>action(batch?t("menus.createLocalTrackingBranches"):t("menus.checkoutAsLocalBranch"),{type:'branch.track',sources:refs.filter(ref=>ref.kind==='remote'&&!ref.symbolicTarget&&(ref.targetType===undefined||ref.targetType==='commit')).map(ref=>ref.fullName),target:refs[0]?.fullName,batch,checkout:!batch},'git-branch',busy||!refs.some(ref=>ref.kind==='remote'&&!ref.symbolicTarget&&(ref.targetType===undefined||ref.targetType==='commit')));
   const copy=(label:string,text:string)=>item(label,()=>api.host('copyText',{text}),'copy');
+  if(target.kind==='working-tree') {
+    const changes=snapshot?.changes??[],ordinary=changes.filter(change=>!change.conflict),unstaged=ordinary.filter(change=>change.untracked||change.worktreeStatus!==' '),staged=ordinary.filter(change=>!change.untracked&&change.indexStatus!==' '),blocked=!!snapshot?.operation.kind||!!snapshot?.operation.conflicts;
+    return {caption:uiText('history.workingTree'),items:[
+      action(t('details.stageAll'),{type:'stage',paths:unstaged.map(change=>change.path)},'stage-inbox',busy||!unstaged.length),
+      action(t('details.unstageAll'),{type:'unstage',paths:staged.map(change=>change.path)},'discard',busy||!staged.length),
+      action(uiText('menus.stashAllChanges'),{type:'stash.create'},'archive',busy||!changes.length||blocked),
+      action(t('menus.discardAllUnstaged'),{type:'discard',discardScope:'unstaged'},'trash',busy||!unstaged.length),
+      action(t('menus.discardAllChanges'),{type:'discard',discardScope:'all'},'clear-all',busy||!changes.length||blocked,blocked?t('service.discardAllOperationBlocked'):undefined),
+    ]};
+  }
   if(target.kind==='repository'){
     const groups=target.groups?.length?target.groups:[target.group],repositories=groups.map(group=>group.repository),paths=repositories.map(repository=>repository.root);
     if(groups.length>1)return {caption:t("menus.repositoriesSelected", { count: (groups.length) }),items:[item(t("menus.fetchRepositories", { count: (groups.length) }),()=>api.fetchRepositories(repositories),'cloud-download'),item(t("menus.refreshStatusForRepositories", { count: (groups.length) }),()=>state.loadRepositoryStatuses(),'refresh'),copy(t("menus.copyRepositoryPaths", { count: (groups.length) }),paths.join('\n')),item(t("menus.moveToRepositoryGroup"),()=>api.host('moveRepositories',{keys:groups.map(group=>group.key)}),'folder-opened'),item(t("menus.removeFromAlwayGit"),()=>api.removeRepositories(groups),'close')]};

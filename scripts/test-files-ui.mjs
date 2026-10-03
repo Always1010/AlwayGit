@@ -28,8 +28,8 @@ export async function verifyFiles(browser, url) {
         if (request.method === 'snapshot') result = structuredClone({ ...fixture.snapshot, version: ++fixture.snapshot.version });
         if (request.method === 'prepareDiscard') {
           const selected = request.payload.paths && new Set(request.payload.paths);
-          const changes = fixture.snapshot.changes.filter(file => !file.conflict && (selected ? selected.has(file.path) : file.untracked || file.worktreeStatus !== ' '));
-          fixture.discardPlan = { token: 'files-discard-plan', paths: changes.map(file => file.path), tracked: changes.filter(file => !file.untracked).length, untracked: changes.filter(file => file.untracked).length, staged: changes.filter(file => !file.untracked && file.indexStatus !== ' ').length, branch: 'main' };
+          const changes = fixture.snapshot.changes.filter(file => !file.conflict && (request.payload.scope === 'all' || file.untracked || file.worktreeStatus !== ' ') && (!selected || selected.has(file.path)));
+          fixture.discardPlan = { token: 'files-discard-plan', scope: request.payload.scope === 'all' ? 'all' : 'unstaged', paths: changes.map(file => file.path), tracked: changes.filter(file => !file.untracked).length, untracked: changes.filter(file => file.untracked).length, staged: changes.filter(file => !file.untracked && file.indexStatus !== ' ').length, branch: 'main', head: fixture.snapshot.head };
           result = fixture.discardPlan;
         }
         if (request.method === 'history') result = { commits: [commit], tips: [commit.oid], nextOffset: 1, hasMore: false };
@@ -82,6 +82,20 @@ export async function verifyFiles(browser, url) {
     await menu.waitFor();
     assert.deepEqual((await menu.getByRole('menuitem').allTextContents()).map(value=>value.trim()), ['Open Diff in VS Code','Edit in VS Code','Copy Path']);
     await page.keyboard.press('Escape');
+    const workingNode = page.getByTestId('history').locator('[data-working-tree]');
+    await workingNode.click({ button: 'right' });
+    assert.deepEqual((await menu.getByRole('menuitem').allTextContents()).map(value => value.trim()), ['Stage All', 'Unstage All', 'Stash All Changes…', 'Discard All Unstaged Changes…', 'Discard All Changes…']);
+    assert.equal(await panel.isVisible(), true, 'Opening the Working Tree menu must retain the current details view');
+    await menu.getByRole('menuitem', { name: 'Stage All', exact: true }).click();
+    const nodeStageDialog = page.getByRole('dialog', { name: 'Stage All', exact: true });
+    await nodeStageDialog.getByText('Apply to all 3 files in the current repository, independently of file filters and selection.', { exact: true }).waitFor();
+    await nodeStageDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await workingNode.press('Shift+F10');
+    await menu.getByRole('menuitem', { name: 'Discard All Changes…', exact: true }).click();
+    const allChangesDialog = page.getByRole('dialog', { name: 'Discard All Changes', exact: true });
+    await allChangesDialog.getByText('Discard ALL staged and unstaged changes and delete untracked files. Restore tracked content to the current commit; newly added files will be removed. Committed history and ignored files remain.', { exact: true }).waitFor();
+    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'prepareDiscard').at(-1).payload), { scope: 'all' });
+    await allChangesDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     await page.getByTestId('history').locator('[data-working-tree]').click();
     const groups = details.locator('.change-groups'), unstaged = groups.locator('.change-group:has(.change-heading-unstaged)'), staged = groups.locator('.change-group:has(.change-heading-staged)');
     const stageAll = unstaged.getByRole('button', { name: 'Stage All', exact: true });
@@ -242,6 +256,9 @@ export async function verifyFiles(browser, url) {
     assert.equal(await groups.locator('.change-file').count(), 0);
     assert.equal(await groups.locator('.change-heading-staged').isVisible(), true, 'Staged heading stays available with no matching files');
     assert.equal(await staged.getByRole('button', { name: 'Unstage Matching (0)', exact: true }).isDisabled(), true);
+    await workingNode.click({ button: 'right' });
+    assert.equal(await menu.getByRole('menuitem', { name: 'Stage All', exact: true }).isEnabled(), true, 'Node actions ignore the right-side path filter');
+    await page.keyboard.press('Escape');
     assert.equal(await commitTrigger.isDisabled(), false, 'Commit opens even when the path filter has no matches');
     await commitTrigger.click();
     await commitDialog.getByText('Commit includes all 2 Staged files, including files hidden by a path filter.', { exact: true }).waitFor();

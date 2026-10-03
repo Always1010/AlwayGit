@@ -1,4 +1,5 @@
 {
+  "confirm.discardAll": { "en": "Discard ALL staged and unstaged changes in {{count}} paths? Added and untracked files will be deleted; tracked content returns to the current commit (or an empty Index before the first commit).", "zh-CN": "丢弃 {{count}} 个路径中的全部暂存和未暂存更改？新增文件和未跟踪文件将删除；已跟踪内容恢复至当前提交，尚无提交时清空暂存区。", "review": "translated", "context": "src/application/confirm.ts" },
   "confirm.detachedHead": {
     "en": "Detached HEAD",
     "zh-CN": "Detached HEAD",

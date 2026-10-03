@@ -2,12 +2,12 @@ import { translate } from '../i18n/index';
 import { z } from 'zod';
 const text = z.string().min(1).max(4096);
 const paths = z.array(text).min(1);
-export const discardRequestSchema = z.object({ paths: paths.optional(), scope: z.literal('unstaged').optional() }).refine(value => (value.paths !== undefined) !== (value.scope !== undefined));
+export const discardRequestSchema = z.object({ paths: paths.optional(), scope: z.enum(['unstaged', 'all']).optional() }).refine(value => (value.paths !== undefined) !== (value.scope !== undefined));
 const kind = z.enum(['merge', 'rebase', 'cherry-pick', 'revert']);
 const actionContext = { expectedHead: z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})?$/), expectedBranch: z.string().max(4096) };
 export const actionSchema = z.union([
   z.object({ type: z.enum(['stage', 'resolve-and-stage', 'unstage']), paths }),
-  z.object({ type: z.literal('discard'), paths: z.array(text).default([]), planToken: text.optional() }).refine(value => value.paths.length > 0 || !!value.planToken),
+  z.object({ type: z.literal('discard'), paths: z.array(text).default([]), planToken: text.optional(), mode: z.literal('all').optional() }).refine(value => (value.paths.length > 0 || !!value.planToken) && (!value.mode || !!value.planToken)),
   z.object({ type: z.literal('commit'), message: z.string().min(1).max(100000), amend: z.boolean().optional(), reviewToken: text.optional() }),
   z.object({ type: z.literal('fetch'), remote: text.optional() }),
   z.object({ type: z.literal('pull'), strategy: z.enum(['ff-only', 'merge', 'rebase']), remote: text.optional() }),

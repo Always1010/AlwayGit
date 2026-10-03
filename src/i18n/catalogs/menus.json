@@ -1,4 +1,6 @@
 {
+  "menus.discardAllUnstaged": { "en": "Discard All Unstaged Changes…", "zh-CN": "丢弃全部未暂存更改…", "review": "translated", "context": "webview/menus.ts / working-tree" },
+  "menus.discardAllChanges": { "en": "Discard All Changes…", "zh-CN": "丢弃全部更改…", "review": "translated", "context": "webview/menus.ts / working-tree" },
   "menus.createLocalTrackingBranches": {
     "en": "Create Local Tracking Branches…",
     "zh-CN": "创建本地跟踪分支…",

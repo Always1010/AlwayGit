@@ -214,10 +214,14 @@ Staged is the most important place to check before committing. A file appearing 
 
 1. Select the target files under Unstaged, right-click, and choose Discard….
 2. Read the path list and discard explanation in the confirmation popover, checking each item. If a native VS Code Proceed confirmation follows, check again before continuing.
-3. Use Discard All… in the heading only when you intend to discard all Unstaged changes.
+3. Use Discard All… in the heading only when you intend to discard all Unstaged changes. Alternatively, right-click the graph's Working Tree node and choose Discard All Unstaged Changes… without opening the file list. Node actions ignore right-side path filters and selection.
 4. After the operation, check the remaining Unstaged and Staged changes to confirm the scope of its effect.
 
 **Result:** The confirmed unstaged changes have been discarded. Content from the same file that was already in the Index should remain intact.
+
+To discard both staged and unstaged content, right-click Working Tree and choose Discard All Changes…. The confirmation explains that the Index is also cleared, tracked content returns to the current commit, and added and untracked files are deleted. The branch and committed history do not move; before the first commit, staged additions are removed and the Index becomes empty. Other ignored files remain. Finish or abort active Git operations and resolve conflicts first. The node also offers Stage All, Unstage All, and Stash All Changes….
+
+Large lists render only rows near the viewport, while filtering and Select All still cover the complete matching range. Discard has no 10,000-file cap; internal batches show progress. If the confirmed scope changes or an operation partly fails, use Recheck Remaining Changes and review the new list before confirming again.
 
 **Troubleshooting:** If you discard something by mistake, stop further writes immediately and check the editor’s local history, backups, or existing Stashes. Do not proceed with Reset or cleanup operations.
 
