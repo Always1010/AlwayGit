@@ -22,6 +22,7 @@ import { panelSession } from './workbench-entry';
 import { mergeSessionBaseline, SessionWriter } from '../application/session-persistence';
 import type { SessionState } from '../protocol/session';
 import { RepositoryOperationBusyError, RepositoryOperationRecoveryRequiredError } from '../application/operation-lock';
+import { discardRequestSchema } from '../protocol/validation';
 
 interface WorkbenchPanel { panel: vscode.WebviewPanel; activeRepository?: string; blank: boolean; session?: SessionState; savedSession?: SessionState }
 interface RepositoryDiscoverySession { source?: WorkbenchPanel; cancelled: boolean; root: string; discovery?: DiscoveryResult }
@@ -202,6 +203,7 @@ export class Workbench implements vscode.Disposable {
       case 'history': return this.git.history(repo, { limit: vscode.workspace.getConfiguration('alwaygit').get<number>('historyPageSize', 300), ...historySchema.parse(request.payload ?? {}) });
       case 'cherryPickCheck': { const data=cherryPickCheckSchema.parse(request.payload); return this.git.cherryPickCheck(repo,data.commits,data); }
       case 'operationReview': return this.git.reviewOperation(repo);
+      case 'prepareDiscard': return this.git.prepareDiscard(repo, discardRequestSchema.parse(request.payload));
       case 'details': { const data = detailsSchema.parse(request.payload); return this.git.details(repo, data.oid, data.parent); }
       case 'stashDetails': { const data = detailsSchema.parse(request.payload); return this.git.stashDetails(repo, data.oid); }
       case 'compare': { const data=comparisonSchema.parse(request.payload); return this.git.compare(repo,data.left,data.right,data.preserveOrder); }
@@ -234,7 +236,7 @@ export class Workbench implements vscode.Disposable {
         let action: GitAction = actionSchema.parse(request.payload);
         await this.refreshExternalActivity(repo.commonDir);
         if (this.isBusy(repo.commonDir)) throw new Error(this.text("host.anOperationIsAlreadyRunningInThisRepository"));
-        if (action.type === 'merge' || action.type === 'rebase' || action.type === 'reset') action = await this.git.prepareAction(repo, action);
+        if (action.type === 'merge' || action.type === 'rebase' || action.type === 'reset' || action.type === 'discard') action = await this.git.prepareAction(repo, action);
         const operation = action.type === 'operation.abort' ? (await this.snapshots.read(repo.id, () => this.git.snapshot(repo))).operation : undefined;
         if (!await confirmAction(repo, action, this.language(), operation)) throw new Error(this.text("host.operationCancelled"));
         await this.refreshExternalActivity(repo.commonDir);
@@ -243,7 +245,7 @@ export class Workbench implements vscode.Disposable {
         for (const member of this.repositories.list().filter(member => member.commonDir === repo.commonDir)) this.snapshots.invalidate(member.id);
         for (const r of this.repositories.list().filter(r => r.commonDir === repo.commonDir)) this.post({ type: 'activity', repoId: r.id, busy: true, label: action.type });
         let result: PushResult | void;
-        try { result = await this.projects.runRepositoryOperation(repo.commonDir,action.type,()=>this.git.execute(repo, action)); }
+        try { result = await this.projects.runRepositoryOperation(repo.commonDir,action.type,()=>this.git.execute(repo, action, progress => this.post({ type: 'fileOperationProgress', repoId: repo.id, progress }))); }
         catch(error){
           if((error as {terminationUnconfirmed?:unknown})?.terminationUnconfirmed===true)this.externalBusy.set(operationKey,{label:action.type});
           if(error instanceof RepositoryOperationRecoveryRequiredError){

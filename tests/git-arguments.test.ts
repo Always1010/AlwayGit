@@ -63,7 +63,7 @@ it('preflights every clean batch and reports previously completed batches on fai
     if (args[0] === 'clean' && ++clean === 2) throw new Error('simulated second clean batch failure');
     return {};
   } });
-  await expect(service.execute(repo, { type: 'discard', paths: names })).rejects.toMatchObject({ code: 'PARTIAL_FAILURE', message: expect.stringContaining('1 clean batch(es) completed') });
+  await expect(service.execute(repo, { type: 'discard', paths: names })).rejects.toMatchObject({ code: 'PARTIAL_FAILURE', message: expect.stringContaining('simulated second clean batch failure') });
   expect(await readFile(path.join(root, names.at(-1)!), 'utf8')).toBe('remove');
   await expect(readFile(path.join(root, names[0]))).rejects.toMatchObject({ code: 'ENOENT' });
 });

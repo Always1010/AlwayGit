@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { actionSchema, createRepositoryCollectionSchema, reorderRepositorySchema, diffSchema, openRepositorySchema, openWorkbenchSchema, operationSettingsSchema, requestSchema, sessionSchema } from '../src/protocol/validation';
 
 describe('Workbench protocol validation', () => {
+  it('accepts file actions beyond 10,000 paths and token-only Discard, but rejects an empty unplanned Discard', () => {
+    const paths = Array.from({ length: 10001 }, (_, index) => `file-${index}.txt`);
+    for (const type of ['stage', 'unstage', 'discard']) expect(actionSchema.parse({ type, paths })).toMatchObject({ paths });
+    expect(actionSchema.parse({ type: 'discard', planToken: 'checked' })).toEqual({ type: 'discard', planToken: 'checked', paths: [] });
+    expect(actionSchema.safeParse({ type: 'discard', paths: [] }).success).toBe(false);
+  });
   it('requires the raw Tag identity before deletion', () => {
     for (const expectedOid of ['a'.repeat(40), 'b'.repeat(64)]) expect(actionSchema.parse({ type: 'tag.delete', name: 'v1', expectedOid })).toEqual({ type: 'tag.delete', name: 'v1', expectedOid });
     for (const expectedOid of [undefined, '', 'HEAD', '0'.repeat(40)]) expect(actionSchema.safeParse({ type: 'tag.delete', name: 'v1', expectedOid }).success).toBe(false);

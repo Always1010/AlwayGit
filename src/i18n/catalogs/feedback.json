@@ -1,4 +1,6 @@
 {
+  "feedback.restoringFiles": { "en": "Restoring files: {{completed}} / {{total}}", "zh-CN": "正在还原文件：{{completed}} / {{total}}", "review": "translated", "context": "webview/OperationProgress.tsx" },
+  "feedback.cleaningFiles": { "en": "Deleting untracked files: {{completed}} / {{total}}", "zh-CN": "正在删除未跟踪文件：{{completed}} / {{total}}", "review": "translated", "context": "webview/OperationProgress.tsx" },
   "feedback.createdAndSwitchedTo": {
     "en": "Created and switched to {{name}}",
     "zh-CN": "已创建并切换到 {{name}}",

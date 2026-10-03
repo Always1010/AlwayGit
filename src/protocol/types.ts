@@ -8,6 +8,9 @@ export interface RepositoryDiscoveryPreview { scanId: string; root: string; scan
 export interface AddRepositoriesResult { added: number; existing: number; skipped: number; collection?: RepositoryCollection }
 export interface RepositoryStatus { repositoryId: string; branch: string; upstream?: string; ahead: number; unpushed: number }
 export interface Change { path: string; originalPath?: string; indexStatus: string; worktreeStatus: string; conflict: boolean; untracked: boolean }
+export interface DiscardRequest { paths?: string[]; scope?: 'unstaged' }
+export interface DiscardPlan { token: string; paths: string[]; tracked: number; untracked: number; staged: number; branch: string }
+export interface FileOperationProgress { completed: number; total: number; phase: 'restoring' | 'cleaning' }
 export interface GitRef { name: string; fullName: string; kind: 'local' | 'remote' | 'tag'; oid: string; refOid?: string; targetType?: 'commit' | 'tree' | 'blob' | 'tag'; upstream?: string; symbolicTarget?: string }
 export interface Stash { selector: string; oid: string; subject: string }
 export interface Worktree { path: string; head: string; branch?: string; bare: boolean; detached: boolean; locked?: string; prunable?: string }
@@ -39,7 +42,8 @@ export interface StashDetails { commit: Commit; body: string; sections: { workin
 export interface CommitComparison { left: Commit; right: Commit; files: CommitFile[] }
 export interface CherryPickCheck { head: string; branch: string; included: string[] }
 export type GitAction =
-  | { type: 'stage' | 'resolve-and-stage' | 'unstage' | 'discard'; paths: string[] }
+  | { type: 'stage' | 'resolve-and-stage' | 'unstage'; paths: string[] }
+  | { type: 'discard'; paths: string[]; planToken?: string }
   | { type: 'commit'; message: string; amend?: boolean; reviewToken?: string }
   | { type: 'fetch'; remote?: string }
   | { type: 'pull'; strategy: 'ff-only' | 'merge' | 'rebase'; remote?: string }
@@ -77,10 +81,10 @@ export interface CheckoutBlocker { reason: 'local-changes' | 'conflicts' | 'oper
 export interface StashApplyBlocker { kind: 'stash-apply'; reason: 'untracked-path-exists' | 'restore-conflict' | 'restore-blocked' | 'state-changed'; paths: string[]; conflictPaths?: string[]; selector: string; stashOid: string; stashRetained: true; workingTreeUnchanged: true; output?: string }
 export type ActionBlocker = CheckoutBlocker | StashApplyBlocker;
 export interface OperationSettings { allowDetachedHead: boolean; pushFollowTags: boolean; pushTagAfterCreate: boolean; defaultResetMode: 'soft' | 'mixed' | 'hard'; scope: 'workspace' | 'user' }
-export interface RpcRequest { id: string; method: 'repositories' | 'repositoryCollections' | 'repositoryOrder' | 'reorderRepository' | 'repositoryStatuses' | 'pickRepositoryDirectory' | 'discoverRepositories' | 'cancelRepositoryDiscovery' | 'addRepository' | 'removeRepositories' | 'createRepositoryCollection' | 'renameRepositoryCollection' | 'deleteRepositoryCollection' | 'moveRepositories' | 'snapshot' | 'operationReview' | 'history' | 'details' | 'stashDetails' | 'compare' | 'cherryPickCheck' | 'cancelQuery' | 'action' | 'diff' | 'diffPreview' | 'copyText' | 'openExternal' | 'remoteLinks' | 'openWorkbench' | 'openRepository' | 'openProject' | 'openFile' | 'openWorktree' | 'pickWorktree' | 'showLog' | 'saveSession' | 'operationSettings' | 'saveOperationSettings'; repoId?: string; payload?: unknown }
+export interface RpcRequest { id: string; method: 'repositories' | 'repositoryCollections' | 'repositoryOrder' | 'reorderRepository' | 'repositoryStatuses' | 'pickRepositoryDirectory' | 'discoverRepositories' | 'cancelRepositoryDiscovery' | 'addRepository' | 'removeRepositories' | 'createRepositoryCollection' | 'renameRepositoryCollection' | 'deleteRepositoryCollection' | 'moveRepositories' | 'snapshot' | 'operationReview' | 'prepareDiscard' | 'history' | 'details' | 'stashDetails' | 'compare' | 'cherryPickCheck' | 'cancelQuery' | 'action' | 'diff' | 'diffPreview' | 'copyText' | 'openExternal' | 'remoteLinks' | 'openWorkbench' | 'openRepository' | 'openProject' | 'openFile' | 'openWorktree' | 'pickWorktree' | 'showLog' | 'saveSession' | 'operationSettings' | 'saveOperationSettings'; repoId?: string; payload?: unknown }
 /** Missing paths means the source cannot limit which working files changed. */
 export interface RepositoryChanges { paths?: string[]; index?: boolean }
-export type HostMessage = { type: 'operationSettingsChanged'; settings: OperationSettings } | { type: 'response'; id: string; result?: unknown; error?: { message: string; code?: string; details?: ActionBlocker; localizedMessage?: MessageDescriptor; pushResult?: PushResult } } | { type: 'changed'; repoId: string; changes?: RepositoryChanges; snapshot?: Snapshot } | { type: 'activity'; repoId: string; busy: boolean; label: string } | { type: 'repositoriesChanged' } | { type: 'selectRepository'; repoId: string } | { type: 'repositoryDiscoveryProgress'; scanId: string; scanned: number; found: number };
+export type HostMessage = { type: 'operationSettingsChanged'; settings: OperationSettings } | { type: 'response'; id: string; result?: unknown; error?: { message: string; code?: string; details?: ActionBlocker; localizedMessage?: MessageDescriptor; pushResult?: PushResult } } | { type: 'changed'; repoId: string; changes?: RepositoryChanges; snapshot?: Snapshot } | { type: 'activity'; repoId: string; busy: boolean; label: string } | { type: 'fileOperationProgress'; repoId: string; progress: FileOperationProgress } | { type: 'repositoriesChanged' } | { type: 'selectRepository'; repoId: string } | { type: 'repositoryDiscoveryProgress'; scanId: string; scanned: number; found: number };
 export interface GitServiceContract {
   withReadSignal?<T>(signal: AbortSignal, task: () => Promise<T>): Promise<T>;
   discover(root: string): Promise<Repository>;
@@ -94,6 +98,7 @@ export interface GitServiceContract {
   cherryPickCheck(repo: Repository, commits: string[], context?: { expectedHead: string; expectedBranch: string }): Promise<CherryPickCheck>;
   content(repo: Repository, source: ContentSource, maxBytes?: number): Promise<Buffer>;
   prepareAction(repo: Repository, action: GitAction): Promise<GitAction>;
+  prepareDiscard(repo: Repository, request: DiscardRequest): Promise<DiscardPlan>;
   remoteLinks?(repo: Repository, remote?: string, branch?: string): Promise<RemoteLinks>;
-  execute(repo: Repository, action: GitAction): Promise<void | PushResult>;
+  execute(repo: Repository, action: GitAction, onProgress?: (progress: FileOperationProgress) => void): Promise<void | PushResult>;
 }

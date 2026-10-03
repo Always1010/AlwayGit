@@ -1,4 +1,7 @@
 {
+  "actions.preparingDiscard": { "en": "Checking the files to discard…", "zh-CN": "正在检查将丢弃的文件…", "review": "translated", "context": "webview/DiscardDialog.tsx" },
+  "actions.discardCounts": { "en": "{{total}} files: restore {{tracked}} tracked files; delete {{untracked}} untracked files.", "zh-CN": "共 {{total}} 个文件：还原 {{tracked}} 个已跟踪文件，删除 {{untracked}} 个未跟踪文件。", "review": "translated", "context": "webview/DiscardDialog.tsx" },
+  "actions.recheckDiscard": { "en": "Recheck Remaining Changes", "zh-CN": "重新检查剩余更改", "review": "translated", "context": "webview/DiscardDialog.tsx" },
   "actions.currentBranchCurrentVersion": {
     "en": "Current branch {{name}} · current version",
     "zh-CN": "当前分支 {{name}} · 当前版本",

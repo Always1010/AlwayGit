@@ -41,6 +41,7 @@ export function OperationProgress({ feedback }: { feedback?: ActionFeedback }) {
       <h2 id="operation-progress-title">{t('feedback.inProgress', { name: feedback ? actionName(feedback.action) : t('feedback.gitOperation') })}</h2>
       <p id="operation-progress-target">{feedback?.target}</p>
       <p role="status" aria-live="polite">{feedback?.phase === 'refreshing' ? t('feedback.updatingWorkbench') : t('feedback.waitForOperation')}</p>
+      {feedback?.progress && feedback.phase !== 'refreshing' && <><p role="status">{t(feedback.progress.phase === 'cleaning' ? 'feedback.cleaningFiles' : 'feedback.restoringFiles', { completed: feedback.progress.completed, total: feedback.progress.total })}</p><progress value={feedback.progress.completed} max={Math.max(1, feedback.progress.total)}/></>}
       <span className="muted">{t('feedback.elapsed', { seconds })}</span>
       {seconds >= 15 && <p className="muted">{t('feedback.stillRunning')}</p>}
     </div>

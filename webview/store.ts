@@ -473,6 +473,7 @@ let changedTimer: ReturnType<typeof setTimeout>;
 let pendingChange: { repoId: string; changes?: RepositoryChanges; snapshot?: Snapshot } | undefined;
 subscribe(event => {
   const state = useWorkbench.getState(); if (event.type === 'operationSettingsChanged') useWorkbench.setState({ operationSettings: event.settings });
+  if (event.type === 'fileOperationProgress' && event.repoId === state.repoId && state.actionFeedback?.status === 'running') useWorkbench.setState({ actionFeedback: { ...state.actionFeedback, progress: event.progress } });
   if (event.type === 'repositoriesChanged') void state.initialize();
   if (event.type === 'changed' && event.repoId === state.repoId) {
     clearTimeout(changedTimer);

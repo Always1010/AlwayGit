@@ -13,9 +13,10 @@ import { useTranslation, translate, type StaticMessageKey, type Translator } fro
 import { samePath } from './pathIdentity';
 
 import { captureRemoteLease, updateRemoteLease } from './remoteLease';
+import { DiscardDialog } from './DiscardDialog';
 
 export type ActionType = GitAction['type'];
-export interface DialogRequest { type: ActionType; target?: string; sources?: string[]; batch?: boolean; paths?: string[]; names?:string[]; expectedOids?:Record<string,string>; expectedDestination?:string; remoteBranches?:string[]; pop?: boolean; expectedOid?: string; remote?: string; branch?: string; checkout?: boolean; candidates?: string[]; returnTo?:'push'|'tag.push'|'tag.create'; tagDraft?:{name:string;target:string;message:string;pushAfterCreate:boolean;rememberDefault:boolean}; requireCheckout?:boolean; reapply?:boolean }
+export interface DialogRequest { type: ActionType; target?: string; sources?: string[]; batch?: boolean; paths?: string[]; discardScope?: 'unstaged'; names?:string[]; expectedOids?:Record<string,string>; expectedDestination?:string; remoteBranches?:string[]; pop?: boolean; expectedOid?: string; remote?: string; branch?: string; checkout?: boolean; candidates?: string[]; returnTo?:'push'|'tag.push'|'tag.create'; tagDraft?:{name:string;target:string;message:string;pushAfterCreate:boolean;rememberDefault:boolean}; requireCheckout?:boolean; reapply?:boolean }
 export const actionTitles: Partial<Record<ActionType, StaticMessageKey>> = { 'branch.create': "actions.createBranch", 'branch.checkout': "actions.checkout", 'commit.checkout': "actions.checkoutToDetachedHEAD", 'branch.delete': "actions.deleteBranch", 'remote.add':"actions.addRemoteVariant2", 'remote.delete':"actions.deleteRemoteBranches", 'tag.create': "actions.createTag", 'tag.push': "actions.pushTag", 'tag.delete': "actions.deleteTag", 'stash.create': "actions.stashChanges", 'stash.apply': "actions.applyStash", 'stash.drop': "actions.dropStash", 'worktree.add': "actions.addWorktree", 'worktree.remove': "actions.removeWorktree", merge: "actions.merge", rebase: "actions.rebase", 'cherry-pick': "actions.cherryPick", revert: "actions.revert", reset: "common.reset", fetch: "actions.fetch", pull: "actions.pull", push: "actions.push", discard: "actions.discardChanges", 'operation.abort': "actions.abortVariant2" };
 function pushDefaults(snapshot: Snapshot, dialog: DialogRequest) {
   const localBranch=dialog.branch??snapshot.branch,ref=snapshot.refs.find(item=>item.kind==='local'&&item.name===localBranch),upstream=ref?.upstream;
@@ -34,6 +35,7 @@ function branchStartLabel(snapshot:Snapshot,start:string,t:Translator):string {
   return uiText("actions.commit", { value: (start.slice(0,12)) });
 }
 export function ActionDialog({ dialog, onClose, openAbort, replaceDialog }: { dialog: DialogRequest; onClose(): void; openAbort(): void; replaceDialog(dialog:DialogRequest):void }) {
+  if(dialog.type==='discard')return <DiscardDialog dialog={dialog} onClose={onClose}/>;
   if(dialog.type==='branch.track')return <RemoteTrackingDialog dialog={dialog} onClose={onClose}/>;
   return <StandardActionDialog dialog={dialog} onClose={onClose} openAbort={openAbort} replaceDialog={replaceDialog}/>;
 }

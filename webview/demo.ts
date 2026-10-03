@@ -1,12 +1,13 @@
 import { groupRepositories } from '../src/protocol/repositories';
 import { branchNameConflict, branchNameConflictMessage } from '../src/protocol/ref-name';
 import { reconcileRepositoryOrder } from '../src/protocol/repository-order';
-import type { RepositoryOrder, ReorderRepository, Commit, CommitComparison, CommitDetails, GitAction, HistoryPage, HistoryQuery, HostMessage, Repository, RepositoryCollection, RepositoryStatus, RpcRequest, Snapshot, OperationSettings, StashDetails } from '../src/protocol/types';
+import type { RepositoryOrder, ReorderRepository, Commit, CommitComparison, CommitDetails, GitAction, HistoryPage, HistoryQuery, HostMessage, Repository, RepositoryCollection, RepositoryStatus, RpcRequest, Snapshot, OperationSettings, StashDetails, DiscardPlan, DiscardRequest } from '../src/protocol/types';
 import { RpcError } from './rpc-error';
 
 /** Construct sample state only when the explicit Demo transport is used. */
 export function createDemoRequest(emit: (event: HostMessage) => void) {
 const noRemoteDemo = new URLSearchParams(location.search).get('noRemote') === '1';
+const discardPlans = new Map<string, DiscardPlan>();
 const repo: Repository = { id: 'demo-alwaygit', root: 'D:\\Projects\\AlwayGit', commonDir: 'D:\\Projects\\AlwayGit\\.git', name: 'AlwayGit' };
 const subjects = ['Polish repository workbench interactions', 'Add native diff integration', 'Merge branch feature/history-graph', 'Render commit graph with stable lanes', 'Keep commit drafts when switching repositories', 'Handle renamed files in changes', 'Improve keyboard navigation', 'Add worktree discovery', 'Show upstream tracking status', 'Update development dependencies', 'Fix status refresh after checkout', 'Introduce Git operation progress'];
 const authors = ['Alex Chen', 'Morgan Lee', 'Sam Rivera', 'Jamie Park'];
@@ -59,6 +60,12 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
   if(method==='createRepositoryCollection'){const collection={id:`demo-group-${demoCollections.length+1}`,name:(payload as {name:string}).name};demoCollections.push(collection);return collection;}
   if (method === 'repositoryStatuses') return Object.values(demoStores).map(({ snapshot }) => ({ repositoryId: snapshot.repository.id, branch: snapshot.branch, upstream: snapshot.upstream, ahead: snapshot.ahead, unpushed: snapshot.unpushed ?? snapshot.ahead } satisfies RepositoryStatus));
   if (method === 'snapshot') return structuredClone(demoSnapshot);
+  if (method === 'prepareDiscard') {
+    const request = payload as DiscardRequest, selected = request.paths && new Set(request.paths);
+    const changes = demoSnapshot.changes.filter(change => !change.conflict && (selected ? selected.has(change.path) : change.untracked || change.worktreeStatus !== ' '));
+    const plan: DiscardPlan = { token: crypto.randomUUID(), paths: changes.map(change => change.path), tracked: changes.filter(change => !change.untracked).length, untracked: changes.filter(change => change.untracked).length, staged: changes.filter(change => !change.untracked && change.indexStatus !== ' ').length, branch: demoSnapshot.branch };
+    discardPlans.set(plan.token, plan); return structuredClone(plan);
+  }
   if (method === 'history') {
     const query = (payload ?? {}) as HistoryQuery;
     const tips=[...new Set(query.tips?.map(resolve)??(query.ref?[resolve(query.ref)]:demoSnapshot.refs.map(r=>r.oid)))],byId=new Map(commits.map(c=>[c.oid,c])),seen=new Set<string>(),pending=[...tips];
@@ -92,6 +99,7 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
   if(method==='copyText'){const {text}=payload as {text:string};if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(text);else throw new Error('Clipboard is unavailable in this browser.');return null;}
   if (method === 'action') {
     const action = payload as GitAction;
+    if (action.type === 'discard' && action.planToken) { const plan = discardPlans.get(action.planToken); if (!plan) throw new Error('Discard plan expired.'); action.paths = plan.paths; discardPlans.delete(action.planToken); }
     if (action.type === 'stage' || action.type === 'resolve-and-stage' || action.type === 'unstage' || action.type === 'discard') {
       demoSnapshot.changes = demoSnapshot.changes.flatMap(change => {
         if (!action.paths.includes(change.path)) return [change];

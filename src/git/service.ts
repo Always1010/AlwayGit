@@ -9,6 +9,7 @@ import { remoteNameProblem, remoteUrlProblem } from '../protocol/remote';
 import { parsePushResult } from './push-result';
 import { hostingRepository } from '../protocol/hosting';
 import type { PushResult, RemoteLinks } from '../protocol/types';
+import type { DiscardRequest, DiscardPlan, FileOperationProgress } from '../protocol/types';
 import { inferDefaultBranch } from './default-branch';
 import { GitError, GitReadTerminationError, GitTerminationError } from './error';
 import { isReadOnlyGitCommand } from './command-kind';
@@ -71,6 +72,7 @@ const commitFormat = '%H%x00%P%x00%an%x00%ae%x00%at%x00%s';
 export class GitService implements GitServiceContract {
   private version = 0;
   private readonly reviews = new Map<string, { token: string; fingerprint: string }>();
+  private readonly discards = new Map<string, { root: string; expires: number; plan: DiscardPlan; fingerprint: string; request: DiscardRequest }>();
   private readonly readSignal = new AsyncLocalStorage<{ controller: AbortController; pending: Set<Promise<void>> }>();
   constructor(private readonly options: GitServiceOptions = {}) {}
   async withReadSignal<T>(signal: AbortSignal, task: () => Promise<T>): Promise<T> {
@@ -366,7 +368,37 @@ export class GitService implements GitServiceContract {
     return object ? (await this.run(repo, ['cat-file', 'blob', object], false, maxBytes)).stdout : Buffer.alloc(0);
   }
   /** Freeze the selected target before a native confirmation can outlive its snapshot. */
+  private discardChanges(status: Awaited<ReturnType<GitService['status']>>, request: DiscardRequest): Change[] {
+    const selected = request.paths && new Set(request.paths.map(validateFilePath));
+    return status.changes.filter(change => !change.conflict && (selected ? selected.has(change.path) || !!change.originalPath && selected.has(change.originalPath) : change.untracked || change.worktreeStatus !== ' '));
+  }
+  private async discardFingerprint(repo: Repository, status: Awaited<ReturnType<GitService['status']>>, changes: Change[]): Promise<string> {
+    const index = await this.run(repo, ['diff', '--cached', '--raw', '--no-abbrev', '--no-renames', '-z']);
+    return createHash('sha256').update(JSON.stringify([status.head, status.branch, changes])).update(index.stdout).digest('hex');
+  }
+  async prepareDiscard(repo: Repository, request: DiscardRequest): Promise<DiscardPlan> {
+    await this.verify(repo);
+    if ((request.paths !== undefined) === (request.scope !== undefined) || request.paths && !request.paths.length) throw new GitError(localizeMessage('service.selectAtLeastOneFile'), 'INVALID_ARGUMENT');
+    const status = await this.status(repo), changes = this.discardChanges(status, request);
+    const plan: DiscardPlan = { token: randomUUID(), paths: [...new Set(changes.map(change => validateFilePath(change.path)))], tracked: changes.filter(change => !change.untracked).length, untracked: changes.filter(change => change.untracked).length, staged: changes.filter(change => !change.untracked && change.indexStatus !== ' ').length, branch: status.branch };
+    const fingerprint = await this.discardFingerprint(repo, status, changes);
+    for (const [key, entry] of this.discards) if (entry.expires < Date.now()) this.discards.delete(key);
+    while (this.discards.size >= 64) this.discards.delete(this.discards.keys().next().value!);
+    this.discards.set(plan.token, { root: normalized(repo.root), expires: Date.now() + 5 * 60_000, plan, fingerprint, request: { ...request, ...(request.paths ? { paths: [...request.paths] } : {}) } });
+    return { ...plan, paths: [...plan.paths] };
+  }
+  private async checkedDiscard(repo: Repository, token: string) {
+    const entry = this.discards.get(token);
+    if (!entry || entry.root !== normalized(repo.root) || entry.expires < Date.now()) throw new GitError(localizeMessage('service.discardPlanExpired'), 'DISCARD_CHANGED');
+    const status = await this.status(repo), changes = this.discardChanges(status, entry.request);
+    if (await this.discardFingerprint(repo, status, changes) !== entry.fingerprint) throw new GitError(localizeMessage('service.discardPlanChanged'), 'DISCARD_CHANGED');
+    return { plan: entry.plan, status };
+  }
   async prepareAction(repo: Repository, action: GitAction): Promise<GitAction> {
+    if (action.type === 'discard' && action.planToken) {
+      const { plan } = await this.checkedDiscard(repo, action.planToken);
+      return { ...action, paths: plan.paths };
+    }
     if (!['merge', 'rebase', 'reset'].includes(action.type)) return action;
     const guarded = action as Extract<GitAction, { type: 'merge' | 'rebase' | 'reset' }>;
     await this.verify(repo);
@@ -379,9 +411,9 @@ export class GitService implements GitServiceContract {
       throw new GitError(localizeMessage("service.theTargetBranchOrHEADChangedBeforeTheOperation"), 'OPERATION_CHANGED');
     }
   }
-  async execute(repo: Repository, action: GitAction): Promise<void | PushResult> {
+  async execute(repo: Repository, action: GitAction, onProgress?: (progress: FileOperationProgress) => void): Promise<void | PushResult> {
     const key = normalized(repo.commonDir); const prior = queues.get(key) ?? Promise.resolve();
-    const operation = prior.catch(() => {}).then(async () => { const unsafe = unsafeTerminations.get(key); if (unsafe) throw unsafe; await this.verify(repo); return this.executeNow(repo, action); });
+    const operation = prior.catch(() => {}).then(async () => { const unsafe = unsafeTerminations.get(key); if (unsafe) throw unsafe; await this.verify(repo); return this.executeNow(repo, action, onProgress); });
     queues.set(key, operation);
     try { const result = await operation; const unsafe = unsafeTerminations.get(key); if (unsafe) throw unsafe; return result; }
     catch (error) { if (error instanceof GitTerminationError) unsafeTerminations.set(key, error); throw unsafeTerminations.get(key) ?? error; }
@@ -575,36 +607,60 @@ export class GitService implements GitServiceContract {
     }
     return selector;
   }
-  private async executeNow(repo: Repository, action: GitAction): Promise<void | PushResult> {
+  private async discard(repo: Repository, action: Extract<GitAction, { type: 'discard' }>, onProgress?: (progress: FileOperationProgress) => void): Promise<void> {
+    const prepared = action.planToken ? await this.checkedDiscard(repo, action.planToken) : undefined;
+    const paths = [...new Set((prepared?.plan.paths ?? action.paths).map(validateFilePath))], selected = new Set(paths);
+    if (!paths.length) throw new GitError(localizeMessage('service.selectAtLeastOneFile'), 'INVALID_ARGUMENT');
+    const status = prepared?.status ?? await this.status(repo), byPath = new Map(status.changes.map(change => [change.path, change]));
+    if (paths.some(name => byPath.get(name)?.conflict)) throw new GitError(localizeMessage('service.resolveConflictsBeforeContinuing'), 'CONFLICTS');
+    const renames = status.changes.filter(change => change.worktreeStatus === 'R' && change.originalPath && (selected.has(change.path) || selected.has(change.originalPath)));
+    if (renames.length) {
+      const visible = new Set(decodePaths((await this.run(repo, ['diff', '--cached', '--ita-visible-in-index', '--name-only', '-z'])).stdout).split('\0'));
+      const invisible = new Set(decodePaths((await this.run(repo, ['diff', '--cached', '--ita-invisible-in-index', '--name-only', '-z'])).stdout).split('\0'));
+      if (renames.some(rename => !visible.has(rename.path) || invisible.has(rename.path))) throw new GitError(localizeMessage('service.theRenameDestinationHasStagedContentUnstageTheRename'), 'STAGED_RENAME_DESTINATION');
+    }
+    const destinations = renames.map(rename => validateFilePath(rename.path)), destinationSet = new Set(destinations);
+    const untracked = new Set([...paths.filter(name => byPath.get(name)?.untracked), ...destinations]);
+    const tracked = [...new Set([...paths.filter(name => !untracked.has(name)), ...renames.map(rename => validateFilePath(rename.originalPath!))])];
+    const prefix = ['-C', repo.root, '--literal-pathspecs'];
+    const clean = [
+      ...(destinations.length ? splitCleanArguments(this.options.gitPath ?? 'git', prefix, ['clean', '-f', '-x', '--', ...destinations]) : []),
+      ...(untracked.size > destinations.length ? splitCleanArguments(this.options.gitPath ?? 'git', prefix, ['clean', '-f', '--', ...[...untracked].filter(name => !destinationSet.has(name))]) : []),
+    ];
+    const total = tracked.length + untracked.size; let completed = 0;
+    if (action.planToken) this.discards.delete(action.planToken);
+    try {
+      onProgress?.({ completed, total, phase: 'restoring' });
+      for (let start = 0; start < tracked.length; start += 2000) {
+        const batch = tracked.slice(start, start + 2000);
+        await this.run(repo, ['restore', '--worktree', '--', ...batch]);
+        completed += batch.length; onProgress?.({ completed, total, phase: 'restoring' });
+      }
+      if (destinations.length) await this.run(repo, ['rm', '-f', '--cached', '--', ...destinations]);
+      for (const batch of clean) {
+        onProgress?.({ completed, total, phase: 'cleaning' });
+        await this.run(repo, batch);
+        completed += batch.length - batch.indexOf('--') - 1;
+        onProgress?.({ completed, total, phase: 'cleaning' });
+      }
+    } catch (error) {
+      if (error instanceof GitTerminationError) throw error;
+      throw new GitError(localizeMessage('service.discardIncomplete', { completed, total, value: error instanceof Error ? error.message : String(error) }), completed ? 'PARTIAL_FAILURE' : 'DISCARD_FAILED');
+    }
+  }
+  private async executeNow(repo: Repository, action: GitAction, onProgress?: (progress: FileOperationProgress) => void): Promise<void | PushResult> {
     if (action.type !== 'commit' && action.type !== 'operation.continue') this.reviews.delete(repo.id);
     let args: string[], pushedRemote: string | undefined; const remote = (value?: string) => value ? [token(value, 'remote')] : [];
     switch (action.type) {
-      case 'stage': case 'resolve-and-stage': case 'unstage': case 'discard': {
+      case 'discard': return this.discard(repo, action, onProgress);
+      case 'stage': case 'resolve-and-stage': case 'unstage': {
         if (!action.paths.length) throw new GitError(localizeMessage("service.selectAtLeastOneFile"), 'INVALID_ARGUMENT'); const paths = action.paths.map(validateFilePath);
         const status = await this.status(repo);
-        const relatedPaths = (area: 'indexStatus' | 'worktreeStatus') => [...new Set(paths.flatMap(name => { const rename = status.changes.find(change => change[area] === 'R' && change.originalPath && (change.path === name || change.originalPath === name)); return rename ? [validateFilePath(rename.path), validateFilePath(rename.originalPath!)] : [name]; }))];
-        if (action.type === 'resolve-and-stage' && paths.some(name => !status.changes.some(change => change.path === name && change.conflict))) throw new GitError(localizeMessage("service.theSelectedConflictFilesChangedRefreshAndSelectThem"), 'OPERATION_CHANGED');
+        const byPath = new Map(status.changes.flatMap(change => [[change.path, change] as const, ...(change.originalPath ? [[change.originalPath, change] as const] : [])]));
+        const relatedPaths = (area: 'indexStatus' | 'worktreeStatus') => [...new Set(paths.flatMap(name => { const rename = byPath.get(name); return rename?.[area] === 'R' && rename.originalPath ? [validateFilePath(rename.path), validateFilePath(rename.originalPath)] : [name]; }))];
+        if (action.type === 'resolve-and-stage' && paths.some(name => !byPath.get(name)?.conflict)) throw new GitError(localizeMessage("service.theSelectedConflictFilesChangedRefreshAndSelectThem"), 'OPERATION_CHANGED');
         if (action.type === 'stage' || action.type === 'resolve-and-stage') args = ['add', '--', ...relatedPaths('worktreeStatus')];
-        else if (action.type === 'unstage') { const selected = relatedPaths('indexStatus'); args = status.head ? ['restore', '--staged', '--source=HEAD', '--', ...selected] : ['rm', '-f', '--cached', '--ignore-unmatch', '--', ...selected]; }
-        else {
-          const renames = status.changes.filter(change => change.worktreeStatus === 'R' && change.originalPath && (paths.includes(change.path) || paths.includes(change.originalPath)));
-          // A worktree rename's destination is normally an intent-to-add entry. Prove
-          // that before removing it, so a genuine staged destination stays protected.
-          for (const rename of renames) {
-            validateFilePath(rename.path); validateFilePath(rename.originalPath!);
-            const visible = decodePaths((await this.run(repo, ['diff', '--cached', '--ita-visible-in-index', '--name-only', '-z', '--', rename.path])).stdout).split('\0');
-            const invisible = decodePaths((await this.run(repo, ['diff', '--cached', '--ita-invisible-in-index', '--name-only', '-z', '--', rename.path])).stdout).split('\0');
-            if (!visible.includes(rename.path) || invisible.includes(rename.path)) throw new GitError(localizeMessage("service.theRenameDestinationHasStagedContentUnstageTheRename"), 'STAGED_RENAME_DESTINATION');
-          }
-          const destinations = renames.map(rename => rename.path);
-          const untracked = [...new Set([...paths.filter(name => status.changes.some(change => change.path === name && change.untracked)), ...destinations])];
-          const tracked = [...new Set([...paths.filter(name => !untracked.includes(name)), ...renames.map(rename => rename.originalPath!)])];
-          if (tracked.length) await this.run(repo, ['restore', '--worktree', '--', ...tracked]);
-          if (destinations.length) await this.run(repo, ['rm', '-f', '--cached', '--', ...destinations]);
-          if (destinations.length) await this.run(repo, ['clean', '-f', '-x', '--', ...destinations]);
-          const otherUntracked = untracked.filter(name => !destinations.includes(name));
-          if (otherUntracked.length) await this.run(repo, ['clean', '-f', '--', ...otherUntracked]); return;
-        }
+        else { const selected = relatedPaths('indexStatus'); args = status.head ? ['restore', '--staged', '--source=HEAD', '--', ...selected] : ['rm', '-f', '--cached', '--ignore-unmatch', '--', ...selected]; }
         break;
       }
       case 'commit': {
