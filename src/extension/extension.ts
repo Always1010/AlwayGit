@@ -13,15 +13,18 @@ import { createWorkbenchActivityLauncher } from './workbench-launcher';
 
 export async function activate(context: vscode.ExtensionContext) {
   const output = vscode.window.createOutputChannel('AlwayGit');
-  let gitPath = vscode.workspace.getConfiguration('alwaygit').get<string>('gitPath') || undefined;
-  if (!gitPath && vscode.workspace.isTrusted) {
-    try {
-      const builtin = vscode.extensions.getExtension<{ getAPI(version: number): { git: { path: string } } }>('vscode.git');
-      if (builtin) gitPath = (await builtin.activate()).getAPI(1).git.path;
-    } catch { /* PATH fallback supports disabled built-in Git. */ }
-  }
+  const gitPath = vscode.workspace.getConfiguration('alwaygit').get<string>('gitPath') || undefined;
   const git = new GitService({
     gitPath,
+    resolveGitPath: async () => {
+      if (vscode.workspace.isTrusted) {
+        try {
+          const builtin = vscode.extensions.getExtension<{ getAPI(version: number): { git: { path: string } } }>('vscode.git');
+          if (builtin) return (await builtin.activate()).getAPI(1).git.path;
+        } catch { /* PATH fallback supports disabled built-in Git. */ }
+      }
+      return undefined;
+    },
     allowDetachedHead: () => vscode.workspace.getConfiguration('alwaygit').get<boolean>('allowDetachedHead', false) === true,
     onOutput: (repo, text) => output.append(redactSecrets(`[${repo.name}] ${text}`)),
     environment: async (_repo, args) => {
@@ -67,7 +70,8 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.window.registerWebviewPanelSerializer('alwaygit.workbench', { async deserializeWebviewPanel(panel, state: { repoId?: string } | undefined) { await workbench.open(state?.repoId, panel, false, state?.repoId===undefined); } }),
   );
   await projects.start();
-  await manager.scan();
+  // Window routing and commands are ready before Git discovery completes.
+  void workbench.initializeRepositories().catch(error => output.appendLine(`[discovery] ${redactSecrets(String(error))}`));
   updateLauncher();
   output.appendLine(translate('en', "extension.alwayGitActivatedGitOperationsRunInTheWorkspaceExtension"));
   return { git, manager, documents, workbench, projects };

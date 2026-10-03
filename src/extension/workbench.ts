@@ -52,6 +52,7 @@ export class Workbench implements vscode.Disposable {
   /** Diagnostic count used to verify the real Webview message bridge. */
   get receivedWebviewRequests(): number { return this.requestCount; }
   private readonly interval: ReturnType<typeof setInterval>;
+  private initialScan?: Promise<void>;
   private readonly sessions = new SessionWriter(session => this.context.workspaceState.update('alwaygit.session', session));
   private operationSettings(): OperationSettings { const configuration=vscode.workspace.getConfiguration('alwaygit'),configuredResetMode=configuration.get<string>('defaultResetMode','mixed'),defaultResetMode:OperationSettings['defaultResetMode']=['soft','mixed','hard'].includes(configuredResetMode)?configuredResetMode as OperationSettings['defaultResetMode']:'mixed';return { allowDetachedHead: configuration.get<boolean>('allowDetachedHead', false) === true, pushFollowTags: configuration.get<boolean>('pushFollowTags', false) === true, pushTagAfterCreate: configuration.get<boolean>('pushTagAfterCreate', false) === true, defaultResetMode, scope: vscode.workspace.workspaceFile || vscode.workspace.workspaceFolders?.length ? 'workspace' : 'user' }; }
   private readonly requestLanguage = new AsyncLocalStorage<Language>();
@@ -61,14 +62,27 @@ export class Workbench implements vscode.Disposable {
   private repositoryKey(commonDir: string): string { const resolved=path.resolve(commonDir);return process.platform==='win32'?resolved.toLowerCase():resolved; }
   private isBusy(commonDir: string): boolean { const key=this.repositoryKey(commonDir);return this.busy.has(key)||this.externalBusy.has(key); }
   constructor(private readonly context: vscode.ExtensionContext, private readonly git: GitServiceContract, private readonly repositories: RepositoryManager, private readonly documents: GitDocuments, private readonly output: vscode.OutputChannel, private readonly projects: ProjectWindows) {
-    this.disposables.push(repositories.onDidChange(event => { this.snapshots.invalidate(event.repoId); this.post({ type: 'changed', ...event }); }), repositories.onDidChangeRepositories(() => this.post({ type: 'repositoriesChanged' })));
+    this.disposables.push(repositories.onDidChange(event => { this.snapshots.invalidate(event.repoId); this.post({ type: 'changed', ...event }); }), repositories.onDidChangeRepositories(() => {
+      for (const entry of this.panels.values()) this.updatePanelTitle(entry);
+      this.post({ type: 'repositoriesChanged' });
+    }));
     this.disposables.push(vscode.workspace.onDidChangeConfiguration(event => { if (['allowDetachedHead','pushFollowTags','pushTagAfterCreate','defaultResetMode'].some(name=>event.affectsConfiguration(`alwaygit.${name}`))) this.post({ type: 'operationSettingsChanged', settings: this.operationSettings() }); }));
     const seconds = vscode.workspace.getConfiguration('alwaygit').get<number>('refreshInterval', 15);
     this.interval = setInterval(() => void this.poll(), seconds * 1000);
   }
+  /** Share startup discovery with data requests, without holding up panel creation. */
+  initializeRepositories(): Promise<void> {
+    if (!this.initialScan) {
+      const scan = this.repositories.scan().catch(error => {
+        if (this.initialScan === scan) this.initialScan = undefined;
+        throw error;
+      });
+      this.initialScan = scan;
+    }
+    return this.initialScan;
+  }
   async open(repoId?: string, restoredPanel?: vscode.WebviewPanel, newTab = false, blank = false): Promise<void> {
     if (!vscode.workspace.isTrusted) { await vscode.window.showWarningMessage(this.text("host.trustThisWorkspaceUsingVSCodeWorkspaceTrustThen")); return; }
-    await this.repositories.scan();
     if (repoId) this.activeRepository = repoId;
     const existing=!restoredPanel&&!newTab?([...this.panels.values()].find(entry=>entry.panel.active)??this.lastPanel??[...this.panels.values()].at(-1)):undefined;
     if(existing){existing.panel.reveal();this.lastPanel=existing;this.post({type:'repositoriesChanged'},existing);if(repoId)this.selectPanelRepository(existing,repoId);this.presenceEmitter.fire(this.presence);return;}
@@ -197,6 +211,7 @@ export class Workbench implements vscode.Disposable {
     if (request.method === 'openExternal') { const data = externalUrlSchema.parse(request.payload); if (!await vscode.env.openExternal(vscode.Uri.parse(data.url))) throw new Error(this.text('host.couldNotOpenWebLink')); return null; }
     if (request.method === 'copyText') { await vscode.env.clipboard.writeText(copySchema.parse(request.payload).text); return null; }
     if (!vscode.workspace.isTrusted) throw new Error(this.text("host.gitExecutionRequiresATrustedWorkspace"));
+    if (['repositories', 'repositoryCollections', 'repositoryOrder'].includes(request.method)) await this.initializeRepositories();
     if (request.method === 'repositories') { const list = this.repositories.list(),active=source?.activeRepository??this.activeRepository; return active ? list.sort((a, b) => Number(b.id === active) - Number(a.id === active)) : list; }
     if (request.method === 'repositoryCollections') return this.repositories.collections();
     if (request.method === 'repositoryOrder') return this.repositories.order();

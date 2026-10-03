@@ -36,6 +36,24 @@ function start(options: Partial<Parameters<typeof runGitProcess>[0]> = {}) {
 }
 
 describe('Git process termination', () => {
+  it.each([undefined, 'D:\\Git\\git.exe'])('resolves Git only on demand, sharing initialization and respecting the configured path (%s)', async configured => {
+    let finish!: (value: string) => void;
+    const gate = new Promise<string>(resolve => { finish = resolve; }), resolveGitPath = vi.fn(() => gate);
+    const service = new GitService({ gitPath: configured, resolveGitPath });
+    vi.mocked(spawn).mockImplementation((_executable, args) => completedProcess(args?.includes('--show-toplevel') ? process.cwd() : args?.some(arg => arg === '--git-common-dir' || arg === '--git-dir') ? process.cwd() + '/.git' : 'false'));
+    expect(resolveGitPath).not.toHaveBeenCalled();
+    const first = service.discover(process.cwd()), second = service.discover(process.cwd());
+    if (!configured) {
+      await vi.waitFor(() => expect(resolveGitPath).toHaveBeenCalledOnce());
+      expect(spawn).not.toHaveBeenCalled();
+    }
+    finish('D:\\BuiltinGit\\git.exe');
+    await Promise.all([first, second]);
+    expect(spawn).toHaveBeenCalledTimes(8);
+    expect(vi.mocked(spawn).mock.calls.every(([executable]) => executable === (configured ?? 'D:\\BuiltinGit\\git.exe'))).toBe(true);
+    expect(resolveGitPath).toHaveBeenCalledTimes(configured ? 0 : 1);
+  });
+
   it.each(['timeout', 'output limit', 'abort'] as const)('waits for both Git and taskkill after %s', async cause => {
     const controller = new AbortController();
     const { git, killer, result, settled } = start({ signal: controller.signal, maxOutputBytes: 1 });
