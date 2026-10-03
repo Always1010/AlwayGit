@@ -54,7 +54,7 @@
 
 - 固定四区 Workbench、旧 Editor Focus 会话迁移、分支徽标与操作栏合并、右侧定位 HEAD 和双层文件夹/VS Code 纯图标按钮、底部常驻状态栏移除与顶部按需提示、面板和列拖动、Diff 动态最大高度与收起恢复、仅恢复布局而不重置界面设置的 Restore Layout、窄窗口和主题。
 - 设置浮窗分级导航、预览、取消、应用、刷新期间的持久化；宿主主题与主题卡片优先级、丰富明暗主题、可配置未推送角标、字号、列表密度及独立 Diff 行高同步虚拟行高、Diff 自定义行高边界和旧设置兼容、Graph 预设及自定义浅色/深色色板的连续性与分页。
-- Repository、Local Branch、Remote Branch、Remote、Tag、Stash、Worktree 的对象菜单；仓库行和仓库分组标题通过右键打开管理菜单；分区标题单击只折叠内容，右侧图标执行分组操作，Local Branches 的 Graph 预设具有激活状态。Repository 单击、Ctrl/Cmd、Shift、Ctrl/Cmd+A 与 Escape 管理独立的批量操作选择，不切换仓库，范围严格按当前显示顺序计算；双击或 Enter 切换仓库，右键遵循所选范围。Worktree 单击只聚焦、双击或 Enter 切换。当前 Repository 使用强调色仓库图标，Worktree 和本地分支保留排头实心三角形；三者均使用 `aria-current`，与 Repository 蓝色操作选择相互独立。三角形在浅色背景为纯黑、深色背景为纯白，不显示 Current 文字徽标。
+- Repository、Local Branch、Remote Branch、Remote、Tag、Stash、Worktree 的对象菜单；仓库行和仓库分组标题通过右键打开管理菜单；分区标题单击只折叠内容，右侧图标执行分组操作，Local Branches 的 Graph 预设具有激活状态。Repository 单击、Ctrl/Cmd、Shift、Ctrl/Cmd+A 与 Escape 管理批量操作选择，不切换仓库，范围严格按当前显示顺序计算；Repository、Local、单个 Remote 与 Worktree 同时只保留一个非空侧栏操作选择作用域，切换作用域不改变 Graph 勾选、当前仓库或当前分支。双击或 Enter 切换仓库，右键遵循所选范围。Worktree 单击只聚焦、双击或 Enter 切换。当前 Repository 使用强调色仓库图标，Worktree 和本地分支保留排头实心三角形；三者均使用 `aria-current`，与蓝色操作选择相互独立。三角形在浅色背景为纯黑、深色背景为纯白，不显示 Current 文字徽标。
 - 菜单指针定位、视口边缘修正、竖向排列、键盘焦点、Escape 与点击外部关闭。
 - 右键对象与操作对话框目标一致；仓库切换后旧菜单和对话框关闭。
 - 递归分支目录、目录展开、三态目录选择、多引用选择及只按可见分支计算的 Shift 范围、共同提交去重、清空选择、分页、搜索、HEAD 标记及 Locate HEAD。
@@ -142,6 +142,7 @@ git push origin v0.39.0
 
 | 证据范围 | 日期 / 版本 | 已记录结果与限制 |
 | --- | --- | --- |
+| 侧栏操作选择作用域 | 2026-10-03 / 源码 0.39.0 | 1207 条双语资源检查、类型检查、64 项 UI 状态单测、生产构建及无头 `--workbench-only`、`--worktrees-only` 通过；覆盖 Repository、Local、Remote、Worktree 的单击、右键与 Ctrl/Cmd+A 作用域切换，确认同时只保留一个蓝色操作选择且不改变 Graph 勾选、当前仓库或当前分支。双语持久化流程的测试定位器同步支持中英文无障碍名称。未运行全量测试、真实 VS Code 桌面集成、VSIX 打包或本机安装 |
 | 图片 Diff 预览与二进制打开限制 | 2026-10-03 / 0.38.0 | 1171 条双语资源检查与类型检查通过；文档预览、Diff 导航、协议、翻译 4 个定向测试文件 33 项通过，新增 JPEG/WebP 识别后重跑文档预览 12 项通过；生产构建及无头 `--diff-only` 通过。覆盖 PNG/JPEG/WebP 内容签名、字节与像素限制、两侧图片、尺寸/大小、缩放、100%、适应、最大化、整文件导航，以及图片和其他二进制的 VS Code 编辑/原生 Diff 前端禁用与宿主拒绝。未运行全量测试或真实 VS Code 桌面集成 |
 | 工作区搜索与 Commit 浮窗 | 2026-10-03 / 0.36.0 | 类型检查与文件选择、界面状态、会话保存、双语帮助 4 个定向测试文件通过；无头 `--files-only`、`--shortcuts-only`、`--feedback-only`、`--worktrees-only`、`--appearance-only`、`--help-only`、`--workbench-only` 通过。覆盖匹配范围暂存/撤回/丢弃、230px 标题入口、Cancel/Esc/关闭和重载草稿恢复、失败保留、隐藏冲突、零暂存 Amend、提交成功定向清理、迟到读取与新草稿保护，以及活动操作暂存结果检查。更新两张当前入口截图并移除失效表单图；未运行全量测试或真实 VS Code 桌面集成 |
 | 工作台单键快捷键 | 2026-10-03 / 0.35.0 | 类型检查与 6 个定向测试文件 91 项通过；无头 `--shortcuts-only`、`--diff-only`、`--files-only` 通过。覆盖捕获阶段全局触发、当前仓库与文件目标、输入框/选择控件/输入法/弹窗/菜单保护、禁用与长按、准备 Commit、整组暂存确认、Diff 折叠及跨文件导航、设置取消/保存/重载与草稿保留。未运行全量测试或真实 VS Code 桌面集成，原生打开/编辑动作仅验证模拟 RPC 意图 |

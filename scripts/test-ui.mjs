@@ -105,7 +105,8 @@ async function verifyWorkbench(browser, url) {
     const branchBadge = page.getByTestId('current-branch');
     assert.equal(await branchBadge.innerText(), '—', 'A fresh Workbench does not select a repository at the entry point');
     assert.match(await branchBadge.locator('..').getAttribute('title'), /No repository selected/);
-    await sidebar.getByRole('option', { name: /^AlwayGit/ }).dblclick();
+    const repositoryOption=sidebar.getByRole('option', { name: /^AlwayGit/ });
+    await repositoryOption.dblclick();
     await Promise.all([history.waitFor(), details.waitFor()]);
     assert.ok((await sidebar.locator('.sidebar-heading').first().boundingBox()).height <= 29, 'Sidebar section headers stay compact');
     assert.ok((await history.locator('.pane-heading').first().boundingBox()).height <= 29, 'Pane headers stay compact');
@@ -245,6 +246,7 @@ async function verifyWorkbench(browser, url) {
     assert.equal(await currentBranch.innerText(), 'main', 'The current branch does not repeat its state as a text badge');
     const featureBranch = sidebar.getByRole('button', { name: 'Branch feature/history-graph', exact: true });
     await assertMenu(featureBranch, ['Checkout…', 'Show in Graph', 'Show Only This Branch', 'Create Branch…', 'Create Tag…', 'Merge…', 'Rebase…', 'Push…', 'Delete Branch…', 'Copy Branch Name'], true);
+    assert.equal(await sidebar.locator('.repository-list [aria-selected="true"]').count(),0,'Selecting a branch action scope clears Repository action selection');
     assert.equal(await featureBranch.evaluate(element => element === document.activeElement), true, 'Escape must restore focus to the context-menu opener');
     const localGraphSelection = await localTree.locator('input[type="checkbox"]').evaluateAll(inputs => inputs.map(input => input.checked));
     await featureBranch.press('Control+a');
@@ -283,6 +285,11 @@ async function verifyWorkbench(browser, url) {
     const remoteGraphSelection = await remoteTree.locator('input[type="checkbox"]').evaluateAll(inputs => inputs.map(input => input.checked));
     await remoteBranch.press('Control+a');
     assert.equal(await remoteTree.locator('.ref-row.action-selected').count(), await remoteTree.locator('.ref-row').count(), 'Ctrl+A selects only branches in the focused Remote tree');
+    await repositoryOption.click();
+    assert.equal(await remoteTree.locator('.ref-row.action-selected').count(),0,'Selecting a Repository action scope clears Remote branch action selection');
+    assert.equal(await repositoryOption.getAttribute('aria-selected'),'true','The Repository becomes the only sidebar action-selection scope');
+    await remoteBranch.press('Control+a');
+    assert.equal(await sidebar.locator('.repository-list [aria-selected="true"]').count(),0,'Returning to the Remote action scope clears Repository action selection');
     assert.equal(await localTree.locator('.ref-row.action-selected').count(), 0, 'Remote Ctrl+A must not select local branches');
     assert.deepEqual(await remoteTree.locator('input[type="checkbox"]').evaluateAll(inputs => inputs.map(input => input.checked)), remoteGraphSelection, 'Remote branch Ctrl+A must not change Graph checkbox selection');
     assert.equal(await page.evaluate(() => window.getSelection()?.toString()), '', 'Remote branch Ctrl+A must not select page text');
@@ -369,11 +376,11 @@ async function verifyWorkbench(browser, url) {
     const visibleOids = await history.locator('[data-oid]').evaluateAll(rows => rows.map(row => row.getAttribute('data-oid')));
     assert.equal(new Set(visibleOids).size, visibleOids.length, 'Multi-branch history must not duplicate shared commits');
 
-    const search = history.getByRole('textbox', { name: 'Search commit history' });
+    const search = history.getByRole('textbox', { name: /^(?:Search commit history|搜索提交历史)$/ });
     await search.fill('native diff');
     await page.waitForFunction(() => [...document.querySelectorAll('[data-oid]')].length > 0 && [...document.querySelectorAll('[data-oid]')].every(row => row.textContent?.includes('native diff')));
     await history.locator('[data-working-tree]').click();
-    const draft = page.getByRole('textbox', { name: 'Commit message' });
+    const draft = page.getByRole('textbox', { name: /^(?:Commit message|提交消息)$/ });
     await page.locator('.toolbar .commit-trigger').click();
     await draft.fill('Persistent bilingual draft');
     await page.keyboard.press('Escape');
@@ -386,20 +393,21 @@ async function verifyWorkbench(browser, url) {
     await page.locator('.toolbar .commit-trigger').click();
     assert.equal(await draft.inputValue(), 'Persistent bilingual draft');
     await page.keyboard.press('Escape');
-    assert.equal(await sidebar.getByLabel('Show branch main', { exact: true }).isChecked(), true);
-    assert.equal(await sidebar.getByLabel('Show branch feature/history-graph', { exact: true }).isChecked(), true);
+    assert.equal(await sidebar.getByLabel(/^(?:Show branch|显示分支) main$/).isChecked(), true);
+    assert.equal(await sidebar.getByLabel(/^(?:Show branch|显示分支) feature\/history-graph$/).isChecked(), true);
 
     await page.reload();
     await workbench.waitFor();
     await page.locator('.toolbar .commit-trigger').click();
-    assert.equal(await page.getByRole('textbox', { name: 'Commit message' }).inputValue(), 'Persistent bilingual draft');
+    assert.equal(await page.getByRole('textbox', { name: /^(?:Commit message|提交消息)$/ }).inputValue(), 'Persistent bilingual draft');
     await page.keyboard.press('Escape');
-    assert.equal(await page.getByRole('textbox', { name: 'Search commit history' }).inputValue(), 'native diff');
-    assert.equal(await page.getByLabel('Show branch feature/history-graph', { exact: true }).isChecked(), true);
+    assert.equal(await page.getByRole('textbox', { name: /^(?:Search commit history|搜索提交历史)$/ }).inputValue(), 'native diff');
+    assert.equal(await page.getByLabel(/^(?:Show branch|显示分支) feature\/history-graph$/).isChecked(), true);
     await page.getByRole('button', { name: '设置', exact: true }).click();
     await page.getByTestId('interface-settings').getByRole('button',{name:'语言',exact:true}).click();
-    assert.equal(await page.getByTestId('interface-settings').getByRole('combobox',{name:'Language'}).inputValue(), 'zh-CN');
-    await page.getByTestId('interface-settings').getByRole('combobox',{name:'Language'}).selectOption('en');
+    const languageSelect=page.getByTestId('interface-settings').getByRole('combobox',{name:/^(?:Language|语言)$/});
+    assert.equal(await languageSelect.inputValue(), 'zh-CN');
+    await languageSelect.selectOption('en');
     await page.getByRole('dialog').locator('.modal-footer .primary').click();
 
     await history.locator('[data-working-tree]').click();
@@ -431,7 +439,7 @@ async function verifyWorkbench(browser, url) {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
 
     // Search results intentionally hide Graph; restore full history for column resizing.
-    await page.getByRole('textbox', { name: 'Search commit history' }).fill('');
+    await page.getByRole('textbox', { name: /^(?:Search commit history|搜索提交历史)$/ }).fill('');
     await history.locator('[data-oid]').first().waitFor();
     await page.setViewportSize({ width: 700, height: 650 });
     for (const [label, key, maximum] of [['Resize graph column', 'ArrowRight', 180], ['Resize author column', 'ArrowLeft', 220], ['Resize date column', 'ArrowLeft', 220]]) {
