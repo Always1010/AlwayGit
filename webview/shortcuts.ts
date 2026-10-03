@@ -25,7 +25,7 @@ export function useWorkbenchKeyboard(blocked: boolean): void {
     const start = () => { composing = true; }, end = () => { composing = false; };
     const hasOverlay = () => blockedRef.current || !!document.querySelector('[aria-modal="true"],[role="menu"]');
     const key = (event: KeyboardEvent) => dispatchShortcut(event, actions, {
-      singleKeys: useWorkbench.getState().singleKeyShortcuts,
+      singleKeys: useWorkbench.getState().singleKeyShortcuts, overrides: useWorkbench.getState().shortcutOverrides,
       blocked: hasOverlay() || !document.querySelector('[data-testid="workbench"]'),
       editable: editable(event.target) || editable(document.activeElement), composing,
     });

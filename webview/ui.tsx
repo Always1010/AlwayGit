@@ -9,8 +9,9 @@ export function Icon({ name, className = '' }: { name: string; className?: strin
 }
 export function Button({ children, icon, shortcut, className = '', ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { icon?: string; shortcut?: WorkbenchShortcut }) {
   const singleKeys = useWorkbench(state => state.singleKeyShortcuts);
+  const overrides = useWorkbench(state => state.shortcutOverrides);
   const title = props.title ?? props['aria-label'] ?? (typeof children === 'string' ? children : undefined);
-  return <button className={`button ${className}`} {...props} title={shortcut ? shortcutTitle(title, shortcut, singleKeys) : props.title} aria-keyshortcuts={shortcut ? shortcutAria(shortcut, singleKeys) : props['aria-keyshortcuts']}>{icon && <Icon name={icon} />}{children}</button>;
+  return <button className={`button ${className}`} {...props} title={shortcut ? shortcutTitle(title, shortcut, singleKeys, overrides) : props.title} aria-keyshortcuts={shortcut ? shortcutAria(shortcut, singleKeys, overrides) : props['aria-keyshortcuts']}>{icon && <Icon name={icon} />}{children}</button>;
 }
 export function BranchIcon({remote=false}:{remote?:boolean}) { return <span className="branch-icon" aria-hidden="true"><Icon name={remote?'cloud':'git-branch'}/></span>; }
 export function Empty({ title, children }: { title: string; children?: React.ReactNode }) { return <div className="empty"><Icon name="git-commit" /><strong>{title}</strong>{children && <p>{children}</p>}</div>; }

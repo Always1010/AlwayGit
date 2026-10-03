@@ -1,45 +1,57 @@
-export const shortcutKeys = {
-  refresh: 'r', fetch: 'f', pull: 'l', push: 'p', commit: 'c', stash: 's',
-  working: 'w', head: 'h', repository: 'o', diff: 'd', edit: 'e',
-  previousChange: '[', nextChange: ']', toggleDiff: '\\', search: '/',
-  settings: ',', help: '?', stageAll: 'a', unstageAll: 'u',
-  terminalNew: 'n', terminalFocus: 't',
-} as const;
-export type WorkbenchShortcut = keyof typeof shortcutKeys;
+import { bindingSignature, effectiveBindings, shortcutCommands, singleKey, type ShortcutBinding, type ShortcutModifier, type ShortcutOverrides, type WorkbenchShortcut } from '../src/protocol/shortcuts';
+export * from '../src/protocol/shortcuts';
 export interface ShortcutAction { enabled: boolean; run(): void }
 export type ShortcutActions = Partial<Record<WorkbenchShortcut, ShortcutAction>>;
 export interface ShortcutKeyEvent {
   key: string; ctrlKey: boolean; metaKey: boolean; altKey: boolean; shiftKey: boolean;
   repeat: boolean; isComposing: boolean; keyCode: number; defaultPrevented: boolean;
+  getModifierState?(key: string): boolean;
   preventDefault(): void; stopPropagation(): void;
 }
-
-export function shortcutCommand(event: Pick<ShortcutKeyEvent, 'key' | 'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey'>, singleKeys: boolean): WorkbenchShortcut | undefined {
-  if (event.altKey) return;
-  if (event.ctrlKey || event.metaKey) return !event.shiftKey && event.key.toLowerCase() === 'r' ? 'refresh' : undefined;
-  if (!singleKeys || event.shiftKey && event.key !== '?') return;
-  return (Object.keys(shortcutKeys) as WorkbenchShortcut[]).find(command => shortcutKeys[command] === event.key.toLowerCase());
+type KeyInput = Pick<ShortcutKeyEvent, 'key' | 'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey' | 'getModifierState'>;
+export function isMac(): boolean { return typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform); }
+const shiftedSymbols = '~!@#$%^&*()_+{}|:"<>?';
+const baseSymbols = '`1234567890-=[]\\;\',./';
+export function bindingFromEvent(event: KeyInput, portable = false, mac = isMac()): ShortcutBinding | undefined {
+  if (event.getModifierState?.('AltGraph') || ['Control', 'Meta', 'Alt', 'Shift', 'Dead', 'Process', 'Unidentified'].includes(event.key)) return;
+  let key = event.key.toLowerCase();
+  const index = shiftedSymbols.indexOf(key);
+  if (event.shiftKey && index >= 0) key = baseSymbols[index];
+  const modifiers: ShortcutModifier[] = [];
+  if (event.ctrlKey) modifiers.push(portable && !mac ? 'primary' : 'control');
+  if (event.metaKey) modifiers.push(portable && mac ? 'primary' : 'meta');
+  if (event.altKey) modifiers.push('alt');
+  if (event.shiftKey) modifiers.push('shift');
+  return { key, modifiers };
 }
-
-export function dispatchShortcut(event: ShortcutKeyEvent, actions: ShortcutActions, context: { singleKeys: boolean; blocked: boolean; editable: boolean; composing: boolean }): void {
+export function shortcutCommand(event: KeyInput, singleKeys: boolean, overrides: ShortcutOverrides = {}, mac = isMac()): WorkbenchShortcut | undefined {
+  const binding = bindingFromEvent(event, false, mac);
+  if (!binding) return;
+  return shortcutCommands.find(command => effectiveBindings(command, overrides).some(candidate =>
+    (singleKeys || !singleKey(candidate)) && (bindingSignature(candidate, mac) === bindingSignature(binding, mac) ||
+      command === 'refresh' && overrides.refresh === undefined && candidate.modifiers.includes('primary') && ['control:r', 'meta:r'].includes(bindingSignature(binding, mac)))));
+}
+export function dispatchShortcut(event: ShortcutKeyEvent, actions: ShortcutActions, context: { singleKeys: boolean; blocked: boolean; editable: boolean; composing: boolean; overrides?: ShortcutOverrides; mac?: boolean }): void {
   if (event.defaultPrevented || context.blocked || context.editable || context.composing || event.isComposing || event.keyCode === 229) return;
-  const command = shortcutCommand(event, context.singleKeys), action = command && actions[command];
+  const command = shortcutCommand(event, context.singleKeys, context.overrides, context.mac), action = command && actions[command];
   if (!action) return;
-  // Consume a recognized key even while disabled or held, especially Ctrl/Cmd+R.
   event.preventDefault(); event.stopPropagation();
   if (!event.repeat && action.enabled) action.run();
 }
-
-export function shortcutHint(command: WorkbenchShortcut, singleKeys: boolean): string | undefined {
-  if (command === 'refresh') return singleKeys ? 'R · Ctrl/Cmd+R' : 'Ctrl/Cmd+R';
-  if (!singleKeys) return;
-  return command === 'help' ? '? (Shift+/)' : shortcutKeys[command].toUpperCase();
+export function bindingLabel(binding: ShortcutBinding): string {
+  const names: Record<ShortcutModifier, string> = { primary: 'Ctrl/Cmd', control: 'Ctrl', meta: 'Cmd', alt: 'Alt', shift: 'Shift' };
+  return [...binding.modifiers.map(modifier => names[modifier]), binding.key.toUpperCase()].join('+');
 }
-export function shortcutAria(command: WorkbenchShortcut, singleKeys: boolean): string | undefined {
-  const key = command === 'help' ? 'Shift+/' : shortcutKeys[command];
-  return command === 'refresh' ? `${singleKeys ? 'r ' : ''}Control+r Meta+r` : singleKeys ? key : undefined;
+export function shortcutHint(command: WorkbenchShortcut, singleKeys: boolean, overrides: ShortcutOverrides = {}): string | undefined {
+  const hints = effectiveBindings(command, overrides).filter(binding => singleKeys || !singleKey(binding)).map(bindingLabel);
+  return hints.length ? hints.join(' · ') : undefined;
 }
-export function shortcutTitle(title: string | undefined, command: WorkbenchShortcut, singleKeys: boolean): string | undefined {
-  const hint = shortcutHint(command, singleKeys);
+export function shortcutAria(command: WorkbenchShortcut, singleKeys: boolean, overrides: ShortcutOverrides = {}): string | undefined {
+  const names: Record<ShortcutModifier, string> = { primary: isMac() ? 'Meta' : 'Control', control: 'Control', meta: 'Meta', alt: 'Alt', shift: 'Shift' };
+  const hints = effectiveBindings(command, overrides).filter(binding => singleKeys || !singleKey(binding)).map(binding => [...binding.modifiers.map(modifier => names[modifier]), binding.key].join('+'));
+  return hints.length ? hints.join(' ') : undefined;
+}
+export function shortcutTitle(title: string | undefined, command: WorkbenchShortcut, singleKeys: boolean, overrides: ShortcutOverrides = {}): string | undefined {
+  const hint = shortcutHint(command, singleKeys, overrides);
   return hint ? `${title ? `${title} · ` : ''}${hint}` : title;
 }
