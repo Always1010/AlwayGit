@@ -5635,6 +5635,26 @@ export const catalog = {
     "en": "Open Worktree",
     "zh-CN": "打开工作树"
   },
+  "workbench.loadingRepositories": {
+    "en": "Loading repositories…",
+    "zh-CN": "正在加载仓库…"
+  },
+  "workbench.restoringRepositories": {
+    "en": "Restoring your saved repositories. Repository actions will be available when loading finishes.",
+    "zh-CN": "正在恢复已保存的仓库，加载完成后即可操作。"
+  },
+  "workbench.repositoryLoadingFailed": {
+    "en": "Could not load repositories",
+    "zh-CN": "仓库加载失败"
+  },
+  "workbench.repositoryLoadingSlow": {
+    "en": "Loading is taking longer than usual. You can check the log while waiting.",
+    "zh-CN": "加载时间较长，可查看日志了解情况。"
+  },
+  "workbench.retryRepositories": {
+    "en": "Retry",
+    "zh-CN": "重试"
+  },
   "workbenchEntry.showAlwayGitWorkbench": {
     "en": "Show AlwayGit Workbench",
     "zh-CN": "显示 AlwayGit Workbench"
@@ -7043,6 +7063,11 @@ export interface MessageParameters {
   "workbench.stashChangesCheckout": {  };
   "workbench.checkout": {  };
   "workbench.openWorktree": {  };
+  "workbench.loadingRepositories": {  };
+  "workbench.restoringRepositories": {  };
+  "workbench.repositoryLoadingFailed": {  };
+  "workbench.repositoryLoadingSlow": {  };
+  "workbench.retryRepositories": {  };
   "workbenchEntry.showAlwayGitWorkbench": {  };
   "workbenchEntry.openAlwayGitWorkbench": {  };
 }

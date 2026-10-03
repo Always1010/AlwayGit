@@ -132,6 +132,17 @@ describe('Workbench entry presentation', () => {
     expect(scan).toHaveBeenCalledTimes(2);
   });
 
+  it('waits for startup before opening the add-directory picker',async()=>{
+    let finish!:()=>void;
+    const scan=vi.fn(()=>new Promise<void>(resolve=>{finish=resolve;}));
+    const workbench=workbenchFixture(undefined,undefined,{scan});
+    const picker=vi.spyOn(workbench,'pickRepositoryDirectory').mockResolvedValue(undefined);
+    const request=workbench.handle({id:'early-add',method:'pickRepositoryDirectory'});
+    expect(picker).not.toHaveBeenCalled();
+    finish();await request;
+    expect(picker).toHaveBeenCalledOnce();expect(scan).toHaveBeenCalledOnce();
+  });
+
   it('checks a revealed repository without rebuilding the catalog or reloading on focus changes', async () => {
     const fixture = panelFixture(), workbench = workbenchFixture();
     vi.mocked(vscode.window.createWebviewPanel).mockReturnValue(fixture.panel as unknown as vscode.WebviewPanel);

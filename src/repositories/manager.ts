@@ -353,12 +353,19 @@ export class RepositoryManager implements vscode.Disposable {
     do{
       this.scanDirty=false;
       const generation=this.scanGeneration;this.scanWorkspace=this.workspaceKey();
-      const roots=await this.discoveryRoots(),revision=this.catalog.snapshot().revision,desiredRoots=new Set([...roots].map(pathKey)),discovered:Repository[]=[];
-      for(const root of roots){
-        if(this.disposed||generation!==this.scanGeneration)break;
-        try{const repo=await this.git.discover(root);if(generation===this.scanGeneration&&!this.disposed){discovered.push(repo);desiredRoots.add(pathKey(repo.root));}}
-        catch(error){this.log.appendLine(translate('en', "manager.discovery", { root: (root), value: (error instanceof Error?error.message:String(error)) }));}
-      }
+      const roots=await this.discoveryRoots(),revision=this.catalog.snapshot().revision,desiredRoots=new Set([...roots].map(pathKey));
+      const candidates=[...roots],results:Array<Repository|undefined>=new Array(candidates.length);
+      let next=0;
+      // Restore independent paths concurrently, while retaining catalog order and stale-scan checks.
+      await Promise.all(Array.from({length:Math.min(4,candidates.length)},async()=>{
+        while(next<candidates.length&&!this.disposed&&generation===this.scanGeneration){
+          const index=next++,root=candidates[index];
+          try{const repo=await this.git.discover(root);if(generation===this.scanGeneration&&!this.disposed)results[index]=repo;}
+          catch(error){this.log.appendLine(translate('en', "manager.discovery", { root: (root), value: (error instanceof Error?error.message:String(error)) }));}
+        }
+      }));
+      const discovered=results.filter((repo):repo is Repository=>!!repo);
+      for(const repo of discovered)desiredRoots.add(pathKey(repo.root));
       if(this.disposed)return;
       const currentRoots=await this.discoveryRoots();
       if(generation!==this.scanGeneration||this.workspaceKey()!==this.scanWorkspace||this.rootsKey(currentRoots)!==this.rootsKey(roots)||this.catalog.snapshot().revision!==revision){this.scanDirty=true;continue;}
