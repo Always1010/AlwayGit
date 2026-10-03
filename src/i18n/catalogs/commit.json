@@ -137,6 +137,12 @@
     "review": "translated",
     "context": "webview/CommitDialog.tsx, webview/menus.ts, src/git/selected-commit.ts"
   },
+  "commit.hookScopeChanged": {
+    "en": "A Git hook added changes outside the selected files. HEAD was not updated. Reopen the commit dialog and review the scope; hook changes on disk may remain.",
+    "zh-CN": "Git Hook 添加了所选文件之外的更改，HEAD 未更新。请重新打开提交窗口核对范围；Hook 对磁盘文件的修改可能仍保留。",
+    "review": "translated",
+    "context": "src/git/selected-commit.ts, src/git/selected-commit-hooks.ts / selected commit scope guard"
+  },
   "commit.selectionOperationBlocked": {
     "en": "Commit Selected is unavailable during an active Git operation or conflicts. Review and commit the complete staged result.",
     "zh-CN": "存在活动 Git 操作或冲突时无法提交所选文件，请检查并提交完整暂存结果。",

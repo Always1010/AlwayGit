@@ -96,7 +96,7 @@ export class GitService implements GitServiceContract {
     if (!readOnly && scopeSignal) throw new GitError(localizeMessage("service.aReadOnlyRequestCannotRunGitMutations"), 'WRITE_IN_READ_SCOPE');
     const unsafe = unsafeTerminations.get(normalized(repo.commonDir));
     if (!readOnly && unsafe) throw unsafe;
-    const prefix = ['-C', execution.root ?? repo.root, ...(args[0] === 'stash' ? [] : ['--literal-pathspecs'])];
+    const prefix = ['-C', execution.root ?? repo.root, ...(args[0] === 'stash' ? [] : ['--literal-pathspecs']), ...Object.entries(execution.config ?? {}).flatMap(([key, value]) => ['-c', `${key}=${value}`])];
     const batches = splitCleanArguments(this.options.gitPath ?? 'git', prefix, args);
     if (batches.length > 1) {
       const results: Result[] = [];
@@ -698,7 +698,7 @@ export class GitService implements GitServiceContract {
                 const before = beforeByPath.get(file.path), after = afterByPath.get(file.path);
                 return !before || !after || before.indexStatus !== after.indexStatus || before.worktreeStatus !== after.worktreeStatus || before.originalPath !== after.originalPath;
               })) throw new GitError(localizeMessage('commit.selectionChanged'), 'OPERATION_CHANGED');
-            });
+            }, this.options.gitPath ?? 'git');
           return;
         }
         await this.requireReview(repo, snapshot, action.reviewToken);

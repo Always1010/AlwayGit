@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-072：提交 Hook 可将未选文件带入所选文件提交
+
+- 日期：2026-10-04
+- 状态：已解决
+- 现象：仅选择一个文件提交，pre-commit 若暂存其他文件，最终 Commit 也包含未选文件。
+- 原因：独立 Index 只限制了初始清单，原生 Hook 执行后没有校验最终候选提交范围。
+- 解决方案：临时委托原有 Hooks，在 reference-transaction 的 prepared 阶段投影并校验候选 Tree，范围外更改拒绝更新 HEAD，保留真实 Index；仍允许所选文件格式化、消息处理、签名和提交后 Hooks，不覆盖已有环境配置，不保证回滚 Hook 的磁盘副作用。
+- 验证方式：真实 Git 所选提交回归通过，覆盖 pre-commit 扩大范围被拒绝、commit-msg 的迟到 Index 写入隔离、自定义中文及引号路径、消息 Hook、引用 Hook 参数与输入、提交后 Hook、环境配置、长路径、删除、重命名、未出生分支、Amend、linked worktree 和 split Index；国际化与类型检查通过。
+- 相关文件：`src/git/selected-commit.ts`、`src/git/selected-commit-hooks.ts`、`src/git/service.ts`、`src/git/stash.ts`、`src/i18n/catalogs/commit.json`、`tests/selected-commit.test.ts`。
+
 ## BUG-071：大批量所选文件提交后暂存区回写失败
 
 - 日期：2026-10-04
