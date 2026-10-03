@@ -13,7 +13,7 @@ export function assertGitArgumentBudget(executable: string, args: readonly strin
 
 export function prepareGitArguments(args: string[], input?: Buffer): { args: string[]; input?: Buffer } {
   if (input !== undefined) return { args, input };
-  if (['add', 'restore', 'rm'].includes(args[0])) {
+  if (['add', 'restore', 'rm', 'reset'].includes(args[0])) {
     const separator = args.indexOf('--');
     if (separator !== -1 && separator + 1 < args.length) {
       return { args: [...args.slice(0, separator), '--pathspec-from-file=-', '--pathspec-file-nul'], input: Buffer.from(`${args.slice(separator + 1).join('\0')}\0`, 'utf8') };
