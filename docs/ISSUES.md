@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-062：侧栏同时保留多个互不相关的操作选择
+
+- 日期：2026-10-03
+- 状态：已解决
+- 现象：单击 Repository 后再选择 Local Branch、Remote Branch 或 Worktree，Repository 的蓝色操作选择仍然保留；Local 与 Remote 分支却会互相取消，侧栏同时显示多个不能被同一命令使用的操作目标，容易与当前仓库和 Graph 勾选混淆。
+- 原因：Repository、分支和 Worktree 分别使用 `selectedRepositoryKeys`、`selectedRefs` 与组件局部状态；各入口只更新自己的选择。Local 与 Remote 因共用 `selectedRefs` 而互斥，Repository 和 Worktree 则没有参与统一的作用域切换。
+- 解决方案：将 Worktree 操作选择提升到统一状态层；Repository、分支或 Worktree 产生非空选择时同步清除另外两类侧栏操作选择，空选择只清除自身作用域。当前仓库、当前分支与 Graph `checkedRefs` 保持独立，不因操作作用域切换而改变。
+- 验证方式：1207 条双语资源检查、类型检查、64 项 UI 状态单测和生产构建通过；无头 Workbench 与 Worktrees 专项通过，覆盖单击、右键、Ctrl/Cmd+A 在 Repository、Local、Remote、Worktree 间切换时只保留一个蓝色操作选择，并保留 Graph 勾选及当前状态。未运行全量测试、真实 VS Code 桌面集成、VSIX 打包或本机安装。
+- 相关文件：`webview/store.ts`、`webview/Sidebar.tsx`、`tests/ui-state.test.ts`、`scripts/test-ui.mjs`、`scripts/test-worktrees-ui.mjs`、`docs/WORKBENCH_SPEC.md`、双语用户手册与验证文档。
+
 ## BUG-061：Reset 模式固定回到 Mixed 且无法保存默认值
 
 - 日期：2026-10-03

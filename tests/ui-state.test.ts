@@ -161,6 +161,18 @@ describe('repository UI consistency', () => {
     expect(store.getState().checkedRefs).toEqual([]);
     expect(bridge.rpc.mock.calls.filter(([method])=>method==='history').at(-1)?.[2]).toMatchObject({tips:[]});
   });
+  it('keeps only one non-empty sidebar action-selection scope', () => {
+    store.getState().setRepositorySelection(['repository-a'],'repository-a');
+    expect(store.getState()).toMatchObject({selectedRepositoryKeys:['repository-a'],repositorySelectionAnchor:'repository-a',selectedRefs:[],selectedWorktreePaths:[]});
+    store.getState().setRefSelection(['refs/heads/main'],'refs/heads/main');
+    expect(store.getState()).toMatchObject({selectedRepositoryKeys:[],selectedRefs:['refs/heads/main'],refSelectionAnchor:'refs/heads/main',selectedWorktreePaths:[]});
+    store.getState().setWorktreeSelection(['/a-worktree'],'/a-worktree');
+    expect(store.getState()).toMatchObject({selectedRepositoryKeys:[],selectedRefs:[],selectedWorktreePaths:['/a-worktree'],worktreeSelectionAnchor:'/a-worktree'});
+    store.getState().setRepositorySelection(['repository-b'],'repository-b');
+    store.getState().setRefSelection([]);
+    store.getState().setWorktreeSelection([]);
+    expect(store.getState()).toMatchObject({selectedRepositoryKeys:['repository-b'],selectedRefs:[],selectedWorktreePaths:[]});
+  });
   it('changes language and layout without mutating repository selection or drafts', async () => {
     await store.getState().selectRepository('a');store.getState().setDraft('用户原文');
     const id=store.getState().selectedOid;

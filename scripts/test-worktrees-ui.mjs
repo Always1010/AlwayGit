@@ -111,8 +111,12 @@ export async function verifyWorktrees(browser, url) {
     await page.waitForTimeout(30);
     assert.equal(await page.evaluate(() => window.__worktreeFixture.session.repoId), 'main', 'Single-clicking a Worktree must not switch it');
     assert.equal(await readDraft(), 'Main draft');
+    assert.equal(await page.locator('.repository-list [aria-selected="true"]').count(),0,'Selecting a Worktree action scope clears Repository action selection');
+    await clone.click();
+    assert.equal(await page.locator('.worktree-list [aria-selected="true"]').count(),0,'Selecting a Repository action scope clears Worktree action selection');
     await featureWorktree.press('Control+a');
     assert.equal(await page.locator('.worktree-list [aria-selected="true"]').count(), 2, 'Ctrl+A selects every Worktree without switching');
+    assert.equal(await page.locator('.repository-list [aria-selected="true"]').count(),0,'Worktree Ctrl+A leaves no stale Repository action selection');
     assert.equal(await page.evaluate(() => window.getSelection()?.toString()), '', 'Worktree Ctrl+A must not select page text');
     await featureWorktree.press('Escape');
     assert.equal(await page.locator('.worktree-list [aria-selected="true"]').count(), 0, 'Escape clears Worktree selection');
