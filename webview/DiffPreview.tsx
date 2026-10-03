@@ -36,7 +36,7 @@ function content(value:string|undefined,other:string|undefined,changed:boolean,s
   const parts=changedParts(side==='before'?value:other,side==='before'?other:value),middle=side==='before'?parts.before:parts.after;
   return <code style={style}>{parts.prefix}{middle&&<mark className={side==='before'?'diff-word-removed':'diff-word-added'}>{middle}</mark>}{parts.suffix}</code>;
 }
-function DiffPreviewPanel({ native, edit }: { native():void; edit():void }) {
+function DiffPreviewPanel({ native, edit, active = true }: { native():void; edit():void; active?:boolean }) {
   const state=useWorkbenchFields('appearance', 'diffNavigationScope', 'details', 'selectedStashOid', 'tab', 'diffRevision', 'diffTarget', 'layout', 'repoId', 'selectedFile', 'selectFile', 'setLayout'),t=useTranslation(),[preview,setPreview]=useState<Preview>(),[error,setError]=useState<string>(),[loading,setLoading]=useState(false),[selection,setSelection]=useState<Selection>(),[horizontalScroll,setHorizontalScroll]=useState(0),[viewportWidth,setViewportWidth]=useState(0),viewport=useRef<HTMLDivElement>(null),displayedKey=useRef(''),lastScrollTop=useRef(0),navigationScroll=useRef<number|undefined>(undefined);
   const [navigating,setNavigating]=useState(false),[navigationError,setNavigationError]=useState<string>(),[noNavigableFiles,setNoNavigableFiles]=useState(false),navigationRequest=useRef<AbortController|undefined>(undefined),preloaded=useRef<{key:string;preview:Preview}|undefined>(undefined),landing=useRef<{key:string;index:number}|undefined>(undefined);
   const [imageZoom,setImageZoom]=useState<ImageZoom>('fit'),[maximized,setMaximized]=useState(false),imageSides=[useRef<HTMLDivElement>(null),useRef<HTMLDivElement>(null)] as const,syncingImageScroll=useRef(false);
@@ -48,7 +48,7 @@ function DiffPreviewPanel({ native, edit }: { native():void; edit():void }) {
     const measure=()=>setViewportWidth(element.clientWidth);
     measure();const observer=new ResizeObserver(measure);observer.observe(element);
     return()=>observer.disconnect();
-  },[collapsed]);
+  },[collapsed,active]);
   const targetKey=JSON.stringify([state.repoId,diffKey(state.diffTarget)]),revision=state.diffTarget?.kind==='change'?state.diffRevision:0;
   const commitTarget=state.diffTarget?.kind==='commit'?state.diffTarget:undefined;
   const commitFiles=state.diffNavigationScope==='commit'&&commitTarget&&!state.selectedStashOid&&state.tab==='history'&&state.details?.commit.oid===commitTarget.oid&&state.details.parent===commitTarget.parent?state.details.files:undefined;
@@ -190,10 +190,10 @@ function DiffPreviewPanel({ native, edit }: { native():void; edit():void }) {
     pendingNavigation.current=undefined;void navigate(pending.direction);
   },[collapsed,targetKey,navigationDisabled,viewportWidth]);
   useShortcuts({
-    diff:{enabled:!!state.diffTarget&&!nativeUnavailable,run:native},edit:{enabled:!!state.selectedFile&&!nativeUnavailable,run:edit},
-    previousChange:{enabled:!!preview&&displayedKey.current===targetKey&&!navigationDisabled,run:()=>moveChange(-1)},
-    nextChange:{enabled:!!preview&&displayedKey.current===targetKey&&!navigationDisabled,run:()=>moveChange(1)},
-    toggleDiff:{enabled:true,run:toggleDiff},
+    diff:{enabled:active&&!!state.diffTarget&&!nativeUnavailable,run:native},edit:{enabled:active&&!!state.selectedFile&&!nativeUnavailable,run:edit},
+    previousChange:{enabled:active&&!!preview&&displayedKey.current===targetKey&&!navigationDisabled,run:()=>moveChange(-1)},
+    nextChange:{enabled:active&&!!preview&&displayedKey.current===targetKey&&!navigationDisabled,run:()=>moveChange(1)},
+    toggleDiff:{enabled:active,run:toggleDiff},
   });
   const statusLabel=`${addedLabel}: ${summary.added}; ${modifiedLabel}: ${summary.modified}; ${removedLabel}: ${summary.removed}; ${countLabel}: ${countText}`;
   const binaryTitle=preview?.kind==='binary'?(preview.reason==='image-too-large'?t("diff.imageExceedsThe4MiBPreviewLimit"):preview.reason==='image-dimensions-too-large'?t("diff.imageDimensionsExceedThePreviewLimit"):t("diff.binaryFileTextPreviewUnavailable")):undefined;

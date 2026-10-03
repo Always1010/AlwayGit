@@ -7,7 +7,7 @@ import { RepositoryRemoveDialog } from './RepositoryRemoveDialog';
 import { Sidebar } from './Sidebar';
 import { History } from './History';
 import { Details } from './Details';
-import { DiffPreview } from './DiffPreview';
+import { BottomDock } from './BottomDock';
 import { ActionFeedbackBar } from './ActionFeedbackBar';
 import { blocksWorkbench } from './actionFeedback';
 import { OperationProgress } from './OperationProgress';
@@ -123,8 +123,8 @@ export function App() {
     <div className="workspace"><Sidebar context={showContext} actions={sidebarActions} checkoutBranch={checkoutBranch} openWorktree={openWorktree}/><ResizeHandle axis="x" label={uiText("workbench.resizeRepositorySidebar")} value={layout.sidebar} min={160} max={360} onChange={sidebar=>state.setLayout({sidebar})}/><main ref={mainPanel} className={`main-panel${layout.diffCollapsed?' diff-collapsed':''}`} style={{'--diff-height':`${diffHeight}px`} as React.CSSProperties}>
       {!snapshot?<Empty title={repositoryState==='opening'?t("workbench.openingRepository"):repositoryState==='unavailable'?t("workbench.repositoryUnavailable"):hasRepositories?t("workbench.noRepositorySelected"):t("workbench.noRepositoriesAdded")}>{repositoryState!=='opening'&&<>{repositoryState==='unavailable'?<span>{t("workbench.theRepositoryFolderNoLongerExistsOrCannotBe")}</span>:hasRepositories?<span>{t("workbench.chooseARepositoryFromTheWorkbenchSidebarToBegin")}</span>:<span>{t("workbench.scanAFolderAndChooseWhichGitRepositoriesAlwayGit")}</span>}<Button className={!hasRepositories?'primary':''} icon="folder-opened" onClick={()=>void addRepository()}>{hasRepositories?t("workbench.addRepositories"):t("workbench.findAndAddRepositories")}</Button><Button icon="question" onClick={showHelp}>{t("workbench.quickStart")}</Button></>}</Empty>:<>
         <div className="top-panels"><History context={showContext} checkout={checkout} checkoutBranch={checkoutBranch}/><ResizeHandle axis="x" label={uiText("workbench.resizeDetailsPanel")} value={layout.details} min={230} max={480} reverse onChange={details=>state.setLayout({details})}/><Details open={open} edit={editSelected} context={showContext} startCommit={startCommit}/></div>
-        {!layout.diffCollapsed&&<ResizeHandle axis="y" label={uiText("workbench.resizeDiffPanel")} value={diffHeight} min={130} max={maxDiffHeight} reverse onChange={diff=>state.setLayout({diff})}/>}<DiffPreview native={native} edit={editSelected}/>
       </>}
+      {!layout.diffCollapsed&&<ResizeHandle axis="y" label={uiText("workbench.resizeDiffPanel")} value={diffHeight} min={130} max={maxDiffHeight} reverse onChange={diff=>state.setLayout({diff})}/>}<BottomDock native={native} edit={editSelected}/>
     </main></div>
     {dialog&&snapshot&&!state.checkoutFailure&&!state.operationReview&&<ActionDialog key={`${state.repoId}-${dialog.type}-${dialog.target}-${dialog.sources?.join('|')}-${dialog.names?.join('|')}-${dialog.remoteBranches?.join('|')}-${dialog.pop}`} dialog={dialog} onClose={()=>setDialog(undefined)} openAbort={()=>open({type:'operation.abort'})} replaceDialog={setDialog}/>}
     {repositoryDialog&&<RepositoryDialog onClose={()=>setRepositoryDialog(false)}/>}

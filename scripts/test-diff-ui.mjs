@@ -28,10 +28,10 @@ export async function verifyDiffNavigation(browser, url) {
     await resize.press('End');
     assert.ok((await diff.boundingBox()).height > 450, 'Diff panel maximum follows the available workbench height');
     const expandedHeight = (await diff.boundingBox()).height;
-    await diff.getByRole('button', { name: 'Minimize Diff panel' }).click();
-    assert.ok((await diff.boundingBox()).height <= 27, 'Minimized Diff keeps only its heading');
+    await page.getByTestId('bottom-dock').getByRole('button', { name: 'Collapse bottom panel' }).click();
+    assert.ok((await page.getByTestId('bottom-dock').boundingBox()).height <= 32, 'Collapsed dock keeps its tabs');
     assert.equal(await diff.locator('.diff-viewport').count(), 0);
-    await diff.getByRole('button', { name: 'Expand Diff panel' }).click();
+    await page.getByTestId('bottom-dock').getByRole('button', { name: 'Expand bottom panel' }).click();
     assert.ok(Math.abs((await diff.boundingBox()).height - expandedHeight) < 2, 'Expanded Diff restores its previous height');
     assert.equal(await diff.getByRole('button', { name: 'Previous change' }).isEnabled(), true);
     await diff.getByRole('button', { name: 'Previous change' }).click();
@@ -71,10 +71,10 @@ export async function verifyDiffNavigation(browser, url) {
     assert.equal(await diff.getByRole('button', { name: 'Previous change' }).isDisabled(), true);
     assert.equal(await diff.getByRole('button', { name: 'Next change' }).isDisabled(), true);
     assert.equal(await viewport.evaluate(element => element.scrollLeft), 0);
-    await diff.getByRole('button', { name: 'Minimize Diff panel' }).click();
+    await page.getByTestId('bottom-dock').getByRole('button', { name: 'Collapse bottom panel' }).click();
     await page.getByTestId('details').getByRole('button', { name: 'single.txt', exact: true }).click();
-    await count.getByText('1/1', { exact: true }).waitFor();
-    await diff.getByRole('button', { name: 'Expand Diff panel' }).click();
+    await count.getByText('1/1', { exact: true }).waitFor({ state: 'attached' });
+    await page.getByTestId('bottom-dock').getByRole('button', { name: 'Expand bottom panel' }).click();
     await assertRevealed();
     for (const direction of ['Previous change', 'Next change']) {
       assert.equal(await diff.getByRole('button', { name: direction }).isEnabled(), true);
@@ -84,8 +84,8 @@ export async function verifyDiffNavigation(browser, url) {
       assert.equal(await count.innerText(), '1/1', 'Repeated single-change navigation retains the only block');
     }
     const singleScroll = await viewport.evaluate(element => element.scrollTop);
-    await diff.getByRole('button', { name: 'Minimize Diff panel' }).click();
-    await diff.getByRole('button', { name: 'Expand Diff panel' }).click();
+    await page.getByTestId('bottom-dock').getByRole('button', { name: 'Collapse bottom panel' }).click();
+    await page.getByTestId('bottom-dock').getByRole('button', { name: 'Expand bottom panel' }).click();
     await assertRevealed();
     assert.ok(Math.abs(await viewport.evaluate(element => element.scrollTop) - singleScroll) < 2, 'Collapse/expand preserves the reading position');
     await page.getByTestId('details').getByRole('button', { name: 'large.txt', exact: true }).click();

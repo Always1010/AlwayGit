@@ -1564,6 +1564,106 @@ export const catalog = {
     "en": "Diff · ",
     "zh-CN": "Diff · "
   },
+  "dock.terminalLabel": {
+    "en": "Terminal {{title}}",
+    "zh-CN": "终端 {{title}}"
+  },
+  "dock.panel": {
+    "en": "Bottom panel",
+    "zh-CN": "底部面板"
+  },
+  "dock.tabs": {
+    "en": "Diff and terminals",
+    "zh-CN": "Diff 与终端"
+  },
+  "dock.newTerminal": {
+    "en": "New embedded terminal",
+    "zh-CN": "新建内嵌终端"
+  },
+  "dock.chooseShell": {
+    "en": "Choose shell",
+    "zh-CN": "选择 Shell"
+  },
+  "dock.defaultShell": {
+    "en": "Default shell",
+    "zh-CN": "默认 Shell"
+  },
+  "dock.allTabs": {
+    "en": "All tabs",
+    "zh-CN": "全部标签"
+  },
+  "dock.close": {
+    "en": "Close terminal and end its shell",
+    "zh-CN": "关闭终端并结束 Shell"
+  },
+  "dock.maximize": {
+    "en": "Maximize bottom panel",
+    "zh-CN": "最大化底部面板"
+  },
+  "dock.restore": {
+    "en": "Restore bottom panel",
+    "zh-CN": "还原底部面板"
+  },
+  "dock.expand": {
+    "en": "Expand bottom panel",
+    "zh-CN": "展开底部面板"
+  },
+  "dock.collapse": {
+    "en": "Collapse bottom panel",
+    "zh-CN": "收起底部面板"
+  },
+  "dock.clear": {
+    "en": "Clear terminal display",
+    "zh-CN": "清空终端显示"
+  },
+  "dock.rename": {
+    "en": "Rename terminal",
+    "zh-CN": "重命名终端"
+  },
+  "dock.stop": {
+    "en": "End shell process",
+    "zh-CN": "结束 Shell 进程"
+  },
+  "dock.restart": {
+    "en": "Restart terminal",
+    "zh-CN": "重新启动终端"
+  },
+  "dock.exited": {
+    "en": "Exited ({{code}})",
+    "zh-CN": "已退出（{{code}}）"
+  },
+  "dock.closed": {
+    "en": "Terminal workbench is closed.",
+    "zh-CN": "终端工作台已关闭。"
+  },
+  "dock.limit": {
+    "en": "Close a terminal before opening more (maximum 24 per workbench).",
+    "zh-CN": "请先关闭一个终端，每个工作台最多保留 24 个终端。"
+  },
+  "dock.unavailable": {
+    "en": "Terminal session is unavailable in this workbench.",
+    "zh-CN": "此工作台中的终端会话不可用。"
+  },
+  "dock.liveWorkbench": {
+    "en": "Terminal requests require a live workbench.",
+    "zh-CN": "终端请求需要已打开的工作台。"
+  },
+  "dock.stopBeforeRestart": {
+    "en": "Stop the terminal before restarting it.",
+    "zh-CN": "请先结束终端进程，再重新启动。"
+  },
+  "dock.cmdWindows": {
+    "en": "cmd is only available on Windows.",
+    "zh-CN": "cmd 仅支持 Windows。"
+  },
+  "dock.profileArgs": {
+    "en": "Embedded terminals require shell profile arguments as an array.",
+    "zh-CN": "内嵌终端要求 Shell 配置的 args 为数组。"
+  },
+  "dock.invalidAcknowledgement": {
+    "en": "Invalid terminal output acknowledgement.",
+    "zh-CN": "终端输出确认无效。"
+  },
   "documents.thisComparisonHasExpiredOpenItAgainFromAlwayGit": {
     "en": "This comparison has expired. Open it again from AlwayGit.",
     "zh-CN": "此比较已过期，请从 AlwayGit 重新打开。"
@@ -2407,6 +2507,10 @@ export const catalog = {
   "manager.discovery": {
     "en": "[discovery] {{root}}: {{value}}",
     "zh-CN": "[discovery] {{root}}: {{value}}"
+  },
+  "manifest.newTerminal": {
+    "en": "New Embedded Terminal",
+    "zh-CN": "新建内嵌终端"
   },
   "manifest.displayName": {
     "en": "AlwayGit",
@@ -5564,6 +5668,31 @@ export interface MessageParameters {
   "diff.imagePreviewFor": { label: ParameterValue };
   "diff.selectAFileToPreviewItsDiff": {  };
   "diff.diff": {  };
+  "dock.terminalLabel": { title: ParameterValue };
+  "dock.panel": {  };
+  "dock.tabs": {  };
+  "dock.newTerminal": {  };
+  "dock.chooseShell": {  };
+  "dock.defaultShell": {  };
+  "dock.allTabs": {  };
+  "dock.close": {  };
+  "dock.maximize": {  };
+  "dock.restore": {  };
+  "dock.expand": {  };
+  "dock.collapse": {  };
+  "dock.clear": {  };
+  "dock.rename": {  };
+  "dock.stop": {  };
+  "dock.restart": {  };
+  "dock.exited": { code: ParameterValue };
+  "dock.closed": {  };
+  "dock.limit": {  };
+  "dock.unavailable": {  };
+  "dock.liveWorkbench": {  };
+  "dock.stopBeforeRestart": {  };
+  "dock.cmdWindows": {  };
+  "dock.profileArgs": {  };
+  "dock.invalidAcknowledgement": {  };
   "documents.thisComparisonHasExpiredOpenItAgainFromAlwayGit": {  };
   "documents.alwayGitFileExceedsThe8MBTextPreviewLimit": {  };
   "documents.alwayGitBinaryFileTextComparisonIsUnavailable": {  };
@@ -5772,6 +5901,7 @@ export interface MessageParameters {
   "manager.repositoryGroupNameIsTooLong": {  };
   "manager.aRepositoryGroupWithThisNameAlreadyExists": {  };
   "manager.discovery": { root: ParameterValue; value: ParameterValue };
+  "manifest.newTerminal": {  };
   "manifest.displayName": {  };
   "manifest.description": {  };
   "manifest.capabilities.untrustedWorkspaces.description": {  };

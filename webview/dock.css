@@ -1,0 +1,26 @@
+.bottom-dock {display:flex;flex-direction:column;min-height:0;min-width:0;background:var(--bg);border-top:1px solid var(--section-border);overflow:hidden;}
+.dock-heading {display:flex;align-items:center;min-height:30px;height:30px;flex:none;background:var(--surface-header);border-bottom:1px solid var(--section-border);padding-right:4px;}
+.dock-tabs {display:flex;align-items:stretch;overflow-x:auto;overflow-y:hidden;min-width:0;flex:1;scrollbar-width:none;height:100%;}
+.dock-tabs::-webkit-scrollbar {display:none;}
+.dock-tab-wrap {display:flex;flex:none;border-right:1px solid var(--section-border);max-width:220px;}
+.dock-tab {display:flex;gap:5px;align-items:center;min-width:85px;max-width:220px;padding:0 9px;flex:none;background:transparent;border:0;border-bottom:2px solid transparent;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;}
+.dock-tab-wrap .dock-tab {flex:1;min-width:0;max-width:190px;}
+.dock-tab>span {overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.dock-tab[aria-selected=true] {color:var(--fg);background:var(--bg);border-bottom-color:var(--accent);}
+.dock-tab:hover {background:var(--hover);color:var(--fg);}
+.dock-tab:focus-visible {outline:1px solid var(--accent);outline-offset:-2px;}
+.dock-tab-close {align-self:center;flex:none;}
+.dock-common-actions {display:flex;align-items:center;flex:none;gap:1px;padding-left:3px;}
+.dock-menu-anchor {position:relative;display:flex;}
+.dock-menu {position:fixed;z-index:100;display:flex;flex-direction:column;min-width:185px;max-width:min(480px,80vw);max-height:min(350px,50vh);overflow:auto;background:var(--panel);border:1px solid var(--border);box-shadow:0 4px 14px #0004;padding:4px;}
+.dock-menu button {display:flex;flex-direction:column;align-items:flex-start;background:transparent;border:0;text-align:left;color:var(--fg);font:inherit;padding:6px 9px;cursor:pointer;}
+.dock-menu button:hover,.dock-menu button:focus-visible {background:var(--hover);}
+.dock-menu small {color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dock-content {display:flex;flex-direction:column;flex:1;min-height:0;min-width:0;overflow:hidden;}
+.dock-content[hidden] {display:none;}
+.dock-content>.diff-preview {flex:1;border-top:0;box-shadow:none;}
+.terminal-view {flex:1;min-height:0;min-width:0;padding:4px 7px;overflow:hidden;}
+.terminal-view>.xterm {height:100%;}
+.terminal-content .inline-actions {flex-wrap:nowrap;}
+.dock-maximized {position:fixed;inset:0;z-index:85;}
+.main-panel.diff-collapsed {grid-template-rows:minmax(0,1fr) 31px;}

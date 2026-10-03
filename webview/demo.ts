@@ -3,11 +3,13 @@ import { branchNameConflict, branchNameConflictMessage } from '../src/protocol/r
 import { reconcileRepositoryOrder } from '../src/protocol/repository-order';
 import type { RepositoryOrder, ReorderRepository, Commit, CommitComparison, CommitDetails, GitAction, HistoryPage, HistoryQuery, HostMessage, Repository, RepositoryCollection, RepositoryStatus, RpcRequest, Snapshot, OperationSettings, StashDetails, DiscardPlan, DiscardRequest } from '../src/protocol/types';
 import { RpcError } from './rpc-error';
+import type { TerminalSnapshot, TerminalShell } from '../src/protocol/terminal';
 
 /** Construct sample state only when the explicit Demo transport is used. */
 export function createDemoRequest(emit: (event: HostMessage) => void) {
 const noRemoteDemo = new URLSearchParams(location.search).get('noRemote') === '1';
 const discardPlans = new Map<string, DiscardPlan>();
+const terminals = new Map<string, TerminalSnapshot>();
 const repo: Repository = { id: 'demo-alwaygit', root: 'D:\\Projects\\AlwayGit', commonDir: 'D:\\Projects\\AlwayGit\\.git', name: 'AlwayGit' };
 const subjects = ['Polish repository workbench interactions', 'Add native diff integration', 'Merge branch feature/history-graph', 'Render commit graph with stable lanes', 'Keep commit drafts when switching repositories', 'Handle renamed files in changes', 'Improve keyboard navigation', 'Add worktree discovery', 'Show upstream tracking status', 'Update development dependencies', 'Fix status refresh after checkout', 'Introduce Git operation progress'];
 const authors = ['Alex Chen', 'Morgan Lee', 'Sam Rivera', 'Jamie Park'];
@@ -44,6 +46,33 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
   await new Promise(resolve => setTimeout(resolve, 110));
   const data=demoStores[repoId??repo.id]??demoStores[repo.id],demoSnapshot=data.snapshot,commits=data.commits;
   const resolve=(ref:string)=>ref==='HEAD'?demoSnapshot.head!:demoSnapshot.refs.find(r=>r.name===ref||r.fullName===ref)?.oid??ref;
+  if (method === 'terminalList') return [...terminals.values()].map(({ output, sequence, ...session }) => session);
+  if (method === 'terminalCreate') {
+    const shell = (payload as { shell: TerminalShell }).shell;
+    const session: TerminalSnapshot = { id: crypto.randomUUID(), repoId: demoSnapshot.repository.id, cwd: demoSnapshot.repository.root,
+      shell, title: `${shell === 'default' ? 'PowerShell' : shell} ${terminals.size + 1}`, status: 'running', sequence: 0,
+      output: 'Demo terminal — input is displayed here; no commands are executed.\r\n> ' };
+    terminals.set(session.id, session); return session;
+  }
+  if (method.startsWith('terminal')) {
+    const data = payload as { sessionId: string; data?: string; title?: string }, session = terminals.get(data.sessionId);
+    if (!session) throw new Error('Demo terminal is closed.');
+    if (method === 'terminalClipboard') return navigator.clipboard.readText();
+    if (method === 'terminalSync') return { ...session };
+    if (method === 'terminalInput') {
+      const output = data.data!.replace(/\r/g, '\r\n> '); session.output += output;
+      emit({ type: 'terminalOutput', sessionId: session.id, sequence: ++session.sequence, data: output });
+    }
+    if (method === 'terminalRename') { session.title = data.title!; emit({ type: 'terminalUpdated', session: { ...session } }); }
+    if (method === 'terminalStop') { session.status = 'exited'; session.exitCode = 0; emit({ type: 'terminalUpdated', session: { ...session } }); }
+    if (method === 'terminalClose') { terminals.delete(session.id); emit({ type: 'terminalClosed', sessionId: session.id }); }
+    if (method === 'terminalRestart') {
+      terminals.delete(session.id); emit({ type: 'terminalClosed', sessionId: session.id });
+      const restarted = { ...session, id: crypto.randomUUID(), status: 'running' as const, exitCode: undefined, sequence: 0, output: '> ' };
+      terminals.set(restarted.id, restarted); return restarted;
+    }
+    return null;
+  }
   if (method === 'operationSettings') return { ...demoOperationSettings };
   if (method === 'saveOperationSettings') { const update=payload as Omit<OperationSettings,'scope'>;demoOperationSettings = { ...update, scope: 'workspace' }; localStorage.setItem('alwaygit.demo-allowDetachedHead', String(demoOperationSettings.allowDetachedHead));localStorage.setItem('alwaygit.demo-pushFollowTags',String(demoOperationSettings.pushFollowTags));localStorage.setItem('alwaygit.demo-pushTagAfterCreate',String(demoOperationSettings.pushTagAfterCreate));localStorage.setItem('alwaygit.demo-defaultResetMode',demoOperationSettings.defaultResetMode); emit({ type: 'operationSettingsChanged', settings: { ...demoOperationSettings } }); return { ...demoOperationSettings }; }
   if (method === 'repositories') return [repo,website];
