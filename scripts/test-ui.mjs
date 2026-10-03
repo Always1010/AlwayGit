@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { verifyRefresh } from './test-refresh-ui.mjs';
 import { verifyFeedback } from './test-feedback-ui.mjs';
 import { verifyFiles } from './test-files-ui.mjs';
-import { verifyHistoryRows, verifyLocateHead, verifyHistoryLocation } from './test-history-ui.mjs';
+import { verifyHistoryRows, verifyLocateHead, verifyHistoryNavigation } from './test-history-ui.mjs';
 import { verifyDiffNavigation } from './test-diff-ui.mjs';
 import { verifyWorktrees } from './test-worktrees-ui.mjs';
 import { verifyAppearance } from './test-appearance-ui.mjs';
@@ -86,7 +86,7 @@ async function verifyHistory(browser, url) {
     await page.close();
   }
   await verifyLocateHead(browser, url);
-  await verifyHistoryLocation(browser, url);
+  await verifyHistoryNavigation(browser, url);
 }
 
 async function verifyWorkbench(browser, url) {
