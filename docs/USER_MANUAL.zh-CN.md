@@ -233,10 +233,11 @@ Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区�
 
 **前提：** 仓库已有提交。
 
-1. 在左侧勾选要查看的本地分支、远端分支或 Tag；多个引用显示它们可达提交的并集。
-2. 用 Show in Graph 把一个引用加入现有范围；用 Show Only This Branch 或 Tag 只看目标。
+1. 在左侧勾选本地或远端分支，通过 Tag 右键菜单选择标签范围；多个引用显示它们可达提交的并集。
+2. 用 Add to Graph Scope 把一个引用加入现有范围；用 Show Only This Branch History 或 Show Only This Tag History 只看目标历史。
 3. 使用 Local Branches 下方预设快速显示全部本地分支或仅当前分支。
-4. 找不到当前版本时使用 Locate HEAD，确认当前分支对应的提交。
+4. 从 History 顶部核对当前位置（实际分支与 HEAD）、正在显示的历史范围和正在查看的对象。加载新范围时，正在请求的范围会单独说明；失败保留原图并提供重试。
+5. 用顶部返回图标恢复上一历史视图；用回到当前分支图标清除搜索和标签范围，并定位 HEAD。Locate HEAD 保留已有范围，适合只找当前版本。浏览记录只在当前工作台会话中保留；很深或已过期的历史会重新读取并回到首屏。
 
 **结果：** History 显示与你选定引用范围一致的提交图。
 
@@ -665,7 +666,7 @@ Stash 用于暂时保存尚未提交的修改。它与 Stage 完全不同：Stag
 
 1. 右键目标 Commit 或分支选择 Create Tag…，或使用 Tags 标题入口。
 2. 在 Tag Name 输入名称，例如 v1.1.0；核对 Target Commit。需要说明时填写 Annotation。若希望立即发布，勾选“创建后推送此标签”并选择 Remote；该选择可以仅用于本次操作，也可记为默认。
-3. 在 Tags 中检查新标签，使用 Show in Graph 定位。
+3. 在 Tags 中检查新标签，使用 Locate Tag Commit in Graph 定位；Add to Graph Scope 只加入显示范围。
 4. 要发布标签时，右键单个或多选 Tag，选择 Push Tag… / Push N Tags…，核对完整标签清单和 Remote 后执行。
 5. 删除本地标签时，右键目标 Tag 选择 Delete Tag…，核对名称后确认。
 

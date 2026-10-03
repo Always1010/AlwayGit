@@ -8,9 +8,9 @@
 - 状态：已解决
 - 现象：加入或只显示标签后无法直接辨认正在浏览的范围；加载新范围期间继续显示旧提交，失败后仍可能将新筛选数量与旧内容并列。
 - 原因：实际 Checkout、引用筛选、详情选择缺少独立的常驻说明；checkedRefs 先更新，提交列表等异步成功后才替换。
-- 解决方案：常驻显示仓库、实际分支与 HEAD、已成功加载的引用范围及搜索、查看对象和工作区变更数；新读取与旧显示范围分别说明，失败保留原图并提供重试；相同引用集合不重复读取；常驻返回和回到当前分支入口恢复浏览位置并取消未完成读取，浏览记录按仓库隔离且有缓存上限。
-- 验证方式：定向 UI 状态回归覆盖延迟、失败、乱序响应及重复点击、读取取消、返回阅读位置和清除标签/搜索恢复实际分支；71 项 UI 状态检查、类型和双语资源检查通过。
-- 相关文件：webview/store.ts、webview/History.tsx、webview/HistoryLocation.tsx、webview/styles.css、tests/ui-state.test.ts、src/i18n/catalogs/history.json。
+- 解决方案：常驻显示仓库、实际分支与 HEAD、已成功加载的引用范围及搜索、查看对象和工作区变更数；新读取与旧显示范围分别说明，失败保留原图并提供重试；相同引用集合不重复读取；常驻返回和回到当前分支入口恢复浏览位置并取消未完成读取，浏览记录按仓库隔离且有缓存上限；明确区分加入范围、仅显示历史和定位提交，标签显示已加入标记，失败后的新旧范围不得混合分页。
+- 验证方式：定向 UI 状态回归覆盖延迟、失败、乱序响应及重复点击、读取取消、返回阅读位置和清除标签/搜索恢复实际分支；75 项 UI 状态/历史项回归通过，缓存上限、快照来源校验与相关返回/定位补充 5 项定向检查通过；1283 条双语资源、类型检查、生产构建和无头 History 专项通过。对 llvm-project 三个范围分别读取 300 条并布局，验证前后 HEAD、分支和 41210 个工作区变更保持一致。
+- 相关文件：webview/store.ts、webview/History.tsx、webview/HistoryLocation.tsx、webview/styles.css、webview/Sidebar.tsx、webview/menus.ts、tests/ui-state.test.ts、scripts/test-history-ui.mjs、src/i18n/catalogs/history.json、src/i18n/catalogs/menus.json。
 
 ## BUG-063：切换分支期间工作台仍可交互
 

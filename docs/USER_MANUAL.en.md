@@ -234,9 +234,10 @@ Ref checkboxes control which history you see; branch names and row selections co
 **Prerequisite:** The repository has at least one commit.
 
 1. In the left pane, check the local branches, remote branches, or Tags you want to view. Selecting multiple refs displays the union of the commits reachable from them.
-2. Use Show in Graph to add a ref to the existing scope. Use Show Only This Branch or Tag to view only the target.
+2. Use Add to Graph Scope to add a ref to the existing scope. Use Show Only This Branch History or Show Only This Tag History to view only the target history.
 3. Use the presets below Local Branches to quickly show all local branches or only the current branch.
-4. If you cannot find the current version, use Locate HEAD to identify the commit corresponding to the current branch.
+4. Read the persistent History location area: actual checkout and HEAD, displayed history scope, and the object being viewed. A pending scope is shown separately; failed reads preserve the displayed graph and offer retry.
+5. Use the back arrow to restore the previous history view. Use the home icon to clear searches and tag scopes and locate HEAD on the current branch. Locate HEAD preserves the existing scope. Navigation records last for this workbench session; very deep or outdated history is reread from the first page.
 
 **Result:** History displays a commit graph that matches your selected ref scope.
 
@@ -665,7 +666,7 @@ Use the operations in this chapter only after you understand the relationships i
 
 1. Right-click the target Commit or branch and choose Create Tag…, or use the entry point in the Tags heading.
 2. Enter a name, such as v1.1.0, in Tag Name and verify Target Commit. Fill in Annotation if needed. To publish immediately, enable “Push this Tag after creation” and select a Remote; use it once or remember it as the default.
-3. Check the new tag under Tags and use Show in Graph to locate it.
+3. Check the new tag under Tags and use Locate Tag Commit in Graph to locate it. Add to Graph Scope only adds its history to the display scope.
 4. To publish tags, right-click one or more Tags, choose Push Tag… or Push N Tags…, then verify the complete Tag list and Remote.
 5. To delete a local tag, right-click the target Tag, choose Delete Tag…, verify the name, and confirm.
 

@@ -2214,8 +2214,8 @@ export const catalog = {
     "zh-CN": "当前 HEAD 未显示在已加载的历史中。"
   },
   "history.locationLocating": {
-    "en": "Locating a commit in {{scope}}",
-    "zh-CN": "正在定位提交，范围：{{scope}}"
+    "en": "Locating {{oid}} in {{scope}}",
+    "zh-CN": "正在定位 {{oid}}，范围：{{scope}}"
   },
   "history.locationLoading": {
     "en": "Loading history for {{scope}}",
@@ -2260,6 +2260,10 @@ export const catalog = {
   "history.locationResetHead": {
     "en": "Show current HEAD history only",
     "zh-CN": "仅显示当前 HEAD 的历史"
+  },
+  "history.locationIncluded": {
+    "en": "Included in displayed history",
+    "zh-CN": "已加入当前显示的历史范围"
   },
   "host.trustThisWorkspaceUsingVSCodeWorkspaceTrustThen": {
     "en": "Trust this workspace using VS Code Workspace Trust, then reopen AlwayGit.",
@@ -2812,16 +2816,16 @@ export const catalog = {
     "zh-CN": "切换到此分支…"
   },
   "menus.showInGraph": {
-    "en": "Show in Graph",
-    "zh-CN": "在 Graph 中显示"
+    "en": "Add to Graph Scope",
+    "zh-CN": "加入图表范围"
   },
   "menus.showOnlyThisTag": {
-    "en": "Show Only This Tag",
-    "zh-CN": "仅显示此标签"
+    "en": "Show Only This Tag History",
+    "zh-CN": "仅显示此标签历史"
   },
   "menus.showOnlyThisBranch": {
-    "en": "Show Only This Branch",
-    "zh-CN": "仅显示此分支"
+    "en": "Show Only This Branch History",
+    "zh-CN": "仅显示此分支历史"
   },
   "menus.merge": {
     "en": "Merge…",
@@ -2982,6 +2986,14 @@ export const catalog = {
   "menus.refreshToCaptureTagsBeforePush": {
     "en": "Refresh to capture all selected Tags before pushing.",
     "zh-CN": "请刷新后再推送全部所选标签。"
+  },
+  "menus.locateTagCommit": {
+    "en": "Locate Tag Commit in Graph",
+    "zh-CN": "在图表中定位标签提交"
+  },
+  "menus.locateBranchTip": {
+    "en": "Locate Branch Tip in Graph",
+    "zh-CN": "在图表中定位分支顶端提交"
   },
   "notices.theRepositoryWasRemovedFromAlwayGit": {
     "en": "The repository was removed from AlwayGit.",
@@ -5712,7 +5724,7 @@ export interface MessageParameters {
   "history.locationDetailsLoading": {  };
   "history.locationChanges": { count: number };
   "history.locationHeadNotShown": {  };
-  "history.locationLocating": { scope: ParameterValue };
+  "history.locationLocating": { oid: ParameterValue; scope: ParameterValue };
   "history.locationLoading": { scope: ParameterValue };
   "history.locationFailed": { scope: ParameterValue; error: ParameterValue };
   "history.locationRetry": {  };
@@ -5724,6 +5736,7 @@ export interface MessageParameters {
   "history.locationBack": {  };
   "history.locationReset": {  };
   "history.locationResetHead": {  };
+  "history.locationIncluded": {  };
   "host.trustThisWorkspaceUsingVSCodeWorkspaceTrustThen": {  };
   "host.selectARepositoryOrAFolderContainingRepositories": {  };
   "host.scanFolder": {  };
@@ -5900,6 +5913,8 @@ export interface MessageParameters {
   "menus.pushTags": { count: number };
   "menus.refreshToCaptureThisTagBeforePush": {  };
   "menus.refreshToCaptureTagsBeforePush": {  };
+  "menus.locateTagCommit": {  };
+  "menus.locateBranchTip": {  };
   "notices.theRepositoryWasRemovedFromAlwayGit": {  };
   "notices.couldNotLocateThisCommitInTheFullHistory": {  };
   "notices.automaticLocateReachedItsReadLimitHistoryAndCommit": {  };

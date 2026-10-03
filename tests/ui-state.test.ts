@@ -21,6 +21,44 @@ beforeEach(async () => {
 });
 afterEach(() => { vi.useRealTimers(); });
 describe('repository UI consistency', () => {
+  it('does not validate old displayed rows using a newer snapshot when saving the back view', async () => {
+    await store.getState().selectRepository('a');
+    store.setState({ snapshot: { ...snapshot(a), head: 'moved-head' } });
+    store.getState().setCheckedRefs(['refs/tags/v1']);
+    await vi.waitFor(() => expect(store.getState().historyLoading).toBe(false));
+    const reads = bridge.rpc.mock.calls.filter(([method]) => method === 'history').length;
+    store.getState().backHistory();
+    await vi.waitFor(() => expect(store.getState().historyLoading).toBe(false));
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'history')).toHaveLength(reads + 1);
+  });
+  it('reloads very deep history when going back instead of retaining an unbounded page cache', async () => {
+    await store.getState().selectRepository('a');
+    store.setState({ commits: Array.from({ length: 10_001 }, (_, index) => ({ ...commit, oid: `deep-${index}` })) });
+    store.getState().setCheckedRefs(['refs/tags/v1']);
+    await vi.waitFor(() => expect(store.getState().historyLoading).toBe(false));
+    const reads = bridge.rpc.mock.calls.filter(([method]) => method === 'history').length;
+    store.getState().backHistory();
+    await vi.waitFor(() => expect(store.getState().historyLoading).toBe(false));
+    expect(store.getState().commits).toEqual([commit]);
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'history')).toHaveLength(reads + 1);
+  });
+  it('does not append old pages into a failed new scope and locates a tag using its own history', async () => {
+    await store.getState().selectRepository('a');
+    store.setState({ historyError: 'offline', checkedRefs: ['refs/tags/missing'], hasMore: true });
+    const count = bridge.rpc.mock.calls.length;
+    await store.getState().loadHistory(true);
+    expect(bridge.rpc.mock.calls).toHaveLength(count);
+    const fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, repo, query) => method === 'history' ? { commits: [{ ...commit, oid: 'tag-tip' }], head: commit, tips: ['tag-tip'], nextOffset: 1, hasMore: true } : fallback(method, repo, query));
+    store.getState().locateRef('refs/tags/v1', 'tag-tip');
+    await vi.waitFor(() => expect(store.getState().locatingOid).toBeUndefined());
+    expect(store.getState()).toMatchObject({ checkedRefs: ['refs/tags/v1'], search: '', selectedOid: 'tag-tip', displayedHistory: { refs: ['refs/tags/v1'], search: '' } });
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'history')).toHaveLength(2);
+    const loadedCount = bridge.rpc.mock.calls.length;
+    store.getState().locateRef('refs/tags/v1', 'tag-tip');
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'history')).toHaveLength(2);
+    expect(bridge.rpc.mock.calls.slice(loadedCount).some(([method]) => method === 'action')).toBe(false);
+  });
   it('returns from pending navigation to the successful view and cancels the stale read', async () => {
     await store.getState().selectRepository('a');
     store.getState().setHistoryScroll(640);
