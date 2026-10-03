@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { GitService, parseStatus, validateFilePath } from '../src/git/service';
@@ -298,8 +298,9 @@ describe('Git service integration', () => {
     for (const file of ['../outside', 'C:\\outside', '/outside', '.git/config', 'dir/../../out', '.']) expect(() => validateFilePath(file)).toThrow();
     await expect(service.execute(repo, { type: 'branch.create', name: 'bad name' })).rejects.toThrow('Branch names cannot contain spaces'); await expect(service.execute(repo, { type: 'branch.create', name: '--bad' })).rejects.toThrow('cannot start with a hyphen'); await expect(service.prepareAction(repo, { type: 'merge', target: '--help' })).rejects.toThrow();
     await writeFile(path.join(root, '.git', 'index.lock'), ''); await writeFile(path.join(root, 'a.txt'), 'edited'); await expect(service.execute(repo, { type: 'stage', paths: ['a.txt'] })).rejects.toThrow('Another Git process'); await rm(path.join(root, '.git', 'index.lock'));
-    await service.execute(repo, { type: 'stage', paths: ['a.txt'] }); await writeFile(path.join(root, '.git', 'hooks', 'pre-commit'), '#!/bin/sh\necho rejected-by-test-hook >&2\nexit 1\n'); await expect(service.execute(repo, { type: 'commit', message: 'blocked' })).rejects.toThrow('rejected-by-test-hook');
-    await writeFile(path.join(root, '.git', 'hooks', 'pre-commit'), '#!/bin/sh\nsleep 10\n'); let calls = 0; let disposed = 0;
+    const preCommit = path.join(root, '.git', 'hooks', 'pre-commit');
+    await service.execute(repo, { type: 'stage', paths: ['a.txt'] }); await writeFile(preCommit, '#!/bin/sh\necho rejected-by-test-hook >&2\nexit 1\n'); await chmod(preCommit, 0o755); await expect(service.execute(repo, { type: 'commit', message: 'blocked' })).rejects.toThrow('rejected-by-test-hook');
+    await writeFile(preCommit, '#!/bin/sh\nsleep 10\n'); await chmod(preCommit, 0o755); let calls = 0; let disposed = 0;
     const bounded = new GitService({ timeoutMs: 1500, environment: async () => { calls++; return { env: {}, dispose: () => { disposed++; } }; } });
     const started = Date.now(); const timeout = await bounded.execute(repo, { type: 'commit', message: 'timeout' }).catch(error => error);
     expect(Date.now() - started).toBeLessThan(9000); // Includes repository verification and the 5-second termination grace.
