@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { DiffPreview } from './DiffPreview';
 import { useDock } from './dock-store';
 import { useWorkbench } from './store';
@@ -7,21 +7,23 @@ import { rpc, subscribe } from './rpc';
 import { useTranslation } from './i18n';
 import { Button, Icon, Modal } from './ui';
 import { useShortcuts } from './shortcuts';
+import { ContextMenu, type MenuItem } from './ContextMenu';
 import type { TerminalShell } from '../src/protocol/terminal';
 import './dock.css';
 const TerminalView = lazy(() => import('./TerminalView').then(module => ({ default: module.TerminalView })));
 
 export function BottomDock({ native, edit }: { native(): void; edit(): void }) {
   const dock = useDock(), state = useWorkbenchFields('repoId', 'selectedFile', 'layout', 'setLayout'), t = useTranslation();
-  const [maximized, setMaximized] = useState(false), [menu, setMenu] = useState<'shell' | 'tabs'>(), [rename, setRename] = useState<{ id: string; title: string }>();
+  const [maximized, setMaximized] = useState(false), [menu, setMenu] = useState<{ kind: 'shell' | 'tabs'; anchor: HTMLButtonElement; x: number; y: number }>(), [rename, setRename] = useState<{ id: string; title: string }>();
   const tabs = useRef<HTMLDivElement>(null), active = dock.sessions.find(s => s.id === dock.activeId);
-  const [menuPosition, setMenuPosition] = useState({ bottom: 0, right: 0 });
-  useLayoutEffect(() => {
-    if (!menu) return;
-    const button = document.querySelector('.dock-common-actions [aria-expanded="true"]');
-    if (!button) return;
-    const rect = button.getBoundingClientRect(); setMenuPosition({ bottom: window.innerHeight - rect.top, right: window.innerWidth - rect.right });
-  }, [menu]);
+  const closeMenu = useCallback(() => setMenu(undefined), []);
+  const openMenu = (kind: 'shell' | 'tabs', anchor: HTMLButtonElement) => {
+    const rect = anchor.getBoundingClientRect(); setMenu({ kind, anchor, x: rect.left, y: rect.top });
+  };
+  const menuKey = (event: ReactKeyboardEvent<HTMLButtonElement>, kind: 'shell' | 'tabs') => {
+    if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+    event.preventDefault(); event.stopPropagation(); openMenu(kind, event.currentTarget);
+  };
   const run = useCallback((task: Promise<unknown>) => { void task.catch(error => useWorkbench.getState().report(error)); }, []);
   const create = useCallback((shell: TerminalShell = 'default') => {
     const repoId = useWorkbench.getState().repoId; if (!repoId) return;
@@ -45,12 +47,10 @@ export function BottomDock({ native, edit }: { native(): void; edit(): void }) {
     const close = (event: KeyboardEvent) => { if (event.key === 'Escape') { setMenu(undefined); setMaximized(false); } };
     window.addEventListener('keydown', close); return () => window.removeEventListener('keydown', close);
   }, []);
-  useEffect(() => {
-    if (!menu) return;
-    const close = (event: PointerEvent) => { if (!(event.target instanceof Element) || !event.target.closest('.dock-menu-anchor')) setMenu(undefined); };
-    window.addEventListener('pointerdown', close); return () => window.removeEventListener('pointerdown', close);
-  }, [menu]);
   const diffTitle = state.selectedFile ? `${t('diff.diff')}${state.selectedFile}` : 'Diff';
+  const menuItems: MenuItem[] = menu?.kind === 'shell'
+    ? (['default', 'powershell', 'cmd', 'bash'] as const).map(shell => ({ label: shell === 'default' ? t('dock.defaultShell') : shell === 'powershell' ? 'PowerShell' : shell === 'cmd' ? 'cmd' : 'Bash', icon: 'terminal', run: () => create(shell) }))
+    : [{ label: diffTitle, reason: diffTitle, icon: 'diff', run: () => select('diff') }, ...dock.sessions.map(session => ({ label: session.title, reason: `${session.title}\n${session.cwd}`, icon: 'terminal', run: () => select(session.id) }))];
   return <section className={`bottom-dock${maximized ? ' dock-maximized' : ''}`} data-testid="bottom-dock" aria-label={t('dock.panel')}>
     <div className="dock-heading">
       <div ref={tabs} className="dock-tabs" role="tablist" aria-label={t('dock.tabs')} onKeyDown={event => {
@@ -69,12 +69,8 @@ export function BottomDock({ native, edit }: { native(): void; edit(): void }) {
       </div>
       <div className="dock-common-actions">
         <Button className="icon-only" icon="add" shortcut="terminalNew" title={t('dock.newTerminal')} aria-label={t('dock.newTerminal')} disabled={!state.repoId || dock.creating} onClick={() => create()}/>
-        <div className="dock-menu-anchor"><Button className="icon-only" icon="chevron-down" title={t('dock.chooseShell')} aria-label={t('dock.chooseShell')} aria-expanded={menu === 'shell'} disabled={!state.repoId} onClick={() => setMenu(menu === 'shell' ? undefined : 'shell')}/>
-          {menu === 'shell' && <div className="dock-menu" style={menuPosition} role="menu">{(['default', 'powershell', 'cmd', 'bash'] as const).map(shell => <button role="menuitem" key={shell} onClick={() => create(shell)}>{shell === 'default' ? t('dock.defaultShell') : shell === 'powershell' ? 'PowerShell' : shell === 'cmd' ? 'cmd' : 'Bash'}</button>)}</div>}
-        </div>
-        <div className="dock-menu-anchor"><Button className="icon-only" icon="list-selection" title={t('dock.allTabs')} aria-label={t('dock.allTabs')} aria-expanded={menu === 'tabs'} onClick={() => setMenu(menu === 'tabs' ? undefined : 'tabs')}/>
-          {menu === 'tabs' && <div className="dock-menu" style={menuPosition} role="menu"><button role="menuitem" onClick={() => select('diff')}>{diffTitle}</button>{dock.sessions.map(session => <button role="menuitem" key={session.id} title={session.cwd} onClick={() => select(session.id)}>{session.title}<small>{session.cwd}</small></button>)}</div>}
-        </div>
+        <Button className="icon-only" icon="chevron-down" title={t('dock.chooseShell')} aria-label={t('dock.chooseShell')} aria-haspopup="menu" aria-expanded={menu?.kind === 'shell'} disabled={!state.repoId} onKeyDown={event => menuKey(event, 'shell')} onClick={event => menu?.kind === 'shell' ? closeMenu() : openMenu('shell', event.currentTarget)}/>
+        <Button className="icon-only" icon="list-selection" title={t('dock.allTabs')} aria-label={t('dock.allTabs')} aria-haspopup="menu" aria-expanded={menu?.kind === 'tabs'} onKeyDown={event => menuKey(event, 'tabs')} onClick={event => menu?.kind === 'tabs' ? closeMenu() : openMenu('tabs', event.currentTarget)}/>
         <Button className="icon-only" icon={maximized ? 'screen-normal' : 'screen-full'} title={t(maximized ? 'dock.restore' : 'dock.maximize')} aria-label={t(maximized ? 'dock.restore' : 'dock.maximize')} disabled={state.layout.diffCollapsed} onClick={() => setMaximized(!maximized)}/>
         <Button className="icon-only" icon={state.layout.diffCollapsed ? 'chevron-up' : 'chevron-down'} title={t(state.layout.diffCollapsed ? 'dock.expand' : 'dock.collapse')} aria-label={t(state.layout.diffCollapsed ? 'dock.expand' : 'dock.collapse')} onClick={() => state.setLayout({ diffCollapsed: !state.layout.diffCollapsed })}/>
       </div>
@@ -90,5 +86,6 @@ export function BottomDock({ native, edit }: { native(): void; edit(): void }) {
       <Suspense fallback={null}><TerminalView session={session} active={active?.id === session.id && !state.layout.diffCollapsed}/></Suspense>
     </div>)}
     {rename && <Modal title={t('dock.rename')} onClose={() => setRename(undefined)} footer={<><Button onClick={() => setRename(undefined)}>{t('common.cancel')}</Button><Button className="primary" disabled={!rename.title.trim()} onClick={() => run(rpc('terminalRename', undefined, { sessionId: rename.id, title: rename.title.trim() }).then(() => setRename(undefined)))}>{t('common.apply')}</Button></>}><input aria-label={t('dock.rename')} data-autofocus="true" maxLength={80} value={rename.title} onChange={event => setRename({ ...rename, title: event.target.value })}/></Modal>}
+    {menu && <ContextMenu x={menu.x} y={menu.y} anchor={menu.anchor} caption={t(menu.kind === 'shell' ? 'dock.chooseShell' : 'dock.allTabs')} items={menuItems} close={closeMenu} className="dock-context-menu" placement="above"/>}
   </section>;
 }
