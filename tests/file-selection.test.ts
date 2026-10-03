@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { filePathLabel, fileSelectionForClick, fileSelectionTargets, filterFilesByPath, reconcileFileSelection } from '../webview/fileSelection';
 import { selectionKeyboardCommand } from '../webview/selectionKeyboard';
+import { changeEntries } from '../webview/changeEntries';
+
+it('orders change areas before filenames and keeps both versions independently selectable', () => {
+  const changes = ['z.ts','nested/a.ts','a.ts'].map(path => ({path,indexStatus:'M',worktreeStatus:'M',conflict:false,untracked:false}));
+  const entries = changeEntries(changes);
+  expect(entries.map(({area,file}) => [area,file.path])).toEqual([
+    ['unstaged','a.ts'],['unstaged','nested/a.ts'],['unstaged','z.ts'],
+    ['staged','a.ts'],['staged','nested/a.ts'],['staged','z.ts'],
+  ]);
+  expect(new Set(entries.map(entry=>entry.key)).size).toBe(6);
+});
 
 describe('file path labels', () => {
   it('keeps the complete repository-relative parent chain at arbitrary depth', () => {

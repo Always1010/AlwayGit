@@ -323,7 +323,9 @@ describe('repository UI consistency', () => {
     original.beginSettings();
     expect(original.diffNavigationScope).toBe('commit');
     expect(original.singleKeyShortcuts).toBe(true);
-    store.getState().previewSettings({ singleKeyShortcuts: false, diffNavigationScope: 'file', language: 'zh-CN', font: 16, row: 28, appearance: { theme: 'light', palette: 'extended', codeFont: 18, codeRowHeight: 24, fileSpacing: 5, currentBranchColor: '#00ff99', currentRepositoryColor: '#ff4ad4' } });
+    store.getState().previewSettings({ changeListMode:'unified', singleKeyShortcuts: false, diffNavigationScope: 'file', language: 'zh-CN', font: 16, row: 28, appearance: { theme: 'light', palette: 'extended', codeFont: 18, codeRowHeight: 24, fileSpacing: 5, currentBranchColor: '#00ff99', currentRepositoryColor: '#ff4ad4' } });
+    expect(store.getState().changeListMode).toBe('unified');
+    expect(bridge.save.mock.calls.at(-1)?.[0].changeListMode).toBe('split');
     expect(store.getState().diffNavigationScope).toBe('file');
     expect(store.getState().singleKeyShortcuts).toBe(false);
     expect(store.getState().appearance.palette).toBe('extended');
@@ -333,14 +335,16 @@ describe('repository UI consistency', () => {
     await store.getState().refresh();
     expect(bridge.save.mock.calls.at(-1)?.[0].appearance).toEqual(original.appearance);
     store.getState().finishSettings(false);
+    expect(store.getState().changeListMode).toBe('split');
     expect(store.getState()).toMatchObject({ singleKeyShortcuts: true, diffNavigationScope: 'commit', language: original.language, layout: original.layout, appearance: original.appearance, drafts: { a: 'keep my draft' }, diffTarget: target });
   });
   it('applies settings through host session validation and restores only panel geometry', async () => {
     const { sessionSchema } = await import('../src/protocol/validation');
     store.getState().beginSettings();
-    store.getState().previewSettings({ singleKeyShortcuts: false, diffNavigationScope: 'file', language: 'zh-CN', font: 15, row: 28, appearance: { theme: 'contrast', palette: 'distinct', codeFont: 17, codeRowHeight: 23, fileSpacing: 6, badgeColor: '#006BFF', currentBranchColor:'#00FF99', currentRepositoryColor:'#FF4AD4' } });
+    store.getState().previewSettings({ changeListMode:'unified', singleKeyShortcuts: false, diffNavigationScope: 'file', language: 'zh-CN', font: 15, row: 28, appearance: { theme: 'contrast', palette: 'distinct', codeFont: 17, codeRowHeight: 23, fileSpacing: 6, badgeColor: '#006BFF', currentBranchColor:'#00FF99', currentRepositoryColor:'#FF4AD4' } });
     store.getState().finishSettings(true);
     const saved = bridge.save.mock.calls.at(-1)?.[0];
+    expect(sessionSchema.parse(saved).changeListMode).toBe('unified');
     expect(sessionSchema.parse(saved).diffNavigationScope).toBe('file');
     expect(sessionSchema.parse(saved).singleKeyShortcuts).toBe(false);
     expect(sessionSchema.parse(saved).appearance).toMatchObject({ theme: 'contrast', palette: 'distinct', codeFont: 17, codeRowHeight: 23, fileSpacing: 6, badgeColor: '#006BFF', currentBranchColor:'#00FF99', currentRepositoryColor:'#FF4AD4' });
