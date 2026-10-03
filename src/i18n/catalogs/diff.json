@@ -23,18 +23,6 @@
     "review": "translated",
     "context": "webview/DiffPreview.tsx / DiffPreviewPanel / nextLabel"
   },
-  "diff.expandDiffPanel": {
-    "en": "Expand Diff panel",
-    "zh-CN": "展开 Diff 面板",
-    "review": "translated",
-    "context": "webview/DiffPreview.tsx / DiffPreviewPanel / toggleLabel"
-  },
-  "diff.minimizeDiffPanel": {
-    "en": "Minimize Diff panel",
-    "zh-CN": "最小化 Diff 面板",
-    "review": "translated",
-    "context": "webview/DiffPreview.tsx / DiffPreviewPanel / toggleLabel"
-  },
   "diff.previousChangeAcrossCommitFilesWrapsToTheLast": {
     "en": "Previous change across Commit files (wraps to the last)",
     "zh-CN": "上一处更改（跨提交文件，首处循环到末处）",

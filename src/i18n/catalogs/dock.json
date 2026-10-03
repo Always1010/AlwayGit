@@ -83,12 +83,6 @@
     "review": "translated",
     "context": "Embedded terminal and bottom panel UI / host lifecycle"
   },
-  "dock.stop": {
-    "en": "End shell process",
-    "zh-CN": "结束 Shell 进程",
-    "review": "translated",
-    "context": "Embedded terminal and bottom panel UI / host lifecycle"
-  },
   "dock.restart": {
     "en": "Restart terminal",
     "zh-CN": "重新启动终端",
