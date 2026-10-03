@@ -7,6 +7,7 @@ describe('Workbench protocol validation', () => {
     for (const type of ['stage', 'unstage', 'discard']) expect(actionSchema.parse({ type, paths })).toMatchObject({ paths });
     expect(actionSchema.parse({ type: 'discard', planToken: 'checked' })).toEqual({ type: 'discard', planToken: 'checked', paths: [] });
     expect(actionSchema.safeParse({ type: 'discard', paths: [] }).success).toBe(false);
+    expect(actionSchema.safeParse({ type: 'discard', paths: ['a.txt'], mode: 'all' }).success).toBe(false);
   });
   it('requires the raw Tag identity before deletion', () => {
     for (const expectedOid of ['a'.repeat(40), 'b'.repeat(64)]) expect(actionSchema.parse({ type: 'tag.delete', name: 'v1', expectedOid })).toEqual({ type: 'tag.delete', name: 'v1', expectedOid });

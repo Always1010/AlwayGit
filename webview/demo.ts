@@ -62,8 +62,9 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
   if (method === 'snapshot') return structuredClone(demoSnapshot);
   if (method === 'prepareDiscard') {
     const request = payload as DiscardRequest, selected = request.paths && new Set(request.paths);
-    const changes = demoSnapshot.changes.filter(change => !change.conflict && (selected ? selected.has(change.path) : change.untracked || change.worktreeStatus !== ' '));
-    const plan: DiscardPlan = { token: crypto.randomUUID(), paths: changes.map(change => change.path), tracked: changes.filter(change => !change.untracked).length, untracked: changes.filter(change => change.untracked).length, staged: changes.filter(change => !change.untracked && change.indexStatus !== ' ').length, branch: demoSnapshot.branch };
+    if (request.scope === 'all' && (demoSnapshot.operation.kind || demoSnapshot.operation.conflicts)) throw new Error('Finish or abort the active operation before discarding all changes.');
+    const changes = demoSnapshot.changes.filter(change => !change.conflict && (request.scope === 'all' || change.untracked || change.worktreeStatus !== ' ') && (!selected || selected.has(change.path)));
+    const plan: DiscardPlan = { token: crypto.randomUUID(), scope: request.scope === 'all' ? 'all' : 'unstaged', paths: changes.map(change => change.path), tracked: changes.filter(change => !change.untracked).length, untracked: changes.filter(change => change.untracked).length, staged: changes.filter(change => !change.untracked && change.indexStatus !== ' ').length, branch: demoSnapshot.branch, head: demoSnapshot.head };
     discardPlans.set(plan.token, plan); return structuredClone(plan);
   }
   if (method === 'history') {
@@ -99,11 +100,11 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
   if(method==='copyText'){const {text}=payload as {text:string};if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(text);else throw new Error('Clipboard is unavailable in this browser.');return null;}
   if (method === 'action') {
     const action = payload as GitAction;
-    if (action.type === 'discard' && action.planToken) { const plan = discardPlans.get(action.planToken); if (!plan) throw new Error('Discard plan expired.'); action.paths = plan.paths; discardPlans.delete(action.planToken); }
+    if (action.type === 'discard' && action.planToken) { const plan = discardPlans.get(action.planToken); if (!plan) throw new Error('Discard plan expired.'); action.paths = plan.paths; action.mode = plan.scope === 'all' ? 'all' : undefined; discardPlans.delete(action.planToken); }
     if (action.type === 'stage' || action.type === 'resolve-and-stage' || action.type === 'unstage' || action.type === 'discard') {
       demoSnapshot.changes = demoSnapshot.changes.flatMap(change => {
         if (!action.paths.includes(change.path)) return [change];
-        if (action.type === 'discard') return change.indexStatus === ' ' || change.untracked ? [] : [{ ...change, worktreeStatus: ' ' }];
+        if (action.type === 'discard') return action.mode === 'all' || change.indexStatus === ' ' || change.untracked ? [] : [{ ...change, worktreeStatus: ' ' }];
         return [{ ...change, indexStatus: action.type !== 'unstage' ? 'M' : ' ', worktreeStatus: action.type !== 'unstage' ? ' ' : 'M', conflict: false, untracked: false }];
       });
     } else if (action.type === 'commit') {

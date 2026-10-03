@@ -90,6 +90,7 @@ Staged 标题中 Unstage 图标右侧放置 `Commit…` 按钮；分组为空、
 | 右键已选 Commit | 保留当前多选集合并显示适用操作 |
 | 双击 Commit | 顶端有一个本地分支直接指向时 Checkout；有多个时选择；没有时创建并切换新分支，开启高级选项后也沿用此默认路径 |
 | 单击 Working Tree 虚拟节点 | 单选 Working Tree 并显示工作区状态；不加入 Commit 多选 |
+| 右键 Working Tree 虚拟节点；焦点在该节点时 Shift+F10 | 保持当前详情视图，打开当前工作目录的全局文件操作菜单 |
 | Working Tree / HEAD 获得焦点后按上下方向键 | 在虚拟节点与真实 Commit 间连续选择和移动焦点 |
 | 单击详情中的文件 | 在底部预览 Diff |
 | 双击文件 | 在 VS Code 打开；历史删除文件打开只读历史内容或原生 Diff |
@@ -192,6 +193,8 @@ Merge 等操作暂停后，原发起对话框改为处理状态，主入口是�
 ## Working Tree 与 Diff
 
 Working Tree 将文件分为 Conflicts、Unstaged 和 Staged。Stage、Unstage 与 Stash 是不同操作。分组标题的 `Discard All…` 丢弃全部 Unstaged 修改，文件右键菜单的 `Discard` 只处理所选文件；两者均保留 Index 中同一文件的 Staged 修改，确认对话框必须准确列出受影响路径并描述内容。
+
+图表 Working Tree 节点右键菜单提供 `Stage All`、`Unstage All`、`Stash All Changes…`、`Discard All Unstaged Changes…` 和 `Discard All Changes…`，不重复提供单击已能完成的查看入口，也不提供刷新。节点菜单范围是整个当前工作目录，不受右侧文件筛选、多选或滚动位置影响；Stage/Unstage 显示实际目标数后确认。未暂存丢弃保留 Index；全部丢弃同时清除 Index 和工作区更改，将已跟踪路径恢复到当前 HEAD，删除新增及未跟踪文件，恢复重命名源路径，不移动分支或 HEAD；尚无提交时清空 Index 并删除其新增文件。忽略文件只在它本来属于明确确认的已跟踪新增范围时删除，其余忽略文件保留。有冲突或 Git 操作尚未结束时禁用并在后端拒绝全部丢弃，先完成或中止操作。Git 跳过受保护的嵌套仓库或所选路径仍有更改时报告未完成，不显示丢弃成功。
 
 Working Tree、Commit Details 与 Commit 比较的大文件列表仅渲染视口附近的行，长路径换行后按实际高度测量；折叠分组不创建文件行。筛选、多选、Shift 连选和 Ctrl/Cmd+A 的范围仍是逻辑可见文件（匹配筛选且分组展开），不受滚动位置和实际挂载行数影响。
 

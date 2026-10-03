@@ -8,8 +8,8 @@ export interface RepositoryDiscoveryPreview { scanId: string; root: string; scan
 export interface AddRepositoriesResult { added: number; existing: number; skipped: number; collection?: RepositoryCollection }
 export interface RepositoryStatus { repositoryId: string; branch: string; upstream?: string; ahead: number; unpushed: number }
 export interface Change { path: string; originalPath?: string; indexStatus: string; worktreeStatus: string; conflict: boolean; untracked: boolean }
-export interface DiscardRequest { paths?: string[]; scope?: 'unstaged' }
-export interface DiscardPlan { token: string; paths: string[]; tracked: number; untracked: number; staged: number; branch: string }
+export interface DiscardRequest { paths?: string[]; scope?: 'unstaged' | 'all' }
+export interface DiscardPlan { token: string; scope: 'unstaged' | 'all'; paths: string[]; tracked: number; untracked: number; staged: number; branch: string; head?: string }
 export interface FileOperationProgress { completed: number; total: number; phase: 'restoring' | 'cleaning' }
 export interface GitRef { name: string; fullName: string; kind: 'local' | 'remote' | 'tag'; oid: string; refOid?: string; targetType?: 'commit' | 'tree' | 'blob' | 'tag'; upstream?: string; symbolicTarget?: string }
 export interface Stash { selector: string; oid: string; subject: string }
@@ -43,7 +43,7 @@ export interface CommitComparison { left: Commit; right: Commit; files: CommitFi
 export interface CherryPickCheck { head: string; branch: string; included: string[] }
 export type GitAction =
   | { type: 'stage' | 'resolve-and-stage' | 'unstage'; paths: string[] }
-  | { type: 'discard'; paths: string[]; planToken?: string }
+  | { type: 'discard'; paths: string[]; planToken?: string; mode?: 'all' }
   | { type: 'commit'; message: string; amend?: boolean; reviewToken?: string }
   | { type: 'fetch'; remote?: string }
   | { type: 'pull'; strategy: 'ff-only' | 'merge' | 'rebase'; remote?: string }
