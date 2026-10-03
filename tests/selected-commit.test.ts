@@ -1,13 +1,70 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { chmod, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { CommitSelection } from '../src/protocol/types';
 import { commitFile, git, gitFixtures } from './support/git-fixture';
+import { GitService } from '../src/git/service';
 
 const fixtures = gitFixtures('alwaygit-selected-commit-');
 afterEach(() => fixtures.cleanup());
 
 describe('selected file commits', () => {
+  it.each(['pre-commit', 'commit-msg'])('keeps unselected content out when %s stages it', async hookName => {
+    const { root, repo, service } = await fixtures.setup();
+    await commitFile(root, 'chosen.txt', 'base');
+    await commitFile(root, 'other.txt', 'other base');
+    await writeFile(path.join(root, 'chosen.txt'), 'chosen working');
+    await writeFile(path.join(root, 'other.txt'), 'other staged');
+    await git(root, 'add', 'other.txt');
+    await writeFile(path.join(root, 'other.txt'), 'other working');
+    const hook = path.join(repo.commonDir, 'hooks', hookName);
+    await writeFile(hook, '#!/bin/sh\ngit add other.txt\n'); await chmod(hook, 0o755);
+    const snapshot = await service.snapshot(repo), index = await readFile(path.join(repo.commonDir, 'index'));
+    const commit = service.execute(repo, { type: 'commit', message: 'chosen only', files: [{ path: 'chosen.txt', area: 'unstaged' }], expectedHead: snapshot.head, expectedBranch: snapshot.branch });
+    if (hookName === 'pre-commit') {
+      await expect(commit).rejects.toMatchObject({ code: 'HOOK_SCOPE_CHANGED' });
+      expect(await git(root, 'rev-parse', 'HEAD')).toBe(snapshot.head);
+      expect(await readFile(path.join(repo.commonDir, 'index'))).toEqual(index);
+    } else {
+      // Git freezes the tree before commit-msg: its late Index writes must not leak into HEAD or the real Index.
+      await commit;
+      expect(await git(root, 'diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD')).toBe('chosen.txt');
+      expect(await git(root, 'show', 'HEAD:other.txt')).toBe('other base');
+      expect(await git(root, 'show', ':other.txt')).toBe('other staged');
+    }
+    expect(await readFile(path.join(root, 'other.txt'), 'utf8')).toBe('other working');
+    expect((await readdir(repo.commonDir)).filter(name => name.includes('alwaygit-') || name === 'index.lock')).toEqual([]);
+  });
+
+  it('preserves configured hooks, selected-file formatting, reference hook input and environment config', async () => {
+    const { root, repo } = await fixtures.setup();
+    await commitFile(root, 'chosen.txt', 'base');
+    await writeFile(path.join(root, 'chosen.txt'), 'working');
+    const hooks = path.join(root, "custom hooks '中文"); await mkdir(hooks);
+    await git(root, 'config', 'core.hooksPath', hooks);
+    const scripts: Record<string, string> = {
+      'pre-commit': 'printf formatted > chosen.txt\ngit add chosen.txt',
+      'prepare-commit-msg': 'printf "\\nprepared" >> "$1"',
+      'commit-msg': 'printf "\\nreviewed" >> "$1"',
+      'reference-transaction': 'printf "%s\\n" "$1" >> .git/reference-events\ncat >> .git/reference-events',
+      'post-commit': 'printf completed > .git/post-commit-event',
+    };
+    for (const [name, script] of Object.entries(scripts)) {
+      const file = path.join(hooks, name); await writeFile(file, '#!/bin/sh\n' + script + '\n'); await chmod(file, 0o755);
+    }
+    const service = new GitService({ environment: { GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'user.name', GIT_CONFIG_VALUE_0: 'Config Env Author' } });
+    const snapshot = await service.snapshot(repo);
+    await service.execute(repo, { type: 'commit', message: 'selected', files: [{ path: 'chosen.txt', area: 'unstaged' }], expectedHead: snapshot.head, expectedBranch: snapshot.branch });
+    expect(await git(root, 'show', 'HEAD:chosen.txt')).toBe('formatted');
+    expect(await git(root, 'log', '-1', '--format=%an')).toBe('Config Env Author');
+    expect(await git(root, 'log', '-1', '--format=%B')).toContain('prepared\nreviewed');
+    const refs = await readFile(path.join(repo.commonDir, 'reference-events'), 'utf8');
+    expect(refs).toContain('prepared'); expect(refs).toContain('committed'); expect(refs).toContain('refs/heads/main');
+    expect(await readFile(path.join(repo.commonDir, 'post-commit-event'), 'utf8')).toBe('completed');
+    expect(await git(root, 'config', 'core.hooksPath')).toBe(hooks);
+    expect((await readdir(repo.commonDir)).filter(name => name.includes('alwaygit-') || name === 'index.lock')).toEqual([]);
+  });
+
   it('publishes selections above the argv budget and retains unrelated staged content', async () => {
     const { root, repo, service } = await fixtures.setup();
     await commitFile(root, 'keep.txt', 'base');

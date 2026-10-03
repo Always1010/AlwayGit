@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { Change, OperationState, Repository, StashApplyBlocker } from '../protocol/types';
 
-export interface StashExecution { root?: string; env?: NodeJS.ProcessEnv; input?: Buffer; silent?: boolean; isolated?: boolean; allowFailure?: boolean }
+export interface StashExecution { root?: string; env?: NodeJS.ProcessEnv; config?: Record<string, string>; input?: Buffer; silent?: boolean; isolated?: boolean; allowFailure?: boolean }
 type Result = { stdout: Buffer; stderr: Buffer; code: number };
 type Run = (args: string[], execution?: StashExecution) => Promise<Result>;
 type FileState = { kind: 'missing' | 'directory' | 'file' | 'link'; mode?: number; bytes?: Buffer; link?: string; children?: string[] };

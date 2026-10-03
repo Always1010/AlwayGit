@@ -6,11 +6,12 @@ import type { Change, CommitSelection } from '../protocol/types';
 import { GitError, GitReadTerminationError, GitTerminationError } from './error';
 import type { GitResult } from './runner';
 import type { StashExecution } from './stash';
+import { selectedCommitHooks } from './selected-commit-hooks';
 
 type Run = (args: string[], execution?: StashExecution) => Promise<GitResult>;
 
 /** Native commit with a private index; publish only selected paths back to the real index. */
-export async function commitSelected(run: Run, selections: CommitSelection[], changes: Change[], head: string | undefined, commitArgs: string[], verifyContext: () => Promise<void>): Promise<void> {
+export async function commitSelected(run: Run, selections: CommitSelection[], changes: Change[], head: string | undefined, commitArgs: string[], verifyContext: () => Promise<void>, executable = 'git'): Promise<void> {
   if (!selections.length && !commitArgs.includes('--amend')) throw new GitError(message('commit.chooseFiles'), 'INVALID_ARGUMENT');
   const byPath = new Map(changes.map(change => [change.path, change]));
   const unique = new Map<string, CommitSelection>();
@@ -40,9 +41,11 @@ export async function commitSelected(run: Run, selections: CommitSelection[], ch
   });
   const originalEnv = { GIT_INDEX_FILE: originalIndex }, commitEnv = { GIT_INDEX_FILE: commitIndex };
   let committed = false, published = false, deferred = false;
+  let hooks: Awaited<ReturnType<typeof selectedCommitHooks>> | undefined;
   const cleanup = async () => {
     await lock.close();
     if (!published) await rm(lockPath, { force: true });
+    await hooks?.cleanup();
     await Promise.all([originalIndex, commitIndex, `${originalIndex}.lock`, `${commitIndex}.lock`].map(file => rm(file, { force: true })));
   };
   try {
@@ -56,8 +59,9 @@ export async function commitSelected(run: Run, selections: CommitSelection[], ch
     await run(head ? ['read-tree', head] : ['read-tree', '--empty'], { env: commitEnv });
     if (staged.length) await run(['restore', '--staged', `--source=${stagedTree}`, '--', ...staged], { env: commitEnv });
     if (unstaged.length) await run(['add', '-A', '--', ...unstaged], { env: commitEnv });
+    hooks = await selectedCommitHooks(run, indexPath, head, selectedPaths, executable);
     await verifyContext();
-    await run(commitArgs, { env: commitEnv });
+    await run(commitArgs, { env: commitEnv, config: { 'core.hooksPath': hooks.directory } });
     committed = true;
     // Start from the original index so unrelated staged entries (including partial hunks) survive.
     if (selectedPaths.length) await run(['reset', '-q', 'HEAD', '--', ...selectedPaths], { env: originalEnv });
@@ -72,6 +76,7 @@ export async function commitSelected(run: Run, selections: CommitSelection[], ch
       throw error;
     }
     if (committed) throw new GitError(message('commit.indexPublishFailed'), 'PARTIAL_FAILURE', '', error instanceof Error ? error.message : String(error));
+    if (await hooks?.rejected()) throw new GitError(message('commit.hookScopeChanged'), 'HOOK_SCOPE_CHANGED');
     throw error;
   } finally {
     if (!deferred) await cleanup();

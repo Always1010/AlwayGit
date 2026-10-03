@@ -1004,6 +1004,10 @@ export const catalog = {
     "en": "The commit was created, but updating the Index failed. Check HEAD and the Index before retrying.",
     "zh-CN": "提交已创建，但更新暂存区失败。请先检查 HEAD 和暂存区，不要直接重试提交。"
   },
+  "commit.hookScopeChanged": {
+    "en": "A Git hook added changes outside the selected files. HEAD was not updated. Reopen the commit dialog and review the scope; hook changes on disk may remain.",
+    "zh-CN": "Git Hook 添加了所选文件之外的更改，HEAD 未更新。请重新打开提交窗口核对范围；Hook 对磁盘文件的修改可能仍保留。"
+  },
   "commit.selectionOperationBlocked": {
     "en": "Commit Selected is unavailable during an active Git operation or conflicts. Review and commit the complete staged result.",
     "zh-CN": "存在活动 Git 操作或冲突时无法提交所选文件，请检查并提交完整暂存结果。"
@@ -5619,6 +5623,7 @@ export interface MessageParameters {
   "commit.selectionChanged": {  };
   "commit.indexBusy": {  };
   "commit.indexPublishFailed": {  };
+  "commit.hookScopeChanged": {  };
   "commit.selectionOperationBlocked": {  };
   "common.gitDetails": {  };
   "common.cancel": {  };
