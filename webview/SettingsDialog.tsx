@@ -1,3 +1,4 @@
+import { ShortcutSettings } from './ShortcutSettings';
 import { BranchIcon, Button, Icon, Modal } from './ui';
 
 import { RepositoryIcon } from './RepositoryIcon';
@@ -118,11 +119,13 @@ function GraphPreview({ colors, main, mode }: { colors: readonly string[]; main:
 export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
   const state = useWorkbench(), t = useTranslation(), { appearance, layout } = state;
   const [page, setPage] = useState<SettingsPage>('theme');
+  const [recordingShortcut, setRecordingShortcut] = useState(false);
   const [colorTheme, setColorTheme] = useState<ColorTheme>(isLightTheme(theme) ? 'light' : 'dark');
   const [allowDetachedHead, setAllowDetachedHead] = useState(state.operationSettings.allowDetachedHead),[pushFollowTags,setPushFollowTags]=useState(state.operationSettings.pushFollowTags),[pushTagAfterCreate,setPushTagAfterCreate]=useState(state.operationSettings.pushTagAfterCreate),[defaultResetMode,setDefaultResetMode]=useState(state.operationSettings.defaultResetMode), [advancedDirty, setAdvancedDirty] = useState(false), [saving, setSaving] = useState(false), [saveError, setSaveError] = useState<string>();
   useEffect(() => { if (!advancedDirty){setAllowDetachedHead(state.operationSettings.allowDetachedHead);setPushFollowTags(state.operationSettings.pushFollowTags);setPushTagAfterCreate(state.operationSettings.pushTagAfterCreate);setDefaultResetMode(state.operationSettings.defaultResetMode);} }, [advancedDirty, state.operationSettings.allowDetachedHead,state.operationSettings.pushFollowTags,state.operationSettings.pushTagAfterCreate,state.operationSettings.defaultResetMode]);
   const close = () => { if (!saving) state.finishSettings(false); };
   const apply = async () => {
+    if (recordingShortcut) return;
     setSaving(true); setSaveError(undefined);
     try { if (advancedDirty) await state.saveOperationSettings({allowDetachedHead,pushFollowTags,pushTagAfterCreate,defaultResetMode}); state.finishSettings(true); }
     catch (error) { setSaveError(error instanceof Error ? error.message : String(error)); }
@@ -146,7 +149,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
   const navItem = (id: SettingsPage, icon: string, label: string) => <button type="button" className={`settings-nav-item ${page === id ? 'is-active' : ''}`} aria-current={page === id ? 'page' : undefined} onClick={() => setPage(id)}><Icon name={icon}/><span>{label}</span></button>;
 
   return <Modal title={t("common.settings")} busy={saving} onClose={close} footer={
-    <><span className="settings-save-hint"><Icon name="check"/>{page === 'advanced' && state.operationSettings.scope === 'user' ? t("settings.gitOptionsAreSavedInUserSettings") : t("settings.appliesToThisWorkspace")}</span><Button className="settings-cancel" disabled={saving} onClick={close}>{t("common.cancel")}</Button><Button className="primary" disabled={saving} onClick={()=>void apply()}>{saving?t("settings.saving"):t("common.apply")}</Button></>
+    <><span className="settings-save-hint"><Icon name="check"/>{page === 'advanced' && state.operationSettings.scope === 'user' ? t("settings.gitOptionsAreSavedInUserSettings") : t("settings.appliesToThisWorkspace")}</span><Button className="settings-cancel" disabled={saving} onClick={close}>{t("common.cancel")}</Button><Button className="primary" disabled={saving || recordingShortcut} onClick={()=>void apply()}>{saving?t("settings.saving"):t("common.apply")}</Button></>
   }>
     <div className="interface-settings" data-testid="interface-settings">
       <nav className="settings-nav" aria-label={t("settings.settingsCategories")}>
@@ -156,7 +159,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
         <div className="settings-nav-group"><strong>{t("settings.advanced")}</strong>{navItem('advanced', 'tools', t("settings.gitOperations"))}</div>
       </nav>
       <main className="settings-content">
-        <header className="settings-page-heading"><span>{page === 'advanced' ? t("settings.advanced") : page === 'language' || page === 'keyboard' ? t("settings.general") : page === 'colors' ? t("settings.commitGraph") : t("settings.interface")} › {pageLabel}</span><small>{page === 'advanced' ? t("settings.gitOptionsTakeEffectOnlyAfterApply") : t("settings.changesPreviewImmediatelyApplyToSave")}</small></header>
+        <header className="settings-page-heading"><span>{page === 'advanced' ? t("settings.advanced") : page === 'language' || page === 'keyboard' ? t("settings.general") : page === 'colors' ? t("settings.commitGraph") : t("settings.interface")} › {pageLabel}</span><small>{page === 'advanced' ? t("settings.gitOptionsTakeEffectOnlyAfterApply") : page === 'keyboard' ? t('settings.shortcutApplyHint') : t("settings.changesPreviewImmediatelyApplyToSave")}</small></header>
 
         {saveError&&<p role="alert" className="form-error">{saveError}</p>}
         {page === 'files' && <section className="settings-page" aria-label={t('changes.fileList')}>
@@ -175,12 +178,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
             <p className="settings-note">{t("settings.rowHeightGrowsWithLargerTextToKeepEvery")}</p>
           </section>
         </section>}
-        {page === 'keyboard'  && <section className="settings-page" aria-labelledby="keyboard-heading">
-          <h3 id="keyboard-heading">{t("settings.keyboardShortcuts")}</h3>
-          <label className="form-checkbox"><input type="checkbox" aria-label={t("settings.enableSingleKeyShortcuts")} checked={state.singleKeyShortcuts} onChange={event=>state.previewSettings({singleKeyShortcuts:event.target.checked})}/>{t("settings.enableSingleKeyShortcuts")}</label>
-          <p className="settings-page-copy">{t("settings.enabledByDefaultShortcutsWorkThroughoutTheFocusedWorkbench")}</p>
-          <p className="settings-note">{t("settings.hoverOverAnActionToSeeItsKeyHelp")}</p>
-        </section>}
+        {page === 'keyboard' && <ShortcutSettings onRecordingChange={setRecordingShortcut}/>}
         {page === 'diff' && <section className="settings-page settings-diff-page" aria-label={uiText("settings.diff")}>
           <section className="settings-section" aria-labelledby="diff-display-heading">
             <h3 id="diff-display-heading">{t("settings.display")}</h3>

@@ -123,6 +123,69 @@ export async function verifyShortcuts(browser, url) {
 
     await press('h');await history.locator('[data-head-commit][aria-selected="true"]').waitFor();
     await press('r');await page.waitForFunction(()=>!document.querySelector('.toolbar button[aria-label="Refresh current repository status and history"]')?.disabled);
+    // Management records keys inside the modal without running an action or closing on Esc.
+    const openKeyboard=async()=>{await press(',');await dialog().getByRole('button',{name:'Keyboard shortcuts',exact:true}).click();};
+    const row=command=>dialog().locator(`[data-shortcut-command="${command}"]`);
+    const record=()=>dialog().locator('#shortcut-recording');
+    await openKeyboard();
+    await row('fetch').getByRole('button',{name:'Edit binding for Fetch',exact:true}).click();
+    await page.keyboard.press('Control+a');
+    await dialog().getByRole('alert').getByText(/reserved/).waitFor();
+    assert.equal(await dialog().getByRole('button',{name:'Use this binding',exact:true}).isEnabled(),false);
+    await page.keyboard.press('Escape');
+    assert.equal(await dialog().count(),1,'Esc cancels recording before closing Settings');
+    assert.equal(await record().count(),0);
+    await row('fetch').getByRole('button',{name:'Edit binding for Fetch',exact:true}).click();
+    await page.keyboard.press('p');
+    await dialog().getByRole('alert').getByText(/Already used by: Push/).waitFor();
+    assert.equal(await dialog().getByRole('button',{name:'Apply',exact:true}).isEnabled(),false);
+    await dialog().getByRole('button',{name:'Move binding here',exact:true}).click();
+    await row('push').getByText('Disabled',{exact:true}).waitFor();
+    await row('push').getByRole('button',{name:'Restore default bindings for Push…',exact:true}).click();
+    await dialog().getByRole('alert').getByText(/Already used by: Fetch/).waitFor();
+    await dialog().getByRole('button',{name:'Move binding here',exact:true}).click();
+    await row('fetch').getByText('Disabled',{exact:true}).waitFor();
+    await row('push').getByText('P',{exact:true}).waitFor();
+    await row('fetch').getByRole('button',{name:'Add alternate binding for Fetch',exact:true}).click();
+    await page.keyboard.press('Control+Shift+f');
+    await dialog().getByRole('button',{name:'Use this binding',exact:true}).click();
+    await dialog().getByRole('button',{name:'Cancel',exact:true}).click();
+    assert.match(await page.locator('.toolbar').getByRole('button',{name:'Fetch',exact:true}).getAttribute('title'),/F$/);
+    assert.match(await page.locator('.toolbar').getByRole('button',{name:/^Push,/}).getAttribute('title'),/P$/);
+
+    await openKeyboard();
+    await row('fetch').getByRole('button',{name:'Edit binding for Fetch',exact:true}).click();
+    await page.keyboard.press('Control+Shift+f');
+    await dialog().getByRole('button',{name:'Use this binding',exact:true}).click();
+    await row('fetch').getByRole('button',{name:'Add alternate binding for Fetch',exact:true}).click();
+    await page.keyboard.press('f');await dialog().getByRole('button',{name:'Use this binding',exact:true}).click();
+    assert.equal(await row('fetch').getByRole('button',{name:'Add alternate binding for Fetch',exact:true}).isEnabled(),false);
+    await row('fetch').getByRole('button',{name:'Remove F from Fetch',exact:true}).click();
+    await dialog().getByRole('searchbox',{name:'Search actions or keys',exact:true}).fill('fetch');
+    assert.equal(await dialog().locator('[data-shortcut-command]').count(),1);
+    await dialog().getByRole('searchbox',{name:'Search actions or keys',exact:true}).fill('');
+    await dialog().getByRole('combobox',{name:'Action category',exact:true}).selectOption('terminal');
+    assert.equal(await dialog().locator('[data-shortcut-command]').count(),2);
+    await dialog().getByRole('combobox',{name:'Action category',exact:true}).selectOption('');
+    await dialog().getByRole('checkbox',{name:'Only modified',exact:true}).check();
+    assert.equal(await dialog().locator('[data-shortcut-command]').count(),1);
+    await dialog().getByRole('checkbox',{name:'Only modified',exact:true}).uncheck();
+    await dialog().getByRole('button',{name:'Open VS Code Keyboard Shortcuts',exact:true}).click();
+    await page.waitForFunction(()=>window.__shortcutFixture.calls.some(call=>call.method==='openKeyboardShortcuts'));
+    await dialog().getByRole('button',{name:'Apply',exact:true}).click();await dialog().waitFor({state:'hidden'});
+    assert.match(await page.locator('.toolbar').getByRole('button',{name:'Fetch',exact:true}).getAttribute('title'),/Ctrl\/Cmd\+Shift\+F$/);
+    const beforeCustom=await calls();await press('f');assert.equal(await calls(),beforeCustom);
+    await press('Control+Shift+f');
+    await page.waitForFunction(before=>window.__shortcutFixture.calls.filter(call=>call.method==='action').length>before,beforeCustom);
+    await page.waitForFunction(()=>!document.querySelector('.toolbar button[title="Fetch · Ctrl/Cmd+Shift+F"]')?.disabled);
+    await press('?');await dialog().getByRole('button',{name:'Selection and keyboard shortcuts',exact:true}).click();
+    await dialog().locator('.help-table').getByText('Ctrl/Cmd+Shift+F',{exact:true}).waitFor();
+    await page.keyboard.press('Escape');await dialog().waitFor({state:'hidden'});
+    await page.reload();await history.locator('[data-head-commit]').waitFor();
+    assert.match(await page.locator('.toolbar').getByRole('button',{name:'Fetch',exact:true}).getAttribute('title'),/Ctrl\/Cmd\+Shift\+F$/);
+    await openKeyboard();await dialog().getByRole('button',{name:'Restore all default bindings',exact:true}).click();
+    await dialog().getByRole('button',{name:'Apply',exact:true}).click();await dialog().waitFor({state:'hidden'});
+
     await press(',');await dialog().getByRole('button',{name:'Keyboard shortcuts',exact:true}).click();
     await dialog().getByRole('checkbox',{name:'Enable single-key shortcuts',exact:true}).uncheck();
     await dialog().getByRole('button',{name:'Cancel',exact:true}).click();
@@ -140,6 +203,6 @@ export async function verifyShortcuts(browser, url) {
     assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('shortcut-session')).drafts.keys),'rfplcswodeau','Updating shortcut preferences preserves drafts');
     await press('f');assert.equal(await calls(),0,'Saved disabled preference survives a reload');
     assert.deepEqual(errors,[]);
-    console.log('ALWAYGIT_SHORTCUT_UI_TESTS_PASSED: global focus, targets, overlays, IME, repeats, text editing, Diff navigation, confirmations and saved preferences');
+    console.log('ALWAYGIT_SHORTCUT_UI_TESTS_PASSED: management, recording, conflicts, alternates, reset, dynamic help, persistence, global focus, targets, overlays, IME, repeats, text editing, Diff navigation, confirmations and saved preferences');
   } finally {await page.close();}
 }

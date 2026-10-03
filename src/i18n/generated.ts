@@ -4336,8 +4336,8 @@ export const catalog = {
     "zh-CN": "默认开启。焦点位于工作台内时，各区域均可使用；文字输入框、选择控件、输入法组合、弹窗和菜单中暂停。"
   },
   "settings.hoverOverAnActionToSeeItsKeyHelp": {
-    "en": "Hover over an action to see its key. Help & Guide → Selection and keyboard shortcuts contains the full reference. Ctrl/Cmd+R and existing selection keys remain available when single-key shortcuts are disabled.",
-    "zh-CN": "悬停操作按钮可查看按键；帮助与指南 → 选择和快捷键提供完整速查。关闭单键后，Ctrl/Cmd+R 和原有选择快捷键仍可使用。"
+    "en": "Hover over an action to see its current binding. Help & Guide → Selection and keyboard shortcuts shows the current bindings. Modified keys replace defaults; combination keys remain available when single-key shortcuts are disabled.",
+    "zh-CN": "悬停操作按钮可查看当前绑定；帮助与指南 → 选择和快捷键显示当前键位。修改后的按键替换默认键；关闭单键后，组合键仍可使用。"
   },
   "settings.display": {
     "en": "Display",
@@ -4730,6 +4730,242 @@ export const catalog = {
   "settings.resetDialogStartsWithThisModeHardStillRequires": {
     "en": "The Reset dialog starts with this mode. Hard remains a destructive action and is still confirmed each time.",
     "zh-CN": "重置对话框会默认选中此模式；Hard 仍属于破坏性操作，每次执行前都会保留确认。"
+  },
+  "settings.shortcutSearch": {
+    "en": "Search actions or keys",
+    "zh-CN": "搜索操作或快捷键"
+  },
+  "settings.shortcutCategory": {
+    "en": "Action category",
+    "zh-CN": "操作分类"
+  },
+  "settings.shortcutAllCategories": {
+    "en": "All categories",
+    "zh-CN": "全部分类"
+  },
+  "settings.shortcutGit": {
+    "en": "Git operations",
+    "zh-CN": "Git 操作"
+  },
+  "settings.shortcutNavigation": {
+    "en": "Navigation and search",
+    "zh-CN": "导航与搜索"
+  },
+  "settings.shortcutDiff": {
+    "en": "Diff",
+    "zh-CN": "差异预览"
+  },
+  "settings.shortcutTerminal": {
+    "en": "Terminal",
+    "zh-CN": "终端"
+  },
+  "settings.shortcutGeneral": {
+    "en": "Settings and help",
+    "zh-CN": "设置与帮助"
+  },
+  "settings.shortcutModifiedOnly": {
+    "en": "Only modified",
+    "zh-CN": "仅显示已修改"
+  },
+  "settings.shortcutResetAll": {
+    "en": "Restore all default bindings",
+    "zh-CN": "恢复全部默认快捷键"
+  },
+  "settings.shortcutAction": {
+    "en": "Action",
+    "zh-CN": "操作"
+  },
+  "settings.shortcutBinding": {
+    "en": "Current bindings",
+    "zh-CN": "当前快捷键"
+  },
+  "settings.shortcutScope": {
+    "en": "Scope",
+    "zh-CN": "生效范围"
+  },
+  "settings.shortcutWorkbenchScope": {
+    "en": "Focused workbench",
+    "zh-CN": "当前工作台"
+  },
+  "settings.shortcutWorkingScope": {
+    "en": "Working Tree",
+    "zh-CN": "工作区视图"
+  },
+  "settings.shortcutDiffScope": {
+    "en": "Available Diff",
+    "zh-CN": "可用的差异预览"
+  },
+  "settings.shortcutEdit": {
+    "en": "Edit binding for {{action}}",
+    "zh-CN": "修改“{{action}}”的快捷键"
+  },
+  "settings.shortcutAdd": {
+    "en": "Add alternate binding for {{action}}",
+    "zh-CN": "为“{{action}}”添加备用键"
+  },
+  "settings.shortcutRemove": {
+    "en": "Remove {{binding}} from {{action}}",
+    "zh-CN": "移除“{{action}}”的 {{binding}}"
+  },
+  "settings.shortcutDisable": {
+    "en": "Disable shortcuts for {{action}}",
+    "zh-CN": "禁用“{{action}}”的快捷键"
+  },
+  "settings.shortcutReset": {
+    "en": "Restore default bindings for {{action}}",
+    "zh-CN": "恢复“{{action}}”的默认快捷键"
+  },
+  "settings.shortcutModified": {
+    "en": "Modified",
+    "zh-CN": "已修改"
+  },
+  "settings.shortcutDisabled": {
+    "en": "Disabled",
+    "zh-CN": "已禁用"
+  },
+  "settings.shortcutPaused": {
+    "en": "Paused by single-key switch",
+    "zh-CN": "单键开关已暂停"
+  },
+  "settings.shortcutEmpty": {
+    "en": "No matching actions",
+    "zh-CN": "没有匹配的操作"
+  },
+  "settings.shortcutRecord": {
+    "en": "Press a key combination for {{action}}",
+    "zh-CN": "请按下“{{action}}”的新快捷键"
+  },
+  "settings.shortcutRecordHint": {
+    "en": "Click the field and press a key combination. Esc cancels recording; Tab moves to confirmation. Ctrl/Cmd is portable between platforms.",
+    "zh-CN": "点击录制框并按下快捷键。Esc 取消录制，Tab 移至确认按钮。Ctrl/Cmd 会按平台适配。"
+  },
+  "settings.shortcutConfirm": {
+    "en": "Use this binding",
+    "zh-CN": "使用此快捷键"
+  },
+  "settings.shortcutReserved": {
+    "en": "This key is reserved for navigation, selection or text editing. Choose another combination.",
+    "zh-CN": "此按键保留用于导航、选择或文字编辑，请选择其他组合。"
+  },
+  "settings.shortcutConflict": {
+    "en": "Already used by: {{actions}}. Choose another combination or move the binding.",
+    "zh-CN": "已被以下操作使用：{{actions}}。请选择其他组合，或移动此绑定。"
+  },
+  "settings.shortcutDuplicate": {
+    "en": "This action already has this binding.",
+    "zh-CN": "此操作已有相同的快捷键。"
+  },
+  "settings.shortcutMove": {
+    "en": "Move binding here",
+    "zh-CN": "将绑定移至此处"
+  },
+  "settings.shortcutExternalWarning": {
+    "en": "VS Code or the operating system may handle this combination first. External shortcut conflicts are not fully checked.",
+    "zh-CN": "VS Code 或操作系统可能优先处理此组合；此处无法完整检查外部快捷键冲突。"
+  },
+  "settings.shortcutHostTitle": {
+    "en": "VS Code shortcuts",
+    "zh-CN": "VS Code 快捷键"
+  },
+  "settings.shortcutHostNote": {
+    "en": "The separate New Embedded Terminal shortcut (default Ctrl+Alt+Shift+T / Cmd+Alt+Shift+T) is managed by VS Code. Changing N here does not change it.",
+    "zh-CN": "独立的新建内嵌终端快捷键（默认 Ctrl+Alt+Shift+T / Cmd+Alt+Shift+T）由 VS Code 管理；修改此处的 N 不会改变它。"
+  },
+  "settings.shortcutOpenHost": {
+    "en": "Open VS Code Keyboard Shortcuts",
+    "zh-CN": "打开 VS Code 键盘快捷方式"
+  },
+  "settings.shortcutSaveHint": {
+    "en": "Bindings apply after Apply; Cancel restores the previous bindings. Single-key bindings, including Shift with a printable key, follow the single-key switch. Selection and terminal input keys remain unchanged.",
+    "zh-CN": "点击“应用”后应用并保存，“取消”恢复原绑定。单键绑定（含 Shift 加可打印字符）受单键开关控制；选择及终端输入按键保持不变。"
+  },
+  "settings.shortcutRefresh": {
+    "en": "Refresh current repository",
+    "zh-CN": "刷新当前仓库"
+  },
+  "settings.shortcutFetch": {
+    "en": "Fetch",
+    "zh-CN": "获取远端更新"
+  },
+  "settings.shortcutPull": {
+    "en": "Pull…",
+    "zh-CN": "拉取…"
+  },
+  "settings.shortcutPush": {
+    "en": "Push…",
+    "zh-CN": "推送…"
+  },
+  "settings.shortcutCommit": {
+    "en": "Prepare commit…",
+    "zh-CN": "准备提交…"
+  },
+  "settings.shortcutStash": {
+    "en": "Stash all changes…",
+    "zh-CN": "贮藏全部修改…"
+  },
+  "settings.shortcutWorking": {
+    "en": "View Working Tree",
+    "zh-CN": "查看工作区"
+  },
+  "settings.shortcutHead": {
+    "en": "Locate HEAD",
+    "zh-CN": "定位 HEAD"
+  },
+  "settings.shortcutRepository": {
+    "en": "Open repository folder",
+    "zh-CN": "打开仓库文件夹"
+  },
+  "settings.shortcutOpenDiff": {
+    "en": "Open native Diff",
+    "zh-CN": "打开原生差异视图"
+  },
+  "settings.shortcutEditFile": {
+    "en": "Edit file in VS Code",
+    "zh-CN": "在 VS Code 中编辑文件"
+  },
+  "settings.shortcutPreviousChange": {
+    "en": "Previous change",
+    "zh-CN": "上一处修改"
+  },
+  "settings.shortcutNextChange": {
+    "en": "Next change",
+    "zh-CN": "下一处修改"
+  },
+  "settings.shortcutToggleDiff": {
+    "en": "Collapse / expand bottom panel",
+    "zh-CN": "收起／展开底部面板"
+  },
+  "settings.shortcutSearchHistory": {
+    "en": "Search commit history",
+    "zh-CN": "搜索提交历史"
+  },
+  "settings.shortcutSettings": {
+    "en": "Open settings",
+    "zh-CN": "打开设置"
+  },
+  "settings.shortcutHelp": {
+    "en": "Open help",
+    "zh-CN": "打开帮助"
+  },
+  "settings.shortcutStageAll": {
+    "en": "Stage all / filtered files…",
+    "zh-CN": "暂存全部／筛选文件…"
+  },
+  "settings.shortcutUnstageAll": {
+    "en": "Unstage all / filtered files…",
+    "zh-CN": "取消暂存全部／筛选文件…"
+  },
+  "settings.shortcutTerminalNew": {
+    "en": "New embedded terminal",
+    "zh-CN": "新建内嵌终端"
+  },
+  "settings.shortcutTerminalFocus": {
+    "en": "Focus current terminal",
+    "zh-CN": "聚焦当前终端"
+  },
+  "settings.shortcutApplyHint": {
+    "en": "Shortcut changes take effect after Apply",
+    "zh-CN": "快捷键修改在应用后生效"
   },
   "sidebar.refreshRepositoryListAndStatusBadges": {
     "en": "Refresh repository list and status badges",
@@ -6545,6 +6781,65 @@ export interface MessageParameters {
   "settings.tagCreationOffersTheSelectedRemoteAndKeepsThe": {  };
   "settings.defaultResetMode": {  };
   "settings.resetDialogStartsWithThisModeHardStillRequires": {  };
+  "settings.shortcutSearch": {  };
+  "settings.shortcutCategory": {  };
+  "settings.shortcutAllCategories": {  };
+  "settings.shortcutGit": {  };
+  "settings.shortcutNavigation": {  };
+  "settings.shortcutDiff": {  };
+  "settings.shortcutTerminal": {  };
+  "settings.shortcutGeneral": {  };
+  "settings.shortcutModifiedOnly": {  };
+  "settings.shortcutResetAll": {  };
+  "settings.shortcutAction": {  };
+  "settings.shortcutBinding": {  };
+  "settings.shortcutScope": {  };
+  "settings.shortcutWorkbenchScope": {  };
+  "settings.shortcutWorkingScope": {  };
+  "settings.shortcutDiffScope": {  };
+  "settings.shortcutEdit": { action: ParameterValue };
+  "settings.shortcutAdd": { action: ParameterValue };
+  "settings.shortcutRemove": { binding: ParameterValue; action: ParameterValue };
+  "settings.shortcutDisable": { action: ParameterValue };
+  "settings.shortcutReset": { action: ParameterValue };
+  "settings.shortcutModified": {  };
+  "settings.shortcutDisabled": {  };
+  "settings.shortcutPaused": {  };
+  "settings.shortcutEmpty": {  };
+  "settings.shortcutRecord": { action: ParameterValue };
+  "settings.shortcutRecordHint": {  };
+  "settings.shortcutConfirm": {  };
+  "settings.shortcutReserved": {  };
+  "settings.shortcutConflict": { actions: ParameterValue };
+  "settings.shortcutDuplicate": {  };
+  "settings.shortcutMove": {  };
+  "settings.shortcutExternalWarning": {  };
+  "settings.shortcutHostTitle": {  };
+  "settings.shortcutHostNote": {  };
+  "settings.shortcutOpenHost": {  };
+  "settings.shortcutSaveHint": {  };
+  "settings.shortcutRefresh": {  };
+  "settings.shortcutFetch": {  };
+  "settings.shortcutPull": {  };
+  "settings.shortcutPush": {  };
+  "settings.shortcutCommit": {  };
+  "settings.shortcutStash": {  };
+  "settings.shortcutWorking": {  };
+  "settings.shortcutHead": {  };
+  "settings.shortcutRepository": {  };
+  "settings.shortcutOpenDiff": {  };
+  "settings.shortcutEditFile": {  };
+  "settings.shortcutPreviousChange": {  };
+  "settings.shortcutNextChange": {  };
+  "settings.shortcutToggleDiff": {  };
+  "settings.shortcutSearchHistory": {  };
+  "settings.shortcutSettings": {  };
+  "settings.shortcutHelp": {  };
+  "settings.shortcutStageAll": {  };
+  "settings.shortcutUnstageAll": {  };
+  "settings.shortcutTerminalNew": {  };
+  "settings.shortcutTerminalFocus": {  };
+  "settings.shortcutApplyHint": {  };
   "sidebar.refreshRepositoryListAndStatusBadges": {  };
   "sidebar.collapse": {  };
   "sidebar.expand": {  };

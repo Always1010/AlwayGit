@@ -1,3 +1,4 @@
+import { shortcutHint, type WorkbenchShortcut } from './shortcutKeys';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { Button, Icon, Modal } from './ui';
 
@@ -26,7 +27,8 @@ function Inline({ text, navigate }: { text: string; navigate(id: string): void }
   return <>{nodes}</>;
 }
 
-function ContentBlock({ block, navigate }: { block: ManualBlock; navigate(id: string): void }) {
+function ContentBlock({ block, navigate, shortcutReference }: { block: ManualBlock; navigate(id: string): void; shortcutReference: boolean }) {
+  const singleKeys = useWorkbench(state => state.singleKeyShortcuts), overrides = useWorkbench(state => state.shortcutOverrides), t = useTranslation();
   const inline = (text: string) => <Inline text={text} navigate={navigate}/>;
   if (block.kind === 'heading') return <><Anchors ids={block.anchors}/><h3>{inline(block.text)}</h3></>;
   if (block.kind === 'paragraph') return <p>{inline(block.text)}</p>;
@@ -35,7 +37,13 @@ function ContentBlock({ block, navigate }: { block: ManualBlock; navigate(id: st
     const items = block.items.map((item, index) => <li key={index}>{inline(item)}</li>);
     return block.ordered ? <ol>{items}</ol> : <ul>{items}</ul>;
   }
-  if (block.kind === 'table') return <div className="help-table"><table><thead><tr>{block.rows[0]?.map((cell, index) => <th key={index}>{inline(cell)}</th>)}</tr></thead><tbody>{block.rows.slice(1).map((row, index) => <tr key={index}>{row.map((cell, column) => <td key={column}>{inline(cell)}</td>)}</tr>)}</tbody></table></div>;
+  if (block.kind === 'table') {
+    const groups: WorkbenchShortcut[][] = [['refresh'], ['fetch'], ['pull'], ['push'], ['commit'], ['stash'], ['working'], ['head'], ['repository'], ['diff'], ['edit'], ['previousChange', 'nextChange'], ['toggleDiff'], ['search'], ['settings'], ['help'], ['stageAll', 'unstageAll'], ['terminalNew'], ['terminalFocus']];
+    const shortcutTable = shortcutReference && [groups.length + 1, groups.length + 2].includes(block.rows.length);
+    const rows = shortcutTable ? block.rows.map((row, index) => index > 0 && index <= groups.length ? [groups[index - 1].map(command => shortcutHint(command, singleKeys, overrides) ?? t(effectiveDisabled(command))).join(' / '), ...row.slice(1)] : row) : block.rows;
+    function effectiveDisabled(command: WorkbenchShortcut) { return overrides[command]?.length === 0 ? 'settings.shortcutDisabled' as const : 'settings.shortcutPaused' as const; }
+    return <div className="help-table"><table><thead><tr>{rows[0]?.map((cell, index) => <th key={index}>{inline(cell)}</th>)}</tr></thead><tbody>{rows.slice(1).map((row, index) => <tr key={index}>{row.map((cell, column) => <td key={column}>{inline(cell)}</td>)}</tr>)}</tbody></table></div>;
+  }
   const source = manualImage(block.source);
   return source ? <figure><img src={source} alt={block.text} loading="lazy" decoding="async"/><figcaption>{block.text}</figcaption></figure> : <p className="muted">{block.text}</p>;
 }
@@ -76,7 +84,7 @@ export default function HelpDialog({ onClose }: { onClose(): void }) {
         {!topics.length && <p className="help-no-results" role="status">{t("help.noMatchingTopicsTryAnotherKeywordOrCategory")}</p>}
       </aside>
       <article className="help-content" ref={article} tabIndex={0} aria-label={section?.title ?? t("help.helpContent")}>
-        {section ? <><Anchors ids={section.aliases}/><h2>{section.title}</h2>{section.blocks.some(block => block.kind === 'image') && <div className="help-screenshot-note"><Inline text={manual.screenshotNote} navigate={navigate}/></div>}{section.blocks.map((block, index) => <Fragment key={`${section.id}-${index}`}><ContentBlock block={block} navigate={navigate}/></Fragment>)}{category !== 'manual' && section.level !== 2 && <Button icon="book" className="help-read-more" onClick={() => navigate(section.id)}>{t("help.readTheFullChapter")}</Button>}</> : <p className="muted">{t("help.clearTheFilterToBrowseTheGuide")}</p>}
+        {section ? <><Anchors ids={section.aliases}/><h2>{section.title}</h2>{section.blocks.some(block => block.kind === 'image') && <div className="help-screenshot-note"><Inline text={manual.screenshotNote} navigate={navigate}/></div>}{section.blocks.map((block, index) => <Fragment key={`${section.id}-${index}`}><ContentBlock block={block} navigate={navigate} shortcutReference={section.id === 'section-12-01'}/></Fragment>)}{category !== 'manual' && section.level !== 2 && <Button icon="book" className="help-read-more" onClick={() => navigate(section.id)}>{t("help.readTheFullChapter")}</Button>}</> : <p className="muted">{t("help.clearTheFilterToBrowseTheGuide")}</p>}
       </article>
     </div>
   </Modal>;

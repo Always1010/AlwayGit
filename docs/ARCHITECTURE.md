@@ -22,7 +22,7 @@ AlwayGit 是 Workspace 类型的 VS Code 扩展。每个 React WebviewPanel 提�
 | `webview` | `Sidebar.tsx`、`History.tsx`、`Details.tsx`、`DiffPreview.tsx` | 四区呈现、对象选择和只读比较 |
 | `webview` | `BottomDock.tsx`、`dock-store.ts`、`TerminalView.tsx` | 底部多标签、终端显示与输入、活动标签状态 |
 | `src/application`、`src/extension` | `terminal-sessions.ts`、`terminal-runtime.ts`、`terminal-host.ts` | 来源面板隔离、Shell 配置、PTY 辅助进程与输出流控 |
-| `webview` | `shortcutKeys.ts`、`shortcuts.ts` | 统一键位、捕获分发、编辑/弹窗/输入法保护及组件动作注册；操作与按钮共用回调和可用条件 |
+| `webview` | `shortcutKeys.ts`、`shortcuts.ts`、`ShortcutSettings.tsx`、`shortcutDefinitions.ts` | 默认键位与会话覆盖、录制和冲突移动、捕获分发、编辑/弹窗/输入法保护及组件动作注册；操作、按钮提示与帮助共用有效绑定，协议层 `src/protocol/shortcuts.ts` 校验覆盖配置 |
 | `webview` | `menus.ts`、`SettingsDialog.tsx`、`appearance.ts`、`i18n.ts` | 动作定义、界面设置、外观和语言 |
 | `webview` | `HelpDialog.tsx`、`help-content.ts`、`help-manuals.ts` | 离线帮助、双语手册的章节提取与打包图片映射 |
 | `webview` | `refresh.ts`、`refIndex.ts`、`session-persistence.ts`、`fileSelection.ts`、`diff.ts` | 刷新失效范围、选择规则和修改块导航 |

@@ -23,7 +23,7 @@ export function effectiveBindings(command: WorkbenchShortcut, overrides: Shortcu
   return overrides[command] ?? defaultBindings(command);
 }
 export function singleKey(binding: ShortcutBinding): boolean {
-  return binding.modifiers.every(modifier => modifier === 'shift');
+  return !binding.modifiers.length || binding.key.length === 1 && binding.modifiers.every(modifier => modifier === 'shift');
 }
 export function bindingSignature(binding: ShortcutBinding, mac: boolean): string {
   const modifiers = binding.modifiers.map(modifier => modifier === 'primary' ? mac ? 'meta' : 'control' : modifier);
@@ -39,9 +39,11 @@ export function reservedBinding(binding: ShortcutBinding): boolean {
   // Basic navigation/editing remains owned by the focused control and selection layer.
   if (!/^(?:[a-z0-9]|[\x21-\x2f\x3a-\x40\x5b-\x60\x7b-\x7e]|f(?:[1-9]|1[0-2]))$/.test(binding.key)) return true;
   if (binding.key === 'f10' && binding.modifiers.includes('shift')) return true;
-  return binding.key === 'a' && [false, true].some(mac => {
+  return [false, true].some(mac => {
     const signature = bindingSignature(binding, mac);
-    return signature === 'control:a' || signature === 'meta:a';
+    return ['control', 'meta'].some(modifier =>
+      ['a', 'c', 'v', 'x', 'z', 'y'].some(key => signature === `${modifier}:${key}`) ||
+      ['c', 'v', 'z', 'y'].some(key => signature === `${modifier}+shift:${key}`));
   });
 }
 const bindingSchema = z.object({

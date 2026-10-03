@@ -15,13 +15,13 @@ const baseSymbols = '`1234567890-=[]\\;\',./';
 export function bindingFromEvent(event: KeyInput, portable = false, mac = isMac()): ShortcutBinding | undefined {
   if (event.getModifierState?.('AltGraph') || ['Control', 'Meta', 'Alt', 'Shift', 'Dead', 'Process', 'Unidentified'].includes(event.key)) return;
   let key = event.key.toLowerCase();
-  const index = shiftedSymbols.indexOf(key);
-  if (event.shiftKey && index >= 0) key = baseSymbols[index];
+  const index = key.length === 1 ? shiftedSymbols.indexOf(key) : -1;
+  if (index >= 0) key = baseSymbols[index];
   const modifiers: ShortcutModifier[] = [];
-  if (event.ctrlKey) modifiers.push(portable && !mac ? 'primary' : 'control');
-  if (event.metaKey) modifiers.push(portable && mac ? 'primary' : 'meta');
+  if (event.ctrlKey) modifiers.push(portable && !mac && !event.metaKey ? 'primary' : 'control');
+  if (event.metaKey) modifiers.push(portable && mac && !event.ctrlKey ? 'primary' : 'meta');
   if (event.altKey) modifiers.push('alt');
-  if (event.shiftKey) modifiers.push('shift');
+  if (event.shiftKey || index >= 0) modifiers.push('shift');
   return { key, modifiers };
 }
 export function shortcutCommand(event: KeyInput, singleKeys: boolean, overrides: ShortcutOverrides = {}, mac = isMac()): WorkbenchShortcut | undefined {
