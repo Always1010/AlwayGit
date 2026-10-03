@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-079：新窗口恢复仓库期间显示空目录且开放添加入口
+
+- 日期：2026-10-04
+- 状态：已解决
+- 现象：新窗口工作台已显示，左侧仓库仍需等待一段时间才出现；等待期间主区域显示“没有添加仓库”并提供添加入口，容易被误认为仓库记录丢失而开始操作。
+- 原因：后台恢复逐个验证保存路径，普通仓库需要四次 Git 子进程查询，目录请求等待整批恢复完成。前端只记录通用 loading，空状态仅依据当前空数组判断，无法区分尚未返回、成功空目录与读取失败。内置 Git 激活和路径访问也可能延长等待，未测量用户实际新窗口中各阶段耗时。
+- 解决方案：保存路径最多四个并行验证，保留输入顺序、完整目录一次发布及扫描失效保护。前端单独管理目录加载/就绪/失败状态，在首次响应前即显示加载提示，禁用添加与重复刷新；超过十秒提供慢加载说明和日志入口，失败后允许重试。目录相关宿主操作也等待首次恢复，成功确认空目录后才展示添加引导。
+- 验证方式：140 项定向无界面回归最终通过，覆盖并发上限、乱序完成、扫描失效、目录状态与宿主等待；类型和 1,405 条双语资源检查通过。使用本机 Edge 无头验证真实 React 的慢加载提示、禁用按钮、失败重试、确认空目录与恢复添加入口，并检查截图。对 `D:\WRK` 下六个实际仓库只读测量：串行约 1.97 秒，四路并行约 0.67 秒；该对比不包含 VS Code 或内置 Git 激活耗时，不代表完整新窗口启动时间。未运行真实 VS Code 桌面验证，未打包或安装扩展。
+- 相关文件：`src/repositories/manager.ts`、`src/extension/workbench.ts`、`webview/store.ts`、`webview/App.tsx`、`webview/Sidebar.tsx`、`webview/menus.ts`、`webview/RepositoryCatalogStatus.tsx`、`webview/styles.css`、`src/i18n/catalogs/workbench.json`、`tests/repository-manager.test.ts`、`tests/repository-state.test.ts`、`tests/ui-state.test.ts`、`tests/workbench-entry.test.ts`。
+
 ## BUG-078：界面偏好未跨窗口共享，旧面板恢复覆盖新设置
 
 - 日期：2026-10-04

@@ -49,6 +49,7 @@ function rememberHistory(): void {
   useWorkbench.setState({ historyBackDepth: stack.length });
 }
 interface WorkbenchState {
+  catalogState: 'loading' | 'ready' | 'error'; catalogError?: string;
   historyBackDepth: number; historyScrollTop: number; historyRestoreTop: number; historyRestoreToken: number;
   backHistory(): void; resetHistory(): void; setHistoryScroll(top: number): void;
   locateRef(ref: string, oid: string): void;
@@ -154,6 +155,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   operationSettings: { allowDetachedHead: false, pushFollowTags: false, pushTagAfterCreate: false, defaultResetMode: 'mixed', scope: 'workspace' },
   async loadOperationSettings() { const settings = await rpc<OperationSettings>('operationSettings'); if (typeof settings?.allowDetachedHead === 'boolean'&&typeof settings?.pushFollowTags==='boolean'&&typeof settings?.pushTagAfterCreate==='boolean'&&['soft','mixed','hard'].includes(settings?.defaultResetMode)) set({ operationSettings: settings }); },
   async saveOperationSettings(update, scope) { const settings = await rpc<OperationSettings>('saveOperationSettings', undefined, { ...update, ...(scope ? { scope } : {}) }); if (typeof settings?.allowDetachedHead !== 'boolean' || typeof settings?.pushFollowTags !== 'boolean' || typeof settings?.pushTagAfterCreate !== 'boolean' || !['soft','mixed','hard'].includes(settings?.defaultResetMode) || settings.allowDetachedHead !== update.allowDetachedHead || settings.pushFollowTags !== update.pushFollowTags || settings.pushTagAfterCreate !== update.pushTagAfterCreate || settings.defaultResetMode !== update.defaultResetMode || scope && settings.scope !== scope) throw new Error(uiText("notices.couldNotSaveGitOperationSettings")); if (scope) await get().loadOperationSettings(); else set({ operationSettings: settings }); },
+  catalogState: 'loading', catalogError: undefined,
   repositories: [], repositoryCollections:[], repositoryStatuses: {}, selectedRepositoryKeys:[], selectedWorktreePaths:[], commits: [], selectedOids:[], selectedRefs:[], search: '', language: session.language === 'zh-CN' ? 'zh-CN' : 'en', layout: initialLayout, appearance: normalizeAppearance(session.appearance), locateToken:0,nextOffset: 0, tips: [], hasMore: false, loading: false, historyLoading: false, detailsLoading: false, diffRevision: 0, busy: false, activity: '', tab: 'history', drafts: session.drafts ?? {}, collapsedSidebarGroups:[],
   report(error) { set({ error: message(error) }); },
   async initialize() {
@@ -163,6 +165,8 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     }).catch(error => get().report(error));
     const request = ++catalogEpoch;
     const showLoading = !get().repositories.length && !get().snapshot;
+    const loadingCatalog = get().catalogState !== 'ready';
+    if (loadingCatalog) set({ catalogState: 'loading', catalogError: undefined });
     void get().loadOperationSettings().catch(error => { if (request === catalogEpoch) get().report(error); });
     if (showLoading) set({ loading: true });
     try {
@@ -177,7 +181,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       const removed = !!currentId && !repositories.some(repo => repo.id === currentId);
       if (removed) { cancelSearchTimer(); ++repositoryEpoch; ++historyEpoch; ++detailEpoch; }
       set({
-        repositories, repositoryCollections, repositoryOrder: orderResult?.root ? orderResult : undefined,
+        repositories, repositoryCollections, repositoryOrder: orderResult?.root ? orderResult : undefined, catalogState: 'ready', catalogError: undefined,
         selectedRepositoryKeys, repositorySelectionAnchor,
         ...(removed ? {
           repoId: undefined, snapshot: undefined, commits: [], historyHead: undefined, details: undefined,
@@ -192,7 +196,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         const initial = repositories.find(repo => repo.id === session.repoId);
         if (initial) await get().selectRepository(initial.id);
       }
-    } catch (error) { if (request === catalogEpoch) get().report(error); }
+    } catch (error) { if (request === catalogEpoch) { if (loadingCatalog) set({ catalogState: 'error', catalogError: message(error) }); else get().report(error); } }
     finally { if (showLoading && request === catalogEpoch) set({ loading: false }); }
   },
   async reorderRepository(payload) {

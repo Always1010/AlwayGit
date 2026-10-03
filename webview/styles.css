@@ -524,3 +524,5 @@ h1,h2,p {margin:0;}
 .repository-name-error{color:var(--vscode-errorForeground,#c33)}
 .history-read-status {display:flex;align-items:center;gap:5px;min-width:0;}
 .history-read-status>.truncate {flex:1;min-width:0;}
+.repository-catalog-status { min-height:0; }
+.repository-catalog-status > p { display:flex; flex-direction:column; align-items:center; gap:8px; max-width:600px; overflow-wrap:anywhere; }

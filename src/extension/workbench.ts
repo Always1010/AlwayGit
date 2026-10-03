@@ -270,7 +270,7 @@ export class Workbench implements vscode.Disposable {
     if (request.method === 'openExternal') { const data = externalUrlSchema.parse(request.payload); if (!await vscode.env.openExternal(vscode.Uri.parse(data.url))) throw new Error(this.text('host.couldNotOpenWebLink')); return null; }
     if (request.method === 'copyText') { await vscode.env.clipboard.writeText(copySchema.parse(request.payload).text); return null; }
     if (!vscode.workspace.isTrusted) throw new Error(this.text("host.gitExecutionRequiresATrustedWorkspace"));
-    if (['repositories', 'repositoryCollections', 'repositoryOrder'].includes(request.method)) await this.initializeRepositories();
+    if (['repositories', 'repositoryCollections', 'repositoryOrder', 'pickRepositoryDirectory', 'discoverRepositories', 'addRepository', 'removeRepositories', 'createRepositoryCollection', 'renameRepositoryCollection', 'deleteRepositoryCollection', 'moveRepositories', 'reorderRepository'].includes(request.method)) await this.initializeRepositories();
     if (request.method === 'repositories') { const list = this.repositories.list(),active=source?.activeRepository??this.activeRepository; return active ? list.sort((a, b) => Number(b.id === active) - Number(a.id === active)) : list; }
     if (request.method === 'repositoryCollections') return this.repositories.collections();
     if (request.method === 'repositoryOrder') return this.repositories.order();

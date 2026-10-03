@@ -232,8 +232,29 @@ describe('repository UI consistency', () => {
     const first = store.getState().initialize(), second = store.getState().initialize();
     old.resolve([a]); await first;
     expect(store.getState().loading).toBe(true);
+    expect(store.getState().catalogState).toBe('loading');
     latest.resolve([a, b]); await second;
     expect(store.getState().loading).toBe(false);
+    expect(store.getState().catalogState).toBe('ready');
+  });
+
+  it('blocks catalog actions before the first response and distinguishes failure from a confirmed empty catalog',async()=>{
+    const {menuFor}=await import('../webview/menus'),api={} as Parameters<typeof menuFor>[1];
+    expect(store.getState().catalogState).toBe('loading');
+    expect(menuFor({kind:'group',group:'repositories'},api).items.every(item=>item.disabled)).toBe(true);
+    const fallback=bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method,...args)=>method==='repositories'?Promise.reject(new Error('catalog damaged')):fallback(method,...args));
+    await store.getState().initialize();
+    expect(store.getState()).toMatchObject({catalogState:'error',catalogError:'catalog damaged',repositories:[]});
+    const failed=menuFor({kind:'group',group:'repositories'},api).items;
+    expect(failed[0].disabled).toBe(true);expect(failed[1].disabled).toBe(false);
+    const retry=deferred<Repository[]>();
+    bridge.rpc.mockImplementation((method,...args)=>method==='repositories'?retry.promise:fallback(method,...args));
+    const initializing=store.getState().initialize();
+    expect(store.getState()).toMatchObject({catalogState:'loading',catalogError:undefined});
+    retry.resolve([]);await initializing;
+    expect(store.getState()).toMatchObject({catalogState:'ready',repositories:[]});
+    expect(menuFor({kind:'group',group:'repositories'},api).items.every(item=>!item.disabled)).toBe(true);
   });
 
   it('starts without choosing the first repository and clears a removed active repository', async()=>{

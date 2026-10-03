@@ -22,7 +22,7 @@ vi.mock('vscode', () => {
     dispose() { this.listeners.clear(); }
   }
   return {
-    EventEmitter, RelativePattern: class { constructor(public base: string, public pattern: string) {} },
+    EventEmitter, env: { language: 'zh-CN' }, RelativePattern: class { constructor(public base: string, public pattern: string) {} },
     workspace: { isTrusted: true, workspaceFolders: [], createFileSystemWatcher: vi.fn(), onDidChangeConfiguration: () => ({ dispose() {} }), getConfiguration: () => ({ get: (_key: string, fallback: unknown) => fallback }) },
     extensions: { getExtension: vi.fn() }, ProgressLocation: { Notification: 15 },
     window: { showInputBox: vi.fn(), showOpenDialog: vi.fn(), showQuickPick: vi.fn(), withProgress: vi.fn(), showInformationMessage: vi.fn(), showWarningMessage: vi.fn() },
@@ -242,6 +242,22 @@ describe('batch repository registration', () => {
 describe('repository scan coordination',()=>{
   function deferred<T>(){let resolve!:(value:T)=>void;const promise=new Promise<T>(done=>{resolve=done;});return{promise,resolve};}
   function repository(name:string):Repository{const root=path.resolve(`scan-${name}`);return{id:name,root,commonDir:path.join(root,'.git'),gitDir:path.join(root,'.git'),name};}
+  it('restores at most four paths concurrently and publishes only a complete catalog in saved order',async()=>{
+    const repos=Array.from({length:7},(_,index)=>repository(`parallel-${index}`));
+    const {manager,git}=setup(new Map([['alwaygit.repositoryRoots.v1',repos.map(repo=>repo.root)]]));
+    const gates=repos.map(()=>deferred<Repository>()),started:number[]=[],notify=vi.fn();
+    manager.onDidChangeRepositories(notify);
+    vi.spyOn(git,'discover').mockImplementation(root=>{const index=repos.findIndex(repo=>repo.root===root);started.push(index);return gates[index].promise;});
+    const scanning=manager.scan();
+    await vi.waitFor(()=>expect(started).toEqual([0,1,2,3]));
+    expect(manager.list()).toEqual([]);expect(notify).not.toHaveBeenCalled();
+    gates[3].resolve(repos[3]);await vi.waitFor(()=>expect(started).toEqual([0,1,2,3,4]));
+    gates[1].resolve(repos[1]);await vi.waitFor(()=>expect(started).toEqual([0,1,2,3,4,5]));
+    gates[4].resolve(repos[4]);await vi.waitFor(()=>expect(started).toEqual([0,1,2,3,4,5,6]));
+    expect(manager.list()).toEqual([]);
+    gates.forEach((gate,index)=>gate.resolve(repos[index]));await scanning;
+    expect(manager.list()).toEqual(repos);expect(notify).toHaveBeenCalledOnce();
+  });
   it('shares one discovery flight across simultaneous scans',async()=>{
     const {manager,git}=setup(),repo=repository('one'),gate=deferred<Repository>(),entered=deferred<void>();
     Object.assign(vscode.workspace,{workspaceFolders:[{uri:{scheme:'file',fsPath:repo.root}}]});
