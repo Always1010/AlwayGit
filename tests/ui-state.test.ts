@@ -21,6 +21,39 @@ beforeEach(async () => {
 });
 afterEach(() => { vi.useRealTimers(); });
 describe('repository UI consistency', () => {
+  it('keeps the displayed scope paired with its rows while a new scope loads or fails', async () => {
+    await store.getState().selectRepository('a');
+    const displayed = store.getState().displayedHistory;
+    const request = deferred<HistoryPage>(), fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, ...args) => method === 'history' ? request.promise : fallback(method, ...args));
+    store.getState().setCheckedRefs(['refs/tags/v1']);
+    expect(store.getState()).toMatchObject({ historyLoading: true, checkedRefs: ['refs/tags/v1'], displayedHistory: displayed, commits: [commit] });
+    request.resolve({ commits: [{ ...commit, oid: 'tag' }], tips: ['tag'], nextOffset: 1, hasMore: false });
+    await vi.waitFor(() => expect(store.getState().historyLoading).toBe(false));
+    expect(store.getState().displayedHistory).toEqual({ refs: ['refs/tags/v1'], search: '' });
+    bridge.rpc.mockImplementation((method, ...args) => method === 'history' ? Promise.reject(new Error('offline')) : fallback(method, ...args));
+    store.getState().setCheckedRefs(['refs/tags/v2']);
+    await vi.waitFor(() => expect(store.getState().historyError).toBe('offline'));
+    expect(store.getState().displayedHistory?.refs).toEqual(['refs/tags/v1']);
+    expect(store.getState().commits[0].oid).toBe('tag');
+  });
+
+  it('ignores stale history responses and avoids reloading an unchanged reference set', async () => {
+    await store.getState().selectRepository('a');
+    const old = deferred<HistoryPage>(), next = deferred<HistoryPage>(), fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, repo, payload) => method === 'history' ? payload.tips.includes('refs/tags/old') ? old.promise : next.promise : fallback(method, repo, payload));
+    store.getState().setCheckedRefs(['refs/tags/old']);
+    store.getState().setCheckedRefs(['refs/tags/new']);
+    const count = bridge.rpc.mock.calls.length;
+    store.getState().setCheckedRefs(['refs/tags/new', 'refs/tags/new']);
+    expect(bridge.rpc.mock.calls).toHaveLength(count);
+    next.resolve({ commits: [{ ...commit, oid: 'new' }], tips: ['new'], nextOffset: 1, hasMore: false });
+    await vi.waitFor(() => expect(store.getState().historyLoading).toBe(false));
+    old.resolve({ commits: [commit], tips: ['old'], nextOffset: 1, hasMore: false });
+    await old.promise;
+    expect(store.getState().commits[0].oid).toBe('new');
+    expect(store.getState().displayedHistory?.refs).toEqual(['refs/tags/new']);
+  });
   it('keeps multi-Tag and mixed reference menus out of branch-only actions', async () => {
     const { menuFor } = await import('../webview/menus');
     const noop=vi.fn(),api={open:noop,checkout:noop,openDiff:noop,editFile:noop,host:vi.fn().mockResolvedValue(undefined),addRepository:vi.fn().mockResolvedValue(undefined),removeRepositories:noop,fetchRepositories:noop};

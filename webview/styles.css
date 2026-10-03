@@ -487,3 +487,10 @@ h1,h2,p {margin:0;}
 .repository-add-panel,.repository-group-form{display:flex;flex-direction:column;gap:12px}
 .repository-group-form{padding:4px 0 16px}
 .repository-name-error{color:var(--vscode-errorForeground,#c33)}
+.history-location { flex: none; padding: 6px 8px; border-bottom: 1px solid var(--vscode-panel-border); font-size: 12px; overflow-wrap: anywhere; }
+.history-location-line { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
+.history-location-scope { margin: 3px 0; }
+.history-location-scope > span { display: block; }
+.history-read-status { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin-top: 3px; min-height: 18px; }
+.history-location .muted { margin-top: 3px; }
+.history-location-refs > div { max-height: 90px; overflow: auto; }
