@@ -227,7 +227,7 @@ export class GitService implements GitServiceContract {
   async snapshot(repo: Repository): Promise<Snapshot> {
     await this.verify(repo);
     const [status, refsOutput, stashOutput, worktrees, gitDir, remoteOutput, unpushed] = await Promise.all([this.status(repo), this.text(repo, ['for-each-ref', '--format=%(refname)%00%(objectname)%00%(upstream:short)%00%(*objectname)%00%(*objecttype)%00%(objecttype)%00%(symref)', 'refs/heads', 'refs/remotes', 'refs/tags']), this.text(repo, ['stash', 'list', '--format=%gd%x00%H%x00%s']), this.worktrees(repo), this.text(repo, ['rev-parse', '--path-format=absolute', '--git-dir']), this.text(repo, ['remote']), this.unpushed(repo)]);
-    const refs: GitRef[] = refsOutput ? await Promise.all(refsOutput.split('\n').map(async line => {
+    const refs: GitRef[] = refsOutput ? await mapGitQueries(refsOutput.split('\n'), async line => {
       const [fullName, objectOid, upstream, peeledOid, peeledType, objectType, symbolicTarget] = line.split('\0');
       const kind: GitRef['kind'] = fullName.startsWith('refs/heads/') ? 'local' : fullName.startsWith('refs/remotes/') ? 'remote' : 'tag';
       // for-each-ref's starred fields peel one annotated-tag layer. Dereference
@@ -235,10 +235,10 @@ export class GitService implements GitServiceContract {
       const targetType = (peeledType === 'tag' ? await this.text(repo, ['cat-file', '-t', `${fullName}^{}`]) : peeledType || objectType) as GitRef['targetType'];
       const oid = targetType === 'commit' ? peeledType === 'commit' ? peeledOid : peeledType === 'tag' ? await this.oid(repo, fullName) : objectOid : objectOid;
       return { fullName, name: fullName.replace(/^refs\/(heads|remotes|tags)\//, ''), kind, oid, ...(kind === 'tag' ? { refOid: objectOid } : {}), targetType, ...(upstream ? { upstream } : {}), ...(symbolicTarget ? { symbolicTarget } : {}) };
-    })) : [];
+    }) : [];
     const stashes: Stash[] = stashOutput ? stashOutput.split('\n').map(line => { const [selector, oid, subject] = line.split('\0'); return { selector, oid, subject }; }) : [];
     const remotes = remoteOutput ? remoteOutput.split('\n') : [];
-    const remoteDestinations = Object.fromEntries(await Promise.all(remotes.map(async remote => [remote, await this.remoteDestination(repo, remote)] as const)));
+    const remoteDestinations = Object.fromEntries(await mapGitQueries(remotes, async remote => [remote, await this.remoteDestination(repo, remote)] as const));
     const defaultBranch=inferDefaultBranch(refs,remotes,status.upstream);
     const operation: OperationState = { conflicts: status.changes.filter(x => x.conflict).length, canContinue: false, canAbort: false, canSkip: false };
     const markers = await Promise.all(['rebase-merge', 'rebase-apply', 'MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'sequencer'].map(name => exists(path.join(gitDir, name))));
@@ -788,7 +788,7 @@ export class GitService implements GitServiceContract {
       case 'commit.checkout': return this.checkout(repo, action.target, true);
       case 'checkout.stash': return this.checkout(repo, action.target, action.detached, true, action.includeUntracked);
       case 'branch.delete': {
-        const names=[...new Set(await Promise.all(action.names.map(name=>this.refName(repo,name))))];
+        const names=await mapGitQueries([...new Set(action.names)], name=>this.refName(repo,name));
         if(!names.length)throw new GitError(localizeMessage("service.selectAtLeastOneBranch"),'INVALID_ARGUMENT');
         const state=await this.snapshot(repo),current=state.branch,occupied=new Set(state.worktrees.map(tree=>tree.branch?.replace(/^refs\/heads\//,'')).filter(Boolean));
         if(current&&names.includes(current))throw new GitError(localizeMessage("service.theCurrentBranchCannotBeDeleted", { current: (current) }),'INVALID_ARGUMENT');
@@ -802,7 +802,7 @@ export class GitService implements GitServiceContract {
       case 'remote.delete': {
         const destination=token(action.remote,'remote'),configured=(await this.text(repo,['remote'])).split('\n').filter(Boolean);
         if(!configured.includes(destination))throw new GitError(localizeMessage("service.unknownRemote", { destination: (destination) }),'INVALID_ARGUMENT');
-        const branches=[...new Set(await Promise.all(action.branches.map(name=>this.refName(repo,name))))];
+        const branches=await mapGitQueries([...new Set(action.branches)], name=>this.refName(repo,name));
         if(!branches.length)throw new GitError(localizeMessage("service.selectAtLeastOneRemoteBranch"),'INVALID_ARGUMENT');
         for (const branch of branches) this.confirmedRemoteOid(Object.hasOwn(action.expectedOids ?? {}, branch) ? action.expectedOids![branch] : undefined);
         await this.confirmRemoteDestination(repo, destination, action.expectedDestination);
