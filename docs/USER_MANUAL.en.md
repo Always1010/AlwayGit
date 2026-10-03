@@ -452,6 +452,8 @@ Fetch updates your local knowledge of the remote state. Pull integrates remote c
 3. On the first Push, note the information about setting up upstream tracking. If there are multiple remotes and the target cannot be determined, explicitly select the remote.
 4. To change the destination, use Change Target… and check the source, remote, and target branch again.
 5. Run Push, wait for success feedback, and check that the unpushed count has updated to reflect the actual state.
+6. The result card shows publication or update status for each destination. Use the open/copy icons for remote links, and expand Operation details for output. Check each destination before retrying a partial Push.
+7. On GitHub/GitLab, use the result or branch context menu to start a PR/MR. Without a server-provided link, confirm the target repository and branch in the AlwayGit frontend dialog, then finish on the website. GitHub supports selecting the upstream repository for a fork; GitLab forks require a server-provided MR link. The shortcut does not submit a request or query existing PR/CI status. Pushed GitHub tags also offer a release creation shortcut.
 
 **Result:** The target remote branch has received the intended commits, or a clear reason for failure is shown.
 

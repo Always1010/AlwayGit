@@ -1,7 +1,8 @@
-import type { ActionBlocker } from '../protocol/types';
+import type { ActionBlocker, PushResult } from '../protocol/types';
 import { renderMessage, type MessageDescriptor } from '../i18n';
 
 export class GitError extends Error {
+  pushResult?: PushResult;
   readonly localizedMessage?: MessageDescriptor;
   constructor(message: string | MessageDescriptor, public readonly code: string, public readonly stdout = '', public readonly stderr = '', public readonly details?: ActionBlocker) {
     super(typeof message === 'string' ? message : renderMessage(message)); this.name = 'GitError';

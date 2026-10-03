@@ -1,7 +1,7 @@
 import { translate, uiText, setLanguageReader } from './text';
 import { create } from 'zustand';
 import { errorMessage } from './rpc-error';
-import type { CheckoutBlocker, Commit, CommitComparison, CommitDetails, DiffTarget, GitAction, HistoryPage, HistoryQuery, OperationReview, OperationSettings, Repository, RepositoryChanges, RepositoryCollection, RepositoryOrder, ReorderRepository, RepositoryStatus, Snapshot, StashApplyBlocker, StashDetails, StashSection } from '../src/protocol/types';
+import type { ActionResponse, HostingRepository, CheckoutBlocker, Commit, CommitComparison, CommitDetails, DiffTarget, GitAction, HistoryPage, HistoryQuery, OperationReview, OperationSettings, Repository, RepositoryChanges, RepositoryCollection, RepositoryOrder, ReorderRepository, RepositoryStatus, Snapshot, StashApplyBlocker, StashDetails, StashSection } from '../src/protocol/types';
 import { demoMode, readSession, rpc, saveSession, subscribe } from './rpc';
 import type { LayoutState } from './rpc';
 import type { DiffNavigationScope } from '../src/protocol/session';
@@ -23,6 +23,7 @@ let actionSequence = 0;
 export const defaultLayout: LayoutState = { preset: 'workbench', sidebar: 210, details: 300, diff: 220, diffCollapsed: false, graph: 64, author: 100, date: 120, font: 13, row: 24 };
 export type CheckoutFailure = CheckoutBlocker & { detached?: boolean };
 interface WorkbenchState {
+  remoteRequest?: { repoId: string; branch: string; repositories: HostingRepository[]; defaultBranch?: string };
   operationReview?: { repoId: string; action: Extract<GitAction, { type: 'commit' | 'operation.continue' }>; review: OperationReview };
   operationSettings: OperationSettings; loadOperationSettings(): Promise<void>; saveOperationSettings(settings: Omit<OperationSettings,'scope'>): Promise<void>;
   appearance: Appearance; diffNavigationScope: DiffNavigationScope; singleKeyShortcuts: boolean; settingsBaseline?: InterfaceSettings;
@@ -107,7 +108,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     cancelSearchTimer();
     ++repositoryEpoch; ++historyEpoch; ++detailEpoch; const view = views[id];
     set({ operationReview: undefined });
-    set({ repoId: id, locatingOid: undefined, snapshot: undefined, commits: [], historyHead: undefined, selectedOids:[], selectionAnchor:undefined, selectedRefs:[],refSelectionAnchor:undefined, selectedWorktreePaths:[],worktreeSelectionAnchor:undefined, tips: [], details: undefined, comparison:undefined, stashDetails: undefined, selectedStashSection:undefined, diffTarget: undefined, diffRevision:0, selectedFile: view?.selectedFile, selectedOid: view?.selectedOid, selectedParent: view?.selectedParent, selectedStashOid: view?.selectedStashOid, ref: view?.ref, checkedRefs: view?.checkedRefs ? [...view.checkedRefs] : view?.ref ? [view.ref] : undefined, expandedRefGroups:view?.expandedRefGroups?[...view.expandedRefGroups]:undefined,collapsedSidebarGroups:[...(view?.collapsedSidebarGroups??[])], search: view?.search ?? '', tab: view?.tab ?? 'history', checkoutFailure: undefined, stashApplyFailure: undefined, error: undefined, notice: undefined, actionFeedback: actionFeedbacks.get(id), loading: true, busy: executingRepositories.has(id) || hostBusyRepositories.has(id), activity: '', detailsLoading: false, historyLoading: false });
+    set({ repoId: id, locatingOid: undefined, snapshot: undefined, commits: [], historyHead: undefined, selectedOids:[], selectionAnchor:undefined, selectedRefs:[],refSelectionAnchor:undefined, selectedWorktreePaths:[],worktreeSelectionAnchor:undefined, tips: [], details: undefined, comparison:undefined, stashDetails: undefined, selectedStashSection:undefined, diffTarget: undefined, diffRevision:0, selectedFile: view?.selectedFile, selectedOid: view?.selectedOid, selectedParent: view?.selectedParent, selectedStashOid: view?.selectedStashOid, ref: view?.ref, checkedRefs: view?.checkedRefs ? [...view.checkedRefs] : view?.ref ? [view.ref] : undefined, expandedRefGroups:view?.expandedRefGroups?[...view.expandedRefGroups]:undefined,collapsedSidebarGroups:[...(view?.collapsedSidebarGroups??[])], search: view?.search ?? '', tab: view?.tab ?? 'history', remoteRequest: undefined, checkoutFailure: undefined, stashApplyFailure: undefined, error: undefined, notice: undefined, actionFeedback: actionFeedbacks.get(id), loading: true, busy: executingRepositories.has(id) || hostBusyRepositories.has(id), activity: '', detailsLoading: false, historyLoading: false });
     await get().refresh();
   },
   async refresh(options = {}) {
@@ -297,35 +298,56 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     actionFeedbacks.set(repoId, feedback);
     executingRepositories.add(repoId); set({ busy: true, activity: action.type, actionFeedback: feedback, error: undefined, notice: undefined, checkoutFailure: undefined, stashApplyFailure: undefined });
     try {
-      const result = await rpc<Snapshot | undefined>('action', repoId, action);
+      const response = await rpc<ActionResponse | Snapshot | undefined>('action', repoId, action);
+      // Accept legacy snapshots from demo fixtures and an older host during reload.
+      const envelope = response && !('repository' in response) ? response : undefined;
+      const result = response && 'repository' in response ? response : envelope?.snapshot;
+      const published = envelope?.result;
+      const commitResult: ActionFeedback['result'] = action.type === 'commit' && result?.repository.id === repoId && result.head ? { kind: 'commit', oid: result.head, files: committedFiles, remaining: result.changes.length, amended: !!action.amend } : undefined;
       if (action.type === 'commit' && submittedDraft !== undefined && submittedDraft.trim() === action.message && get().drafts[repoId] === submittedDraft) {
         set({ drafts: { ...get().drafts, [repoId]: '' } });
       }
       // Freeze this action's result before history loading or another refresh changes the store.
-      if (action.type === 'commit') finish('success', undefined, result?.repository.id === repoId && result.head ? { kind: 'commit', oid: result.head, files: committedFiles, remaining: result.changes.length, amended: !!action.amend } : undefined);
+      if (published) feedback.target = published.destinations.flatMap(destination => destination.refs.filter(ref => ref.kind === 'branch').map(ref => `${published.localBranch ?? ref.name} → ${published.remote ?? destination.label}/${ref.name}`)).join(', ') || feedback.target;
       if (epoch === repositoryEpoch) {
         feedback.phase = 'refreshing';
         if (get().actionFeedback?.id === feedback.id) set({ actionFeedback: { ...get().actionFeedback!, phase: 'refreshing' } });
         await get().refresh({ background: true, snapshot: result });
         if(epoch===repositoryEpoch) {
           const checkout = ['branch.checkout', 'commit.checkout', 'checkout.stash'].includes(action.type) || (action.type === 'branch.create' || action.type === 'branch.track') && action.checkout;
-          if (checkout) { const snap = get().snapshot; const ref = snap?.refs.find(r => r.kind === 'local' && r.name === snap.branch)?.fullName ?? (snap?.head ? 'HEAD' : undefined); if (ref && !get().checkedRefs?.includes(ref)) get().setCheckedRefs([...(get().checkedRefs ?? []), ref]); }
+          if (checkout) { const snap = get().snapshot; const ref = snap?.refs.find(r => r.kind === 'local' && r.name === snap.branch)?.fullName ?? (snap?.head ? 'HEAD' : undefined); if (ref && !get().checkedRefs?.includes(ref)) { set({checkedRefs:[...(get().checkedRefs??[]),ref]});await get().loadHistory(); } }
           set({ notice: demoMode ? (translate(get().language, "notices.demoCompletedNoDiskChanges", { kind: (action.type) })) : action.type === 'resolve-and-stage' ? (translate(get().language, "notices.markedAndStagedInspectTheResultBeforeContinuing")) : `${action.type} ✓` });
         }
       }
-      const snapshot = epoch === repositoryEpoch ? get().snapshot : undefined;
-      if (action.type !== 'commit') finish('success', undefined, stashed&&snapshot&&snapshot.stashes[0]?.oid!==stashed.previousOid?{kind:'stash',files:stashed.files,untracked:stashed.untracked,clean:snapshot.changes.length===0}:action.type==='branch.create'&&snapshot?{kind:'branch',name:action.name,checkedOut:!!action.checkout,currentBranch:snapshot.branch||uiText("notices.detachedHEAD")}:undefined);
-      return true;
+      const snapshot = result?.repository.id === repoId ? result : epoch === repositoryEpoch ? get().snapshot : undefined;
+      if (action.type === 'stash.create') feedback.stashOid = snapshot?.stashes[0]?.oid;
+      const checkout = ['branch.checkout', 'commit.checkout', 'checkout.stash'].includes(action.type) || (action.type === 'branch.track' && action.checkout);
+      const remoteNames = new Set([...(before?.refs ?? []), ...(snapshot?.refs ?? [])].filter(ref => ref.kind === 'remote').map(ref => ref.fullName));
+      const fetched = action.type === 'fetch' && snapshot ? [...remoteNames].filter(name => before?.refs.find(ref => ref.fullName === name)?.oid !== snapshot.refs.find(ref => ref.fullName === name)?.oid) : [];
+      let finalResult: ActionFeedback['result'] = published ?? commitResult;
+      if (!finalResult) {
+        if (stashed && snapshot && snapshot.stashes[0]?.oid !== stashed.previousOid) finalResult = {kind:'stash',files:stashed.files,untracked:stashed.untracked,clean:snapshot.changes.length===0};
+        else if (action.type === 'branch.create' && snapshot) finalResult = {kind:'branch',name:action.name,checkedOut:!!action.checkout,currentBranch:snapshot.branch||uiText('notices.detachedHEAD')};
+        else if (checkout && snapshot) finalResult = {kind:'checkout',branch:snapshot.branch||uiText('notices.detachedHEAD'),head:snapshot.head};
+        else if (action.type === 'fetch' && snapshot) finalResult = {kind:'fetch',refs:fetched};
+        else if (action.type === 'worktree.add') finalResult = {kind:'worktree',path:action.path};
+        else if (action.type === 'tag.create') finalResult = {kind:'tag',name:action.name};
+        else if (snapshot && ['pull','merge','rebase','reset','cherry-pick','revert','operation.continue','operation.abort','operation.skip'].includes(action.type)) finalResult = {kind:'update',head:snapshot.head,previousHead:before?.head};
+      }
+      const failed = published && published.outcome !== 'success';
+      finish(failed ? 'error' : 'success', failed ? published.error : undefined, finalResult);
+      if (failed && get().repoId === repoId) set({ error: published.error });
+      return !failed;
     } catch (error) {
       if (get().repoId === repoId) {
         const structured = error as { code?: string; details?: CheckoutBlocker | StashApplyBlocker };
         // Failed Merge / Cherry-pick can leave a new operation and conflicts on disk.
         await get().refresh({ background: true });
-        if (get().repoId !== repoId) { finish('error', message(error)); return false; }
+        if (get().repoId !== repoId) { finish('error', message(error), (error as {pushResult?: ActionFeedback['result']})?.pushResult); return false; }
         const details=structured.details;
         set({ error: message(error), stashApplyFailure: details&&'kind' in details&&details.kind==='stash-apply'?details:undefined, checkoutFailure: details&&'target' in details ? { ...details, detached: action.type === 'commit.checkout' || action.type === 'checkout.stash' && action.detached } : undefined });
       }
-      finish('error', message(error));
+      finish('error', message(error), (error as {pushResult?: ActionFeedback['result']})?.pushResult);
       return false;
     } finally { executingRepositories.delete(repoId); if (get().repoId===repoId) set({ busy: hostBusyRepositories.has(repoId), activity: hostBusyRepositories.has(repoId)?get().activity:'' }); }
   },
@@ -375,7 +397,12 @@ subscribe(event => {
       if (pending && pending.repoId === useWorkbench.getState().repoId) void useWorkbench.getState().refresh({ background: true, changes: pending.changes, snapshot: pending.snapshot });
     }, 160);
   }
-  if(event.type==='activity'){if(event.busy)hostBusyRepositories.add(event.repoId);else hostBusyRepositories.delete(event.repoId);if(event.repoId===state.repoId)useWorkbench.setState({busy:event.busy||executingRepositories.has(event.repoId),activity:event.label});}
+  if(event.type==='activity'){
+    const externalStart=event.busy&&!hostBusyRepositories.has(event.repoId)&&!executingRepositories.has(event.repoId);
+    if(externalStart)actionFeedbacks.delete(event.repoId);
+    if(event.busy)hostBusyRepositories.add(event.repoId);else hostBusyRepositories.delete(event.repoId);
+    if(event.repoId===state.repoId)useWorkbench.setState({busy:event.busy||executingRepositories.has(event.repoId),activity:event.label,...(externalStart?{actionFeedback:undefined}:{})});
+  }
   if (event.type === 'selectRepository') void state.selectRepository(event.repoId);
 });
 

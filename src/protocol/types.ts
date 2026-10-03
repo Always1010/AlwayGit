@@ -15,6 +15,19 @@ export type OperationKind = 'merge' | 'rebase' | 'cherry-pick' | 'revert';
 export interface OperationState { kind?: OperationKind; conflicts: number; canContinue: boolean; canAbort: boolean; canSkip: boolean; originalHead?: string }
 export interface OperationReview { kind: OperationKind; token: string; files: { path: string; lines: number[]; more?: boolean; skipped?: 'binary' | 'large' | 'encoding' | 'submodule' | 'limit' }[] }
 export interface PushTarget { localBranch: string; remote?: string; remoteBranch: string; configured: boolean }
+export interface HostingRepository { url: string; label: string; provider?: 'github' | 'gitlab' }
+export interface RemoteLinks { repositories: HostingRepository[]; defaultBranch?: string }
+export interface PublishedRef {
+  kind: 'branch' | 'tag'; name: string;
+  status: 'published' | 'updated' | 'up-to-date' | 'deleted' | 'rejected';
+  url?: string; requestUrl?: string; requestKind?: 'create' | 'view'; releaseUrl?: string;
+}
+export interface PushResult {
+  kind: 'push'; outcome: 'success' | 'partial' | 'error'; remote?: string; localBranch?: string;
+  destinations: { label: string; repository?: HostingRepository; refs: PublishedRef[]; unconfirmed?: boolean }[];
+  error?: string; output: string;
+}
+export interface ActionResponse { snapshot?: Snapshot; result?: PushResult; refreshWarning?: string }
 export interface Snapshot { repository: Repository; branch: string; head?: string; upstream?: string; defaultBranch?: string; pushTarget?: PushTarget; ahead: number; behind: number; unpushed?: number; changes: Change[]; refs: GitRef[]; remotes?: string[]; remoteDestinations?: Record<string, string>; stashes: Stash[]; worktrees: Worktree[]; operation: OperationState; version: number }
 export interface Commit { oid: string; parents: string[]; author: string; email: string; timestamp: number; subject: string; pushed?: boolean }
 export interface HistoryQuery { offset?: number; limit?: number; tips?: string[]; ref?: string; search?: string; head?: string }
@@ -64,10 +77,10 @@ export interface CheckoutBlocker { reason: 'local-changes' | 'conflicts' | 'oper
 export interface StashApplyBlocker { kind: 'stash-apply'; reason: 'untracked-path-exists' | 'restore-conflict' | 'restore-blocked' | 'state-changed'; paths: string[]; conflictPaths?: string[]; selector: string; stashOid: string; stashRetained: true; workingTreeUnchanged: true; output?: string }
 export type ActionBlocker = CheckoutBlocker | StashApplyBlocker;
 export interface OperationSettings { allowDetachedHead: boolean; pushFollowTags: boolean; pushTagAfterCreate: boolean; defaultResetMode: 'soft' | 'mixed' | 'hard'; scope: 'workspace' | 'user' }
-export interface RpcRequest { id: string; method: 'repositories' | 'repositoryCollections' | 'repositoryOrder' | 'reorderRepository' | 'repositoryStatuses' | 'pickRepositoryDirectory' | 'discoverRepositories' | 'cancelRepositoryDiscovery' | 'addRepository' | 'removeRepositories' | 'createRepositoryCollection' | 'renameRepositoryCollection' | 'deleteRepositoryCollection' | 'moveRepositories' | 'snapshot' | 'operationReview' | 'history' | 'details' | 'stashDetails' | 'compare' | 'cherryPickCheck' | 'cancelQuery' | 'action' | 'diff' | 'diffPreview' | 'copyText' | 'openWorkbench' | 'openRepository' | 'openProject' | 'openFile' | 'openWorktree' | 'pickWorktree' | 'showLog' | 'saveSession' | 'operationSettings' | 'saveOperationSettings'; repoId?: string; payload?: unknown }
+export interface RpcRequest { id: string; method: 'repositories' | 'repositoryCollections' | 'repositoryOrder' | 'reorderRepository' | 'repositoryStatuses' | 'pickRepositoryDirectory' | 'discoverRepositories' | 'cancelRepositoryDiscovery' | 'addRepository' | 'removeRepositories' | 'createRepositoryCollection' | 'renameRepositoryCollection' | 'deleteRepositoryCollection' | 'moveRepositories' | 'snapshot' | 'operationReview' | 'history' | 'details' | 'stashDetails' | 'compare' | 'cherryPickCheck' | 'cancelQuery' | 'action' | 'diff' | 'diffPreview' | 'copyText' | 'openExternal' | 'remoteLinks' | 'openWorkbench' | 'openRepository' | 'openProject' | 'openFile' | 'openWorktree' | 'pickWorktree' | 'showLog' | 'saveSession' | 'operationSettings' | 'saveOperationSettings'; repoId?: string; payload?: unknown }
 /** Missing paths means the source cannot limit which working files changed. */
 export interface RepositoryChanges { paths?: string[]; index?: boolean }
-export type HostMessage = { type: 'operationSettingsChanged'; settings: OperationSettings } | { type: 'response'; id: string; result?: unknown; error?: { message: string; code?: string; details?: ActionBlocker; localizedMessage?: MessageDescriptor } } | { type: 'changed'; repoId: string; changes?: RepositoryChanges; snapshot?: Snapshot } | { type: 'activity'; repoId: string; busy: boolean; label: string } | { type: 'repositoriesChanged' } | { type: 'selectRepository'; repoId: string } | { type: 'repositoryDiscoveryProgress'; scanId: string; scanned: number; found: number };
+export type HostMessage = { type: 'operationSettingsChanged'; settings: OperationSettings } | { type: 'response'; id: string; result?: unknown; error?: { message: string; code?: string; details?: ActionBlocker; localizedMessage?: MessageDescriptor; pushResult?: PushResult } } | { type: 'changed'; repoId: string; changes?: RepositoryChanges; snapshot?: Snapshot } | { type: 'activity'; repoId: string; busy: boolean; label: string } | { type: 'repositoriesChanged' } | { type: 'selectRepository'; repoId: string } | { type: 'repositoryDiscoveryProgress'; scanId: string; scanned: number; found: number };
 export interface GitServiceContract {
   withReadSignal?<T>(signal: AbortSignal, task: () => Promise<T>): Promise<T>;
   discover(root: string): Promise<Repository>;
@@ -81,5 +94,6 @@ export interface GitServiceContract {
   cherryPickCheck(repo: Repository, commits: string[], context?: { expectedHead: string; expectedBranch: string }): Promise<CherryPickCheck>;
   content(repo: Repository, source: ContentSource, maxBytes?: number): Promise<Buffer>;
   prepareAction(repo: Repository, action: GitAction): Promise<GitAction>;
-  execute(repo: Repository, action: GitAction): Promise<void>;
+  remoteLinks?(repo: Repository, remote?: string, branch?: string): Promise<RemoteLinks>;
+  execute(repo: Repository, action: GitAction): Promise<void | PushResult>;
 }

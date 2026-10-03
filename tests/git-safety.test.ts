@@ -502,7 +502,7 @@ describe('Git safety regressions', () => {
     } });
     const firstWrite = first.execute(repo, { type: 'stage', paths: ['same.txt'] });
     const settledFirst = firstWrite.then(() => ({ error: undefined }), error => ({ error }));
-    let secondWrite: Promise<void> | undefined;
+    let secondWrite: ReturnType<GitService['execute']> | undefined;
     try {
       // A failed first write must fail this test instead of leaving an unresolved wait.
       await Promise.race([firstEntered, firstWrite.then(() => { throw new Error('Stage never reached Git'); })]);

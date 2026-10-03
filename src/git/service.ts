@@ -6,6 +6,9 @@ import path from 'node:path';
 import type { Change, CheckoutBlocker, Commit, CommitComparison, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationReview, OperationState, Repository, RepositoryStatus, Snapshot, Stash, StashApplyBlocker, StashDetails, Worktree } from '../protocol/types';
 import { branchNameConflict, branchNameConflictMessage, branchNameProblem, branchNameProblemMessage } from '../protocol/ref-name';
 import { remoteNameProblem, remoteUrlProblem } from '../protocol/remote';
+import { parsePushResult } from './push-result';
+import { hostingRepository } from '../protocol/hosting';
+import type { PushResult, RemoteLinks } from '../protocol/types';
 import { inferDefaultBranch } from './default-branch';
 import { GitError, GitReadTerminationError, GitTerminationError } from './error';
 import { isReadOnlyGitCommand } from './command-kind';
@@ -376,13 +379,36 @@ export class GitService implements GitServiceContract {
       throw new GitError(localizeMessage("service.theTargetBranchOrHEADChangedBeforeTheOperation"), 'OPERATION_CHANGED');
     }
   }
-  async execute(repo: Repository, action: GitAction): Promise<void> {
+  async execute(repo: Repository, action: GitAction): Promise<void | PushResult> {
     const key = normalized(repo.commonDir); const prior = queues.get(key) ?? Promise.resolve();
-    const operation = prior.catch(() => {}).then(async () => { const unsafe = unsafeTerminations.get(key); if (unsafe) throw unsafe; await this.verify(repo); await this.executeNow(repo, action); });
+    const operation = prior.catch(() => {}).then(async () => { const unsafe = unsafeTerminations.get(key); if (unsafe) throw unsafe; await this.verify(repo); return this.executeNow(repo, action); });
     queues.set(key, operation);
-    try { await operation; const unsafe = unsafeTerminations.get(key); if (unsafe) throw unsafe; }
+    try { const result = await operation; const unsafe = unsafeTerminations.get(key); if (unsafe) throw unsafe; return result; }
     catch (error) { if (error instanceof GitTerminationError) unsafeTerminations.set(key, error); throw unsafeTerminations.get(key) ?? error; }
     finally { if (queues.get(key) === operation) queues.delete(key); }
+  }
+  async remoteLinks(repo: Repository, remote?: string, branch?: string): Promise<RemoteLinks> {
+    if (!remote && branch) { const name=await this.refName(repo,branch); remote = await this.optionalConfig(repo, `branch.${name}.pushRemote`) ?? await this.optionalConfig(repo,'remote.pushDefault') ?? await this.optionalConfig(repo, `branch.${name}.remote`); }
+    if (!remote || remote === '.') {
+      const remotes = (await this.text(repo, ['remote'])).split('\n').filter(Boolean);
+      remote = remotes.length === 1 ? remotes[0] : undefined;
+    }
+    if (!remote) return { repositories: [] };
+    const urls = await this.text(repo, ['remote', 'get-url', '--push', '--all', token(remote, 'remote')]);
+    const head = await this.run(repo, ['symbolic-ref', '--short', `refs/remotes/${remote}/HEAD`], true);
+    const name = head.stdout.toString('utf8').trim();
+    return { repositories: urls.split('\n').flatMap(value => { const repository = hostingRepository(value); return repository ? [repository] : []; }),
+      ...(name.startsWith(remote + '/') ? { defaultBranch: name.slice(remote.length + 1) } : {}) };
+  }
+  private async push(repo: Repository, args: string[], remote?: string, branch?: string): Promise<PushResult> {
+    const configured = remote ? await this.run(repo, ['remote', 'get-url', '--push', '--all', token(remote, 'remote')], true) : undefined;
+    const output = await this.run(repo, ['push', '--porcelain', ...args.slice(1)], true);
+    const result = parsePushResult(output.stdout.toString('utf8'), output.stderr.toString('utf8'), output.code, remote, branch, configured?.code === 0 ? configured.stdout.toString('utf8').trim().split('\n').filter(Boolean) : []);
+    if (output.code) {
+      const error = new GitError(result.error || translate('en','service.gitExitedWithStatus',{code:output.code}), result.outcome === 'partial' ? 'PARTIAL_FAILURE' : 'GIT_FAILED', output.stdout.toString('utf8'), output.stderr.toString('utf8'));
+      error.pushResult = result; throw error;
+    }
+    return result;
   }
   private async readOperationFile(gitDir: string, name: string): Promise<string> {
     try { return await readFile(path.join(gitDir, name), 'utf8'); }
@@ -549,9 +575,9 @@ export class GitService implements GitServiceContract {
     }
     return selector;
   }
-  private async executeNow(repo: Repository, action: GitAction): Promise<void> {
+  private async executeNow(repo: Repository, action: GitAction): Promise<void | PushResult> {
     if (action.type !== 'commit' && action.type !== 'operation.continue') this.reviews.delete(repo.id);
-    let args: string[]; const remote = (value?: string) => value ? [token(value, 'remote')] : [];
+    let args: string[], pushedRemote: string | undefined; const remote = (value?: string) => value ? [token(value, 'remote')] : [];
     switch (action.type) {
       case 'stage': case 'resolve-and-stage': case 'unstage': case 'discard': {
         if (!action.paths.length) throw new GitError(localizeMessage("service.selectAtLeastOneFile"), 'INVALID_ARGUMENT'); const paths = action.paths.map(validateFilePath);
@@ -599,6 +625,7 @@ export class GitService implements GitServiceContract {
         const setUpstream = branch && (action.setUpstream ?? true);
         const lease = action.forceWithLease ? this.confirmedRemoteOid(action.expectedOid) : undefined;
         if (action.forceWithLease) await this.confirmRemoteDestination(repo, destination!, action.expectedDestination);
+        pushedRemote = destination;
         args = ['push', action.followTags ? '--follow-tags' : '--no-follow-tags', ...(setUpstream ? ['--set-upstream'] : []), ...(lease !== undefined ? [`--force-with-lease=refs/heads/${remoteBranch}:${lease}`] : []), ...remote(destination), ...(branch ? [`refs/heads/${branch}:refs/heads/${remoteBranch}`] : [])]; break;
       }
       case 'remote.add': {
@@ -673,10 +700,11 @@ export class GitService implements GitServiceContract {
         }
         await this.run(repo,['tag',...(action.message?['-a','-m',action.message]:[]),name,target]);
         if(destination){
-          try{await this.run(repo,['push','--no-follow-tags',destination,`${ref}:${ref}`]);}
+          try{return await this.push(repo,['push','--no-follow-tags',destination,`${ref}:${ref}`],destination);}
           catch(error){
             const detail=error instanceof Error?error.message:String(error);
-            throw new GitError(localizeMessage("service.tagWasCreatedLocallyButCouldNotBePushed",{name,destination,value:detail}),'PARTIAL_FAILURE',error instanceof GitError?error.stdout:'',error instanceof GitError?error.stderr:'');
+            const failure=new GitError(localizeMessage("service.tagWasCreatedLocallyButCouldNotBePushed",{name,destination,value:detail}),'PARTIAL_FAILURE',error instanceof GitError?error.stdout:'',error instanceof GitError?error.stderr:'');
+            if(error instanceof GitError)failure.pushResult=error.pushResult;throw failure;
           }
         }
         return;
@@ -792,6 +820,9 @@ export class GitService implements GitServiceContract {
       default: throw new GitError(localizeMessage("service.unsupportedGitAction"), 'INVALID_ARGUMENT');
     }
     if (action.type === 'worktree.add' && (action.detach || !action.branch && !action.newBranch && !!action.start)) this.requireDetachedHead();
+    if (args[0] === 'push') {
+      return this.push(repo, args, pushedRemote ?? ('remote' in action ? action.remote : undefined), action.type === 'push' ? action.branch : undefined);
+    }
     await this.run(repo, args);
   }
 }

@@ -12,7 +12,7 @@ export async function verifyFeedback(browser, url) {
       const fixture = window.__feedbackFixture = {
         pending: undefined, calls: [], cleanReview: false,
         snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 1, behind: 0, pushTarget: { localBranch: 'main', remote: 'origin', remoteBranch: 'release', configured: true }, remotes: ['origin'], changes: [], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
-        complete(error) { window.postMessage({ type: 'response', id: this.pending.id, result: error ? undefined : structuredClone({ ...this.snapshot, version: ++this.snapshot.version }), error: error ? { message: error } : undefined }, '*'); this.pending = undefined; },
+        complete(error, publication) { window.postMessage({ type: 'response', id: this.pending.id, result: error ? undefined : publication ? {snapshot:structuredClone({...this.snapshot,version:++this.snapshot.version}),result:publication} : structuredClone({ ...this.snapshot, version: ++this.snapshot.version }), error: error ? { message: error } : undefined }, '*'); this.pending = undefined; },
       };
       window.acquireVsCodeApi = () => ({ getState: () => ({}), setState: () => {}, postMessage(request) {
         if (request.method === 'saveSession') { setTimeout(() => window.postMessage({ type: 'response', id: request.id, result: null }, '*'), 0); return; }
@@ -21,6 +21,7 @@ export async function verifyFeedback(browser, url) {
         let result;
         if (request.method === 'repositories') result = [repo];
         if (request.method === 'snapshot') result = structuredClone({ ...fixture.snapshot, version: ++fixture.snapshot.version });
+        if (request.method === 'remoteLinks') result={repositories:[{url:'https://github.com/acme/repo',label:'github.com/acme/repo',provider:'github'}],defaultBranch:'main'};
         if (request.method === 'operationReview') result = {kind:fixture.snapshot.operation.kind,token:'reviewed-index',files:fixture.snapshot.changes.filter(file=>!file.conflict&&file.indexStatus!==' ').map(file=>({path:file.path,lines:fixture.cleanReview?[]:[1,3,5]}))};
         if (request.method === 'history') result = { commits: [commit], tips: [commit.oid], nextOffset: 1, hasMore: false };
         if (request.method === 'details') result = { commit, body: '', files: [] };
@@ -31,6 +32,27 @@ export async function verifyFeedback(browser, url) {
     await page.goto(url);
     await page.getByRole('option', { name: 'Feedback fixture' }).dblclick();
     const bar = page.getByTestId('action-feedback');
+    await page.evaluate(()=>{
+      const fixture=window.__feedbackFixture;
+      fixture.snapshot.refs.push({name:'topic',fullName:'refs/heads/topic',kind:'local',oid:'b'.repeat(40)});
+      window.postMessage({type:'changed',repoId:'feedback'},'*');
+    });
+    const topic=page.getByTestId('sidebar').getByRole('button',{name:'Branch topic',exact:true});
+    await topic.dblclick();
+    await page.waitForFunction(()=>window.__feedbackFixture.pending?.payload.type==='branch.checkout');
+    const checkoutProgress=page.getByTestId('operation-progress');await checkoutProgress.waitFor();
+    const bounds=await checkoutProgress.getByRole('dialog').boundingBox();
+    assert.ok(Math.abs(bounds.x+bounds.width/2-720)<2 && Math.abs(bounds.y+bounds.height/2-450)<2,'Progress must be centered in the workbench');
+    await page.screenshot({path:'artifacts/operation-progress-preview.png'});
+    await page.keyboard.press('Escape');await page.keyboard.press('Tab');
+    await page.evaluate(()=>window.postMessage({type:'activity',repoId:'feedback',busy:false,label:'branch.checkout'},'*'));
+    assert.equal(await checkoutProgress.isVisible(),true,'Host end must not release a pending Checkout');
+    assert.equal(await page.locator('.workspace').evaluate(node=>node.inert),true);
+    assert.equal(await page.evaluate(()=>window.__feedbackFixture.calls.filter(call=>call.method==='action'&&call.payload.type==='branch.checkout').length),1);
+    await page.evaluate(()=>window.__feedbackFixture.complete());
+    await checkoutProgress.waitFor({state:'hidden'});
+    assert.equal(await page.locator('.workspace').evaluate(node=>node.inert),false);
+    await bar.getByRole('button',{name:'Dismiss notification'}).click();
     for (const [kind, title] of [['merge', 'Merge'], ['rebase', 'Rebase'], ['reset', 'Reset']]) {
       await page.getByTestId('history').locator('[data-oid]').first().click({ button: 'right' });
       await page.getByRole('menuitem', { name: `${title}…`, exact: true }).click();
@@ -80,6 +102,25 @@ export async function verifyFeedback(browser, url) {
     await bar.getByText('Push completed', { exact: true }).waitFor();
     await bar.getByRole('button', { name: 'Dismiss notification' }).click();
     await bar.waitFor({ state: 'hidden' });
+    await push();
+    assert.equal(await page.getByTestId('operation-progress').count(),0,'Push must remain nonblocking');
+    await page.evaluate(()=>window.__feedbackFixture.complete(undefined,{kind:'push',outcome:'success',remote:'origin',localBranch:'main',output:'To github\nnew branch release',destinations:[{label:'github.com/acme/repo',repository:{url:'https://github.com/acme/repo',label:'github.com/acme/repo',provider:'github'},refs:[{kind:'branch',name:'release',status:'published',url:'https://github.com/acme/repo/tree/release'}]}]}));
+    await page.getByRole('dialog').waitFor({state:'hidden'});
+    const publication=page.getByTestId('push-result');
+    await publication.getByText('Published',{exact:true}).waitFor();
+    await page.screenshot({path:'artifacts/push-result-preview.png'});
+    await publication.getByRole('button',{name:'Copy remote link',exact:true}).click();
+    await page.waitForFunction(()=>window.__feedbackFixture.calls.some(call=>call.method==='copyText'&&call.payload.text==='https://github.com/acme/repo/tree/release'));
+    await publication.getByRole('button',{name:'Open remote branch or tag',exact:true}).click();
+    await page.waitForFunction(()=>window.__feedbackFixture.calls.some(call=>call.method==='openExternal'&&call.payload.url==='https://github.com/acme/repo/tree/release'));
+    await publication.getByRole('button',{name:'Create PR on GitHub',exact:true}).click();
+    const request=page.getByRole('dialog',{name:'Create PR on GitHub',exact:true});await request.waitFor();
+    await request.getByLabel('Target repository URL').fill('https://github.com/upstream/repo');
+    await request.getByLabel('Target branch (blank uses website default)').fill('release/1.x');
+    await request.getByRole('button',{name:'Continue on website',exact:true}).click();
+    await page.waitForFunction(()=>window.__feedbackFixture.calls.some(call=>call.method==='openExternal'&&call.payload.url==='https://github.com/upstream/repo/compare/release%2F1.x...acme%3Arelease?expand=1'));
+    await request.waitFor({state:'hidden'});
+    await bar.getByText('Push completed',{exact:true}).waitFor();
     await push();
     await page.evaluate(() => window.__feedbackFixture.complete('remote: permission denied\nfatal: could not push to origin'));
     await bar.getByText('Push failed', { exact: true }).waitFor();
@@ -168,6 +209,6 @@ export async function verifyFeedback(browser, url) {
     await bar.getByRole('button',{name:'View Commit',exact:true}).click();
     await page.waitForFunction(()=>window.__feedbackFixture.calls.some(call=>call.method==='details'&&call.payload.oid==='b'.repeat(40)));
     assert.deepEqual(errors, []);
-    console.log('ALWAYGIT_FEEDBACK_UI_TESTS_PASSED: feedback, Commit result summary and View Commit, paused Merge exit/abort, manual staging, staged marker review, return, explicit override and Commit guard');
+    console.log('ALWAYGIT_FEEDBACK_UI_TESTS_PASSED: frontend Checkout lock, Push links and fork PR target, Commit result summary and View Commit, paused Merge exit/abort, manual staging, staged marker review, return, explicit override and Commit guard');
   } finally { await page.close(); }
 }

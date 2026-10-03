@@ -7,6 +7,7 @@ import type { MenuItem } from './ContextMenu';
 import { useWorkbench } from './store';
 import { samePath } from './pathIdentity';
 import { rpc } from './rpc';
+import { showRemoteRequest } from './RemoteRequestDialog';
 import { cherryPickOrder } from './commitSelection';
 import type { CherryPickMenuCheck } from './useCherryPickCheck';
 
@@ -85,6 +86,14 @@ export function menuFor(target: MenuTarget, api: MenuApi, check?: CherryPickMenu
     if(ref.kind==='remote'){const parsed=remoteParts(ref);items.push(action(parsed?t("menus.deleteBranchFrom", { remote: (parsed.remote) }):uiText("menus.deleteRemoteBranch"),{type:'remote.delete',remote:parsed?.remote,expectedDestination:parsed?snapshot?.remoteDestinations?.[parsed.remote]:undefined,remoteBranches:parsed?[parsed.branch]:[],expectedOids:parsed?{[parsed.branch]:ref.oid}:undefined},'trash',busy||!parsed||!!ref.symbolicTarget,ref.symbolicTarget?t("menus.symbolicRemoteReferencesCannotBeDeleted"):undefined));}
     if(ref.kind==='tag')items.push(action(t("menus.pushTag"),{type:'tag.push',names:[ref.name],expectedOids:ref.refOid?{[ref.name]:ref.refOid}:{}},'cloud-upload',busy||!ref.refOid,!ref.refOid?t("menus.refreshToCaptureThisTagBeforePush"):undefined),action(uiText("menus.deleteTag"),{type:'tag.delete',target:ref.name,expectedOid:ref.refOid},'trash',busy||!ref.refOid,!ref.refOid?t("menus.refreshToCaptureThisTagBeforeDeletion"):undefined),copy(uiText("menus.copyTagName"),ref.name),item(uiText("menus.copyCommitID"),()=>api.host('copyText',{text:ref.oid}),'copy',!commitTarget,t("menus.thisTagDoesNotPointToACommit")));else items.push(copy(uiText("menus.copyBranchName"),ref.name));
     if(occupied)items.push(item(uiText("menus.openWorktree"),()=>api.host('openWorktree',{path:occupied.path,newWindow:false}),'folder-opened'));
+    if (ref.kind === 'local' && ref.upstream) {
+      const parsed = remoteParts({ ...ref, kind: 'remote', name: ref.upstream, fullName: `refs/remotes/${ref.upstream}` });
+      if (parsed && state.repoId) items.push(item(t('feedback.createRemoteRequest'), () => void showRemoteRequest(state.repoId!, parsed.branch, undefined, parsed.remote, ref.name), 'git-pull-request', busy));
+    }
+    if (ref.kind === 'remote' && !ref.symbolicTarget && state.repoId) {
+      const parsed = remoteParts(ref);
+      if (parsed) items.push(item(t('feedback.createRemoteRequest'), () => void showRemoteRequest(state.repoId!, parsed.branch, undefined, parsed.remote), 'git-pull-request', busy));
+    }
     return {caption:ref.name,items};
   }
   if(target.kind==='stash')return {caption:`${target.stash.selector} · ${target.stash.subject}`,items:[item(uiText("menus.viewChanges"),()=>state.selectCommit(target.stash.oid,undefined,target.stash.oid),'diff'),action(uiText("menus.applyStash"),{type:'stash.apply',target:target.stash.selector,expectedOid:target.stash.oid},'unarchive'),action(uiText("menus.popStash"),{type:'stash.apply',target:target.stash.selector,pop:true,expectedOid:target.stash.oid},'unarchive'),action(uiText("menus.dropStash"),{type:'stash.drop',target:target.stash.selector,expectedOid:target.stash.oid},'trash')]};

@@ -11,6 +11,7 @@ import { DiffPreview } from './DiffPreview';
 import { ActionFeedbackBar } from './ActionFeedbackBar';
 import { blocksWorkbench } from './actionFeedback';
 import { OperationProgress } from './OperationProgress';
+import { RemoteRequestDialog } from './RemoteRequestDialog';
 import { OperationNotice } from './OperationNotice';
 import { OperationReviewDialog } from './OperationReviewDialog';
 import { CommitDialog } from './CommitDialog';
@@ -42,9 +43,9 @@ import { useShortcuts, useWorkbenchKeyboard } from './shortcuts';
 const HelpDialog = lazy(() => import('./HelpDialog'));
 
 export function App() {
-  const state=useWorkbenchFields('repoId','language','operationSettings','appearance','layout','snapshot','loading','repositories','busy','activity','diffTarget','notice','error','actionFeedback','checkoutFailure','stashApplyFailure','operationReview','settingsBaseline','locateHead','refresh','execute','selectWorking','restoreLayout','beginSettings','setLayout'),t=useTranslation(),[dialog,setDialog]=useState<DialogRequest>(),[repositoryDialog,setRepositoryDialog]=useState(false),[repositoryRemoval,setRepositoryRemoval]=useState<RepositoryGroup[]>(),[repositoryFetch,setRepositoryFetch]=useState<Repository[]>(),[context,setContext]=useState<{x:number;y:number;target:MenuTarget;anchor:HTMLElement}>();
+  const state=useWorkbenchFields('repoId','language','operationSettings','appearance','layout','snapshot','loading','repositories','busy','activity','diffTarget','notice','error','actionFeedback','checkoutFailure','stashApplyFailure','remoteRequest','operationReview','settingsBaseline','locateHead','refresh','execute','selectWorking','restoreLayout','beginSettings','setLayout'),t=useTranslation(),[dialog,setDialog]=useState<DialogRequest>(),[repositoryDialog,setRepositoryDialog]=useState(false),[repositoryRemoval,setRepositoryRemoval]=useState<RepositoryGroup[]>(),[repositoryFetch,setRepositoryFetch]=useState<Repository[]>(),[context,setContext]=useState<{x:number;y:number;target:MenuTarget;anchor:HTMLElement}>();
   const progressFeedback = state.actionFeedback?.status === 'running' ? state.actionFeedback : undefined;
-  const blockInteraction = state.busy && blocksWorkbench(progressFeedback?.action ?? state.activity);
+  const blockInteraction = state.busy && state.actionFeedback?.status !== 'error' && blocksWorkbench(progressFeedback?.action ?? state.activity);
   const mainPanel=useRef<HTMLElement>(null),[mainPanelHeight,setMainPanelHeight]=useState(0);
   const [helpOpen,setHelpOpen]=useState(false);
   const [commitRepoId,setCommitRepoId]=useState<string>();
@@ -81,7 +82,7 @@ export function App() {
   const closeCommit=useCallback((repoId:string)=>{flushSession();setCommitRepoId(current=>current===repoId?undefined:current);},[]);
   const showSettings=useCallback(()=>{setContext(undefined);useWorkbench.getState().beginSettings();},[]);
   const openRepository=useCallback(()=>void host('openProject'),[host]);
-  useWorkbenchKeyboard(blockInteraction || !!(commitRepoId||dialog||repositoryDialog||repositoryRemoval||repositoryFetch||context||helpOpen||state.settingsBaseline||state.checkoutFailure||state.operationReview));
+  useWorkbenchKeyboard(blockInteraction || !!(state.remoteRequest||commitRepoId||dialog||repositoryDialog||repositoryRemoval||repositoryFetch||context||helpOpen||state.settingsBaseline||state.checkoutFailure||state.operationReview));
   useLayoutEffect(()=>{const element=mainPanel.current;if(!element)return;const measure=()=>setMainPanelHeight(element.clientHeight);measure();const observer=new ResizeObserver(measure);observer.observe(element);return()=>observer.disconnect();},[]);
   const snapshot=state.snapshot,layout=state.layout,unpushed=snapshot?.unpushed??snapshot?.ahead??0,repositoryState=repositoryViewState(snapshot,!!state.repoId,state.loading),hasRepositories=state.repositories.length>0;
   const canOperate=!!snapshot&&!state.busy,canPush=canOperate&&!!snapshot?.branch,canStash=canOperate&&!!snapshot?.changes.length&&!snapshot?.operation.kind;
@@ -116,7 +117,7 @@ export function App() {
       <div className="toolbar-spacer"/><div className="toolbar-repository-actions"><Button className="icon-only toolbar-special" icon="location" shortcut="head" title={t("workbench.locateTheCurrentCommitHEAD")} aria-label={t("workbench.locateHEAD")} disabled={!snapshot?.head} onClick={state.locateHead}/><Button className="icon-only toolbar-special open-repository" shortcut="repository" data-testid="open-project" title={snapshot?`${t("workbench.openRepositoryFolder")}\n${t("workbench.switchesToItsVSCodeWindowWhenAlreadyOpen")}\n${snapshot.repository.root}`:t("workbench.selectARepositoryFirst")} aria-label={t("workbench.openRepositoryFolder")} disabled={!snapshot} onClick={openRepository}><OpenRepositoryFolderIcon/></Button></div>
     </div>
     <OperationNotice abort={()=>open({type:'operation.abort'})}/>
-    <ActionFeedbackBar showLog={()=>void host('showLog')}/>
+    {!blockInteraction&&<ActionFeedbackBar showLog={()=>void host('showLog')} openAction={open}/>}
     {state.notice&&!state.busy&&!state.actionFeedback&&<div className="banner notice" role="status"><Icon name="info"/><span>{state.notice}</span><Button className="icon-only" icon="close" title={t("workbench.dismissNotification")} aria-label={t("workbench.dismissNotification")} onClick={()=>useWorkbench.setState({notice:undefined})}/></div>}
     {state.error&&state.error!==state.actionFeedback?.error&&!state.checkoutFailure&&!state.stashApplyFailure&&<div className="banner error" role="alert"><Icon name="error"/><span>{state.error}</span><Button onClick={()=>void host('showLog')}>{t("workbench.showLog")}</Button><Button icon="close" aria-label={uiText("workbench.dismissError")} onClick={()=>useWorkbench.setState({error:undefined})}/></div>}
     <div className="workspace"><Sidebar context={showContext} actions={sidebarActions} checkoutBranch={checkoutBranch} openWorktree={openWorktree}/><ResizeHandle axis="x" label={uiText("workbench.resizeRepositorySidebar")} value={layout.sidebar} min={160} max={360} onChange={sidebar=>state.setLayout({sidebar})}/><main ref={mainPanel} className={`main-panel${layout.diffCollapsed?' diff-collapsed':''}`} style={{'--diff-height':`${diffHeight}px`} as React.CSSProperties}>
@@ -135,6 +136,7 @@ export function App() {
     {state.checkoutFailure&&snapshot&&<CheckoutFailureDialog onClose={()=>{setDialog(undefined);useWorkbench.setState({checkoutFailure:undefined,error:undefined});}} host={host}/>}
     {state.settingsBaseline&&<SettingsDialog theme={theme}/>}
     {helpOpen&&<Suspense fallback={null}><HelpDialog onClose={()=>setHelpOpen(false)}/></Suspense>}
+    {state.remoteRequest&&<RemoteRequestDialog key={`${state.repoId}-${state.remoteRequest?.branch}`}/>}
     {blockInteraction&&<OperationProgress key={`${state.repoId}-${progressFeedback?.id ?? 'host'}`} feedback={progressFeedback}/>}
   </div>;
 }

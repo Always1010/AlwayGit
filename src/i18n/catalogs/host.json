@@ -193,5 +193,11 @@
     "zh-CN": "AlwayGit — {{name}}",
     "review": "keep",
     "context": "src/extension/workbench.ts / updatePanelTitle"
+  },
+  "host.couldNotOpenWebLink": {
+    "en": "Could not open the web link. Copy it and open it in your browser.",
+    "zh-CN": "无法打开网页链接，请复制后在浏览器打开。",
+    "review": "translated",
+    "context": "Safe external hosting links"
   }
 }

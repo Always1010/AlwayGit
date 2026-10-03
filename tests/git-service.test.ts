@@ -266,7 +266,11 @@ describe('Git service integration', () => {
     await service.execute(repo, { type: 'worktree.remove', path: linked }); expect((await service.snapshot(repo)).worktrees).toHaveLength(1);
   });
   it('fetches, pushes and pulls from a local bare remote with upstream tracking', async () => {
-    const { root, service, repo } = await setup(); await commit(root, 'a.txt', 'a'); const bare = path.join(root, 'remote.git'); await mkdir(bare); await git(bare, 'init', '--bare'); await git(root, 'remote', 'add', 'origin', bare); await service.execute(repo, { type: 'push', branch: 'main' });
+    const { root, service, repo } = await setup(); await commit(root, 'a.txt', 'a'); const bare = path.join(root, 'remote.git'); await mkdir(bare); await git(bare, 'init', '--bare'); await git(root, 'remote', 'add', 'origin', bare);
+    const published = await service.execute(repo, { type: 'push', branch: 'main' });
+    expect(published).toMatchObject({kind:'push',outcome:'success',remote:'origin',localBranch:'main',destinations:[{refs:[{kind:'branch',name:'main',status:'published'}]}]});
+    const unchanged = await service.execute(repo, {type:'push',remote:'origin',branch:'main'});
+    expect(unchanged).toMatchObject({destinations:[{refs:[{status:'up-to-date'}]}]});
     await commit(root, 'b.txt', 'b'); expect(await service.snapshot(repo)).toMatchObject({ ahead: 1, unpushed: 1 }); expect(await service.repositoryStatus(repo)).toMatchObject({ repositoryId: repo.id, branch: 'main', upstream: 'origin/main', ahead: 1, unpushed: 1 });
     const beforePush = await service.history(repo, { tips: ['HEAD'] });
     expect(beforePush.commits.slice(0, 2).map(item => item.pushed)).toEqual([false, true]);
@@ -279,6 +283,15 @@ describe('Git service integration', () => {
     expect(await git(bare, 'rev-parse', 'refs/heads/release/tracked')).toBe(await git(root, 'rev-parse', 'HEAD'));
     expect((await service.snapshot(repo)).pushTarget).toEqual({ localBranch: 'tracked', remote: 'origin', remoteBranch: 'release/tracked', configured: true });
     const remoteSnapshot=await service.snapshot(repo),remoteRef=remoteSnapshot.refs.find(ref=>ref.name==='origin/release/tracked')!;await service.execute(repo,{type:'remote.delete',remote:'origin',branches:['release/tracked'],expectedOids:{'release/tracked':remoteRef.oid},expectedDestination:remoteSnapshot.remoteDestinations!.origin});await expect(git(bare,'rev-parse','refs/heads/release/tracked')).rejects.toThrow();
+  });
+  it('retains partial Push publication when a second destination is unavailable', async () => {
+    const {root,service,repo}=await setup();await commit(root,'push.txt','base');
+    const bare=path.join(root,'mirror.git'),missing=path.join(root,'unavailable.git');
+    await mkdir(bare);await git(bare,'init','--bare');await git(root,'remote','add','publish',bare);
+    await git(root,'remote','set-url','--add','--push','publish',bare);
+    await git(root,'remote','set-url','--add','--push','publish',missing);
+    await expect(service.execute(repo,{type:'push',remote:'publish',branch:'main',remoteBranch:'release/x'})).rejects.toMatchObject({code:'PARTIAL_FAILURE',pushResult:{outcome:'partial',destinations:[{refs:[{name:'release/x',status:'published'}]},{unconfirmed:true}]}});
+    expect(await git(bare,'rev-parse','refs/heads/release/x')).toBe(await git(root,'rev-parse','HEAD'));
   });
   it('rejects path traversal/options and surfaces external locks, hooks, and bounded output failures', async () => {
     const { root, service, repo } = await setup(); await commit(root, 'a.txt', 'a');

@@ -2,13 +2,13 @@ import { translate, type MessageKey, type MessageArgs } from '../i18n/index';
 import { SnapshotCoordinator } from '../application/snapshot-coordinator';
 import { QueryCoordinator } from '../application/query-coordinator';
 import { readQueryCategory } from '../protocol/queries';
-import { cancelQuerySchema, actionSchema, operationSettingsSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, cherryPickCheckSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema, repositoryDiscoverySchema, cancelRepositoryDiscoverySchema, addRepositoriesSchema, reorderRepositorySchema, createRepositoryCollectionSchema } from '../protocol/validation';
+import { externalUrlSchema, remoteLinksSchema, cancelQuerySchema, actionSchema, operationSettingsSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, cherryPickCheckSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema, repositoryDiscoverySchema, cancelRepositoryDiscoverySchema, addRepositoriesSchema, reorderRepositorySchema, createRepositoryCollectionSchema } from '../protocol/validation';
 import * as vscode from 'vscode';
 import { randomBytes } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { AddRepositoriesResult, GitAction, GitServiceContract, HostMessage, RepositoryCollection, RepositoryDiscoveryPreview, RepositoryStatus, RpcRequest, Snapshot, OperationSettings } from '../protocol/types';
+import type { AddRepositoriesResult, GitAction, GitServiceContract, HostMessage, RepositoryCollection, RepositoryDiscoveryPreview, RepositoryStatus, RpcRequest, Snapshot, OperationSettings, PushResult } from '../protocol/types';
 
 import type { RepositoryManager } from '../repositories/manager';
 import type { DiscoveryResult } from '../repositories/discovery';
@@ -169,6 +169,7 @@ export class Workbench implements vscode.Disposable {
       if (!source || source.panel.active) await this.saveSessionBaseline(session, source);
       return null;
     }
+    if (request.method === 'openExternal') { const data = externalUrlSchema.parse(request.payload); if (!await vscode.env.openExternal(vscode.Uri.parse(data.url))) throw new Error(this.text('host.couldNotOpenWebLink')); return null; }
     if (request.method === 'copyText') { await vscode.env.clipboard.writeText(copySchema.parse(request.payload).text); return null; }
     if (!vscode.workspace.isTrusted) throw new Error(this.text("host.gitExecutionRequiresATrustedWorkspace"));
     if (request.method === 'repositories') { const list = this.repositories.list(),active=source?.activeRepository??this.activeRepository; return active ? list.sort((a, b) => Number(b.id === active) - Number(a.id === active)) : list; }
@@ -197,6 +198,7 @@ export class Workbench implements vscode.Disposable {
         this.activeRepository = repo.id;if(source){source.activeRepository=repo.id;this.lastPanel=source;this.updatePanelTitle(source);}
         const snapshot = await this.snapshots.read(repo.id, () => this.git.snapshot(repo)); this.recordFingerprint(snapshot); return snapshot;
       }
+      case 'remoteLinks': { const data=remoteLinksSchema.parse(request.payload??{});return this.git.remoteLinks?.(repo,data.remote,data.branch)??{repositories:[]}; }
       case 'history': return this.git.history(repo, { limit: vscode.workspace.getConfiguration('alwaygit').get<number>('historyPageSize', 300), ...historySchema.parse(request.payload ?? {}) });
       case 'cherryPickCheck': { const data=cherryPickCheckSchema.parse(request.payload); return this.git.cherryPickCheck(repo,data.commits,data); }
       case 'operationReview': return this.git.reviewOperation(repo);
@@ -240,7 +242,8 @@ export class Workbench implements vscode.Disposable {
         const operationKey=this.repositoryKey(repo.commonDir);this.busy.add(operationKey);
         for (const member of this.repositories.list().filter(member => member.commonDir === repo.commonDir)) this.snapshots.invalidate(member.id);
         for (const r of this.repositories.list().filter(r => r.commonDir === repo.commonDir)) this.post({ type: 'activity', repoId: r.id, busy: true, label: action.type });
-        try { await this.projects.runRepositoryOperation(repo.commonDir,action.type,()=>this.git.execute(repo, action)); }
+        let result: PushResult | void;
+        try { result = await this.projects.runRepositoryOperation(repo.commonDir,action.type,()=>this.git.execute(repo, action)); }
         catch(error){
           if((error as {terminationUnconfirmed?:unknown})?.terminationUnconfirmed===true)this.externalBusy.set(operationKey,{label:action.type});
           if(error instanceof RepositoryOperationRecoveryRequiredError){
@@ -255,7 +258,9 @@ export class Workbench implements vscode.Disposable {
           this.busy.delete(operationKey);
           for (const r of this.repositories.list().filter(r => r.commonDir === repo.commonDir)) { this.snapshots.invalidate(r.id); this.post({ type: 'activity', repoId: r.id, busy: this.isBusy(repo.commonDir), label: action.type }); this.post({ type: 'changed', repoId: r.id }); }
         }
-        const snapshot = await this.snapshots.read(repo.id, () => this.git.snapshot(repo)); this.recordFingerprint(snapshot); return snapshot;
+        try {
+          const snapshot = await this.snapshots.read(repo.id, () => this.git.snapshot(repo)); this.recordFingerprint(snapshot); return { snapshot, result };
+        } catch (error) { return { result, refreshWarning: redactSecrets(error instanceof Error ? error.message : String(error)) }; }
       }
     }
   }

@@ -8,7 +8,7 @@
 - 状态：已解决
 - 现象：长时间 Checkout 仅显示进度条，背景仍可选择、打开菜单或切换仓库，容易误判操作状态并重复尝试。
 - 原因：前端与宿主写互斥只保护 Git 请求，没有完整隔离鼠标、键盘焦点及背景界面。
-- 解决方案：对改变工作区的操作使用前端居中不可关闭进度弹窗，背景包含已有对话框和菜单全部 inert；等待本地响应与刷新结束再解锁，失败后恢复原有处理入口。
+- 解决方案：对改变工作区的操作使用前端居中不可关闭进度弹窗，背景包含已有对话框和菜单全部 inert；等待本地响应与刷新结束再解锁，失败后恢复原有处理入口；停止未确认时保留写保护但允许读取与诊断。
 - 验证方式：类型及双语资源检查、UI 状态单测、无头反馈专项验证遮罩、无关闭按钮、背景 inert、Esc/Tab/刷新快捷键隔离与成功/冲突后解锁。
 - 相关文件：`webview/OperationProgress.tsx`、`webview/actionFeedback.ts`、`webview/App.tsx`、`webview/store.ts`、`webview/styles.css`、`webview/ActionFeedbackBar.tsx`、`scripts/test-feedback-ui.mjs`、`tests/ui-state.test.ts`、`docs/WORKBENCH_SPEC.md`。
 
