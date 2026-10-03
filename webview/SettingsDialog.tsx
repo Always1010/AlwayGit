@@ -160,8 +160,20 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
 
         {saveError&&<p role="alert" className="form-error">{saveError}</p>}
         {page === 'files' && <section className="settings-page" aria-label={t('changes.fileList')}>
-          <h3>{t('changes.displayMode')}</h3>
-          {(['split','unified'] as const).map(mode => <label key={mode} className="change-list-mode-option"><input type="radio" name="change-list-mode" checked={state.changeListMode === mode} onChange={() => state.previewSettings({changeListMode:mode})}/><span><strong>{t(mode === 'split' ? 'changes.split' : 'changes.unified')}</strong><small>{t(mode === 'split' ? 'changes.splitDescription' : 'changes.unifiedDescription')}</small></span></label>)}
+          <section className="settings-section" aria-labelledby="file-list-display-heading">
+            <h3 id="file-list-display-heading">{t('changes.displayMode')}</h3>
+            {(['split','unified'] as const).map(mode => <label key={mode} className="change-list-mode-option"><input type="radio" name="change-list-mode" checked={state.changeListMode === mode} onChange={() => state.previewSettings({changeListMode:mode})}/><span><strong>{t(mode === 'split' ? 'changes.split' : 'changes.unified')}</strong><small>{t(mode === 'split' ? 'changes.splitDescription' : 'changes.unifiedDescription')}</small></span></label>)}
+          </section>
+          <section className="settings-section" aria-labelledby="file-list-spacing-heading">
+            <h3 id="file-list-spacing-heading">{t('settings.fileListSpacing')}</h3>
+            <div className="settings-grid"><FileSpacingField value={appearance.fileSpacing} onChange={fileSpacing => updateAppearance({ ...appearance, fileSpacing })}/></div>
+            <figure className="settings-preview">
+              <figcaption>{t("settings.preview")}</figcaption>
+              <div className="file-item settings-file-preview"><span className="file-status status-M" title={t("settings.modified")} role="img" aria-label={t("settings.modified")}><Icon name="file-code"/><span className="file-status-badge" aria-hidden="true">{uiText("settings.m")}</span></span><span className="file-label"><span className="file-basename">{uiText("settings.appTsx")}</span><span className="file-parent-path">{uiText("settings.webview")}</span></span><span className="muted">{fileRowHeight(layout.font, appearance.fileSpacing)}{uiText("settings.px")}</span></div>
+            </figure>
+            <p className="settings-note">{t("settings.fileSpacingSetsThePaddingAboveAndBelowEach")}</p>
+            <p className="settings-note">{t("settings.rowHeightGrowsWithLargerTextToKeepEvery")}</p>
+          </section>
         </section>}
         {page === 'keyboard'  && <section className="settings-page" aria-labelledby="keyboard-heading">
           <h3 id="keyboard-heading">{t("settings.keyboardShortcuts")}</h3>
@@ -228,16 +240,12 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
         {page === 'density' && <section className="settings-page" aria-label={t("settings.textDensity")}>
           <div className="settings-grid">
             <label>{t("settings.interfaceFont")}<select aria-label={t("settings.interfaceFont")} value={layout.font} onChange={event => state.previewSettings({ font: Number(event.target.value) })}>{[12,13,14,15,16].map(size => <option key={size} value={size}>{size}px{size === 13 ? t("settings.default") : ''}</option>)}</select></label>
-            <label>{t("settings.listDensity")}<select aria-label={t("settings.listDensity")} value={layout.row} onChange={event => state.previewSettings({ row: Number(event.target.value) })}>{densityOptions.map(size => <option key={size} value={size}>{size === 22 ? t("settings.dense") : size === 24 ? t("settings.compactDefault") : size === 28 ? t("settings.comfortableVariant2") : t("settings.custom")} · {size}px</option>)}</select></label>
-            <FileSpacingField value={appearance.fileSpacing} onChange={fileSpacing => updateAppearance({ ...appearance, fileSpacing })}/>
+            <label>{t("settings.commitListDensity")}<select aria-label={t("settings.commitListDensity")} value={layout.row} onChange={event => state.previewSettings({ row: Number(event.target.value) })}>{densityOptions.map(size => <option key={size} value={size}>{size === 22 ? t("settings.dense") : size === 24 ? t("settings.compactDefault") : size === 28 ? t("settings.comfortableVariant2") : t("settings.custom")} · {size}px</option>)}</select></label>
           </div>
           <figure className="settings-preview">
             <figcaption>{t("settings.preview")}</figcaption>
             <div className="settings-row-preview" style={{ minHeight: effectiveRowHeight(layout) }}><Icon name="git-commit"/><span className="ref-badge local" aria-current="true">{uiText("settings.main")}</span><span className="truncate">{uiText("settings.feat")}{t("settings.refineTheWorkbench")}</span><span className="muted">{effectiveRowHeight(layout)}{uiText("settings.px")}</span></div>
-            <div className="file-item settings-file-preview"><span className="file-status status-M" title={t("settings.modified")} role="img" aria-label={t("settings.modified")}><Icon name="file-code"/><span className="file-status-badge" aria-hidden="true">{uiText("settings.m")}</span></span><span className="file-label"><span className="file-basename">{uiText("settings.appTsx")}</span><span className="file-parent-path">{uiText("settings.webview")}</span></span><span className="muted">{fileRowHeight(layout.font, appearance.fileSpacing)}{uiText("settings.px")}</span></div>
           </figure>
-          <p className="settings-note">{t("settings.fileSpacingSetsThePaddingAboveAndBelowEach")}</p>
-          <p className="settings-note">{t("settings.rowHeightGrowsWithLargerTextToKeepEvery")}</p>
         </section>}
 
         {page === 'status' && <section className="settings-page" aria-labelledby="status-heading">

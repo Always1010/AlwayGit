@@ -149,7 +149,9 @@ export async function verifyAppearance(browser, url) {
     await settings.getByRole('radio', { name: 'Deep Night', exact: true }).click();
     await settings.getByRole('button', { name: 'Text & density', exact: true }).click();
     await settings.getByLabel('Interface font', { exact: true }).selectOption('15');
-    await settings.getByLabel('File list spacing', { exact: true }).selectOption('5');
+    await settings.getByLabel('Commit list density', { exact: true }).selectOption('22');
+    await settings.getByRole('button', { name: 'File list', exact: true }).click();
+    await settings.getByRole('region', { name: 'File list spacing', exact: true }).getByLabel('File list spacing', { exact: true }).selectOption('5');
     assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--file-row-padding').trim()), '5px', 'File spacing previews immediately');
     await settings.getByRole('button', { name: 'Diff', exact: true }).click();
     await settings.getByLabel('Diff line height', { exact: true }).selectOption('22');
@@ -198,9 +200,11 @@ export async function verifyAppearance(browser, url) {
     assert.equal(await customHeight.inputValue(), '36', 'Custom input is clamped to its supported range');
     await customHeight.fill('23');
     await settings.getByRole('button', { name: 'Text & density', exact: true }).click();
-    await settings.getByLabel('List density', { exact: true }).selectOption('22');
-    await settings.getByLabel('File list spacing', { exact: true }).selectOption('custom');
-    const customSpacing = settings.getByRole('spinbutton', { name: 'Custom file list spacing', exact: true });
+    await settings.getByLabel('Commit list density', { exact: true }).selectOption('22');
+    await settings.getByRole('button', { name: 'File list', exact: true }).click();
+    const fileSpacing = settings.getByRole('region', { name: 'File list spacing', exact: true });
+    await fileSpacing.getByLabel('File list spacing', { exact: true }).selectOption('custom');
+    const customSpacing = fileSpacing.getByRole('spinbutton', { name: 'Custom file list spacing', exact: true });
     await customSpacing.fill(''); await customSpacing.press('Tab');
     assert.equal(await customSpacing.inputValue(), '1');
     await customSpacing.fill('100'); await customSpacing.press('Tab');

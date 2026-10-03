@@ -353,9 +353,9 @@
     "review": "translated",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
-  "settings.listDensity": {
-    "en": "List density",
-    "zh-CN": "列表密度",
+  "settings.commitListDensity": {
+    "en": "Commit list density",
+    "zh-CN": "提交列表密度",
     "review": "translated",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },

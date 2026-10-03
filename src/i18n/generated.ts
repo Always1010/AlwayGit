@@ -4443,9 +4443,9 @@ export const catalog = {
     "en": "Interface font",
     "zh-CN": "界面字号"
   },
-  "settings.listDensity": {
-    "en": "List density",
-    "zh-CN": "列表密度"
+  "settings.commitListDensity": {
+    "en": "Commit list density",
+    "zh-CN": "提交列表密度"
   },
   "settings.comfortableVariant2": {
     "en": "Comfortable",
@@ -6481,7 +6481,7 @@ export interface MessageParameters {
   "settings.useTheVSCodeThemeOrChooseAFixed": {  };
   "settings.colorTheme": {  };
   "settings.interfaceFont": {  };
-  "settings.listDensity": {  };
+  "settings.commitListDensity": {  };
   "settings.comfortableVariant2": {  };
   "settings.refineTheWorkbench": {  };
   "settings.modified": {  };

@@ -909,14 +909,13 @@ Worktree lets a single repository have multiple working directories so you can w
 
 1. Click the gear in the upper-right corner to open settings.
 2. Choose a page in the General, Interface, Commit Graph, or Advanced category.
-3. Interface → Text & density controls the interface font size, list density, and file spacing. Interface → Diff groups the Diff font size, line height, and navigation scope with a code preview. Expand Detailed rules for navigation exceptions.
+3. Interface → Text & density controls the interface font size and commit list density. Interface → File list controls split or unified display and file spacing. Interface → Diff groups the Diff font size, line height, and navigation scope with a code preview. Expand Detailed rules for navigation exceptions.
 4. Click Apply to save. To discard unapplied changes, click Cancel, close settings, or press Esc.
 
 **Result:** Applied settings take effect immediately. Cancel only rolls back previews that have not yet been applied.
 
 **Caution:** The Simplified Chinese interface retains Git action names such as Stage, Commit, and Fetch. Paths, branch names, and Git errors remain in their original form.
 
-![Settings in Chinese showing interface font size, list density, and file spacing](images/user-manual/figure-34.png)
 
 <a id="section-11-02"></a>
 
