@@ -138,7 +138,12 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
       });
     } else if (action.type === 'commit') {
       const commit = { ...commits[0], oid: oid(999 + demoSnapshot.version), parents: action.amend ? commits[0].parents : [commits[0].oid], subject: action.message.split('\n')[0], timestamp: Math.floor(Date.now() / 1000), pushed: false }; if (action.amend) commits.shift(); commits.unshift(commit);
-      demoSnapshot.head = commit.oid;const branch=demoSnapshot.refs.find(r=>r.kind==='local'&&r.name===demoSnapshot.branch);if(branch)branch.oid=commit.oid; demoSnapshot.changes = demoSnapshot.changes.filter(c => c.worktreeStatus !== ' ' || c.untracked).map(c => ({ ...c, indexStatus: ' ' })); demoSnapshot.ahead++;
+      demoSnapshot.head = commit.oid;const branch=demoSnapshot.refs.find(r=>r.kind==='local'&&r.name===demoSnapshot.branch);if(branch)branch.oid=commit.oid; demoSnapshot.changes = demoSnapshot.changes.flatMap(c => {
+        const selected = action.files?.find(file => file.path === c.path);
+        if (action.files && !selected) return [c];
+        if (selected?.area === 'unstaged') return [];
+        return c.worktreeStatus !== ' ' || c.untracked ? [{...c,indexStatus:' '}] : [];
+      }); demoSnapshot.ahead++;
     } else if (action.type === 'branch.checkout'||action.type==='commit.checkout'||action.type==='checkout.stash') {
       if ((action.type === 'commit.checkout' || action.type === 'checkout.stash' && action.detached) && !demoOperationSettings.allowDetachedHead) throw new RpcError('Direct Detached HEAD Checkout is disabled. Create and switch to a branch.', 'DETACHED_HEAD_DISABLED');
       const detached=action.type==='commit.checkout'||action.type==='checkout.stash'&&action.detached,target=action.type==='branch.checkout'?action.name:action.target;

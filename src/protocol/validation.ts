@@ -8,7 +8,7 @@ const actionContext = { expectedHead: z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9
 export const actionSchema = z.union([
   z.object({ type: z.enum(['stage', 'resolve-and-stage', 'unstage']), paths }),
   z.object({ type: z.literal('discard'), paths: z.array(text).default([]), planToken: text.optional(), mode: z.literal('all').optional() }).refine(value => (value.paths.length > 0 || !!value.planToken) && (!value.mode || !!value.planToken)),
-  z.object({ type: z.literal('commit'), message: z.string().min(1).max(100000), amend: z.boolean().optional(), reviewToken: text.optional() }),
+  z.object({ type: z.literal('commit'), message: z.string().min(1).max(100000), amend: z.boolean().optional(), reviewToken: text.optional(), files: z.array(z.object({ path: text, area: z.enum(['staged', 'unstaged']) })).optional(), expectedHead: actionContext.expectedHead.optional(), expectedBranch: actionContext.expectedBranch.optional() }).refine(value => !value.files || (value.files.length > 0 || !!value.amend) && value.expectedHead !== undefined && value.expectedBranch !== undefined),
   z.object({ type: z.literal('fetch'), remote: text.optional() }),
   z.object({ type: z.literal('pull'), strategy: z.enum(['ff-only', 'merge', 'rebase']), remote: text.optional() }),
   z.object({ type: z.literal('push'), remote: text.optional(), branch: text.optional(), remoteBranch: text.optional(), setUpstream: z.boolean().optional(), followTags: z.boolean().optional(), forceWithLease: z.boolean().optional(), expectedOid: z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})?$/).optional(), expectedDestination: z.string().regex(/^[a-f0-9]{64}$/).optional() }),

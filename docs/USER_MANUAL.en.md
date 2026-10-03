@@ -6,7 +6,7 @@ This manual explains how to inspect changes, save revisions, and collaborate wit
 
 Select the question-mark icon in the upper-right corner of the Workbench to open the offline Help & Guide. It includes quick start instructions, common tasks, common questions, and the full chapters of this manual. Its language follows the workbench setting.
 
-**About the screenshots:** Figures 07 and 08 show the Working Tree and Commit dialog in 0.36.0; Figure 34 shows settings in 0.34.0. Other screenshots mainly come from 0.29.0. Outdated screenshots of the permanent Commit form have been removed. Follow the instructions here and verify current control names, targets and counts.
+**About the screenshots:** Figures 07 and 08 show the Working Tree and Commit dialog in 0.45.0; Figure 34 shows settings in 0.34.0. Other screenshots mainly come from 0.29.0. Outdated screenshots of the permanent Commit form have been removed. Follow the instructions here and verify current control names, targets and counts.
 
 ## Read by task
 
@@ -105,13 +105,15 @@ Double-click a terminal tab to rename it. Toolbar icons clear the display, end t
 
 ### How changes become a commit
 
-Working Tree means the working files on disk; Index is the staging area for the next commit; a Commit is a version already saved in Git history. Stage places the selected files’ current changes into the Index. Commit saves only the Index; it does not automatically include other unstaged changes.
+Working Tree means the working files on disk; Index is the staging area for the next commit; a Commit is a version already saved in Git history. Stage places the selected files’ current changes into the Index. Ordinary Commit defaults to Index content. Commit Selected in the unified list can also stage and commit selected unstaged files.
 
 <a id="chapter-03"></a>
 
 ## Working Tree and Commits
 
-Staged is the most important place to check before committing. A file appearing in both groups is not a contradiction: the Index contains one version, while the file on disk has changed again since it was staged.
+Staged is the most important place to check before committing. A file appearing as both unstaged and staged is not a contradiction: the Index contains one version, while the file on disk has changed again since it was staged.
+
+Settings → Interface → File List offers the default split list or a unified changed-files list. The unified list places unstaged entries before staged entries and sorts each area by file name; conflicts come first. Each version has its own row and Diff. Stage All, Unstage All and Discard All in the top toolbar always operate on the complete repository, independently of filtering or selection. Discard All discards only unstaged changes and preserves staged content.
 
 | Status or group | Meaning | Recommended action |
 | --- | --- | --- |
@@ -153,7 +155,7 @@ Staged is the most important place to check before committing. A file appearing 
 
 **Result:** Staged contains only the changes needed for this commit. After Unstage, the changes remain in the Working Tree.
 
-**Caution:** This version operates on whole files. Search file names or relative paths below the Working Tree summary, ignoring case; use the clear icon to restore all files. Group actions apply to the entire group without a filter, or only matching paths with a filter. Tooltips and confirmations show the scope, independently of the current selection. Use a file’s context menu to act on selected items. Ctrl/Cmd+A selects only visible files. Filtering does not change the actual Index; Commit still includes all Staged content.
+**Caution:** This version operates on whole files. Search file names or relative paths below the Working Tree summary, ignoring case; use the clear icon to restore all files. In split mode, group actions apply to the entire group without a filter, or only matching paths with a filter. Tooltips and confirmations show the scope, independently of the current selection. Use a file’s context menu to act on selected items. Ctrl/Cmd+A selects only visible files. Filtering does not change the actual Index; Ordinary Commit selects all staged files by default; you may deselect files in the checklist.
 
 <a id="section-03-03"></a>
 
@@ -177,17 +179,19 @@ Staged is the most important place to check before committing. A file appearing 
 **Prerequisite:** At least one file is Staged, and you have prepared a commit message.
 
 1. Check each Staged file, including deletions and renames.
-2. Select Commit… to the right of Unstage in the Staged heading and enter a Commit Message in the dialog. Confirm the repository, branch, and complete Staged scope, then select Commit or press Ctrl/Cmd+Enter. Enter inserts a new line.
+2. Select Commit… to the right of Unstage in the Staged heading and enter a Commit Message in the dialog. Confirm the repository, branch, and file checklist (all staged files are selected by default; you may deselect files), then select Commit or press Ctrl/Cmd+Enter. Enter inserts a new line.
 3. Click the new commit in History to verify the actual file list. Then return to Working Tree and check the remaining uncommitted changes.
 4. If Unstaged changes remain, continue editing or staging them for a separate commit.
 
 **Result:** History contains one new commit, and only the content in the Index is included in it.
 
+In the unified list, Commit Selected… opens a checklist containing only the initially selected files. Each path appears once and may be deselected. Staged entries commit their Index version; unstaged entries automatically stage and commit the latest saved disk version. Selecting both versions uses the disk version once. An unstaged entry with staged changes is marked Combined, with one shared notice explaining that both parts are included. Unselected staged content is preserved; cancelling does not change the Index. During an active Git operation, review and commit the complete staged result.
+
 **Caution:** Drafts save automatically per repository. Cancel, Close, Escape and the backdrop preserve the complete message for the next opening, including after reopening the workbench. Failures also keep drafts; a successful Commit clears the draft used by that action. You can open the dialog to write a draft before staging; the submission button reflects the prerequisites. View Commit in the success banner opens the new commit returned by this operation. Check its actual file content.
 
 **Troubleshooting:** If the commit fails, expand the Git error. Keep the draft, address the cause first, then recheck the scope of Staged changes.
 
-![Figure 08 Commit dialog with a restored multiline draft, Cancel preserving the message, and the full Staged scope](images/user-manual/figure-08.png)
+![Figure 08 Selected-file checklist with deselection and one shared notice explaining combined content](images/user-manual/figure-08.png)
 
 <a id="section-03-05"></a>
 

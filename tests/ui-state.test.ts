@@ -137,7 +137,7 @@ describe('repository UI consistency', () => {
   });
   it('keeps multi-Tag and mixed reference menus out of branch-only actions', async () => {
     const { menuFor } = await import('../webview/menus');
-    const noop=vi.fn(),api={open:noop,checkout:noop,openDiff:noop,editFile:noop,host:vi.fn().mockResolvedValue(undefined),addRepository:vi.fn().mockResolvedValue(undefined),removeRepositories:noop,fetchRepositories:noop};
+    const noop=vi.fn(),api={startCommit:noop,open:noop,checkout:noop,openDiff:noop,editFile:noop,host:vi.fn().mockResolvedValue(undefined),addRepository:vi.fn().mockResolvedValue(undefined),removeRepositories:noop,fetchRepositories:noop};
     const tags=[1,2].map(index=>({name:`v${index}`,fullName:`refs/tags/v${index}`,kind:'tag' as const,oid:String(index).repeat(40),refOid:String(index).repeat(40)}));
     const local={name:'main',fullName:'refs/heads/main',kind:'local' as const,oid:'a'.repeat(40)};
     store.setState({snapshot:{...snapshot(a),refs:[...tags,local]},language:'en'});
@@ -155,7 +155,7 @@ describe('repository UI consistency', () => {
   it('disables direct Detached Checkout in commit menus while preserving branch creation and local branch switching', async () => {
     await store.getState().selectRepository('a');
     const { menuFor } = await import('../webview/menus');
-    const open=vi.fn(),checkout=vi.fn(),noop=vi.fn(),api={open,checkout,openDiff:noop,editFile:noop,host:vi.fn().mockResolvedValue(undefined),addRepository:vi.fn().mockResolvedValue(undefined),removeRepositories:noop,fetchRepositories:noop};
+    const open=vi.fn(),checkout=vi.fn(),noop=vi.fn(),api={startCommit:noop,open,checkout,openDiff:noop,editFile:noop,host:vi.fn().mockResolvedValue(undefined),addRepository:vi.fn().mockResolvedValue(undefined),removeRepositories:noop,fetchRepositories:noop};
     const tag={name:'v1',fullName:'refs/tags/v1',kind:'tag' as const,oid:'old'};
     const target={kind:'commit' as const,oid:'old'};
     for (const language of ['en','zh-CN'] as const) {
@@ -192,7 +192,7 @@ describe('repository UI consistency', () => {
     await store.getState().selectRepository('a');
     store.setState({commits:[commit,...['topic','old'].map(oid=>({...commit,oid}))]});
     const { menuFor } = await import('../webview/menus');
-    const open=vi.fn(),noop=vi.fn(),api={open,checkout:noop,openDiff:noop,editFile:noop,host:vi.fn().mockResolvedValue(undefined),addRepository:vi.fn().mockResolvedValue(undefined),removeRepositories:noop,fetchRepositories:noop};
+    const open=vi.fn(),noop=vi.fn(),api={startCommit:noop,open,checkout:noop,openDiff:noop,editFile:noop,host:vi.fn().mockResolvedValue(undefined),addRepository:vi.fn().mockResolvedValue(undefined),removeRepositories:noop,fetchRepositories:noop};
     const cherry=(oid:string,check?:{included:string[];failed?:boolean},oids?:string[])=>menuFor({kind:'commit',oid,oids},api,check).items.find(item=>item.label.startsWith('Cherry-pick'))!;
     expect(cherry('abc',{included:[]})).toMatchObject({disabled:true,reason:'This commit is the current branch HEAD.'});
     expect(menuFor({kind:'commit',oid:'abc'},api,{included:['abc']}).items.some(item=>item.label==='Reapply Historical Commits…')).toBe(false);
@@ -656,7 +656,7 @@ describe('repository UI consistency', () => {
     }
   });
   it('opens a whole-file Stash dialog for unique staged and unstaged selections only',async()=>{
-    const {menuFor}=await import('../webview/menus'),open=vi.fn(),noop=vi.fn(),api={open,checkout:noop,openDiff:noop,editFile:noop,host:vi.fn().mockResolvedValue(undefined),addRepository:vi.fn().mockResolvedValue(undefined),removeRepositories:noop,fetchRepositories:noop};
+    const {menuFor}=await import('../webview/menus'),open=vi.fn(),noop=vi.fn(),api={startCommit:noop,open,checkout:noop,openDiff:noop,editFile:noop,host:vi.fn().mockResolvedValue(undefined),addRepository:vi.fn().mockResolvedValue(undefined),removeRepositories:noop,fetchRepositories:noop};
     store.setState({snapshot:snapshot(a)});
     const staged={path:'both.txt',target:{kind:'change' as const,path:'both.txt',area:'staged' as const}},unstaged={...staged,target:{...staged.target,area:'unstaged' as const}},untracked={path:'notes.txt',target:{kind:'change' as const,path:'notes.txt',area:'unstaged' as const}};
     const item=menuFor({kind:'files',primary:staged,files:[staged,unstaged,untracked]},api).items.find(item=>item.label==='Stash Selected Files…')!;
@@ -668,7 +668,7 @@ describe('repository UI consistency', () => {
   });
 
   it('captures the raw Tag identity in its deletion menu before a snapshot refresh', async () => {
-    const {menuFor}=await import('../webview/menus'),open=vi.fn(),noop=vi.fn(),api={open,checkout:noop,openDiff:noop,editFile:noop,host:vi.fn().mockResolvedValue(undefined),addRepository:vi.fn().mockResolvedValue(undefined),removeRepositories:noop,fetchRepositories:noop};
+    const {menuFor}=await import('../webview/menus'),open=vi.fn(),noop=vi.fn(),api={startCommit:noop,open,checkout:noop,openDiff:noop,editFile:noop,host:vi.fn().mockResolvedValue(undefined),addRepository:vi.fn().mockResolvedValue(undefined),removeRepositories:noop,fetchRepositories:noop};
     const tag={kind:'tag' as const,name:'v1',fullName:'refs/tags/v1',oid:'a'.repeat(40),refOid:'b'.repeat(40)};
     store.setState({snapshot:{...snapshot(a),refs:[tag]},language:'en'});
     const menu=menuFor({kind:'ref',ref:tag},api).items.find(item=>item.label==='Delete Tag…')!;

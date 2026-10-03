@@ -1,5 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { isStaged, isUnstaged } from './changeEntries';
+import type { CommitSelection } from '../src/protocol/types';
 import { SettingsDialog } from './SettingsDialog';
 import { ActionDialog } from './ActionDialog';
 import { ContextMenu } from './ContextMenu';
@@ -50,6 +51,7 @@ export function App() {
   const mainPanel=useRef<HTMLElement>(null),[mainPanelHeight,setMainPanelHeight]=useState(0);
   const [helpOpen,setHelpOpen]=useState(false);
   const [commitRepoId,setCommitRepoId]=useState<string>();
+  const [commitFiles,setCommitFiles]=useState<CommitSelection[]>();
   const showHelp=useCallback(()=>{setContext(undefined);setHelpOpen(true);},[]);
   const theme=useResolvedTheme(state.appearance.theme),lightTheme=isLightTheme(theme);
   const paletteColors=lightTheme?state.appearance.colors.light:state.appearance.colors.dark;
@@ -79,7 +81,7 @@ export function App() {
   const editSelected=useCallback(()=>void edit(),[edit]);
   const native=useCallback(()=>{const state=useWorkbench.getState();if(state.diffTarget)void host('diff',state.diffTarget);},[host]);
   const openWorktree=useCallback((path:string)=>void host('openWorktree',{path,newWindow:false}),[host]);
-  const startCommit=useCallback(()=>{const current=useWorkbench.getState();if(!current.repoId||!current.snapshot||current.busy)return;setContext(undefined);setDialog(undefined);current.selectWorking();setCommitRepoId(current.repoId);},[]);
+  const startCommit=useCallback((files?:CommitSelection[])=>{const current=useWorkbench.getState();if(!current.repoId||!current.snapshot||current.busy)return;setContext(undefined);setDialog(undefined);current.selectWorking();setCommitFiles(files);setCommitRepoId(current.repoId);},[]);
   const closeCommit=useCallback((repoId:string)=>{flushSession();setCommitRepoId(current=>current===repoId?undefined:current);},[]);
   const showSettings=useCallback(()=>{setContext(undefined);useWorkbench.getState().beginSettings();},[]);
   const openRepository=useCallback(()=>void host('openProject'),[host]);
@@ -107,7 +109,7 @@ export function App() {
   const branchState=repositoryState==='branch'?t("workbench.currentBranch", { branch: (snapshot!.branch) }):repositoryState==='detached'?uiText("workbench.detachedHEAD"):repositoryState==='opening'?t("workbench.openingRepository"):repositoryState==='unavailable'?t("workbench.repositoryUnavailable"):t("workbench.noRepositorySelected");
   const branchTitle=snapshot?[snapshot.repository.name,branchState,snapshot.upstream?t("workbench.upstream", { upstream: (snapshot.upstream) }):undefined].filter(Boolean).join('\n'):branchState;
   const maxDiffHeight=Math.max(130,(mainPanelHeight||576)-126),diffHeight=Math.min(layout.diff,maxDiffHeight);
-  const menuApi=useMemo<MenuApi>(()=>({open,checkout,openDiff:target=>void host('diff',target),editFile:target=>void edit(target),host,addRepository,removeRepositories:groups=>{setContext(undefined);setRepositoryRemoval(groups);},fetchRepositories:repositories=>setRepositoryFetch(repositories)}),[open,checkout,host,edit,addRepository]);
+  const menuApi=useMemo<MenuApi>(()=>({open,checkout,startCommit,openDiff:target=>void host('diff',target),editFile:target=>void edit(target),host,addRepository,removeRepositories:groups=>{setContext(undefined);setRepositoryRemoval(groups);},fetchRepositories:repositories=>setRepositoryFetch(repositories)}),[open,checkout,startCommit,host,edit,addRepository]);
   const sidebarActions=useCallback((target:MenuTarget)=>menuFor(target,menuApi).items,[menuApi]);
   const cherryPickCheck=useCherryPickCheck(state.repoId,state.snapshot?.head,state.snapshot?.branch,context?.target);
   const menu=context?menuFor(context.target,menuApi,cherryPickCheck):undefined;
@@ -118,7 +120,7 @@ export function App() {
       <span className="branch-identity toolbar-branch" title={branchTitle}><Icon name="git-branch"/><strong data-testid="current-branch">{branchLabel}</strong></span><span className="toolbar-divider"/>
       <Button icon="cloud-download" shortcut="fetch" disabled={!canOperate} onClick={()=>void state.execute({type:'fetch'})}>{uiText("workbench.fetch")}</Button><Button icon="arrow-down" shortcut="pull" title={uiText("workbench.pull")} disabled={!canOperate} onClick={()=>open({type:'pull'})}>{uiText("workbench.pull")}{snapshot?.behind?` (${snapshot.behind})`:''}</Button><Button icon="arrow-up" shortcut="push" disabled={!canPush} aria-label={unpushed?t("workbench.pushUnpushedCommits", { unpushed: (unpushed) }):uiText("workbench.push")} title={!snapshot?.branch?t("workbench.pushRequiresALocalBranch"):snapshot&&!(snapshot.remotes?.length)?t("workbench.addARemoteBeforePush"):undefined} onClick={()=>open({type:'push'})}>{uiText("workbench.push")}{unpushed?<span className="notification-badge" aria-hidden="true">{unpushed>99?'99+':unpushed}</span>:null}</Button><span className="toolbar-divider"/>
       {state.changeListMode==='unified'&&<><Button icon="stage-inbox" shortcut="stageAll" title={t('changes.stageAllScope')} disabled={!canOperate||!snapshot!.changes.some(isUnstaged)} onClick={()=>open({type:'stage',paths:snapshot!.changes.filter(isUnstaged).map(file=>file.path)})}>{uiText('details.stageAll')}</Button><Button icon="discard" shortcut="unstageAll" title={t('changes.unstageAllScope')} disabled={!canOperate||!snapshot!.changes.some(isStaged)} onClick={()=>open({type:'unstage',paths:snapshot!.changes.filter(isStaged).map(file=>file.path)})}>{uiText('details.unstageAll')}</Button><Button icon="trash" title={t('changes.discardAllScope')} disabled={!canOperate||!snapshot!.changes.some(isUnstaged)} onClick={()=>open({type:'discard',discardScope:'unstaged'})}>{uiText('details.discardAll')}</Button><span className="toolbar-divider"/></>}
-      <Button className="commit-trigger" icon="git-commit" shortcut="commit" disabled={!canOperate} onClick={startCommit}>{uiText("workbench.commit")}</Button><span className="toolbar-divider"/>
+      <Button className="commit-trigger" icon="git-commit" shortcut="commit" disabled={!canOperate} onClick={()=>startCommit()}>{uiText("workbench.commit")}</Button><span className="toolbar-divider"/>
       <Button icon="archive" shortcut="stash" disabled={!canStash} onClick={()=>open({type:'stash.create'})}>{uiText("workbench.stashAllChanges")}</Button>
       <div className="toolbar-spacer"/><Button icon="refresh" shortcut="refresh" title={t("workbench.refreshCurrentRepositoryStatusAndHistory")} aria-label={t("workbench.refreshCurrentRepositoryStatusAndHistory")} disabled={!canOperate} onClick={()=>void state.refresh()}/><div className="toolbar-repository-actions"><Button className="icon-only toolbar-special" icon="location" shortcut="head" title={t("workbench.locateTheCurrentCommitHEAD")} aria-label={t("workbench.locateHEAD")} disabled={!snapshot?.head} onClick={state.locateHead}/><Button className="icon-only toolbar-special open-repository" shortcut="repository" data-testid="open-project" title={snapshot?`${t("workbench.openRepositoryFolder")}\n${t("workbench.switchesToItsVSCodeWindowWhenAlreadyOpen")}\n${snapshot.repository.root}`:t("workbench.selectARepositoryFirst")} aria-label={t("workbench.openRepositoryFolder")} disabled={!snapshot} onClick={openRepository}><OpenRepositoryFolderIcon/></Button></div>
     </div>
@@ -128,14 +130,14 @@ export function App() {
     {state.error&&state.error!==state.actionFeedback?.error&&!state.checkoutFailure&&!state.stashApplyFailure&&<div className="banner error" role="alert"><Icon name="error"/><span>{state.error}</span><Button onClick={()=>void host('showLog')}>{t("workbench.showLog")}</Button><Button icon="close" aria-label={uiText("workbench.dismissError")} onClick={()=>useWorkbench.setState({error:undefined})}/></div>}
     <div className="workspace"><Sidebar context={showContext} actions={sidebarActions} checkoutBranch={checkoutBranch} openWorktree={openWorktree}/><ResizeHandle axis="x" label={uiText("workbench.resizeRepositorySidebar")} value={layout.sidebar} min={160} max={360} onChange={sidebar=>state.setLayout({sidebar})}/><main ref={mainPanel} className={`main-panel${layout.diffCollapsed?' diff-collapsed':''}`} style={{'--diff-height':`${diffHeight}px`} as React.CSSProperties}>
       {!snapshot?<Empty title={repositoryState==='opening'?t("workbench.openingRepository"):repositoryState==='unavailable'?t("workbench.repositoryUnavailable"):hasRepositories?t("workbench.noRepositorySelected"):t("workbench.noRepositoriesAdded")}>{repositoryState!=='opening'&&<>{repositoryState==='unavailable'?<span>{t("workbench.theRepositoryFolderNoLongerExistsOrCannotBe")}</span>:hasRepositories?<span>{t("workbench.chooseARepositoryFromTheWorkbenchSidebarToBegin")}</span>:<span>{t("workbench.scanAFolderAndChooseWhichGitRepositoriesAlwayGit")}</span>}<Button className={!hasRepositories?'primary':''} icon="folder-opened" onClick={()=>void addRepository()}>{hasRepositories?t("workbench.addRepositories"):t("workbench.findAndAddRepositories")}</Button><Button icon="question" onClick={showHelp}>{t("workbench.quickStart")}</Button></>}</Empty>:<>
-        <div className="top-panels"><History context={showContext} checkout={checkout} checkoutBranch={checkoutBranch}/><ResizeHandle axis="x" label={uiText("workbench.resizeDetailsPanel")} value={layout.details} min={230} max={480} reverse onChange={details=>state.setLayout({details})}/><Details open={open} edit={editSelected} context={showContext} startCommit={startCommit}/></div>
+        <div className="top-panels"><History context={showContext} checkout={checkout} checkoutBranch={checkoutBranch}/><ResizeHandle axis="x" label={uiText("workbench.resizeDetailsPanel")} value={layout.details} min={230} max={480} reverse onChange={details=>state.setLayout({details})}/><Details open={open} edit={editSelected} context={showContext} startCommit={()=>startCommit()}/></div>
       </>}
       {!layout.diffCollapsed&&<ResizeHandle axis="y" label={uiText("workbench.resizeDiffPanel")} value={diffHeight} min={130} max={maxDiffHeight} reverse onChange={diff=>state.setLayout({diff})}/>}<BottomDock native={native} edit={editSelected}/>
     </main></div>
     {dialog&&snapshot&&!state.checkoutFailure&&!state.operationReview&&<ActionDialog key={`${state.repoId}-${dialog.type}-${dialog.target}-${dialog.sources?.join('|')}-${dialog.names?.join('|')}-${dialog.remoteBranches?.join('|')}-${dialog.pop}`} dialog={dialog} onClose={()=>setDialog(undefined)} openAbort={()=>open({type:'operation.abort'})} replaceDialog={setDialog}/>}
     {repositoryDialog&&<RepositoryDialog onClose={()=>setRepositoryDialog(false)}/>}
     {repositoryRemoval&&<RepositoryRemoveDialog groups={repositoryRemoval} onClose={()=>setRepositoryRemoval(undefined)}/>}
-    {commitRepoId===state.repoId&&commitRepoId&&snapshot&&!state.operationReview&&<CommitDialog key={commitRepoId} repoId={commitRepoId} onClose={()=>closeCommit(commitRepoId)}/>}
+    {commitRepoId===state.repoId&&commitRepoId&&snapshot&&!state.operationReview&&<CommitDialog key={commitRepoId} repoId={commitRepoId} files={commitFiles} onClose={()=>closeCommit(commitRepoId)}/>}
     {state.operationReview&&snapshot&&<OperationReviewDialog key={state.operationReview.review.token} edit={path=>void edit({kind:'change',path,area:'staged'})}/>}
     {context&&menu&&<ContextMenu x={context.x} y={context.y} caption={menu.caption} items={menu.items} anchor={context.anchor} close={closeMenu}/>}
     {repositoryFetch&&<RepositoryFetchDialog repositories={repositoryFetch} onClose={()=>setRepositoryFetch(undefined)}/>}

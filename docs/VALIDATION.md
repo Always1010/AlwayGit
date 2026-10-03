@@ -32,7 +32,7 @@
 | `--appearance-only` | 设置、主题、配色、字体、尺寸与恢复布局 |
 | `--shortcuts-only` | 工作台全局单键、输入与输入法保护、弹窗和菜单优先级、按键目标、禁用/长按、Diff 折叠后跳转、整组确认与设置重载 |
 | `--help-only` | 中英文离线帮助、空仓库入口、章节定位、筛选、图片与 CSP、窄窗口、键盘焦点及查看状态保留 |
-| `--files-only` | 文件状态图标、选择、目录显示、菜单、分组图标和 Stage All / Unstage All / Discard All 确认 |
+| `--files-only` | 文件状态与选择、两种列表模式及持久化、全量按钮与快捷键范围、提交清单去重与版本、取消勾选、草稿、窄窗口和大型列表 |
 | `--history-only` | Commit / Working Tree 行、选择、比较、键盘、常驻位置与范围、延迟/失败/重试、返回和当前分支恢复 |
 | `--diff-only` | 修改块统计、单文件与 Commit 跨文件循环、设置保存、Parent 切换、滚动和内容更新 |
 | `--worktrees-only` | 仓库归并、Worktree 选择及草稿隔离 |
