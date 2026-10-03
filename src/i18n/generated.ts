@@ -141,6 +141,18 @@ export const catalog = {
     "en": "Push Tags",
     "zh-CN": "推送标签"
   },
+  "actions.preparingDiscard": {
+    "en": "Checking the files to discard…",
+    "zh-CN": "正在检查将丢弃的文件…"
+  },
+  "actions.discardCounts": {
+    "en": "{{total}} files: restore {{tracked}} tracked files; delete {{untracked}} untracked files.",
+    "zh-CN": "共 {{total}} 个文件：还原 {{tracked}} 个已跟踪文件，删除 {{untracked}} 个未跟踪文件。"
+  },
+  "actions.recheckDiscard": {
+    "en": "Recheck Remaining Changes",
+    "zh-CN": "重新检查剩余更改"
+  },
   "actions.currentBranchCurrentVersion": {
     "en": "Current branch {{name}} · current version",
     "zh-CN": "当前分支 {{name}} · 当前版本"
@@ -1627,6 +1639,14 @@ export const catalog = {
   "extension.alwayGitActivatedGitOperationsRunInTheWorkspaceExtension": {
     "en": "AlwayGit activated. Git operations run in the workspace extension host.",
     "zh-CN": "AlwayGit 已激活。Git 操作在工作区扩展宿主中运行。"
+  },
+  "feedback.restoringFiles": {
+    "en": "Restoring files: {{completed}} / {{total}}",
+    "zh-CN": "正在还原文件：{{completed}} / {{total}}"
+  },
+  "feedback.cleaningFiles": {
+    "en": "Deleting untracked files: {{completed}} / {{total}}",
+    "zh-CN": "正在删除未跟踪文件：{{completed}} / {{total}}"
   },
   "feedback.createdAndSwitchedTo": {
     "en": "Created and switched to {{name}}",
@@ -3595,6 +3615,18 @@ export const catalog = {
     "en": "Cannot run Git: {{message}}",
     "zh-CN": "无法运行 Git：{{message}}"
   },
+  "service.discardPlanExpired": {
+    "en": "Discard confirmation expired. Recheck the remaining changes before retrying.",
+    "zh-CN": "丢弃确认已过期。请重新检查剩余更改后重试。"
+  },
+  "service.discardPlanChanged": {
+    "en": "The branch, staged content or affected file list changed. Recheck and confirm Discard again.",
+    "zh-CN": "分支、暂存内容或受影响文件清单已变化。请重新检查并确认丢弃范围。"
+  },
+  "service.discardIncomplete": {
+    "en": "Discard processed {{completed}} of {{total}} paths. The failed step may have partially completed. Recheck the remaining changes before retrying.\n{{value}}",
+    "zh-CN": "丢弃已处理 {{completed}} / {{total}} 个路径。失败步骤也可能已部分完成，请重新检查剩余更改后重试。\n{{value}}"
+  },
   "service.thisRepositoryContainsAPathEncodedWithInvalidUTF": {
     "en": "This repository contains a path encoded with invalid UTF-8. Rename the affected file with an external Git tool before continuing.",
     "zh-CN": "此仓库包含未使用有效 UTF-8 编码的路径。继续前，请使用外部 Git 工具重命名受影响的文件。"
@@ -5212,6 +5244,9 @@ export interface MessageParameters {
   "actionNames.abort": { value: ParameterValue };
   "actionNames.skip": { value: ParameterValue };
   "actionNames.pushTags": {  };
+  "actions.preparingDiscard": {  };
+  "actions.discardCounts": { total: ParameterValue; tracked: ParameterValue; untracked: ParameterValue };
+  "actions.recheckDiscard": {  };
   "actions.currentBranchCurrentVersion": { name: ParameterValue };
   "actions.branch": { name: ParameterValue };
   "actions.remoteBranch": { name: ParameterValue };
@@ -5580,6 +5615,8 @@ export interface MessageParameters {
   "extension.gitMergeAlwayGit": {  };
   "extension.reloadTheVSCodeWindowToApplyAlwayGitRuntime": {  };
   "extension.alwayGitActivatedGitOperationsRunInTheWorkspaceExtension": {  };
+  "feedback.restoringFiles": { completed: ParameterValue; total: ParameterValue };
+  "feedback.cleaningFiles": { completed: ParameterValue; total: ParameterValue };
   "feedback.createdAndSwitchedTo": { name: ParameterValue };
   "feedback.createdStillOn": { name: ParameterValue; currentBranch: ParameterValue };
   "feedback.commitAmended": { value: ParameterValue };
@@ -6065,6 +6102,9 @@ export interface MessageParameters {
   "runner.gitTimedOutCheckCredentialsHooksOrAnotherGit": {  };
   "runner.gitOutputExceededTheConfiguredLimit": {  };
   "runner.cannotRunGit": { message: ParameterValue };
+  "service.discardPlanExpired": {  };
+  "service.discardPlanChanged": {  };
+  "service.discardIncomplete": { completed: ParameterValue; total: ParameterValue; value: ParameterValue };
   "service.thisRepositoryContainsAPathEncodedWithInvalidUTF": {  };
   "service.invalid": { label: ParameterValue };
   "service.filePathsMustStayInsideTheRepository": {  };

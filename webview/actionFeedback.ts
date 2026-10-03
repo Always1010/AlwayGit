@@ -1,5 +1,5 @@
 import { uiText } from './text';
-import type { GitAction, Snapshot, PushResult } from '../src/protocol/types';
+import type { GitAction, Snapshot, PushResult, FileOperationProgress } from '../src/protocol/types';
 
 export interface ActionFeedback {
   id: number;
@@ -9,6 +9,7 @@ export interface ActionFeedback {
   startedAt?: number;
   phase?: 'executing' | 'refreshing';
   refreshWarning?: string;
+  progress?: FileOperationProgress;
   stashOid?: string;
   target?: string;
   error?: string;

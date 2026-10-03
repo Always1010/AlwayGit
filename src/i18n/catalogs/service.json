@@ -1,4 +1,7 @@
 {
+  "service.discardPlanExpired": { "en": "Discard confirmation expired. Recheck the remaining changes before retrying.", "zh-CN": "丢弃确认已过期。请重新检查剩余更改后重试。", "review": "translated", "context": "src/git/service.ts / checkedDiscard" },
+  "service.discardPlanChanged": { "en": "The branch, staged content or affected file list changed. Recheck and confirm Discard again.", "zh-CN": "分支、暂存内容或受影响文件清单已变化。请重新检查并确认丢弃范围。", "review": "translated", "context": "src/git/service.ts / checkedDiscard" },
+  "service.discardIncomplete": { "en": "Discard processed {{completed}} of {{total}} paths. The failed step may have partially completed. Recheck the remaining changes before retrying.\n{{value}}", "zh-CN": "丢弃已处理 {{completed}} / {{total}} 个路径。失败步骤也可能已部分完成，请重新检查剩余更改后重试。\n{{value}}", "review": "translated", "context": "src/git/service.ts / discard" },
   "service.thisRepositoryContainsAPathEncodedWithInvalidUTF": {
     "en": "This repository contains a path encoded with invalid UTF-8. Rename the affected file with an external Git tool before continuing.",
     "zh-CN": "此仓库包含未使用有效 UTF-8 编码的路径。继续前，请使用外部 Git 工具重命名受影响的文件。",

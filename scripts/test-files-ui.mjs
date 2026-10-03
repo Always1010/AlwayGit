@@ -26,6 +26,12 @@ export async function verifyFiles(browser, url) {
         }
         if (request.method === 'repositories') result = [repo];
         if (request.method === 'snapshot') result = structuredClone({ ...fixture.snapshot, version: ++fixture.snapshot.version });
+        if (request.method === 'prepareDiscard') {
+          const selected = request.payload.paths && new Set(request.payload.paths);
+          const changes = fixture.snapshot.changes.filter(file => !file.conflict && (selected ? selected.has(file.path) : file.untracked || file.worktreeStatus !== ' '));
+          fixture.discardPlan = { token: 'files-discard-plan', paths: changes.map(file => file.path), tracked: changes.filter(file => !file.untracked).length, untracked: changes.filter(file => file.untracked).length, staged: changes.filter(file => !file.untracked && file.indexStatus !== ' ').length, branch: 'main' };
+          result = fixture.discardPlan;
+        }
         if (request.method === 'history') result = { commits: [commit], tips: [commit.oid], nextOffset: 1, hasMore: false };
         if (request.method === 'details') result = { commit, body: '', files: paths.map(path => ({ path, status: 'M' })) };
         if (request.method === 'diffPreview') result = { kind: 'text', path: request.payload.path, leftLabel: 'Before', rightLabel: 'After', left: 'before', right: 'after' };
@@ -102,7 +108,7 @@ export async function verifyFiles(browser, url) {
     assert.equal(await discardAll.isDisabled(), false, 'Discard All does not require a file selection');
     await discardAll.click();
     let discardDialog = page.getByRole('dialog', { name: 'Discard Changes', exact: true });
-    await discardDialog.waitFor();
+    await discardDialog.locator('.discard-paths').waitFor();
     assert.deepEqual(await discardDialog.locator('.discard-paths > div').allTextContents(), await page.evaluate(() => window.__filesFixture.paths));
     await discardDialog.getByText('Discard Unstaged Changes and selected untracked files. Staged Changes remain in the Index.', { exact: true }).waitFor();
     await discardDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
@@ -153,6 +159,7 @@ export async function verifyFiles(browser, url) {
     await unstaged.getByRole('button', { name: 'README.md', exact: true }).click({ modifiers: ['Control'] });
     await discardAll.click();
     const dialog = page.getByRole('dialog');
+    await dialog.locator('.discard-paths').waitFor();
     assert.deepEqual(await dialog.locator('.discard-paths > div').allTextContents(), await page.evaluate(() => window.__filesFixture.paths), 'Discard All includes every Unstaged path even with a partial selection');
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     const commitTrigger = staged.getByRole('button', { name: 'Commit…', exact: true });
@@ -201,9 +208,11 @@ export async function verifyFiles(browser, url) {
     await commitDialog.locator('.modal-heading button').click();
     await discardAll.click();
     discardDialog = page.getByRole('dialog', { name: 'Discard Changes', exact: true });
+    await discardDialog.locator('.discard-paths').waitFor();
     await discardDialog.locator('button.danger').click();
     await page.waitForFunction(() => window.__filesFixture.calls.filter(call => call.method === 'action').length === 4);
-    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action')[3].payload), { type: 'discard', paths: ['src/features/auth/login.ts', 'src/services/auth/login.ts', 'README.md'] }, 'Confirmed Discard All sends every Unstaged path');
+    assert.deepEqual(await page.evaluate(() => window.__filesFixture.discardPlan.paths), ['src/features/auth/login.ts', 'src/services/auth/login.ts', 'README.md'], 'Confirmed Discard All includes every Unstaged path');
+    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action')[3].payload), { type: 'discard', paths: [], planToken: 'files-discard-plan' });
     const workingFilter = details.getByRole('searchbox', { name: 'Filter working tree file paths', exact: true });
     await workingFilter.fill(' FEATURES/AUTH ');
     await details.getByText('1 / 3', { exact: true }).waitFor();
@@ -223,10 +232,12 @@ export async function verifyFiles(browser, url) {
     assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action').at(-1).payload), { type: 'unstage', paths: ['src/features/auth/login.ts'] }, 'Filtered Unstage excludes hidden paths');
     await unstaged.getByRole('button', { name: 'Discard Matching (1)…', exact: true }).click();
     discardDialog = page.getByRole('dialog', { name: 'Discard Changes', exact: true });
+    await discardDialog.locator('.discard-paths').waitFor();
     assert.deepEqual(await discardDialog.locator('.discard-paths > div').allTextContents(), ['src/features/auth/login.ts']);
     await discardDialog.locator('button.danger').click();
     await page.getByTestId('action-feedback').getByText('Discard completed', { exact: true }).waitFor();
-    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action').at(-1).payload), { type: 'discard', paths: ['src/features/auth/login.ts'] }, 'Filtered Discard excludes hidden paths');
+    assert.deepEqual(await page.evaluate(() => window.__filesFixture.discardPlan.paths), ['src/features/auth/login.ts'], 'Filtered Discard excludes hidden paths');
+    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action').at(-1).payload), { type: 'discard', paths: [], planToken: 'files-discard-plan' });
     await workingFilter.fill('missing/path');
     assert.equal(await groups.locator('.change-file').count(), 0);
     assert.equal(await groups.locator('.change-heading-staged').isVisible(), true, 'Staged heading stays available with no matching files');
@@ -306,6 +317,12 @@ export async function verifyFiles(browser, url) {
     await workingFilter.fill('large/41209');
     assert.equal(await groups.locator('.change-file').count(), 1, 'Filtering searches the full list beyond the viewport');
     await details.getByRole('button', { name: 'Clear file filter', exact: true }).click();
+    await discardAll.click();
+    discardDialog = page.getByRole('dialog', { name: 'Discard Changes', exact: true });
+    await discardDialog.getByText('41210 files: restore 41210 tracked files; delete 0 untracked files.', { exact: true }).waitFor();
+    assert.ok(await discardDialog.locator('.virtual-file-row').count() < 100, 'Large Discard previews must not mount all paths');
+    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'prepareDiscard').at(-1).payload), { scope: 'unstaged' }, 'Global Discard sends scope rather than a giant path array');
+    await discardDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     assert.deepEqual(errors, []);
     console.log('ALWAYGIT_FILES_UI_TESTS_PASSED: working path filtering and action scope, narrow Staged Commit entry, cancel/reload draft recovery, failures, hidden conflicts, Commit/Amend and native text editing');
   } finally { await page.close(); }
