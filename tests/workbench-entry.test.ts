@@ -5,6 +5,7 @@ import { panelSession, statusBarPresentation } from '../src/extension/workbench-
 import { createWorkbenchActivityLauncher } from '../src/extension/workbench-launcher';
 import { Workbench } from '../src/extension/workbench';
 import type { RepositoryChanges } from '../src/protocol/types';
+import type { RepositoryManager } from '../src/repositories/manager';
 
 vi.mock('vscode', () => {
   class EventEmitter<T> {
@@ -36,8 +37,8 @@ const workbenches: Workbench[] = [];
 beforeEach(() => vi.clearAllMocks());
 afterEach(() => { for (const workbench of workbenches.splice(0)) workbench.dispose(); vi.useRealTimers(); });
 
-function workbenchFixture(output = { appendLine: vi.fn() }, events?: { changes: vscode.EventEmitter<{ repoId: string; changes?: RepositoryChanges }>; catalog: vscode.EventEmitter<void> }) {
-  const repositories = { scan: vi.fn(async () => {}), list: () => [], onDidChange: events?.changes.event ?? (() => ({ dispose() {} })), onDidChangeRepositories: events?.catalog.event ?? (() => ({ dispose() {} })) };
+function workbenchFixture(output = { appendLine: vi.fn() }, events?: { changes: vscode.EventEmitter<{ repoId: string; changes?: RepositoryChanges }>; catalog: vscode.EventEmitter<void> }, overrides: Partial<Pick<RepositoryManager, 'scan' | 'list' | 'collections' | 'order'>> = {}) {
+  const repositories = { scan: vi.fn(async () => {}), list: () => [], onDidChange: events?.changes.event ?? (() => ({ dispose() {} })), onDidChangeRepositories: events?.catalog.event ?? (() => ({ dispose() {} })), ...overrides };
   const workbench = new Workbench({ extensionUri: {}, workspaceState: { get: (_key: string, fallback: unknown) => fallback, update: async () => {} } } as unknown as vscode.ExtensionContext, {} as never, repositories as never, {} as never, output as never, {} as never);
   vi.spyOn(workbench as unknown as { html(): Promise<string> }, 'html').mockResolvedValue('<html></html>');
   workbenches.push(workbench);
@@ -45,6 +46,45 @@ function workbenchFixture(output = { appendLine: vi.fn() }, events?: { changes: 
 }
 
 describe('Workbench entry presentation', () => {
+  it('opens and reveals the panel during slow startup while catalog reads share the completed discovery', async () => {
+    let finish!: () => void, ready = false;
+    const gate = new Promise<void>(resolve => { finish = () => { ready = true; resolve(); }; });
+    const scan = vi.fn(() => gate), repo = { id: 'fixture', name: 'Startup repository', root: '/fixture', commonDir: '/fixture/.git' };
+    const collection = { id: 'collection', name: 'Saved collection' }, order = { root: ['collection:collection'], collections: { collection: ['repository:/fixture/.git'] } };
+    const events = { changes: new vscode.EventEmitter<{ repoId: string; changes?: RepositoryChanges }>(), catalog: new vscode.EventEmitter<void>() };
+    const workbench = workbenchFixture(undefined, events, { scan, list: () => ready ? [repo] : [], collections: () => ready ? [collection] : [], order: () => ready ? order : { root: [], collections: {} } });
+    const fixture = panelFixture();
+    vi.mocked(vscode.window.createWebviewPanel).mockReturnValue(fixture.panel as unknown as vscode.WebviewPanel);
+    const startup = workbench.initializeRepositories();
+    let readComplete = false;
+    const reads = Promise.all(['repositories', 'repositoryCollections', 'repositoryOrder'].map(method => workbench.handle({ id: method, method: method as 'repositories' | 'repositoryCollections' | 'repositoryOrder' }))).then(result => { readComplete = true; return result; });
+    try {
+      await workbench.open(repo.id);
+      await workbench.open();
+      expect(fixture.panel.webview.html).toBe('<html></html>');
+      expect(fixture.panel.reveal).toHaveBeenCalledOnce();
+      expect(readComplete).toBe(false);
+      expect(scan).toHaveBeenCalledOnce();
+      finish(); await startup; events.catalog.fire();
+      expect(await reads).toEqual([[repo], [collection], order]);
+      expect(fixture.panel.title).toContain(repo.name);
+      await workbench.open();
+      expect(await workbench.handle({ id: 'later', method: 'repositories' })).toEqual([repo]);
+      expect(scan).toHaveBeenCalledOnce();
+    } finally { finish(); await startup; await reads; events.changes.dispose(); events.catalog.dispose(); }
+  });
+
+  it('keeps the panel available after failed startup discovery and retries on the next catalog request', async () => {
+    const scan = vi.fn().mockRejectedValueOnce(new Error('catalog damaged')).mockResolvedValue(undefined);
+    const fixture = panelFixture(), workbench = workbenchFixture(undefined, undefined, { scan });
+    vi.mocked(vscode.window.createWebviewPanel).mockReturnValue(fixture.panel as unknown as vscode.WebviewPanel);
+    await workbench.open(undefined, undefined, false, true);
+    await expect(workbench.initializeRepositories()).rejects.toThrow('catalog damaged');
+    expect(workbench.presence.open).toBe(true);
+    expect(await workbench.handle({ id: 'retry', method: 'repositories' })).toEqual([]);
+    expect(scan).toHaveBeenCalledTimes(2);
+  });
+
   it('checks a revealed repository without rebuilding the catalog or reloading on focus changes', async () => {
     const fixture = panelFixture(), workbench = workbenchFixture();
     vi.mocked(vscode.window.createWebviewPanel).mockReturnValue(fixture.panel as unknown as vscode.WebviewPanel);
@@ -145,6 +185,8 @@ describe('Workbench entry presentation', () => {
     expect(manifest.contributes?.viewsContainers?.activitybar?.some(item => item.id === 'alwaygit')).toBe(true);
     expect(manifest.contributes?.views?.alwaygit?.some(item => item.id === 'alwaygit.workbenchLauncher')).toBe(true);
     expect(manifest.activationEvents).toContain('onView:alwaygit.workbenchLauncher');
+    expect(manifest.activationEvents).toContain('*');
+    expect(manifest.activationEvents).not.toContain('onStartupFinished');
     const english = JSON.parse(readFileSync(new URL('../package.nls.json', import.meta.url), 'utf8')) as Record<string, string>;
     expect(manifest.contributes?.viewsWelcome?.filter(item => item.view === 'alwaygit.workbenchLauncher').map(item => item.contents?.replace(/^%(.*)%$/, (_, key: string) => english[key]))).toEqual([
       '[Show Git Workbench](command:alwaygit.showWorkbench)\n[Open Workbench in New Window](command:alwaygit.openWorkbenchInNewWindow)',

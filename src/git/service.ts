@@ -25,6 +25,7 @@ import { safeWorkingPath } from '../editor/paths';
 export interface GitServiceOptions {
   allowDetachedHead?: () => boolean;
   gitPath?: string;
+  resolveGitPath?: () => Promise<string | undefined>;
   onOutput?: (repo: Repository, text: string) => void;
   timeoutMs?: number;
   networkTimeoutMs?: number;
@@ -74,10 +75,14 @@ const commitFormat = '%H%x00%P%x00%an%x00%ae%x00%at%x00%s';
 
 export class GitService implements GitServiceContract {
   private version = 0;
+  private executable?: Promise<string>;
   private readonly reviews = new Map<string, { token: string; fingerprint: string }>();
   private readonly discards = new Map<string, { root: string; expires: number; plan: DiscardPlan; fingerprint: string; request: DiscardRequest }>();
   private readonly readSignal = new AsyncLocalStorage<{ controller: AbortController; pending: Set<Promise<void>> }>();
   constructor(private readonly options: GitServiceOptions = {}) {}
+  private gitPath(): Promise<string> {
+    return this.executable ??= Promise.resolve().then(() => this.options.gitPath || this.options.resolveGitPath?.()).then(value => value || 'git');
+  }
   async withReadSignal<T>(signal: AbortSignal, task: () => Promise<T>): Promise<T> {
     const controller=new AbortController(),abort=()=>controller.abort();
     if(signal.aborted)abort();else signal.addEventListener('abort',abort,{once:true});
@@ -99,7 +104,8 @@ export class GitService implements GitServiceContract {
     const unsafe = unsafeTerminations.get(normalized(repo.commonDir));
     if (!readOnly && unsafe) throw unsafe;
     const prefix = ['-C', execution.root ?? repo.root, ...(args[0] === 'stash' ? [] : ['--literal-pathspecs']), ...Object.entries(execution.config ?? {}).flatMap(([key, value]) => ['-c', `${key}=${value}`])];
-    const batches = splitCleanArguments(this.options.gitPath ?? 'git', prefix, args);
+    const executable = await this.gitPath();
+    const batches = splitCleanArguments(executable, prefix, args);
     if (batches.length > 1) {
       const results: Result[] = [];
       try {
@@ -115,7 +121,7 @@ export class GitService implements GitServiceContract {
       return { stdout: Buffer.concat(results.map(result => result.stdout)), stderr: Buffer.concat(results.map(result => result.stderr)), code: results.at(-1)?.code ?? 0 };
     }
     const prepared = prepareGitArguments(args, execution.input);
-    assertGitArgumentBudget(this.options.gitPath ?? 'git', [...prefix, ...prepared.args]);
+    assertGitArgumentBudget(executable, [...prefix, ...prepared.args]);
     const adapter = this.options.environment;
     const supplied = execution.isolated ? undefined : typeof adapter === 'function' ? await adapter(repo, args) : adapter;
     const wrapped = supplied && 'env' in supplied && typeof supplied.env === 'object' ? supplied as { env: NodeJS.ProcessEnv; cancelPrompts?: () => void; dispose?: () => void | Promise<void> } : undefined;
@@ -126,7 +132,7 @@ export class GitService implements GitServiceContract {
     try {
       // Stash cleanup uses Git pathspec matching; all other commands use literal paths.
       const gitProcess = runGitProcess({
-        executable: this.options.gitPath,
+        executable,
         args: [...prefix, ...prepared.args],
         env: { ...commandEnv, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never', GIT_EDITOR: 'true', GIT_SEQUENCE_EDITOR: 'true', ...(['status', 'log', 'show', 'ls-tree', 'ls-files', 'for-each-ref'].includes(args[0]) ? { GIT_OPTIONAL_LOCKS: '0' } : {}), ...execution.env },
         input: prepared.input, signal: execution.signal && scopeSignal ? AbortSignal.any([execution.signal,scopeSignal]) : execution.signal ?? scopeSignal, readOnly, captureBytes,
@@ -670,8 +676,8 @@ export class GitService implements GitServiceContract {
     const prefix = ['-C', repo.root, '--literal-pathspecs'];
     const indexedNewFiles = all && !status.head ? tracked : destinations;
     const clean = [
-      ...(indexedNewFiles.length ? splitCleanArguments(this.options.gitPath ?? 'git', prefix, ['clean', '-f', '-x', '--', ...indexedNewFiles]) : []),
-      ...(untracked.size > destinations.length ? splitCleanArguments(this.options.gitPath ?? 'git', prefix, ['clean', '-f', '--', ...[...untracked].filter(name => !destinationSet.has(name))]) : []),
+      ...(indexedNewFiles.length ? splitCleanArguments(await this.gitPath(), prefix, ['clean', '-f', '-x', '--', ...indexedNewFiles]) : []),
+      ...(untracked.size > destinations.length ? splitCleanArguments(await this.gitPath(), prefix, ['clean', '-f', '--', ...[...untracked].filter(name => !destinationSet.has(name))]) : []),
     ];
     const total = tracked.length + untracked.size; let completed = 0, indexCleared = false;
     if (action.planToken) this.discards.delete(action.planToken);
@@ -731,7 +737,7 @@ export class GitService implements GitServiceContract {
                 const before = beforeByPath.get(file.path), after = afterByPath.get(file.path);
                 return !before || !after || before.indexStatus !== after.indexStatus || before.worktreeStatus !== after.worktreeStatus || before.originalPath !== after.originalPath;
               })) throw new GitError(localizeMessage('commit.selectionChanged'), 'OPERATION_CHANGED');
-            }, this.options.gitPath ?? 'git');
+            }, await this.gitPath());
           return;
         }
         await this.requireReview(repo, snapshot, action.reviewToken);
@@ -869,7 +875,7 @@ export class GitService implements GitServiceContract {
         if (action.message?.includes('\0')) throw new GitError(localizeMessage("service.messagesCannotContainNULCharacters"), 'INVALID_ARGUMENT');
         // store has no stdin message option. Check its worst-case command before
         // preparing any snapshot or changing the source repository.
-        if (action.message) assertGitArgumentBudget(this.options.gitPath ?? 'git', ['-C', repo.root, 'stash', 'store', '-m', action.message, '0'.repeat(64)]);
+        if (action.message) assertGitArgumentBudget(await this.gitPath(), ['-C', repo.root, 'stash', 'store', '-m', action.message, '0'.repeat(64)]);
         if (action.paths) {
           if (!action.paths.length) throw new GitError(localizeMessage("service.selectAtLeastOneFile"), 'INVALID_ARGUMENT');
           const snapshot = await this.snapshot(repo);
