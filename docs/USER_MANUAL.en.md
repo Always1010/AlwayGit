@@ -6,7 +6,7 @@ This manual explains how to inspect changes, save revisions, and collaborate wit
 
 Select the question-mark icon in the upper-right corner of the Workbench to open the offline Help & Guide. It includes quick start instructions, common tasks, common questions, and the full chapters of this manual. Its language follows the workbench setting.
 
-**About the screenshots:** Figures 07 and 08 show the Working Tree and Commit dialog in 0.45.0; Figure 34 shows settings in 0.34.0. Other screenshots mainly come from 0.29.0. Outdated screenshots of the permanent Commit form have been removed. Follow the instructions here and verify current control names, targets and counts.
+**About the screenshots:** Figures 07 and 08 show the Working Tree and Commit dialog in 0.45.0. Other screenshots mainly come from 0.29.0. Outdated screenshots of the permanent Commit form have been removed. Follow the instructions here and verify current control names, targets and counts.
 
 ## Read by task
 
@@ -94,7 +94,7 @@ Use VS Code 1.95 or later. Basic features require Git 2.40 or later; saving a St
 | --- | --- | --- |
 | Left navigation | Repositories, project groups, branches, remotes, Tag, Stash, and Worktree | The current repository and current branch |
 | Center History | Commit graph, search, ref scope, and Working Tree | The commit or uncommitted changes you want to inspect |
-| Right details | The commit’s file list or the Working Tree commit form | Changed files and the scope of Staged changes |
+| Right details | The commit’s file list or the Working Tree file list | Changed files and the scope of Staged changes |
 | Bottom tabbed panel | A fixed Diff preview and multiple embedded terminals | The selected file comparison or terminal working directory |
 
 The plus icon creates a terminal at the current repository root. Its dropdown selects the default shell, PowerShell, cmd, or Bash (the shell must exist on the host). Terminals and Diff share the panel height. Switching repositories keeps existing terminal directories; clicking a file selects Diff, while background refreshes keep the active tab.
@@ -1013,13 +1013,14 @@ Single-key shortcuts are enabled by default throughout the focused AlwayGit work
 | / | Search commits | Focus and select the Commit search text |
 | , | Settings | Open Settings |
 | ? (Shift+/) | Help | Open Help & Guide |
-| A; U | Stage All; Unstage All | Working Tree only; confirm the entire group without a filter, or matching files with a filter |
+| A; U | Stage All; Unstage All | Split mode: Working Tree only, confirming the matching scope. Unified mode: confirm the complete repository from any detail view, ignoring filters and selection |
 | N | New embedded terminal | Expand the bottom panel and create a default shell at the current repository root |
-| T | Focus current terminal | Switch from Diff to the most recent terminal; create one when no terminal exists |
+| T | Focus current terminal | Switch from Diff to the most recently created terminal; create one when no terminal exists |
+| Ctrl+Alt+Shift+T; macOS Cmd+Alt+Shift+T | New embedded terminal | VS Code command that can open the workbench; without a current repository, waits for repository selection before creating a terminal |
 
-Global actions target the currently open repository and preview file. Temporary sidebar selection and pointer hover do not change their targets. Disabled buttons have disabled shortcuts. A/U include all Unstaged/Staged files regardless of batch selection or collapsed groups; use the existing context menu for selected-file actions.
+D, E, [, ], and \ are available only while the Diff tab is active. Terminal inputs suspend workbench single-key shortcuts. Global actions target the currently open repository and preview file. Temporary sidebar selection and pointer hover do not change their targets. Disabled buttons have disabled shortcuts. A/U follow the list-mode scope in the table above, independently of batch selection or collapsed groups; use the existing context menu for selected-file actions.
 
-Hover over supported actions to see their keys. Settings → General → Keyboard shortcuts can disable single-key shortcuts. Apply saves the preference; Cancel restores it. Ctrl/Cmd+R and the existing selection controls below remain available. Drafts, repository selection and layout are preserved.
+Hover over supported actions to see their keys. Settings → General → Keyboard shortcuts can disable single-key shortcuts. Apply saves the preference; Cancel restores it. Ctrl/Cmd+R, the VS Code terminal creation shortcut, and the existing selection controls below remain available. Drafts, repository selection and layout are preserved.
 
 | Action | Meaning | Scope reminder |
 | --- | --- | --- |
