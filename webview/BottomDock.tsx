@@ -74,7 +74,7 @@ export function BottomDock({ native, edit }: { native(): void; edit(): void }) {
         {session.status === 'exited' && <span role="status">{t('dock.exited', { code: session.exitCode ?? 0 })}</span>}
         <Button className="icon-only" icon="clear-all" title={t('dock.clear')} aria-label={t('dock.clear')} onClick={() => window.dispatchEvent(new CustomEvent('alwaygit-terminal-clear', { detail: session.id }))}/>
         <Button className="icon-only" icon="edit" title={t('dock.rename')} aria-label={t('dock.rename')} onClick={() => setRename({ id: session.id, title: session.title })}/>
-        <Button className="icon-only" icon={session.status === 'running' ? 'debug-stop' : 'debug-restart'} title={t(session.status === 'running' ? 'dock.stop' : 'dock.restart')} aria-label={t(session.status === 'running' ? 'dock.stop' : 'dock.restart')} onClick={() => run(session.status === 'running' ? rpc('terminalStop', undefined, { sessionId: session.id }) : dock.restart(session.id))}/>
+        {session.status === 'exited' && <Button className="icon-only" icon="debug-restart" title={t('dock.restart')} aria-label={t('dock.restart')} onClick={() => run(dock.restart(session.id))}/>}
       </div></div>
       <Suspense fallback={null}><TerminalView session={session} active={active?.id === session.id && !state.layout.diffCollapsed}/></Suspense>
     </div>)}

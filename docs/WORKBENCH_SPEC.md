@@ -232,7 +232,7 @@ Diff 标题栏平铺显示当前文件的新增、修改、删除数量，当前
 
 用户点击加号或执行 `AlwayGit: New Embedded Terminal` 才创建终端，并以当前仓库根目录启动。默认读取 VS Code 当前平台的终端 Profile 与环境配置，也可显式选择 PowerShell、cmd 或 Bash；Shell 必须存在于仓库所在的宿主，cmd 仅限 Windows。每个终端绑定创建时的仓库目录，切换仓库不修改已有 Shell 的目录。每个工作台最多保留 24 个终端，其他 AlwayGit 工作台的终端独立。
 
-切换标签、折叠面板或隐藏 AlwayGit 工作台保留 Shell 和终端输出。关闭终端标签结束其 Shell；终止按钮结束进程但保留标签和退出码，可重新启动。双击标签或使用重命名图标改名；清空只清除当前显示。关闭整个工作台或重新加载 VS Code 会释放终端，不保存 Shell、命令或输出，不自动重启。终端聚焦时不触发 Git 快捷键；选中文本后 Ctrl+C 或 Ctrl+Shift+C 复制，Ctrl+Shift+V 粘贴，没有选择时 Ctrl+C 传给 Shell。标签栏支持左右方向键及 Home/End 导航。
+切换标签、折叠面板或隐藏 AlwayGit 工作台保留 Shell 和终端输出。关闭终端标签结束其 Shell，运行中的终端不显示独立终止按钮；Shell 自然退出后保留标签、输出和退出码，并显示重新启动按钮。双击标签或使用重命名图标改名；清空只清除当前显示。关闭整个工作台或重新加载 VS Code 会释放终端，不保存 Shell、命令或输出，不自动重启。终端聚焦时不触发 Git 快捷键；选中文本后 Ctrl+C 或 Ctrl+Shift+C 复制，Ctrl+Shift+V 粘贴，没有选择时 Ctrl+C 传给 Shell。标签栏支持左右方向键及 Home/End 导航。
 
 终端输入的命令由用户直接控制，不经过 AlwayGit 的 Git 确认与写操作队列；文件与 Git 元数据监听继续刷新工作台。终端依赖与宿主平台兼容的 PTY 二进制，远程环境必须有该平台的运行产物；当前 Windows 构建不包含 Linux PTY 二进制，Linux 环境需在对应平台安装依赖并构建。
 
