@@ -8,6 +8,42 @@ import { runGitProcess } from '../src/git/runner';
 const fixtures = gitFixtures('alwaygit-discard-test-');
 afterEach(fixtures.cleanup);
 
+it.each([
+  { tracked: true, scope: 'unstaged' as const },
+  { tracked: false, scope: 'unstaged' as const },
+  { tracked: true, scope: 'all' as const },
+  { tracked: false, scope: 'all' as const },
+])('rejects a $scope plan when a tracked=$tracked file changes without changing Git status', async ({ tracked, scope }) => {
+  const { root, repo, service } = await fixtures.setup();
+  if (tracked) {
+    await writeFile(path.join(root, 'selected.txt'), 'base');
+    await git(root, 'add', 'selected.txt'); await git(root, 'commit', '-m', 'base');
+  }
+  await writeFile(path.join(root, 'selected.txt'), 'first edit');
+  const before = (await service.snapshot(repo)).changes;
+  const plan = await service.prepareDiscard(repo, { scope });
+  // Equal byte lengths ensure the guard checks content, rather than just size.
+  await writeFile(path.join(root, 'selected.txt'), 'later edit');
+  expect((await service.snapshot(repo)).changes).toEqual(before);
+  await expect(service.execute(repo, { type: 'discard', paths: [], planToken: plan.token })).rejects.toMatchObject({ code: 'DISCARD_CHANGED' });
+  expect(await readFile(path.join(root, 'selected.txt'), 'utf8')).toBe('later edit');
+  const fresh = await service.prepareDiscard(repo, { scope });
+  await service.execute(repo, { type: 'discard', paths: [], planToken: fresh.token });
+  if (tracked) expect(await readFile(path.join(root, 'selected.txt'), 'utf8')).toBe('base');
+  else await expect(readFile(path.join(root, 'selected.txt'))).rejects.toMatchObject({ code: 'ENOENT' });
+});
+
+it('keeps a selected-path plan valid when only an unselected working file changes', async () => {
+  const { root, repo, service } = await fixtures.setup();
+  await writeFile(path.join(root, 'selected.txt'), 'remove');
+  await writeFile(path.join(root, 'keep.txt'), 'first');
+  const plan = await service.prepareDiscard(repo, { paths: ['selected.txt'] });
+  await writeFile(path.join(root, 'keep.txt'), 'later');
+  await service.execute(repo, { type: 'discard', paths: [], planToken: plan.token });
+  await expect(readFile(path.join(root, 'selected.txt'))).rejects.toMatchObject({ code: 'ENOENT' });
+  expect(await readFile(path.join(root, 'keep.txt'), 'utf8')).toBe('later');
+});
+
 it('discards more than 10,000 tracked files in one planned operation while retaining staged content', async () => {
   const { root, repo, service } = await fixtures.setup();
   const names = Array.from({ length: 10001 }, (_, index) => `file-${index}.txt`);

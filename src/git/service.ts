@@ -1,7 +1,8 @@
 import { message as localizeMessage, translate } from '../i18n/index';
 import { createHash, randomUUID } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { access, lstat, realpath, readFile } from 'node:fs/promises';
+import { access, lstat, open, realpath, readFile, readlink } from 'node:fs/promises';
+import { constants } from 'node:fs';
 import path from 'node:path';
 import type { Change, CheckoutBlocker, Commit, CommitComparison, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationReview, OperationState, Repository, RepositoryStatus, Snapshot, Stash, StashApplyBlocker, StashDetails, Worktree } from '../protocol/types';
 import { branchNameConflict, branchNameConflictMessage, branchNameProblem, branchNameProblemMessage } from '../protocol/ref-name';
@@ -19,6 +20,7 @@ import { runGitProcess, type GitResult } from './runner';
 export { GitError } from './error';
 import { createSelectedStash, preflightStash, StashStateError, type StashExecution } from './stash';
 import { commitSelected } from './selected-commit';
+import { safeWorkingPath } from '../editor/paths';
 
 export interface GitServiceOptions {
   allowDetachedHead?: () => boolean;
@@ -380,7 +382,38 @@ export class GitService implements GitServiceContract {
   }
   private async discardFingerprint(repo: Repository, status: Awaited<ReturnType<GitService['status']>>, changes: Change[]): Promise<string> {
     const index = await this.run(repo, ['diff', '--cached', '--raw', '--no-abbrev', '--no-renames', '-z']);
-    return createHash('sha256').update(JSON.stringify([status.head, status.branch, changes])).update(index.stdout).digest('hex');
+    const hash = createHash('sha256').update(JSON.stringify([status.head, status.branch, changes])).update(index.stdout);
+    const paths = [...new Set(changes.flatMap(change => [change.path, ...(change.originalPath ? [change.originalPath] : [])]))].sort();
+    for (const name of paths) {
+      hash.update(JSON.stringify([name, await this.discardPathFingerprint(repo, name)]));
+    }
+    return hash.digest('hex');
+  }
+  private async discardPathFingerprint(repo: Repository, name: string): Promise<string> {
+    const filename = await safeWorkingPath(repo.root, validateFilePath(name), false);
+    try {
+      const before = await lstat(filename);
+      // Git stores link text; never read the target, especially outside the repository.
+      if (before.isSymbolicLink()) return JSON.stringify(['link', await readlink(filename)]);
+      if (!before.isFile()) return JSON.stringify(['other', before.mode]);
+      const file = await open(filename, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
+      try {
+        const same = (value: typeof before) => value.isFile() && value.dev === before.dev && value.ino === before.ino && value.size === before.size && value.mode === before.mode && value.mtimeMs === before.mtimeMs && value.ctimeMs === before.ctimeMs;
+        if (!same(await file.stat())) throw new GitError(localizeMessage('service.discardPlanChanged'), 'DISCARD_CHANGED');
+        const hash = createHash('sha256'), buffer = Buffer.alloc(64 * 1024);
+        let position = 0;
+        while (position < before.size) {
+          const { bytesRead } = await file.read(buffer, 0, Math.min(buffer.length, before.size - position), position);
+          if (!bytesRead) throw new GitError(localizeMessage('service.discardPlanChanged'), 'DISCARD_CHANGED');
+          hash.update(buffer.subarray(0, bytesRead)); position += bytesRead;
+        }
+        if (!same(await file.stat()) || !same(await lstat(filename))) throw new GitError(localizeMessage('service.discardPlanChanged'), 'DISCARD_CHANGED');
+        return JSON.stringify(['file', before.mode, before.size, hash.digest('hex')]);
+      } finally { await file.close(); }
+    } catch (error) {
+      if (['ENOENT', 'ENOTDIR'].includes((error as NodeJS.ErrnoException).code ?? '')) return 'missing';
+      throw error;
+    }
   }
   async prepareDiscard(repo: Repository, request: DiscardRequest): Promise<DiscardPlan> {
     await this.verify(repo);
