@@ -43,6 +43,10 @@ const demoCollections:RepositoryCollection[]=[];
 let demoOrder:RepositoryOrder|undefined;
 const storedResetMode=localStorage.getItem('alwaygit.demo-defaultResetMode');
 let demoOperationSettings: OperationSettings = { allowDetachedHead: localStorage.getItem('alwaygit.demo-allowDetachedHead') === 'true', pushFollowTags: localStorage.getItem('alwaygit.demo-pushFollowTags') === 'true', pushTagAfterCreate: localStorage.getItem('alwaygit.demo-pushTagAfterCreate') === 'true', defaultResetMode: storedResetMode==='soft'||storedResetMode==='hard'?storedResetMode:'mixed', scope: 'workspace' };
+let demoWorkspaceOverrides = ['allowDetachedHead', 'pushFollowTags', 'pushTagAfterCreate', 'defaultResetMode'].some(key => localStorage.getItem(`alwaygit.demo-${key}`) !== null);
+let demoUserOperationSettings: OperationSettings = { allowDetachedHead: false, pushFollowTags: false, pushTagAfterCreate: false, defaultResetMode: 'mixed', scope: 'user' };
+try { demoUserOperationSettings = { ...demoUserOperationSettings, ...JSON.parse(localStorage.getItem('alwaygit.demo-userOperationSettings') ?? '{}'), scope: 'user' }; } catch { /* Use defaults. */ }
+const effectiveDemoOperationSettings = (): OperationSettings => ({ ...(demoWorkspaceOverrides ? demoOperationSettings : demoUserOperationSettings), scope: 'workspace', workspaceAvailable: true });
 async function demoRequest(method: RpcRequest['method'], payload: unknown, repoId?:string): Promise<unknown> {
   await new Promise(resolve => setTimeout(resolve, 110));
   const data=demoStores[repoId??repo.id]??demoStores[repo.id],demoSnapshot=data.snapshot,commits=data.commits;
@@ -84,8 +88,17 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
     }
     return null;
   }
-  if (method === 'operationSettings') return { ...demoOperationSettings };
-  if (method === 'saveOperationSettings') { const update=payload as Omit<OperationSettings,'scope'>;demoOperationSettings = { ...update, scope: 'workspace' }; localStorage.setItem('alwaygit.demo-allowDetachedHead', String(demoOperationSettings.allowDetachedHead));localStorage.setItem('alwaygit.demo-pushFollowTags',String(demoOperationSettings.pushFollowTags));localStorage.setItem('alwaygit.demo-pushTagAfterCreate',String(demoOperationSettings.pushTagAfterCreate));localStorage.setItem('alwaygit.demo-defaultResetMode',demoOperationSettings.defaultResetMode); emit({ type: 'operationSettingsChanged', settings: { ...demoOperationSettings } }); return { ...demoOperationSettings }; }
+  if (method === 'operationSettings') return (payload as { scope?: string } | undefined)?.scope === 'user' ? { ...demoUserOperationSettings, workspaceAvailable: true, overridden: demoWorkspaceOverrides } : effectiveDemoOperationSettings();
+  if (method === 'saveOperationSettings') {
+    const update = payload as OperationSettings;
+    if (update.scope === 'user') { demoUserOperationSettings = { ...update, scope: 'user' }; localStorage.setItem('alwaygit.demo-userOperationSettings', JSON.stringify(demoUserOperationSettings)); }
+    else {
+      demoWorkspaceOverrides = true; demoOperationSettings = { ...update, scope: 'workspace' };
+      for (const key of ['allowDetachedHead', 'pushFollowTags', 'pushTagAfterCreate', 'defaultResetMode'] as const) localStorage.setItem(`alwaygit.demo-${key}`, String(demoOperationSettings[key]));
+    }
+    emit({ type: 'operationSettingsChanged', settings: effectiveDemoOperationSettings() });
+    return update.scope === 'user' ? { ...demoUserOperationSettings, workspaceAvailable: true, overridden: demoWorkspaceOverrides } : effectiveDemoOperationSettings();
+  }
   if (method === 'repositories') return [repo,website];
   if(method==='pickRepositoryDirectory')return 'D:\\Projects';
   if(method==='discoverRepositories'){const scanId=(payload as {scanId:string}).scanId;return {scanId,root:'D:\\Projects',scanned:8,found:3,cancelled:false,candidates:[{key:'demo-existing',name:'AlwayGit',path:repo.root,existing:true},{key:'demo-notes',name:'NotesAnywhere',path:'D:\\Projects\\NotesAnywhere',existing:false},{key:'demo-resume',name:'SwiftResume',path:'D:\\Projects\\SwiftResume',existing:false}],issues:[]};}

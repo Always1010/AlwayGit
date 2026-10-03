@@ -5,6 +5,8 @@ import { RepositoryIcon } from './RepositoryIcon';
 import { uiText } from './text';
 import { useEffect, useState } from 'react';
 import { useWorkbench } from './store';
+import { rpc } from './rpc';
+import type { OperationSettings } from '../src/protocol/types';
 import { useTranslation } from './i18n';
 import type { Language, StaticMessageKey } from './i18n';
 import type { DiffNavigationScope } from '../src/protocol/session';
@@ -122,12 +124,24 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
   const [recordingShortcut, setRecordingShortcut] = useState(false);
   const [colorTheme, setColorTheme] = useState<ColorTheme>(isLightTheme(theme) ? 'light' : 'dark');
   const [allowDetachedHead, setAllowDetachedHead] = useState(state.operationSettings.allowDetachedHead),[pushFollowTags,setPushFollowTags]=useState(state.operationSettings.pushFollowTags),[pushTagAfterCreate,setPushTagAfterCreate]=useState(state.operationSettings.pushTagAfterCreate),[defaultResetMode,setDefaultResetMode]=useState(state.operationSettings.defaultResetMode), [advancedDirty, setAdvancedDirty] = useState(false), [saving, setSaving] = useState(false), [saveError, setSaveError] = useState<string>();
-  useEffect(() => { if (!advancedDirty){setAllowDetachedHead(state.operationSettings.allowDetachedHead);setPushFollowTags(state.operationSettings.pushFollowTags);setPushTagAfterCreate(state.operationSettings.pushTagAfterCreate);setDefaultResetMode(state.operationSettings.defaultResetMode);} }, [advancedDirty, state.operationSettings.allowDetachedHead,state.operationSettings.pushFollowTags,state.operationSettings.pushTagAfterCreate,state.operationSettings.defaultResetMode]);
+  const [operationScope, setOperationScope] = useState<OperationSettings['scope']>('user');
+  const [scopeSettings, setScopeSettings] = useState<OperationSettings>(), [scopeLoading, setScopeLoading] = useState(true);
+  useEffect(() => {
+    if (advancedDirty) return;
+    let cancelled = false; setScopeLoading(true); setScopeSettings(undefined); setSaveError(undefined);
+    void rpc<OperationSettings>('operationSettings', undefined, { scope: operationScope }).then(settings => {
+      if (cancelled) return;
+      setScopeSettings(settings); setAllowDetachedHead(settings.allowDetachedHead); setPushFollowTags(settings.pushFollowTags);
+      setPushTagAfterCreate(settings.pushTagAfterCreate); setDefaultResetMode(settings.defaultResetMode); setSaveError(undefined);
+    }).catch(error => { if (!cancelled) setSaveError(error instanceof Error ? error.message : String(error)); })
+      .finally(() => { if (!cancelled) setScopeLoading(false); });
+    return () => { cancelled = true; };
+  }, [operationScope, advancedDirty, state.operationSettings]);
   const close = () => { if (!saving) state.finishSettings(false); };
   const apply = async () => {
     if (recordingShortcut) return;
     setSaving(true); setSaveError(undefined);
-    try { if (advancedDirty) await state.saveOperationSettings({allowDetachedHead,pushFollowTags,pushTagAfterCreate,defaultResetMode}); await state.finishSettings(true); }
+    try { if (advancedDirty) await state.saveOperationSettings({allowDetachedHead,pushFollowTags,pushTagAfterCreate,defaultResetMode}, operationScope); await state.finishSettings(true); }
     catch (error) { setSaveError(error instanceof Error ? error.message : String(error)); }
     finally { setSaving(false); }
   };
@@ -149,7 +163,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
   const navItem = (id: SettingsPage, icon: string, label: string) => <button type="button" className={`settings-nav-item ${page === id ? 'is-active' : ''}`} aria-current={page === id ? 'page' : undefined} onClick={() => setPage(id)}><Icon name={icon}/><span>{label}</span></button>;
 
   return <Modal title={t("common.settings")} busy={saving} onClose={close} footer={
-    <><span className="settings-save-hint"><Icon name="check"/>{page === 'advanced' ? state.operationSettings.scope === 'user' ? t("settings.gitOptionsAreSavedInUserSettings") : t("settings.appliesToThisWorkspace") : t('settings.sharedUserPreferences')}</span><Button className="settings-cancel" disabled={saving} onClick={close}>{t("common.cancel")}</Button><Button className="primary" disabled={saving || recordingShortcut} onClick={()=>void apply()}>{saving?t("settings.saving"):t("common.apply")}</Button></>
+    <><span className="settings-save-hint"><Icon name="check"/>{page === 'advanced' ? operationScope === 'user' ? t("settings.gitOptionsAreSavedInUserSettings") : t("settings.appliesToThisWorkspace") : t('settings.sharedUserPreferences')}</span><Button className="settings-cancel" disabled={saving} onClick={close}>{t("common.cancel")}</Button><Button className="primary" disabled={saving || recordingShortcut || advancedDirty && scopeLoading} onClick={()=>void apply()}>{saving?t("settings.saving"):t("common.apply")}</Button></>
   }>
     <div className="interface-settings" data-testid="interface-settings">
       <nav className="settings-nav" aria-label={t("settings.settingsCategories")}>
@@ -208,14 +222,16 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
         </section>}
         {page === 'advanced' && <section className="settings-page" aria-labelledby="advanced-heading">
           <h3 id="advanced-heading">{t("settings.gitOperations")}</h3>
-          <label className="form-checkbox"><input type="checkbox" aria-label={t("settings.allowDirectDetachedHEADCheckout")} checked={allowDetachedHead} disabled={saving} onChange={event=>{setAdvancedDirty(true);setAllowDetachedHead(event.target.checked);}}/>{t("settings.allowDirectDetachedHEADCheckout")}</label>
+          <label className="settings-control">{t('settings.saveScope')}<select aria-label={t('settings.saveScope')} value={operationScope} disabled={saving || advancedDirty} onChange={event => { setOperationScope(event.target.value as OperationSettings['scope']); setAdvancedDirty(false); }}><option value="user">{t('settings.userScope')}</option><option value="workspace" disabled={!scopeSettings?.workspaceAvailable}>{t('settings.workspaceScope')}</option></select></label>
+          <p className="settings-note">{operationScope === 'user' ? scopeSettings?.overridden ? t('settings.workspaceOverrideActive') : t('settings.userScopeDescription') : t('settings.workspaceScopeDescription')}</p>
+          <label className="form-checkbox"><input type="checkbox" aria-label={t("settings.allowDirectDetachedHEADCheckout")} checked={allowDetachedHead} disabled={saving || scopeLoading || !scopeSettings} onChange={event=>{setAdvancedDirty(true);setAllowDetachedHead(event.target.checked);}}/>{t("settings.allowDirectDetachedHEADCheckout")}</label>
           <p className="settings-page-copy">{t("settings.disabledByDefaultCreateAndSwitchToALocal")}</p>
           <p className="settings-note">{t("settings.thisAlsoControlsDetachedWorktreesInternalRebaseStepsAnd")}</p>
-          <label className="form-checkbox"><input type="checkbox" aria-label={t("settings.pushRelatedAnnotatedTagsByDefault")} checked={pushFollowTags} disabled={saving} onChange={event=>{setAdvancedDirty(true);setPushFollowTags(event.target.checked);}}/>{t("settings.pushRelatedAnnotatedTagsByDefault")}</label>
+          <label className="form-checkbox"><input type="checkbox" aria-label={t("settings.pushRelatedAnnotatedTagsByDefault")} checked={pushFollowTags} disabled={saving || scopeLoading || !scopeSettings} onChange={event=>{setAdvancedDirty(true);setPushFollowTags(event.target.checked);}}/>{t("settings.pushRelatedAnnotatedTagsByDefault")}</label>
           <p className="settings-page-copy">{t("settings.branchPushUsesFollowTagsWhenEnabled")}</p>
-          <label className="form-checkbox"><input type="checkbox" aria-label={t("settings.pushNewTagsAfterCreationByDefault")} checked={pushTagAfterCreate} disabled={saving} onChange={event=>{setAdvancedDirty(true);setPushTagAfterCreate(event.target.checked);}}/>{t("settings.pushNewTagsAfterCreationByDefault")}</label>
+          <label className="form-checkbox"><input type="checkbox" aria-label={t("settings.pushNewTagsAfterCreationByDefault")} checked={pushTagAfterCreate} disabled={saving || scopeLoading || !scopeSettings} onChange={event=>{setAdvancedDirty(true);setPushTagAfterCreate(event.target.checked);}}/>{t("settings.pushNewTagsAfterCreationByDefault")}</label>
           <p className="settings-page-copy">{t("settings.tagCreationOffersTheSelectedRemoteAndKeepsThe")}</p>
-          <label className="settings-control">{t("settings.defaultResetMode")}<select aria-label={t("settings.defaultResetMode")} value={defaultResetMode} disabled={saving} onChange={event=>{setAdvancedDirty(true);setDefaultResetMode(event.target.value as typeof defaultResetMode);}}><option value="soft">{uiText("actions.soft")}</option><option value="mixed">{uiText("actions.mixed")}</option><option value="hard">{uiText("actions.hard")}</option></select></label>
+          <label className="settings-control">{t("settings.defaultResetMode")}<select aria-label={t("settings.defaultResetMode")} value={defaultResetMode} disabled={saving || scopeLoading || !scopeSettings} onChange={event=>{setAdvancedDirty(true);setDefaultResetMode(event.target.value as typeof defaultResetMode);}}><option value="soft">{uiText("actions.soft")}</option><option value="mixed">{uiText("actions.mixed")}</option><option value="hard">{uiText("actions.hard")}</option></select></label>
           <p className="settings-page-copy">{t("settings.resetDialogStartsWithThisModeHardStillRequires")}</p>
         </section>}
         {page === 'language' && <section className="settings-page" aria-labelledby="language-heading">

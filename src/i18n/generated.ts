@@ -4975,6 +4975,34 @@ export const catalog = {
     "en": "Saved in user settings · shared across windows",
     "zh-CN": "保存到用户设置 · 跨窗口共享"
   },
+  "settings.workspaceRequired": {
+    "en": "Open a folder or workspace to save workspace settings.",
+    "zh-CN": "请先打开文件夹或工作区，再保存工作区设置。"
+  },
+  "settings.saveScope": {
+    "en": "Save scope",
+    "zh-CN": "保存范围"
+  },
+  "settings.userScope": {
+    "en": "User · all windows",
+    "zh-CN": "用户 · 所有窗口"
+  },
+  "settings.workspaceScope": {
+    "en": "Current workspace",
+    "zh-CN": "当前工作区"
+  },
+  "settings.userScopeDescription": {
+    "en": "User defaults are shared across windows. Workspace overrides take precedence.",
+    "zh-CN": "用户默认值跨窗口共享，工作区覆盖值优先生效。"
+  },
+  "settings.workspaceScopeDescription": {
+    "en": "Applies to this VS Code workspace, including every repository managed in this window.",
+    "zh-CN": "应用于当前 VS Code 工作区，包括此窗口管理的全部仓库。"
+  },
+  "settings.workspaceOverrideActive": {
+    "en": "This workspace has overrides. Saving user defaults will not replace those overrides.",
+    "zh-CN": "当前工作区存在覆盖值；保存用户默认值不会替换这些覆盖值。"
+  },
   "sidebar.refreshRepositoryListAndStatusBadges": {
     "en": "Refresh repository list and status badges",
     "zh-CN": "刷新仓库列表和状态角标"
@@ -6850,6 +6878,13 @@ export interface MessageParameters {
   "settings.shortcutTerminalFocus": {  };
   "settings.shortcutApplyHint": {  };
   "settings.sharedUserPreferences": {  };
+  "settings.workspaceRequired": {  };
+  "settings.saveScope": {  };
+  "settings.userScope": {  };
+  "settings.workspaceScope": {  };
+  "settings.userScopeDescription": {  };
+  "settings.workspaceScopeDescription": {  };
+  "settings.workspaceOverrideActive": {  };
   "sidebar.refreshRepositoryListAndStatusBadges": {  };
   "sidebar.collapse": {  };
   "sidebar.expand": {  };

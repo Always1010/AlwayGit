@@ -261,7 +261,7 @@ Diff 标题栏平铺显示当前文件的新增、修改、删除数量，当前
 | `alwaygit.gitPath` | 空字符串；机器级设置 | 依次使用显式路径、VS Code 内置 Git 扩展提供的路径和 PATH |
 | `alwaygit.historyPageSize` | 300；50–1000 | 每次历史分页加载的真实 Commit 数量上限 |
 | `alwaygit.refreshInterval` | 15 秒；5–300 秒 | 对可见工作台当前仓库进行补偿刷新 |
-| `alwaygit.allowDetachedHead` | `false`；布尔值 | 高级设置的唯一配置来源；有工作区时保存到工作区，无工作区时保存到用户设置；应用后同步各工作台，禁止未应用预览放开操作 |
+| `alwaygit.allowDetachedHead` | `false`；布尔值 | 高级设置的唯一配置来源；设置页默认编辑用户设置，可显式切换当前工作区；工作区覆盖优先，空窗口不可选择工作区；应用后同步各工作台，禁止未应用预览放开操作 |
 | `alwaygit.pushFollowTags` | `false`；布尔值 | 普通 Push 是否默认附带相关注解 Tag；对话框可单次覆盖并明确记住 |
 | `alwaygit.pushTagAfterCreate` | `false`；布尔值 | Create Tag 是否默认在本地创建后把新标签推送到所选 Remote；对话框可单次覆盖并明确记住 |
 | `alwaygit.defaultResetMode` | `mixed`；`soft` / `mixed` / `hard` | Reset 对话框的默认模式；可在设置页修改，也可在执行时明确记住本次选择 |

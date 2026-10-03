@@ -341,6 +341,15 @@ describe('repository UI consistency', () => {
     expect(store.getState().changeListMode).toBe('split');
     expect(store.getState()).toMatchObject({ singleKeyShortcuts: true, diffNavigationScope: 'commit', language: original.language, layout: original.layout, appearance: original.appearance, drafts: { a: 'keep my draft' }, diffTarget: target });
   });
+  it('saves user Git defaults without replacing workspace-effective operation guards', async () => {
+    const defaults = { allowDetachedHead: true, pushFollowTags: true, pushTagAfterCreate: false, defaultResetMode: 'hard' as const };
+    bridge.rpc.mockImplementation(async method => method === 'saveOperationSettings'
+      ? { ...defaults, scope: 'user' }
+      : { allowDetachedHead: false, pushFollowTags: false, pushTagAfterCreate: false, defaultResetMode: 'mixed', scope: 'workspace' });
+    await store.getState().saveOperationSettings(defaults, 'user');
+    expect(bridge.rpc).toHaveBeenCalledWith('saveOperationSettings', undefined, { ...defaults, scope: 'user' });
+    expect(store.getState().operationSettings).toMatchObject({ allowDetachedHead: false, defaultResetMode: 'mixed', scope: 'workspace' });
+  });
   it('applies settings through host session validation and restores only panel geometry', async () => {
     const { sessionSchema } = await import('../src/protocol/validation');
     store.getState().beginSettings();
