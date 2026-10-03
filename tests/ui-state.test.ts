@@ -21,6 +21,36 @@ beforeEach(async () => {
 });
 afterEach(() => { vi.useRealTimers(); });
 describe('repository UI consistency', () => {
+  it('returns from pending navigation to the successful view and cancels the stale read', async () => {
+    await store.getState().selectRepository('a');
+    store.getState().setHistoryScroll(640);
+    const pending = deferred<HistoryPage>(), fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, ...args) => method === 'history' ? pending.promise : fallback(method, ...args));
+    store.getState().setCheckedRefs(['refs/tags/v1']);
+    const signal = bridge.rpc.mock.calls.filter(([method]) => method === 'history').at(-1)![3].signal as AbortSignal;
+    expect(store.getState().historyBackDepth).toBe(1);
+    store.getState().backHistory();
+    expect(signal.aborted).toBe(true);
+    expect(store.getState()).toMatchObject({ historyLoading: false, historyBackDepth: 0, historyScrollTop: 640, historyRestoreTop: 640, commits: [commit], displayedHistory: { refs: ['HEAD'], search: '' } });
+    pending.resolve({ commits: [{ ...commit, oid: 'stale' }], tips: ['stale'], nextOffset: 1, hasMore: false });
+    await pending.promise;
+    expect(store.getState().commits).toEqual([commit]);
+    await store.getState().selectRepository('b');
+    expect(store.getState().historyBackDepth).toBe(0);
+  });
+
+  it('resets tag and search navigation to the actual branch without executing Git actions', async () => {
+    await store.getState().selectRepository('a');
+    const main = { name: 'main', fullName: 'refs/heads/main', kind: 'local' as const, oid: commit.oid };
+    store.setState({ snapshot: { ...snapshot(a), refs: [main] }, checkedRefs: ['refs/tags/v1'], search: 'needle', displayedHistory: { refs: ['refs/tags/v1'], search: 'needle' } });
+    store.getState().resetHistory();
+    await vi.waitFor(() => expect(store.getState().historyLoading).toBe(false));
+    expect(store.getState()).toMatchObject({ checkedRefs: ['refs/heads/main'], search: '', selectedOid: commit.oid, historyBackDepth: 1 });
+    expect(bridge.rpc.mock.calls.some(([method]) => method === 'action')).toBe(false);
+    const count = store.getState().historyBackDepth;
+    store.getState().resetHistory();
+    expect(store.getState().historyBackDepth).toBe(count);
+  });
   it('keeps the displayed scope paired with its rows while a new scope loads or fails', async () => {
     await store.getState().selectRepository('a');
     const displayed = store.getState().displayedHistory;
@@ -399,7 +429,7 @@ describe('repository UI consistency', () => {
     bridge.rpc.mockClear();store.getState().locateHead();
     expect(store.getState().commits).toBe(commits);
     expect(store.getState()).toMatchObject({nextOffset:100,hasMore:true,locatingOid:commit.oid,selectedOid:commit.oid});
-    expect(bridge.rpc).toHaveBeenCalledWith('history','a',expect.objectContaining({offset:100,tips:['pinned-head']}));
+    expect(bridge.rpc).toHaveBeenCalledWith('history','a',expect.objectContaining({offset:100,tips:['pinned-head']}),expect.objectContaining({signal:expect.any(AbortSignal)}));
     next.resolve({commits:[commit],head:commit,tips:['pinned-head'],nextOffset:101,hasMore:false});
     await vi.waitFor(()=>expect(store.getState().locatingOid).toBeUndefined());
     expect(store.getState().commits).toEqual([other,commit]);
@@ -455,7 +485,7 @@ describe('repository UI consistency', () => {
     await vi.advanceTimersByTimeAsync(199); expect(bridge.rpc).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1);
     expect(bridge.rpc.mock.calls.filter(([method])=>method==='history')).toHaveLength(1);
-    expect(bridge.rpc).toHaveBeenCalledWith('history','a',expect.objectContaining({search:'abc'}));
+    expect(bridge.rpc).toHaveBeenCalledWith('history','a',expect.objectContaining({search:'abc'}),expect.objectContaining({signal:expect.any(AbortSignal)}));
     store.getState().setSearch('cancelled'); await store.getState().selectRepository('b'); bridge.rpc.mockClear();
     await vi.advanceTimersByTimeAsync(200); expect(bridge.rpc).not.toHaveBeenCalled();
   });

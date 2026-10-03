@@ -494,3 +494,4 @@ h1,h2,p {margin:0;}
 .history-read-status { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin-top: 3px; min-height: 18px; }
 .history-location .muted { margin-top: 3px; }
 .history-location-refs > div { max-height: 90px; overflow: auto; }
+.history-location-actions { display: flex; float: right; gap: 4px; margin-left: 8px; }
