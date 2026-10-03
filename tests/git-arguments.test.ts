@@ -13,6 +13,10 @@ it('prepares literal paths and messages without passing their payload in argv', 
   const prepared = prepareGitArguments(['add', '--', ...names]);
   expect(prepared.args).toEqual(['add', '--pathspec-from-file=-', '--pathspec-file-nul']);
   expect(prepared.input).toEqual(Buffer.from(`${names.join('\0')}\0`));
+  expect(prepareGitArguments(['reset', '-q', 'HEAD', '--', ...names])).toEqual({
+    args: ['reset', '-q', 'HEAD', '--pathspec-from-file=-', '--pathspec-file-nul'],
+    input: prepared.input,
+  });
   const description = 'long "quoted" message\n'.repeat(3000);
   expect(prepareGitArguments(['commit', '-m', description])).toEqual({ args: ['commit', '--file=-'], input: Buffer.from(description) });
   expect(prepareGitArguments(['tag', '-a', '-m', description, 'v1'])).toEqual({ args: ['tag', '-a', '--file=-', 'v1'], input: Buffer.from(description) });

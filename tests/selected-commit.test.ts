@@ -8,6 +8,25 @@ const fixtures = gitFixtures('alwaygit-selected-commit-');
 afterEach(() => fixtures.cleanup());
 
 describe('selected file commits', () => {
+  it('publishes selections above the argv budget and retains unrelated staged content', async () => {
+    const { root, repo, service } = await fixtures.setup();
+    await commitFile(root, 'keep.txt', 'base');
+    const names = Array.from({ length: 220 }, (_, index) => `chosen-${index}-${'x'.repeat(140)} [literal].txt`);
+    await Promise.all(names.map(name => writeFile(path.join(root, name), 'selected disk')));
+    await writeFile(path.join(root, 'keep.txt'), 'keep staged');
+    await git(root, 'add', 'keep.txt');
+    await writeFile(path.join(root, 'keep.txt'), 'keep working');
+    const snapshot = await service.snapshot(repo);
+    await service.execute(repo, { type: 'commit', message: 'large selection', files: names.map(name => ({ path: name, area: 'unstaged' })), expectedHead: snapshot.head, expectedBranch: snapshot.branch });
+    expect(await git(root, 'show', `HEAD:${names.at(-1)}`)).toBe('selected disk');
+    expect(await git(root, 'show', `:${names.at(-1)}`)).toBe('selected disk');
+    expect(await git(root, 'diff', '--cached', '--name-only')).toBe('keep.txt');
+    expect(await git(root, 'diff', '--name-only')).toBe('keep.txt');
+    expect(await git(root, 'show', ':keep.txt')).toBe('keep staged');
+    expect(await readFile(path.join(root, 'keep.txt'), 'utf8')).toBe('keep working');
+    expect((await readdir(repo.commonDir)).filter(name => name.includes('alwaygit-') || name === 'index.lock')).toEqual([]);
+  });
+
   it.each(['staged', 'unstaged', 'both'] as const)('commits the %s version and preserves unrelated staged hunks and disk content', async area => {
     const {root,repo,service} = await fixtures.setup();
     await commitFile(root,'chosen.txt','base\n');
