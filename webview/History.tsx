@@ -29,8 +29,9 @@ function HistoryPanel({ context, checkout, checkoutBranch }: { context: ContextH
   const searchInput=useRef<HTMLInputElement>(null);
   useShortcuts({search:{enabled:true,run:()=>{searchInput.current?.focus();searchInput.current?.select();}}});
   const [hoveredPath,setHoveredPath]=useState<string|undefined>(undefined);
-  const displayedHistory = useWorkbenchFields('displayedHistory').displayedHistory;
+  const { displayedHistory, historyError } = useWorkbenchFields('displayedHistory', 'historyError');
   const navigation = useWorkbenchFields('historyRestoreToken', 'historyRestoreTop', 'setHistoryScroll');
+  const canAppend = !historyError && !!displayedHistory && displayedHistory.search === state.search && displayedHistory.refs.join('\0') === (state.checkedRefs ?? []).join('\0');
   const searching=(displayedHistory?.search ?? state.search).length>0;
   const refIndex = indexRefs(state.snapshot?.refs);
   const items=useMemo(()=>buildHistoryItems(state.commits,state.historyHead),[state.commits,state.historyHead]);
@@ -55,7 +56,7 @@ function HistoryPanel({ context, checkout, checkoutBranch }: { context: ContextH
     previousRowHeight.current=rowHeight;
   },[rowHeight,state.layout.font]);
   useEffect(()=>setHoveredPath(undefined),[state.repoId,paletteKey,state.search]);
-  useEffect(()=>{const last=rows.at(-1);if(last&&last.index>=items.length-10&&state.hasMore&&!state.historyLoading&&!state.locatingOid)void state.loadHistory(true);},[rows.at(-1)?.index,items.length,state.hasMore,state.historyLoading,state.locatingOid]);
+  useEffect(()=>{const last=rows.at(-1);if(canAppend&&last&&last.index>=items.length-10&&state.hasMore&&!state.historyLoading&&!state.locatingOid)void state.loadHistory(true);},[rows.at(-1)?.index,items.length,state.hasMore,state.historyLoading,state.locatingOid,canAppend]);
   const refsKey=(displayedHistory?.refs??state.checkedRefs??[]).join('\0');
   useEffect(()=>{viewport.current?.scrollTo({top:0,left:0});},[state.repoId,refsKey,state.search]);
   useEffect(()=>{pendingSelection.current=state.tab==='changes'?WORKING_TREE_OID:state.selectedOid;},[state.selectedOid,state.locateToken,state.repoId,state.tab]);
@@ -101,7 +102,7 @@ ${commit.oid}`}>{commit.subject}</span></div>
       {!state.commits.length&&<Empty title={state.historyLoading?t("history.loadingHistory"):!state.checkedRefs?.length?t("history.noBranchesSelected"):t("history.noMatchingCommits")}>{t("history.theWorkingTreeStaysVisibleSelectBranchesOnThe")}</Empty>}
     </div>
     </div>
-    {state.hasMore&&<Button className="load-more" disabled={state.historyLoading||!!state.locatingOid} onClick={()=>void state.loadHistory(true)}>{t("history.loadMore")}</Button>}
+    {state.hasMore&&<Button className="load-more" disabled={!canAppend||state.historyLoading||!!state.locatingOid} onClick={()=>void state.loadHistory(true)}>{t("history.loadMore")}</Button>}
   </section>;
 }
 

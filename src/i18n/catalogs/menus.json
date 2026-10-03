@@ -447,22 +447,22 @@
     "context": "webview/menus.ts / menuFor"
   },
   "menus.showInGraph": {
-    "en": "Show in Graph",
-    "zh-CN": "在 Graph 中显示",
+    "en": "Add to Graph Scope",
+    "zh-CN": "加入图表范围",
     "review": "translated",
-    "context": "webview/menus.ts / menuFor"
+    "context": "webview/menus.ts"
   },
   "menus.showOnlyThisTag": {
-    "en": "Show Only This Tag",
-    "zh-CN": "仅显示此标签",
+    "en": "Show Only This Tag History",
+    "zh-CN": "仅显示此标签历史",
     "review": "translated",
-    "context": "webview/menus.ts / menuFor"
+    "context": "webview/menus.ts"
   },
   "menus.showOnlyThisBranch": {
-    "en": "Show Only This Branch",
-    "zh-CN": "仅显示此分支",
+    "en": "Show Only This Branch History",
+    "zh-CN": "仅显示此分支历史",
     "review": "translated",
-    "context": "webview/menus.ts / menuFor"
+    "context": "webview/menus.ts"
   },
   "menus.merge": {
     "en": "Merge…",
@@ -703,5 +703,17 @@
     "zh-CN": "请刷新后再推送全部所选标签。",
     "review": "translated",
     "context": "webview/menus.ts / refBatch"
+  },
+  "menus.locateTagCommit": {
+    "en": "Locate Tag Commit in Graph",
+    "zh-CN": "在图表中定位标签提交",
+    "review": "translated",
+    "context": "webview/menus.ts"
+  },
+  "menus.locateBranchTip": {
+    "en": "Locate Branch Tip in Graph",
+    "zh-CN": "在图表中定位分支顶端提交",
+    "review": "translated",
+    "context": "webview/menus.ts"
   }
 }

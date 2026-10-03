@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { verifyRefresh } from './test-refresh-ui.mjs';
 import { verifyFeedback } from './test-feedback-ui.mjs';
 import { verifyFiles } from './test-files-ui.mjs';
-import { verifyHistoryRows, verifyLocateHead } from './test-history-ui.mjs';
+import { verifyHistoryRows, verifyLocateHead, verifyHistoryLocation } from './test-history-ui.mjs';
 import { verifyDiffNavigation } from './test-diff-ui.mjs';
 import { verifyWorktrees } from './test-worktrees-ui.mjs';
 import { verifyAppearance } from './test-appearance-ui.mjs';
@@ -86,6 +86,7 @@ async function verifyHistory(browser, url) {
     await page.close();
   }
   await verifyLocateHead(browser, url);
+  await verifyHistoryLocation(browser, url);
 }
 
 async function verifyWorkbench(browser, url) {
@@ -247,7 +248,7 @@ async function verifyWorkbench(browser, url) {
     assert.equal(await currentBranch.locator('.current-indicator').count(), 0, 'Branch icons do not reserve a separate current-marker column');
     assert.equal(await currentBranch.innerText(), 'main', 'The current branch does not repeat its state as a text badge');
     const featureBranch = sidebar.getByRole('button', { name: 'Branch feature/history-graph', exact: true });
-    await assertMenu(featureBranch, ['Checkout…', 'Show in Graph', 'Show Only This Branch', 'Create Branch…', 'Create Tag…', 'Merge…', 'Rebase…', 'Push…', 'Delete Branch…', 'Copy Branch Name'], true);
+    await assertMenu(featureBranch, ['Checkout…', 'Add to Graph Scope', 'Show Only This Branch History', 'Create Branch…', 'Create Tag…', 'Merge…', 'Rebase…', 'Push…', 'Delete Branch…', 'Copy Branch Name'], true);
     assert.equal(await sidebar.locator('.repository-list [aria-selected="true"]').count(),0,'Selecting a branch action scope clears Repository action selection');
     assert.equal(await featureBranch.evaluate(element => element === document.activeElement), true, 'Escape must restore focus to the context-menu opener');
     const localGraphSelection = await localTree.locator('input[type="checkbox"]').evaluateAll(inputs => inputs.map(input => input.checked));
@@ -282,7 +283,7 @@ async function verifyWorkbench(browser, url) {
     await assertIconActions(sidebar.getByRole('button', { name: 'Remotes', exact: true }).locator('..'), ['Add Remote…']);
     await assertIconActions(sidebar.getByRole('button', { name: 'origin', exact: true }).locator('..'), ['Fetch…']);
     const remoteBranch = sidebar.getByRole('button', { name: 'Branch origin/develop', exact: true });
-    await assertMenu(remoteBranch, ['Show in Graph', 'Show Only This Branch', 'Checkout as Local Branch…', 'Merge…', 'Rebase…', 'Delete Branch from origin…', 'Copy Branch Name']);
+    await assertMenu(remoteBranch, ['Add to Graph Scope', 'Show Only This Branch History', 'Checkout as Local Branch…', 'Merge…', 'Rebase…', 'Delete Branch from origin…', 'Copy Branch Name']);
     const remoteTree = sidebar.locator('.branch-tree[data-ref-kind="remote"]');
     const remoteGraphSelection = await remoteTree.locator('input[type="checkbox"]').evaluateAll(inputs => inputs.map(input => input.checked));
     await remoteBranch.press('Control+a');
@@ -303,7 +304,7 @@ async function verifyWorkbench(browser, url) {
     await menu.getByRole('menuitem',{name:'Delete 2 Branches from origin…',exact:true}).click();dialog=page.getByRole('dialog');await dialog.getByText('Delete from origin',{exact:true}).waitFor();await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
     await assertIconActions(sidebar.getByRole('button', { name: 'Tags', exact: true }).locator('..'), ['Create Tag…']);
     const tag = sidebar.getByRole('button', { name: 'v0.1.0', exact: true });
-    await assertMenu(tag, ['Create Branch and Checkout…', 'Checkout to Detached HEAD…', 'Show in Graph', 'Show Only This Tag', 'Create Branch…', 'Delete Tag…', 'Copy Tag Name', 'Copy Commit ID']);
+    await assertMenu(tag, ['Create Branch and Checkout…', 'Checkout to Detached HEAD…', 'Add to Graph Scope', 'Show Only This Tag History', 'Create Branch…', 'Delete Tag…', 'Copy Tag Name', 'Copy Commit ID']);
     await assertIconActions(sidebar.getByRole('button', { name: 'Stashes', exact: true }).locator('..'), ['Stash All Changes…']);
     const stash = sidebar.getByRole('button').filter({ hasText: 'stash@{0}' });
     await assertMenu(stash, ['View Changes', 'Apply Stash', 'Pop Stash', 'Drop Stash…']);

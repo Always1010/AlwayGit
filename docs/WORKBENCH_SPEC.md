@@ -80,8 +80,8 @@ Staged 标题中 Unstage 图标右侧放置 `Commit…` 按钮；分组为空、
 | 右键已选分支 | 保留当前批量选择并打开适用菜单，不改变 Graph 筛选 |
 | 右键未选分支 | 先将批量操作选择切换到该分支，再打开菜单 |
 | 右键分支目录 | 选择目录下全部分支，并打开批量操作菜单 |
-| `Show in Graph` | 把目标加入现有筛选 |
-| `Show Only This Branch/Tag` | 仅显示目标，不 Checkout |
+| `Add to Graph Scope` | 把目标加入现有筛选 |
+| `Show Only This Branch/Tag History` | 仅显示目标，不 Checkout |
 | 单击 Commit | 单选该 Commit，显示提交详情和文件列表 |
 | `Ctrl` / `Cmd` + 单击 Commit | 加入或移出多选集合；恰好选中两个时自动比较 |
 | `Shift` + 单击 Commit | 从选择锚点到目标 Commit 按当前列表顺序选择连续区间；区间恰好包含两个时自动比较 |
@@ -96,7 +96,9 @@ Staged 标题中 Unstage 图标右侧放置 `Commit…` 按钮；分组为空、
 
 Local Branches 和 Remote Branches 按分支名中的 `/` 构成递归目录，例如 `feature/login/api` 显示为 `feature > login > api`。目录展开状态按仓库保存；首次进入或 Checkout 后自动展开当前分支所在目录。初次进入仓库时选择当前本地分支及其 upstream。多引用历史是所有已选引用可达提交的并集，共同祖先只出现一次。没有选中引用时显示说明性空状态。Working Tree 始终保留并显示当前分支名称，不重新插入被过滤掉的 HEAD Commit；工具栏右侧的定位图标恢复定位，悬停说明为 `Locate HEAD`。HEAD 已加载时只选择并滚动到该节点，保留 Graph、搜索、引用与分页；HEAD 缺失时才恢复必要筛选并有界读取，未加载分页继续追加。重复点击仍可重新定位。可见 HEAD 通过当前分支徽标和辅助技术语义表达归属。
 
-History 顶部常驻展示实际仓库、当前分支或 Detached HEAD 与 HEAD、已显示的历史范围及搜索、查看对象和工作区变更数。新范围加载期间保留原图，并分别展示已显示范围与正在请求的范围；失败保留原图和原范围说明，提供重试。当前 HEAD 未出现在已加载历史中时明确说明，不将选中旧提交当成 Checkout。相同引用集合不重复读取或重置阅读位置。常驻返回图标恢复本仓库上一成功视图的范围、搜索、查看对象和阅读位置，取消未完成读取；记录仅保存在当前工作台内存中，最多 12 项并按提交数量限制缓存。引用或 HEAD 已变化时重新读取原范围。回到当前分支图标清除搜索、仅保留当前分支（Detached HEAD 时使用 HEAD）并定位 HEAD；与保留已有范围的 Locate HEAD 分开。
+单引用菜单提供独立的 Locate Tag Commit / Locate Branch Tip in Graph：目标已加载时只选中并滚动；未加载时切为该引用自身历史并清除搜索，从目标提交开始读取，沿用自动定位的页数与提交数上限。标签列表的眼睛标记表示已加入当前显示范围，加载标记表示正在请求该标签。新范围读取失败时禁止向旧图追加分页，重试后再恢复分页。
+
+History 顶部常驻展示实际仓库、当前分支或 Detached HEAD 与 HEAD、已显示的历史范围及搜索、查看对象和工作区变更数。新范围加载期间保留原图，并分别展示已显示范围与正在请求的范围；失败保留原图和原范围说明，提供重试。当前 HEAD 未出现在已加载历史中时明确说明，不将选中旧提交当成 Checkout。相同引用集合不重复读取或重置阅读位置。常驻返回图标恢复本仓库上一成功视图的范围、搜索、查看对象和阅读位置，取消未完成读取；记录仅保存在当前工作台内存中，每个仓库最多 12 项，最多保留 8 个仓库的记录；单视图超过 10000 条时只保存浏览上下文，其他视图合计超过 24000 条时淘汰最旧记录。引用或 HEAD 已变化，或深历史未缓存时重新读取原范围并回到首屏。回到当前分支图标清除搜索、仅保留当前分支（Detached HEAD 时使用 HEAD）并定位 HEAD；与保留已有范围的 Locate HEAD 分开。
 
 输入 Commit 搜索条件后暂停 200 ms 开始查询，连续输入合并为最后条件；输入变化立即清除旧结果。History 显示“提交搜索结果”和已加载的匹配数量；仍有下一页时数量带 `+`。搜索结果隐藏整个 Graph 列、分隔线与节点，不对缺少中间提交的结果计算轨道；提交信息列使用释放的宽度。引用徽标、作者、时间、行选择与菜单继续可用，推送状态以标题前的实心或空心圆点表达。单选一个匹配 Commit 后，可用“在完整历史中定位”图标清空搜索，沿用当前引用范围加载历史并滚动定位；自动读取最多 20 页或达到 10000 条后停止并提示，保留已加载结果与目标详情，可用 Load More 继续或缩小引用范围；更改搜索、引用、仓库或选择会停止旧定位。清空搜索恢复 Graph 及原有列宽。
 
@@ -129,11 +131,11 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 | Repository（单选） | `Switch to Repository`、`Open in New AlwayGit Tab`、`Open Repository in New Project Window`、`Fetch…`、`Refresh Status`、`Copy Repository Path`、`Move to Repository Group…`、`Remove from AlwayGit…` |
 | Repository（多选） | `Fetch N Repositories…`、`Refresh Status for N Repositories`、`Copy N Repository Paths`、`Move to Repository Group…`、`Remove from AlwayGit…` |
 | Repository Group | `Rename Repository Group…`、`Delete Repository Group…` |
-| Local Branch | `Checkout…`、`Show in Graph`、`Show Only This Branch`、`Create Branch…`、`Create Tag…`、`Merge…`、`Rebase…`、`Push…`、`Delete Branch…`、`Copy Branch Name` |
-| Remote Branch | `Show in Graph`、`Show Only This Branch`、`Checkout as Local Branch…`、`Merge…`、`Rebase…`、`Delete Branch from <remote>…`、`Copy Branch Name` |
+| Local Branch | `Checkout…`、`Add to Graph Scope`、`Show Only This Branch History`、`Locate Branch Tip in Graph`、`Create Branch…`、`Create Tag…`、`Merge…`、`Rebase…`、`Push…`、`Delete Branch…`、`Copy Branch Name` |
+| Remote Branch | `Add to Graph Scope`、`Show Only This Branch History`、`Checkout as Local Branch…`、`Merge…`、`Rebase…`、`Delete Branch from <remote>…`、`Copy Branch Name` |
 | Remote 分支目录 / 多选 | `Create Local Tracking Branches…`、Graph 批量筛选、远端批量删除和复制名称 |
 | Remote，例如 `origin` | `Fetch…`、`Create Local Tracking Branches…`、`Refresh` |
-| Tag | `Show in Graph`、`Show Only This Tag`、`Create Branch…`、`Create Branch and Checkout…`、关闭策略时置灰的 `Checkout to Detached HEAD…`、`Push Tag…`、`Delete Tag…`、`Copy Tag Name`、`Copy Commit ID` |
+| Tag | `Add to Graph Scope`、`Show Only This Tag History`、`Locate Tag Commit in Graph`、`Create Branch…`、`Create Branch and Checkout…`、关闭策略时置灰的 `Checkout to Detached HEAD…`、`Push Tag…`、`Delete Tag…`、`Copy Tag Name`、`Copy Commit ID` |
 | Stash | `View Changes`、`Apply Stash`、`Pop Stash`、`Drop Stash…` |
 | 工作树 | `Open 工作树`、`Open 工作树 in New Project Window`、`Refresh`、`Remove 工作树…`、`Copy 工作树 Path` |
 | 工作树（多选） | `Refresh`、`Copy N 工作树 Paths` |

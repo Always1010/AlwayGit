@@ -366,8 +366,8 @@
     "context": "webview/HistoryLocation.tsx"
   },
   "history.locationLocating": {
-    "en": "Locating a commit in {{scope}}",
-    "zh-CN": "正在定位提交，范围：{{scope}}",
+    "en": "Locating {{oid}} in {{scope}}",
+    "zh-CN": "正在定位 {{oid}}，范围：{{scope}}",
     "review": "translated",
     "context": "webview/HistoryLocation.tsx"
   },
@@ -436,5 +436,11 @@
     "zh-CN": "仅显示当前 HEAD 的历史",
     "review": "translated",
     "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationIncluded": {
+    "en": "Included in displayed history",
+    "zh-CN": "已加入当前显示的历史范围",
+    "review": "translated",
+    "context": "webview/Sidebar.tsx"
   }
 }

@@ -1,5 +1,70 @@
 import assert from 'node:assert/strict';
 
+export async function verifyHistoryLocation(browser, url, screenshotPath) {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  try {
+    await page.addInitScript(() => {
+      const repo = { id: 'scope', root: '/fixture/llvm-project', commonDir: '/fixture/llvm-project/.git', name: 'llvm-project' };
+      const commits = Array.from({ length: 330 }, (_, index) => ({ oid: (index + 1).toString(16).padStart(40, '0'), parents: index < 329 ? [(index + 2).toString(16).padStart(40, '0')] : [], author: 'Fixture', email: 'fixture@example.com', timestamp: 0, subject: `Scope commit ${index}` }));
+      const refs = [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commits[0].oid }, ...['v1', 'v2'].map((name, index) => ({ name, fullName: `refs/tags/${name}`, kind: 'tag', oid: commits[310 + index].oid, refOid: commits[310 + index].oid }))];
+      const fixture = window.__scopeFixture = { hold: false, fail: false, pending: [], calls: [] };
+      window.acquireVsCodeApi = () => ({ getState: () => ({}), setState: () => {}, postMessage(request) {
+        fixture.calls.push(request);
+        let result;
+        if (request.method === 'repositories') result = [repo];
+        if (request.method === 'snapshot') result = { repository: repo, branch: 'main', head: commits[0].oid, ahead: 0, behind: 0, changes: [], refs, stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 1 };
+        if (request.method === 'history') {
+          const start = request.payload.tips.includes('refs/tags/v1') ? 310 : request.payload.tips.includes('refs/tags/v2') ? 311 : 0;
+          const offset = request.payload.offset ?? 0, rows = commits.slice(start + offset, start + offset + 300);
+          result = { commits: rows, head: commits[0], tips: request.payload.tips, nextOffset: offset + rows.length, hasMore: start + offset + rows.length < commits.length };
+        }
+        if (request.method === 'details') { const commit = commits.find(commit => commit.oid === request.payload.oid); result = { commit, body: commit.subject, files: [] }; }
+        const response = { type: 'response', id: request.id, result };
+        if (request.method === 'history' && fixture.fail) response.error = { message: 'Fixture read failure' };
+        if (request.method === 'history' && fixture.hold) fixture.pending.push(response);
+        else setTimeout(() => window.postMessage(response, '*'), 20);
+      } });
+    });
+    await page.goto(url);
+    await page.getByRole('option', { name: 'llvm-project', exact: true }).dblclick();
+    const location = page.getByTestId('history-location'), viewport = page.locator('.history-viewport');
+    await location.getByText('Loaded 300 commits · More history available', { exact: true }).waitFor();
+    await viewport.evaluate(element => { element.scrollTop = 600; });
+    await page.waitForFunction(() => document.querySelector('.history-viewport').scrollTop === 600);
+    const showTag = async name => {
+      await page.getByTestId('sidebar').getByRole('button', { name, exact: true }).click({ button: 'right' });
+      await page.getByRole('menuitem', { name: 'Show Only This Tag History', exact: true }).click();
+    };
+    await page.evaluate(() => { window.__scopeFixture.hold = true; });
+    await showTag('v1');
+    await location.getByText('Loading history for tag v1', { exact: true }).waitFor();
+    await location.getByText('Displaying history: branch main', { exact: true }).waitFor();
+    await location.getByText(/Current checkout: main/).waitFor();
+    await page.evaluate(() => { window.__scopeFixture.hold = false; window.__scopeFixture.pending.splice(0).forEach(response => window.postMessage(response, '*')); });
+    await location.getByText('Displaying history: tag v1', { exact: true }).waitFor();
+    await location.getByText('Current HEAD is not shown in the loaded history.', { exact: true }).waitFor();
+    assert.equal(await page.locator('[data-graph-included="true"]').count(), 1);
+    if (screenshotPath) await page.screenshot({ path: screenshotPath });
+    await page.getByRole('button', { name: 'Back to previous history view', exact: true }).click();
+    await location.getByText('Displaying history: branch main', { exact: true }).waitFor();
+    await page.waitForFunction(() => Math.abs(document.querySelector('.history-viewport').scrollTop - 600) < 2);
+    await page.evaluate(() => { window.__scopeFixture.fail = true; });
+    await showTag('v2');
+    await location.getByText(/Could not load tag v2: Fixture read failure/).waitFor();
+    await location.getByText('Displaying history: branch main', { exact: true }).waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Load More', exact: true }).isDisabled(), true);
+    await page.evaluate(() => { window.__scopeFixture.fail = false; });
+    await page.getByRole('button', { name: 'Retry history loading', exact: true }).click();
+    await location.getByText('Displaying history: tag v2', { exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Show current branch only and locate HEAD', exact: true }).click();
+    await location.getByText('Displaying history: branch main', { exact: true }).waitFor();
+    assert.equal(await page.evaluate(() => window.__scopeFixture.calls.some(request => request.method === 'action')), false);
+    assert.deepEqual(errors, []);
+  } finally { await page.close(); }
+}
+
 export async function verifyLocateHead(browser, url) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
@@ -174,7 +239,7 @@ async function verifyDetachedHeadPolicy(page) {
   await page.keyboard.press('ArrowDown');
   assert.notEqual(await page.evaluate(()=>document.activeElement?.textContent?.trim()),detached,'Keyboard navigation skips disabled Detached Checkout');
   await menu.getByRole('menuitem',{name:'Create Branch and Checkout…',exact:true}).click();
-  let creation=page.getByRole('dialog');
+  let creation=page.getByRole('dialog',{name:'Create Branch and Checkout',exact:true});
   await creation.getByRole('textbox',{name:'Branch Name',exact:true}).waitFor();
   assert.equal(await creation.getByRole('button',{name:'Create Only',exact:true}).count(),0);
   await creation.getByRole('button',{name:'Cancel',exact:true}).click();
@@ -193,14 +258,14 @@ async function verifyDetachedHeadPolicy(page) {
   assert.equal(await page.evaluate(()=>localStorage.getItem('alwaygit.demo-allowDetachedHead')),null,'Draft settings must not enable Detached Checkout');
   await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
   dialog = await settings();
-  assert.equal(await dialog.getByRole('checkbox').isChecked(),false);
-  await dialog.getByRole('checkbox').check();
+  assert.equal(await dialog.getByRole('checkbox',{name:'Allow direct Detached HEAD Checkout',exact:true}).isChecked(),false);
+  await dialog.getByRole('checkbox',{name:'Allow direct Detached HEAD Checkout',exact:true}).check();
   await dialog.getByRole('button',{name:'Apply',exact:true}).click();
   await dialog.waitFor({state:'hidden'});
   await page.reload();
   await old.waitFor();
   await old.dblclick();
-  dialog = page.getByRole('dialog');
+  dialog = page.getByRole('dialog',{name:'Create Branch and Checkout',exact:true});
   await dialog.getByRole('textbox',{name:'Branch Name',exact:true}).waitFor();
   await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
   await old.click({button:'right'});
@@ -211,11 +276,11 @@ async function verifyDetachedHeadPolicy(page) {
   await dialog.waitFor({state:'hidden'});
   await page.getByText('Detached HEAD',{exact:true}).first().waitFor();
   dialog = await settings();
-  await dialog.getByRole('checkbox').uncheck();
+  await dialog.getByRole('checkbox',{name:'Allow direct Detached HEAD Checkout',exact:true}).uncheck();
   await dialog.getByRole('button',{name:'Apply',exact:true}).click();
   await dialog.waitFor({state:'hidden'});
   await old.dblclick();
-  dialog = page.getByRole('dialog');
+  dialog = page.getByRole('dialog',{name:'Create Branch and Checkout',exact:true});
   await dialog.getByRole('textbox',{name:'Branch Name',exact:true}).fill('inspect-history');
   await dialog.getByRole('button',{name:'Create and Checkout',exact:true}).click();
   await dialog.waitFor({state:'hidden'});

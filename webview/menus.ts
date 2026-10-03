@@ -79,6 +79,7 @@ export function menuFor(target: MenuTarget, api: MenuApi, check?: CherryPickMenu
       items.push(detachedCheckout(ref.fullName,!commitTarget));
     }
     items.push(item(uiText("menus.showInGraph"),()=>state.setCheckedRefs([...(state.checkedRefs??[]),ref.fullName]),'eye',!commitTarget),item(ref.kind==='tag'?uiText("menus.showOnlyThisTag"):uiText("menus.showOnlyThisBranch"),()=>state.setCheckedRefs([ref.fullName]),'filter',!commitTarget));
+    items.push(item(t(ref.kind === 'tag' ? 'menus.locateTagCommit' : 'menus.locateBranchTip'), () => state.locateRef(ref.fullName, ref.oid), 'location', !commitTarget || busy));
     items.push(ref.kind==='remote'?track([ref],false):action(uiText("menus.createBranch"),{type:'branch.create',target:ref.fullName},'git-branch',busy||!commitTarget));
     if(ref.kind==='local')items.push(action(uiText("menus.createTag"),{type:'tag.create',target:ref.fullName},'tag'));
     if(ref.kind!=='tag')items.push(action(uiText("menus.merge"),{type:'merge',target:ref.fullName},'git-merge',busy||noBranch||current||operation),action(uiText("menus.rebase"),{type:'rebase',target:ref.fullName},'git-pull-request',busy||noBranch||current||operation));
