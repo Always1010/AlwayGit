@@ -25,6 +25,7 @@ import { groupRepositories } from '../protocol/repositories';
 import { panelSession } from './workbench-entry';
 import { mergeSessionBaseline, SessionWriter } from '../application/session-persistence';
 import type { SessionState } from '../protocol/session';
+import { interfaceSettingsSchema, interfaceSettingsUpdateSchema, legacyInterfaceSettings, mergeInterfaceSettings, overlayInterfaceSettings, type InterfacePreferences } from '../protocol/interface-settings';
 import { RepositoryOperationBusyError, RepositoryOperationRecoveryRequiredError } from '../application/operation-lock';
 import { discardRequestSchema } from '../protocol/validation';
 
@@ -53,10 +54,30 @@ export class Workbench implements vscode.Disposable {
   get receivedWebviewRequests(): number { return this.requestCount; }
   private readonly interval: ReturnType<typeof setInterval>;
   private initialScan?: Promise<void>;
+  private preferenceMigration?: Promise<void>;
+  private preferenceWrites: Promise<unknown> = Promise.resolve();
+  private interfaceSettings(): InterfacePreferences {
+    const configuration = vscode.workspace.getConfiguration('alwaygit');
+    const parsed = interfaceSettingsSchema.safeParse(configuration.get('interfaceSettings', {}));
+    return { ...(parsed.success ? parsed.data : {}), language: preferredLanguage() };
+  }
+  private migrateInterfaceSettings(): Promise<void> {
+    return this.preferenceMigration ??= (async () => {
+      const configuration = vscode.workspace.getConfiguration('alwaygit');
+      const legacy = legacyInterfaceSettings(this.context.workspaceState.get<SessionState>('alwaygit.session', {}));
+      const { language, ...settings } = legacy;
+      if (configuration.inspect?.('interfaceSettings')?.globalValue === undefined && Object.keys(settings).length) {
+        await configuration.update('interfaceSettings', settings, vscode.ConfigurationTarget.Global);
+      }
+      if (configuration.inspect?.('language')?.globalValue === undefined && language) {
+        await configuration.update('language', language, vscode.ConfigurationTarget.Global);
+      }
+    })().catch(error => { this.preferenceMigration = undefined; throw error; });
+  }
   private readonly sessions = new SessionWriter(session => this.context.workspaceState.update('alwaygit.session', session));
   private operationSettings(): OperationSettings { const configuration=vscode.workspace.getConfiguration('alwaygit'),configuredResetMode=configuration.get<string>('defaultResetMode','mixed'),defaultResetMode:OperationSettings['defaultResetMode']=['soft','mixed','hard'].includes(configuredResetMode)?configuredResetMode as OperationSettings['defaultResetMode']:'mixed';return { allowDetachedHead: configuration.get<boolean>('allowDetachedHead', false) === true, pushFollowTags: configuration.get<boolean>('pushFollowTags', false) === true, pushTagAfterCreate: configuration.get<boolean>('pushTagAfterCreate', false) === true, defaultResetMode, scope: vscode.workspace.workspaceFile || vscode.workspace.workspaceFolders?.length ? 'workspace' : 'user' }; }
   private readonly requestLanguage = new AsyncLocalStorage<Language>();
-  private panelLanguage(source?: WorkbenchPanel): Language { const language = source?.session?.language ?? source?.savedSession?.language ?? this.context.workspaceState.get<{ language?: Language }>('alwaygit.session', {}).language ?? preferredLanguage(); return language === 'zh-CN' ? 'zh-CN' : 'en'; }
+  private panelLanguage(_source?: WorkbenchPanel): Language { return preferredLanguage(); }
   private language(): Language { return this.requestLanguage.getStore() ?? this.panelLanguage(); }
   private text<K extends MessageKey>(key: K, ...args: MessageArgs<K>): string { return hostText(this.language(), key, ...args); }
   private repositoryKey(commonDir: string): string { const resolved=path.resolve(commonDir);return process.platform==='win32'?resolved.toLowerCase():resolved; }
@@ -67,6 +88,11 @@ export class Workbench implements vscode.Disposable {
       this.post({ type: 'repositoriesChanged' });
     }));
     this.disposables.push(vscode.workspace.onDidChangeConfiguration(event => { if (['allowDetachedHead','pushFollowTags','pushTagAfterCreate','defaultResetMode'].some(name=>event.affectsConfiguration(`alwaygit.${name}`))) this.post({ type: 'operationSettingsChanged', settings: this.operationSettings() }); }));
+    this.disposables.push(vscode.workspace.onDidChangeConfiguration(event => {
+      if (event.affectsConfiguration('alwaygit.interfaceSettings') || event.affectsConfiguration('alwaygit.language')) {
+        this.post({ type: 'interfaceSettingsChanged', settings: this.interfaceSettings() });
+      }
+    }));
     const seconds = vscode.workspace.getConfiguration('alwaygit').get<number>('refreshInterval', 15);
     this.interval = setInterval(() => void this.poll(), seconds * 1000);
   }
@@ -183,6 +209,20 @@ export class Workbench implements vscode.Disposable {
     return this.executeRequest(request,source);
   }
   private async executeRequest(request: RpcRequest, source?:WorkbenchPanel): Promise<unknown> {
+    if (request.method === 'interfaceSettings') { await this.migrateInterfaceSettings(); return this.interfaceSettings(); }
+    if (request.method === 'saveInterfaceSettings') {
+      const update = interfaceSettingsUpdateSchema.parse(request.payload);
+      const write = this.preferenceWrites.catch(() => {}).then(async () => {
+        await this.migrateInterfaceSettings();
+        const configuration = vscode.workspace.getConfiguration('alwaygit');
+        const { language, ...settings } = mergeInterfaceSettings(this.interfaceSettings(), update);
+        await configuration.update('interfaceSettings', settings, vscode.ConfigurationTarget.Global);
+        if (update.language !== undefined) await configuration.update('language', language, vscode.ConfigurationTarget.Global);
+        const saved = this.interfaceSettings();
+        this.post({ type: 'interfaceSettingsChanged', settings: saved }); return saved;
+      });
+      this.preferenceWrites = write; return write;
+    }
     if (request.method === 'operationSettings') return this.operationSettings();
     if (request.method === 'saveOperationSettings') {
       const settings = operationSettingsSchema.parse(request.payload);
@@ -391,14 +431,17 @@ export class Workbench implements vscode.Disposable {
     }
   }
   private async html(webview: vscode.Webview,activeRepository?:string,blank=false): Promise<string> {
+    await this.migrateInterfaceSettings();
     const root = vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview');
     let html = await readFile(vscode.Uri.joinPath(root, 'index.html').fsPath, 'utf8');
     const nonce = randomBytes(20).toString('base64');
     html = html.replace(/(src|href)="\.\/([^"\s]+)"/g, (_match, attr, resource: string) => `${attr}="${webview.asWebviewUri(vscode.Uri.joinPath(root, resource))}"`);
     html = html.replace(/<script /g, `<script nonce="${nonce}" `);
     const saved = this.context.workspaceState.get<Record<string, unknown>>('alwaygit.session', {});
-    const session = JSON.stringify({ ...panelSession(saved,activeRepository,blank), language: saved.language ?? preferredLanguage() }).replace(/</g, '\\u003c');
-    html = html.replace('</head>', `<script nonce="${nonce}">window.__ALWAYGIT_SESSION__=${session};</script></head>`);
+    const preferences = this.interfaceSettings();
+    const session = JSON.stringify(overlayInterfaceSettings(panelSession(saved,activeRepository,blank) as SessionState, preferences)).replace(/</g, '\\u003c');
+    const settings = JSON.stringify(preferences).replace(/</g, '\\u003c');
+    html = html.replace('</head>', `<script nonce="${nonce}">window.__ALWAYGIT_SESSION__=${session};window.__ALWAYGIT_PREFERENCES__=${settings};</script></head>`);
     return html.replace('<head>', `<head><meta property="csp-nonce" nonce="${nonce}"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">`);
   }
   dispose(): void { this.terminals.dispose();this.snapshots.dispose();this.queries.dispose();clearInterval(this.interval);for(const scan of this.repositoryDiscoveries.values())scan.cancelled=true;this.repositoryDiscoveries.clear();const panels=[...this.panels.keys()];this.panels.clear();this.lastPanel=undefined;for(const panel of panels)panel.dispose();this.presenceEmitter.dispose();for (const disposable of this.disposables) disposable.dispose(); }

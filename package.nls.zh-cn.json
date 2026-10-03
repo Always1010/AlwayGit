@@ -18,5 +18,6 @@
   "manifest.contributes.configuration.properties.alwaygit.allowDetachedHead.description": "允许直接切换到 Detached HEAD。默认关闭；查看历史版本时请创建并切换到本地分支。",
   "manifest.contributes.configuration.properties.alwaygit.pushFollowTags.description": "分支 Push 时默认同时推送该分支可达且远端缺少的注解标签。可在 Push 对话框中临时覆盖并记住选择。",
   "manifest.contributes.configuration.properties.alwaygit.pushTagAfterCreate.description": "默认把新建标签推送到所选远端；创建标签对话框可以单次覆盖并记住该选择。",
-  "manifest.contributes.configuration.properties.alwaygit.defaultResetMode.description": "打开重置对话框时默认选择的模式；可在对话框中覆盖并记住 Soft、Mixed 或 Hard。"
+  "manifest.contributes.configuration.properties.alwaygit.defaultResetMode.description": "打开重置对话框时默认选择的模式；可在对话框中覆盖并记住 Soft、Mixed 或 Hard。",
+  "manifest.contributes.configuration.properties.alwaygit.interfaceSettings.description": "跨窗口共享的工作台外观、快捷键与阅读偏好。"
 }

@@ -314,7 +314,7 @@ Ref checkboxes control which history you see; branch names and row selections co
 
 1. Note the current file's added, modified, and deleted block counts. Historical Commits default to “File 2/5 · Change 1/3”, showing the file position and the block position within that file.
 2. Previous and Next follow the current Commit's changed-file order by default. Next enters the first block of the next file; Previous enters the last block of the previous file. The Commit's first and last blocks wrap around. Merge Commits keep the selected Parent, and navigation stays in the same Commit.
-3. To browse one file, open Settings → Interface → Diff, change “Diff navigation scope” to “Current file”, and Apply. This mode shows current / total blocks; with only one block, either button locates it again. The preference is saved for this workspace.
+3. To browse one file, open Settings → Interface → Diff, change “Diff navigation scope” to “Current file”, and Apply. This mode shows current / total blocks; with only one block, either button locates it again. The preference is saved in user settings and shared across windows.
 4. Scroll horizontally for long lines or drag the divider for a larger reading area. Collapse and reopen Diff to continue reading; check the comparison title after switching files.
 
 **Result:** Choose to inspect the entire Commit or the current file block by block. Adjacent changed lines form one contiguous block.
@@ -912,7 +912,7 @@ Worktree lets a single repository have multiple working directories so you can w
 3. Interface → Text & density controls the interface font size and commit list density. Interface → File list controls split or unified display and file spacing. Interface → Diff groups the Diff font size, line height, and navigation scope with a code preview. Expand Detailed rules for navigation exceptions.
 4. Click Apply to save. To discard unapplied changes, click Cancel, close settings, or press Esc.
 
-**Result:** Applied settings take effect immediately. Cancel only rolls back previews that have not yet been applied.
+**Result:** Language, theme, colors, font sizes, density, shortcuts and reading preferences are saved in user settings and shared with other workbench windows in the same configuration environment. Cancel rolls back only this panel’s unapplied preview. Panel dimensions, browsing state and commit drafts are restored separately.
 
 **Caution:** The Simplified Chinese interface retains Git action names such as Stage, Commit, and Fetch. Paths, branch names, and Git errors remain in their original form.
 
@@ -1024,7 +1024,7 @@ Hover over supported actions to see their current bindings. Settings → General
 
 Focus the recording field and press a single key or combination. Ctrl/Cmd adapts to the platform. Esc cancels recording without closing Settings; Tab moves to confirmation. Conflicts show the actions using the key and block normal confirmation; Move binding here explicitly removes their conflicting bindings. Restoring defaults also requires moving conflicting bindings when necessary. Basic navigation, selection and text editing keys are reserved; input-method composition and AltGr are excluded from recording. Multi-step chords are not supported. VS Code or the operating system may handle combinations first; external conflicts are not fully checked here.
 
-Apply activates and saves bindings for the current workspace; Cancel restores previous bindings. Turning off single keys pauses bindings without modifiers and Shift with printable characters while retaining their configuration; other combinations remain active. The default Ctrl/Cmd+R can be changed or disabled. Existing selection controls, drafts, repository selection and layout are preserved. The separate New Embedded Terminal shortcut is managed by VS Code through the Open VS Code Keyboard Shortcuts entry.
+Apply saves bindings in user settings and shares them across windows; Cancel restores previous bindings. Turning off single keys pauses bindings without modifiers and Shift with printable characters while retaining their configuration; other combinations remain active. The default Ctrl/Cmd+R can be changed or disabled. Existing selection controls, drafts, repository selection and layout are preserved. The separate New Embedded Terminal shortcut is managed by VS Code through the Open VS Code Keyboard Shortcuts entry.
 
 | Action | Meaning | Scope reminder |
 | --- | --- | --- |

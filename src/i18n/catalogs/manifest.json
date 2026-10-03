@@ -118,5 +118,11 @@
     "zh-CN": "打开重置对话框时默认选择的模式；可在对话框中覆盖并记住 Soft、Mixed 或 Hard。",
     "review": "translated",
     "context": "package.json / contributes.configuration.properties.alwaygit.defaultResetMode.description"
+  },
+  "manifest.contributes.configuration.properties.alwaygit.interfaceSettings.description": {
+    "en": "Workbench appearance, keyboard and reading preferences shared across windows.",
+    "zh-CN": "跨窗口共享的工作台外观、快捷键与阅读偏好。",
+    "review": "translated",
+    "context": "package.json / contributes.configuration.properties.alwaygit.interfaceSettings.description"
   }
 }

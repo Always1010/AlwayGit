@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-078：界面偏好未跨窗口共享，旧面板恢复覆盖新设置
+
+- 日期：2026-10-04
+- 状态：已解决
+- 现象：原窗口应用黄色主题后，新窗口仍显示默认主题；语言、字号、快捷键和阅读偏好也随工作区变化，旧面板优先读取自身恢复副本。
+- 原因：个人偏好混入 workspaceState 会话，缺少用户级保存和配置变化同步；Webview getState 优先于新注入状态。
+- 解决方案：将界面偏好独立保存到用户配置，统一 alwaygit.language；兼容迁移旧会话，仅在用户配置缺失时迁移。最新用户偏好覆盖恢复副本，应用确认成功后广播；未应用预览保留，取消恢复最新共享基线。会话仍负责布局、浏览位置和草稿恢复，旧会话保存不会回写用户配置。
+- 验证方式：122 项定向会话、宿主、协议、快捷键、启动和 UI 状态回归及类型、双语检查通过；覆盖旧偏好迁移、多面板广播、旧会话不回写、预览取消与保存失败。未运行桌面集成测试。
+- 相关文件：`src/protocol/interface-settings.ts`、`src/extension/workbench.ts`、`webview/rpc.ts`、`webview/store.ts`、`webview/SettingsDialog.tsx`、`package.json`、`tests/session-persistence.test.ts`、`tests/workbench-entry.test.ts`、`tests/ui-state.test.ts`。
+
 ## BUG-077：新窗口工作台显示被扩展启动和仓库扫描阻塞
 
 - 日期：2026-10-04

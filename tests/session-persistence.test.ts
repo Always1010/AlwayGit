@@ -2,8 +2,21 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { SessionPersistence } from '../webview/session-persistence';
 import { mergeSessionBaseline, SessionWriter } from '../src/application/session-persistence';
 import type { SessionState } from '../src/protocol/session';
+import { legacyInterfaceSettings, mergeInterfaceSettings, overlayInterfaceSettings } from '../src/protocol/interface-settings';
 
 afterEach(() => vi.useRealTimers());
+it('restores latest user preferences over an old panel without changing geometry, browsing state or drafts', () => {
+  const old: SessionState = { language: 'zh-CN', appearance: { theme: 'paper', palette: 'vivid', codeFont: 15 },
+    layout: { preset: 'workbench', sidebar: 230, details: 310, diff: 720, author: 100, date: 120, font: 16, row: 28 },
+    repoId: 'a', drafts: { a: 'keep' }, views: { a: { search: 'query', tab: 'changes' } }, singleKeyShortcuts: false };
+  expect(legacyInterfaceSettings(old)).toMatchObject({ language: 'zh-CN', font: 16, row: 28, appearance: { theme: 'paper' } });
+  expect(legacyInterfaceSettings(old)).not.toHaveProperty('drafts');
+  const restored = overlayInterfaceSettings(old, { language: 'en', appearance: { theme: 'forest', palette: 'distinct', codeFont: 12 }, font: 13 });
+  expect(restored).toMatchObject({ language: 'en', layout: { sidebar: 230, diff: 720, font: 13, row: 24 }, singleKeyShortcuts: true,
+    appearance: { theme: 'forest' }, repoId: 'a', drafts: old.drafts, views: old.views });
+  expect(overlayInterfaceSettings({}, { font: 16, row: 28 }).layout).toMatchObject({ font: 16, row: 28 });
+  expect(mergeInterfaceSettings({ appearance: old.appearance, font: 16 }, { appearance: { theme: 'dark' } })).toMatchObject({ appearance: { theme: 'dark', codeFont: 15 }, font: 16 });
+});
 const deferred = () => { let resolve!: () => void; const promise = new Promise<void>(done => { resolve = done; }); return { promise, resolve }; };
 
 it('saves local state immediately and sends only the latest pending state after the prior acknowledgement', async () => {
