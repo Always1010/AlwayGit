@@ -3,6 +3,7 @@ export const shortcutKeys = {
   working: 'w', head: 'h', repository: 'o', diff: 'd', edit: 'e',
   previousChange: '[', nextChange: ']', toggleDiff: '\\', search: '/',
   settings: ',', help: '?', stageAll: 'a', unstageAll: 'u',
+  terminalNew: 'n', terminalFocus: 't',
 } as const;
 export type WorkbenchShortcut = keyof typeof shortcutKeys;
 export interface ShortcutAction { enabled: boolean; run(): void }

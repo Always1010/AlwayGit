@@ -59,6 +59,13 @@
         "icon": "$(window)"
       }
     ],
+    "keybindings": [
+      {
+        "command": "alwaygit.newTerminal",
+        "key": "ctrl+alt+shift+t",
+        "mac": "cmd+alt+shift+t"
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {

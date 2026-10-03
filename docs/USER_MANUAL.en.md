@@ -99,7 +99,7 @@ Use VS Code 1.95 or later. Basic features require Git 2.40 or later; saving a St
 
 The plus icon creates a terminal at the current repository root. Its dropdown selects the default shell, PowerShell, cmd, or Bash (the shell must exist on the host). Terminals and Diff share the panel height. Switching repositories keeps existing terminal directories; clicking a file selects Diff, while background refreshes keep the active tab.
 
-Double-click a terminal tab to rename it. The toolbar clears the display and offers restart only after the shell exits; exit codes and output remain visible. Closing a terminal ends its shell; collapsing the panel or hiding the workbench keeps it running. Use All tabs to switch among many terminals and maximize to expand the panel temporarily. Ctrl+C with a selection or Ctrl+Shift+C copies; Ctrl+Shift+V pastes. Without a selection, Ctrl+C interrupts the shell command. Closing the workbench or reloading VS Code releases terminals; commands and output are not saved or restored. The command palette also provides `AlwayGit: New Embedded Terminal`, with no default keybinding.
+Double-click a terminal tab to rename it. The toolbar clears the display and offers restart only after the shell exits; exit codes and output remain visible. Closing a terminal ends its shell; collapsing the panel or hiding the workbench keeps it running. Use All tabs to switch among many terminals and maximize to expand the panel temporarily. Ctrl+C with a selection or Ctrl+Shift+C copies; Ctrl+Shift+V pastes. Without a selection, Ctrl+C interrupts the shell command. Closing the workbench or reloading VS Code releases terminals; commands and output are not saved or restored. The command palette also provides `AlwayGit: New Embedded Terminal`, with `Ctrl+Alt+Shift+T` as the default shortcut (`Cmd+Alt+Shift+T` on macOS).
 
 <a id="section-01-05"></a>
 
@@ -1015,6 +1015,8 @@ Single-key shortcuts are enabled by default throughout the focused AlwayGit work
 | , | Settings | Open Settings |
 | ? (Shift+/) | Help | Open Help & Guide |
 | A; U | Stage All; Unstage All | Working Tree only; confirm the entire group without a filter, or matching files with a filter |
+| N | New embedded terminal | Expand the bottom panel and create a default shell at the current repository root |
+| T | Focus current terminal | Switch from Diff to the most recent terminal; create one when no terminal exists |
 
 Global actions target the currently open repository and preview file. Temporary sidebar selection and pointer hover do not change their targets. Disabled buttons have disabled shortcuts. A/U include all Unstaged/Staged files regardless of batch selection or collapsed groups; use the existing context menu for selected-file actions.
 

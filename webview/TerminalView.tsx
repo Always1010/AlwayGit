@@ -84,7 +84,9 @@ export function TerminalView({ session, active }: { session: TerminalSession; ac
   }, [active, appearance, theme, language, session.title]);
   useEffect(() => {
     const clear = (event: Event) => { if ((event as CustomEvent<string>).detail === session.id) terminal.current?.clear(); };
-    window.addEventListener('alwaygit-terminal-clear', clear); return () => window.removeEventListener('alwaygit-terminal-clear', clear);
+    const focus = (event: Event) => { if ((event as CustomEvent<string>).detail === session.id) terminal.current?.focus(); };
+    window.addEventListener('alwaygit-terminal-clear', clear); window.addEventListener('alwaygit-terminal-focus', focus);
+    return () => { window.removeEventListener('alwaygit-terminal-clear', clear); window.removeEventListener('alwaygit-terminal-focus', focus); };
   }, [session.id]);
   return <div ref={element} className="terminal-view" data-terminal-input="true" onContextMenu={event => event.stopPropagation()}/>;
 }
