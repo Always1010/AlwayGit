@@ -8,6 +8,14 @@ vi.mock('vscode',()=>({window:{showWarningMessage:host.warning},workspace:{get t
 const repo:Repository={id:'repo',root:path.resolve('test-repo'),commonDir:path.resolve('test-repo/.git'),name:'Test'};
 beforeEach(()=>{host.warning.mockReset();host.documents=[];});
 describe('operation confirmation',()=>{
+  it('explains saved disk content only for selected unstaged files with dirty editors', async () => {
+    host.documents=[{isDirty:true,uri:{scheme:'file',fsPath:path.join(repo.root,'same.txt')}}];
+    await confirmAction(repo,{type:'commit',message:'selected',files:[{path:'same.txt',area:'unstaged'}]},'zh-CN');
+    expect(host.warning).toHaveBeenCalledWith(expect.stringContaining('最新已保存的磁盘内容'),{modal:true},'使用磁盘内容');
+    host.warning.mockClear();
+    expect(await confirmAction(repo,{type:'commit',message:'other',files:[{path:'other.txt',area:'unstaged'}]},'zh-CN')).toBe(true);
+    expect(host.warning).not.toHaveBeenCalled();
+  });
   it('distinguishes keeping staged content from discarding all staged and unstaged changes', async () => {
     await confirmAction(repo, { type: 'discard', paths: ['a.txt'] }, 'zh-CN');
     expect(host.warning.mock.calls[0][0]).toContain('已暂存的更改会保留');

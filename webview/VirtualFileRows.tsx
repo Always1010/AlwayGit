@@ -7,6 +7,7 @@ interface Props<T> {
   children(item: T, index: number): ReactNode;
   scrollParent: string;
   estimateSize?: number;
+  focusSelector?: string;
 }
 
 /** Small lists retain their natural DOM; large lists share their existing scroll pane. */
@@ -18,7 +19,7 @@ export function VirtualFileRows<T>(props: Props<T>) {
 
 function Row({ children }: { children: ReactNode }) { return children; }
 
-function LargeFileRows<T>({ items, getKey, children, scrollParent, estimateSize }: Props<T>) {
+function LargeFileRows<T>({ items, getKey, children, scrollParent, estimateSize, focusSelector = '.file-name' }: Props<T>) {
   const spacer = useRef<HTMLDivElement>(null), [margin, setMargin] = useState(0), [focusIndex, setFocusIndex] = useState<number>();
   const viewport = () => spacer.current?.closest<HTMLElement>(scrollParent) ?? null;
   const virtual = useVirtualizer({
@@ -43,7 +44,7 @@ function LargeFileRows<T>({ items, getKey, children, scrollParent, estimateSize 
   }, [scrollParent, items]);
   useLayoutEffect(() => {
     if (focusIndex === undefined) return;
-    const control = spacer.current?.querySelector<HTMLElement>(`[data-index="${focusIndex}"] .file-name`);
+    const control = spacer.current?.querySelector<HTMLElement>(`[data-index="${focusIndex}"] ${focusSelector}`);
     if (control) { control.focus({ preventScroll: true }); setFocusIndex(undefined); }
   }, [rows, focusIndex]);
   return <div className="virtual-file-spacer" ref={spacer} style={{ height: virtual.getTotalSize() }} onKeyDown={event => {

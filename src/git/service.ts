@@ -18,6 +18,7 @@ import { mapGitQueries } from './query-map';
 import { runGitProcess, type GitResult } from './runner';
 export { GitError } from './error';
 import { createSelectedStash, preflightStash, StashStateError, type StashExecution } from './stash';
+import { commitSelected } from './selected-commit';
 
 export interface GitServiceOptions {
   allowDetachedHead?: () => boolean;
@@ -684,6 +685,22 @@ export class GitService implements GitServiceContract {
         if (!action.message.trim() || action.message.includes('\0')) throw new GitError(localizeMessage("service.enterACommitMessage"), 'INVALID_ARGUMENT');
         const snapshot = await this.snapshot(repo);
         if (snapshot.operation.kind && action.amend) throw new GitError(localizeMessage("service.amendIsUnavailableDuringAnActiveGitOperation"), 'INVALID_ARGUMENT');
+        if (action.files) {
+          if (snapshot.operation.kind || snapshot.operation.conflicts || snapshot.changes.some(change => change.conflict)) throw new GitError(localizeMessage('commit.selectionOperationBlocked'), 'INVALID_ARGUMENT');
+          this.requireActionContext(action, snapshot);
+          const files = action.files.map(file => ({ ...file, path: validateFilePath(file.path) }));
+          const beforeByPath = new Map(snapshot.changes.map(change => [change.path, change]));
+          await commitSelected((args, execution) => this.run(repo, args, false, undefined, execution), files, snapshot.changes, snapshot.head,
+            ['commit', ...(action.amend ? ['--amend'] : []), '-m', action.message], async () => {
+              const current = await this.snapshot(repo), afterByPath = new Map(current.changes.map(change => [change.path, change]));
+              this.requireActionContext(action, current);
+              if (current.operation.kind || current.changes.some(change => change.conflict) || files.some(file => {
+                const before = beforeByPath.get(file.path), after = afterByPath.get(file.path);
+                return !before || !after || before.indexStatus !== after.indexStatus || before.worktreeStatus !== after.worktreeStatus || before.originalPath !== after.originalPath;
+              })) throw new GitError(localizeMessage('commit.selectionChanged'), 'OPERATION_CHANGED');
+            });
+          return;
+        }
         await this.requireReview(repo, snapshot, action.reviewToken);
         args = ['commit', ...(action.amend ? ['--amend'] : []), '-m', action.message]; break;
       }

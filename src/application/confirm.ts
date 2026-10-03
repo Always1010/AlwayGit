@@ -24,9 +24,12 @@ export async function confirmAction(repo: Repository, action: GitAction, languag
   if (action.type === 'operation.abort' && operation?.originalHead) warning += text('confirm.restoreOriginalHead', { head: operation.originalHead });
   if (warning) return (await vscode.window.showWarningMessage(warning, { modal: true, detail: text('confirm.repository', { root: repo.root }) }, proceed)) === proceed;
   if (action.type === 'commit' || action.type === 'operation.continue') {
-    const dirty = vscode.workspace.textDocuments.filter(d => d.isDirty && d.uri.scheme === 'file' && d.uri.fsPath.startsWith(repo.root + require('node:path').sep));
-    const button = text('confirm.useStagedContent');
-    if (dirty.length) return (await vscode.window.showWarningMessage(text('confirm.unsavedFiles', { count: dirty.length }), { modal: true }, button)) === button;
+    const selected = action.type === 'commit' ? action.files : undefined;
+    const taskPath = require('node:path') as typeof import('node:path');
+    const dirty = vscode.workspace.textDocuments.filter(d => d.isDirty && d.uri.scheme === 'file' && d.uri.fsPath.startsWith(repo.root + taskPath.sep) && (!selected || selected.some(file => taskPath.resolve(repo.root, file.path) === d.uri.fsPath)));
+    const includesUnstaged = selected?.some(file => file.area === 'unstaged');
+    const button = text(includesUnstaged ? 'confirm.useDiskContent' : 'confirm.useStagedContent');
+    if (dirty.length) return (await vscode.window.showWarningMessage(text(includesUnstaged ? 'confirm.unsavedSelectedFiles' : 'confirm.unsavedFiles', { count: dirty.length }), { modal: true }, button)) === button;
   }
   return true;
 }

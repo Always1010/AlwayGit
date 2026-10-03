@@ -2,6 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { actionSchema, createRepositoryCollectionSchema, reorderRepositorySchema, diffSchema, openRepositorySchema, openWorkbenchSchema, operationSettingsSchema, requestSchema, sessionSchema } from '../src/protocol/validation';
 
 describe('Workbench protocol validation', () => {
+  it('requires a captured context and explicit file versions for selected commits', () => {
+    const action={type:'commit',message:'selected',files:[{path:'file.txt',area:'unstaged'}],expectedHead:'a'.repeat(40),expectedBranch:'main'};
+    expect(actionSchema.parse(action)).toEqual(action);
+    expect(actionSchema.safeParse({...action,expectedHead:undefined}).success).toBe(false);
+    expect(actionSchema.safeParse({...action,files:[{path:'file.txt',area:'conflict'}]}).success).toBe(false);
+    expect(actionSchema.safeParse({...action,files:[]}).success).toBe(false);
+    expect(actionSchema.parse({...action,files:[],amend:true})).toMatchObject({files:[],amend:true});
+  });
   it('accepts file actions beyond 10,000 paths and token-only Discard, but rejects an empty unplanned Discard', () => {
     const paths = Array.from({ length: 10001 }, (_, index) => `file-${index}.txt`);
     for (const type of ['stage', 'unstage', 'discard']) expect(actionSchema.parse({ type, paths })).toMatchObject({ paths });

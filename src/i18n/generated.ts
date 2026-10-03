@@ -920,10 +920,6 @@ export const catalog = {
     "en": "Ctrl/Cmd+Enter to commit",
     "zh-CN": "Ctrl/Cmd+Enter 提交"
   },
-  "commit.commitIncludesAllStagedFilesIncludingFilesHiddenBy": {
-    "en": "Commit includes all {{staged}} Staged files, including files hidden by a path filter.",
-    "zh-CN": "提交包含全部 {{staged}} 个已暂存文件，包括被路径筛选隐藏的文件。"
-  },
   "commit.commitMessage": {
     "en": "Commit Message",
     "zh-CN": "提交消息"
@@ -963,6 +959,54 @@ export const catalog = {
   "commit.commitMessageVariant2": {
     "en": "Commit message",
     "zh-CN": "提交消息"
+  },
+  "commit.commitSelected": {
+    "en": "Commit Selected…",
+    "zh-CN": "提交所选文件…"
+  },
+  "commit.filesToCommit": {
+    "en": "Files to commit · {{count}}",
+    "zh-CN": "提交文件 · {{count}}"
+  },
+  "commit.selectedFilesOnly": {
+    "en": "Selected files only",
+    "zh-CN": "仅列出所选文件"
+  },
+  "commit.stagedFilesDefault": {
+    "en": "All staged files selected by default",
+    "zh-CN": "默认勾选全部已暂存文件"
+  },
+  "commit.combined": {
+    "en": "Combined",
+    "zh-CN": "合并提交"
+  },
+  "commit.combinedNotice": {
+    "en": "Combined includes both unstaged and staged changes in the same file.",
+    "zh-CN": "合并提交包含同一文件未暂存和已暂存更改。"
+  },
+  "commit.noFiles": {
+    "en": "No files to commit",
+    "zh-CN": "没有待提交文件"
+  },
+  "commit.chooseFiles": {
+    "en": "Select at least one file to commit.",
+    "zh-CN": "请至少勾选一个提交文件。"
+  },
+  "commit.selectionChanged": {
+    "en": "The selected changes, branch or HEAD changed. Reopen Commit to review the files.",
+    "zh-CN": "所选更改、分支或 HEAD 已变化，请重新打开提交窗口核对文件。"
+  },
+  "commit.indexBusy": {
+    "en": "The Index is locked by another Git operation. Try again when it completes.",
+    "zh-CN": "暂存区正被其他 Git 操作锁定，请待其完成后重试。"
+  },
+  "commit.indexPublishFailed": {
+    "en": "The commit was created, but updating the Index failed. Check HEAD and the Index before retrying.",
+    "zh-CN": "提交已创建，但更新暂存区失败。请先检查 HEAD 和暂存区，不要直接重试提交。"
+  },
+  "commit.selectionOperationBlocked": {
+    "en": "Commit Selected is unavailable during an active Git operation or conflicts. Review and commit the complete staged result.",
+    "zh-CN": "存在活动 Git 操作或冲突时无法提交所选文件，请检查并提交完整暂存结果。"
   },
   "common.gitDetails": {
     "en": "Git details",
@@ -1113,6 +1157,14 @@ export const catalog = {
   "confirm.unsavedFiles": {
     "en": "{{count}} file(s) have unsaved editor changes. Git commits the staged disk content.",
     "zh-CN": "{{count}} 个文件在编辑器中有未保存修改。Git 提交的是磁盘上已暂存的内容。"
+  },
+  "confirm.useDiskContent": {
+    "en": "Use Disk Content",
+    "zh-CN": "使用磁盘内容"
+  },
+  "confirm.unsavedSelectedFiles": {
+    "en": "{{count}} file(s) have unsaved editor changes. Selected unstaged files use their latest saved disk content; selected staged files use Index content.",
+    "zh-CN": "{{count}} 个文件在编辑器中有未保存修改。所选未暂存文件使用最新已保存的磁盘内容；所选已暂存文件使用暂存内容。"
   },
   "credentials.cannotStartGitCredentialPrompt": {
     "en": "Cannot start Git credential prompt.",
@@ -5558,7 +5610,6 @@ export interface MessageParameters {
   "catalogStore.theSharedRepositoryCatalogIsBusyTryAgain": {  };
   "commit.commitDidNotCompleteYourDraftIsPreserved": {  };
   "commit.ctrlCmdEnterToCommit": {  };
-  "commit.commitIncludesAllStagedFilesIncludingFilesHiddenBy": { staged: ParameterValue };
   "commit.commitMessage": {  };
   "commit.describeYourChanges": {  };
   "commit.amendLastCommit": {  };
@@ -5569,6 +5620,18 @@ export interface MessageParameters {
   "commit.amendCommit": {  };
   "commit.detachedHEAD": {  };
   "commit.commitMessageVariant2": {  };
+  "commit.commitSelected": {  };
+  "commit.filesToCommit": { count: number };
+  "commit.selectedFilesOnly": {  };
+  "commit.stagedFilesDefault": {  };
+  "commit.combined": {  };
+  "commit.combinedNotice": {  };
+  "commit.noFiles": {  };
+  "commit.chooseFiles": {  };
+  "commit.selectionChanged": {  };
+  "commit.indexBusy": {  };
+  "commit.indexPublishFailed": {  };
+  "commit.selectionOperationBlocked": {  };
   "common.gitDetails": {  };
   "common.cancel": {  };
   "common.working": {  };
@@ -5605,6 +5668,8 @@ export interface MessageParameters {
   "confirm.repository": { root: ParameterValue };
   "confirm.useStagedContent": {  };
   "confirm.unsavedFiles": { count: number };
+  "confirm.useDiskContent": {  };
+  "confirm.unsavedSelectedFiles": { count: number };
   "credentials.cannotStartGitCredentialPrompt": {  };
   "details.ctrlCmdClickTogglesShiftClickSelectsRangeEsc": {  };
   "details.clickSelectsCtrlASelectsVisibleFiles": {  };

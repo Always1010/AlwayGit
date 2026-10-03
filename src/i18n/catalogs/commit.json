@@ -11,12 +11,6 @@
     "review": "translated",
     "context": "webview/CommitDialog.tsx / CommitDialog"
   },
-  "commit.commitIncludesAllStagedFilesIncludingFilesHiddenBy": {
-    "en": "Commit includes all {{staged}} Staged files, including files hidden by a path filter.",
-    "zh-CN": "提交包含全部 {{staged}} 个已暂存文件，包括被路径筛选隐藏的文件。",
-    "review": "translated",
-    "context": "webview/CommitDialog.tsx / CommitDialog"
-  },
   "commit.commitMessage": {
     "en": "Commit Message",
     "zh-CN": "提交消息",
@@ -76,5 +70,77 @@
     "zh-CN": "提交消息",
     "review": "translated",
     "context": "webview/CommitDialog.tsx / CommitDialog"
+  },
+  "commit.commitSelected": {
+    "en": "Commit Selected…",
+    "zh-CN": "提交所选文件…",
+    "review": "translated",
+    "context": "webview/CommitDialog.tsx, webview/menus.ts, src/git/selected-commit.ts"
+  },
+  "commit.filesToCommit": {
+    "en": "Files to commit · {{count}}",
+    "zh-CN": "提交文件 · {{count}}",
+    "review": "translated",
+    "context": "webview/CommitDialog.tsx, webview/menus.ts, src/git/selected-commit.ts"
+  },
+  "commit.selectedFilesOnly": {
+    "en": "Selected files only",
+    "zh-CN": "仅列出所选文件",
+    "review": "translated",
+    "context": "webview/CommitDialog.tsx, webview/menus.ts, src/git/selected-commit.ts"
+  },
+  "commit.stagedFilesDefault": {
+    "en": "All staged files selected by default",
+    "zh-CN": "默认勾选全部已暂存文件",
+    "review": "translated",
+    "context": "webview/CommitDialog.tsx, webview/menus.ts, src/git/selected-commit.ts"
+  },
+  "commit.combined": {
+    "en": "Combined",
+    "zh-CN": "合并提交",
+    "review": "translated",
+    "context": "webview/CommitDialog.tsx, webview/menus.ts, src/git/selected-commit.ts"
+  },
+  "commit.combinedNotice": {
+    "en": "Combined includes both unstaged and staged changes in the same file.",
+    "zh-CN": "合并提交包含同一文件未暂存和已暂存更改。",
+    "review": "translated",
+    "context": "webview/CommitDialog.tsx, webview/menus.ts, src/git/selected-commit.ts"
+  },
+  "commit.noFiles": {
+    "en": "No files to commit",
+    "zh-CN": "没有待提交文件",
+    "review": "translated",
+    "context": "webview/CommitDialog.tsx, webview/menus.ts, src/git/selected-commit.ts"
+  },
+  "commit.chooseFiles": {
+    "en": "Select at least one file to commit.",
+    "zh-CN": "请至少勾选一个提交文件。",
+    "review": "translated",
+    "context": "webview/CommitDialog.tsx, webview/menus.ts, src/git/selected-commit.ts"
+  },
+  "commit.selectionChanged": {
+    "en": "The selected changes, branch or HEAD changed. Reopen Commit to review the files.",
+    "zh-CN": "所选更改、分支或 HEAD 已变化，请重新打开提交窗口核对文件。",
+    "review": "translated",
+    "context": "webview/CommitDialog.tsx, webview/menus.ts, src/git/selected-commit.ts"
+  },
+  "commit.indexBusy": {
+    "en": "The Index is locked by another Git operation. Try again when it completes.",
+    "zh-CN": "暂存区正被其他 Git 操作锁定，请待其完成后重试。",
+    "review": "translated",
+    "context": "webview/CommitDialog.tsx, webview/menus.ts, src/git/selected-commit.ts"
+  },
+  "commit.indexPublishFailed": {
+    "en": "The commit was created, but updating the Index failed. Check HEAD and the Index before retrying.",
+    "zh-CN": "提交已创建，但更新暂存区失败。请先检查 HEAD 和暂存区，不要直接重试提交。",
+    "review": "translated",
+    "context": "webview/CommitDialog.tsx, webview/menus.ts, src/git/selected-commit.ts"
+  },
+  "commit.selectionOperationBlocked": {
+    "en": "Commit Selected is unavailable during an active Git operation or conflicts. Review and commit the complete staged result.",
+    "zh-CN": "存在活动 Git 操作或冲突时无法提交所选文件，请检查并提交完整暂存结果。",
+    "review": "translated",
+    "context": "webview/CommitDialog.tsx, webview/menus.ts, src/git/selected-commit.ts"
   }
 }

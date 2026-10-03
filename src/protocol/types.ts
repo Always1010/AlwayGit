@@ -45,7 +45,7 @@ export interface CherryPickCheck { head: string; branch: string; included: strin
 export type GitAction =
   | { type: 'stage' | 'resolve-and-stage' | 'unstage'; paths: string[] }
   | { type: 'discard'; paths: string[]; planToken?: string; mode?: 'all' }
-  | { type: 'commit'; message: string; amend?: boolean; reviewToken?: string }
+  | { type: 'commit'; message: string; amend?: boolean; reviewToken?: string; files?: CommitSelection[]; expectedHead?: string; expectedBranch?: string }
   | { type: 'fetch'; remote?: string }
   | { type: 'pull'; strategy: 'ff-only' | 'merge' | 'rebase'; remote?: string }
   | { type: 'push'; remote?: string; branch?: string; remoteBranch?: string; setUpstream?: boolean; followTags?: boolean; forceWithLease?: boolean; expectedOid?: string; expectedDestination?: string }
@@ -71,6 +71,7 @@ export type GitAction =
   | { type: 'operation.continue'; kind: OperationKind; reviewToken?: string }
   | { type: 'operation.abort' | 'operation.skip'; kind: OperationKind };
 export type ContentSource = { kind: 'revision'; revision: string; path: string } | { kind: 'index'; path: string; stage?: 0 | 1 | 2 | 3 } | { kind: 'empty' };
+export interface CommitSelection { path: string; area: 'staged' | 'unstaged' }
 export type DiffTarget = { kind: 'change'; path: string; area: 'staged' | 'unstaged' | 'conflict' } | { kind: 'commit'; oid: string; path: string; parent?: string; previousPath?: string } | { kind: 'comparison'; left: string; right: string; path: string; previousPath?: string } | { kind: 'stash-working'; stashOid: string; path: string };
 export interface DiffImage { mimeType: 'image/png' | 'image/jpeg' | 'image/webp'; data: string; byteLength: number; width: number; height: number }
 interface DiffPreviewBase { path: string; leftLabel: string; rightLabel: string }

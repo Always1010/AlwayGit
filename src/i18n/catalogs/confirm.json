@@ -1,5 +1,10 @@
 {
-  "confirm.discardAll": { "en": "Discard ALL staged and unstaged changes in {{count}} paths? Added and untracked files will be deleted; tracked content returns to the current commit (or an empty Index before the first commit).", "zh-CN": "丢弃 {{count}} 个路径中的全部暂存和未暂存更改？新增文件和未跟踪文件将删除；已跟踪内容恢复至当前提交，尚无提交时清空暂存区。", "review": "translated", "context": "src/application/confirm.ts" },
+  "confirm.discardAll": {
+    "en": "Discard ALL staged and unstaged changes in {{count}} paths? Added and untracked files will be deleted; tracked content returns to the current commit (or an empty Index before the first commit).",
+    "zh-CN": "丢弃 {{count}} 个路径中的全部暂存和未暂存更改？新增文件和未跟踪文件将删除；已跟踪内容恢复至当前提交，尚无提交时清空暂存区。",
+    "review": "translated",
+    "context": "src/application/confirm.ts"
+  },
   "confirm.detachedHead": {
     "en": "Detached HEAD",
     "zh-CN": "Detached HEAD",
@@ -149,5 +154,17 @@
     "zh-CN": "{{count}} 个文件在编辑器中有未保存修改。Git 提交的是磁盘上已暂存的内容。",
     "review": "translated",
     "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.useDiskContent": {
+    "en": "Use Disk Content",
+    "zh-CN": "使用磁盘内容",
+    "review": "translated",
+    "context": "src/application/confirm.ts"
+  },
+  "confirm.unsavedSelectedFiles": {
+    "en": "{{count}} file(s) have unsaved editor changes. Selected unstaged files use their latest saved disk content; selected staged files use Index content.",
+    "zh-CN": "{{count}} 个文件在编辑器中有未保存修改。所选未暂存文件使用最新已保存的磁盘内容；所选已暂存文件使用暂存内容。",
+    "review": "translated",
+    "context": "src/application/confirm.ts"
   }
 }

@@ -10,10 +10,11 @@ import { rpc } from './rpc';
 import { showRemoteRequest } from './RemoteRequestDialog';
 import { cherryPickOrder } from './commitSelection';
 import type { CherryPickMenuCheck } from './useCherryPickCheck';
+import type { CommitSelection } from '../src/protocol/types';
 
 export interface FileMenuEntry { path: string; target: DiffTarget }
 export type MenuTarget = { kind: 'working-tree' } | { kind: 'repository'; group: RepositoryGroup; groups?:RepositoryGroup[] } | {kind:'repository-collection';collection:RepositoryCollection}| { kind: 'ref'; ref: GitRef; refs?:GitRef[] } | { kind: 'ref-folder'; label: string; refs: GitRef[] } | { kind: 'files'; primary: FileMenuEntry; files: FileMenuEntry[] } | { kind: 'commit'; oid: string; oids?: string[] } | { kind: 'stash'; stash: Stash } | { kind: 'worktree'; worktree: Worktree; worktrees?:Worktree[] } | { kind: 'remote'; name: string } | { kind: 'group'; group: 'repositories' | 'local' | 'remote' | 'tag' | 'stash' | 'worktree' };
-export interface MenuApi { open(dialog: DialogRequest): void; checkout(oid: string): void; openDiff(target: DiffTarget): void; editFile(target: DiffTarget): void; host(method: 'copyText'|'openRepository'|'openWorktree'|'renameRepositoryCollection'|'deleteRepositoryCollection'|'moveRepositories', payload: unknown, repoId?: string):Promise<void>; addRepository():Promise<void>; removeRepositories(groups:RepositoryGroup[]):void; fetchRepositories(repositories:Repository[]):void }
+export interface MenuApi { startCommit(files?: CommitSelection[]): void; open(dialog: DialogRequest): void; checkout(oid: string): void; openDiff(target: DiffTarget): void; editFile(target: DiffTarget): void; host(method: 'copyText'|'openRepository'|'openWorktree'|'renameRepositoryCollection'|'deleteRepositoryCollection'|'moveRepositories', payload: unknown, repoId?: string):Promise<void>; addRepository():Promise<void>; removeRepositories(groups:RepositoryGroup[]):void; fetchRepositories(repositories:Repository[]):void }
 export function menuFor(target: MenuTarget, api: MenuApi, check?: CherryPickMenuCheck): { caption: string; items: MenuItem[] } {
   const state=useWorkbench.getState(), snapshot=state.snapshot, busy=state.busy;
   const t=translator(state.language);
@@ -65,6 +66,10 @@ export function menuFor(target: MenuTarget, api: MenuApi, check?: CherryPickMenu
     const changes=unique.filter((file):file is FileMenuEntry & {target:Extract<DiffTarget,{kind:'change'}>}=>file.target.kind==='change'),stage=changes.filter(file=>file.target.area!=='staged').map(file=>file.path),unstage=changes.filter(file=>file.target.area==='staged').map(file=>file.path),discard=changes.filter(file=>file.target.area==='unstaged').map(file=>file.path),conflicts=changes.filter(file=>file.target.area==='conflict').map(file=>file.path);
     const items:MenuItem[]=[];
     if(unique.length===1)items.push(item(t("menus.openDiffInVSCode"),()=>api.openDiff(target.primary.target),'diff'),item(t("menus.editInVSCode"),()=>api.editFile(target.primary.target),'edit'));
+    if (state.changeListMode === 'unified' && changes.length) {
+      items.push(item(uiText('commit.commit'), () => api.startCommit(), 'git-commit', busy));
+      items.push(item(t('commit.commitSelected'), () => api.startCommit(changes.flatMap(file => file.target.area === 'conflict' ? [] : [{path:file.path,area:file.target.area}])),'git-commit',busy || !!conflicts.length || !!snapshot?.operation.kind));
+    }
     const ordinary=stage.filter(path=>!conflicts.includes(path));
     if(conflicts.length)items.push(item(t("menus.manuallyHandledMarkStage", { count: (conflicts.length) }),()=>{void state.execute({type:'resolve-and-stage',paths:conflicts});},'add',busy));
     if(ordinary.length)items.push(item(t("menus.stageFiles", { count: (ordinary.length) }),()=>{void state.execute({type:'stage',paths:ordinary});},'add',busy));
