@@ -13,6 +13,7 @@ export function filePathLabel(path: string): { name: string; parent: string } {
 
 export function reconcileFileSelection(order: readonly string[], selection: FileSelection): FileSelection {
   const selected = new Set(selection.paths);
+  if (!selected.size && !selection.anchor) return { paths: [] };
   return { paths: [...new Set(order)].filter(path => selected.has(path)), anchor: selection.anchor && order.includes(selection.anchor) ? selection.anchor : undefined };
 }
 

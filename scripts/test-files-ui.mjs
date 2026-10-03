@@ -286,6 +286,26 @@ export async function verifyFiles(browser, url) {
     assert.equal(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action').at(-1).payload.amend), true, 'Message-only Amend works with no Staged files');
     await details.getByRole('button', { name: 'Clear file filter', exact: true }).click();
     await page.screenshot({ path: 'artifacts/working-tree-search.png' });
+    // Large fixtures protect logical selection across rows that are not mounted.
+    await page.evaluate(() => {
+      const fixture = window.__filesFixture;
+      fixture.snapshot.changes = Array.from({ length: 41210 }, (_, index) => ({ path: `large/${String(index).padStart(5, '0')}.txt`, indexStatus: 'M', worktreeStatus: 'M', conflict: false, untracked: false }));
+      window.postMessage({ type: 'changed', repoId: 'files' }, '*');
+    });
+    await details.getByText('Staged 41210 · Unstaged 41210', { exact: true }).waitFor();
+    assert.ok(await groups.locator('.change-file').count() < 200, '82,420 logical rows must not create a full DOM');
+    await groups.focus(); await page.keyboard.press('Control+a');
+    await groups.getByText('41210 selected', { exact: true }).waitFor();
+    await groups.locator('.change-file .file-name').first().click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Copy 41210 Paths', exact: true }).click();
+    assert.equal((await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'copyText').at(-1).payload.text)).split('\n').length, 41210, 'Select All includes unmounted files and deduplicates both areas');
+    await unstaged.getByRole('button', { name: 'Collapse Unstaged', exact: true }).click();
+    assert.equal(await unstaged.locator('.change-file').count(), 0, 'Collapsed groups do not mount file rows');
+    await groups.evaluate(element => { element.scrollTop = element.scrollHeight; });
+    await staged.getByRole('button', { name: 'large/41209.txt', exact: true }).waitFor();
+    await workingFilter.fill('large/41209');
+    assert.equal(await groups.locator('.change-file').count(), 1, 'Filtering searches the full list beyond the viewport');
+    await details.getByRole('button', { name: 'Clear file filter', exact: true }).click();
     assert.deepEqual(errors, []);
     console.log('ALWAYGIT_FILES_UI_TESTS_PASSED: working path filtering and action scope, narrow Staged Commit entry, cancel/reload draft recovery, failures, hidden conflicts, Commit/Amend and native text editing');
   } finally { await page.close(); }
