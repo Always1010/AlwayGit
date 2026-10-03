@@ -1,3 +1,4 @@
+import { normalizeShortcutOverrides, type ShortcutOverrides } from '../src/protocol/shortcuts';
 import { useDock } from './dock-store';
 import { translate, uiText, setLanguageReader } from './text';
 import { create } from 'zustand';
@@ -53,7 +54,7 @@ interface WorkbenchState {
   remoteRequest?: { repoId: string; branch: string; repositories: HostingRepository[]; defaultBranch?: string };
   operationReview?: { repoId: string; action: Extract<GitAction, { type: 'commit' | 'operation.continue' }>; review: OperationReview };
   operationSettings: OperationSettings; loadOperationSettings(): Promise<void>; saveOperationSettings(settings: Omit<OperationSettings,'scope'>): Promise<void>;
-  appearance: Appearance; diffNavigationScope: DiffNavigationScope; singleKeyShortcuts: boolean; changeListMode: 'split' | 'unified'; settingsBaseline?: InterfaceSettings;
+  appearance: Appearance; diffNavigationScope: DiffNavigationScope; singleKeyShortcuts: boolean; shortcutOverrides: ShortcutOverrides; changeListMode: 'split' | 'unified'; settingsBaseline?: InterfaceSettings;
   beginSettings(): void; previewSettings(value: InterfaceSettingsUpdate): void; finishSettings(apply: boolean): void; restoreLayout(): void;
   repositories: Repository[]; repositoryCollections:RepositoryCollection[]; repositoryOrder?:RepositoryOrder; reorderRepository(payload:ReorderRepository):Promise<void>; repositoryStatuses: Record<string, RepositoryStatus>; selectedRepositoryKeys:string[]; repositorySelectionAnchor?:string; selectedWorktreePaths:string[]; worktreeSelectionAnchor?:string; repoId?: string; snapshot?: Snapshot; commits: Commit[]; historyHead?: Commit; details?: CommitDetails; comparison?: CommitComparison; selectedOid?: string; selectedOids: string[]; selectionAnchor?: string; selectedRefs:string[]; refSelectionAnchor?:string; selectedParent?: string; selectedStashOid?: string; selectedStashSection?:StashSection; stashDetails?: StashDetails; selectedFile?: string; diffTarget?: DiffTarget; diffRevision: number;
   ref?: string; checkedRefs?: string[]; expandedRefGroups?:string[]; collapsedSidebarGroups:string[]; search: string; language: Language; layout: LayoutState; checkoutFailure?: CheckoutFailure; stashApplyFailure?: StashApplyBlocker; actionFeedback?: ActionFeedback; locateToken:number;
@@ -118,7 +119,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   setWorkingFilter(value) { const repoId = get().repoId; if (repoId) set({ workingFilters: { ...get().workingFilters, [repoId]: value } }); },
   diffNavigationScope: session.diffNavigationScope === 'file' ? 'file' : 'commit',
   changeListMode: session.changeListMode === 'unified' ? 'unified' : 'split',
-  singleKeyShortcuts: session.singleKeyShortcuts !== false,
+  singleKeyShortcuts: session.singleKeyShortcuts !== false, shortcutOverrides: normalizeShortcutOverrides(session.shortcutOverrides),
   operationSettings: { allowDetachedHead: false, pushFollowTags: false, pushTagAfterCreate: false, defaultResetMode: 'mixed', scope: 'workspace' },
   async loadOperationSettings() { const settings = await rpc<OperationSettings>('operationSettings'); if (typeof settings?.allowDetachedHead === 'boolean'&&typeof settings?.pushFollowTags==='boolean'&&typeof settings?.pushTagAfterCreate==='boolean'&&['soft','mixed','hard'].includes(settings?.defaultResetMode)) set({ operationSettings: settings }); },
   async saveOperationSettings(update) { const settings = await rpc<OperationSettings>('saveOperationSettings', undefined, update); if (typeof settings?.allowDetachedHead !== 'boolean' || typeof settings?.pushFollowTags !== 'boolean' || typeof settings?.pushTagAfterCreate !== 'boolean' || !['soft','mixed','hard'].includes(settings?.defaultResetMode) || settings.allowDetachedHead !== update.allowDetachedHead || settings.pushFollowTags !== update.pushFollowTags || settings.pushTagAfterCreate !== update.pushTagAfterCreate || settings.defaultResetMode !== update.defaultResetMode) throw new Error(uiText("notices.couldNotSaveGitOperationSettings")); set({ operationSettings: settings }); },
@@ -450,26 +451,26 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   restoreLayout() { const { font, row } = get().layout; set({ layout: { ...defaultLayout, font, row } }); },
   beginSettings() {
     const state = get(); if (state.settingsBaseline) return;
-    set({ settingsBaseline: { language: state.language, font: state.layout.font, row: state.layout.row, appearance: { ...state.appearance }, diffNavigationScope: state.diffNavigationScope, singleKeyShortcuts: state.singleKeyShortcuts, changeListMode: state.changeListMode } });
+    set({ settingsBaseline: { language: state.language, font: state.layout.font, row: state.layout.row, appearance: { ...state.appearance }, diffNavigationScope: state.diffNavigationScope, singleKeyShortcuts: state.singleKeyShortcuts, shortcutOverrides: state.shortcutOverrides, changeListMode: state.changeListMode } });
   },
   previewSettings(value) {
     if (!get().settingsBaseline) return;
     const state = get();
-    set({ language: value.language ?? state.language, appearance: normalizeAppearance(value.appearance ?? state.appearance), diffNavigationScope: value.diffNavigationScope ?? state.diffNavigationScope, singleKeyShortcuts: value.singleKeyShortcuts ?? state.singleKeyShortcuts, changeListMode: value.changeListMode ?? state.changeListMode, layout: layout({ ...state.layout, font: value.font ?? state.layout.font, row: value.row ?? state.layout.row }) });
+    set({ language: value.language ?? state.language, appearance: normalizeAppearance(value.appearance ?? state.appearance), diffNavigationScope: value.diffNavigationScope ?? state.diffNavigationScope, singleKeyShortcuts: value.singleKeyShortcuts ?? state.singleKeyShortcuts, shortcutOverrides: normalizeShortcutOverrides(value.shortcutOverrides ?? state.shortcutOverrides), changeListMode: value.changeListMode ?? state.changeListMode, layout: layout({ ...state.layout, font: value.font ?? state.layout.font, row: value.row ?? state.layout.row }) });
   },
   finishSettings(apply) {
     const baseline = get().settingsBaseline; if (!baseline) return;
-    set(apply ? { settingsBaseline: undefined } : { settingsBaseline: undefined, language: baseline.language, appearance: baseline.appearance, diffNavigationScope: baseline.diffNavigationScope, singleKeyShortcuts: baseline.singleKeyShortcuts, changeListMode: baseline.changeListMode, layout: layout({ ...get().layout, font: baseline.font, row: baseline.row }) });
+    set(apply ? { settingsBaseline: undefined } : { settingsBaseline: undefined, language: baseline.language, appearance: baseline.appearance, diffNavigationScope: baseline.diffNavigationScope, singleKeyShortcuts: baseline.singleKeyShortcuts, shortcutOverrides: baseline.shortcutOverrides, changeListMode: baseline.changeListMode, layout: layout({ ...get().layout, font: baseline.font, row: baseline.row }) });
   },
 }));
 let persistedSelection: unknown[] = [];
 useWorkbench.subscribe(state => {
-  const selection = [state.repoId, state.drafts, state.ref, state.checkedRefs, state.expandedRefGroups, state.collapsedSidebarGroups, state.search, state.selectedOid, state.selectedParent, state.selectedStashOid, state.selectedFile, state.tab, state.language, state.layout, state.appearance, state.diffNavigationScope, state.singleKeyShortcuts, state.changeListMode, state.settingsBaseline];
+  const selection = [state.repoId, state.drafts, state.ref, state.checkedRefs, state.expandedRefGroups, state.collapsedSidebarGroups, state.search, state.selectedOid, state.selectedParent, state.selectedStashOid, state.selectedFile, state.tab, state.language, state.layout, state.appearance, state.diffNavigationScope, state.singleKeyShortcuts, state.shortcutOverrides, state.changeListMode, state.settingsBaseline];
   if (selection.every((value, index) => Object.is(value, persistedSelection[index]))) return;
   persistedSelection = selection;
   if (state.repoId) views[state.repoId] = { ref: state.ref, checkedRefs: state.checkedRefs, expandedRefGroups:state.expandedRefGroups,collapsedSidebarGroups:state.collapsedSidebarGroups, search: state.search, selectedOid: state.selectedOid, selectedParent: state.selectedParent, selectedStashOid: state.selectedStashOid, selectedFile: state.selectedFile, tab: state.tab };
   const baseline = state.settingsBaseline;
-  saveSession({ version: 2, changeListMode: baseline?.changeListMode ?? state.changeListMode, diffNavigationScope: baseline?.diffNavigationScope ?? state.diffNavigationScope, singleKeyShortcuts: baseline?.singleKeyShortcuts ?? state.singleKeyShortcuts, repoId: state.repoId, drafts: state.drafts, views, language: baseline?.language ?? state.language, layout: baseline ? { ...state.layout, font: baseline.font, row: baseline.row } : state.layout, appearance: baseline?.appearance ?? state.appearance }, error => useWorkbench.getState().report(new Error(`${translate(state.language, "notices.couldNotSaveTheRecoveryBaselineDraftsRemainIn")} ${error.message}`)));
+  saveSession({ version: 2, changeListMode: baseline?.changeListMode ?? state.changeListMode, diffNavigationScope: baseline?.diffNavigationScope ?? state.diffNavigationScope, singleKeyShortcuts: baseline?.singleKeyShortcuts ?? state.singleKeyShortcuts, shortcutOverrides: baseline?.shortcutOverrides ?? state.shortcutOverrides, repoId: state.repoId, drafts: state.drafts, views, language: baseline?.language ?? state.language, layout: baseline ? { ...state.layout, font: baseline.font, row: baseline.row } : state.layout, appearance: baseline?.appearance ?? state.appearance }, error => useWorkbench.getState().report(new Error(`${translate(state.language, "notices.couldNotSaveTheRecoveryBaselineDraftsRemainIn")} ${error.message}`)));
 });
 let changedTimer: ReturnType<typeof setTimeout>;
 let pendingChange: { repoId: string; changes?: RepositoryChanges; snapshot?: Snapshot } | undefined;

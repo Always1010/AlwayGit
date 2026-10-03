@@ -902,3 +902,19 @@ describe('repository UI consistency', () => {
     expect(bridge.rpc).not.toHaveBeenCalled();
   });
 });
+
+
+it('keeps shortcut previews out of recovery saves, rolls back on Cancel and persists Apply', () => {
+  const overrides = { fetch: [{ key: 'f', modifiers: ['primary' as const, 'shift' as const] }], push: [] };
+  store.setState({ drafts: { a: 'keep draft' } });
+  store.getState().beginSettings();
+  store.getState().previewSettings({ shortcutOverrides: overrides });
+  expect(store.getState().shortcutOverrides).toEqual(overrides);
+  expect(bridge.save.mock.calls.at(-1)?.[0].shortcutOverrides).toEqual({});
+  store.getState().finishSettings(false);
+  expect(store.getState().shortcutOverrides).toEqual({});
+  store.getState().beginSettings();
+  store.getState().previewSettings({ shortcutOverrides: overrides });
+  store.getState().finishSettings(true);
+  expect(bridge.save.mock.calls.at(-1)?.[0]).toMatchObject({ shortcutOverrides: overrides, drafts: { a: 'keep draft' } });
+});

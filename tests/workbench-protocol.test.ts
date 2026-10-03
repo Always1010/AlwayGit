@@ -98,3 +98,12 @@ describe('Workbench protocol validation', () => {
     expect(() => actionSchema.parse({ type: 'branch.track', branches, stashFirst: true })).toThrow();
   });
 });
+
+
+it('round-trips custom shortcuts with an old session and rejects conflicting bindings', () => {
+  const legacy = { drafts: { a: 'keep draft' }, singleKeyShortcuts: false };
+  expect(sessionSchema.parse(legacy)).toEqual(legacy);
+  const shortcutOverrides = { refresh: [], fetch: [{ key: 'f', modifiers: ['primary', 'shift'] }] };
+  expect(sessionSchema.parse({ ...legacy, shortcutOverrides })).toEqual({ ...legacy, shortcutOverrides });
+  expect(sessionSchema.safeParse({ ...legacy, shortcutOverrides: { fetch: [{ key: 'p', modifiers: [] }] } }).success).toBe(false);
+});
