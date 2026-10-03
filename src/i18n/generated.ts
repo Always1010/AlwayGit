@@ -2249,6 +2249,18 @@ export const catalog = {
     "en": "View all {{count}} references",
     "zh-CN": "查看全部 {{count}} 个引用"
   },
+  "history.locationBack": {
+    "en": "Back to previous history view",
+    "zh-CN": "返回上一历史视图"
+  },
+  "history.locationReset": {
+    "en": "Show current branch only and locate HEAD",
+    "zh-CN": "仅显示当前分支并定位 HEAD"
+  },
+  "history.locationResetHead": {
+    "en": "Show current HEAD history only",
+    "zh-CN": "仅显示当前 HEAD 的历史"
+  },
   "host.trustThisWorkspaceUsingVSCodeWorkspaceTrustThen": {
     "en": "Trust this workspace using VS Code Workspace Trust, then reopen AlwayGit.",
     "zh-CN": "请在 VS Code 中信任此工作区，然后重新打开 AlwayGit。"
@@ -5709,6 +5721,9 @@ export interface MessageParameters {
   "history.locationComplete": {  };
   "history.locationOtherRefs": { count: number };
   "history.locationAllRefs": { count: number };
+  "history.locationBack": {  };
+  "history.locationReset": {  };
+  "history.locationResetHead": {  };
   "host.trustThisWorkspaceUsingVSCodeWorkspaceTrustThen": {  };
   "host.selectARepositoryOrAFolderContainingRepositories": {  };
   "host.scanFolder": {  };

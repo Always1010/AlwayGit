@@ -2,7 +2,7 @@
   "name": "alwaygit",
   "displayName": "%manifest.displayName%",
   "description": "%manifest.description%",
-  "version": "0.40.0",
+  "version": "0.41.0",
   "publisher": "alwaygit-dev",
   "private": true,
   "type": "module",
@@ -129,7 +129,11 @@
         },
         "alwaygit.defaultResetMode": {
           "type": "string",
-          "enum": ["soft", "mixed", "hard"],
+          "enum": [
+            "soft",
+            "mixed",
+            "hard"
+          ],
           "default": "mixed",
           "scope": "window",
           "description": "%manifest.contributes.configuration.properties.alwaygit.defaultResetMode.description%"

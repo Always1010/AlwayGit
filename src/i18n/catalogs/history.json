@@ -418,5 +418,23 @@
     "zh-CN": "查看全部 {{count}} 个引用",
     "review": "translated",
     "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationBack": {
+    "en": "Back to previous history view",
+    "zh-CN": "返回上一历史视图",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationReset": {
+    "en": "Show current branch only and locate HEAD",
+    "zh-CN": "仅显示当前分支并定位 HEAD",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationResetHead": {
+    "en": "Show current HEAD history only",
+    "zh-CN": "仅显示当前 HEAD 的历史",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
   }
 }

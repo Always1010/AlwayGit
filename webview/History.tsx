@@ -30,6 +30,7 @@ function HistoryPanel({ context, checkout, checkoutBranch }: { context: ContextH
   useShortcuts({search:{enabled:true,run:()=>{searchInput.current?.focus();searchInput.current?.select();}}});
   const [hoveredPath,setHoveredPath]=useState<string|undefined>(undefined);
   const displayedHistory = useWorkbenchFields('displayedHistory').displayedHistory;
+  const navigation = useWorkbenchFields('historyRestoreToken', 'historyRestoreTop', 'setHistoryScroll');
   const searching=(displayedHistory?.search ?? state.search).length>0;
   const refIndex = indexRefs(state.snapshot?.refs);
   const items=useMemo(()=>buildHistoryItems(state.commits,state.historyHead),[state.commits,state.historyHead]);
@@ -55,10 +56,15 @@ function HistoryPanel({ context, checkout, checkoutBranch }: { context: ContextH
   },[rowHeight,state.layout.font]);
   useEffect(()=>setHoveredPath(undefined),[state.repoId,paletteKey,state.search]);
   useEffect(()=>{const last=rows.at(-1);if(last&&last.index>=items.length-10&&state.hasMore&&!state.historyLoading&&!state.locatingOid)void state.loadHistory(true);},[rows.at(-1)?.index,items.length,state.hasMore,state.historyLoading,state.locatingOid]);
-  const refsKey=(state.checkedRefs??[]).join('\0');
+  const refsKey=(displayedHistory?.refs??state.checkedRefs??[]).join('\0');
   useEffect(()=>{viewport.current?.scrollTo({top:0,left:0});},[state.repoId,refsKey,state.search]);
   useEffect(()=>{pendingSelection.current=state.tab==='changes'?WORKING_TREE_OID:state.selectedOid;},[state.selectedOid,state.locateToken,state.repoId,state.tab]);
   useEffect(()=>{const key=pendingSelection.current;if(!key)return;const index=items.findIndex(item=>item.key===key);if(index>=0){const target=items[index].kind==='commit'&&items[index].oid===state.snapshot?.head&&items[index-1]?.kind==='working'?index-1:index;virtual.scrollToIndex(target,{align:'auto'});pendingSelection.current=undefined;}},[items,state.selectedOid,state.locateToken,state.repoId,state.tab]);
+  useEffect(() => {
+    if (!navigation.historyRestoreToken) return;
+    pendingSelection.current = undefined;
+    virtual.scrollToOffset(navigation.historyRestoreTop);
+  }, [navigation.historyRestoreToken]);
   useEffect(()=>{const key=pendingRowFocus.current;if(!key)return;const target=[...(viewport.current?.querySelectorAll<HTMLElement>('[data-history-key]')??[])].find(element=>element.dataset.historyKey===key);if(target){target.focus();pendingRowFocus.current=undefined;}},[rows.at(0)?.index,rows.at(-1)?.index,state.selectedOid,state.tab]);
   useEffect(()=>{pendingRowFocus.current=undefined;},[state.repoId]);
   const columns={gridTemplateColumns:`${searching?'':`${width}px `}minmax(180px,1fr) ${state.layout.author}px ${state.layout.date}px`};
@@ -76,7 +82,7 @@ function HistoryPanel({ context, checkout, checkoutBranch }: { context: ContextH
     <div className="history-caption selection-summary"><span>{displayedHistory?.refs.length??state.checkedRefs?.length??0} {t("history.refs")} · {searching&&state.historyLoading&&!state.commits.length?t("history.searching"):`${state.commits.length}${state.hasMore?'+':''} ${searching?t("history.matchingCommits"): uiText("history.commit")}`}{!searching&&` · ${t("history.sharedAncestryShownOnce")}`}{state.locatingOid&&` · ${t("history.locatingCommit")}`}{state.selectedOids.length>1?` · ${state.selectedOids.length} ${t("history.commitsSelected")}`:''}</span><div className="push-state-legend" aria-label={t("history.commitPushStatusLegend")}><span><i className="push-node pushed"/>{t("history.pushed")}</span><span><i className="push-node local"/>{t("history.localOnly")}</span></div>{searching&&<Button icon="go-to-file" aria-label={t("history.locateInFullHistory")} title={t("history.locateInFullHistory")} disabled={!locateOid||state.historyLoading} onClick={()=>{if(locateOid)void state.locateCommit(locateOid);}}/>}{state.selectedOids.length>1&&<Button icon="close" onClick={()=>state.setCommitSelection([])}>{t("history.clear")}</Button>}</div>
     <div className="history-table" role="table" aria-label={uiText("history.commitHistoryVariant2")} aria-multiselectable="true" aria-rowcount={items.length+1}>
     <div ref={header} className="history-header-scroll"><div className="history-columns" style={{...columns,minWidth:width+180+state.layout.author+state.layout.date}} role="row">{!searching&&<span role="columnheader" className="resizable-column-end">{uiText("history.graph")}<ResizeHandle axis="x" label={uiText("history.resizeGraphColumn")} className="column-grip column-grip-end" value={state.layout.graph} min={48} max={180} onChange={graph=>state.setLayout({graph})}/></span>}<span role="columnheader">{t("history.messageRefs")}</span><span role="columnheader" className="resizable-column-start">{t("history.author")}<ResizeHandle axis="x" label={uiText("history.resizeAuthorColumn")} className="column-grip column-grip-start" value={state.layout.author} min={64} max={220} reverse onChange={author=>state.setLayout({author})}/></span><span role="columnheader" className="resizable-column-start">{t("history.date")}<ResizeHandle axis="x" label={uiText("history.resizeDateColumn")} className="column-grip column-grip-start" value={state.layout.date} min={82} max={220} reverse onChange={date=>state.setLayout({date})}/></span></div></div>
-    <div className="history-viewport" ref={viewport} role="rowgroup" tabIndex={0} onMouseLeave={()=>setHoveredPath(undefined)} onScroll={event=>{lastScrollTop.current=event.currentTarget.scrollTop;if(header.current)header.current.scrollLeft=event.currentTarget.scrollLeft;}} onKeyDown={event=>{
+    <div className="history-viewport" ref={viewport} role="rowgroup" tabIndex={0} onMouseLeave={()=>setHoveredPath(undefined)} onScroll={event=>{lastScrollTop.current=event.currentTarget.scrollTop;navigation.setHistoryScroll(event.currentTarget.scrollTop);if(header.current)header.current.scrollLeft=event.currentTarget.scrollLeft;}} onKeyDown={event=>{
       if(!['ArrowUp','ArrowDown'].includes(event.key)||event.target!==event.currentTarget)return;event.preventDefault();const index=state.tab==='changes'?items.findIndex(item=>item.kind==='working'):items.findIndex(item=>item.kind==='commit'&&item.oid===state.selectedOid);move(index<0?0:index,event.key==='ArrowDown'?1:-1);
     }}>
       <div className="history-rows" style={{height:virtual.getTotalSize(),minWidth:width+180+state.layout.author+state.layout.date}}>

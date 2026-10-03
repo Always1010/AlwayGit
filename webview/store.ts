@@ -15,6 +15,7 @@ import { groupRepositories } from '../src/protocol/repositories';
 
 let catalogEpoch = 0, repositoryEpoch = 0, repositoryStatusEpoch = 0, snapshotEpoch = 0, historyEpoch = 0, detailEpoch = 0;
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
+let historyController: AbortController | undefined;
 function cancelSearchTimer() { clearTimeout(searchTimer); searchTimer = undefined; }
 let refreshInvalidation: { epoch: number; changes?: RepositoryChanges; forceHistory: boolean } | undefined;
 const session = readSession(), views = session.views ?? {}, executingRepositories = new Set<string>(), hostBusyRepositories = new Set<string>();
@@ -22,7 +23,28 @@ const actionFeedbacks = new Map<string, ActionFeedback>();
 let actionSequence = 0;
 export const defaultLayout: LayoutState = { preset: 'workbench', sidebar: 210, details: 300, diff: 220, diffCollapsed: false, graph: 64, author: 100, date: 120, font: 13, row: 24 };
 export type CheckoutFailure = CheckoutBlocker & { detached?: boolean };
+interface HistoryView {
+  refs: string[]; search: string; commits: Commit[]; head?: Commit; tips: string[]; nextOffset: number; hasMore: boolean;
+  selectedOid?: string; selectedParent?: string; selectedStashOid?: string; selectedFile?: string; tab: 'history' | 'changes';
+  scrollTop: number; key: string;
+}
+const historyViews = new Map<string, HistoryView[]>();
+function rememberHistory(): void {
+  const state = useWorkbench.getState(), displayed = state.displayedHistory;
+  if (!state.repoId || !state.snapshot || !displayed) return;
+  const stack = historyViews.get(state.repoId) ?? [], last = stack.at(-1);
+  if (last && last.search === displayed.search && last.refs.join('\0') === displayed.refs.join('\0')) return;
+  stack.push({ refs: [...displayed.refs], search: displayed.search, commits: state.commits, head: state.historyHead, tips: state.tips,
+    nextOffset: state.nextOffset, hasMore: state.hasMore, selectedOid: state.selectedOid, selectedParent: state.selectedParent,
+    selectedStashOid: state.selectedStashOid, selectedFile: state.selectedFile, tab: state.tab, scrollTop: state.historyScrollTop,
+    key: historyKey(state.snapshot, displayed.refs) });
+  while (stack.length > 12 || stack.length > 1 && stack.reduce((count, view) => count + view.commits.length, 0) > 24_000) stack.shift();
+  historyViews.set(state.repoId, stack);
+  useWorkbench.setState({ historyBackDepth: stack.length });
+}
 interface WorkbenchState {
+  historyBackDepth: number; historyScrollTop: number; historyRestoreTop: number; historyRestoreToken: number;
+  backHistory(): void; resetHistory(): void; setHistoryScroll(top: number): void;
   displayedHistory?: { refs: string[]; search: string }; historyError?: string;
   remoteRequest?: { repoId: string; branch: string; repositories: HostingRepository[]; defaultBranch?: string };
   operationReview?: { repoId: string; action: Extract<GitAction, { type: 'commit' | 'operation.continue' }>; review: OperationReview };
@@ -47,6 +69,33 @@ const initialLayout = layout(session.layout);
 // Only the old default density migrates; custom dimensions and drafts are kept.
 if (!session.appearance && initialLayout.row === 26) initialLayout.row = 24;
 export const useWorkbench = create<WorkbenchState>((set, get) => ({
+  historyBackDepth: 0, historyScrollTop: 0, historyRestoreTop: 0, historyRestoreToken: 0,
+  setHistoryScroll(top) { set({ historyScrollTop: Math.max(0, top) }); },
+  backHistory() {
+    const state = get(), stack = state.repoId ? historyViews.get(state.repoId) : undefined, view = stack?.pop();
+    if (!view || !state.snapshot) return;
+    cancelSearchTimer(); historyController?.abort(); ++historyEpoch; ++detailEpoch;
+    const valid = view.key === historyKey(state.snapshot, view.refs);
+    set({ historyBackDepth: stack!.length, checkedRefs: view.refs.filter(ref => ref === 'HEAD' || state.snapshot!.refs.some(item => item.fullName === ref)), search: view.search, ref: undefined,
+      commits: valid ? view.commits : [], historyHead: valid ? view.head : undefined, tips: valid ? view.tips : [],
+      nextOffset: valid ? view.nextOffset : 0, hasMore: valid && view.hasMore, displayedHistory: valid ? { refs: view.refs, search: view.search } : undefined,
+      historyLoading: false, historyError: undefined, error: undefined, notice: undefined, locatingOid: undefined,
+      selectedOid: view.selectedOid, selectedParent: view.selectedParent, selectedStashOid: view.selectedStashOid, selectedFile: view.selectedFile,
+      selectedOids: view.selectedOid ? [view.selectedOid] : [], selectionAnchor: view.selectedOid, tab: view.tab,
+      comparison: undefined, details: undefined, stashDetails: undefined, selectedStashSection: undefined, detailsLoading: false, diffTarget: undefined,
+      historyScrollTop: valid ? view.scrollTop : 0, historyRestoreTop: valid ? view.scrollTop : 0, historyRestoreToken: state.historyRestoreToken + 1 });
+    if (!valid) void get().loadHistory();
+    if (view.tab === 'changes') get().selectWorking();
+    else if (view.selectedOid) void get().selectCommit(view.selectedOid, view.selectedParent, view.selectedStashOid);
+  },
+  resetHistory() {
+    const state = get(), snapshot = state.snapshot; if (!snapshot?.head) return;
+    const ref = snapshot.refs.find(ref => ref.kind === 'local' && ref.name === snapshot.branch)?.fullName ?? 'HEAD';
+    if (state.checkedRefs?.length === 1 && state.checkedRefs[0] === ref && !state.search && !state.historyError && !state.historyLoading) { get().locateHead(); return; }
+    rememberHistory(); cancelSearchTimer();
+    set({ checkedRefs: [ref], search: '', ref: undefined, selectedOids: [], comparison: undefined });
+    void get().locateCommit(snapshot.head);
+  },
   workingFilters: {},
   setWorkingFilter(value) { const repoId = get().repoId; if (repoId) set({ workingFilters: { ...get().workingFilters, [repoId]: value } }); },
   diffNavigationScope: session.diffNavigationScope === 'file' ? 'file' : 'commit',
@@ -107,6 +156,8 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   },
   async selectRepository(id) {
     cancelSearchTimer();
+    historyController?.abort();
+    set({ historyBackDepth: historyViews.get(id)?.length ?? 0, historyScrollTop: 0 });
     set({ displayedHistory: undefined, historyError: undefined });
     ++repositoryEpoch; ++historyEpoch; ++detailEpoch; const view = views[id];
     set({ operationReview: undefined });
@@ -145,9 +196,10 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     const { repoId, search, nextOffset, historyLoading, checkedRefs } = get(); if (!repoId || append && historyLoading) return;
     cancelSearchTimer();
     const epoch = ++historyEpoch, repoEpoch = repositoryEpoch; set({ historyLoading: true, historyError: undefined });
+    historyController?.abort(); const controller = historyController = new AbortController();
     try {
       const query: HistoryQuery = { offset: append ? nextOffset : 0, tips: append ? get().tips : checkedRefs ?? [], ...(search ? { search } : {}), ...(get().snapshot?.head ? { head: get().snapshot!.head } : {}) };
-      const page = await rpc<HistoryPage>('history', repoId, query);
+      const page = await rpc<HistoryPage>('history', repoId, query, { signal: controller.signal });
       if (epoch !== historyEpoch || repoEpoch !== repositoryEpoch) return;
       const prior = new Set(get().commits.map(c => c.oid)), all = append ? [...get().commits, ...page.commits.filter(c => !prior.has(c.oid))] : page.commits;
       set({ commits: all, historyHead: page.head, tips: page.tips, nextOffset: page.nextOffset, hasMore: page.hasMore, displayedHistory: { refs: [...(checkedRefs ?? [])], search } });
@@ -221,6 +273,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   setCheckedRefs(refs) {
     const next = [...new Set(refs)], prior = get().checkedRefs ?? [];
     if (next.length === prior.length && next.every(ref => prior.includes(ref))) return;
+    rememberHistory();
     set({ locatingOid: undefined, checkedRefs: next, ref: undefined, tips: [], selectedOids:[], selectionAnchor:undefined, comparison:undefined });
     void get().loadHistory();
   },
@@ -228,6 +281,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   toggleSidebarGroup(key){set({collapsedSidebarGroups:get().collapsedSidebarGroups.includes(key)?get().collapsedSidebarGroups.filter(item=>item!==key):[...get().collapsedSidebarGroups,key]});},
   setSearch(search) {
     if (search === get().search) return;
+    rememberHistory(); historyController?.abort();
     cancelSearchTimer(); ++historyEpoch;
     set({ displayedHistory: undefined, historyError: undefined });
     set({ search, commits: [], historyHead: undefined, tips: [], nextOffset: 0, hasMore: false, locatingOid: undefined, selectedOids:[], selectionAnchor:undefined, comparison:undefined, historyLoading: !!get().repoId });
@@ -247,13 +301,13 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     }
     const ref=snapshot.refs.find(r=>r.kind==='local'&&r.name===snapshot.branch)?.fullName??'HEAD';
     const refsChanged=!state.checkedRefs?.includes(ref);
-    if(refsChanged)set({checkedRefs:[...(state.checkedRefs??[]),ref],ref:undefined});
+    if(refsChanged){rememberHistory();set({checkedRefs:[...(state.checkedRefs??[]),ref],ref:undefined});}
     const append=!refsChanged&&!state.search&&!state.historyLoading&&state.commits.length>0&&state.hasMore;
     void get().locateCommit(snapshot.head,append);
   },
   async locateCommit(oid, append = false) {
     if(!get().repoId)return;
-    if (!append) set({ displayedHistory: undefined, historyError: undefined });
+    if (!append) { rememberHistory(); set({ displayedHistory: undefined, historyError: undefined }); }
     const repoEpoch=repositoryEpoch,token=get().locateToken+1;
     set({search:'',...(!append?{commits:[],historyHead:undefined,tips:[],nextOffset:0,hasMore:false}:{}),locateToken:token,locatingOid:oid,selectedStashOid:undefined,selectedStashSection:undefined,stashDetails:undefined,notice:undefined});
     void get().selectCommit(oid);
