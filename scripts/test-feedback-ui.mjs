@@ -107,7 +107,11 @@ export async function verifyFeedback(browser, url) {
     await page.evaluate(()=>window.__feedbackFixture.complete(undefined,{kind:'push',outcome:'success',remote:'origin',localBranch:'main',output:'To github\nnew branch release',destinations:[{label:'github.com/acme/repo',repository:{url:'https://github.com/acme/repo',label:'github.com/acme/repo',provider:'github'},refs:[{kind:'branch',name:'release',status:'published',url:'https://github.com/acme/repo/tree/release'}]}]}));
     await page.getByRole('dialog').waitFor({state:'hidden'});
     const publication=page.getByTestId('push-result');
+    assert.equal(await publication.count(),0,'Remote links and output must start collapsed');
+    assert.ok((await bar.boundingBox()).height<=36,'Collapsed feedback must occupy one compact row');
+    await bar.getByRole('button',{name:'Operation details',exact:true}).click();
     await publication.getByText('Published',{exact:true}).waitFor();
+    assert.match(await publication.locator('pre').innerText(),/new branch release/);
     await page.screenshot({path:'artifacts/push-result-preview.png'});
     await publication.getByRole('button',{name:'Copy remote link',exact:true}).click();
     await page.waitForFunction(()=>window.__feedbackFixture.calls.some(call=>call.method==='copyText'&&call.payload.text==='https://github.com/acme/repo/tree/release'));
@@ -127,7 +131,8 @@ export async function verifyFeedback(browser, url) {
     await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
     assert.equal(await bar.getAttribute('role'), 'alert');
     await bar.getByText('remote: permission denied', { exact: true }).waitFor();
-    await bar.getByText('Error details', { exact: true }).click();
+    assert.equal(await bar.locator('pre').count(),0,'Error summary must be visible before expanding full output');
+    await bar.getByRole('button',{name:'Operation details',exact:true}).click();
     assert.match(await bar.locator('pre').innerText(), /fatal: could not push/);
     await bar.getByRole('button', { name: 'Show Log', exact: true }).click();
     await page.waitForFunction(() => window.__feedbackFixture.calls.some(call => call.method === 'showLog'));

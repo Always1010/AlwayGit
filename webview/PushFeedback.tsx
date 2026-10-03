@@ -21,6 +21,6 @@ export function PushFeedback({ result, repoId }: { result: PushResult; repoId: s
         {ref.releaseUrl && <Button icon="tag" onClick={()=>open(ref.releaseUrl!)}>{t('feedback.createRelease')}</Button>}
       </div>)}
     </div>)}
-    <details className="feedback-details"><summary>{t('feedback.operationDetails')}</summary><pre>{result.output || t('feedback.noOutput')}</pre></details>
+    <div className="feedback-details"><strong>{t('feedback.operationDetails')}</strong><pre>{result.output || t('feedback.noOutput')}</pre></div>
   </div>;
 }
