@@ -256,5 +256,167 @@
     "zh-CN": "Graph · {{heading}}",
     "review": "keep",
     "context": "webview/History.tsx"
+  },
+  "history.locationTag": {
+    "en": "tag {{name}}",
+    "zh-CN": "标签 {{name}}",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationRemote": {
+    "en": "remote branch {{name}}",
+    "zh-CN": "远端分支 {{name}}",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationBranch": {
+    "en": "branch {{name}}",
+    "zh-CN": "分支 {{name}}",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationNoRefs": {
+    "en": "No references selected",
+    "zh-CN": "未选择引用",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationNotLoaded": {
+    "en": "History not loaded",
+    "zh-CN": "尚未加载历史",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationRepository": {
+    "en": "Repository: {{name}}",
+    "zh-CN": "仓库：{{name}}",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationCheckout": {
+    "en": "Current checkout: {{branch}} · HEAD {{oid}}",
+    "zh-CN": "当前位置：{{branch}} · HEAD {{oid}}",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationScope": {
+    "en": "Displaying history: {{scope}}",
+    "zh-CN": "正在显示历史：{{scope}}",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationSearch": {
+    "en": "Search: “{{search}}”",
+    "zh-CN": "搜索：“{{search}}”",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationWorking": {
+    "en": "Working Tree",
+    "zh-CN": "工作区",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationStash": {
+    "en": "Stash {{oid}}",
+    "zh-CN": "Stash {{oid}}",
+    "review": "keep",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationSelection": {
+    "en": "{{count}} selected commits",
+    "zh-CN": "{{count}} 个选中提交",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationCommit": {
+    "en": "commit {{oid}}",
+    "zh-CN": "提交 {{oid}}",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationNoSelection": {
+    "en": "Nothing selected",
+    "zh-CN": "未选择对象",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationViewing": {
+    "en": "Viewing: {{selection}}",
+    "zh-CN": "正在查看：{{selection}}",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationDetailsLoading": {
+    "en": "Loading details",
+    "zh-CN": "正在加载详情",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationChanges": {
+    "en": "Working Tree: {{count}} changes",
+    "zh-CN": "工作区：{{count}} 个变更",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationHeadNotShown": {
+    "en": "Current HEAD is not shown in the loaded history.",
+    "zh-CN": "当前 HEAD 未显示在已加载的历史中。",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationLocating": {
+    "en": "Locating a commit in {{scope}}",
+    "zh-CN": "正在定位提交，范围：{{scope}}",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationLoading": {
+    "en": "Loading history for {{scope}}",
+    "zh-CN": "正在加载历史，范围：{{scope}}",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationFailed": {
+    "en": "Could not load {{scope}}: {{error}}",
+    "zh-CN": "加载 {{scope}} 失败：{{error}}",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationRetry": {
+    "en": "Retry history loading",
+    "zh-CN": "重试加载历史",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationLoaded": {
+    "en": "Loaded {{count}} commits · {{more}}",
+    "zh-CN": "已加载 {{count}} 条提交 · {{more}}",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationMore": {
+    "en": "More history available",
+    "zh-CN": "还有更多历史",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationComplete": {
+    "en": "End of history",
+    "zh-CN": "已到历史末尾",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationOtherRefs": {
+    "en": "{{count}} other references",
+    "zh-CN": "另有 {{count}} 个引用",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
+  },
+  "history.locationAllRefs": {
+    "en": "View all {{count}} references",
+    "zh-CN": "查看全部 {{count}} 个引用",
+    "review": "translated",
+    "context": "webview/HistoryLocation.tsx"
   }
 }

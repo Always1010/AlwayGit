@@ -2141,6 +2141,114 @@ export const catalog = {
     "en": "Graph · {{heading}}",
     "zh-CN": "Graph · {{heading}}"
   },
+  "history.locationTag": {
+    "en": "tag {{name}}",
+    "zh-CN": "标签 {{name}}"
+  },
+  "history.locationRemote": {
+    "en": "remote branch {{name}}",
+    "zh-CN": "远端分支 {{name}}"
+  },
+  "history.locationBranch": {
+    "en": "branch {{name}}",
+    "zh-CN": "分支 {{name}}"
+  },
+  "history.locationNoRefs": {
+    "en": "No references selected",
+    "zh-CN": "未选择引用"
+  },
+  "history.locationNotLoaded": {
+    "en": "History not loaded",
+    "zh-CN": "尚未加载历史"
+  },
+  "history.locationRepository": {
+    "en": "Repository: {{name}}",
+    "zh-CN": "仓库：{{name}}"
+  },
+  "history.locationCheckout": {
+    "en": "Current checkout: {{branch}} · HEAD {{oid}}",
+    "zh-CN": "当前位置：{{branch}} · HEAD {{oid}}"
+  },
+  "history.locationScope": {
+    "en": "Displaying history: {{scope}}",
+    "zh-CN": "正在显示历史：{{scope}}"
+  },
+  "history.locationSearch": {
+    "en": "Search: “{{search}}”",
+    "zh-CN": "搜索：“{{search}}”"
+  },
+  "history.locationWorking": {
+    "en": "Working Tree",
+    "zh-CN": "工作区"
+  },
+  "history.locationStash": {
+    "en": "Stash {{oid}}",
+    "zh-CN": "Stash {{oid}}"
+  },
+  "history.locationSelection": {
+    "en": "{{count}} selected commits",
+    "zh-CN": "{{count}} 个选中提交"
+  },
+  "history.locationCommit": {
+    "en": "commit {{oid}}",
+    "zh-CN": "提交 {{oid}}"
+  },
+  "history.locationNoSelection": {
+    "en": "Nothing selected",
+    "zh-CN": "未选择对象"
+  },
+  "history.locationViewing": {
+    "en": "Viewing: {{selection}}",
+    "zh-CN": "正在查看：{{selection}}"
+  },
+  "history.locationDetailsLoading": {
+    "en": "Loading details",
+    "zh-CN": "正在加载详情"
+  },
+  "history.locationChanges": {
+    "en": "Working Tree: {{count}} changes",
+    "zh-CN": "工作区：{{count}} 个变更"
+  },
+  "history.locationHeadNotShown": {
+    "en": "Current HEAD is not shown in the loaded history.",
+    "zh-CN": "当前 HEAD 未显示在已加载的历史中。"
+  },
+  "history.locationLocating": {
+    "en": "Locating a commit in {{scope}}",
+    "zh-CN": "正在定位提交，范围：{{scope}}"
+  },
+  "history.locationLoading": {
+    "en": "Loading history for {{scope}}",
+    "zh-CN": "正在加载历史，范围：{{scope}}"
+  },
+  "history.locationFailed": {
+    "en": "Could not load {{scope}}: {{error}}",
+    "zh-CN": "加载 {{scope}} 失败：{{error}}"
+  },
+  "history.locationRetry": {
+    "en": "Retry history loading",
+    "zh-CN": "重试加载历史"
+  },
+  "history.locationLoaded": {
+    "en": "Loaded {{count}} commits · {{more}}",
+    "zh-CN": "已加载 {{count}} 条提交 · {{more}}"
+  },
+  "history.locationMore": {
+    "en": "More history available",
+    "zh-CN": "还有更多历史"
+  },
+  "history.locationComplete": {
+    "en": "End of history",
+    "zh-CN": "已到历史末尾"
+  },
+  "history.locationOtherRefs": {
+    "en": "{{count}} other references",
+    "zh-CN": "另有 {{count}} 个引用"
+  },
+  "history.locationAllRefs": {
+    "en": "View all {{count}} references",
+    "zh-CN": "查看全部 {{count}} 个引用"
+  },
   "host.trustThisWorkspaceUsingVSCodeWorkspaceTrustThen": {
     "en": "Trust this workspace using VS Code Workspace Trust, then reopen AlwayGit.",
     "zh-CN": "请在 VS Code 中信任此工作区，然后重新打开 AlwayGit。"
@@ -5574,6 +5682,33 @@ export interface MessageParameters {
   "history.resizeDateColumn": {  };
   "history.commitNode": { oid: ParameterValue };
   "history.graphHeading": { heading: ParameterValue };
+  "history.locationTag": { name: ParameterValue };
+  "history.locationRemote": { name: ParameterValue };
+  "history.locationBranch": { name: ParameterValue };
+  "history.locationNoRefs": {  };
+  "history.locationNotLoaded": {  };
+  "history.locationRepository": { name: ParameterValue };
+  "history.locationCheckout": { branch: ParameterValue; oid: ParameterValue };
+  "history.locationScope": { scope: ParameterValue };
+  "history.locationSearch": { search: ParameterValue };
+  "history.locationWorking": {  };
+  "history.locationStash": { oid: ParameterValue };
+  "history.locationSelection": { count: number };
+  "history.locationCommit": { oid: ParameterValue };
+  "history.locationNoSelection": {  };
+  "history.locationViewing": { selection: ParameterValue };
+  "history.locationDetailsLoading": {  };
+  "history.locationChanges": { count: number };
+  "history.locationHeadNotShown": {  };
+  "history.locationLocating": { scope: ParameterValue };
+  "history.locationLoading": { scope: ParameterValue };
+  "history.locationFailed": { scope: ParameterValue; error: ParameterValue };
+  "history.locationRetry": {  };
+  "history.locationLoaded": { count: number; more: ParameterValue };
+  "history.locationMore": {  };
+  "history.locationComplete": {  };
+  "history.locationOtherRefs": { count: number };
+  "history.locationAllRefs": { count: number };
   "host.trustThisWorkspaceUsingVSCodeWorkspaceTrustThen": {  };
   "host.selectARepositoryOrAFolderContainingRepositories": {  };
   "host.scanFolder": {  };
