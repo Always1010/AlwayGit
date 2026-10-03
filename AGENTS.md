@@ -5,7 +5,7 @@
 - 日常使用的安装包固定为 `artifacts/alwaygit.vsix`，后续更新沿用同一路径，不要求用户每次手动选择新的 VSIX。
 - 使用 `node scripts/package.mjs` 构建并打包；打包成功后才替换固定包，失败时保留原包。上一份包保存为 `artifacts/alwaygit-previous.vsix`，版本包仍保留用于辨认版本。
 - 扩展身份 `alwaygit-dev.alwaygit` 保持不变。功能版本正常递增；仅重新打包同一份扩展时可保留版本号。不得通过卸载扩展或删除用户数据完成更新。
-- 用户已授权后续本地更新：每次完成扩展修改并通过相应检查后，运行 `scripts/update-local.ps1` 构建、打包并安装到用户实际使用的 VS Code；若已经生成包，使用 `-InstallOnly` 避免重复构建。
+- 默认不因代码修改或测试通过而自动构建 VSIX、替换固定包或安装扩展。仅当用户在当前请求中明确要求打包时才执行打包；仅当用户明确要求更新或安装到本机 VS Code 时，才运行 `scripts/update-local.ps1`，若已经生成包则使用 `-InstallOnly` 避免重复构建。
 - 自动安装使用官方 CLI 的 `--install-extension <VSIX> --force`，随后核对扩展 ID 和版本。成功后告知用户重启 VS Code 即可，不要求再次手动执行 Install from VSIX。
 - 首次使用确认本机 VS Code 路径和 Profile；默认使用 PATH 中的 `code` 与默认 Profile，后续沿用本机 `artifacts/local-install.json` 中记录的目标。可通过脚本参数 `-CodePath` / `-Profile` 或环境变量 `ALWAYGIT_CODE_CLI` / `ALWAYGIT_VSCODE_PROFILE` 显式选择目标。此记录和全部安装产物不得提交。
 - 只替换 VSIX 不会更新已安装扩展。未实际安装或安装校验失败时，必须如实说明，不得宣称重启就能使用新版本。
