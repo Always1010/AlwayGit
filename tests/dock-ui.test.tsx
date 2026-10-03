@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { translator } from '../src/i18n';
@@ -16,6 +16,7 @@ vi.mock('../webview/rpc', () => ({ rpc: vi.fn(), subscribe: vi.fn(() => () => {}
 vi.mock('../webview/i18n', () => ({ useTranslation: () => translator('en') }));
 vi.mock('../webview/DiffPreview', () => ({ DiffPreview: () => <div/> }));
 vi.mock('../webview/TerminalView', () => ({ TerminalView: () => <div/> }));
+afterEach(() => { fixture.dock.sessions[0].status = 'running'; });
 
 describe('bottom dock tab presentation', () => {
   it('gives Diff the same bounded container and spans selected state across title and close', () => {
@@ -31,5 +32,17 @@ describe('bottom dock tab presentation', () => {
     expect(css).toMatch(/\.dock-tab-wrap\[data-active=true\] \{[^}]*border-bottom-color:var\(--accent\)/);
     expect(css).toContain('.dock-tab-wrap:hover');
     expect(css).not.toContain('.dock-tab[aria-selected=true]');
+  });
+  it('offers restart only after shell exit and never shows a running stop action', () => {
+    const running = renderToStaticMarkup(<BottomDock native={() => {}} edit={() => {}}/>);
+    expect(running).not.toContain('End shell process');
+    expect(running).not.toContain('Restart terminal');
+    expect(running).toContain('Close terminal and end its shell');
+    fixture.dock.sessions[0].status = 'exited';
+    const exited = renderToStaticMarkup(<BottomDock native={() => {}} edit={() => {}}/>);
+    expect(exited).toContain('Restart terminal');
+    expect(exited).toContain('Exited (0)');
+    expect(exited).not.toContain('End shell process');
+    expect(exited.match(/aria-label="Collapse bottom panel"/g)).toHaveLength(1);
   });
 });
