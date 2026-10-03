@@ -217,6 +217,7 @@ describe('repository UI consistency', () => {
     let calls = 0;
     bridge.rpc.mockImplementation((method, ...args) => method === 'repositories' ? (++calls === 1 ? old.promise : latest.promise) : fallback(method, ...args));
     const first = store.getState().initialize(), second = store.getState().initialize();
+    expect(store.getState().loading).toBe(false);
     latest.resolve([a, b]); await second;
     old.resolve([a]); await first;
     expect(store.getState().repositories).toEqual([a, b]);
@@ -240,11 +241,13 @@ describe('repository UI consistency', () => {
     expect(store.getState().repoId).toBeUndefined();
     expect(bridge.rpc.mock.calls.some(([method])=>method==='snapshot')).toBe(false);
     await store.getState().selectRepository('a');
+    store.setState({ snapshot: undefined, loading: true });
     const fallback=bridge.rpc.getMockImplementation()!;
     bridge.rpc.mockImplementation((method,...args)=>method==='repositories'?Promise.resolve([b]):fallback(method,...args));
     await store.getState().initialize();
     expect(store.getState().repoId).toBeUndefined();
     expect(store.getState().snapshot).toBeUndefined();
+    expect(store.getState().loading).toBe(false);
     expect(store.getState().notice).toContain('removed');
   });
   it('inspects before Continue or an operation Commit and sends only the confirmed action',async()=>{
@@ -846,6 +849,23 @@ describe('repository UI consistency', () => {
     await store.getState().refresh({ background: true, changes: { paths: ['a.txt'] } });
     expect(store.getState().diffRevision).toBe(revision + 1); expect(store.getState().diffTarget).toBe(target);
     expect(bridge.rpc.mock.calls.map(([method]) => method)).toEqual(['snapshot', 'snapshot']);
+  });
+
+  it('keeps a resumed tab usable and preserves history, selection and Diff when only the snapshot version changes', async () => {
+    const current = await workingFixture();
+    store.getState().setHistoryScroll(640); store.getState().setDraft('keep draft');
+    const before = store.getState(), pending = deferred<Snapshot>();
+    bridge.rpc.mockImplementation((method: string) => method === 'snapshot' ? pending.promise : undefined);
+    const checking = store.getState().refresh({ background: true, changes: { paths: [] } });
+    expect(store.getState()).toMatchObject({ loading: false, historyLoading: false, historyScrollTop: 640 });
+    expect(store.getState().snapshot).toBe(before.snapshot);
+    pending.resolve({ ...current, version: current.version + 1 }); await checking;
+    const after = store.getState();
+    expect(bridge.rpc.mock.calls.map(([method]) => method)).toEqual(['snapshot']);
+    expect(after.commits).toBe(before.commits); expect(after.details).toBe(before.details);
+    expect(after.diffTarget).toBe(before.diffTarget); expect(after.diffRevision).toBe(before.diffRevision);
+    expect(after.selectedOid).toBe(before.selectedOid); expect(after.selectedFile).toBe(before.selectedFile);
+    expect(after.historyScrollTop).toBe(640); expect(after.drafts.a).toBe('keep draft');
   });
 
   it('preserves Staged selection and ignores working-file edits until Index or HEAD changes', async () => {

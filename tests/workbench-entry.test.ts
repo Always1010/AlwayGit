@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { panelSession, statusBarPresentation } from '../src/extension/workbench-entry';
 import { createWorkbenchActivityLauncher } from '../src/extension/workbench-launcher';
 import { Workbench } from '../src/extension/workbench';
+import type { RepositoryChanges } from '../src/protocol/types';
 
 vi.mock('vscode', () => {
   class EventEmitter<T> {
@@ -35,8 +36,8 @@ const workbenches: Workbench[] = [];
 beforeEach(() => vi.clearAllMocks());
 afterEach(() => { for (const workbench of workbenches.splice(0)) workbench.dispose(); vi.useRealTimers(); });
 
-function workbenchFixture(output = { appendLine: vi.fn() }) {
-  const repositories = { scan: vi.fn(async () => {}), list: () => [], onDidChange: () => ({ dispose() {} }), onDidChangeRepositories: () => ({ dispose() {} }) };
+function workbenchFixture(output = { appendLine: vi.fn() }, events?: { changes: vscode.EventEmitter<{ repoId: string; changes?: RepositoryChanges }>; catalog: vscode.EventEmitter<void> }) {
+  const repositories = { scan: vi.fn(async () => {}), list: () => [], onDidChange: events?.changes.event ?? (() => ({ dispose() {} })), onDidChangeRepositories: events?.catalog.event ?? (() => ({ dispose() {} })) };
   const workbench = new Workbench({ extensionUri: {}, workspaceState: { get: (_key: string, fallback: unknown) => fallback, update: async () => {} } } as unknown as vscode.ExtensionContext, {} as never, repositories as never, {} as never, output as never, {} as never);
   vi.spyOn(workbench as unknown as { html(): Promise<string> }, 'html').mockResolvedValue('<html></html>');
   workbenches.push(workbench);
@@ -44,6 +45,51 @@ function workbenchFixture(output = { appendLine: vi.fn() }) {
 }
 
 describe('Workbench entry presentation', () => {
+  it('checks a revealed repository without rebuilding the catalog or reloading on focus changes', async () => {
+    const fixture = panelFixture(), workbench = workbenchFixture();
+    vi.mocked(vscode.window.createWebviewPanel).mockReturnValue(fixture.panel as unknown as vscode.WebviewPanel);
+    await workbench.open('fixture');
+    fixture.panel.webview.html = 'retained content';
+    expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith(expect.anything(), expect.anything(), expect.anything(), expect.objectContaining({ retainContextWhenHidden: true }));
+    fixture.panel.active = false;
+    fixture.stateChanged.fire({ webviewPanel: fixture.panel as unknown as vscode.WebviewPanel });
+    expect(fixture.panel.webview.postMessage).not.toHaveBeenCalled();
+    fixture.panel.visible = false;
+    fixture.stateChanged.fire({ webviewPanel: fixture.panel as unknown as vscode.WebviewPanel });
+    fixture.panel.visible = true; fixture.panel.active = true;
+    fixture.stateChanged.fire({ webviewPanel: fixture.panel as unknown as vscode.WebviewPanel });
+    expect(fixture.panel.webview.postMessage.mock.calls).toEqual([[{ type: 'changed', repoId: 'fixture', changes: { paths: [] } }]]);
+    fixture.stateChanged.fire({ webviewPanel: fixture.panel as unknown as vscode.WebviewPanel });
+    expect(fixture.panel.webview.postMessage).toHaveBeenCalledOnce();
+    expect(fixture.panel.webview.html).toBe('retained content');
+  });
+
+  it.each([false, true])('replays hidden catalog and file changes once, preserving unknown invalidation (%s)', async unknown => {
+    const events = { changes: new vscode.EventEmitter<{ repoId: string; changes?: RepositoryChanges }>(), catalog: new vscode.EventEmitter<void>() };
+    const hidden = panelFixture(), visible = panelFixture(), workbench = workbenchFixture(undefined, events);
+    vi.mocked(vscode.window.createWebviewPanel).mockReturnValueOnce(hidden.panel as unknown as vscode.WebviewPanel).mockReturnValueOnce(visible.panel as unknown as vscode.WebviewPanel);
+    await workbench.open('fixture'); await workbench.open('fixture', undefined, true);
+    hidden.panel.visible = false;
+    hidden.stateChanged.fire({ webviewPanel: hidden.panel as unknown as vscode.WebviewPanel });
+    events.changes.fire({ repoId: 'fixture', changes: { paths: ['a.txt'] } });
+    events.changes.fire({ repoId: 'fixture', changes: unknown ? undefined : { paths: ['a.txt', 'b.txt'], index: true } });
+    events.changes.fire({ repoId: 'other', changes: { paths: ['other.txt'] } });
+    events.catalog.fire(); events.catalog.fire();
+    expect(hidden.panel.webview.postMessage).not.toHaveBeenCalled();
+    expect(visible.panel.webview.postMessage).toHaveBeenCalledTimes(5);
+    hidden.panel.visible = true;
+    hidden.stateChanged.fire({ webviewPanel: hidden.panel as unknown as vscode.WebviewPanel });
+    expect(hidden.panel.webview.postMessage.mock.calls).toEqual([
+      [{ type: 'repositoriesChanged' }],
+      [{ type: 'changed', repoId: 'fixture', changes: unknown ? undefined : { paths: ['a.txt', 'b.txt'], index: true } }],
+    ]);
+    hidden.panel.webview.postMessage.mockClear();
+    hidden.panel.visible = false; hidden.stateChanged.fire({ webviewPanel: hidden.panel as unknown as vscode.WebviewPanel });
+    hidden.panel.visible = true; hidden.stateChanged.fire({ webviewPanel: hidden.panel as unknown as vscode.WebviewPanel });
+    expect(hidden.panel.webview.postMessage.mock.calls).toEqual([[{ type: 'changed', repoId: 'fixture', changes: { paths: [] } }]]);
+    events.changes.dispose(); events.catalog.dispose();
+  });
+
   it('shares the script nonce with deferred Webview resource preloads without widening the CSP', async () => {
     const { mkdtemp, writeFile, unlink, rmdir } = await import('node:fs/promises');
     const { tmpdir } = await import('node:os');

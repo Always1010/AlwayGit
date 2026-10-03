@@ -127,8 +127,9 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   report(error) { set({ error: message(error) }); },
   async initialize() {
     const request = ++catalogEpoch;
+    const showLoading = !get().repositories.length && !get().snapshot;
     void get().loadOperationSettings().catch(error => { if (request === catalogEpoch) get().report(error); });
-    set({ loading: true });
+    if (showLoading) set({ loading: true });
     try {
       const [repositories, collectionsResult, orderResult] = await Promise.all([
         rpc<Repository[]>('repositories'), rpc<RepositoryCollection[]>('repositoryCollections'), rpc<RepositoryOrder>('repositoryOrder'),
@@ -147,7 +148,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
           repoId: undefined, snapshot: undefined, commits: [], historyHead: undefined, details: undefined,
           comparison: undefined, stashDetails: undefined, selectedStashOid: undefined, selectedStashSection: undefined,
           selectedOid: undefined, selectedOids: [], selectedFile: undefined, diffTarget: undefined,
-          operationReview: undefined, busy: false, activity: '',
+          operationReview: undefined, loading: false, busy: false, activity: '',
           notice: translate(get().language, "notices.theRepositoryWasRemovedFromAlwayGit"),
         } : {}),
       });
@@ -157,7 +158,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         if (initial) await get().selectRepository(initial.id);
       }
     } catch (error) { if (request === catalogEpoch) get().report(error); }
-    finally { if (request === catalogEpoch) set({ loading: false }); }
+    finally { if (showLoading && request === catalogEpoch) set({ loading: false }); }
   },
   async reorderRepository(payload) {
     try { const order=await rpc<RepositoryOrder>('reorderRepository',undefined,payload); set({repositoryOrder:order}); } catch(error) { get().report(error); }
@@ -185,7 +186,8 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     await get().refresh();
   },
   async refresh(options = {}) {
-    const epoch = repositoryEpoch, request = ++snapshotEpoch, repoId = get().repoId; if (!repoId) return; set({ loading: true });
+    const epoch = repositoryEpoch, request = ++snapshotEpoch, repoId = get().repoId; if (!repoId) return;
+    if (!options.background || !get().snapshot) set({ loading: true });
     refreshInvalidation = {
       epoch,
       changes: refreshInvalidation?.epoch === epoch ? mergeChanges(refreshInvalidation.changes, options.changes) : options.changes,

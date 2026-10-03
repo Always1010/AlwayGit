@@ -12,7 +12,7 @@ import { randomBytes } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { AddRepositoriesResult, GitAction, GitServiceContract, HostMessage, RepositoryCollection, RepositoryDiscoveryPreview, RepositoryStatus, RpcRequest, Snapshot, OperationSettings, PushResult } from '../protocol/types';
+import type { AddRepositoriesResult, GitAction, GitServiceContract, HostMessage, RepositoryChanges, RepositoryCollection, RepositoryDiscoveryPreview, RepositoryStatus, RpcRequest, Snapshot, OperationSettings, PushResult } from '../protocol/types';
 
 import type { RepositoryManager } from '../repositories/manager';
 import type { DiscoveryResult } from '../repositories/discovery';
@@ -28,7 +28,7 @@ import type { SessionState } from '../protocol/session';
 import { RepositoryOperationBusyError, RepositoryOperationRecoveryRequiredError } from '../application/operation-lock';
 import { discardRequestSchema } from '../protocol/validation';
 
-interface WorkbenchPanel { panel: vscode.WebviewPanel; activeRepository?: string; blank: boolean; session?: SessionState; savedSession?: SessionState; pendingTerminal?: boolean }
+interface WorkbenchPanel { panel: vscode.WebviewPanel; visible: boolean; activeRepository?: string; blank: boolean; session?: SessionState; savedSession?: SessionState; pendingTerminal?: boolean; pendingChanges?: { repoId: string; changes?: RepositoryChanges }; catalogDirty?: boolean }
 interface RepositoryDiscoverySession { source?: WorkbenchPanel; cancelled: boolean; root: string; discovery?: DiscoveryResult }
 export interface WorkbenchPresence { open: boolean; active: boolean }
 
@@ -75,7 +75,7 @@ export class Workbench implements vscode.Disposable {
     const options = { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview')] };
     const panel = restoredPanel ?? vscode.window.createWebviewPanel('alwaygit.workbench', 'AlwayGit', vscode.ViewColumn.Active, options);
     panel.webview.options = options;
-    const entry:WorkbenchPanel={panel,activeRepository:repoId,blank,savedSession:this.context.workspaceState.get<SessionState>('alwaygit.session',{})};
+    const entry:WorkbenchPanel={panel,visible:panel.visible,activeRepository:repoId,blank,savedSession:this.context.workspaceState.get<SessionState>('alwaygit.session',{})};
     this.panels.set(panel,entry);this.lastPanel=entry;this.updatePanelTitle(entry);this.presenceEmitter.fire(this.presence);
     panel.iconPath = vscode.Uri.joinPath(this.context.extensionUri, 'media', 'alwaygit.svg');
     panel.onDidDispose(() => { this.terminals.disposeOwner(entry);this.queries.cancelOwner(entry);this.panels.delete(panel);for(const [id,scan] of this.repositoryDiscoveries)if(scan.source===entry){scan.cancelled=true;this.repositoryDiscoveries.delete(id);}if(this.lastPanel===entry)this.lastPanel=[...this.panels.values()].at(-1);this.presenceEmitter.fire(this.presence); });
@@ -90,7 +90,17 @@ export class Workbench implements vscode.Disposable {
         this.post({ type: 'response', id: parsed.data.id, error: failure },entry);
       }
     });
-    panel.onDidChangeViewState(event => { if (event.webviewPanel.active) { this.lastPanel=entry; if(entry.session)void this.saveSessionBaseline(entry.session,entry).catch(error=>this.output.appendLine(`[session] ${redactSecrets(String(error))}`)); } if (event.webviewPanel.visible) { this.post({ type: 'repositoriesChanged' },entry); if (entry.activeRepository) this.post({ type: 'changed', repoId: entry.activeRepository },entry); } this.presenceEmitter.fire(this.presence); });
+    panel.onDidChangeViewState(event => {
+      const revealed = event.webviewPanel.visible && !entry.visible;
+      entry.visible = event.webviewPanel.visible;
+      if (event.webviewPanel.active) { this.lastPanel=entry; if(entry.session)void this.saveSessionBaseline(entry.session,entry).catch(error=>this.output.appendLine(`[session] ${redactSecrets(String(error))}`)); }
+      if (revealed) {
+        if (entry.catalogDirty) { entry.catalogDirty = false; this.post({ type: 'repositoriesChanged' }, entry); }
+        const pending = entry.pendingChanges; entry.pendingChanges = undefined;
+        if (entry.activeRepository) this.post({ type: 'changed', repoId: entry.activeRepository, changes: pending?.repoId === entry.activeRepository ? pending.changes : { paths: [] } }, entry);
+      }
+      this.presenceEmitter.fire(this.presence);
+    });
     panel.webview.html = await this.html(panel.webview,repoId,blank);
   }
   async requestTerminal(): Promise<void> {
@@ -347,7 +357,24 @@ export class Workbench implements vscode.Disposable {
   }
   externalRepositoryActivity(commonDir:string,busy:boolean,label:string):void {const key=this.repositoryKey(commonDir);if(busy)this.externalBusy.set(key,{label});else this.externalBusy.delete(key);for(const repo of this.repositories.list().filter(repo=>this.repositoryKey(repo.commonDir)===key)){this.post({type:'activity',repoId:repo.id,busy:this.isBusy(commonDir),label});if(!busy)this.post({type:'changed',repoId:repo.id});}}
   private updatePanelTitle(entry:WorkbenchPanel):void {let name:string|undefined;try{name=entry.activeRepository?groupRepositories(this.repositories.list(),entry.activeRepository).find(group=>group.members.some(repo=>repo.id===entry.activeRepository))?.name:undefined;}catch{/* Repository discovery can remove a stale restored ID. */}entry.panel.title=name?translate('en', "host.alwayGit", { name: (name) }):'AlwayGit';}
-  private post(message: HostMessage,target?:WorkbenchPanel): void {if(target){void target.panel.webview.postMessage(message);return;}for(const entry of this.panels.values())void entry.panel.webview.postMessage(message);}
+  private post(message: HostMessage, target?: WorkbenchPanel): void {
+    for (const entry of target ? [target] : this.panels.values()) {
+      // Retain invalidation on the host: hidden Webviews need not receive or process these messages.
+      if (!entry.panel.visible && message.type === 'repositoriesChanged') { entry.catalogDirty = true; continue; }
+      if (!entry.panel.visible && message.type === 'changed') {
+        if (message.repoId === entry.activeRepository) {
+          const previous = entry.pendingChanges;
+          const changes = previous?.repoId !== message.repoId ? message.changes
+            : previous.changes?.paths && message.changes?.paths
+              ? { paths: [...new Set([...previous.changes.paths, ...message.changes.paths])], index: !!(previous.changes.index || message.changes.index) }
+              : undefined;
+          entry.pendingChanges = { repoId: message.repoId, changes };
+        }
+        continue;
+      }
+      void entry.panel.webview.postMessage(message);
+    }
+  }
   private async html(webview: vscode.Webview,activeRepository?:string,blank=false): Promise<string> {
     const root = vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview');
     let html = await readFile(vscode.Uri.joinPath(root, 'index.html').fsPath, 'utf8');
