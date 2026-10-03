@@ -9,6 +9,8 @@ import { History } from './History';
 import { Details } from './Details';
 import { DiffPreview } from './DiffPreview';
 import { ActionFeedbackBar } from './ActionFeedbackBar';
+import { blocksWorkbench } from './actionFeedback';
+import { OperationProgress } from './OperationProgress';
 import { OperationNotice } from './OperationNotice';
 import { OperationReviewDialog } from './OperationReviewDialog';
 import { CommitDialog } from './CommitDialog';
@@ -40,7 +42,9 @@ import { useShortcuts, useWorkbenchKeyboard } from './shortcuts';
 const HelpDialog = lazy(() => import('./HelpDialog'));
 
 export function App() {
-  const state=useWorkbenchFields('repoId','language','operationSettings','appearance','layout','snapshot','loading','repositories','busy','diffTarget','notice','error','actionFeedback','checkoutFailure','stashApplyFailure','operationReview','settingsBaseline','locateHead','refresh','execute','selectWorking','restoreLayout','beginSettings','setLayout'),t=useTranslation(),[dialog,setDialog]=useState<DialogRequest>(),[repositoryDialog,setRepositoryDialog]=useState(false),[repositoryRemoval,setRepositoryRemoval]=useState<RepositoryGroup[]>(),[repositoryFetch,setRepositoryFetch]=useState<Repository[]>(),[context,setContext]=useState<{x:number;y:number;target:MenuTarget;anchor:HTMLElement}>();
+  const state=useWorkbenchFields('repoId','language','operationSettings','appearance','layout','snapshot','loading','repositories','busy','activity','diffTarget','notice','error','actionFeedback','checkoutFailure','stashApplyFailure','operationReview','settingsBaseline','locateHead','refresh','execute','selectWorking','restoreLayout','beginSettings','setLayout'),t=useTranslation(),[dialog,setDialog]=useState<DialogRequest>(),[repositoryDialog,setRepositoryDialog]=useState(false),[repositoryRemoval,setRepositoryRemoval]=useState<RepositoryGroup[]>(),[repositoryFetch,setRepositoryFetch]=useState<Repository[]>(),[context,setContext]=useState<{x:number;y:number;target:MenuTarget;anchor:HTMLElement}>();
+  const progressFeedback = state.actionFeedback?.status === 'running' ? state.actionFeedback : undefined;
+  const blockInteraction = state.busy && blocksWorkbench(progressFeedback?.action ?? state.activity);
   const mainPanel=useRef<HTMLElement>(null),[mainPanelHeight,setMainPanelHeight]=useState(0);
   const [helpOpen,setHelpOpen]=useState(false);
   const [commitRepoId,setCommitRepoId]=useState<string>();
@@ -77,7 +81,7 @@ export function App() {
   const closeCommit=useCallback((repoId:string)=>{flushSession();setCommitRepoId(current=>current===repoId?undefined:current);},[]);
   const showSettings=useCallback(()=>{setContext(undefined);useWorkbench.getState().beginSettings();},[]);
   const openRepository=useCallback(()=>void host('openProject'),[host]);
-  useWorkbenchKeyboard(!!(commitRepoId||dialog||repositoryDialog||repositoryRemoval||repositoryFetch||context||helpOpen||state.settingsBaseline||state.checkoutFailure||state.operationReview));
+  useWorkbenchKeyboard(blockInteraction || !!(commitRepoId||dialog||repositoryDialog||repositoryRemoval||repositoryFetch||context||helpOpen||state.settingsBaseline||state.checkoutFailure||state.operationReview));
   useLayoutEffect(()=>{const element=mainPanel.current;if(!element)return;const measure=()=>setMainPanelHeight(element.clientHeight);measure();const observer=new ResizeObserver(measure);observer.observe(element);return()=>observer.disconnect();},[]);
   const snapshot=state.snapshot,layout=state.layout,unpushed=snapshot?.unpushed??snapshot?.ahead??0,repositoryState=repositoryViewState(snapshot,!!state.repoId,state.loading),hasRepositories=state.repositories.length>0;
   const canOperate=!!snapshot&&!state.busy,canPush=canOperate&&!!snapshot?.branch,canStash=canOperate&&!!snapshot?.changes.length&&!snapshot?.operation.kind;
@@ -131,6 +135,7 @@ export function App() {
     {state.checkoutFailure&&snapshot&&<CheckoutFailureDialog onClose={()=>{setDialog(undefined);useWorkbench.setState({checkoutFailure:undefined,error:undefined});}} host={host}/>}
     {state.settingsBaseline&&<SettingsDialog theme={theme}/>}
     {helpOpen&&<Suspense fallback={null}><HelpDialog onClose={()=>setHelpOpen(false)}/></Suspense>}
+    {blockInteraction&&<OperationProgress key={`${state.repoId}-${progressFeedback?.id ?? 'host'}`} feedback={progressFeedback}/>}
   </div>;
 }
 

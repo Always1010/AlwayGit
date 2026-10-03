@@ -287,10 +287,10 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     const before=get().snapshot,committedFiles = action.type === 'commit' && !action.amend ? before?.changes.filter(change => !change.conflict && change.indexStatus !== ' ' && change.indexStatus !== '?' && !!change.indexStatus).length : undefined;
     const stashChanges=action.type==='stash.create'?before?.changes.filter(change=>(!action.paths||action.paths.includes(change.path))&&(!change.untracked||!!action.paths||!!action.includeUntracked))??[]:[];
     const stashed=action.type==='stash.create'?{files:new Set(stashChanges.map(change=>change.path)).size,untracked:new Set(stashChanges.filter(change=>change.untracked).map(change=>change.path)).size,previousOid:before?.stashes[0]?.oid}:undefined;
-    const feedback: ActionFeedback = { id: ++actionSequence, repoId, action, status: 'running', target: actionTarget(action, get().snapshot) };
+    const feedback: ActionFeedback = { id: ++actionSequence, repoId, action, status: 'running', startedAt: Date.now(), phase: 'executing', target: actionTarget(action, get().snapshot) };
     const finish = (status: 'success' | 'error', error?: string, result?: ActionFeedback['result']) => {
       if (actionFeedbacks.get(repoId)?.id !== feedback.id) return;
-      const completed = { ...feedback, status, error, result };
+      const completed = { ...feedback, status, error, result, refreshWarning: status === 'success' && get().repoId === repoId ? get().error : undefined };
       actionFeedbacks.set(repoId, completed);
       if (get().repoId === repoId) set({ actionFeedback: completed });
     };
@@ -304,6 +304,8 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       // Freeze this action's result before history loading or another refresh changes the store.
       if (action.type === 'commit') finish('success', undefined, result?.repository.id === repoId && result.head ? { kind: 'commit', oid: result.head, files: committedFiles, remaining: result.changes.length, amended: !!action.amend } : undefined);
       if (epoch === repositoryEpoch) {
+        feedback.phase = 'refreshing';
+        if (get().actionFeedback?.id === feedback.id) set({ actionFeedback: { ...get().actionFeedback!, phase: 'refreshing' } });
         await get().refresh({ background: true, snapshot: result });
         if(epoch===repositoryEpoch) {
           const checkout = ['branch.checkout', 'commit.checkout', 'checkout.stash'].includes(action.type) || (action.type === 'branch.create' || action.type === 'branch.track') && action.checkout;

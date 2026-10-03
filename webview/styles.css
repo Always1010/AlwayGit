@@ -365,6 +365,11 @@ h1,h2,p {margin:0;}
 .context-menu>button:hover:not(:disabled) {background:transparent;}
 .context-menu>button:focus:not(:disabled) {background:var(--selected);color:var(--selected-fg);}
 .modal-backdrop {position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:#0007;padding:16px;}
+.operation-progress-backdrop {z-index:200;overscroll-behavior:contain;touch-action:none;}
+.operation-progress {width:380px;align-items:center;text-align:center;padding:26px 22px;gap:12px;outline:none;}
+.operation-progress>.codicon {font-size:28px;color:var(--accent);}
+.operation-progress h2 {font-size:16px;margin:0;}
+.operation-progress p {margin:0;overflow-wrap:anywhere;max-width:100%;}
 .modal {background:var(--vscode-editorWidget-background,var(--bg));border:1px solid var(--border);border-radius:6px;width:480px;max-width:100%;max-height:calc(100vh - 32px);display:flex;flex-direction:column;box-shadow:0 12px 36px #0006;overflow:hidden;}
 .modal-heading {display:flex;align-items:center;justify-content:space-between;padding:10px 13px;border-bottom:1px solid var(--border);}
 .modal-heading h2 {font-size:16px;font-weight:600;}

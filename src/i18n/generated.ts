@@ -1709,6 +1709,30 @@ export const catalog = {
     "en": "Dismiss notification",
     "zh-CN": "关闭提醒"
   },
+  "feedback.updatingWorkbench": {
+    "en": "Updating the workbench…",
+    "zh-CN": "正在更新工作台…"
+  },
+  "feedback.waitForOperation": {
+    "en": "The workbench will unlock when this operation finishes.",
+    "zh-CN": "操作完成后将自动解锁工作台。"
+  },
+  "feedback.elapsed": {
+    "en": "Elapsed: {{seconds}} seconds",
+    "zh-CN": "已等待 {{seconds}} 秒"
+  },
+  "feedback.stillRunning": {
+    "en": "The operation is still running. Please wait.",
+    "zh-CN": "操作仍在进行，请稍候。"
+  },
+  "feedback.refreshFailed": {
+    "en": "The operation completed, but the workbench could not refresh. Refresh before another operation.",
+    "zh-CN": "操作已完成，但工作台刷新失败。请刷新后再进行其他操作。"
+  },
+  "feedback.gitOperation": {
+    "en": "Git operation",
+    "zh-CN": "Git 操作"
+  },
   "graphRow.parents": {
     "en": "{{value}}parents {{value2}}",
     "zh-CN": "{{value}} 个父提交 {{value2}}"
@@ -5294,6 +5318,12 @@ export interface MessageParameters {
   "feedback.viewCommit": {  };
   "feedback.showLog": {  };
   "feedback.dismissNotification": {  };
+  "feedback.updatingWorkbench": {  };
+  "feedback.waitForOperation": {  };
+  "feedback.elapsed": { seconds: ParameterValue };
+  "feedback.stillRunning": {  };
+  "feedback.refreshFailed": {  };
+  "feedback.gitOperation": {  };
   "graphRow.parents": { value: ParameterValue; value2: ParameterValue };
   "graphRow.mergeCommit": {  };
   "graphRow.rootCommitNoParents": {  };

@@ -26,6 +26,7 @@ export function ActionFeedbackBar({ showLog }: { showLog(): void }) {
     <Icon name={status === 'running' ? 'loading' : marked ? 'add' : status === 'success' ? 'pass' : 'error'} className={status === 'running' ? 'feedback-spinner' : undefined}/>
     <div className="feedback-content"><strong>{title}</strong>{feedback?.target&&!branch&&<span className="feedback-target">{feedback.target}</span>}{(commitSummary||stashSummary)&&<span className="feedback-target">{commitSummary||stashSummary}</span>}
       {feedback?.error && <><span className="feedback-message">{feedback.error.split('\n').find(line => line.trim())?.slice(0, 240)}</span><details className="feedback-details"><summary>{t("feedback.errorDetails")}</summary><pre>{feedback.error}</pre></details></>}
+      {feedback?.refreshWarning && <span className="feedback-message">{t('feedback.refreshFailed')} <Button icon="refresh" disabled={busy} title={t('workbench.refreshCurrentRepositoryStatusAndHistory')} aria-label={t('workbench.refreshCurrentRepositoryStatusAndHistory')} onClick={()=>void state.refresh()}/></span>}
       {demoMode && <span className="muted">{t("feedback.demoSampleDataOnly")}</span>}
     </div>
     {commit&&status==='success'&&<Button icon="git-commit" onClick={()=>void state.selectCommit(commit.oid)}>{t("feedback.viewCommit")}</Button>}

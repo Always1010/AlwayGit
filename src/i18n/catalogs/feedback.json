@@ -115,5 +115,41 @@
     "zh-CN": "关闭提醒",
     "review": "translated",
     "context": "webview/ActionFeedbackBar.tsx / ActionFeedbackBar"
+  },
+  "feedback.updatingWorkbench": {
+    "en": "Updating the workbench…",
+    "zh-CN": "正在更新工作台…",
+    "review": "translated",
+    "context": "Frontend operation progress and results"
+  },
+  "feedback.waitForOperation": {
+    "en": "The workbench will unlock when this operation finishes.",
+    "zh-CN": "操作完成后将自动解锁工作台。",
+    "review": "translated",
+    "context": "Frontend operation progress and results"
+  },
+  "feedback.elapsed": {
+    "en": "Elapsed: {{seconds}} seconds",
+    "zh-CN": "已等待 {{seconds}} 秒",
+    "review": "translated",
+    "context": "Frontend operation progress and results"
+  },
+  "feedback.stillRunning": {
+    "en": "The operation is still running. Please wait.",
+    "zh-CN": "操作仍在进行，请稍候。",
+    "review": "translated",
+    "context": "Frontend operation progress and results"
+  },
+  "feedback.refreshFailed": {
+    "en": "The operation completed, but the workbench could not refresh. Refresh before another operation.",
+    "zh-CN": "操作已完成，但工作台刷新失败。请刷新后再进行其他操作。",
+    "review": "translated",
+    "context": "Frontend operation progress and results"
+  },
+  "feedback.gitOperation": {
+    "en": "Git operation",
+    "zh-CN": "Git 操作",
+    "review": "translated",
+    "context": "External operation progress"
   }
 }

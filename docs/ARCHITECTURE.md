@@ -76,7 +76,7 @@ History、Details（含 Stash 和比较）、Diff 预览按面板与类别替换
 
 version 2 会话通过可选 `appearance` 与 `diffNavigationScope` 字段兼容新增设置，后者缺省为整个 Commit，宿主协议验证后保留；旧会话缺少自定义色值时使用当前预设生成完整浅色/深色色板。旧 Editor Focus 迁移为 Workbench，旧默认 26 px 行高迁移为 24 px，其余尺寸和草稿保留。设置浮窗使用内存基线实现实时预览，订阅持久化时仍写入基线，应用后才保存新值；取消只恢复设置，不覆盖刷新后的仓库数据。虚拟列表尺寸由实际字号与密度共同决定。高级 Git 操作策略使用独立的 VS Code 配置 `alwaygit.allowDetachedHead`、`alwaygit.pushFollowTags`、`alwaygit.pushTagAfterCreate` 与 `alwaygit.defaultResetMode`，不写入界面会话；`operationSettings` / `saveOperationSettings` RPC 严格校验完整设置，应用保存成功后才生效，配置变化广播到所有工作台。Push、Create Tag 与 Reset 弹窗从已应用设置读取初始值，只有用户明确选择“记住为默认”并提交时才回写；普通 saveSession 无法覆盖这些策略。
 
-Git 操作反馈以仓库 ID 保存在前端内存中，操作序号用于避免旧结果替换新操作；仓库切换只展示对应仓库的反馈。错误和结果不写入会话。文件批量选择属于当前文件区域的临时状态，与 Diff 预览目标分离；区域切换或文件消失时重新核对选择。
+Git 操作反馈以仓库 ID 保存在前端内存中，操作序号用于避免旧结果替换新操作；仓库切换只展示对应仓库的反馈。错误和结果不写入会话。影响当前工作区的写操作由前端进度遮罩隔离工作台所有背景区域与已有浮窗，并阻止键盘事件；遮罩依赖本地执行集合与宿主忙碌状态的并集，保留到界面同步完成。文件批量选择属于当前文件区域的临时状态，与 Diff 预览目标分离；区域切换或文件消失时重新核对选择。
 
 App、History、Sidebar、Details 和 Diff 按各自使用的状态字段订阅；主要面板使用 memo 和稳定的回调，快照中未变化的字段、选择列表和仓库摘要复用引用。内容刷新不重新执行 Working Tree 的主动选择逻辑。Diff 的局部加载、草稿输入与操作反馈不会通过整份 Store 订阅让无关面板重新计算；主题、字号、布局以及实际共享数据变化仍更新相关区域。
 

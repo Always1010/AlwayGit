@@ -6,9 +6,20 @@ export interface ActionFeedback {
   repoId: string;
   action: GitAction;
   status: 'running' | 'success' | 'error';
+  startedAt?: number;
+  phase?: 'executing' | 'refreshing';
+  refreshWarning?: string;
   target?: string;
   error?: string;
   result?: { kind: 'commit'; oid: string; files?: number; remaining: number; amended: boolean } | {kind:'stash';files:number;untracked:number;clean:boolean} | {kind:'branch';name:string;checkedOut:boolean;currentBranch:string};
+}
+
+/** Actions that replace files or the current checkout need an inert workbench. */
+export function blocksWorkbench(action: GitAction | string): boolean {
+  const type = typeof action === 'string' ? action : action.type;
+  if (typeof action !== 'string' && (action.type === 'branch.create' || action.type === 'branch.track')) return !!action.checkout;
+  if (type === 'branch.create' || type === 'branch.track') return true;
+  return ['branch.checkout', 'commit.checkout', 'checkout.stash', 'pull', 'merge', 'rebase', 'reset', 'cherry-pick', 'revert', 'stash.apply', 'operation.continue', 'operation.abort', 'operation.skip', 'discard', 'worktree.remove'].includes(type);
 }
 
 export function actionName(action: GitAction): string {

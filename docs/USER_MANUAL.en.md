@@ -341,6 +341,7 @@ A branch is a movable reference to a version. Creating a branch, switching branc
 **Prerequisite:** The target is not the current branch and is not in use by another Worktree.
 
 1. Double-click the target local branch, or right-click it and choose Checkout….
+   During execution, the workbench shows its own centered progress dialog. Background actions and shortcuts stay locked until the result is synchronized.
 2. If a warning says that changes could be overwritten, review the affected files rather than discarding them immediately.
 3. Depending on your goal, Commit first, Stash first, or use Stash Changes & Checkout if that option is explicitly offered.
 4. After switching, check the current-branch triangle and the file status in Working Tree.
