@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-export async function verifyHistoryLocation(browser, url, screenshotPath) {
+export async function verifyHistoryNavigation(browser, url, screenshotPath) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -29,8 +29,19 @@ export async function verifyHistoryLocation(browser, url, screenshotPath) {
     });
     await page.goto(url);
     await page.getByRole('option', { name: 'llvm-project', exact: true }).dblclick();
-    const location = page.getByTestId('history-location'), viewport = page.locator('.history-viewport');
-    await location.getByText('Loaded 300 commits · More history available', { exact: true }).waitFor();
+    const history = page.getByTestId('history'), viewport = history.locator('.history-viewport');
+    await history.locator('[data-oid]').first().waitFor();
+    assert.equal(await history.locator('[data-testid="history-location"]').count(), 0, 'History must not reserve a persistent location summary');
+    const back = history.getByRole('button', { name: 'Back to previous history view', exact: true });
+    const reset = history.getByRole('button', { name: 'Show current branch only and locate HEAD', exact: true });
+    assert.equal(await back.isEnabled(), false, 'Back stays visible but disabled before another Graph view exists');
+    assert.equal(await reset.count(), 0, 'Current-branch reset stays hidden in the normal current-branch view');
+    const search = history.getByRole('textbox', { name: 'Search commit history', exact: true });
+    await search.fill('Scope');
+    await reset.waitFor();
+    await search.fill('');
+    await reset.waitFor({ state: 'hidden' });
+    await history.getByText('Scope commit 0', { exact: true }).waitFor();
     await viewport.evaluate(element => { element.scrollTop = 600; });
     await page.waitForFunction(() => document.querySelector('.history-viewport').scrollTop === 600);
     const showTag = async name => {
@@ -39,27 +50,29 @@ export async function verifyHistoryLocation(browser, url, screenshotPath) {
     };
     await page.evaluate(() => { window.__scopeFixture.hold = true; });
     await showTag('v1');
-    await location.getByText('Loading history for tag v1', { exact: true }).waitFor();
-    await location.getByText('Displaying history: branch main', { exact: true }).waitFor();
-    await location.getByText(/Current checkout: main/).waitFor();
+    await history.getByText('Loading history for tag v1', { exact: true }).waitFor();
+    await reset.waitFor();
+    const [backBox, resetBox, searchBox] = await Promise.all([back.boundingBox(), reset.boundingBox(), search.boundingBox()]);
+    assert.ok(backBox && resetBox && searchBox, 'Graph navigation controls must be visible');
+    assert.ok(backBox.x+backBox.width<=resetBox.x&&resetBox.x+resetBox.width<=searchBox.x,'Graph navigation buttons sit immediately before search');
     await page.evaluate(() => { window.__scopeFixture.hold = false; window.__scopeFixture.pending.splice(0).forEach(response => window.postMessage(response, '*')); });
-    await location.getByText('Displaying history: tag v1', { exact: true }).waitFor();
-    await location.getByText('Current HEAD is not shown in the loaded history.', { exact: true }).waitFor();
+    await history.getByText('Scope commit 310', { exact: true }).waitFor();
     assert.equal(await page.locator('[data-graph-included="true"]').count(), 1);
     if (screenshotPath) await page.screenshot({ path: screenshotPath });
-    await page.getByRole('button', { name: 'Back to previous history view', exact: true }).click();
-    await location.getByText('Displaying history: branch main', { exact: true }).waitFor();
-    await page.waitForFunction(() => Math.abs(document.querySelector('.history-viewport').scrollTop - 600) < 2);
+    await back.click();
+    await reset.waitFor({ state: 'hidden' });
+    await page.waitForFunction(() => Math.abs(document.querySelector('.history-viewport').scrollTop-600)<2&&document.querySelector('[role="table"]')?.getAttribute('aria-rowcount')==='302');
     await page.evaluate(() => { window.__scopeFixture.fail = true; });
     await showTag('v2');
-    await location.getByText(/Could not load tag v2: Fixture read failure/).waitFor();
-    await location.getByText('Displaying history: branch main', { exact: true }).waitFor();
+    await history.getByText(/Could not load tag v2: Fixture read failure/).waitFor();
+    await reset.waitFor();
     assert.equal(await page.getByRole('button', { name: 'Load More', exact: true }).isDisabled(), true);
     await page.evaluate(() => { window.__scopeFixture.fail = false; });
     await page.getByRole('button', { name: 'Retry history loading', exact: true }).click();
-    await location.getByText('Displaying history: tag v2', { exact: true }).waitFor();
-    await page.getByRole('button', { name: 'Show current branch only and locate HEAD', exact: true }).click();
-    await location.getByText('Displaying history: branch main', { exact: true }).waitFor();
+    await history.getByText('Scope commit 311', { exact: true }).waitFor();
+    await reset.click();
+    await history.getByText('Scope commit 0', { exact: true }).waitFor();
+    await reset.waitFor({ state: 'hidden' });
     assert.equal(await page.evaluate(() => window.__scopeFixture.calls.some(request => request.method === 'action')), false);
     assert.deepEqual(errors, []);
   } finally { await page.close(); }

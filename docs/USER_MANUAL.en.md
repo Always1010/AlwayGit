@@ -240,8 +240,8 @@ Ref checkboxes control which history you see; branch names and row selections co
 1. In the left pane, check the local branches, remote branches, or Tags you want to view. Selecting multiple refs displays the union of the commits reachable from them.
 2. Use Add to Graph Scope to add a ref to the existing scope. Use Show Only This Branch History or Show Only This Tag History to view only the target history.
 3. Use the presets below Local Branches to quickly show all local branches or only the current branch.
-4. Read the persistent History location area: actual checkout and HEAD, displayed history scope, and the object being viewed. A pending scope is shown separately; failed reads preserve the displayed graph and offer retry.
-5. Use the back arrow to restore the previous history view. Use the home icon to clear searches and tag scopes and locate HEAD on the current branch. Locate HEAD preserves the existing scope. Navigation records last for this workbench session; very deep or outdated history is reread from the first page.
+4. When the scope changes, the existing History caption temporarily shows the scope being loaded. A failed read preserves the displayed graph and offers retry in the same row.
+5. Use the back arrow before the search field in the Graph heading to restore the previous history view. When a search is active or the Graph scope is not the current branch, a target icon appears beside it; use that icon to clear searches and tag scopes and locate HEAD on the current branch. Locate HEAD preserves the existing scope. Navigation records last for this workbench session; very deep or outdated history is reread from the first page.
 
 **Result:** History displays a commit graph that matches your selected ref scope.
 
