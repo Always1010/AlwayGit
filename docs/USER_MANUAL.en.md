@@ -917,6 +917,8 @@ Worktree lets a single repository have multiple working directories so you can w
 **Caution:** The Simplified Chinese interface retains Git action names such as Stage, Commit, and Fetch. Paths, branch names, and Git errors remain in their original form.
 
 
+Git operation settings default to User. Select Current workspace before editing to override the defaults for that VS Code workspace. Workspace overrides remain effective after user defaults are saved; empty windows cannot save workspace settings. The workspace scope covers all repositories managed in that window.
+
 <a id="section-11-02"></a>
 
 ### Why will a file or native Diff not open?

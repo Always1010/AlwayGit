@@ -16,7 +16,7 @@ vi.mock('vscode', () => {
   }
   return {
     EventEmitter, ConfigurationTarget: { Global: 1, Workspace: 2 }, ViewColumn: { Active: -1 }, Uri: { joinPath: vi.fn(() => ({})) }, env: { language: 'en' },
-    workspace: { isTrusted: true, onDidChangeConfiguration: () => ({ dispose() {} }), getConfiguration: () => ({ get: (_key: string, fallback: unknown) => fallback, inspect: () => undefined, update: async () => {} }) },
+    workspace: { isTrusted: true, get workspaceFolders() { return undefined; }, onDidChangeConfiguration: () => ({ dispose() {} }), getConfiguration: () => ({ get: (_key: string, fallback: unknown) => fallback, inspect: () => undefined, update: async () => {} }) },
     window: { createTreeView: vi.fn(), createWebviewPanel: vi.fn() },
     commands: { executeCommand: vi.fn(), registerCommand: vi.fn() },
   };
@@ -46,6 +46,30 @@ function workbenchFixture(output = { appendLine: vi.fn() }, events?: { changes: 
 }
 
 describe('Workbench entry presentation', () => {
+  it('writes the explicit Git settings scope while keeping workspace overrides effective', async () => {
+    vi.spyOn(vscode.workspace, 'workspaceFolders', 'get').mockReturnValue([{ name: 'project', index: 0, uri: {} as vscode.Uri }]);
+    const user = new Map<string, unknown>(), workspace = new Map<string, unknown>([['allowDetachedHead', true], ['defaultResetMode', 'soft']]);
+    const update = vi.fn(async (key: string, value: unknown, target: vscode.ConfigurationTarget) => { (target === vscode.ConfigurationTarget.Global ? user : workspace).set(key, value); });
+    vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
+      get: (key: string, fallback: unknown) => workspace.get(key) ?? user.get(key) ?? fallback,
+      inspect: (key: string) => ({ globalValue: user.get(key), workspaceValue: workspace.get(key), defaultValue: key === 'defaultResetMode' ? 'mixed' : false }), update,
+    } as unknown as vscode.WorkspaceConfiguration);
+    const workbench = workbenchFixture();
+    expect(await workbench.handle({ id: 'user', method: 'operationSettings', payload: { scope: 'user' } })).toMatchObject({ allowDetachedHead: false, defaultResetMode: 'mixed', overridden: true });
+    const settings = { allowDetachedHead: false, pushFollowTags: true, pushTagAfterCreate: true, defaultResetMode: 'hard' };
+    expect(await workbench.handle({ id: 'save-user', method: 'saveOperationSettings', payload: { ...settings, scope: 'user' } })).toMatchObject({ ...settings, scope: 'user' });
+    expect(update.mock.calls.every(([, , target]) => target === vscode.ConfigurationTarget.Global)).toBe(true);
+    expect(await workbench.handle({ id: 'effective', method: 'operationSettings' })).toMatchObject({ allowDetachedHead: true, defaultResetMode: 'soft' });
+    update.mockClear();
+    await workbench.handle({ id: 'save-workspace', method: 'saveOperationSettings', payload: { ...settings, scope: 'workspace' } });
+    expect(update.mock.calls.every(([, , target]) => target === vscode.ConfigurationTarget.Workspace)).toBe(true);
+    expect(await workbench.handle({ id: 'effective-2', method: 'operationSettings' })).toMatchObject(settings);
+  });
+  it('rejects explicit workspace settings in an empty window before writing configuration', async () => {
+    const workbench = workbenchFixture();
+    await expect(workbench.handle({ id: 'empty', method: 'operationSettings', payload: { scope: 'workspace' } })).rejects.toThrow();
+    await expect(workbench.handle({ id: 'empty-save', method: 'saveOperationSettings', payload: { scope: 'workspace', allowDetachedHead: false, pushFollowTags: false, pushTagAfterCreate: false, defaultResetMode: 'mixed' } })).rejects.toThrow();
+  });
   it('migrates legacy preferences once and broadcasts user updates without letting old session saves overwrite them', async () => {
     const values = new Map<string, unknown>();
     const update = vi.fn(async (key: string, value: unknown) => { values.set(key, value); });

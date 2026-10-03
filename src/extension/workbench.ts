@@ -28,6 +28,7 @@ import type { SessionState } from '../protocol/session';
 import { interfaceSettingsSchema, interfaceSettingsUpdateSchema, legacyInterfaceSettings, mergeInterfaceSettings, overlayInterfaceSettings, type InterfacePreferences } from '../protocol/interface-settings';
 import { RepositoryOperationBusyError, RepositoryOperationRecoveryRequiredError } from '../application/operation-lock';
 import { discardRequestSchema } from '../protocol/validation';
+import { operationSettingsScopeSchema } from '../protocol/validation';
 
 interface WorkbenchPanel { panel: vscode.WebviewPanel; visible: boolean; activeRepository?: string; blank: boolean; session?: SessionState; savedSession?: SessionState; pendingTerminal?: boolean; pendingChanges?: { repoId: string; changes?: RepositoryChanges }; catalogDirty?: boolean }
 interface RepositoryDiscoverySession { source?: WorkbenchPanel; cancelled: boolean; root: string; discovery?: DiscoveryResult }
@@ -75,7 +76,19 @@ export class Workbench implements vscode.Disposable {
     })().catch(error => { this.preferenceMigration = undefined; throw error; });
   }
   private readonly sessions = new SessionWriter(session => this.context.workspaceState.update('alwaygit.session', session));
-  private operationSettings(): OperationSettings { const configuration=vscode.workspace.getConfiguration('alwaygit'),configuredResetMode=configuration.get<string>('defaultResetMode','mixed'),defaultResetMode:OperationSettings['defaultResetMode']=['soft','mixed','hard'].includes(configuredResetMode)?configuredResetMode as OperationSettings['defaultResetMode']:'mixed';return { allowDetachedHead: configuration.get<boolean>('allowDetachedHead', false) === true, pushFollowTags: configuration.get<boolean>('pushFollowTags', false) === true, pushTagAfterCreate: configuration.get<boolean>('pushTagAfterCreate', false) === true, defaultResetMode, scope: vscode.workspace.workspaceFile || vscode.workspace.workspaceFolders?.length ? 'workspace' : 'user' }; }
+  private operationSettings(scope?: OperationSettings['scope']): OperationSettings {
+    const configuration = vscode.workspace.getConfiguration('alwaygit');
+    const workspaceAvailable = !!(vscode.workspace.workspaceFile || vscode.workspace.workspaceFolders?.length);
+    const keys = ['allowDetachedHead', 'pushFollowTags', 'pushTagAfterCreate', 'defaultResetMode'];
+    const read = <T>(key: string, fallback: T): T => scope === 'user'
+      ? configuration.inspect<T>(key)?.globalValue ?? configuration.inspect<T>(key)?.defaultValue ?? fallback
+      : configuration.get<T>(key, fallback);
+    const reset = read<string>('defaultResetMode', 'mixed');
+    return { allowDetachedHead: read<boolean>('allowDetachedHead', false) === true, pushFollowTags: read<boolean>('pushFollowTags', false) === true,
+      pushTagAfterCreate: read<boolean>('pushTagAfterCreate', false) === true, defaultResetMode: ['soft', 'mixed', 'hard'].includes(reset) ? reset as OperationSettings['defaultResetMode'] : 'mixed',
+      scope: scope ?? (workspaceAvailable ? 'workspace' : 'user'), workspaceAvailable,
+      overridden: scope === 'user' && keys.some(key => configuration.inspect(key)?.workspaceValue !== undefined) };
+  }
   private readonly requestLanguage = new AsyncLocalStorage<Language>();
   private panelLanguage(_source?: WorkbenchPanel): Language { return preferredLanguage(); }
   private language(): Language { return this.requestLanguage.getStore() ?? this.panelLanguage(); }
@@ -223,15 +236,21 @@ export class Workbench implements vscode.Disposable {
       });
       this.preferenceWrites = write; return write;
     }
-    if (request.method === 'operationSettings') return this.operationSettings();
+    if (request.method === 'operationSettings') {
+      const { scope } = operationSettingsScopeSchema.parse(request.payload ?? {});
+      if (scope === 'workspace' && !this.operationSettings().workspaceAvailable) throw new Error(this.text('settings.workspaceRequired'));
+      return this.operationSettings(scope);
+    }
     if (request.method === 'saveOperationSettings') {
       const settings = operationSettingsSchema.parse(request.payload);
-      const target=this.operationSettings().scope === 'workspace' ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global,configuration=vscode.workspace.getConfiguration('alwaygit');
+      const scope = settings.scope ?? this.operationSettings().scope;
+      if (scope === 'workspace' && !this.operationSettings().workspaceAvailable) throw new Error(this.text('settings.workspaceRequired'));
+      const target=scope === 'workspace' ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global,configuration=vscode.workspace.getConfiguration('alwaygit');
       await configuration.update('allowDetachedHead', settings.allowDetachedHead, target);
       await configuration.update('pushFollowTags', settings.pushFollowTags, target);
       await configuration.update('pushTagAfterCreate', settings.pushTagAfterCreate, target);
       await configuration.update('defaultResetMode', settings.defaultResetMode, target);
-      const saved = this.operationSettings(); this.post({ type: 'operationSettingsChanged', settings: saved }); return saved;
+      const saved = this.operationSettings(scope); this.post({ type: 'operationSettingsChanged', settings: this.operationSettings() }); return saved;
     }
     if (request.method === 'openKeyboardShortcuts') { await vscode.commands.executeCommand('workbench.action.openGlobalKeybindings', '@ext:alwaygit-dev.alwaygit'); return null; }
     if (request.method === 'showLog') { this.output.show(true); return null; }
