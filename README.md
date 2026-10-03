@@ -20,6 +20,7 @@ npm run build
 - 多仓库和 工作树 导航、确认式递归发现、仓库移除与自定义项目分组、同窗口多个独立工作台标签。
 - 多引用筛选、递归分支树、可分页的拓扑提交图、消息搜索及 HEAD 定位。
 - Commit 详情、Merge Parent 选择、双 Commit 自动比较、文件路径筛选及文本与图片只读 Diff。
+- 底部 Diff 与多终端共用标签面板，支持 Shell 选择、重命名、终止/重启、折叠及最大化。
 - Working Tree 的冲突、Unstaged 和 Staged 管理，整文件及批量操作、Commit、Amend 与每仓库草稿。
 - 分支、远程分支、Tag、Stash 和 工作树 管理，以及 Fetch、Pull、Push、Merge、Rebase、Cherry-pick、Reset、Revert 与进行中操作处理。
 - 四区 Workbench 布局、可调面板与列宽、明暗主题、Graph 配色、字号、密度、English / 简体中文和会话恢复。

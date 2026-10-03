@@ -21,6 +21,19 @@ beforeEach(async () => {
 });
 afterEach(() => { vi.useRealTimers(); });
 describe('repository UI consistency', () => {
+  it('refreshes working Diff without stealing a terminal tab, but explicit file selection activates Diff', async () => {
+    const { useDock } = await import('../webview/dock-store');
+    await store.getState().selectRepository('a');
+    const changes = [{ path: 'a.txt', indexStatus: ' ', worktreeStatus: 'M', conflict: false, untracked: false }];
+    store.setState({ snapshot: { ...snapshot(a), changes } }); store.getState().selectWorking();
+    const target = { kind: 'change' as const, path: 'a.txt', area: 'unstaged' as const };
+    useDock.getState().select('terminal-a');
+    const fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, ...args) => method === 'snapshot' ? { ...snapshot(a, 2), changes } : fallback(method, ...args));
+    await store.getState().refresh({ background: true });
+    expect(useDock.getState().activeId).toBe('terminal-a');
+    store.getState().selectFile(target); expect(useDock.getState().activeId).toBe('diff');
+  });
   it('does not validate old displayed rows using a newer snapshot when saving the back view', async () => {
     await store.getState().selectRepository('a');
     store.setState({ snapshot: { ...snapshot(a), head: 'moved-head' } });

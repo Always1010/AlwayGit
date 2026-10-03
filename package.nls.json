@@ -1,4 +1,5 @@
 {
+  "manifest.newTerminal": "New Embedded Terminal",
   "manifest.displayName": "AlwayGit",
   "manifest.description": "A professional Git workbench inside Visual Studio Code.",
   "manifest.capabilities.untrustedWorkspaces.description": "Git execution requires a trusted workspace.",

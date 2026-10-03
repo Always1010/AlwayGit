@@ -14,7 +14,7 @@ export function useShortcuts(commands: ShortcutActions): void {
 }
 
 function editable(target: EventTarget | null): boolean {
-  return selectionTargetIsEditable(target) || target instanceof Element && !!target.closest('select,[role="textbox"],[role="combobox"]');
+  return selectionTargetIsEditable(target) || target instanceof Element && !!target.closest('select,[role="textbox"],[role="combobox"],[data-terminal-input]');
 }
 
 export function useWorkbenchKeyboard(blocked: boolean): void {

@@ -1,3 +1,4 @@
+import { useDock } from './dock-store';
 import { translate, uiText, setLanguageReader } from './text';
 import { create } from 'zustand';
 import { errorMessage } from './rpc-error';
@@ -58,7 +59,7 @@ interface WorkbenchState {
   ref?: string; checkedRefs?: string[]; expandedRefGroups?:string[]; collapsedSidebarGroups:string[]; search: string; language: Language; layout: LayoutState; checkoutFailure?: CheckoutFailure; stashApplyFailure?: StashApplyBlocker; actionFeedback?: ActionFeedback; locateToken:number;
   nextOffset: number; hasMore: boolean; tips: string[]; loading: boolean; historyLoading: boolean; locatingOid?: string; locateCommit(oid: string, append?: boolean): Promise<void>; detailsLoading: boolean; busy: boolean; activity: string; error?: string; notice?: string; tab: 'history' | 'changes'; drafts: Record<string, string>;
   initialize(): Promise<void>; loadRepositoryStatuses(): Promise<void>; selectRepository(id: string): Promise<void>; refresh(options?: { background?: boolean; changes?: RepositoryChanges; snapshot?: Snapshot }): Promise<void>; loadHistory(append?: boolean): Promise<void>; selectCommit(oid: string, parent?: string, stashOid?: string, preserveSelection?: boolean): Promise<void>; selectStashSection(section:StashSection):void; compareCommits(left:string,right:string,preserveOrder?:boolean):Promise<void>; setCommitSelection(oids:string[],anchor?:string,primary?:string):void; setRefSelection(refs:string[],anchor?:string):void; setRepositorySelection(keys:string[],anchor?:string):void; setWorktreeSelection(paths:string[],anchor?:string):void;
-  setFilter(ref?: string, search?: string): void; setCheckedRefs(refs: string[]): void; setExpandedRefGroup(key:string,expanded:boolean):void; toggleSidebarGroup(key:string):void; setSearch(value: string): void; selectWorking(): void; selectFile(target: DiffTarget): void; locateHead():void;
+  setFilter(ref?: string, search?: string): void; setCheckedRefs(refs: string[]): void; setExpandedRefGroup(key:string,expanded:boolean):void; toggleSidebarGroup(key:string):void; setSearch(value: string): void; selectWorking(): void; selectFile(target: DiffTarget, activate?: boolean): void; locateHead():void;
   workingFilters: Record<string, string>; setWorkingFilter(value: string): void;
   execute(action: GitAction): Promise<boolean>; dismissFeedback(): void; setDraft(value: string): void; setLanguage(value: Language): void; setLayout(value: Partial<LayoutState>): void; report(error: unknown): void;
 }
@@ -202,7 +203,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       set(state => ({ snapshot, checkedRefs: shareValue(state.checkedRefs, checkedRefs), expandedRefGroups, selectedRefs: shareValue(state.selectedRefs, selectedRefs), refSelectionAnchor, repositoryStatuses: shareValue(state.repositoryStatuses, { ...state.repositoryStatuses, [snapshot.repository.id]: { repositoryId: snapshot.repository.id, branch: snapshot.branch, ...(snapshot.upstream ? { upstream: snapshot.upstream } : {}), ahead: snapshot.ahead, unpushed: snapshot.unpushed ?? snapshot.ahead } }) }));
       if (get().tab === 'changes') {
         const target = workingTarget(snapshot, get().diffTarget, get().selectedFile);
-        if (target) get().selectFile(target); else if (get().diffTarget || get().selectedFile) set({ selectedFile: undefined, diffTarget: undefined });
+        if (target) get().selectFile(target, false); else if (get().diffTarget || get().selectedFile) set({ selectedFile: undefined, diffTarget: undefined });
         if (target && diffKey(target) === diffKey(previousTarget) && affectsWorkingDiff(previous, snapshot, target, invalidation.changes)) set({ diffRevision: get().diffRevision + 1 });
       }
       if (reloadHistory) await get().loadHistory();
@@ -248,7 +249,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         const [selectedStashSection,details]=chosen;
         set({details,stashDetails,selectedStashSection,selectedOid:details.commit.oid,selectedParent:details.parent});
         const file=(same?details.files.find(candidate=>candidate.path===get().selectedFile):undefined)??details.files[0];
-        if(file)get().selectFile({kind:'commit',oid:details.commit.oid,path:file.path,previousPath:file.previousPath,parent:details.parent});else set({selectedFile:undefined,diffTarget:undefined});
+        if(file)get().selectFile({kind:'commit',oid:details.commit.oid,path:file.path,previousPath:file.previousPath,parent:details.parent}, false);else set({selectedFile:undefined,diffTarget:undefined});
       }catch(error){if(epoch===detailEpoch&&repoEpoch===repositoryEpoch)get().report(error);}
       finally{if(epoch===detailEpoch&&repoEpoch===repositoryEpoch)set({detailsLoading:false});}
       return;
@@ -264,7 +265,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       if (epoch !== detailEpoch || repoEpoch !== repositoryEpoch) return;
       set({ details, selectedParent: details.parent });
       const file = (same ? details.files.find(f => f.path === get().selectedFile) : undefined) ?? details.files[0];
-      if (file) get().selectFile({ kind: 'commit', oid, path: file.path, previousPath: file.previousPath, parent: details.parent }); else set({ selectedFile: undefined, diffTarget: undefined });
+      if (file) get().selectFile({ kind: 'commit', oid, path: file.path, previousPath: file.previousPath, parent: details.parent }, false); else set({ selectedFile: undefined, diffTarget: undefined });
     } catch (error) { if (epoch === detailEpoch && repoEpoch === repositoryEpoch) get().report(error); }
     finally { if (epoch === detailEpoch && repoEpoch === repositoryEpoch) set({ detailsLoading: false }); }
   },
@@ -311,7 +312,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     ++detailEpoch; const snapshot = get().snapshot, target = snapshot && workingTarget(snapshot, get().diffTarget, get().selectedFile); set({ tab: 'changes', locatingOid:undefined, selectedOids:[], selectionAnchor:undefined, comparison:undefined, detailsLoading: false });
     if (target) get().selectFile(target); else set({ selectedFile: undefined, diffTarget: undefined });
   },
-  selectFile(target) { if (diffKey(target) !== diffKey(get().diffTarget)) set({ selectedFile: target.path, diffTarget: target }); },
+  selectFile(target, activate = true) { if (activate) useDock.getState().select('diff'); if (diffKey(target) !== diffKey(get().diffTarget)) set({ selectedFile: target.path, diffTarget: target }); },
   locateHead() {
     const state=get(),snapshot=state.snapshot;if(!snapshot?.head)return;
     if(state.commits.some(commit=>commit.oid===snapshot.head)) {

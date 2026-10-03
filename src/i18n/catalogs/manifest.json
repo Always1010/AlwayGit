@@ -1,4 +1,10 @@
 {
+  "manifest.newTerminal": {
+    "en": "New Embedded Terminal",
+    "zh-CN": "新建内嵌终端",
+    "review": "translated",
+    "context": "package.json / contributes.commands"
+  },
   "manifest.displayName": {
     "en": "AlwayGit",
     "zh-CN": "AlwayGit",

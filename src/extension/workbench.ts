@@ -1,4 +1,8 @@
+import { message, MessageError } from '../i18n';
 import { translate, type MessageKey, type MessageArgs } from '../i18n/index';
+import { TerminalSessions } from '../application/terminal-sessions';
+import { spawnTerminal, terminalShell } from './terminal-runtime';
+import { terminalAckSchema, terminalCreateSchema, terminalIdSchema, terminalInputSchema, terminalResizeSchema, terminalRenameSchema } from '../protocol/terminal';
 import { SnapshotCoordinator } from '../application/snapshot-coordinator';
 import { QueryCoordinator } from '../application/query-coordinator';
 import { readQueryCategory } from '../protocol/queries';
@@ -24,13 +28,14 @@ import type { SessionState } from '../protocol/session';
 import { RepositoryOperationBusyError, RepositoryOperationRecoveryRequiredError } from '../application/operation-lock';
 import { discardRequestSchema } from '../protocol/validation';
 
-interface WorkbenchPanel { panel: vscode.WebviewPanel; activeRepository?: string; blank: boolean; session?: SessionState; savedSession?: SessionState }
+interface WorkbenchPanel { panel: vscode.WebviewPanel; activeRepository?: string; blank: boolean; session?: SessionState; savedSession?: SessionState; pendingTerminal?: boolean }
 interface RepositoryDiscoverySession { source?: WorkbenchPanel; cancelled: boolean; root: string; discovery?: DiscoveryResult }
 export interface WorkbenchPresence { open: boolean; active: boolean }
 
 export class Workbench implements vscode.Disposable {
   private readonly panels = new Map<vscode.WebviewPanel, WorkbenchPanel>();
   private lastPanel?: WorkbenchPanel;
+  private readonly terminals = new TerminalSessions(spawnTerminal, (owner, event) => this.post(event, owner as WorkbenchPanel));
   private activeRepository?: string;
   private readonly snapshots = new SnapshotCoordinator();
   private readonly queries = new QueryCoordinator();
@@ -67,13 +72,13 @@ export class Workbench implements vscode.Disposable {
     if (repoId) this.activeRepository = repoId;
     const existing=!restoredPanel&&!newTab?([...this.panels.values()].find(entry=>entry.panel.active)??this.lastPanel??[...this.panels.values()].at(-1)):undefined;
     if(existing){existing.panel.reveal();this.lastPanel=existing;this.post({type:'repositoriesChanged'},existing);if(repoId)this.selectPanelRepository(existing,repoId);this.presenceEmitter.fire(this.presence);return;}
-    const options = { enableScripts: true, localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview')] };
+    const options = { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview')] };
     const panel = restoredPanel ?? vscode.window.createWebviewPanel('alwaygit.workbench', 'AlwayGit', vscode.ViewColumn.Active, options);
     panel.webview.options = options;
     const entry:WorkbenchPanel={panel,activeRepository:repoId,blank,savedSession:this.context.workspaceState.get<SessionState>('alwaygit.session',{})};
     this.panels.set(panel,entry);this.lastPanel=entry;this.updatePanelTitle(entry);this.presenceEmitter.fire(this.presence);
     panel.iconPath = vscode.Uri.joinPath(this.context.extensionUri, 'media', 'alwaygit.svg');
-    panel.onDidDispose(() => { this.queries.cancelOwner(entry);this.panels.delete(panel);for(const [id,scan] of this.repositoryDiscoveries)if(scan.source===entry){scan.cancelled=true;this.repositoryDiscoveries.delete(id);}if(this.lastPanel===entry)this.lastPanel=[...this.panels.values()].at(-1);this.presenceEmitter.fire(this.presence); });
+    panel.onDidDispose(() => { this.terminals.disposeOwner(entry);this.queries.cancelOwner(entry);this.panels.delete(panel);for(const [id,scan] of this.repositoryDiscoveries)if(scan.source===entry){scan.cancelled=true;this.repositoryDiscoveries.delete(id);}if(this.lastPanel===entry)this.lastPanel=[...this.panels.values()].at(-1);this.presenceEmitter.fire(this.presence); });
     panel.webview.onDidReceiveMessage(async (raw: unknown) => {
       const parsed = requestSchema.safeParse(raw);
       if (!parsed.success) return;
@@ -87,6 +92,14 @@ export class Workbench implements vscode.Disposable {
     });
     panel.onDidChangeViewState(event => { if (event.webviewPanel.active) { this.lastPanel=entry; if(entry.session)void this.saveSessionBaseline(entry.session,entry).catch(error=>this.output.appendLine(`[session] ${redactSecrets(String(error))}`)); } if (event.webviewPanel.visible) { this.post({ type: 'repositoriesChanged' },entry); if (entry.activeRepository) this.post({ type: 'changed', repoId: entry.activeRepository },entry); } this.presenceEmitter.fire(this.presence); });
     panel.webview.html = await this.html(panel.webview,repoId,blank);
+  }
+  async requestTerminal(): Promise<void> {
+    await this.open();
+    const target = [...this.panels.values()].find(entry => entry.panel.active) ?? this.lastPanel;
+    if (target) {
+      if (target.session?.repoId) this.post({ type: 'terminalRequested' }, target);
+      else target.pendingTerminal = true;
+    }
   }
   async pickRepositoryDirectory():Promise<string|undefined>{
     const selected=await vscode.window.showOpenDialog({canSelectFolders:true,canSelectFiles:false,canSelectMany:false,title:this.text("host.selectARepositoryOrAFolderContainingRepositories"),openLabel:this.text("host.scanFolder")});
@@ -192,9 +205,38 @@ export class Workbench implements vscode.Disposable {
       const value = await vscode.window.showSaveDialog({ title: this.text("host.newWorktreeDirectory"), saveLabel: this.text("host.useDirectory"), defaultUri: vscode.Uri.file(path.join(path.dirname(this.repositories.get(request.repoId).root), 'new-worktree')) });
       return value?.fsPath;
     }
+    if (request.method.startsWith('terminal')) {
+      if (!source || !this.panels.has(source.panel)) throw new MessageError(message('dock.liveWorkbench'));
+      if (request.method === 'terminalList') return this.terminals.list(source);
+      if (request.method === 'terminalCreate') {
+        const data = terminalCreateSchema.parse(request.payload);
+        const repository = this.repositories.get(request.repoId);
+        return this.terminals.create(source, repository.id, repository.root, data.shell, terminalShell(data.shell), data.cols, data.rows);
+      }
+      const { sessionId } = terminalIdSchema.parse({ sessionId: (request.payload as { sessionId?: unknown } | undefined)?.sessionId });
+      switch (request.method) {
+        case 'terminalClipboard': terminalIdSchema.parse(request.payload); this.terminals.snapshot(source, sessionId); return vscode.env.clipboard.readText();
+        case 'terminalAck': this.terminals.acknowledge(source, sessionId, terminalAckSchema.parse(request.payload).sequence); break;
+        case 'terminalSync': terminalIdSchema.parse(request.payload); return this.terminals.snapshot(source, sessionId);
+        case 'terminalInput': this.terminals.input(source, sessionId, terminalInputSchema.parse(request.payload).data); break;
+        case 'terminalResize': { const data = terminalResizeSchema.parse(request.payload); this.terminals.resize(source, sessionId, data.cols, data.rows); break; }
+        case 'terminalClose': terminalIdSchema.parse(request.payload); this.terminals.close(source, sessionId); break;
+        case 'terminalStop': terminalIdSchema.parse(request.payload); this.terminals.stop(source, sessionId); break;
+        case 'terminalRename': this.terminals.rename(source, sessionId, terminalRenameSchema.parse(request.payload).title); break;
+        case 'terminalRestart': {
+          terminalIdSchema.parse(request.payload);
+          const previous = this.terminals.snapshot(source, sessionId);
+          if (previous.status !== 'exited') throw new MessageError(message('dock.stopBeforeRestart'));
+          const repository = this.repositories.get(previous.repoId);
+          return this.terminals.create(source, repository.id, previous.cwd, previous.shell, terminalShell(previous.shell), 80, 24, sessionId);
+        }
+      }
+      return null;
+    }
     const repo = this.repositories.get(request.repoId);
     switch (request.method) {
       case 'snapshot': {
+        if (source?.pendingTerminal) { source.pendingTerminal = false; this.post({ type: 'terminalRequested' }, source); }
         if(source&&source.activeRepository!==repo.id)this.queries.cancelOwner(source);
         this.activeRepository = repo.id;if(source){source.activeRepository=repo.id;this.lastPanel=source;this.updatePanelTitle(source);}
         const snapshot = await this.snapshots.read(repo.id, () => this.git.snapshot(repo)); this.recordFingerprint(snapshot); return snapshot;
@@ -316,5 +358,5 @@ export class Workbench implements vscode.Disposable {
     html = html.replace('</head>', `<script nonce="${nonce}">window.__ALWAYGIT_SESSION__=${session};</script></head>`);
     return html.replace('<head>', `<head><meta property="csp-nonce" nonce="${nonce}"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">`);
   }
-  dispose(): void { this.snapshots.dispose();this.queries.dispose();clearInterval(this.interval);for(const scan of this.repositoryDiscoveries.values())scan.cancelled=true;this.repositoryDiscoveries.clear();const panels=[...this.panels.keys()];this.panels.clear();this.lastPanel=undefined;for(const panel of panels)panel.dispose();this.presenceEmitter.dispose();for (const disposable of this.disposables) disposable.dispose(); }
+  dispose(): void { this.terminals.dispose();this.snapshots.dispose();this.queries.dispose();clearInterval(this.interval);for(const scan of this.repositoryDiscoveries.values())scan.cancelled=true;this.repositoryDiscoveries.clear();const panels=[...this.panels.keys()];this.panels.clear();this.lastPanel=undefined;for(const panel of panels)panel.dispose();this.presenceEmitter.dispose();for (const disposable of this.disposables) disposable.dispose(); }
 }

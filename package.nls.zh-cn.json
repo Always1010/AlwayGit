@@ -1,4 +1,5 @@
 {
+  "manifest.newTerminal": "新建内嵌终端",
   "manifest.displayName": "AlwayGit",
   "manifest.description": "Visual Studio Code 中的专业 Git 工作台。",
   "manifest.capabilities.untrustedWorkspaces.description": "Git 操作需要受信任的工作区。",

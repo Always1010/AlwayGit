@@ -57,6 +57,7 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.workspace.onDidChangeWorkspaceFolders(() => void manager.scan()),
     vscode.workspace.onDidGrantWorkspaceTrust(() => void manager.scan()),
     vscode.commands.registerCommand('alwaygit.showWorkbench', () => workbench.open()),
+    vscode.commands.registerCommand('alwaygit.newTerminal', () => workbench.requestTerminal()),
     vscode.commands.registerCommand('alwaygit.openWorkbenchInNewWindow', () => projects.openBlankWorkbenchInNewWindow()),
     vscode.commands.registerCommand('alwaygit.open', (repoId?: string) => workbench.open(typeof repoId === 'string' ? repoId : undefined)),
     vscode.commands.registerCommand('alwaygit.refresh', async () => { await manager.scan(); for (const repo of manager.list()) manager.notify(repo.id); }),

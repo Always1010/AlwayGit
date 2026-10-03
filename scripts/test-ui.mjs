@@ -16,9 +16,11 @@ import { verifyBranchCreation } from './test-branch-ui.mjs';
 import { verifyCherryPick } from './test-cherry-pick-ui.mjs';
 import { verifyHelp } from './test-help-ui.mjs';
 import { verifyShortcuts } from './test-shortcuts-ui.mjs';
+import { verifyTerminalDock } from './test-terminal-ui.mjs';
 
 // Full and targeted runs share one registry, so a new suite cannot be omitted from full runs.
 const suites = new Map([
+  ['terminal', verifyTerminalDock],
   ['workbench', verifyWorkbench],
   ['history', verifyHistory],
   ['refresh', verifyRefresh],

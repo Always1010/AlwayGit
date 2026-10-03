@@ -6,7 +6,7 @@
 
 AlwayGit 是 Workspace 类型的 VS Code 扩展。每个 React WebviewPanel 提供一个独立工作台标签，Node.js 扩展宿主管理面板集合，并共享 Git 子进程、仓库发现、剪贴板、窗口和文件操作。活动栏 View Container 承载启动侧栏：`workbench-launcher.ts` 注册空 TreeView，`package.json` 的 `viewsWelcome` 显示两个原生按钮，分别复用当前窗口显示命令和新窗口命令；视图显示不自动打开工作台或关闭侧栏。状态栏与命令面板复用当前窗口的 Workbench 显示命令。Webview 不直接读取磁盘，也不执行 Git。
 
-`src/protocol` 是 Webview 和宿主的共享边界。请求以 `id` 关联响应，Zod 在宿主入口验证方法与参数；宿主主动发布仓库变更、操作活动和仓库选择事件。宿主只接受已经注册的仓库及预定义方法，不暴露任意命令执行接口。Demo 适配器独立维护示例模型，仅在显式 Demo 模式的首次请求时初始化数据；生产桥接不初始化示例状态或读取 Demo 存储。
+`src/protocol` 是 Webview 和宿主的共享边界。请求以 `id` 关联响应，Zod 在宿主入口验证方法与参数；宿主主动发布仓库变更、操作活动和仓库选择事件。宿主只接受已经注册的仓库及预定义方法，Git RPC 不接受任意命令；明确创建的内嵌终端提供受面板归属隔离的 Shell 输入通道。Demo 适配器独立维护示例模型，仅在显式 Demo 模式的首次请求时初始化数据；生产桥接不初始化示例状态或读取 Demo 存储。
 
 ## 模块边界
 
@@ -20,6 +20,8 @@ AlwayGit 是 Workspace 类型的 VS Code 扩展。每个 React WebviewPanel 提�
 | `src/protocol` | `types.ts`、`validation.ts`、`session.ts`、`repositories.ts` | 数据模型、RPC 请求响应、运行时校验和仓库展示分组 |
 | `webview` | `App.tsx`、`store.ts`、`rpc.ts`、`demo.ts` | React 组合、Zustand 状态、生产宿主桥接及独立的 Demo 适配器 |
 | `webview` | `Sidebar.tsx`、`History.tsx`、`Details.tsx`、`DiffPreview.tsx` | 四区呈现、对象选择和只读比较 |
+| `webview` | `BottomDock.tsx`、`dock-store.ts`、`TerminalView.tsx` | 底部多标签、终端显示与输入、活动标签状态 |
+| `src/application`、`src/extension` | `terminal-sessions.ts`、`terminal-runtime.ts`、`terminal-host.ts` | 来源面板隔离、Shell 配置、PTY 辅助进程与输出流控 |
 | `webview` | `shortcutKeys.ts`、`shortcuts.ts` | 统一键位、捕获分发、编辑/弹窗/输入法保护及组件动作注册；操作与按钮共用回调和可用条件 |
 | `webview` | `menus.ts`、`SettingsDialog.tsx`、`appearance.ts`、`i18n.ts` | 动作定义、界面设置、外观和语言 |
 | `webview` | `HelpDialog.tsx`、`help-content.ts`、`help-manuals.ts` | 离线帮助、双语手册的章节提取与打包图片映射 |
@@ -83,6 +85,16 @@ Git 操作反馈以仓库 ID 保存在前端内存中，操作序号用于避免
 App、History、Sidebar、Details 和 Diff 按各自使用的状态字段订阅；主要面板使用 memo 和稳定的回调，快照中未变化的字段、选择列表和仓库摘要复用引用。内容刷新不重新执行 Working Tree 的主动选择逻辑。Diff 的局部加载、草稿输入与操作反馈不会通过整份 Store 订阅让无关面板重新计算；主题、字号、布局以及实际共享数据变化仍更新相关区域。
 
 右键菜单保存目标对象的稳定身份及来源元素。打开操作对话框后，Git 写操作仍在宿主重新解析和验证引用、Stash 或 工作树；切换仓库会关闭旧菜单和旧对话框。菜单以标准 `menu` / `menuitem` 语义呈现，支持焦点移动、Enter、Space、Escape 和点击外部关闭。仅来源元素或其祖先滚动、窗口缩放及主动关闭操作会收起菜单；Diff 自动定位或其他面板滚动不关闭菜单。
+
+## 内嵌终端
+
+`BottomDock.tsx` 组合固定 Diff 标签与多个终端标签，`dock-store.ts` 保存本工作台运行期的标签与活动对象。旧会话的 `layout.diff` 和 `layout.diffCollapsed` 直接复用为整个底部面板的高度与收起状态，因此不迁移或丢弃已有尺寸、视图及草稿。Diff 控件仅在 Diff 标签活动时注册可执行快捷键；终端输入区域由全局键盘保护识别。`TerminalView.tsx` 延迟加载 xterm.js 与 FitAddon，按主题更新颜色并将可见区域的列数/行数发送给宿主。
+
+`src/protocol/terminal.ts` 定义终端专用校验和事件。宿主要求受信任工作区与真实来源面板；新建只接受已注册仓库 ID、有限 Shell 选项和尺寸，不接受任意路径或命令启动参数。`TerminalSessions` 以来源面板隔离会话，校验输入、关闭、尺寸、重命名、快照与输出确认的所属关系，退出后保留描述信息，面板销毁时释放其全部会话。终端是明确开放的 Shell 输入通道，不使用 Git RPC 的动作白名单、确认或写租约，也不向其他工作台广播终端输出。
+
+`terminal-runtime.ts` 为每个会话启动无窗口辅助进程 `terminal-host.cjs`，由辅助进程延迟加载 node-pty 并管理 PTY。Shell 自然退出后，辅助进程先交付剩余输出与退出码，再退出并释放原生输出线程；关闭/终止请求结束 Shell，辅助进程另有 5 秒终止兜底。Webview 保留隐藏上下文，输出按 16 ms / 32 KiB 分批；宿主只保留约 1 MiB 的内存重连缓冲，xterm 保留 5000 行。输出序号避免快照重放和实时输出重复，128 KiB 未确认输出暂停读取，渲染确认后恢复，防止慢前端无界积压。输出及命令不进入会话持久化或日志。
+
+构建脚本将 node-pty 运行目录复制到 `dist/terminal-runtime/node-pty`，独立打包辅助进程，原生模块不进入 JS Bundle。node-pty 提供的 Windows/macOS 预编译产物随运行目录复制；Linux 需要在其构建环境准备 PTY 原生模块，Windows 本地构建不生成 Linux 模块。Demo 仅回显输入并标明不会执行命令。
 
 ## Diff 与原生编辑器
 
