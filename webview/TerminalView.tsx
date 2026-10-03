@@ -18,7 +18,7 @@ export function TerminalView({ session, active }: { session: TerminalSession; ac
   useLayoutEffect(() => {
     const container = element.current!;
     const term = new Terminal({ cursorBlink: true, fontSize: useWorkbench.getState().appearance.codeFont, scrollback: 5000, minimumContrastRatio: terminalMinimumContrastRatio,
-      fontFamily: String.raw`Consolas, "Cascadia Mono", monospace`, allowProposedApi: false });
+      fontFamily: String.raw`Consolas, "Cascadia Mono", monospace`, overviewRuler: { width: 6 }, allowProposedApi: false });
     const fitter = new FitAddon(); term.loadAddon(fitter); term.open(container); terminal.current = term; fit.current = fitter;
     let disposed = false, ready = false, sequence = 0, queued: { sequence: number; data: string }[] = [];
     let input = '', timer: ReturnType<typeof setTimeout> | undefined, sending = Promise.resolve();
