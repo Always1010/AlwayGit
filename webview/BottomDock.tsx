@@ -6,6 +6,7 @@ import { useWorkbenchFields } from './subscriptions';
 import { rpc, subscribe } from './rpc';
 import { useTranslation } from './i18n';
 import { Button, Icon, Modal } from './ui';
+import { useShortcuts } from './shortcuts';
 import type { TerminalShell } from '../src/protocol/terminal';
 import './dock.css';
 const TerminalView = lazy(() => import('./TerminalView').then(module => ({ default: module.TerminalView })));
@@ -26,6 +27,17 @@ export function BottomDock({ native, edit }: { native(): void; edit(): void }) {
     const repoId = useWorkbench.getState().repoId; if (!repoId) return;
     setMenu(undefined); useWorkbench.getState().setLayout({ diffCollapsed: false }); run(useDock.getState().create(repoId, shell));
   }, [run]);
+  const select = useCallback((id: string) => { dock.select(id); state.setLayout({ diffCollapsed: false }); setMenu(undefined); }, [dock, state.setLayout]);
+  const focusTerminal = useCallback(() => {
+    const current = useDock.getState(), id = current.activeId === 'diff' ? current.sessions.at(-1)?.id : current.activeId;
+    if (!id) { create(); return; }
+    select(id);
+    window.setTimeout(() => window.dispatchEvent(new CustomEvent('alwaygit-terminal-focus', { detail: id })), 0);
+  }, [create, select]);
+  useShortcuts({
+    terminalNew: { enabled: !!state.repoId && !dock.creating, run: () => create() },
+    terminalFocus: { enabled: !!state.repoId, run: focusTerminal },
+  });
   useEffect(() => { run(useDock.getState().load()); return subscribe(event => { if (event.type === 'terminalRequested') create(); }); }, [create, run]);
   useEffect(() => { tabs.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }, [dock.activeId]);
   useEffect(() => { if (state.layout.diffCollapsed) setMaximized(false); }, [state.layout.diffCollapsed]);
@@ -38,7 +50,6 @@ export function BottomDock({ native, edit }: { native(): void; edit(): void }) {
     const close = (event: PointerEvent) => { if (!(event.target instanceof Element) || !event.target.closest('.dock-menu-anchor')) setMenu(undefined); };
     window.addEventListener('pointerdown', close); return () => window.removeEventListener('pointerdown', close);
   }, [menu]);
-  const select = (id: string) => { dock.select(id); state.setLayout({ diffCollapsed: false }); setMenu(undefined); };
   const diffTitle = state.selectedFile ? `${t('diff.diff')}${state.selectedFile}` : 'Diff';
   return <section className={`bottom-dock${maximized ? ' dock-maximized' : ''}`} data-testid="bottom-dock" aria-label={t('dock.panel')}>
     <div className="dock-heading">
@@ -57,7 +68,7 @@ export function BottomDock({ native, edit }: { native(): void; edit(): void }) {
         </div>)}
       </div>
       <div className="dock-common-actions">
-        <Button className="icon-only" icon="add" title={t('dock.newTerminal')} aria-label={t('dock.newTerminal')} disabled={!state.repoId || dock.creating} onClick={() => create()}/>
+        <Button className="icon-only" icon="add" shortcut="terminalNew" title={t('dock.newTerminal')} aria-label={t('dock.newTerminal')} disabled={!state.repoId || dock.creating} onClick={() => create()}/>
         <div className="dock-menu-anchor"><Button className="icon-only" icon="chevron-down" title={t('dock.chooseShell')} aria-label={t('dock.chooseShell')} aria-expanded={menu === 'shell'} disabled={!state.repoId} onClick={() => setMenu(menu === 'shell' ? undefined : 'shell')}/>
           {menu === 'shell' && <div className="dock-menu" style={menuPosition} role="menu">{(['default', 'powershell', 'cmd', 'bash'] as const).map(shell => <button role="menuitem" key={shell} onClick={() => create(shell)}>{shell === 'default' ? t('dock.defaultShell') : shell === 'powershell' ? 'PowerShell' : shell === 'cmd' ? 'cmd' : 'Bash'}</button>)}</div>}
         </div>
