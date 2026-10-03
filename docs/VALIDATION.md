@@ -36,7 +36,7 @@
 | `--diff-only` | 修改块统计、单文件与 Commit 跨文件循环、设置保存、Parent 切换、滚动和内容更新 |
 | `--worktrees-only` | 仓库归并、Worktree 选择及草稿隔离 |
 | `--remote-tracking-only` | 远程来源、本地跟踪分支与批量创建 |
-| `--feedback-only` | 操作反馈、Commit 结果摘要与查看入口、冲突后关闭与中止、标记暂存、结果检查、继续确认和 Commit 入口保护 |
+| `--feedback-only` | 前端进度遮罩与键盘隔离、Push 链接复制/打开、PR 目标选择、Commit 结果摘要与查看入口、冲突后关闭与中止、标记暂存、结果检查、继续确认和 Commit 入口保护 |
 
 每次选择一个专项参数；脚本通过统一注册表选择对应检查，无参数时执行注册表中的全部专项。未知或多个参数会明确报错。
 
@@ -126,12 +126,12 @@ scripts/update-local.ps1 -InstallOnly
 发布前先按 Conventional Commits 提交版本文件，再创建附注 Tag；不要使用 `npm version` 自动生成不符合项目提交格式的提交。以下版本号仅为示例：
 
 ```powershell
-npm version 0.39.0 --no-git-tag-version
+npm version 0.40.0 --no-git-tag-version
 git add package.json package-lock.json
-git commit -m "chore: 发布 0.39.0"
-git tag -a v0.39.0 -m "AlwayGit 0.39.0"
+git commit -m "chore: 发布 0.40.0"
+git tag -a v0.40.0 -m "AlwayGit 0.40.0"
 git push origin main
-git push origin v0.39.0
+git push origin v0.40.0
 ```
 
 必须先让发布工作流进入 Tag 指向的 Commit，再推送 Tag；历史 Tag 不会因后来加入工作流而自动补发。已发布的 Tag 和 Release 不复用、不覆盖；发现问题时修复并递增版本重新发布。GitHub Release 提供可下载的 VSIX，但不等同于发布到 VS Code Marketplace，也不会让 VS Code 自动获取更新。
@@ -142,6 +142,7 @@ git push origin v0.39.0
 
 | 证据范围 | 日期 / 版本 | 已记录结果与限制 |
 | --- | --- | --- |
+| 操作进度与远端后续入口 | 2026-10-03 / 源码 0.40.0 | 1250 条双语资源与类型检查、89 项状态/协议/地址/租约/脱敏测试、18 项 Push/Tag/写队列真实 Git 回归通过；生产构建和无头 `--feedback-only` 通过。覆盖 Checkout 遮罩和宿主提前结束、键盘隔离、冲突解锁、真实 Bare Remote 发布/已是最新/多目标部分失败、HTTPS/SSH 分支编码、GitHub Fork、GitLab 创建和已有 MR 链接、自建 GitLab 相关链接识别、复制与打开网页请求以及成功后的刷新失败。网页入口由受控宿主验证，未实际创建 PR/MR/Release，未运行全量测试、真实 VS Code 桌面集成、VSIX 打包或本机安装 |
 | 侧栏操作选择作用域 | 2026-10-03 / 源码 0.39.0 | 1207 条双语资源检查、类型检查、64 项 UI 状态单测、生产构建及无头 `--workbench-only`、`--worktrees-only` 通过；覆盖 Repository、Local、Remote、Worktree 的单击、右键与 Ctrl/Cmd+A 作用域切换，确认同时只保留一个蓝色操作选择且不改变 Graph 勾选、当前仓库或当前分支。双语持久化流程的测试定位器同步支持中英文无障碍名称。未运行全量测试、真实 VS Code 桌面集成、VSIX 打包或本机安装 |
 | 图片 Diff 预览与二进制打开限制 | 2026-10-03 / 0.38.0 | 1171 条双语资源检查与类型检查通过；文档预览、Diff 导航、协议、翻译 4 个定向测试文件 33 项通过，新增 JPEG/WebP 识别后重跑文档预览 12 项通过；生产构建及无头 `--diff-only` 通过。覆盖 PNG/JPEG/WebP 内容签名、字节与像素限制、两侧图片、尺寸/大小、缩放、100%、适应、最大化、整文件导航，以及图片和其他二进制的 VS Code 编辑/原生 Diff 前端禁用与宿主拒绝。未运行全量测试或真实 VS Code 桌面集成 |
 | 工作区搜索与 Commit 浮窗 | 2026-10-03 / 0.36.0 | 类型检查与文件选择、界面状态、会话保存、双语帮助 4 个定向测试文件通过；无头 `--files-only`、`--shortcuts-only`、`--feedback-only`、`--worktrees-only`、`--appearance-only`、`--help-only`、`--workbench-only` 通过。覆盖匹配范围暂存/撤回/丢弃、230px 标题入口、Cancel/Esc/关闭和重载草稿恢复、失败保留、隐藏冲突、零暂存 Amend、提交成功定向清理、迟到读取与新草稿保护，以及活动操作暂存结果检查。更新两张当前入口截图并移除失效表单图；未运行全量测试或真实 VS Code 桌面集成 |

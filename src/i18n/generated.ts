@@ -1733,6 +1733,150 @@ export const catalog = {
     "en": "Git operation",
     "zh-CN": "Git 操作"
   },
+  "feedback.createPR": {
+    "en": "Create PR on GitHub",
+    "zh-CN": "在 GitHub 创建 PR"
+  },
+  "feedback.createMR": {
+    "en": "Create MR on GitLab",
+    "zh-CN": "在 GitLab 创建 MR"
+  },
+  "feedback.copyRequestLink": {
+    "en": "Copy PR/MR creation link",
+    "zh-CN": "复制 PR/MR 创建链接"
+  },
+  "feedback.continueOnWebsite": {
+    "en": "Continue on website",
+    "zh-CN": "前往网页继续"
+  },
+  "feedback.sourceRepository": {
+    "en": "Source repository",
+    "zh-CN": "来源仓库"
+  },
+  "feedback.sourceBranch": {
+    "en": "Source branch",
+    "zh-CN": "来源分支"
+  },
+  "feedback.targetRepository": {
+    "en": "Target repository URL",
+    "zh-CN": "目标仓库网址"
+  },
+  "feedback.targetBranch": {
+    "en": "Target branch (blank uses website default)",
+    "zh-CN": "目标分支（留空使用网页默认值）"
+  },
+  "feedback.requestWebsiteHint": {
+    "en": "Confirm the branches on the website and submit there. This step opens the creation page.",
+    "zh-CN": "请在网页核对分支并提交；此步骤打开创建页面。"
+  },
+  "feedback.invalidRequestTarget": {
+    "en": "Choose a supported repository and a different target branch. GitLab forks need a server-provided MR link.",
+    "zh-CN": "请选择支持的仓库与不同的目标分支。GitLab Fork 需要远端提供的 MR 链接。"
+  },
+  "feedback.noHostingLinks": {
+    "en": "No GitHub or GitLab web address could be identified for this remote.",
+    "zh-CN": "无法识别此远端的 GitHub 或 GitLab 网页地址。"
+  },
+  "feedback.published": {
+    "en": "Published",
+    "zh-CN": "已发布"
+  },
+  "feedback.updated": {
+    "en": "Updated",
+    "zh-CN": "已更新"
+  },
+  "feedback.upToDate": {
+    "en": "Already up to date",
+    "zh-CN": "远端已是最新"
+  },
+  "feedback.deleted": {
+    "en": "Deleted",
+    "zh-CN": "已删除"
+  },
+  "feedback.rejected": {
+    "en": "Rejected",
+    "zh-CN": "被拒绝"
+  },
+  "feedback.openRepositoryWebsite": {
+    "en": "Open repository website",
+    "zh-CN": "打开仓库网页"
+  },
+  "feedback.tag": {
+    "en": "Tag",
+    "zh-CN": "标签"
+  },
+  "feedback.branch": {
+    "en": "Branch",
+    "zh-CN": "分支"
+  },
+  "feedback.openRemoteRef": {
+    "en": "Open remote branch or tag",
+    "zh-CN": "打开远端分支或标签"
+  },
+  "feedback.copyRemoteLink": {
+    "en": "Copy remote link",
+    "zh-CN": "复制远端链接"
+  },
+  "feedback.createRelease": {
+    "en": "Create release on GitHub",
+    "zh-CN": "在 GitHub 创建 Release"
+  },
+  "feedback.operationDetails": {
+    "en": "Operation details",
+    "zh-CN": "操作详情"
+  },
+  "feedback.noOutput": {
+    "en": "No output was returned.",
+    "zh-CN": "未返回输出。"
+  },
+  "feedback.pushPartiallyCompleted": {
+    "en": "Push partially completed — check each destination",
+    "zh-CN": "推送部分完成，请检查各个目标"
+  },
+  "feedback.tagCreatedPushFailed": {
+    "en": "Tag created locally, but its Push failed",
+    "zh-CN": "标签已在本地创建，但推送失败"
+  },
+  "feedback.switchedTo": {
+    "en": "Switched to {{branch}}",
+    "zh-CN": "已切换到 {{branch}}"
+  },
+  "feedback.remoteRefsUpdated": {
+    "en": "{{count}} remote references updated",
+    "zh-CN": "已更新 {{count}} 个远端引用"
+  },
+  "feedback.viewRemoteChanges": {
+    "en": "View updated remote references",
+    "zh-CN": "查看更新的远端引用"
+  },
+  "feedback.viewStash": {
+    "en": "View saved Stash",
+    "zh-CN": "查看保存的 Stash"
+  },
+  "feedback.openWorktree": {
+    "en": "Open worktree",
+    "zh-CN": "打开工作树"
+  },
+  "feedback.createRemoteRequest": {
+    "en": "Create PR/MR on website…",
+    "zh-CN": "在网页创建 PR/MR…"
+  },
+  "feedback.destinationUnconfirmed": {
+    "en": "Git did not confirm this destination. Check the operation details before retrying.",
+    "zh-CN": "Git 未确认此目标的结果，请查看操作详情后再决定是否重试。"
+  },
+  "feedback.headUnchanged": {
+    "en": "HEAD unchanged",
+    "zh-CN": "HEAD 未变化"
+  },
+  "feedback.viewTag": {
+    "en": "View tag in Graph",
+    "zh-CN": "在 Graph 查看标签"
+  },
+  "feedback.viewRemoteRequest": {
+    "en": "Open PR/MR on website",
+    "zh-CN": "在网页查看 PR/MR"
+  },
   "graphRow.parents": {
     "en": "{{value}}parents {{value2}}",
     "zh-CN": "{{value}} 个父提交 {{value2}}"
@@ -2127,6 +2271,10 @@ export const catalog = {
   "host.alwayGit": {
     "en": "AlwayGit — {{name}}",
     "zh-CN": "AlwayGit — {{name}}"
+  },
+  "host.couldNotOpenWebLink": {
+    "en": "Could not open the web link. Copy it and open it in your browser.",
+    "zh-CN": "无法打开网页链接，请复制后在浏览器打开。"
   },
   "manager.theRepositoryOrGroupNoLongerExists": {
     "en": "The repository or group no longer exists.",
@@ -5324,6 +5472,42 @@ export interface MessageParameters {
   "feedback.stillRunning": {  };
   "feedback.refreshFailed": {  };
   "feedback.gitOperation": {  };
+  "feedback.createPR": {  };
+  "feedback.createMR": {  };
+  "feedback.copyRequestLink": {  };
+  "feedback.continueOnWebsite": {  };
+  "feedback.sourceRepository": {  };
+  "feedback.sourceBranch": {  };
+  "feedback.targetRepository": {  };
+  "feedback.targetBranch": {  };
+  "feedback.requestWebsiteHint": {  };
+  "feedback.invalidRequestTarget": {  };
+  "feedback.noHostingLinks": {  };
+  "feedback.published": {  };
+  "feedback.updated": {  };
+  "feedback.upToDate": {  };
+  "feedback.deleted": {  };
+  "feedback.rejected": {  };
+  "feedback.openRepositoryWebsite": {  };
+  "feedback.tag": {  };
+  "feedback.branch": {  };
+  "feedback.openRemoteRef": {  };
+  "feedback.copyRemoteLink": {  };
+  "feedback.createRelease": {  };
+  "feedback.operationDetails": {  };
+  "feedback.noOutput": {  };
+  "feedback.pushPartiallyCompleted": {  };
+  "feedback.tagCreatedPushFailed": {  };
+  "feedback.switchedTo": { branch: ParameterValue };
+  "feedback.remoteRefsUpdated": { count: number };
+  "feedback.viewRemoteChanges": {  };
+  "feedback.viewStash": {  };
+  "feedback.openWorktree": {  };
+  "feedback.createRemoteRequest": {  };
+  "feedback.destinationUnconfirmed": {  };
+  "feedback.headUnchanged": {  };
+  "feedback.viewTag": {  };
+  "feedback.viewRemoteRequest": {  };
   "graphRow.parents": { value: ParameterValue; value2: ParameterValue };
   "graphRow.mergeCommit": {  };
   "graphRow.rootCommitNoParents": {  };
@@ -5422,6 +5606,7 @@ export interface MessageParameters {
   "host.activityRefresh": { value: ParameterValue };
   "host.refresh": { value: ParameterValue };
   "host.alwayGit": { name: ParameterValue };
+  "host.couldNotOpenWebLink": {  };
   "manager.theRepositoryOrGroupNoLongerExists": {  };
   "manager.reorderItemsWithinTheSameLevel": {  };
   "manager.selectARegisteredRepositoryFirst": {  };

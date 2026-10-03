@@ -485,6 +485,23 @@ describe('repository UI consistency', () => {
     pending.resolve(); await operation;
     expect(store.getState().busy).toBe(false);
   });
+  it('keeps the frozen Push destination and successful result after a refresh failure', async () => {
+    await store.getState().selectRepository('a');
+    const pushed = {kind:'push' as const,outcome:'success' as const,remote:'publish',localBranch:'topic',output:'done',destinations:[{label:'github.com/acme/repo',repository:{url:'https://github.com/acme/repo',label:'github.com/acme/repo',provider:'github' as const},refs:[{kind:'branch' as const,name:'release/x',status:'published' as const,url:'https://github.com/acme/repo/tree/release%2Fx'}]}]};
+    const fallback=bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method,...args)=>method==='action'?Promise.resolve({result:pushed,refreshWarning:'Snapshot unavailable'}):method==='snapshot'?Promise.reject(new Error('Snapshot unavailable')):fallback(method,...args));
+    expect(await store.getState().execute({type:'push',remote:'publish',branch:'topic',remoteBranch:'release/x'})).toBe(true);
+    expect(store.getState().actionFeedback).toMatchObject({status:'success',result:pushed,refreshWarning:'Snapshot unavailable'});
+    expect(store.getState().busy).toBe(false);
+  });
+  it('retains partial Push results while reporting failure', async () => {
+    await store.getState().selectRepository('a');
+    const pushed={kind:'push' as const,outcome:'partial' as const,destinations:[{label:'mirror',refs:[{kind:'branch' as const,name:'topic',status:'published' as const}]}],error:'other remote rejected',output:'partial'};
+    const fallback=bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method,...args)=>method==='action'?Promise.reject(Object.assign(new Error('other remote rejected'),{pushResult:pushed})):fallback(method,...args));
+    expect(await store.getState().execute({type:'push',branch:'topic'})).toBe(false);
+    expect(store.getState().actionFeedback).toMatchObject({status:'error',result:pushed});
+  });
 
   it('shows Push running with its target, then retains success until dismissed', async () => {
     await store.getState().selectRepository('a'); const pending = deferred<void>(), fallback = bridge.rpc.getMockImplementation()!;

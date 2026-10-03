@@ -41,7 +41,7 @@ window.addEventListener('message', event => {
     const request = pending.get(message.id);
     if (!request) return;
     pending.delete(message.id); clearTimeout(request.timer);request.cleanup?.();
-    if (message.error) request.reject(new RpcError(message.error.message, message.error.code, message.error.details, message.error.localizedMessage)); else request.resolve(message.result);
+    if (message.error) request.reject(new RpcError(message.error.message, message.error.code, message.error.details, message.error.localizedMessage, message.error.pushResult)); else request.resolve(message.result);
   } else listeners.forEach(listener => listener(message));
 });
 export function subscribe(listener: (event: HostMessage) => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }

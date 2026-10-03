@@ -34,7 +34,7 @@ export const actionSchema = z.union([
   z.object({ type: z.literal('operation.continue'), kind, reviewToken: text.optional() }),
   z.object({ type: z.enum(['operation.abort', 'operation.skip']), kind }),
 ]);
-export const requestSchema = z.object({ id: z.string().min(1).max(128), method: z.enum(['repositories', 'repositoryCollections', 'repositoryOrder', 'reorderRepository', 'repositoryStatuses', 'pickRepositoryDirectory', 'discoverRepositories', 'cancelRepositoryDiscovery', 'addRepository', 'removeRepositories', 'createRepositoryCollection', 'renameRepositoryCollection', 'deleteRepositoryCollection', 'moveRepositories', 'snapshot', 'operationReview', 'history', 'details', 'stashDetails', 'compare', 'cherryPickCheck', 'cancelQuery', 'action', 'diff', 'diffPreview', 'copyText', 'openWorkbench', 'openRepository', 'openProject', 'openFile', 'openWorktree', 'pickWorktree', 'showLog', 'saveSession', 'operationSettings', 'saveOperationSettings']), repoId: text.optional(), payload: z.unknown().optional() });
+export const requestSchema = z.object({ id: z.string().min(1).max(128), method: z.enum(['repositories', 'repositoryCollections', 'repositoryOrder', 'reorderRepository', 'repositoryStatuses', 'pickRepositoryDirectory', 'discoverRepositories', 'cancelRepositoryDiscovery', 'addRepository', 'removeRepositories', 'createRepositoryCollection', 'renameRepositoryCollection', 'deleteRepositoryCollection', 'moveRepositories', 'snapshot', 'operationReview', 'history', 'details', 'stashDetails', 'compare', 'cherryPickCheck', 'cancelQuery', 'action', 'diff', 'diffPreview', 'copyText', 'openExternal', 'remoteLinks', 'openWorkbench', 'openRepository', 'openProject', 'openFile', 'openWorktree', 'pickWorktree', 'showLog', 'saveSession', 'operationSettings', 'saveOperationSettings']), repoId: text.optional(), payload: z.unknown().optional() });
 export const cancelQuerySchema = z.object({ requestId: z.string().min(1).max(128) }).strict();
 export const operationSettingsSchema = z.object({ allowDetachedHead: z.boolean(), pushFollowTags: z.boolean(), pushTagAfterCreate: z.boolean(), defaultResetMode: z.enum(['soft','mixed','hard']) }).strict();
 export { sessionSchema } from './session';
@@ -63,3 +63,6 @@ export const diffSchema = z.union([
 ]);
 
 export const reorderRepositorySchema = z.object({ key: text, targetKey: text, position: z.enum(['before', 'after']) });
+
+export const externalUrlSchema = z.object({ url: z.string().max(4096).url().refine(value => { try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password && !/[\u0000-\u0020]/.test(value); } catch { return false; } }) }).strict();
+export const remoteLinksSchema = z.object({ remote: text.optional(), branch: text.optional() }).strict();

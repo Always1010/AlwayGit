@@ -1,5 +1,5 @@
 import { uiText } from './text';
-import type { GitAction, Snapshot } from '../src/protocol/types';
+import type { GitAction, Snapshot, PushResult } from '../src/protocol/types';
 
 export interface ActionFeedback {
   id: number;
@@ -9,9 +9,10 @@ export interface ActionFeedback {
   startedAt?: number;
   phase?: 'executing' | 'refreshing';
   refreshWarning?: string;
+  stashOid?: string;
   target?: string;
   error?: string;
-  result?: { kind: 'commit'; oid: string; files?: number; remaining: number; amended: boolean } | {kind:'stash';files:number;untracked:number;clean:boolean} | {kind:'branch';name:string;checkedOut:boolean;currentBranch:string};
+  result?: PushResult | { kind: 'update'; head?: string; previousHead?: string } | { kind: 'checkout'; branch: string; head?: string } | { kind: 'fetch'; refs: string[] } | { kind: 'worktree'; path: string } | { kind: 'tag'; name: string } | { kind: 'commit'; oid: string; files?: number; remaining: number; amended: boolean } | {kind:'stash';files:number;untracked:number;clean:boolean} | {kind:'branch';name:string;checkedOut:boolean;currentBranch:string};
 }
 
 /** Actions that replace files or the current checkout need an inert workbench. */
