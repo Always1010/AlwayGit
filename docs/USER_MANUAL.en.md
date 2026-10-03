@@ -237,8 +237,8 @@ Ref checkboxes control which history you see; branch names and row selections co
 
 **Prerequisite:** The repository has at least one commit.
 
-1. In the left pane, check the local branches, remote branches, or Tags you want to view. Selecting multiple refs displays the union of the commits reachable from them.
-2. Use Add to Graph Scope to add a ref to the existing scope. Use Show Only This Branch History or Show Only This Tag History to view only the target history.
+1. In the left pane, check the local or remote branches you want to view. Selecting multiple branches displays the union of their reachable commits. To inspect one Tag separately, open its context menu and choose Show Only This Tag History.
+2. Use Show Only This Branch History or Show Only This Tag History to view only the target history. Use Locate Tag Commit in Graph to locate the Commit pointed to by a Tag.
 3. Use the presets below Local Branches to quickly show all local branches or only the current branch.
 4. When the scope changes, the existing History caption temporarily shows the scope being loaded. A failed read preserves the displayed graph and offers retry in the same row.
 5. Use the back arrow before the search field in the Graph heading to restore the previous history view. When a search is active or the Graph scope is not the current branch, a target icon appears beside it; use that icon to clear searches and tag scopes and locate HEAD on the current branch. Locate HEAD preserves the existing scope. Navigation records last for this workbench session; very deep or outdated history is reread from the first page.
@@ -393,15 +393,15 @@ A branch is a movable reference to a version. Creating a branch, switching branc
 
 ### Inspect an older version safely
 
-**Prerequisite:** Your target is an older Commit or Tag, and you do not intend to work directly without a branch.
+**Prerequisite:** Your target is an older Commit, and you do not intend to work directly without a branch.
 
-1. Double-click the older Commit, or choose Create Branch and Checkout… from its Commit or Tag context menu.
+1. Double-click the older Commit, or choose Create Branch and Checkout… from its Commit context menu.
 2. If a local branch already points directly to the target, select that branch when prompted. Otherwise, enter a new branch name.
 3. Check the fixed starting point, create and switch to the branch, then inspect the files.
 
 **Result:** You are inspecting the older version on a named branch, so subsequent commits have a clearly identified branch to belong to.
 
-**Caution:** Direct Detached HEAD Checkout is disabled by default. The Commit and Tag context menus show this action disabled with an explanation to create a branch. At a local branch tip, the Commit menu names that branch or asks you to select one. If you deliberately enable the advanced option, you must still create a branch to retain any new commits made afterward. The original branch reference does not automatically move with them.
+**Caution:** Direct Detached HEAD Checkout is disabled by default. The Commit context menu shows this action disabled with an explanation to create a branch. At a local branch tip, the Commit menu names that branch or asks you to select one. If you deliberately enable the advanced option, you must still create a branch to retain any new commits made afterward. The original branch reference does not automatically move with them.
 
 **Troubleshooting:** If you discover that you are already in Detached HEAD, create a branch for any new commits you need to keep before switching back to the original branch.
 
@@ -670,7 +670,7 @@ Use the operations in this chapter only after you understand the relationships i
 
 1. Right-click the target Commit or branch and choose Create Tag…, or use the entry point in the Tags heading.
 2. Enter a name, such as v1.1.0, in Tag Name and verify Target Commit. Fill in Annotation if needed. To publish immediately, enable “Push this Tag after creation” and select a Remote; use it once or remember it as the default.
-3. Check the new tag under Tags and use Locate Tag Commit in Graph to locate it. Add to Graph Scope only adds its history to the display scope.
+3. Check the new tag under Tags and use Locate Tag Commit in Graph to locate it, or Show Only This Tag History to inspect its history.
 4. To publish tags, right-click one or more Tags, choose Push Tag… or Push N Tags…, then verify the complete Tag list and Remote.
 5. To delete a local tag, right-click the target Tag, choose Delete Tag…, verify the name, and confirm.
 

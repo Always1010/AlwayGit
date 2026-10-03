@@ -237,8 +237,8 @@ Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区�
 
 **前提：** 仓库已有提交。
 
-1. 在左侧勾选本地或远端分支，通过 Tag 右键菜单选择标签范围；多个引用显示它们可达提交的并集。
-2. 用 Add to Graph Scope 把一个引用加入现有范围；用 Show Only This Branch History 或 Show Only This Tag History 只看目标历史。
+1. 在左侧勾选本地或远端分支；多个分支显示它们可达提交的并集。需要单独查看 Tag 历史时，从 Tag 右键菜单选择 Show Only This Tag History。
+2. 用 Show Only This Branch History 或 Show Only This Tag History 只看目标历史；用 Locate Tag Commit in Graph 定位 Tag 指向的提交。
 3. 使用 Local Branches 下方预设快速显示全部本地分支或仅当前分支。
 4. 切换范围时，History 的原有摘要行临时显示正在加载的范围；失败会保留原图，并在同一行提供重试入口。
 5. 用图表标题栏、搜索框前的返回图标恢复上一历史视图。存在搜索条件或图表范围不是当前分支时，旁边会出现 target 图标；用它清除搜索和标签范围，并定位 HEAD。Locate HEAD 保留已有范围，适合只找当前版本。浏览记录只在当前工作台会话中保留；很深或已过期的历史会重新读取并回到首屏。
@@ -325,7 +325,7 @@ Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区�
 
 **前提：** 起点已确认；工作区修改已妥善保存。
 
-1. 在 Local Branches 标题点击 Create Branch…；也可右键指定分支、Tag 或 Commit，从固定起点创建。
+1. 在 Local Branches 标题点击 Create Branch…；也可右键指定分支或 Commit，从固定起点创建。
 2. 核对对话框显示的起点，输入新分支名，例如 feature/readme。
 3. 处理名称提示。同名、非法名称和父子路径冲突必须先改名。
 4. 只想建立引用时选择 Create Only（仅创建）；要开始在新分支工作时选择 Create and Checkout（创建并切换）。
@@ -393,15 +393,15 @@ Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区�
 
 ### 安全查看旧版本
 
-**前提：** 目标是一个旧 Commit 或 Tag，且不准备直接在无分支状态下工作。
+**前提：** 目标是一个旧 Commit，且不准备直接在无分支状态下工作。
 
-1. 双击旧 Commit，或在 Commit / Tag 右键菜单选择“创建分支并切换…”。
+1. 双击旧 Commit，或在 Commit 右键菜单选择“创建分支并切换…”。
 2. 若已有本地分支直接指向目标，按提示选择该分支；否则填写一个新分支名。
 3. 核对固定起点并创建、切换，再查看文件。
 
 **结果：** 在有名称的分支上检查旧版本，后续提交有明确归属。
 
-**注意：** 直接进入 Detached HEAD 默认关闭，Commit 与 Tag 菜单中的直接切换选项置灰并提示需要创建分支。Commit 顶端有本地分支时，菜单明确显示切换到该分支或选择分支。若主动启用高级选项，后续新提交仍需新建分支承接，原分支位置不会自动跟随。
+**注意：** 直接进入 Detached HEAD 默认关闭，Commit 菜单中的直接切换选项置灰并提示需要创建分支。Commit 顶端有本地分支时，菜单明确显示切换到该分支或选择分支。若主动启用高级选项，后续新提交仍需新建分支承接，原分支位置不会自动跟随。
 
 **排错：** 发现自己已处于 Detached HEAD 时，先为需要保留的新提交创建分支，再切换回原分支。
 
@@ -670,7 +670,7 @@ Stash 用于暂时保存尚未提交的修改。它与 Stage 完全不同：Stag
 
 1. 右键目标 Commit 或分支选择 Create Tag…，或使用 Tags 标题入口。
 2. 在 Tag Name 输入名称，例如 v1.1.0；核对 Target Commit。需要说明时填写 Annotation。若希望立即发布，勾选“创建后推送此标签”并选择 Remote；该选择可以仅用于本次操作，也可记为默认。
-3. 在 Tags 中检查新标签，使用 Locate Tag Commit in Graph 定位；Add to Graph Scope 只加入显示范围。
+3. 在 Tags 中检查新标签，使用 Locate Tag Commit in Graph 定位，或使用 Show Only This Tag History 查看标签历史。
 4. 要发布标签时，右键单个或多选 Tag，选择 Push Tag… / Push N Tags…，核对完整标签清单和 Remote 后执行。
 5. 删除本地标签时，右键目标 Tag 选择 Delete Tag…，核对名称后确认。
 

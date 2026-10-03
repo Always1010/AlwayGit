@@ -83,19 +83,23 @@ export function menuFor(target: MenuTarget, api: MenuApi, check?: CherryPickMenu
     const current=ref.kind==='local'&&ref.name===snapshot?.branch, noBranch=!snapshot?.branch, operation=!!snapshot?.operation.kind;
     const reason=current?t("menus.thisIsTheCurrentBranch"):occupied?t("menus.usedByWorktree", { path: (occupied.path) }):undefined;
     const items:MenuItem[]=[];
+    if(ref.kind==='tag')return {caption:ref.name,items:[
+      item(uiText("menus.showOnlyThisTag"),()=>state.setCheckedRefs([ref.fullName]),'filter',!commitTarget),
+      item(t("menus.locateTagCommit"),()=>state.locateRef(ref.fullName,ref.oid),'location',!commitTarget||busy),
+      action(t("menus.pushTag"),{type:'tag.push',names:[ref.name],expectedOids:ref.refOid?{[ref.name]:ref.refOid}:{}},'cloud-upload',busy||!ref.refOid,!ref.refOid?t("menus.refreshToCaptureThisTagBeforePush"):undefined),
+      action(uiText("menus.deleteTag"),{type:'tag.delete',target:ref.name,expectedOid:ref.refOid},'trash',busy||!ref.refOid,!ref.refOid?t("menus.refreshToCaptureThisTagBeforeDeletion"):undefined),
+      copy(uiText("menus.copyTagName"),ref.name),
+      item(uiText("menus.copyCommitID"),()=>api.host('copyText',{text:ref.oid}),'copy',!commitTarget,t("menus.thisTagDoesNotPointToACommit")),
+    ]};
     if(ref.kind==='local')items.push(action(uiText("menus.switchToBranch"),{type:'branch.checkout',target:ref.name},'arrow-swap',busy||current||!!occupied,reason));
-    if(ref.kind==='tag') {
-      items.push(action(t("menus.createBranchAndCheckout"),{type:'branch.create',target:ref.fullName,checkout:true,requireCheckout:true},'arrow-swap',busy||operation||!commitTarget));
-      items.push(detachedCheckout(ref.fullName,!commitTarget));
-    }
-    items.push(item(uiText("menus.showInGraph"),()=>state.setCheckedRefs([...(state.checkedRefs??[]),ref.fullName]),'eye',!commitTarget),item(ref.kind==='tag'?uiText("menus.showOnlyThisTag"):uiText("menus.showOnlyThisBranch"),()=>state.setCheckedRefs([ref.fullName]),'filter',!commitTarget));
-    items.push(item(t(ref.kind === 'tag' ? 'menus.locateTagCommit' : 'menus.locateBranchTip'), () => state.locateRef(ref.fullName, ref.oid), 'location', !commitTarget || busy));
+    items.push(item(uiText("menus.showInGraph"),()=>state.setCheckedRefs([...(state.checkedRefs??[]),ref.fullName]),'eye',!commitTarget),item(uiText("menus.showOnlyThisBranch"),()=>state.setCheckedRefs([ref.fullName]),'filter',!commitTarget));
+    items.push(item(t('menus.locateBranchTip'), () => state.locateRef(ref.fullName, ref.oid), 'location', !commitTarget || busy));
     items.push(ref.kind==='remote'?track([ref],false):action(uiText("menus.createBranch"),{type:'branch.create',target:ref.fullName},'git-branch',busy||!commitTarget));
     if(ref.kind==='local')items.push(action(uiText("menus.createTag"),{type:'tag.create',target:ref.fullName},'tag'));
-    if(ref.kind!=='tag')items.push(action(uiText("menus.merge"),{type:'merge',target:ref.fullName},'git-merge',busy||noBranch||current||operation),action(uiText("menus.rebase"),{type:'rebase',target:ref.fullName},'git-pull-request',busy||noBranch||current||operation));
+    items.push(action(uiText("menus.merge"),{type:'merge',target:ref.fullName},'git-merge',busy||noBranch||current||operation),action(uiText("menus.rebase"),{type:'rebase',target:ref.fullName},'git-pull-request',busy||noBranch||current||operation));
     if(ref.kind==='local')items.push(action(uiText("menus.push"),{type:'push',branch:ref.name},'arrow-up'),action(uiText("menus.deleteBranch"),{type:'branch.delete',target:ref.name,names:[ref.name],expectedOids:{[ref.name]:ref.oid}},'trash',busy||current||!!occupied,reason));
     if(ref.kind==='remote'){const parsed=remoteParts(ref);items.push(action(parsed?t("menus.deleteBranchFrom", { remote: (parsed.remote) }):uiText("menus.deleteRemoteBranch"),{type:'remote.delete',remote:parsed?.remote,expectedDestination:parsed?snapshot?.remoteDestinations?.[parsed.remote]:undefined,remoteBranches:parsed?[parsed.branch]:[],expectedOids:parsed?{[parsed.branch]:ref.oid}:undefined},'trash',busy||!parsed||!!ref.symbolicTarget,ref.symbolicTarget?t("menus.symbolicRemoteReferencesCannotBeDeleted"):undefined));}
-    if(ref.kind==='tag')items.push(action(t("menus.pushTag"),{type:'tag.push',names:[ref.name],expectedOids:ref.refOid?{[ref.name]:ref.refOid}:{}},'cloud-upload',busy||!ref.refOid,!ref.refOid?t("menus.refreshToCaptureThisTagBeforePush"):undefined),action(uiText("menus.deleteTag"),{type:'tag.delete',target:ref.name,expectedOid:ref.refOid},'trash',busy||!ref.refOid,!ref.refOid?t("menus.refreshToCaptureThisTagBeforeDeletion"):undefined),copy(uiText("menus.copyTagName"),ref.name),item(uiText("menus.copyCommitID"),()=>api.host('copyText',{text:ref.oid}),'copy',!commitTarget,t("menus.thisTagDoesNotPointToACommit")));else items.push(copy(uiText("menus.copyBranchName"),ref.name));
+    items.push(copy(uiText("menus.copyBranchName"),ref.name));
     if(occupied)items.push(item(uiText("menus.openWorktree"),()=>api.host('openWorktree',{path:occupied.path,newWindow:false}),'folder-opened'));
     if (ref.kind === 'local' && ref.upstream) {
       const parsed = remoteParts({ ...ref, kind: 'remote', name: ref.upstream, fullName: `refs/remotes/${ref.upstream}` });
