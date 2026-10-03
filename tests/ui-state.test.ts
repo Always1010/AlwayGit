@@ -139,7 +139,7 @@ describe('repository UI consistency', () => {
     expect(mixed.at(-1)?.label).toBe('Copy Reference Names');
   });
 
-  it('disables direct Detached Checkout in both menus while preserving branch creation and local branch switching', async () => {
+  it('disables direct Detached Checkout in commit menus while preserving branch creation and local branch switching', async () => {
     await store.getState().selectRepository('a');
     const { menuFor } = await import('../webview/menus');
     const open=vi.fn(),checkout=vi.fn(),noop=vi.fn(),api={open,checkout,openDiff:noop,editFile:noop,host:vi.fn().mockResolvedValue(undefined),addRepository:vi.fn().mockResolvedValue(undefined),removeRepositories:noop,fetchRepositories:noop};
@@ -154,9 +154,13 @@ describe('repository UI consistency', () => {
       expect(menu[1].disabled).toBe(false);menu[1].run();
       expect(open).toHaveBeenLastCalledWith({type:'branch.create',target:'old',checkout:true,requireCheckout:true});
       const tagMenu=menuFor({kind:'ref',ref:tag},api).items;
-      expect(tagMenu.find(item=>item.label.includes('Detached HEAD'))).toMatchObject({disabled:true});
-      tagMenu[0].run();expect(open).toHaveBeenLastCalledWith({type:'branch.create',target:tag.fullName,checkout:true,requireCheckout:true});
+      expect(tagMenu).toHaveLength(6);
+      expect(tagMenu.some(item=>item.label.includes('Detached HEAD'))).toBe(false);
+      expect(tagMenu.some(item=>item.label.includes('Create Branch'))).toBe(false);
+      expect(tagMenu.some(item=>item.label.includes('Graph Scope'))).toBe(false);
     }
+    store.setState({language:'en'});
+    expect(menuFor({kind:'ref',ref:tag},api).items.map(item=>item.label)).toEqual(['Show Only This Tag History','Locate Tag Commit in Graph','Push Tag…','Delete Tag…','Copy Tag Name','Copy Commit ID']);
     store.setState({language:'en',operationSettings:{allowDetachedHead:true,pushFollowTags:false,pushTagAfterCreate:false,defaultResetMode:'mixed',scope:'workspace'}});
     const enabled=menuFor(target,api).items;
     expect(enabled.filter(item=>item.label.includes('Detached HEAD'))).toHaveLength(1);
