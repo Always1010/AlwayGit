@@ -48,8 +48,10 @@ export function BottomDock({ native, edit }: { native(): void; edit(): void }) {
         const next = event.key === 'Home' ? 0 : event.key === 'End' ? ids.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + ids.length) % ids.length;
         event.preventDefault(); dock.select(ids[next]); tabs.current?.querySelector<HTMLElement>(`[data-tab-id="${ids[next]}"]`)?.focus();
       }}>
-        <button id="dock-tab-diff" role="tab" data-tab-id="diff" aria-selected={dock.activeId === 'diff'} aria-controls="dock-content-diff" tabIndex={dock.activeId === 'diff' ? 0 : -1} className="dock-tab" title={diffTitle} onClick={() => select('diff')}><Icon name="diff"/><span>{diffTitle}</span></button>
-        {dock.sessions.map(session => <div className="dock-tab-wrap" key={session.id}>
+        <div className="dock-tab-wrap" data-active={dock.activeId === 'diff'}>
+          <button id="dock-tab-diff" role="tab" data-tab-id="diff" aria-selected={dock.activeId === 'diff'} aria-controls="dock-content-diff" tabIndex={dock.activeId === 'diff' ? 0 : -1} className="dock-tab" title={diffTitle} onClick={() => select('diff')}><Icon name="diff"/><span>{diffTitle}</span></button>
+        </div>
+        {dock.sessions.map(session => <div className="dock-tab-wrap" data-active={dock.activeId === session.id} key={session.id}>
           <button id={`dock-tab-${session.id}`} role="tab" data-tab-id={session.id} aria-controls={`dock-content-${session.id}`} aria-selected={dock.activeId === session.id} tabIndex={dock.activeId === session.id ? 0 : -1} className="dock-tab" title={`${session.title}\n${session.cwd}`} onClick={() => select(session.id)} onDoubleClick={() => setRename({ id: session.id, title: session.title })}><Icon name="terminal"/><span>{session.title}</span>{session.status === 'exited' && <Icon name={session.exitCode ? 'error' : 'debug-stop'}/>}</button>
           <Button className="icon-only dock-tab-close" icon="close" title={t('dock.close')} aria-label={t('dock.close')} onClick={() => run(dock.close(session.id))}/>
         </div>)}
