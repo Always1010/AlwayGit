@@ -1412,6 +1412,54 @@ export const catalog = {
     "en": "Unstage All",
     "zh-CN": "全部取消暂存"
   },
+  "changes.fileList": {
+    "en": "File list",
+    "zh-CN": "文件列表"
+  },
+  "changes.displayMode": {
+    "en": "Change list display",
+    "zh-CN": "变更列表显示方式"
+  },
+  "changes.split": {
+    "en": "Split list",
+    "zh-CN": "分区列表"
+  },
+  "changes.unified": {
+    "en": "Unified list",
+    "zh-CN": "统一列表"
+  },
+  "changes.splitDescription": {
+    "en": "Show Unstaged and Staged in separate groups.",
+    "zh-CN": "分别显示未暂存和已暂存变更，保留分组操作。"
+  },
+  "changes.unifiedDescription": {
+    "en": "Show unstaged entries first, then staged entries; sort each area alphabetically.",
+    "zh-CN": "在一个列表中显示所有变更；未暂存在前、已暂存在后，各自按字母排序。"
+  },
+  "changes.changedFiles": {
+    "en": "Changed Files",
+    "zh-CN": "变更文件"
+  },
+  "changes.unstaged": {
+    "en": "Unstaged",
+    "zh-CN": "未暂存"
+  },
+  "changes.staged": {
+    "en": "Staged",
+    "zh-CN": "已暂存"
+  },
+  "changes.stageAllScope": {
+    "en": "Stage all unstaged files in this repository, including filtered-out files.",
+    "zh-CN": "暂存当前仓库全部未暂存文件，包括被筛选隐藏的文件。"
+  },
+  "changes.unstageAllScope": {
+    "en": "Unstage all staged files in this repository, including filtered-out files.",
+    "zh-CN": "取消当前仓库全部暂存，包括被筛选隐藏的文件。"
+  },
+  "changes.discardAllScope": {
+    "en": "Discard all unstaged changes in this repository; keep staged changes.",
+    "zh-CN": "丢弃当前仓库全部未暂存更改，保留已暂存内容。"
+  },
   "diff.openDiff": {
     "en": "Open Diff",
     "zh-CN": "打开 Diff"
@@ -5630,6 +5678,18 @@ export interface MessageParameters {
   "details.unstagedVariant2": {  };
   "details.stageAll": {  };
   "details.unstageAll": {  };
+  "changes.fileList": {  };
+  "changes.displayMode": {  };
+  "changes.split": {  };
+  "changes.unified": {  };
+  "changes.splitDescription": {  };
+  "changes.unifiedDescription": {  };
+  "changes.changedFiles": {  };
+  "changes.unstaged": {  };
+  "changes.staged": {  };
+  "changes.stageAllScope": {  };
+  "changes.unstageAllScope": {  };
+  "changes.discardAllScope": {  };
   "diff.openDiff": {  };
   "diff.editInVSCode": {  };
   "diff.previousChange": {  };

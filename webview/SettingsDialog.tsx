@@ -12,7 +12,7 @@ import { graphPalettes, type GraphPaletteId } from './graph/palettes';
 
 
 
-type SettingsPage = 'language' | 'keyboard' | 'theme' | 'density' | 'diff' | 'status' | 'colors' | 'advanced';
+type SettingsPage = 'files' | 'language' | 'keyboard' | 'theme' | 'density' | 'diff' | 'status' | 'colors' | 'advanced';
 type ColorTheme = 'light' | 'dark';
 const defaultMainColors = { light: '#283447', dark: '#EDF3FF' } as const;
 const themes: { id: ThemePreference; labelKey: StaticMessageKey; colors: readonly [string, string, string] }[] = [
@@ -142,7 +142,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
   };
   const presetBase = presetColors(appearance.palette);
   const customized = appearance.colors.light.some((color, index) => color !== presetBase.light[index]) || appearance.colors.dark.some((color, index) => color !== presetBase.dark[index]) || appearance.colors.light.length !== presetBase.light.length;
-  const pageLabel = page === 'advanced' ? t("settings.gitOperations") : page === 'keyboard' ? t("settings.keyboardShortcuts") : page === 'language' ? t("common.language") : page === 'theme' ? t("settings.theme") : page === 'density' ? t("settings.textDensity") : page === 'diff' ? uiText("settings.diff") : page === 'status' ? t("settings.statusIndicators") : t("settings.graphColors");
+  const pageLabel = page === 'files' ? t('changes.fileList') : page === 'advanced' ? t("settings.gitOperations") : page === 'keyboard' ? t("settings.keyboardShortcuts") : page === 'language' ? t("common.language") : page === 'theme' ? t("settings.theme") : page === 'density' ? t("settings.textDensity") : page === 'diff' ? uiText("settings.diff") : page === 'status' ? t("settings.statusIndicators") : t("settings.graphColors");
   const navItem = (id: SettingsPage, icon: string, label: string) => <button type="button" className={`settings-nav-item ${page === id ? 'is-active' : ''}`} aria-current={page === id ? 'page' : undefined} onClick={() => setPage(id)}><Icon name={icon}/><span>{label}</span></button>;
 
   return <Modal title={t("common.settings")} busy={saving} onClose={close} footer={
@@ -151,7 +151,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
     <div className="interface-settings" data-testid="interface-settings">
       <nav className="settings-nav" aria-label={t("settings.settingsCategories")}>
         <div className="settings-nav-group"><strong>{t("settings.general")}</strong>{navItem('language', 'globe', t("common.language"))}{navItem('keyboard', 'keyboard', t("settings.keyboardShortcuts"))}</div>
-        <div className="settings-nav-group"><strong>{t("settings.interface")}</strong>{navItem('theme', 'color-mode', t("settings.theme"))}{navItem('density', 'text-size', t("settings.textDensity"))}{navItem('diff', 'diff', t("settings.diff"))}{navItem('status', 'bell-dot', t("settings.statusIndicators"))}</div>
+        <div className="settings-nav-group"><strong>{t("settings.interface")}</strong>{navItem('theme', 'color-mode', t("settings.theme"))}{navItem('density', 'text-size', t("settings.textDensity"))}{navItem('files', 'list-tree', t('changes.fileList'))}{navItem('diff', 'diff', t("settings.diff"))}{navItem('status', 'bell-dot', t("settings.statusIndicators"))}</div>
         <div className="settings-nav-group"><strong>{t("settings.commitGraph")}</strong>{navItem('colors', 'git-merge', t("settings.colors"))}</div>
         <div className="settings-nav-group"><strong>{t("settings.advanced")}</strong>{navItem('advanced', 'tools', t("settings.gitOperations"))}</div>
       </nav>
@@ -159,7 +159,11 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
         <header className="settings-page-heading"><span>{page === 'advanced' ? t("settings.advanced") : page === 'language' || page === 'keyboard' ? t("settings.general") : page === 'colors' ? t("settings.commitGraph") : t("settings.interface")} › {pageLabel}</span><small>{page === 'advanced' ? t("settings.gitOptionsTakeEffectOnlyAfterApply") : t("settings.changesPreviewImmediatelyApplyToSave")}</small></header>
 
         {saveError&&<p role="alert" className="form-error">{saveError}</p>}
-        {page === 'keyboard' && <section className="settings-page" aria-labelledby="keyboard-heading">
+        {page === 'files' && <section className="settings-page" aria-label={t('changes.fileList')}>
+          <h3>{t('changes.displayMode')}</h3>
+          {(['split','unified'] as const).map(mode => <label key={mode} className="change-list-mode-option"><input type="radio" name="change-list-mode" checked={state.changeListMode === mode} onChange={() => state.previewSettings({changeListMode:mode})}/><span><strong>{t(mode === 'split' ? 'changes.split' : 'changes.unified')}</strong><small>{t(mode === 'split' ? 'changes.splitDescription' : 'changes.unifiedDescription')}</small></span></label>)}
+        </section>}
+        {page === 'keyboard'  && <section className="settings-page" aria-labelledby="keyboard-heading">
           <h3 id="keyboard-heading">{t("settings.keyboardShortcuts")}</h3>
           <label className="form-checkbox"><input type="checkbox" aria-label={t("settings.enableSingleKeyShortcuts")} checked={state.singleKeyShortcuts} onChange={event=>state.previewSettings({singleKeyShortcuts:event.target.checked})}/>{t("settings.enableSingleKeyShortcuts")}</label>
           <p className="settings-page-copy">{t("settings.enabledByDefaultShortcutsWorkThroughoutTheFocusedWorkbench")}</p>

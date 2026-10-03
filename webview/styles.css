@@ -282,6 +282,14 @@ h1,h2,p {margin:0;}
 .batch-selected {background:color-mix(in srgb,var(--accent) 10%,var(--bg));}
 .selected .file-parent-path {color:inherit;opacity:.82;}
 .change-empty {color:var(--muted);font-size:11px;padding:3px 8px;line-height:18px;}
+.change-area-label {flex:none;white-space:nowrap;font-size:11px;padding:1px 5px;border-radius:3px;background:var(--panel);color:var(--muted);}
+.change-area-label.area-staged {color:var(--green);background:color-mix(in srgb,var(--green) 10%,var(--bg));}
+.change-area-label.area-conflict {color:var(--error);}
+.unified-change-heading {display:flex;align-items:center;gap:6px;min-height:27px;padding:3px 5px;border-bottom:1px solid var(--border);font-size:12px;}
+.change-list-mode-option {display:flex;align-items:flex-start;gap:8px;padding:10px;margin:8px 0;border:1px solid var(--border);border-radius:4px;}
+.change-list-mode-option:has(input:checked) {border-color:var(--accent);background:var(--soft-accent);}
+.change-list-mode-option span {display:flex;flex-direction:column;gap:4px;}
+.change-list-mode-option small {color:var(--muted);}
 .change-commit-trigger {white-space:nowrap;gap:4px;}
 .commit-draft-dot {width:5px;height:5px;border-radius:50%;background:currentColor;flex:none;}
 .modal.commit-dialog {width:580px;}

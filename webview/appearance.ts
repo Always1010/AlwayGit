@@ -19,7 +19,7 @@ export interface Appearance {
   colors: GraphPaletteColors;
   mainColors: { light: string; dark: string };
 }
-export interface InterfaceSettings { language: Language; font: number; row: number; appearance: Appearance; diffNavigationScope: DiffNavigationScope; singleKeyShortcuts: boolean }
+export interface InterfaceSettings { language: Language; font: number; row: number; appearance: Appearance; diffNavigationScope: DiffNavigationScope; singleKeyShortcuts: boolean; changeListMode: 'split' | 'unified' }
 export type InterfaceSettingsUpdate = Partial<Omit<InterfaceSettings, 'appearance'>> & { appearance?: Partial<Appearance> };
 const hexColor = /^#[0-9a-f]{6}$/i;
 const defaultMainColors = { light: '#283447', dark: '#EDF3FF' } as const;
