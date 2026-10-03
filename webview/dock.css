@@ -20,7 +20,7 @@
 .dock-content {display:flex;flex-direction:column;flex:1;min-height:0;min-width:0;overflow:hidden;}
 .dock-content[hidden] {display:none;}
 .dock-content>.diff-preview {flex:1;border-top:0;box-shadow:none;}
-.terminal-view {flex:1;min-height:0;min-width:0;padding:4px 7px;overflow:hidden;}
+.terminal-view {flex:1;min-height:0;min-width:0;padding:4px 7px;overflow:hidden;background:var(--bg);color:var(--fg);}
 .terminal-view>.xterm {height:100%;}
 .terminal-content .inline-actions {flex-wrap:nowrap;}
 .dock-maximized {position:fixed;inset:0;z-index:85;}

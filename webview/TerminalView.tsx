@@ -7,14 +7,17 @@ import { rpc, subscribe } from './rpc';
 import { useWorkbench } from './store';
 import { translate } from './text';
 import { useDock } from './dock-store';
+import { useResolvedTheme } from './appearance';
+import { terminalMinimumContrastRatio, terminalTheme } from './terminal-theme';
 
 export function TerminalView({ session, active }: { session: TerminalSession; active: boolean }) {
   const element = useRef<HTMLDivElement>(null), terminal = useRef<Terminal>(undefined), fit = useRef<FitAddon>(undefined);
   const status = useRef(session.status); status.current = session.status;
   const appearance = useWorkbench(state => state.appearance), language = useWorkbench(state => state.language);
+  const theme = useResolvedTheme(appearance.theme);
   useLayoutEffect(() => {
     const container = element.current!;
-    const term = new Terminal({ cursorBlink: true, fontSize: useWorkbench.getState().appearance.codeFont, scrollback: 5000,
+    const term = new Terminal({ cursorBlink: true, fontSize: useWorkbench.getState().appearance.codeFont, scrollback: 5000, minimumContrastRatio: terminalMinimumContrastRatio,
       fontFamily: String.raw`Consolas, "Cascadia Mono", monospace`, allowProposedApi: false });
     const fitter = new FitAddon(); term.loadAddon(fitter); term.open(container); terminal.current = term; fit.current = fitter;
     let disposed = false, ready = false, sequence = 0, queued: { sequence: number; data: string }[] = [];
@@ -66,12 +69,19 @@ export function TerminalView({ session, active }: { session: TerminalSession; ac
   }, [session.id]);
   useLayoutEffect(() => {
     const term = terminal.current, container = element.current; if (!term || !container) return;
-    const css = getComputedStyle(container);
     term.options.fontSize = appearance.codeFont;
-    term.options.theme = { background: css.getPropertyValue('--bg').trim(), foreground: css.getPropertyValue('--fg').trim(), cursor: css.getPropertyValue('--fg').trim(), selectionBackground: '#507cc766' };
+    const updateTheme = () => {
+      const css = getComputedStyle(container);
+      // Read resolved CSS colors, not color-mix()/var() expressions unsupported by the renderer.
+      term.options.theme = terminalTheme(theme, css.backgroundColor, css.color);
+    };
+    updateTheme();
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class', 'style', 'data-vscode-theme-id', 'data-vscode-theme-kind'] });
     term.textarea?.setAttribute('aria-label', translate(language, 'dock.terminalLabel', { title: session.title }));
     if (active) { fit.current?.fit(); if (!document.querySelector('[aria-modal="true"]')) term.focus(); }
-  }, [active, appearance, language, session.title]);
+    return () => observer.disconnect();
+  }, [active, appearance, theme, language, session.title]);
   useEffect(() => {
     const clear = (event: Event) => { if ((event as CustomEvent<string>).detail === session.id) terminal.current?.clear(); };
     window.addEventListener('alwaygit-terminal-clear', clear); return () => window.removeEventListener('alwaygit-terminal-clear', clear);
