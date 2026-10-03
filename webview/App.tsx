@@ -135,7 +135,14 @@ export function App() {
 }
 
 function OpenRepositoryFolderIcon() {
-  return <span className="open-repository-icon" aria-hidden="true"><Icon name="folder" className="repository-folder-back"/><Icon name="folder" className="repository-folder-front"/><Icon name="vscode" className="repository-folder-vscode"/></span>;
+  return <span className="open-repository-icon" aria-hidden="true">
+    <svg className="repository-folder-outline" viewBox="0 0 32 28" fill="none">
+      <path className="repository-folder-shell" d="M3.25 20.75V7.25a3 3 0 0 1 3-3h6.35L16 7.75h9.15a3.6 3.6 0 0 1 3.6 3.6v5.15"/>
+      <path className="repository-folder-base" d="M25.7 23.75H6.25a3 3 0 0 1-3-3"/>
+      <path className="repository-folder-fold" d="m12.15 5.65 2.55 2.65"/>
+    </svg>
+    <Icon name="vscode" className="repository-folder-vscode"/>
+  </span>;
 }
 
 function RepositoryFetchDialog({repositories,onClose}:{repositories:Repository[];onClose():void}) {

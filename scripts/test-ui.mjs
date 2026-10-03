@@ -120,8 +120,10 @@ async function verifyWorkbench(browser, url) {
     assert.equal(await projectButton.isEnabled(), true);
     assert.match(await projectButton.getAttribute('title'), /AlwayGit/);
     assert.equal((await projectButton.innerText()).trim(), '', 'Repository folder command stays icon-only');
-    assert.equal(await projectButton.locator('.codicon-folder').count(), 2, 'Repository folder command uses the selected double-folder design');
-    assert.equal(await projectButton.locator('.codicon-vscode').count(), 1, 'Repository folder command keeps the VS Code mark centered in the folder');
+    assert.equal(await projectButton.locator('.codicon-folder').count(), 0, 'Repository folder command removes the old double-folder glyphs');
+    assert.equal(await projectButton.locator('svg.repository-folder-outline').count(), 1, 'Repository folder command uses the selected hollow folder outline');
+    assert.equal(await projectButton.locator('.repository-folder-fold').count(), 1, 'Repository folder outline keeps the folded shoulder detail');
+    assert.equal(await projectButton.locator('.codicon-vscode').count(), 1, 'Repository folder command keeps the blue VS Code mark at the lower right');
     assert.equal(await page.locator('.branch-bar').count(), 0, 'Branch state is merged into the action toolbar');
     assert.equal(await page.locator('.statusbar').count(), 0, 'The redundant persistent status bar is removed');
     const toolbarBox = await page.locator('.toolbar').boundingBox(), projectBox = await projectButton.boundingBox();
