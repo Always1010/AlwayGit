@@ -169,6 +169,7 @@ export class Workbench implements vscode.Disposable {
       await configuration.update('defaultResetMode', settings.defaultResetMode, target);
       const saved = this.operationSettings(); this.post({ type: 'operationSettingsChanged', settings: saved }); return saved;
     }
+    if (request.method === 'openKeyboardShortcuts') { await vscode.commands.executeCommand('workbench.action.openGlobalKeybindings', '@ext:alwaygit-dev.alwaygit'); return null; }
     if (request.method === 'showLog') { this.output.show(true); return null; }
     if (request.method === 'saveSession') {
       const session = sessionSchema.parse(request.payload);

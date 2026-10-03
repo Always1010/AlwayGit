@@ -59,6 +59,8 @@ describe('custom workbench bindings', () => {
       { fetch: [{ key: 'r', modifiers: ['control'] }] },
       { fetch: [{ key: 'f', modifiers: [] }, { key: 'f', modifiers: [] }] },
       { fetch: [{ key: 'a', modifiers: ['primary'] }] },
+      { fetch: [{ key: 'c', modifiers: ['primary'] }] },
+      { fetch: [{ key: 'v', modifiers: ['control', 'shift'] }] },
       { fetch: [{ key: 'enter', modifiers: ['primary'] }] },
       { fetch: [{ key: 'f10', modifiers: ['shift'] }] },
       { fetch: [{ key: 'f', modifiers: ['primary', 'control'] }] },
@@ -68,6 +70,8 @@ describe('custom workbench bindings', () => {
   });
   it('normalizes shifted punctuation and preserves input, IME and unavailable-action protection', () => {
     expect(bindingFromEvent(event({ key: '?', shiftKey: true }))).toEqual({ key: '/', modifiers: ['shift'] });
+    expect(shortcutCommand(event({ key: '?' }), true)).toBe('help');
+    expect(bindingFromEvent(event({ ctrlKey: true, metaKey: true }), true, false)).toEqual({ key: 'f', modifiers: ['control', 'meta'] });
     expect(bindingFromEvent(event({ key: '|', shiftKey: true }))).toEqual({ key: '\\', modifiers: ['shift'] });
     expect(bindingFromEvent(event({ key: 'Dead' }))).toBeUndefined();
     expect(bindingFromEvent(event({ getModifierState: key => key === 'AltGraph' }))).toBeUndefined();

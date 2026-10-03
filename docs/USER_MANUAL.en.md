@@ -993,7 +993,7 @@ Reload the VS Code window after changing the Git path or refresh interval. Theme
 
 ### Selection and keyboard shortcuts
 
-Single-key shortcuts are enabled by default throughout the focused AlwayGit workbench, including repositories, History, file lists, Diff, buttons and blank areas. Global shortcuts pause in text inputs, textareas, editable content, selectors, input-method composition, dialogs and context menus. When focus moves to a VS Code editor or terminal, that view handles the keyboard. Holding a key does not repeat an operation.
+Single-key shortcuts are enabled by default. The table below lists default bindings; in-app Help displays current effective bindings. Shortcuts work throughout the focused AlwayGit workbench, including repositories, History, file lists, Diff, buttons and blank areas. Global shortcuts pause in text inputs, textareas, editable content, selectors, input-method composition, dialogs and context menus. When focus moves to a VS Code editor or terminal, that view handles the keyboard. Holding a key does not repeat an operation.
 
 | Key | Action | Scope and behavior |
 | --- | --- | --- |
@@ -1020,7 +1020,11 @@ Single-key shortcuts are enabled by default throughout the focused AlwayGit work
 
 D, E, [, ], and \ are available only while the Diff tab is active. Terminal inputs suspend workbench single-key shortcuts. Global actions target the currently open repository and preview file. Temporary sidebar selection and pointer hover do not change their targets. Disabled buttons have disabled shortcuts. A/U follow the list-mode scope in the table above, independently of batch selection or collapsed groups; use the existing context menu for selected-file actions.
 
-Hover over supported actions to see their keys. Settings → General → Keyboard shortcuts can disable single-key shortcuts. Apply saves the preference; Cancel restores it. Ctrl/Cmd+R, the VS Code terminal creation shortcut, and the existing selection controls below remain available. Drafts, repository selection and layout are preserved.
+Hover over supported actions to see their current bindings. Settings → General → Keyboard shortcuts provides search, category filters and an Only modified filter. Click a binding to record its replacement, or use the plus icon to add an alternate; each action supports up to two bindings. The close icon removes one binding, the disable icon clears the action, and the restore icon restores its defaults. The top restore button restores all defaults.
+
+Focus the recording field and press a single key or combination. Ctrl/Cmd adapts to the platform. Esc cancels recording without closing Settings; Tab moves to confirmation. Conflicts show the actions using the key and block normal confirmation; Move binding here explicitly removes their conflicting bindings. Restoring defaults also requires moving conflicting bindings when necessary. Basic navigation, selection and text editing keys are reserved; input-method composition and AltGr are excluded from recording. Multi-step chords are not supported. VS Code or the operating system may handle combinations first; external conflicts are not fully checked here.
+
+Apply activates and saves bindings for the current workspace; Cancel restores previous bindings. Turning off single keys pauses bindings without modifiers and Shift with printable characters while retaining their configuration; other combinations remain active. The default Ctrl/Cmd+R can be changed or disabled. Existing selection controls, drafts, repository selection and layout are preserved. The separate New Embedded Terminal shortcut is managed by VS Code through the Open VS Code Keyboard Shortcuts entry.
 
 | Action | Meaning | Scope reminder |
 | --- | --- | --- |
