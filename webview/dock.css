@@ -2,14 +2,15 @@
 .dock-heading {display:flex;align-items:center;min-height:30px;height:30px;flex:none;background:var(--surface-header);border-bottom:1px solid var(--section-border);padding-right:4px;}
 .dock-tabs {display:flex;align-items:stretch;overflow-x:auto;overflow-y:hidden;min-width:0;flex:1;scrollbar-width:none;height:100%;}
 .dock-tabs::-webkit-scrollbar {display:none;}
-.dock-tab-wrap {display:flex;flex:none;border-right:1px solid var(--section-border);max-width:220px;}
-.dock-tab {display:flex;gap:5px;align-items:center;min-width:85px;max-width:220px;padding:0 9px;flex:none;background:transparent;border:0;border-bottom:2px solid transparent;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;}
+.dock-tab-wrap {display:flex;flex:none;border-right:1px solid var(--section-border);border-bottom:2px solid transparent;max-width:220px;color:var(--muted);}
+.dock-tab-wrap[data-active=true] {color:var(--fg);background:var(--bg);border-bottom-color:var(--accent);}
+.dock-tab-wrap:hover {background:var(--hover);color:var(--fg);}
+.dock-tab {display:flex;gap:5px;align-items:center;min-width:85px;max-width:220px;padding:0 9px;flex:none;background:transparent;border:0;color:inherit;font:inherit;font-size:12px;cursor:pointer;}
 .dock-tab-wrap .dock-tab {flex:1;min-width:0;max-width:190px;}
 .dock-tab>span {overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
-.dock-tab[aria-selected=true] {color:var(--fg);background:var(--bg);border-bottom-color:var(--accent);}
-.dock-tab:hover {background:var(--hover);color:var(--fg);}
 .dock-tab:focus-visible {outline:1px solid var(--accent);outline-offset:-2px;}
-.dock-tab-close {align-self:center;flex:none;}
+.dock-tab-wrap .dock-tab-close {align-self:center;flex:none;color:inherit;background:transparent;border-color:transparent;}
+.dock-tab-wrap .dock-tab-close:hover,.dock-tab-wrap .dock-tab-close:focus-visible {background:color-mix(in srgb,var(--fg) 10%,transparent);}
 .dock-common-actions {display:flex;align-items:center;flex:none;gap:1px;padding-left:3px;}
 .dock-menu-anchor {position:relative;display:flex;}
 .dock-menu {position:fixed;z-index:100;display:flex;flex-direction:column;min-width:185px;max-width:min(480px,80vw);max-height:min(350px,50vh);overflow:auto;background:var(--panel);border:1px solid var(--border);box-shadow:0 4px 14px #0004;padding:4px;}
