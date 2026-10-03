@@ -283,6 +283,28 @@ describe('repository UI consistency', () => {
     const operation=store.getState().execute({type:'fetch'});await store.getState().selectRepository('b');await store.getState().selectRepository('a');expect(store.getState().busy).toBe(true);
     pending.resolve();await operation;expect(store.getState().busy).toBe(false);
   });
+  it('blocks duplicate checkout through the action and refresh phases', async () => {
+    await store.getState().selectRepository('a');
+    const pending = deferred<void>(), refreshed = deferred<Snapshot>(), started = deferred<void>();
+    const fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, repoId, payload) => {
+      if (method === 'action') return pending.promise;
+      if (method === 'snapshot') { started.resolve(); return refreshed.promise; }
+      return fallback(method, repoId, payload);
+    });
+    const operation = store.getState().execute({ type: 'branch.checkout', name: 'topic' });
+    const { blocksWorkbench } = await import('../webview/actionFeedback');
+    expect(blocksWorkbench(store.getState().actionFeedback!.action)).toBe(true);
+    expect(await store.getState().execute({ type: 'branch.checkout', name: 'other' })).toBe(false);
+    bridge.event?.({ type: 'activity', repoId: 'a', busy: false, label: 'branch.checkout' });
+    expect(store.getState().busy).toBe(true);
+    pending.resolve(); await started.promise;
+    expect(store.getState().actionFeedback?.phase).toBe('refreshing');
+    expect(store.getState().busy).toBe(true);
+    refreshed.resolve({ ...snapshot(a), branch: 'topic' }); await operation;
+    expect(store.getState().busy).toBe(false);
+    expect(store.getState().actionFeedback?.status).toBe('success');
+  });
   it('clears disappeared Stash selection instead of resurrecting its old details', async () => {
     const fallback=bridge.rpc.getMockImplementation()!;let exists=true;
     bridge.rpc.mockImplementation((method,repoId,payload)=>method==='snapshot'?Promise.resolve({...snapshot(a),stashes:exists?[{selector:'stash@{0}',oid:commit.oid,subject:'WIP'}]:[]}):fallback(method,repoId,payload));

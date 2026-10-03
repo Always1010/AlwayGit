@@ -42,6 +42,15 @@ export async function verifyFeedback(browser, url) {
       assert.equal((await dialog.innerText()).includes('other-confirmation'), false);
       await dialog.getByRole('button', { name: title, exact: true }).click();
       await page.waitForFunction(kind => window.__feedbackFixture.pending?.payload.type === kind, kind);
+      const progress = page.getByTestId('operation-progress');
+      await progress.waitFor();
+      assert.equal(await progress.getByRole('button').count(), 0);
+      assert.equal(await page.locator('.workspace').evaluate(node => node.inert), true);
+      const before = await page.evaluate(() => window.__feedbackFixture.calls.length);
+      await page.keyboard.press('Escape'); await page.keyboard.press('Tab'); await page.keyboard.press('F5');
+      await progress.click({ position: { x: 4, y: 4 } });
+      assert.equal(await progress.isVisible(), true);
+      assert.equal(await page.evaluate(() => window.__feedbackFixture.calls.length), before);
       const payload = await page.evaluate(() => window.__feedbackFixture.pending.payload);
       assert.equal(payload.expectedBranch, 'main'); assert.equal(payload.expectedHead, 'a'.repeat(40));
       await page.evaluate(() => { const fixture = window.__feedbackFixture; fixture.snapshot.branch = 'main'; fixture.snapshot.head = 'a'.repeat(40); fixture.complete('The confirmed branch changed. Refresh and reopen the dialog.'); });
