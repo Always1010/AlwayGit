@@ -1528,14 +1528,6 @@ export const catalog = {
     "en": "Next change",
     "zh-CN": "下一处修改"
   },
-  "diff.expandDiffPanel": {
-    "en": "Expand Diff panel",
-    "zh-CN": "展开 Diff 面板"
-  },
-  "diff.minimizeDiffPanel": {
-    "en": "Minimize Diff panel",
-    "zh-CN": "最小化 Diff 面板"
-  },
   "diff.previousChangeAcrossCommitFilesWrapsToTheLast": {
     "en": "Previous change across Commit files (wraps to the last)",
     "zh-CN": "上一处更改（跨提交文件，首处循环到末处）"
@@ -1719,10 +1711,6 @@ export const catalog = {
   "dock.rename": {
     "en": "Rename terminal",
     "zh-CN": "重命名终端"
-  },
-  "dock.stop": {
-    "en": "End shell process",
-    "zh-CN": "结束 Shell 进程"
   },
   "dock.restart": {
     "en": "Restart terminal",
@@ -5759,8 +5747,6 @@ export interface MessageParameters {
   "diff.editInVSCode": {  };
   "diff.previousChange": {  };
   "diff.nextChange": {  };
-  "diff.expandDiffPanel": {  };
-  "diff.minimizeDiffPanel": {  };
   "diff.previousChangeAcrossCommitFilesWrapsToTheLast": {  };
   "diff.locateTheOnlyChange": {  };
   "diff.previousChangeWrapsToTheLast": {  };
@@ -5807,7 +5793,6 @@ export interface MessageParameters {
   "dock.collapse": {  };
   "dock.clear": {  };
   "dock.rename": {  };
-  "dock.stop": {  };
   "dock.restart": {  };
   "dock.exited": { code: ParameterValue };
   "dock.closed": {  };
