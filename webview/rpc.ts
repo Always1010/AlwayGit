@@ -4,17 +4,22 @@ import { createDemoRequest } from './demo';
 import { RpcError } from './rpc-error';
 export { RpcError } from './rpc-error';
 import type { SessionState } from '../src/protocol/session';
+import { overlayInterfaceSettings, type InterfacePreferences } from '../src/protocol/interface-settings';
 export type { LayoutState, SessionState } from '../src/protocol/session';
 import { SessionPersistence } from './session-persistence';
 import { readQueryCategory, type ReadQueryCategory } from '../src/protocol/queries';
 
-declare global { interface Window { __ALWAYGIT_SESSION__?: SessionState; acquireVsCodeApi?: () => { postMessage(message: unknown): void; getState?(): SessionState | undefined; setState?(state: SessionState): void }; } }
+declare global { interface Window { __ALWAYGIT_SESSION__?: SessionState; __ALWAYGIT_PREFERENCES__?: InterfacePreferences; acquireVsCodeApi?: () => { postMessage(message: unknown): void; getState?(): SessionState | undefined; setState?(state: SessionState): void }; } }
 const vscode = typeof window.acquireVsCodeApi === 'function' ? window.acquireVsCodeApi() : undefined;
 export const demoMode = !vscode && new URLSearchParams(location.search).get('demo') === '1';
 export const connected = !!vscode || demoMode;
 export function readSession(): SessionState {
-  if (vscode) return vscode.getState?.() ?? window.__ALWAYGIT_SESSION__ ?? {};
-  if (demoMode) try { return JSON.parse(localStorage.getItem('alwaygit.demo-session') || '{}'); } catch { return {}; }
+  if (vscode) return overlayInterfaceSettings(vscode.getState?.() ?? window.__ALWAYGIT_SESSION__ ?? {}, window.__ALWAYGIT_PREFERENCES__ ?? {});
+  if (demoMode) try {
+    const session = JSON.parse(localStorage.getItem('alwaygit.demo-session') || '{}');
+    const preferences = localStorage.getItem('alwaygit.demo-interfaceSettings');
+    return preferences ? overlayInterfaceSettings(session, JSON.parse(preferences)) : session;
+  } catch { return {}; }
   return {};
 }
 const sessions = new SessionPersistence<SessionState>(

@@ -2680,6 +2680,10 @@ export const catalog = {
     "en": "Default mode selected when opening Reset. The dialog can override and remember Soft, Mixed, or Hard.",
     "zh-CN": "打开重置对话框时默认选择的模式；可在对话框中覆盖并记住 Soft、Mixed 或 Hard。"
   },
+  "manifest.contributes.configuration.properties.alwaygit.interfaceSettings.description": {
+    "en": "Workbench appearance, keyboard and reading preferences shared across windows.",
+    "zh-CN": "跨窗口共享的工作台外观、快捷键与阅读偏好。"
+  },
   "menus.discardAllUnstaged": {
     "en": "Discard All Unstaged Changes…",
     "zh-CN": "丢弃全部未暂存更改…"
@@ -4967,6 +4971,10 @@ export const catalog = {
     "en": "Shortcut changes take effect after Apply",
     "zh-CN": "快捷键修改在应用后生效"
   },
+  "settings.sharedUserPreferences": {
+    "en": "Saved in user settings · shared across windows",
+    "zh-CN": "保存到用户设置 · 跨窗口共享"
+  },
   "sidebar.refreshRepositoryListAndStatusBadges": {
     "en": "Refresh repository list and status badges",
     "zh-CN": "刷新仓库列表和状态角标"
@@ -6272,6 +6280,7 @@ export interface MessageParameters {
   "manifest.contributes.configuration.properties.alwaygit.pushFollowTags.description": {  };
   "manifest.contributes.configuration.properties.alwaygit.pushTagAfterCreate.description": {  };
   "manifest.contributes.configuration.properties.alwaygit.defaultResetMode.description": {  };
+  "manifest.contributes.configuration.properties.alwaygit.interfaceSettings.description": {  };
   "menus.discardAllUnstaged": {  };
   "menus.discardAllChanges": {  };
   "menus.createLocalTrackingBranches": {  };
@@ -6840,6 +6849,7 @@ export interface MessageParameters {
   "settings.shortcutTerminalNew": {  };
   "settings.shortcutTerminalFocus": {  };
   "settings.shortcutApplyHint": {  };
+  "settings.sharedUserPreferences": {  };
   "sidebar.refreshRepositoryListAndStatusBadges": {  };
   "sidebar.collapse": {  };
   "sidebar.expand": {  };

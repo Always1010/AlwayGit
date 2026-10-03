@@ -7,6 +7,7 @@ import type { ActionResponse, HostingRepository, CheckoutBlocker, Commit, Commit
 import { demoMode, readSession, rpc, saveSession, subscribe } from './rpc';
 import type { LayoutState } from './rpc';
 import type { DiffNavigationScope } from '../src/protocol/session';
+import { defaultLayout, interfaceSettingsSchema, overlayInterfaceSettings, type InterfacePreferences, type InterfacePreferencesUpdate } from '../src/protocol/interface-settings';
 import type { Language } from './i18n';
 import { folderKeys } from './refTree';
 import { affectsWorkingDiff, diffKey, historyKey, mergeChanges, shareSnapshot, shareValue, workingTarget } from './refresh';
@@ -23,7 +24,8 @@ let refreshInvalidation: { epoch: number; changes?: RepositoryChanges; forceHist
 const session = readSession(), views = session.views ?? {}, executingRepositories = new Set<string>(), hostBusyRepositories = new Set<string>();
 const actionFeedbacks = new Map<string, ActionFeedback>();
 let actionSequence = 0;
-export const defaultLayout: LayoutState = { preset: 'workbench', sidebar: 210, details: 300, diff: 220, diffCollapsed: false, graph: 64, author: 100, date: 120, font: 13, row: 24 };
+export { defaultLayout } from '../src/protocol/interface-settings';
+let preferencesEpoch = 0;
 export type CheckoutFailure = CheckoutBlocker & { detached?: boolean };
 interface HistoryView {
   refs: string[]; search: string; commits: Commit[]; head?: Commit; tips: string[]; nextOffset: number; hasMore: boolean;
@@ -55,7 +57,7 @@ interface WorkbenchState {
   operationReview?: { repoId: string; action: Extract<GitAction, { type: 'commit' | 'operation.continue' }>; review: OperationReview };
   operationSettings: OperationSettings; loadOperationSettings(): Promise<void>; saveOperationSettings(settings: Omit<OperationSettings,'scope'>): Promise<void>;
   appearance: Appearance; diffNavigationScope: DiffNavigationScope; singleKeyShortcuts: boolean; shortcutOverrides: ShortcutOverrides; changeListMode: 'split' | 'unified'; settingsBaseline?: InterfaceSettings;
-  beginSettings(): void; previewSettings(value: InterfaceSettingsUpdate): void; finishSettings(apply: boolean): void; restoreLayout(): void;
+  beginSettings(): void; previewSettings(value: InterfaceSettingsUpdate): void; finishSettings(apply: boolean): Promise<void>; restoreLayout(): void;
   repositories: Repository[]; repositoryCollections:RepositoryCollection[]; repositoryOrder?:RepositoryOrder; reorderRepository(payload:ReorderRepository):Promise<void>; repositoryStatuses: Record<string, RepositoryStatus>; selectedRepositoryKeys:string[]; repositorySelectionAnchor?:string; selectedWorktreePaths:string[]; worktreeSelectionAnchor?:string; repoId?: string; snapshot?: Snapshot; commits: Commit[]; historyHead?: Commit; details?: CommitDetails; comparison?: CommitComparison; selectedOid?: string; selectedOids: string[]; selectionAnchor?: string; selectedRefs:string[]; refSelectionAnchor?:string; selectedParent?: string; selectedStashOid?: string; selectedStashSection?:StashSection; stashDetails?: StashDetails; selectedFile?: string; diffTarget?: DiffTarget; diffRevision: number;
   ref?: string; checkedRefs?: string[]; expandedRefGroups?:string[]; collapsedSidebarGroups:string[]; search: string; language: Language; layout: LayoutState; checkoutFailure?: CheckoutFailure; stashApplyFailure?: StashApplyBlocker; actionFeedback?: ActionFeedback; locateToken:number;
   nextOffset: number; hasMore: boolean; tips: string[]; loading: boolean; historyLoading: boolean; locatingOid?: string; locateCommit(oid: string, append?: boolean): Promise<void>; detailsLoading: boolean; busy: boolean; activity: string; error?: string; notice?: string; tab: 'history' | 'changes'; drafts: Record<string, string>;
@@ -69,6 +71,35 @@ const clamp = (n: number, min: number, max: number, fallback: number) => Number.
 function layout(value: Partial<LayoutState> = {}): LayoutState {
   const l = { ...defaultLayout, ...value };
   return { preset: 'workbench', sidebar: clamp(l.sidebar, 160, 360, 210), details: clamp(l.details, 230, 480, 300), diff: clamp(l.diff, 130, 1400, 220), diffCollapsed: Boolean(l.diffCollapsed), graph: clamp(l.graph, 48, 180, 64), author: clamp(l.author, 64, 220, 100), date: clamp(l.date, 82, 220, 120), font: Math.round(clamp(l.font, 12, 16, 13)), row: Math.round(clamp(l.row, 22, 36, 24)) };
+}
+function interfaceSnapshot(state: Pick<WorkbenchState, 'language' | 'layout' | 'appearance' | 'diffNavigationScope' | 'singleKeyShortcuts' | 'shortcutOverrides' | 'changeListMode'>): InterfaceSettings {
+  return { language: state.language, font: state.layout.font, row: state.layout.row, appearance: state.appearance,
+    diffNavigationScope: state.diffNavigationScope, singleKeyShortcuts: state.singleKeyShortcuts, shortcutOverrides: state.shortcutOverrides, changeListMode: state.changeListMode };
+}
+function preferenceChanges(next: InterfaceSettings, baseline: InterfaceSettings): InterfacePreferencesUpdate {
+  const patch: Record<string, unknown> = {};
+  for (const key of Object.keys(next) as (keyof InterfaceSettings)[]) {
+    if (JSON.stringify(next[key]) === JSON.stringify(baseline[key])) continue;
+    if (key === 'appearance') {
+      patch.appearance = Object.fromEntries(Object.entries(next.appearance).filter(([field, value]) => JSON.stringify(value) !== JSON.stringify(baseline.appearance[field as keyof Appearance])));
+    } else patch[key] = next[key];
+  }
+  return patch as InterfacePreferencesUpdate;
+}
+function settingsState(settings: InterfaceSettings, current: WorkbenchState): Partial<WorkbenchState> {
+  const { font, row, ...rest } = settings;
+  return { ...rest, layout: layout({ ...current.layout, font, row }) };
+}
+function synchronizeInterfaceSettings(preferences: InterfacePreferences): void {
+  const current = useWorkbench.getState();
+  const saved = overlayInterfaceSettings({ layout: current.layout }, preferences);
+  const baseline: InterfaceSettings = { language: saved.language === 'zh-CN' ? 'zh-CN' : 'en', font: saved.layout!.font, row: saved.layout!.row,
+    appearance: normalizeAppearance(saved.appearance), changeListMode: saved.changeListMode ?? 'split', diffNavigationScope: saved.diffNavigationScope ?? 'commit',
+    singleKeyShortcuts: saved.singleKeyShortcuts !== false, shortcutOverrides: normalizeShortcutOverrides(saved.shortcutOverrides) };
+  if (!current.settingsBaseline) { useWorkbench.setState(settingsState(baseline, current)); return; }
+  const draft = preferenceChanges(interfaceSnapshot(current), current.settingsBaseline);
+  const preview = { ...baseline, ...draft, appearance: normalizeAppearance({ ...baseline.appearance, ...draft.appearance }) } as InterfaceSettings;
+  useWorkbench.setState({ ...settingsState(preview, current), settingsBaseline: baseline });
 }
 const initialLayout = layout(session.layout);
 // Only the old default density migrates; custom dimensions and drafts are kept.
@@ -126,6 +157,10 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   repositories: [], repositoryCollections:[], repositoryStatuses: {}, selectedRepositoryKeys:[], selectedWorktreePaths:[], commits: [], selectedOids:[], selectedRefs:[], search: '', language: session.language === 'zh-CN' ? 'zh-CN' : 'en', layout: initialLayout, appearance: normalizeAppearance(session.appearance), locateToken:0,nextOffset: 0, tips: [], hasMore: false, loading: false, historyLoading: false, detailsLoading: false, diffRevision: 0, busy: false, activity: '', tab: 'history', drafts: session.drafts ?? {}, collapsedSidebarGroups:[],
   report(error) { set({ error: message(error) }); },
   async initialize() {
+    const preferenceRequest = preferencesEpoch;
+    void rpc<InterfacePreferences>('interfaceSettings').then(settings => {
+      if (settings && preferenceRequest === preferencesEpoch && interfaceSettingsSchema.safeParse(settings).success) synchronizeInterfaceSettings(settings);
+    }).catch(error => get().report(error));
     const request = ++catalogEpoch;
     const showLoading = !get().repositories.length && !get().snapshot;
     void get().loadOperationSettings().catch(error => { if (request === catalogEpoch) get().report(error); });
@@ -460,9 +495,15 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     const state = get();
     set({ language: value.language ?? state.language, appearance: normalizeAppearance(value.appearance ?? state.appearance), diffNavigationScope: value.diffNavigationScope ?? state.diffNavigationScope, singleKeyShortcuts: value.singleKeyShortcuts ?? state.singleKeyShortcuts, shortcutOverrides: normalizeShortcutOverrides(value.shortcutOverrides ?? state.shortcutOverrides), changeListMode: value.changeListMode ?? state.changeListMode, layout: layout({ ...state.layout, font: value.font ?? state.layout.font, row: value.row ?? state.layout.row }) });
   },
-  finishSettings(apply) {
+  async finishSettings(apply) {
     const baseline = get().settingsBaseline; if (!baseline) return;
-    set(apply ? { settingsBaseline: undefined } : { settingsBaseline: undefined, language: baseline.language, appearance: baseline.appearance, diffNavigationScope: baseline.diffNavigationScope, singleKeyShortcuts: baseline.singleKeyShortcuts, shortcutOverrides: baseline.shortcutOverrides, changeListMode: baseline.changeListMode, layout: layout({ ...get().layout, font: baseline.font, row: baseline.row }) });
+    if (!apply) { set({ ...settingsState(baseline, get()), settingsBaseline: undefined }); return; }
+    const patch = preferenceChanges(interfaceSnapshot(get()), baseline);
+    if (!Object.keys(patch).length) { set({ settingsBaseline: undefined }); return; }
+    const saved = interfaceSettingsSchema.parse(await rpc<InterfacePreferences>('saveInterfaceSettings', undefined, patch));
+    ++preferencesEpoch;
+    set({ settingsBaseline: undefined });
+    synchronizeInterfaceSettings(saved);
   },
 }));
 let persistedSelection: unknown[] = [];
@@ -477,6 +518,7 @@ useWorkbench.subscribe(state => {
 let changedTimer: ReturnType<typeof setTimeout>;
 let pendingChange: { repoId: string; changes?: RepositoryChanges; snapshot?: Snapshot } | undefined;
 subscribe(event => {
+  if (event.type === 'interfaceSettingsChanged') { ++preferencesEpoch; synchronizeInterfaceSettings(event.settings); }
   const state = useWorkbench.getState(); if (event.type === 'operationSettingsChanged') useWorkbench.setState({ operationSettings: event.settings });
   if (event.type === 'fileOperationProgress' && event.repoId === state.repoId && state.actionFeedback?.status === 'running') useWorkbench.setState({ actionFeedback: { ...state.actionFeedback, progress: event.progress } });
   if (event.type === 'repositoriesChanged') void state.initialize();

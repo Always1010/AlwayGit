@@ -345,7 +345,8 @@ describe('repository UI consistency', () => {
     const { sessionSchema } = await import('../src/protocol/validation');
     store.getState().beginSettings();
     store.getState().previewSettings({ changeListMode:'unified', singleKeyShortcuts: false, diffNavigationScope: 'file', language: 'zh-CN', font: 15, row: 28, appearance: { theme: 'contrast', palette: 'distinct', codeFont: 17, codeRowHeight: 23, fileSpacing: 6, badgeColor: '#006BFF', currentBranchColor:'#00FF99', currentRepositoryColor:'#FF4AD4' } });
-    store.getState().finishSettings(true);
+    bridge.rpc.mockImplementation(async (method, _repo, payload) => method === 'saveInterfaceSettings' ? payload : undefined);
+    await store.getState().finishSettings(true);
     const saved = bridge.save.mock.calls.at(-1)?.[0];
     expect(sessionSchema.parse(saved).changeListMode).toBe('unified');
     expect(sessionSchema.parse(saved).diffNavigationScope).toBe('file');
@@ -924,7 +925,7 @@ describe('repository UI consistency', () => {
 });
 
 
-it('keeps shortcut previews out of recovery saves, rolls back on Cancel and persists Apply', () => {
+it('keeps shortcut previews out of recovery saves, rolls back on Cancel and persists Apply', async () => {
   const overrides = { fetch: [{ key: 'f', modifiers: ['primary' as const, 'shift' as const] }], push: [] };
   store.setState({ drafts: { a: 'keep draft' } });
   store.getState().beginSettings();
@@ -935,6 +936,23 @@ it('keeps shortcut previews out of recovery saves, rolls back on Cancel and pers
   expect(store.getState().shortcutOverrides).toEqual({});
   store.getState().beginSettings();
   store.getState().previewSettings({ shortcutOverrides: overrides });
-  store.getState().finishSettings(true);
+  bridge.rpc.mockImplementation(async (method, _repo, payload) => method === 'saveInterfaceSettings' ? payload : undefined);
+  await store.getState().finishSettings(true);
   expect(bridge.save.mock.calls.at(-1)?.[0]).toMatchObject({ shortcutOverrides: overrides, drafts: { a: 'keep draft' } });
+});
+
+it('synchronizes applied user settings while keeping a local preview and cancelling to the latest shared baseline', async () => {
+  store.setState({ drafts: { a: 'keep' } });
+  store.getState().beginSettings();
+  store.getState().previewSettings({ appearance: { theme: 'paper' } });
+  bridge.event?.({ type: 'interfaceSettingsChanged', settings: { language: 'zh-CN', font: 15, appearance: { theme: 'forest', palette: 'vivid', codeFont: 16 } } });
+  expect(store.getState()).toMatchObject({ language: 'zh-CN', layout: { font: 15 }, appearance: { theme: 'paper', codeFont: 16 }, drafts: { a: 'keep' } });
+  await store.getState().finishSettings(false);
+  expect(store.getState().appearance.theme).toBe('forest');
+  expect(store.getState().drafts.a).toBe('keep');
+  store.getState().beginSettings(); store.getState().previewSettings({ appearance: { ...store.getState().appearance, theme: 'paper' } });
+  bridge.rpc.mockRejectedValue(new Error('user settings unavailable'));
+  await expect(store.getState().finishSettings(true)).rejects.toThrow('user settings unavailable');
+  expect(store.getState().settingsBaseline?.appearance.theme).toBe('forest');
+  expect(bridge.save.mock.calls.at(-1)?.[0].appearance.theme).toBe('forest');
 });

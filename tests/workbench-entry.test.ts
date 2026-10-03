@@ -15,8 +15,8 @@ vi.mock('vscode', () => {
     dispose() { this.listeners.clear(); }
   }
   return {
-    EventEmitter, ViewColumn: { Active: -1 }, Uri: { joinPath: vi.fn(() => ({})) }, env: { language: 'en' },
-    workspace: { isTrusted: true, onDidChangeConfiguration: () => ({ dispose() {} }), getConfiguration: () => ({ get: (_key: string, fallback: unknown) => fallback }) },
+    EventEmitter, ConfigurationTarget: { Global: 1, Workspace: 2 }, ViewColumn: { Active: -1 }, Uri: { joinPath: vi.fn(() => ({})) }, env: { language: 'en' },
+    workspace: { isTrusted: true, onDidChangeConfiguration: () => ({ dispose() {} }), getConfiguration: () => ({ get: (_key: string, fallback: unknown) => fallback, inspect: () => undefined, update: async () => {} }) },
     window: { createTreeView: vi.fn(), createWebviewPanel: vi.fn() },
     commands: { executeCommand: vi.fn(), registerCommand: vi.fn() },
   };
@@ -35,7 +35,7 @@ function panelFixture() {
 
 const workbenches: Workbench[] = [];
 beforeEach(() => vi.clearAllMocks());
-afterEach(() => { for (const workbench of workbenches.splice(0)) workbench.dispose(); vi.useRealTimers(); });
+afterEach(() => { for (const workbench of workbenches.splice(0)) workbench.dispose(); vi.useRealTimers(); vi.restoreAllMocks(); });
 
 function workbenchFixture(output = { appendLine: vi.fn() }, events?: { changes: vscode.EventEmitter<{ repoId: string; changes?: RepositoryChanges }>; catalog: vscode.EventEmitter<void> }, overrides: Partial<Pick<RepositoryManager, 'scan' | 'list' | 'collections' | 'order'>> = {}) {
   const repositories = { scan: vi.fn(async () => {}), list: () => [], onDidChange: events?.changes.event ?? (() => ({ dispose() {} })), onDidChangeRepositories: events?.catalog.event ?? (() => ({ dispose() {} })), ...overrides };
@@ -46,6 +46,29 @@ function workbenchFixture(output = { appendLine: vi.fn() }, events?: { changes: 
 }
 
 describe('Workbench entry presentation', () => {
+  it('migrates legacy preferences once and broadcasts user updates without letting old session saves overwrite them', async () => {
+    const values = new Map<string, unknown>();
+    const update = vi.fn(async (key: string, value: unknown) => { values.set(key, value); });
+    vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
+      get: (key: string, fallback: unknown) => values.get(key) ?? fallback,
+      inspect: (key: string) => ({ globalValue: values.get(key) }), update,
+    } as unknown as vscode.WorkspaceConfiguration);
+    const workbench = workbenchFixture(), legacy = { language: 'zh-CN', appearance: { theme: 'paper', palette: 'vivid', codeFont: 15 }, drafts: { a: 'draft' } };
+    const context = (workbench as unknown as { context: vscode.ExtensionContext }).context;
+    vi.spyOn(context.workspaceState, 'get').mockImplementation((_key, fallback) => legacy ?? fallback);
+    const one = panelFixture(), two = panelFixture();
+    vi.mocked(vscode.window.createWebviewPanel).mockReturnValueOnce(one.panel as unknown as vscode.WebviewPanel).mockReturnValueOnce(two.panel as unknown as vscode.WebviewPanel);
+    await workbench.open(); await workbench.open(undefined, undefined, true, true);
+    expect(await workbench.handle({ id: 'load', method: 'interfaceSettings' })).toMatchObject({ language: 'zh-CN', appearance: { theme: 'paper' } });
+    expect(update).toHaveBeenCalledWith('interfaceSettings', { appearance: legacy.appearance }, vscode.ConfigurationTarget.Global);
+    expect(values.get('interfaceSettings')).not.toHaveProperty('drafts');
+    await workbench.handle({ id: 'apply', method: 'saveInterfaceSettings', payload: { appearance: { theme: 'forest' } } });
+    for (const panel of [one, two]) expect(panel.panel.webview.postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'interfaceSettingsChanged', settings: expect.objectContaining({ appearance: expect.objectContaining({ theme: 'forest', codeFont: 15 }) }) }));
+    const writes = update.mock.calls.length;
+    await workbench.handle({ id: 'old', method: 'saveSession', payload: legacy });
+    expect((await workbench.handle({ id: 'reload', method: 'interfaceSettings' })) as unknown).toMatchObject({ appearance: { theme: 'forest' } });
+    expect(update).toHaveBeenCalledTimes(writes);
+  });
   it('opens and reveals the panel during slow startup while catalog reads share the completed discovery', async () => {
     let finish!: () => void, ready = false;
     const gate = new Promise<void>(resolve => { finish = () => { ready = true; resolve(); }; });

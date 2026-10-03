@@ -1150,5 +1150,11 @@
     "zh-CN": "快捷键修改在应用后生效",
     "review": "translated",
     "context": "webview/SettingsDialog.tsx / keyboard page"
+  },
+  "settings.sharedUserPreferences": {
+    "en": "Saved in user settings · shared across windows",
+    "zh-CN": "保存到用户设置 · 跨窗口共享",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
   }
 }

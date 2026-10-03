@@ -2,7 +2,7 @@
   "name": "alwaygit",
   "displayName": "%manifest.displayName%",
   "description": "%manifest.description%",
-  "version": "0.45.4",
+  "version": "0.46.0",
   "publisher": "alwaygit-dev",
   "private": true,
   "type": "module",
@@ -100,7 +100,8 @@
             "auto"
           ],
           "default": "en",
-          "description": "%manifest.contributes.configuration.properties.alwaygit.language.description%"
+          "description": "%manifest.contributes.configuration.properties.alwaygit.language.description%",
+          "scope": "application"
         },
         "alwaygit.gitPath": {
           "type": "string",
@@ -150,6 +151,48 @@
           "default": "mixed",
           "scope": "window",
           "description": "%manifest.contributes.configuration.properties.alwaygit.defaultResetMode.description%"
+        },
+        "alwaygit.interfaceSettings": {
+          "type": "object",
+          "default": {},
+          "scope": "application",
+          "additionalProperties": false,
+          "properties": {
+            "font": {
+              "type": "number",
+              "minimum": 10,
+              "maximum": 22
+            },
+            "row": {
+              "type": "number",
+              "minimum": 20,
+              "maximum": 48
+            },
+            "changeListMode": {
+              "type": "string",
+              "enum": [
+                "split",
+                "unified"
+              ]
+            },
+            "diffNavigationScope": {
+              "type": "string",
+              "enum": [
+                "commit",
+                "file"
+              ]
+            },
+            "singleKeyShortcuts": {
+              "type": "boolean"
+            },
+            "shortcutOverrides": {
+              "type": "object"
+            },
+            "appearance": {
+              "type": "object"
+            }
+          },
+          "description": "%manifest.contributes.configuration.properties.alwaygit.interfaceSettings.description%"
         }
       }
     }

@@ -127,7 +127,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
   const apply = async () => {
     if (recordingShortcut) return;
     setSaving(true); setSaveError(undefined);
-    try { if (advancedDirty) await state.saveOperationSettings({allowDetachedHead,pushFollowTags,pushTagAfterCreate,defaultResetMode}); state.finishSettings(true); }
+    try { if (advancedDirty) await state.saveOperationSettings({allowDetachedHead,pushFollowTags,pushTagAfterCreate,defaultResetMode}); await state.finishSettings(true); }
     catch (error) { setSaveError(error instanceof Error ? error.message : String(error)); }
     finally { setSaving(false); }
   };
@@ -149,7 +149,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
   const navItem = (id: SettingsPage, icon: string, label: string) => <button type="button" className={`settings-nav-item ${page === id ? 'is-active' : ''}`} aria-current={page === id ? 'page' : undefined} onClick={() => setPage(id)}><Icon name={icon}/><span>{label}</span></button>;
 
   return <Modal title={t("common.settings")} busy={saving} onClose={close} footer={
-    <><span className="settings-save-hint"><Icon name="check"/>{page === 'advanced' && state.operationSettings.scope === 'user' ? t("settings.gitOptionsAreSavedInUserSettings") : t("settings.appliesToThisWorkspace")}</span><Button className="settings-cancel" disabled={saving} onClick={close}>{t("common.cancel")}</Button><Button className="primary" disabled={saving || recordingShortcut} onClick={()=>void apply()}>{saving?t("settings.saving"):t("common.apply")}</Button></>
+    <><span className="settings-save-hint"><Icon name="check"/>{page === 'advanced' ? state.operationSettings.scope === 'user' ? t("settings.gitOptionsAreSavedInUserSettings") : t("settings.appliesToThisWorkspace") : t('settings.sharedUserPreferences')}</span><Button className="settings-cancel" disabled={saving} onClick={close}>{t("common.cancel")}</Button><Button className="primary" disabled={saving || recordingShortcut} onClick={()=>void apply()}>{saving?t("settings.saving"):t("common.apply")}</Button></>
   }>
     <div className="interface-settings" data-testid="interface-settings">
       <nav className="settings-nav" aria-label={t("settings.settingsCategories")}>

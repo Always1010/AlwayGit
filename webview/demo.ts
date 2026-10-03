@@ -1,3 +1,4 @@
+import { legacyInterfaceSettings, mergeInterfaceSettings, type InterfacePreferences, type InterfacePreferencesUpdate } from '../src/protocol/interface-settings';
 import { groupRepositories } from '../src/protocol/repositories';
 import { branchNameConflict, branchNameConflictMessage } from '../src/protocol/ref-name';
 import { reconcileRepositoryOrder } from '../src/protocol/repository-order';
@@ -46,6 +47,16 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
   await new Promise(resolve => setTimeout(resolve, 110));
   const data=demoStores[repoId??repo.id]??demoStores[repo.id],demoSnapshot=data.snapshot,commits=data.commits;
   const resolve=(ref:string)=>ref==='HEAD'?demoSnapshot.head!:demoSnapshot.refs.find(r=>r.name===ref||r.fullName===ref)?.oid??ref;
+  if (method === 'interfaceSettings' || method === 'saveInterfaceSettings') {
+    let settings: InterfacePreferences = {};
+    try { settings = JSON.parse(localStorage.getItem('alwaygit.demo-interfaceSettings') ?? 'null') ?? legacyInterfaceSettings(JSON.parse(localStorage.getItem('alwaygit.demo-session') ?? '{}')); } catch { /* Start with default preferences. */ }
+    if (method === 'saveInterfaceSettings') {
+      settings = mergeInterfaceSettings(settings, payload as InterfacePreferencesUpdate);
+      localStorage.setItem('alwaygit.demo-interfaceSettings', JSON.stringify(settings));
+      emit({ type: 'interfaceSettingsChanged', settings });
+    }
+    return settings;
+  }
   if (method === 'terminalList') return [...terminals.values()].map(({ output, sequence, ...session }) => session);
   if (method === 'terminalCreate') {
     const shell = (payload as { shell: TerminalShell }).shell;
