@@ -10,6 +10,7 @@ import { GitService } from '../src/git/service';
 import { RepositoryManager } from '../src/repositories/manager';
 import { CatalogStore } from '../src/repositories/catalog-store';
 import { collectionOrderKey, repositoryOrderKey } from '../src/protocol/repository-order';
+import { repositoryGroupKey } from '../src/protocol/repositories';
 import { Workbench } from '../src/extension/workbench';
 import type { Repository } from '../src/protocol/types';
 
@@ -298,7 +299,7 @@ describe('repository scan coordination',()=>{
     await second.manager.remove([second.manager.groups()[0].key]);await second.manager.add(other.root);
     gate.resolve(repo);await scanning;
     expect(first.manager.list().map(item=>item.id)).toEqual([other.id]);
-    expect(first.globalValues.get('alwaygit.excludedRepositories.v1')).toContain(path.join(repo.root,'.git').replace(/\\/g,'/').toLowerCase());
+    expect(first.globalValues.get('alwaygit.excludedRepositories.v1')).toContain(repositoryGroupKey(repo));
   });
   it('does not publish watcher removals on a failed catalog commit and treats mirror failures as committed success',async()=>{
     const {manager,git,globalUpdate}=setup(),repo=repository('save-failure');vi.spyOn(git,'discover').mockResolvedValue(repo);await manager.add(repo.root);
