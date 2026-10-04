@@ -2,6 +2,17 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-095：Stash 核验后序号变化仍可能删除其他存档
+
+- 日期：2026-10-05
+- 状态：待修复
+- 优先级与可信度：P1；真实 Git 已复现。
+- 现象：Drop 核验用户确认的 Stash OID 后，其他客户端新增存档使 `stash@{n}` 移位，后续删除会误中未确认的新存档；Pop 成功后的删除也使用相同链路。
+- 原因：`validateStash` 比较 OID 与实际 `stash drop` 分离，删除参数仍为可变序号，宿主队列不能阻止外部 Git 修改 reflog。
+- 解决方案：待实施；在 Git 引用与 reflog 锁保护下将删除绑定到确认的条目身份，不能只增加一次删除前核验。Drop、Pop 及非顶部条目需要同一保护。
+- 验证方式：0.47.1 / faf4524，Windows Git 2.55.0；在系统临时真实仓库中，于实际删除进程启动前由外部 Git 新建 Stash，执行成功后新存档消失、原确认存档仍在。现有测试只覆盖初次核验前变化，缺少核验与删除之间的竞态。
+- 相关文件：`src/git/service.ts`（`validateStash`、`stash.drop`、`stash.apply` 的 Pop 分支）、`tests/git-safety.test.ts`、`tests/stash-state.test.ts`。
+
 ## BUG-094：Tag 删除确认框随后台刷新改变远端身份
 
 - 日期：2026-10-05
