@@ -6,7 +6,7 @@ const a: Repository = { id: 'a', root: '/a', commonDir: '/a/.git', name: 'A' };
 const b: Repository = { id: 'b', root: '/b', commonDir: '/b/.git', name: 'B' };
 const commit: Commit = { oid: 'abc', parents: [], author: 'Test', email: 'test@example.com', timestamp: 0, subject: 'Example' };
 function snapshot(repository: Repository, version = 1): Snapshot { return { repository, branch: 'main', head: commit.oid, ahead: 0, behind: 0, changes: [], refs: [], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version }; }
-function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(yes => { resolve = yes; }); return { promise, resolve }; }
+function deferred<T>() { let resolve!: (value: T) => void, reject!: (reason?: unknown) => void; const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
 let store: (typeof import('../webview/store'))['useWorkbench'];
 beforeEach(async () => {
   vi.resetModules(); bridge.rpc.mockReset(); bridge.save.mockReset();
@@ -21,6 +21,53 @@ beforeEach(async () => {
 });
 afterEach(() => { vi.useRealTimers(); });
 describe('repository UI consistency', () => {
+  it('keeps only the newest remote request and invalidates pending results on close or repository changes', async () => {
+    const { closeRemoteRequest, showRemoteRequest } = await import('../webview/RemoteRequestDialog');
+    await store.getState().selectRepository('b');
+    const remoteLinkCalls = () => bridge.rpc.mock.calls.filter(([method]) => method === 'remoteLinks').length;
+    const callsBeforeWrongRepository = remoteLinkCalls();
+    await showRemoteRequest('a', 'wrong-repository');
+    expect(remoteLinkCalls()).toBe(callsBeforeWrongRepository);
+    expect(store.getState().remoteRequest).toBeUndefined();
+    await store.getState().selectRepository('a');
+    const first = deferred<unknown>(), latest = deferred<unknown>(), fallback = bridge.rpc.getMockImplementation()!;
+    let linkCalls = 0;
+    bridge.rpc.mockImplementation((method, ...args) => method === 'remoteLinks' ? (++linkCalls === 1 ? first.promise : latest.promise) : fallback(method, ...args));
+    const olderRequest = showRemoteRequest('a', 'branch-a');
+    const newerRequest = showRemoteRequest('a', 'branch-b', undefined, 'upstream', 'local-b');
+    latest.resolve({ repositories: [{ url: 'https://github.com/new/repo', label: 'new/repo', provider: 'github' }], defaultBranch: 'trunk' });
+    await newerRequest;
+    expect(store.getState().remoteRequest).toMatchObject({ repoId: 'a', branch: 'branch-b', defaultBranch: 'trunk' });
+    first.resolve({ repositories: [{ url: 'https://github.com/old/repo', label: 'old/repo', provider: 'github' }], defaultBranch: 'main' });
+    await olderRequest;
+    expect(store.getState().remoteRequest?.branch).toBe('branch-b');
+
+    const pendingAfterClose = deferred<unknown>();
+    bridge.rpc.mockImplementation((method, ...args) => method === 'remoteLinks' ? pendingAfterClose.promise : fallback(method, ...args));
+    const closedRequest = showRemoteRequest('a', 'branch-c');
+    closeRemoteRequest(store.getState().remoteRequest!.identity);
+    pendingAfterClose.resolve({ repositories: [{ url: 'https://github.com/closed/repo', label: 'closed/repo', provider: 'github' }] });
+    await closedRequest;
+    expect(store.getState().remoteRequest).toBeUndefined();
+
+    const pendingAcrossSwitch = deferred<unknown>();
+    bridge.rpc.mockImplementation((method, ...args) => method === 'remoteLinks' ? pendingAcrossSwitch.promise : fallback(method, ...args));
+    const switchedRequest = showRemoteRequest('a', 'branch-d');
+    await store.getState().selectRepository('b'); await store.getState().selectRepository('a');
+    pendingAcrossSwitch.resolve({ repositories: [{ url: 'https://github.com/switched/repo', label: 'switched/repo', provider: 'github' }] });
+    await switchedRequest;
+    expect(store.getState().remoteRequest).toBeUndefined();
+
+    const lateFailure = deferred<unknown>(), finalRequest = deferred<unknown>(); linkCalls = 0;
+    bridge.rpc.mockImplementation((method, ...args) => method === 'remoteLinks' ? (++linkCalls === 1 ? lateFailure.promise : finalRequest.promise) : fallback(method, ...args));
+    const failingRequest = showRemoteRequest('a', 'branch-e', { url: 'https://gitlab.com/old/repo', label: 'old/repo', provider: 'gitlab' });
+    const winningRequest = showRemoteRequest('a', 'branch-f');
+    finalRequest.resolve({ repositories: [{ url: 'https://github.com/final/repo', label: 'final/repo', provider: 'github' }] });
+    await winningRequest;
+    lateFailure.reject(new Error('late remote failure')); await failingRequest;
+    expect(store.getState().remoteRequest).toMatchObject({ branch: 'branch-f', repositories: [{ url: 'https://github.com/final/repo' }] });
+    expect(store.getState().error).toBeUndefined();
+  });
   it.each([false, true])('rejects a captured action after switching repositories (switch back=$switchBack)', async (switchBack) => {
     const { captureActionContext } = await import('../webview/store');
     await store.getState().selectRepository('a');

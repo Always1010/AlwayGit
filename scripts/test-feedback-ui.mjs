@@ -10,9 +10,10 @@ export async function verifyFeedback(browser, url) {
       const repo = { id: 'feedback', root: '/feedback', commonDir: '/feedback/.git', name: 'Feedback fixture' };
       const commit = { oid: 'a'.repeat(40), parents: [], author: 'Fixture', email: 'test@example.com', timestamp: 0, subject: 'Test operations' };
       const fixture = window.__feedbackFixture = {
-        pending: undefined, calls: [], cleanReview: false,
+        pending: undefined, calls: [], cleanReview: false, holdRemoteLinks: false, pendingRemoteLinks: [],
         snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 1, behind: 2, pushTarget: { localBranch: 'main', remote: 'origin', remoteBranch: 'release', configured: true }, remotes: ['origin'], changes: [], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
         complete(error, publication) { window.postMessage({ type: 'response', id: this.pending.id, result: error ? undefined : publication ? {snapshot:structuredClone({...this.snapshot,version:++this.snapshot.version}),result:publication} : structuredClone({ ...this.snapshot, version: ++this.snapshot.version }), error: error ? { message: error } : undefined }, '*'); this.pending = undefined; },
+        completeRemoteLinks(index, result, error) { const request=this.pendingRemoteLinks[index]; window.postMessage({type:'response',id:request.id,result,error:error?{message:error}:undefined},'*'); },
       };
       window.acquireVsCodeApi = () => ({ getState: () => ({}), setState: () => {}, postMessage(request) {
         if (request.method === 'saveSession') { setTimeout(() => window.postMessage({ type: 'response', id: request.id, result: null }, '*'), 0); return; }
@@ -21,7 +22,10 @@ export async function verifyFeedback(browser, url) {
         let result;
         if (request.method === 'repositories') result = [repo];
         if (request.method === 'snapshot') result = structuredClone({ ...fixture.snapshot, version: ++fixture.snapshot.version });
-        if (request.method === 'remoteLinks') result={repositories:[{url:'https://github.com/acme/repo',label:'github.com/acme/repo',provider:'github'}],defaultBranch:'main'};
+        if (request.method === 'remoteLinks') {
+          if(fixture.holdRemoteLinks){fixture.pendingRemoteLinks.push(request);return;}
+          result={repositories:[{url:'https://github.com/acme/repo',label:'github.com/acme/repo',provider:'github'}],defaultBranch:'main'};
+        }
         if (request.method === 'operationReview') result = {kind:fixture.snapshot.operation.kind,token:'reviewed-index',files:fixture.snapshot.changes.filter(file=>!file.conflict&&file.indexStatus!==' ').map(file=>({path:file.path,lines:fixture.cleanReview?[]:[1,3,5]}))};
         if (request.method === 'history') result = { commits: [commit], tips: [commit.oid], nextOffset: 1, hasMore: false };
         if (request.method === 'details') result = { commit, body: '', files: [] };
@@ -122,7 +126,19 @@ export async function verifyFeedback(browser, url) {
     await page.waitForFunction(()=>window.__feedbackFixture.calls.some(call=>call.method==='copyText'&&call.payload.text==='https://github.com/acme/repo/tree/release'));
     await publication.getByRole('button',{name:'Open remote branch or tag',exact:true}).click();
     await page.waitForFunction(()=>window.__feedbackFixture.calls.some(call=>call.method==='openExternal'&&call.payload.url==='https://github.com/acme/repo/tree/release'));
-    await publication.getByRole('button',{name:'Create PR on GitHub',exact:true}).click();
+    const createRequest=publication.getByRole('button',{name:'Create PR on GitHub',exact:true});
+    await page.evaluate(()=>{window.__feedbackFixture.holdRemoteLinks=true;});
+    await createRequest.click(); await createRequest.click();
+    await page.waitForFunction(()=>window.__feedbackFixture.pendingRemoteLinks.length===2);
+    await page.evaluate(()=>window.__feedbackFixture.completeRemoteLinks(1,{repositories:[{url:'https://gitlab.com/new/repo',label:'gitlab.com/new/repo',provider:'gitlab'}],defaultBranch:'trunk'}));
+    const newestRequest=page.getByRole('dialog',{name:'Create MR on GitLab',exact:true});await newestRequest.waitFor();
+    assert.equal(await newestRequest.getByLabel('Target branch (blank uses website default)').inputValue(),'trunk');
+    await newestRequest.getByRole('button',{name:'Cancel',exact:true}).click();
+    await page.evaluate(()=>window.__feedbackFixture.completeRemoteLinks(0,{repositories:[{url:'https://github.com/old/repo',label:'github.com/old/repo',provider:'github'}],defaultBranch:'main'}));
+    await page.waitForTimeout(20);
+    assert.equal(await page.getByRole('dialog',{name:/Create (?:PR|MR) on/}).count(),0,'Closing the newest request invalidates an older late response');
+    await page.evaluate(()=>{const fixture=window.__feedbackFixture;fixture.holdRemoteLinks=false;fixture.pendingRemoteLinks=[];});
+    await createRequest.click();
     const request=page.getByRole('dialog',{name:'Create PR on GitHub',exact:true});await request.waitFor();
     await request.getByLabel('Target repository URL').fill('https://github.com/upstream/repo');
     await request.getByLabel('Target branch (blank uses website default)').fill('release/1.x');

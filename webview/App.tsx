@@ -145,7 +145,7 @@ export function App() {
     {state.checkoutFailure&&snapshot&&<CheckoutFailureDialog onClose={()=>{setDialog(undefined);useWorkbench.setState({checkoutFailure:undefined,error:undefined});}} host={host}/>}
     {state.settingsBaseline&&<SettingsDialog theme={theme}/>}
     {helpOpen&&<Suspense fallback={null}><HelpDialog onClose={()=>setHelpOpen(false)}/></Suspense>}
-    {state.remoteRequest&&<RemoteRequestDialog key={`${state.repoId}-${state.remoteRequest?.branch}`}/>}
+    {state.remoteRequest&&<RemoteRequestDialog key={state.remoteRequest.identity}/>}
     {blockInteraction&&<OperationProgress key={`${state.repoId}-${progressFeedback?.id ?? 'host'}`} feedback={progressFeedback}/>}
   </div>;
 }

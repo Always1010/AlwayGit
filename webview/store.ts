@@ -63,7 +63,7 @@ interface WorkbenchState {
   backHistory(): void; resetHistory(): void; setHistoryScroll(top: number): void;
   locateRef(ref: string, oid: string): void;
   displayedHistory?: { refs: string[]; search: string }; displayedHistoryKey?: string; historyError?: string;
-  remoteRequest?: { repoId: string; branch: string; repositories: HostingRepository[]; defaultBranch?: string };
+  remoteRequest?: { identity: string; repoId: string; branch: string; repositories: HostingRepository[]; defaultBranch?: string };
   operationReview?: { repoId: string; action: Extract<GitAction, { type: 'commit' | 'operation.continue' }>; review: OperationReview };
   operationSettings: OperationSettings; loadOperationSettings(): Promise<void>; saveOperationSettings(settings: Pick<OperationSettings,'allowDetachedHead' | 'pushFollowTags' | 'pushTagAfterCreate' | 'defaultResetMode'>, scope?: OperationSettings['scope']): Promise<void>;
   appearance: Appearance; diffNavigationScope: DiffNavigationScope; singleKeyShortcuts: boolean; shortcutOverrides: ShortcutOverrides; changeListMode: 'split' | 'unified'; settingsBaseline?: InterfaceSettings;

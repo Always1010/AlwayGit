@@ -2,24 +2,44 @@ import { useState } from 'react';
 import type { HostingRepository, RemoteLinks } from '../src/protocol/types';
 import { hostingRepository, requestWebUrl } from '../src/protocol/hosting';
 import { branchNameProblem } from '../src/protocol/ref-name';
-import { useWorkbench } from './store';
+import { captureActionContext, isActionContextCurrent, useWorkbench } from './store';
 import { useTranslation } from './i18n';
 import { uiText } from './text';
 import { rpc } from './rpc';
 import { Button, Modal } from './ui';
 
+let remoteRequestGeneration = 0;
+let activeRemoteRequestIdentity = '';
+
+function beginRemoteRequest(repoId: string, branch: string, source?: HostingRepository, remote?: string, localBranch?: string) {
+  const sourceIdentity = source ? { url: source.url, label: source.label, provider: source.provider } : undefined;
+  const identity = `${++remoteRequestGeneration}:${JSON.stringify({ repoId, branch, source: sourceIdentity, remote, localBranch })}`;
+  activeRemoteRequestIdentity = identity;
+  return { identity, context: captureActionContext() };
+}
+
+export function closeRemoteRequest(identity?: string) {
+  const displayed = useWorkbench.getState().remoteRequest;
+  if (identity && displayed?.identity !== identity) return;
+  ++remoteRequestGeneration;
+  activeRemoteRequestIdentity = '';
+  useWorkbench.setState({ remoteRequest: undefined });
+}
+
 export async function showRemoteRequest(repoId: string, branch: string, source?: HostingRepository, remote?: string, localBranch?: string) {
-  const state = useWorkbench.getState();
+  if (useWorkbench.getState().repoId !== repoId) return;
+  const request = beginRemoteRequest(repoId, branch, source, remote, localBranch);
+  const current = () => useWorkbench.getState().repoId === repoId && activeRemoteRequestIdentity === request.identity && isActionContextCurrent(request.context);
   try {
     const links = await rpc<RemoteLinks>('remoteLinks', repoId, { remote, branch: localBranch });
-    if (useWorkbench.getState().repoId !== repoId) return;
+    if (!current()) return;
     const repositories = source ? [source] : links?.repositories?.filter(repository => !!repository.provider) ?? [];
-    if (!repositories.length) { state.report(new Error(uiText('feedback.noHostingLinks'))); return; }
-    useWorkbench.setState({ remoteRequest: { repoId, branch, repositories, defaultBranch: links?.defaultBranch } });
+    if (!repositories.length) { useWorkbench.getState().report(new Error(uiText('feedback.noHostingLinks'))); return; }
+    useWorkbench.setState({ remoteRequest: { identity: request.identity, repoId, branch, repositories, defaultBranch: links?.defaultBranch } });
   } catch (error) {
-    if (useWorkbench.getState().repoId !== repoId) return;
-    if (source) useWorkbench.setState({ remoteRequest: { repoId, branch, repositories: [source] } });
-    else state.report(error);
+    if (!current()) return;
+    if (source) useWorkbench.setState({ remoteRequest: { identity: request.identity, repoId, branch, repositories: [source] } });
+    else useWorkbench.getState().report(error);
   }
 }
 
@@ -30,7 +50,7 @@ export function RemoteRequestDialog() {
   if (!request) return null;
   const source = request.repositories[sourceIndex], destination = hostingRepository(target);
   const url = source && destination && (!base || !branchNameProblem(base)) ? requestWebUrl(source, request.branch, base || undefined, destination) : undefined;
-  const close = () => useWorkbench.setState({ remoteRequest: undefined });
+  const close = () => closeRemoteRequest(request.identity);
   const open = async () => {
     if (!url) return; setBusy(true); setError(undefined);
     try { await rpc('openExternal', request.repoId, { url }); close(); }
