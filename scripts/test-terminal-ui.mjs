@@ -54,6 +54,10 @@ export async function verifyTerminalDock(browser, url) {
     await dock.getByRole('button', { name: 'All tabs', exact: true }).click();
     await page.keyboard.press('Escape'); await page.getByRole('menu').waitFor({ state: 'hidden' });
     assert.ok((await dock.boundingBox()).height > 850, 'Menu Escape must not restore a maximized dock');
+    await dock.getByRole('button', { name: 'Rename terminal', exact: true }).click();
+    const renameDialog=page.getByRole('dialog',{name:'Rename terminal',exact:true});await renameDialog.waitFor();
+    await page.keyboard.press('Escape');await renameDialog.waitFor({state:'hidden'});
+    assert.ok((await dock.boundingBox()).height > 850,'Modal Escape closes only the modal and keeps the dock maximized');
     await dock.getByRole('button', { name: 'Restore bottom panel', exact: true }).click();
     await page.getByTestId('details').getByRole('button', { name: /webview\/App.tsx/ }).first().click();
     assert.equal(await dock.getByRole('tab', { name: /^Diff/ }).getAttribute('aria-selected'), 'true');

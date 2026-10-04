@@ -1,4 +1,4 @@
-import { Button, Empty } from './ui';
+import { Button, Empty, hasOpenInteractionLayer } from './ui';
 
 import { uiText } from './text';
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -181,7 +181,7 @@ function DiffPreviewPanel({ native, edit, active = true }: { native():void; edit
     else void navigate(direction);
   };
   const toggleDiff=()=>{if(!collapsed)setMaximized(false);state.setLayout({diffCollapsed:!collapsed});};
-  useEffect(()=>{if(!maximized)return;const restore=(event:KeyboardEvent)=>{if(event.key==='Escape'){event.preventDefault();setMaximized(false);}};window.addEventListener('keydown',restore,{capture:true});return()=>window.removeEventListener('keydown',restore,{capture:true});},[maximized]);
+  useEffect(()=>{if(!maximized)return;const restore=(event:KeyboardEvent)=>{if(event.key==='Escape'&&!event.defaultPrevented&&!hasOpenInteractionLayer()){event.preventDefault();setMaximized(false);}};window.addEventListener('keydown',restore,{capture:true});return()=>window.removeEventListener('keydown',restore,{capture:true});},[maximized]);
   useEffect(()=>{if(collapsed&&maximized)setMaximized(false);},[collapsed,maximized]);
   useEffect(()=>{
     const pending=pendingNavigation.current;if(!pending)return;

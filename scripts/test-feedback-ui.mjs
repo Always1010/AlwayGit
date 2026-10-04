@@ -67,6 +67,14 @@ export async function verifyFeedback(browser, url) {
       await page.getByRole('menuitem', { name: `${title}…`, exact: true }).click();
       const dialog = page.getByRole('dialog', { name: title, exact: true });
       await dialog.getByText(`HEAD: ${'a'.repeat(40)}`, { exact: false }).waitFor();
+      if(kind==='merge'){
+        await page.evaluate(()=>window.postMessage({type:'activity',repoId:'feedback',busy:true,label:'External Git operation'},'*'));
+        await page.waitForFunction(()=>document.querySelector('[role="dialog"][aria-label="Merge"]')?.getAttribute('aria-busy')==='true');
+        await page.keyboard.press('Escape');
+        assert.equal(await dialog.isVisible(),true,'Escape is consumed while a busy modal remains open');
+        await page.evaluate(()=>window.postMessage({type:'activity',repoId:'feedback',busy:false,label:''},'*'));
+        await page.waitForFunction(()=>document.querySelector('[role="dialog"][aria-label="Merge"]')?.getAttribute('aria-busy')==='false');
+      }
       await page.evaluate(() => { const fixture = window.__feedbackFixture; fixture.snapshot.branch = 'other-confirmation'; fixture.snapshot.head = 'b'.repeat(40); window.postMessage({ type: 'changed', repoId: 'feedback' }, '*'); });
       await page.waitForFunction(() => document.querySelector('.toolbar')?.textContent.includes('other-confirmation'));
       assert.match(await dialog.innerText(), /main/);

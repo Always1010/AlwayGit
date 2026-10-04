@@ -170,7 +170,12 @@ async function verifyImagePreview(browser, url) {
     assert.equal(await diff.getByRole('button',{name:'Show images at actual size'}).getAttribute('aria-pressed'),'true');
     await diff.getByRole('button',{name:'Maximize image preview'}).click();
     assert.ok(await diff.evaluate(element=>element.classList.contains('diff-preview-maximized')));
-    await diff.getByRole('button',{name:'Restore image preview'}).click();
+    await page.keyboard.press(',');
+    const settings=page.getByRole('dialog',{name:'Settings',exact:true});await settings.waitFor();
+    await page.keyboard.press('Escape');await settings.waitFor({state:'hidden'});
+    assert.ok(await diff.evaluate(element=>element.classList.contains('diff-preview-maximized')),'Modal Escape does not reach the captured image-preview handler');
+    await page.keyboard.press('Escape');
+    assert.equal(await diff.evaluate(element=>element.classList.contains('diff-preview-maximized')),false,'The next Escape restores the image preview after the modal closes');
     await page.getByTestId('details').getByRole('button',{name:'binary.bin',exact:true}).click();
     await diff.getByText('Binary file: text preview unavailable',{exact:true}).waitFor();
     assert.equal(await diff.getByRole('button',{name:'Open Diff'}).isDisabled(),true);

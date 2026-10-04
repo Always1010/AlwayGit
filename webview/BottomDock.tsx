@@ -5,7 +5,7 @@ import { useWorkbench } from './store';
 import { useWorkbenchFields } from './subscriptions';
 import { rpc, subscribe } from './rpc';
 import { useTranslation } from './i18n';
-import { Button, Icon, Modal } from './ui';
+import { Button, hasOpenInteractionLayer, Icon, Modal } from './ui';
 import { useShortcuts } from './shortcuts';
 import { ContextMenu, type MenuItem } from './ContextMenu';
 import type { TerminalShell } from '../src/protocol/terminal';
@@ -44,7 +44,7 @@ export function BottomDock({ native, edit }: { native(): void; edit(): void }) {
   useEffect(() => { tabs.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }, [dock.activeId]);
   useEffect(() => { if (state.layout.diffCollapsed) setMaximized(false); }, [state.layout.diffCollapsed]);
   useEffect(() => {
-    const close = (event: KeyboardEvent) => { if (event.key === 'Escape') { setMenu(undefined); setMaximized(false); } };
+    const close = (event: KeyboardEvent) => { if (event.key === 'Escape' && !event.defaultPrevented && !hasOpenInteractionLayer()) { setMenu(undefined); setMaximized(false); } };
     window.addEventListener('keydown', close); return () => window.removeEventListener('keydown', close);
   }, []);
   const diffTitle = state.selectedFile ? `${t('diff.diff')}${state.selectedFile}` : 'Diff';
