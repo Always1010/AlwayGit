@@ -2,11 +2,35 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { commitFile, git, gitFixtures } from './support/git-fixture';
+import { GitService } from '../src/git/service';
 
 const fixtures = gitFixtures('alwaygit-tag-push-');
 afterEach(fixtures.cleanup);
 
 describe('Tag Push', () => {
+  it('publishes confirmed raw objects despite Tag replacement before each batch push', async () => {
+    const { root, repo } = await fixtures.setup();
+    const original = await commitFile(root, 'base.txt', 'base');
+    const bare = path.join(root, 'remote.git');
+    await mkdir(bare); await git(bare, 'init', '--bare'); await git(root, 'remote', 'add', 'origin', bare);
+    await git(root, 'tag', 'light', original); await git(root, 'tag', '-a', 'annotated', '-m', 'original', original);
+    const expectedOids = { light: await git(root, 'rev-parse', 'refs/tags/light'), annotated: await git(root, 'rev-parse', 'refs/tags/annotated') };
+    const replacement = await commitFile(root, 'next.txt', 'next');
+    let sends = 0;
+    const service = new GitService({ environment: async (_repo, args) => {
+      if (args[0] === 'push') {
+        if (++sends === 1) await git(root, 'tag', '-f', 'light', replacement);
+        else await git(root, 'tag', '-f', '-a', 'annotated', '-m', 'replacement', replacement);
+      }
+      return {};
+    } });
+    await service.execute(repo, { type: 'tag.push', remote: 'origin', names: ['light', 'annotated'], expectedOids });
+    for (const name of ['light', 'annotated'] as const) {
+      expect(await git(bare, 'rev-parse', `refs/tags/${name}`)).toBe(expectedOids[name]);
+      expect(await git(root, 'rev-parse', `refs/tags/${name}`)).not.toBe(expectedOids[name]);
+    }
+    expect(await git(bare, 'cat-file', '-t', 'refs/tags/annotated')).toBe('tag');
+  });
   it('creates a Tag and pushes only that new Tag when requested', async () => {
     const { root, service, repo } = await fixtures.setup();
     const head = await commitFile(root, 'base.txt', 'base');
