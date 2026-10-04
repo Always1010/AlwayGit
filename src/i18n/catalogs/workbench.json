@@ -95,6 +95,12 @@
     "review": "translated",
     "context": "webview/App.tsx / App"
   },
+  "workbench.pullIncomingCommits": {
+    "en": "Pull, {{behind}} incoming commits",
+    "zh-CN": "拉取，{{behind}} 个待拉取提交",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
   "workbench.pushRequiresALocalBranch": {
     "en": "Push requires a local branch.",
     "zh-CN": "推送要求当前位于本地分支。",
