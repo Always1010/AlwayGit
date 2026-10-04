@@ -1,7 +1,8 @@
 import { message as localizeMessage, translate } from '../i18n/index';
 import { createHash, randomUUID } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { access, lstat, open, realpath, readFile, readlink } from 'node:fs/promises';
+import { access, lstat, open, realpath, readFile, readlink, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { constants } from 'node:fs';
 import path from 'node:path';
 import type { Change, CheckoutBlocker, Commit, CommitComparison, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationReview, OperationState, Repository, RepositoryStatus, Snapshot, Stash, StashApplyBlocker, StashDetails, Worktree } from '../protocol/types';
@@ -35,6 +36,7 @@ export interface GitServiceOptions {
   environment?: NodeJS.ProcessEnv | ((repo: Repository, args: readonly string[]) => Promise<NodeJS.ProcessEnv | { env: NodeJS.ProcessEnv; cancelPrompts?: () => void; dispose?: () => void | Promise<void> }>);
 }
 type Result = GitResult;
+interface BoundRemote { remote: string; url: string; configOverrides: [string, string][] }
 const queues = new Map<string, Promise<unknown>>();
 const unsafeTerminations = new Map<string, GitTerminationError>();
 const normalized = (p: string) => process.platform === 'win32' ? path.resolve(p).toLowerCase() : path.resolve(p);
@@ -100,12 +102,12 @@ export class GitService implements GitServiceContract {
     }
     finally{signal.removeEventListener('abort',abort);}
   }
-  private async run(repo: Repository, args: string[], allowFailure = false, captureBytes?: number, execution: StashExecution & { signal?: AbortSignal } = {}): Promise<Result> {
+  private async run(repo: Repository, args: string[], allowFailure = false, captureBytes?: number, execution: StashExecution & { signal?: AbortSignal; configOverrides?: [string, string][]; beforeSpawn?: () => Promise<void>; boundRemote?: BoundRemote } = {}): Promise<Result> {
     const readOnly = isReadOnlyGitCommand(args), scope = this.readSignal.getStore(), scopeSignal = scope?.controller.signal;
     if (!readOnly && scopeSignal) throw new GitError(localizeMessage("service.aReadOnlyRequestCannotRunGitMutations"), 'WRITE_IN_READ_SCOPE');
     const unsafe = unsafeTerminations.get(normalized(repo.commonDir));
     if (!readOnly && unsafe) throw unsafe;
-    const prefix = ['-C', execution.root ?? repo.root, ...(args[0] === 'stash' ? [] : ['--literal-pathspecs']), ...Object.entries(execution.config ?? {}).flatMap(([key, value]) => ['-c', `${key}=${value}`])];
+    const prefix = ['-C', execution.root ?? repo.root, ...(args[0] === 'stash' ? [] : ['--literal-pathspecs']), ...[...Object.entries(execution.config ?? {}), ...(execution.configOverrides ?? [])].flatMap(([key, value]) => ['-c', `${key}=${value}`])];
     const executable = await this.gitPath();
     const batches = splitCleanArguments(executable, prefix, args);
     if (batches.length > 1) {
@@ -131,12 +133,30 @@ export class GitService implements GitServiceContract {
     const commandEnv: NodeJS.ProcessEnv = { ...process.env, ...env };
     if (execution.isolated) for (const key of Object.keys(commandEnv)) if (/^GIT_/i.test(key)) delete commandEnv[key];
     let preserveEnvironment = false;
+    let bindingConfig: string | undefined;
     try {
+      if (execution.boundRemote) {
+        // An exact, first rewrite rule wins even if another client later adds
+        // url.*.insteadOf for this address. Include the real system settings
+        // after it; global/local settings and credential helpers remain intact.
+        const system = await this.run(repo, ['var', 'GIT_CONFIG_SYSTEM'], true, undefined, { env: commandEnv });
+        if (system.code) throw new GitError(localizeMessage('service.cannotBindRemoteDestination'), 'REMOTE_BINDING_UNSUPPORTED');
+        const systemPath = system.stdout.toString('utf8').trim();
+        const includeSystem = !/^(?:1|true|yes|on)$/i.test(commandEnv.GIT_CONFIG_NOSYSTEM ?? '') && systemPath && await exists(systemPath);
+        const url = JSON.stringify(execution.boundRemote.url);
+        const filename = path.join(tmpdir(), `alwaygit-push-${randomUUID()}.config`);
+        const configFile = await open(filename, 'wx', 0o600);
+        bindingConfig = filename;
+        const rewriteKey = 'insteadOf';
+        try { await configFile.writeFile([`[url ${url}]`, `\t${rewriteKey} = ${url}`, ...(includeSystem ? ['[include]', `\tpath = ${JSON.stringify(systemPath)}`] : []), ''].join('\n')); }
+        finally { await configFile.close(); }
+      }
+      await execution.beforeSpawn?.();
       // Stash cleanup uses Git pathspec matching; all other commands use literal paths.
       const gitProcess = runGitProcess({
         executable,
         args: [...prefix, ...prepared.args],
-        env: { ...commandEnv, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never', GIT_EDITOR: 'true', GIT_SEQUENCE_EDITOR: 'true', ...(['status', 'log', 'show', 'ls-tree', 'ls-files', 'for-each-ref'].includes(args[0]) ? { GIT_OPTIONAL_LOCKS: '0' } : {}), ...execution.env },
+        env: { ...commandEnv, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never', GIT_EDITOR: 'true', GIT_SEQUENCE_EDITOR: 'true', ...(['status', 'log', 'show', 'ls-tree', 'ls-files', 'for-each-ref'].includes(args[0]) ? { GIT_OPTIONAL_LOCKS: '0' } : {}), ...execution.env, ...(bindingConfig ? { GIT_CONFIG_SYSTEM: bindingConfig, GIT_CONFIG_NOSYSTEM: '0' } : {}) },
         input: prepared.input, signal: execution.signal && scopeSignal ? AbortSignal.any([execution.signal,scopeSignal]) : execution.signal ?? scopeSignal, readOnly, captureBytes,
         timeoutMs: this.options.timeoutMs ?? (args[0] === 'ls-remote' ? 30_000 : ['fetch', 'pull', 'push'].includes(args[0]) ? this.options.networkTimeoutMs ?? 600_000 : undefined), onStop: wrapped?.cancelPrompts, maxOutputBytes: this.options.maxOutputBytes,
         onStderr: execution.silent ? undefined : chunk => this.options.onOutput?.(repo, chunk.toString('utf8')),
@@ -159,10 +179,16 @@ export class GitService implements GitServiceContract {
         // Keep authentication until the known process and terminator handles close.
         // This does not lift isolation: closed handles don't prove every descendant exited.
         void error.completion.then(() => wrapped?.dispose?.()).catch(() => {});
+        if (bindingConfig) { const filename = bindingConfig; void error.completion.then(() => rm(filename, { force: true })).catch(() => {}); }
         preserveEnvironment = true;
       }
       throw error;
-    } finally { if (!preserveEnvironment) await wrapped?.dispose?.(); }
+    } finally {
+      if (!preserveEnvironment) {
+        try { await wrapped?.dispose?.(); }
+        finally { if (bindingConfig) await rm(bindingConfig, { force: true }); }
+      }
+    }
   }
   private async text(repo: Repository, args: string[]): Promise<string> { return (await this.run(repo, args)).stdout.toString('utf8').trim(); }
   private async optionalConfig(repo: Repository, key: string): Promise<string | undefined> {
@@ -198,9 +224,19 @@ export class GitService implements GitServiceContract {
     }
     return { remote, destination, separatePush: pushUrls.length !== 1 || pushUrls[0] !== url, refs, checkedAt: Date.now() };
   }
-  private async confirmRemoteDestination(repo: Repository, remote: string, expected?: string): Promise<void> {
-    const actual = await this.remoteDestination(repo, remote, true);
+  private async confirmRemoteDestination(repo: Repository, remote: string, expected?: string): Promise<BoundRemote> {
+    token(remote, 'remote');
+    const urls = (await this.text(repo, ['remote', 'get-url', '--push', '--all', remote])).split('\n').filter(Boolean);
+    if (urls.length !== 1) throw new GitError(localizeMessage("service.thisRemoteHasMultiplePushDestinationsSelectARemote"), 'MULTIPLE_PUSH_DESTINATIONS');
+    const actual = createHash('sha256').update(JSON.stringify(urls)).digest('hex');
     if (!expected || actual !== expected) throw new GitError(localizeMessage("service.theRemotePushDestinationIsMissingOrChangedRefresh"), 'OPERATION_CHANGED');
+    // Reset before replacing this multi-valued key. Appending alone would push
+    // to both the newly configured server and the confirmed one.
+    const configOverrides: [string, string][] = [[`remote.${remote}.pushurl`, ''], [`remote.${remote}.pushurl`, urls[0]]];
+    const bound = { remote, url: urls[0], configOverrides };
+    const resolved = await this.run(repo, ['remote', 'get-url', '--push', '--all', remote], false, undefined, { configOverrides, boundRemote: bound });
+    if (resolved.stdout.toString('utf8').trim() !== urls[0]) throw new GitError(localizeMessage('service.cannotBindRemoteDestination'), 'REMOTE_BINDING_UNSUPPORTED');
+    return bound;
   }
   private confirmedRemoteOid(value: string | undefined): string {
     if (value === undefined) throw new GitError(localizeMessage("service.theConfirmedRemoteBranchVersionIsMissingRefreshAnd"), 'OPERATION_CHANGED');
@@ -508,10 +544,10 @@ export class GitService implements GitServiceContract {
     return { repositories: urls.split('\n').flatMap(value => { const repository = hostingRepository(value); return repository ? [repository] : []; }),
       ...(name.startsWith(remote + '/') ? { defaultBranch: name.slice(remote.length + 1) } : {}) };
   }
-  private async push(repo: Repository, args: string[], remote?: string, branch?: string): Promise<PushResult> {
-    const configured = remote ? await this.run(repo, ['remote', 'get-url', '--push', '--all', token(remote, 'remote')], true) : undefined;
-    const output = await this.run(repo, ['push', '--porcelain', ...args.slice(1)], true);
-    const result = parsePushResult(output.stdout.toString('utf8'), output.stderr.toString('utf8'), output.code, remote, branch, configured?.code === 0 ? configured.stdout.toString('utf8').trim().split('\n').filter(Boolean) : []);
+  private async push(repo: Repository, args: string[], remote?: string, branch?: string, bound?: BoundRemote): Promise<PushResult> {
+    const configured = !bound && remote ? await this.run(repo, ['remote', 'get-url', '--push', '--all', token(remote, 'remote')], true) : undefined;
+    const output = await this.run(repo, ['push', '--porcelain', ...args.slice(1)], true, undefined, bound ? { configOverrides: bound.configOverrides, boundRemote: bound } : {});
+    const result = parsePushResult(output.stdout.toString('utf8'), output.stderr.toString('utf8'), output.code, remote, branch, bound ? [bound.url] : configured?.code === 0 ? configured.stdout.toString('utf8').trim().split('\n').filter(Boolean) : []);
     if (output.code) {
       const error = new GitError(result.error || translate('en','service.gitExitedWithStatus',{code:output.code}), result.outcome === 'partial' ? 'PARTIAL_FAILURE' : 'GIT_FAILED', output.stdout.toString('utf8'), output.stderr.toString('utf8'));
       error.pushResult = result; throw error;
@@ -735,7 +771,7 @@ export class GitService implements GitServiceContract {
   }
   private async executeNow(repo: Repository, action: GitAction, onProgress?: (progress: FileOperationProgress) => void): Promise<void | PushResult> {
     if (action.type !== 'commit' && action.type !== 'operation.continue') this.reviews.delete(repo.id);
-    let args: string[], pushedRemote: string | undefined; const remote = (value?: string) => value ? [token(value, 'remote')] : [];
+    let args: string[], pushedRemote: string | undefined, boundRemote: BoundRemote | undefined; const remote = (value?: string) => value ? [token(value, 'remote')] : [];
     switch (action.type) {
       case 'discard': return this.discard(repo, action, onProgress);
       case 'stage': case 'resolve-and-stage': case 'unstage': {
@@ -788,7 +824,7 @@ export class GitService implements GitServiceContract {
         const remoteBranch = branch ? await this.refName(repo, action.remoteBranch ?? branch) : undefined;
         const setUpstream = branch && (action.setUpstream ?? true);
         const lease = action.forceWithLease ? this.confirmedRemoteOid(action.expectedOid) : undefined;
-        if (action.forceWithLease) await this.confirmRemoteDestination(repo, destination!, action.expectedDestination);
+        if (action.forceWithLease) boundRemote = await this.confirmRemoteDestination(repo, destination!, action.expectedDestination);
         pushedRemote = destination;
         args = ['push', action.followTags ? '--follow-tags' : '--no-follow-tags', ...(setUpstream ? ['--set-upstream'] : []), ...(lease !== undefined ? [`--force-with-lease=refs/heads/${remoteBranch}:${lease}`] : []), ...remote(destination), ...(branch ? [`refs/heads/${branch}:refs/heads/${remoteBranch}`] : [])]; break;
       }
@@ -846,9 +882,9 @@ export class GitService implements GitServiceContract {
         const branches=await mapGitQueries([...new Set(action.branches)], name=>this.refName(repo,name));
         if(!branches.length)throw new GitError(localizeMessage("service.selectAtLeastOneRemoteBranch"),'INVALID_ARGUMENT');
         for (const branch of branches) this.confirmedRemoteOid(Object.hasOwn(action.expectedOids ?? {}, branch) ? action.expectedOids![branch] : undefined);
-        await this.confirmRemoteDestination(repo, destination, action.expectedDestination);
+        const bound = await this.confirmRemoteDestination(repo, destination, action.expectedDestination);
         const failures:string[]=[];let deleted=0;
-        for(const branch of branches){try{await this.run(repo,['push','--no-follow-tags',`--force-with-lease=refs/heads/${branch}:${action.expectedOids![branch]}`,destination,`:refs/heads/${branch}`]);deleted++;}catch(error){if(error instanceof GitTerminationError)throw error;failures.push(`${destination}/${branch}: ${error instanceof Error?error.message:String(error)}`);}}
+        for(const branch of branches){try{await this.run(repo,['push','--no-follow-tags',`--force-with-lease=refs/heads/${branch}:${action.expectedOids![branch]}`,destination,`:refs/heads/${branch}`],false,undefined,{configOverrides:bound.configOverrides,boundRemote:bound});deleted++;}catch(error){if(error instanceof GitTerminationError)throw error;failures.push(`${destination}/${branch}: ${error instanceof Error?error.message:String(error)}`);}}
         if(failures.length)throw new GitError(localizeMessage("service.remoteBranchEsDeletedFailed", { deleted: (deleted), count: (failures.length), value: (failures.join('\n')) }),'PARTIAL_FAILURE');
         return;
       }
@@ -907,12 +943,12 @@ export class GitService implements GitServiceContract {
           const configured = (await this.text(repo, ['remote'])).split('\n').filter(Boolean);
           if (!configured.includes(destination)) throw new GitError(localizeMessage("service.unknownRemote", { destination }), 'INVALID_ARGUMENT');
           if (!validOid(remoteExpected)) throw new GitError(localizeMessage("service.theTagIdentityIsMissingOrInvalidRefreshAnd"), 'OPERATION_CHANGED');
-          await this.confirmRemoteDestination(repo, destination, action.expectedDestination);
+          const bound = await this.confirmRemoteDestination(repo, destination, action.expectedDestination);
           const readUrl = await this.text(repo, ['remote', 'get-url', destination]);
           const pushUrls = (await this.text(repo, ['remote', 'get-url', '--push', '--all', destination])).split('\n').filter(Boolean);
           if (pushUrls.length !== 1) throw new GitError(localizeMessage("service.thisRemoteHasMultiplePushDestinationsSelectARemote"), 'MULTIPLE_PUSH_DESTINATIONS');
-          if (pushUrls[0] !== readUrl) throw new GitError(localizeMessage("service.remoteTagDeletionRequiresMatchingReadAndPushAddresses"), 'SEPARATE_PUSH_DESTINATION');
-          published = await this.push(repo, ['push', '--no-follow-tags', `--force-with-lease=${ref}:${remoteExpected}`, destination, `:${ref}`], destination);
+          if (pushUrls[0] !== readUrl || readUrl !== bound.url) throw new GitError(localizeMessage("service.remoteTagDeletionRequiresMatchingReadAndPushAddresses"), 'SEPARATE_PUSH_DESTINATION');
+          published = await this.push(repo, ['push', '--no-follow-tags', `--force-with-lease=${ref}:${remoteExpected}`, destination, `:${ref}`], destination, undefined, bound);
         }
         if (expected) {
           // Compare the raw ref object, including an annotated tag object, atomically.
@@ -1010,7 +1046,7 @@ export class GitService implements GitServiceContract {
     }
     if (action.type === 'worktree.add' && (action.detach || !action.branch && !action.newBranch && !!action.start)) this.requireDetachedHead();
     if (args[0] === 'push') {
-      return this.push(repo, args, pushedRemote ?? ('remote' in action ? action.remote : undefined), action.type === 'push' ? action.branch : undefined);
+      return this.push(repo, args, pushedRemote ?? ('remote' in action ? action.remote : undefined), action.type === 'push' ? action.branch : undefined, boundRemote);
     }
     await this.run(repo, args);
   }

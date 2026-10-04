@@ -1,4 +1,5 @@
 {
+  "service.cannotBindRemoteDestination": { "en": "This Git version cannot safely bind the confirmed push address. Use Git 2.46 or later, refresh and confirm again.", "zh-CN": "当前 Git 无法安全固定已确认的推送地址。请使用 Git 2.46 或更新版本，刷新后重新确认。", "review": "translated", "context": "src/git/service.ts / confirmRemoteDestination" },
   "service.discardFilesRemain": { "en": "Some confirmed paths still contain changes or could not be deleted (for example, a protected nested repository). Inspect them before retrying:\n{{paths}}", "zh-CN": "部分已确认路径仍有更改或未能删除（例如受保护的嵌套仓库）。请检查后重试：\n{{paths}}", "review": "translated", "context": "src/git/service.ts / discard" },
   "service.discardAllOperationBlocked": { "en": "Finish or abort the active Git operation and resolve conflicts before discarding all staged and unstaged changes.", "zh-CN": "请先完成或中止当前 Git 操作并处理冲突，再丢弃全部暂存和未暂存更改。", "review": "translated", "context": "src/git/service.ts / requireDiscardAllAvailable" },
   "service.discardPlanExpired": { "en": "Discard confirmation expired. Recheck the remaining changes before retrying.", "zh-CN": "丢弃确认已过期。请重新检查剩余更改后重试。", "review": "translated", "context": "src/git/service.ts / checkedDiscard" },
