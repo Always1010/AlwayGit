@@ -959,15 +959,17 @@ export class GitService implements GitServiceContract {
         if(!configured.includes(destination))throw new GitError(localizeMessage("service.unknownRemote", { destination: (destination) }),'INVALID_ARGUMENT');
         const names=[...new Set(action.names.map(name=>token(name,'tag name')))];
         if(!names.length)throw new GitError(localizeMessage("service.selectAtLeastOneTag"),'INVALID_ARGUMENT');
+        const plan: { name: string; oid: string }[] = [];
         for(const name of names){
           const ref=`refs/tags/${name}`;await this.run(repo,['check-ref-format',ref]);
           const expected=Object.hasOwn(action.expectedOids,name)?action.expectedOids[name]:undefined;
           if(!expected||!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(expected)||/^0+$/.test(expected))throw new GitError(localizeMessage("service.theTagIdentityIsMissingOrInvalidRefreshAnd"),'OPERATION_CHANGED');
           const current=await this.run(repo,['show-ref','--verify','--hash','--',ref],true);
           if(current.code||current.stdout.toString('utf8').trim()!==expected)throw new GitError(localizeMessage("service.theTagChangedRefreshAndReopenThePushDialog", { name: (name) }),'OPERATION_CHANGED');
+          plan.push({ name, oid: expected });
         }
         const failures:string[]=[];let pushed=0;
-        for(const name of names){try{await this.run(repo,['push','--no-follow-tags',destination,`refs/tags/${name}:refs/tags/${name}`]);pushed++;}catch(error){if(error instanceof GitTerminationError)throw error;failures.push(`${destination}/${name}: ${error instanceof Error?error.message:String(error)}`);}}
+        for(const {name,oid} of plan){try{await this.run(repo,['push','--no-follow-tags',destination,`${oid}:refs/tags/${name}`]);pushed++;}catch(error){if(error instanceof GitTerminationError)throw error;failures.push(`${destination}/${name}: ${error instanceof Error?error.message:String(error)}`);}}
         if(failures.length)throw new GitError(localizeMessage("service.tagEsPushedFailed", { pushed: (pushed), count: (failures.length), value: (failures.join('\n')) }),'PARTIAL_FAILURE');
         return;
       }
