@@ -2,6 +2,17 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-098：批量跟踪分支创建丢失已捕获的起点 OID
+
+- 日期：2026-10-05
+- 状态：待修复
+- 优先级与可信度：P2；真实 Git 已复现。
+- 现象：不执行 Checkout 的远程跟踪分支创建，在来源核验后被外部 Fetch 或客户端推进时，会从用户未确认的新提交创建本地分支。
+- 原因：计划已保存来源 `oid`，实际却运行 `branch --track <name> <source>`，重新解析可变远程跟踪引用；`checkout: true` 路径已有固定 OID 保护。
+- 解决方案：待实施；批量路径也从捕获的 OID 创建引用，再设置原来源 upstream，保留已有逐项失败与已创建分支反馈。
+- 验证方式：0.47.1 / faf4524；在实际创建启动前由外部 Git 推进 `refs/remotes/origin/topic`，新本地分支指向推进后的 OID。现有固定起点竞态检查只覆盖 Checkout 路径。
+- 相关文件：`src/git/service.ts`（`trackBranches`）、`tests/git-safety.test.ts`。
+
 ## BUG-097：Tag 推送核验后仍会重新解析可变引用
 
 - 日期：2026-10-05
