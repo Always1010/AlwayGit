@@ -846,7 +846,7 @@ export class GitService implements GitServiceContract {
         for (const branch of branches) this.confirmedRemoteOid(Object.hasOwn(action.expectedOids ?? {}, branch) ? action.expectedOids![branch] : undefined);
         await this.confirmRemoteDestination(repo, destination, action.expectedDestination);
         const failures:string[]=[];let deleted=0;
-        for(const branch of branches){try{await this.run(repo,['push',`--force-with-lease=refs/heads/${branch}:${action.expectedOids![branch]}`,destination,`:refs/heads/${branch}`]);deleted++;}catch(error){if(error instanceof GitTerminationError)throw error;failures.push(`${destination}/${branch}: ${error instanceof Error?error.message:String(error)}`);}}
+        for(const branch of branches){try{await this.run(repo,['push','--no-follow-tags',`--force-with-lease=refs/heads/${branch}:${action.expectedOids![branch]}`,destination,`:refs/heads/${branch}`]);deleted++;}catch(error){if(error instanceof GitTerminationError)throw error;failures.push(`${destination}/${branch}: ${error instanceof Error?error.message:String(error)}`);}}
         if(failures.length)throw new GitError(localizeMessage("service.remoteBranchEsDeletedFailed", { deleted: (deleted), count: (failures.length), value: (failures.join('\n')) }),'PARTIAL_FAILURE');
         return;
       }
