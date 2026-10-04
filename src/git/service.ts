@@ -195,7 +195,7 @@ export class GitService implements GitServiceContract {
       if (!match) throw new GitError(localizeMessage('service.malformedGitStatusOutput'), 'PARSE_ERROR');
       refs[match[2]] = match[1];
     }
-    return { remote, destination, separatePush: pushUrls.some(value => value !== url), refs, checkedAt: Date.now() };
+    return { remote, destination, separatePush: pushUrls.length !== 1 || pushUrls[0] !== url, refs, checkedAt: Date.now() };
   }
   private async confirmRemoteDestination(repo: Repository, remote: string, expected?: string): Promise<void> {
     const actual = await this.remoteDestination(repo, remote, true);
@@ -882,18 +882,43 @@ export class GitService implements GitServiceContract {
       case 'tag.delete': {
         const ref = `refs/tags/${token(action.name, 'tag name')}`, expected = action.expectedOid;
         await this.run(repo, ['check-ref-format', ref]);
-        if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(expected ?? '') || /^0+$/.test(expected)) throw new GitError(localizeMessage("service.theTagIdentityIsMissingOrInvalidRefreshAnd"), 'OPERATION_CHANGED');
-        const current = await this.run(repo, ['show-ref', '--verify', '--hash', '--', ref], true);
-        if (current.code || current.stdout.toString('utf8').trim() !== expected) throw new GitError(localizeMessage("service.theTagChangedRefreshAndReopenTheDeletionDialog"), 'OPERATION_CHANGED');
-        // Compare the raw ref object, including an annotated tag object, atomically.
-        // Do not dereference a symbolic tag and accidentally remove its target.
-        const deleted = await this.run(repo, ['update-ref', '--no-deref', '-d', ref, expected], true);
-        if (deleted.code) {
-          const latest = await this.run(repo, ['show-ref', '--verify', '--hash', '--', ref], true);
-          if (latest.code || latest.stdout.toString('utf8').trim() !== expected) throw new GitError(localizeMessage("service.theTagChangedBeforeDeletionRefreshAndReopenThe"), 'OPERATION_CHANGED', deleted.stdout.toString('utf8'), deleted.stderr.toString('utf8'));
-          throw new GitError(deleted.stderr.toString('utf8').trim() || translate('en', "service.tagDeletionFailed"), 'GIT_FAILED', deleted.stdout.toString('utf8'), deleted.stderr.toString('utf8'));
+        const validOid = (value: string | undefined) => !!value && /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(value) && !/^0+$/.test(value);
+        if (!expected && !action.remote) throw new GitError(localizeMessage("service.theTagIdentityIsMissingOrInvalidRefreshAnd"), 'OPERATION_CHANGED');
+        if (expected && !validOid(expected)) throw new GitError(localizeMessage("service.theTagIdentityIsMissingOrInvalidRefreshAnd"), 'OPERATION_CHANGED');
+        const currentLocal = async () => this.run(repo, ['show-ref', '--verify', '--hash', '--', ref], true);
+        if (expected) {
+          const current = await currentLocal();
+          if (current.code || current.stdout.toString('utf8').trim() !== expected) throw new GitError(localizeMessage("service.theTagChangedRefreshAndReopenTheDeletionDialog"), 'OPERATION_CHANGED');
         }
-        return;
+        let published: PushResult | undefined;
+        if (action.remote) {
+          const destination = token(action.remote, 'remote'), remoteExpected = action.expectedRemoteOid;
+          const configured = (await this.text(repo, ['remote'])).split('\n').filter(Boolean);
+          if (!configured.includes(destination)) throw new GitError(localizeMessage("service.unknownRemote", { destination }), 'INVALID_ARGUMENT');
+          if (!validOid(remoteExpected)) throw new GitError(localizeMessage("service.theTagIdentityIsMissingOrInvalidRefreshAnd"), 'OPERATION_CHANGED');
+          await this.confirmRemoteDestination(repo, destination, action.expectedDestination);
+          const readUrl = await this.text(repo, ['remote', 'get-url', destination]);
+          const pushUrls = (await this.text(repo, ['remote', 'get-url', '--push', '--all', destination])).split('\n').filter(Boolean);
+          if (pushUrls.length !== 1) throw new GitError(localizeMessage("service.thisRemoteHasMultiplePushDestinationsSelectARemote"), 'MULTIPLE_PUSH_DESTINATIONS');
+          if (pushUrls[0] !== readUrl) throw new GitError(localizeMessage("service.remoteTagDeletionRequiresMatchingReadAndPushAddresses"), 'SEPARATE_PUSH_DESTINATION');
+          published = await this.push(repo, ['push', '--no-follow-tags', `--force-with-lease=${ref}:${remoteExpected}`, destination, `:${ref}`], destination);
+        }
+        if (expected) {
+          // Compare the raw ref object, including an annotated tag object, atomically.
+          // Do not dereference a symbolic tag and accidentally remove its target.
+          const deleted = await this.run(repo, ['update-ref', '--no-deref', '-d', ref, expected], true);
+          if (deleted.code) {
+            const latest = await currentLocal();
+            const changed = latest.code || latest.stdout.toString('utf8').trim() !== expected;
+            const failureMessage = published
+              ? localizeMessage(changed ? "service.remoteTagWasDeletedButTheLocalTagChangedAndWasRetained" : "service.remoteTagWasDeletedButTheLocalTagCouldNotBeDeleted")
+              : changed ? localizeMessage("service.theTagChangedBeforeDeletionRefreshAndReopenThe") : deleted.stderr.toString('utf8').trim() || translate('en', "service.tagDeletionFailed");
+            const failure = new GitError(failureMessage, published ? 'PARTIAL_FAILURE' : changed ? 'OPERATION_CHANGED' : 'GIT_FAILED', deleted.stdout.toString('utf8'), deleted.stderr.toString('utf8'));
+            if (published) failure.pushResult = published;
+            throw failure;
+          }
+        }
+        return published;
       }
       case 'stash.create': {
         if (action.message?.includes('\0')) throw new GitError(localizeMessage("service.messagesCannotContainNULCharacters"), 'INVALID_ARGUMENT');

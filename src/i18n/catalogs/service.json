@@ -436,6 +436,24 @@
     "review": "translated",
     "context": "src/git/service.ts / executeNow"
   },
+  "service.remoteTagDeletionRequiresMatchingReadAndPushAddresses": {
+    "en": "Remote Tag deletion requires the selected remote to use the same read and push address. Change the remote configuration or delete the Tag explicitly at the push destination.",
+    "zh-CN": "删除远端标签要求所选远端使用相同的读取与推送地址。请调整远端配置，或在推送目标上明确删除该标签。",
+    "review": "translated",
+    "context": "src/git/service.ts / safe remote Tag deletion"
+  },
+  "service.remoteTagWasDeletedButTheLocalTagChangedAndWasRetained": {
+    "en": "The remote Tag was deleted, but the local Tag changed during the operation and was retained. Refresh before deciding whether to delete it.",
+    "zh-CN": "远端标签已删除，但本地标签在操作期间发生变化，因此已保留。请刷新后再决定是否删除。",
+    "review": "translated",
+    "context": "src/git/service.ts / partial local and remote Tag deletion"
+  },
+  "service.remoteTagWasDeletedButTheLocalTagCouldNotBeDeleted": {
+    "en": "The remote Tag was deleted, but the local Tag could not be deleted and was retained.",
+    "zh-CN": "远端标签已删除，但本地标签删除失败并已保留。",
+    "review": "translated",
+    "context": "src/git/service.ts / partial local and remote Tag deletion"
+  },
   "service.messagesCannotContainNULCharacters": {
     "en": "Messages cannot contain NUL characters",
     "zh-CN": "消息不能包含 NUL 字符",

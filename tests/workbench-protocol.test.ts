@@ -17,9 +17,18 @@ describe('Workbench protocol validation', () => {
     expect(actionSchema.safeParse({ type: 'discard', paths: [] }).success).toBe(false);
     expect(actionSchema.safeParse({ type: 'discard', paths: ['a.txt'], mode: 'all' }).success).toBe(false);
   });
-  it('requires the raw Tag identity before deletion', () => {
+  it('requires captured local or remote Tag identities before deletion', () => {
     for (const expectedOid of ['a'.repeat(40), 'b'.repeat(64)]) expect(actionSchema.parse({ type: 'tag.delete', name: 'v1', expectedOid })).toEqual({ type: 'tag.delete', name: 'v1', expectedOid });
-    for (const expectedOid of [undefined, '', 'HEAD', '0'.repeat(40)]) expect(actionSchema.safeParse({ type: 'tag.delete', name: 'v1', expectedOid }).success).toBe(false);
+    const remote={remote:'origin',expectedRemoteOid:'c'.repeat(40),expectedDestination:'d'.repeat(64)};
+    expect(actionSchema.parse({type:'tag.delete',name:'v1',...remote})).toEqual({type:'tag.delete',name:'v1',...remote});
+    expect(actionSchema.parse({type:'tag.delete',name:'v1',expectedOid:'a'.repeat(40),...remote})).toMatchObject(remote);
+    for (const invalid of [
+      {type:'tag.delete',name:'v1'},
+      {type:'tag.delete',name:'v1',expectedOid:'0'.repeat(40)},
+      {type:'tag.delete',name:'v1',remote:'origin'},
+      {type:'tag.delete',name:'v1',...remote,expectedRemoteOid:undefined},
+      {type:'tag.delete',name:'v1',...remote,expectedDestination:undefined},
+    ]) expect(actionSchema.safeParse(invalid).success).toBe(false);
   });
   it('requires names and raw identities for Tag Push', () => {
     const action={type:'tag.push' as const,remote:'origin',names:['v1','v2'],expectedOids:{v1:'a'.repeat(40),v2:'b'.repeat(40)}};

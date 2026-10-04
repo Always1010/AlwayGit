@@ -717,6 +717,18 @@ describe('repository UI consistency', () => {
     expect(menuFor({kind:'ref',ref:{...tag,refOid:undefined}},api).items.find(item=>item.label==='Delete Tag…')?.disabled).toBe(true);
   });
 
+  it('opens remote-only Tag deletion with the captured remote identity and destination', async () => {
+    const {menuFor}=await import('../webview/menus'),open=vi.fn(),noop=vi.fn(),api={startCommit:noop,open,checkout:noop,openDiff:noop,editFile:noop,host:vi.fn().mockResolvedValue(undefined),addRepository:vi.fn().mockResolvedValue(undefined),removeRepositories:noop,fetchRepositories:noop};
+    const remoteOid='b'.repeat(40),expectedDestination='d'.repeat(64);
+    store.setState({snapshot:{...snapshot(a),remotes:['origin'],remoteDestinations:{origin:expectedDestination}},language:'en'});
+    const target={kind:'remote-tag' as const,name:'v1',remote:'origin',remoteOid};
+    const deletion=menuFor(target,api).items.find(item=>item.label==='Delete Remote Tag…')!;
+    expect(deletion.disabled).toBe(false);
+    await deletion.run();
+    expect(open).toHaveBeenCalledWith({type:'tag.delete',target:'v1',deleteLocal:false,remote:'origin',expectedRemoteOid:remoteOid,expectedDestination});
+    expect(menuFor({...target,separatePush:true},api).items.find(item=>item.label==='Delete Remote Tag…')).toMatchObject({disabled:true,reason:expect.stringContaining('matching read and push addresses')});
+  });
+
   it('retains failed action details and refreshes conflicts after failure', async () => {
     await store.getState().selectRepository('a'); const fallback = bridge.rpc.getMockImplementation()!;
     bridge.rpc.mockImplementation((method, repoId, payload) => {

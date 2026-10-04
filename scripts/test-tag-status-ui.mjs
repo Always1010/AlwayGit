@@ -7,7 +7,7 @@ export async function verifyTagStatus(browser, url) {
     await page.addInitScript(() => {
       const oid = 'a'.repeat(40), other = 'b'.repeat(40), repository = { id: 'tags', root: '/tags', commonDir: '/tags/.git', name: 'Tags' };
       const refs = ['synced', 'local', 'different'].map(name => ({ kind: 'tag', name, fullName: `refs/tags/${name}`, oid, refOid: oid, targetType: 'commit' }));
-      const snapshot = { repository, branch: 'main', head: oid, refs, remotes: ['origin', 'upstream'], remoteReadDestinations: { origin: 'read-origin', upstream: 'read-upstream' }, remoteDestinations: { origin: 'push-origin', upstream: 'push-upstream' }, changes: [], ahead: 0, behind: 0, stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 1 };
+      const snapshot = { repository, branch: 'main', head: oid, refs, remotes: ['origin', 'upstream', 'publish'], remoteReadDestinations: { origin: 'read-origin', upstream: 'read-upstream', publish: 'read-publish' }, remoteDestinations: { origin: 'push-origin', upstream: 'push-upstream', publish: 'push-publish' }, changes: [], ahead: 0, behind: 0, stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 1 };
       const commit = { oid, parents: [], author: 'Test', email: 'test@example.com', timestamp: 0, subject: 'Tag status fixture', pushed: true };
       window.__tagFixture = { fail: false, requests: 0 };
       window.acquireVsCodeApi = () => ({
@@ -26,7 +26,7 @@ export async function verifyTagStatus(browser, url) {
           else if (request.method === 'operationSettings') result = { allowDetachedHead: false, pushFollowTags: false, pushTagAfterCreate: false, defaultResetMode: 'mixed', scope: 'workspace' };
           else if (request.method === 'remoteTags') {
             window.__tagFixture.requests++;
-            result = { remote: request.payload.remote, destination: request.payload.expectedDestination, separatePush: request.payload.remote === 'origin', refs: request.payload.remote === 'origin' ? { 'refs/tags/synced': oid, 'refs/tags/different': other, 'refs/tags/remote-only': 'c'.repeat(40) } : {}, checkedAt: Date.now() - 24 * 60 * 60_000 };
+            result = { remote: request.payload.remote, destination: request.payload.expectedDestination, separatePush: request.payload.remote === 'origin', refs: request.payload.remote === 'origin' ? { 'refs/tags/synced': oid, 'refs/tags/different': other, 'refs/tags/remote-only': 'c'.repeat(40) } : request.payload.remote === 'publish' ? { 'refs/tags/publish-only': 'd'.repeat(40) } : {}, checkedAt: Date.now() - 24 * 60 * 60_000 };
           }
           const error = request.method === 'remoteTags' && window.__tagFixture.fail ? { message: 'offline', code: 'GIT_FAILED' } : undefined;
           setTimeout(() => window.dispatchEvent(new MessageEvent('message', { data: { type: 'response', id: request.id, result, error } })), 10);
@@ -55,6 +55,15 @@ export async function verifyTagStatus(browser, url) {
     const dialog = page.getByRole('dialog', { name: 'synced · Tag remote status' });
     await dialog.waitFor(); assert.ok((await dialog.innerText()).includes('Last successful check:'));
     await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+    await page.getByRole('combobox', { name: 'Remote to compare local Tags against' }).selectOption('publish');
+    await page.waitForFunction(() => document.querySelectorAll('.tag-row-remote').length === 1);
+    await page.locator('.tag-row-remote').click({button:'right'});
+    await page.getByTestId('context-menu').getByRole('menuitem',{name:'Delete Remote Tag…',exact:true}).click();
+    const remoteDelete = page.getByRole('dialog', { name: 'Delete Tag', exact: true });
+    await remoteDelete.waitFor();
+    assert.ok((await remoteDelete.innerText()).includes('This deletes the Tag from the shared remote repository publish.'));
+    assert.equal(await remoteDelete.getByRole('button',{name:'Delete Remote Tag',exact:true}).isEnabled(),true);
+    await remoteDelete.getByRole('button',{name:'Cancel',exact:true}).click();
     await page.getByRole('combobox', { name: 'Remote to compare local Tags against' }).selectOption('upstream');
     await page.waitForFunction(() => document.querySelectorAll('.tag-row .tag-status-local').length === 3);
     await page.evaluate(() => { window.__tagFixture.fail = true; });

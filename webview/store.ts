@@ -513,7 +513,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         const structured = error as { code?: string; details?: CheckoutBlocker | StashApplyBlocker };
         // Failed Merge / Cherry-pick can leave a new operation and conflicts on disk.
         await get().refresh({ background: true });
-        if (epoch === repositoryEpoch && ['fetch', 'pull', 'push', 'tag.push', 'tag.create'].includes(action.type)) void get().loadTagStatuses(true);
+        if (epoch === repositoryEpoch && ['fetch', 'pull', 'push', 'tag.push', 'tag.create', 'tag.delete'].includes(action.type)) void get().loadTagStatuses(true);
         if (get().repoId !== repoId) { finish('error', message(error), (error as {pushResult?: ActionFeedback['result']})?.pushResult); return false; }
         const details=structured.details;
         set({ error: message(error), stashApplyFailure: details&&'kind' in details&&details.kind==='stash-apply'?details:undefined, checkoutFailure: details&&'target' in details ? { ...details, detached: action.type === 'commit.checkout' || action.type === 'checkout.stash' && action.detached } : undefined });

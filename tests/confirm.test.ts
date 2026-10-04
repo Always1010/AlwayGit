@@ -8,6 +8,16 @@ vi.mock('vscode',()=>({window:{showWarningMessage:host.warning},workspace:{get t
 const repo:Repository={id:'repo',root:path.resolve('test-repo'),commonDir:path.resolve('test-repo/.git'),name:'Test'};
 beforeEach(()=>{host.warning.mockReset();host.documents=[];});
 describe('operation confirmation',()=>{
+  it('distinguishes local-only, remote-only and combined Tag deletion', async () => {
+    await confirmAction(repo,{type:'tag.delete',name:'v1',expectedOid:'a'.repeat(40)},'zh-CN');
+    expect(host.warning.mock.calls[0][0]).toContain('不会修改任何远端仓库');
+    host.warning.mockClear();
+    await confirmAction(repo,{type:'tag.delete',name:'v1',remote:'origin',expectedRemoteOid:'a'.repeat(40),expectedDestination:'b'.repeat(64)},'zh-CN');
+    expect(host.warning.mock.calls[0][0]).toContain('从远端 origin 删除标签 v1');
+    host.warning.mockClear();
+    await confirmAction(repo,{type:'tag.delete',name:'v1',expectedOid:'a'.repeat(40),remote:'origin',expectedRemoteOid:'a'.repeat(40),expectedDestination:'b'.repeat(64)},'zh-CN');
+    expect(host.warning.mock.calls[0][0]).toContain('删除本地标签 v1，并从远端 origin 删除');
+  });
   it('explains saved disk content only for selected unstaged files with dirty editors', async () => {
     host.documents=[{isDirty:true,uri:{scheme:'file',fsPath:path.join(repo.root,'same.txt')}}];
     await confirmAction(repo,{type:'commit',message:'selected',files:[{path:'same.txt',area:'unstaged'}]},'zh-CN');

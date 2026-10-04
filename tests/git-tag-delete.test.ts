@@ -8,6 +8,23 @@ const fixtures = gitFixtures('alwaygit-tag-delete-');
 afterEach(fixtures.cleanup);
 
 describe('Tag deletion identity', () => {
+  async function publishedTag(root: string, service: GitService, repo: Awaited<ReturnType<GitService['discover']>>, name = 'v1') {
+    const snapshot = await service.snapshot(repo);
+    const remote = await service.remoteTags(repo, 'origin', snapshot.remoteReadDestinations!.origin);
+    return {
+      localOid: snapshot.refs.find(ref => ref.kind === 'tag' && ref.name === name)!.refOid!,
+      remoteOid: remote.refs[`refs/tags/${name}`],
+      destination: snapshot.remoteDestinations!.origin,
+    };
+  }
+
+  async function addOrigin(root: string) {
+    const bare = path.join(root, 'remote.git');
+    await git(root, 'init', '--bare', bare);
+    await git(root, 'remote', 'add', 'origin', bare);
+    return bare;
+  }
+
   it.each(['annotated', 'lightweight'] as const)('retains a replaced %s Tag until its new raw identity is confirmed', async kind => {
     const { root, service, repo } = await fixtures.setup();
     const head = await commitFile(root, 'base.txt', 'base');
@@ -63,5 +80,78 @@ describe('Tag deletion identity', () => {
     expect(raced).toBe(true);
     expect(await git(root, 'rev-parse', 'refs/tags/v1')).not.toBe(original.refOid);
     expect(await git(root, 'rev-parse', 'v1^{}')).toBe(head);
+  });
+
+  it('deletes a confirmed Tag from the remote before deleting the local Tag', async () => {
+    const { root, service, repo } = await fixtures.setup();
+    await commitFile(root, 'base.txt', 'base');
+    await addOrigin(root);
+    await git(root, 'tag', '-a', '-m', 'release', 'v1');
+    await git(root, 'push', 'origin', 'refs/tags/v1:refs/tags/v1');
+    const identity = await publishedTag(root, service, repo);
+    const result = await service.execute(repo, { type:'tag.delete', name:'v1', expectedOid:identity.localOid, remote:'origin', expectedRemoteOid:identity.remoteOid, expectedDestination:identity.destination });
+    expect(result).toMatchObject({outcome:'success',remote:'origin',destinations:[{refs:[{kind:'tag',name:'v1',status:'deleted'}]}]});
+    await expect(git(root, 'show-ref', '--verify', 'refs/tags/v1')).rejects.toThrow();
+    await expect(git(root, '--git-dir', path.join(root, 'remote.git'), 'show-ref', '--verify', 'refs/tags/v1')).rejects.toThrow();
+  });
+
+  it('can delete a remote-only Tag without creating or deleting a local Tag', async () => {
+    const { root, service, repo } = await fixtures.setup();
+    await commitFile(root, 'base.txt', 'base');
+    await addOrigin(root);
+    await git(root, 'tag', 'v1');
+    await git(root, 'push', 'origin', 'refs/tags/v1:refs/tags/v1');
+    const identity = await publishedTag(root, service, repo);
+    await git(root, 'tag', '-d', 'v1');
+    await service.execute(repo, { type:'tag.delete', name:'v1', remote:'origin', expectedRemoteOid:identity.remoteOid, expectedDestination:identity.destination });
+    await expect(git(root, 'show-ref', '--verify', 'refs/tags/v1')).rejects.toThrow();
+    await expect(git(root, '--git-dir', path.join(root, 'remote.git'), 'show-ref', '--verify', 'refs/tags/v1')).rejects.toThrow();
+  });
+
+  it('retains the local Tag when the confirmed remote Tag has changed', async () => {
+    const { root, service, repo } = await fixtures.setup();
+    await commitFile(root, 'base.txt', 'base');
+    await addOrigin(root);
+    await git(root, 'tag', 'v1');
+    await git(root, 'push', 'origin', 'refs/tags/v1:refs/tags/v1');
+    const identity = await publishedTag(root, service, repo);
+    const replacement = await commitFile(root, 'base.txt', 'replacement');
+    await git(root, 'tag', 'replacement', replacement);
+    await git(root, 'push', '--force', 'origin', 'refs/tags/replacement:refs/tags/v1');
+    await expect(service.execute(repo, { type:'tag.delete', name:'v1', expectedOid:identity.localOid, remote:'origin', expectedRemoteOid:identity.remoteOid, expectedDestination:identity.destination })).rejects.toMatchObject({code:'GIT_FAILED'});
+    expect(await git(root, 'rev-parse', 'refs/tags/v1')).toBe(identity.localOid);
+    expect(await git(root, '--git-dir', path.join(root, 'remote.git'), 'rev-parse', 'refs/tags/v1')).toBe(replacement);
+  });
+
+  it('reports partial failure when the local Tag changes after remote deletion', async () => {
+    const { root, service, repo } = await fixtures.setup();
+    const head = await commitFile(root, 'base.txt', 'base');
+    await addOrigin(root);
+    await git(root, 'tag', '-a', '-m', 'original', 'v1');
+    await git(root, 'push', 'origin', 'refs/tags/v1:refs/tags/v1');
+    const identity = await publishedTag(root, service, repo);
+    const racing = new GitService({ environment: async (_repo, args) => {
+      if (args[0] === 'update-ref' && args.includes('-d')) await git(root, 'tag', '-f', '-a', '-m', 'replacement', 'v1', head);
+      return {};
+    } });
+    await expect(racing.execute(repo, { type:'tag.delete', name:'v1', expectedOid:identity.localOid, remote:'origin', expectedRemoteOid:identity.remoteOid, expectedDestination:identity.destination })).rejects.toMatchObject({code:'PARTIAL_FAILURE',pushResult:{outcome:'success'}});
+    expect(await git(root, 'rev-parse', 'v1^{}')).toBe(head);
+    expect(await git(root, 'rev-parse', 'refs/tags/v1')).not.toBe(identity.localOid);
+    await expect(git(root, '--git-dir', path.join(root, 'remote.git'), 'show-ref', '--verify', 'refs/tags/v1')).rejects.toThrow();
+  });
+
+  it('refuses remote Tag deletion when fetch and push use different addresses', async () => {
+    const { root, service, repo } = await fixtures.setup();
+    await commitFile(root, 'base.txt', 'base');
+    const readBare = await addOrigin(root), pushBare = path.join(root, 'push.git');
+    await git(root, 'init', '--bare', pushBare);
+    await git(root, 'tag', 'v1');
+    await git(root, 'push', 'origin', 'refs/tags/v1:refs/tags/v1');
+    const identity = await publishedTag(root, service, repo);
+    await git(root, 'config', 'remote.origin.pushurl', pushBare);
+    const snapshot = await service.snapshot(repo);
+    await expect(service.execute(repo, { type:'tag.delete', name:'v1', expectedOid:identity.localOid, remote:'origin', expectedRemoteOid:identity.remoteOid, expectedDestination:snapshot.remoteDestinations!.origin })).rejects.toMatchObject({code:'SEPARATE_PUSH_DESTINATION'});
+    expect(await git(root, 'rev-parse', 'refs/tags/v1')).toBe(identity.localOid);
+    expect(await git(root, '--git-dir', readBare, 'rev-parse', 'refs/tags/v1')).toBe(identity.remoteOid);
   });
 });
