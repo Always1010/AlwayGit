@@ -65,9 +65,32 @@ describe('Tag Push', () => {
     await git(root, 'config', 'push.followTags', 'true');
     const tags = (await service.snapshot(repo)).refs.filter(ref => ref.kind === 'tag');
     const selected = tags.filter(tag => tag.name !== 'other');
-    await service.execute(repo, { type: 'tag.push', remote: 'origin', names: selected.map(tag => tag.name), expectedOids: Object.fromEntries(selected.map(tag => [tag.name, tag.refOid!])) });
+    const result = await service.execute(repo, { type: 'tag.push', remote: 'origin', names: selected.map(tag => tag.name), expectedOids: Object.fromEntries(selected.map(tag => [tag.name, tag.refOid!])) });
+    expect(result).toMatchObject({ kind: 'push', outcome: 'success', remote: 'origin', destinations: [{ refs: expect.arrayContaining(selected.map(tag => ({ kind: 'tag', name: tag.name, status: 'published' }))) }] });
     for (const tag of selected) expect(await git(bare, 'rev-parse', `refs/tags/${tag.name}`)).toBe(tag.refOid);
     await expect(git(bare, 'show-ref', '--verify', 'refs/tags/other')).rejects.toThrow();
+  });
+
+  it('preserves confirmed Tag publications when a second Push address is unreachable', async () => {
+    const { root, service, repo } = await fixtures.setup();
+    await commitFile(root, 'base.txt', 'base');
+    const bare = path.join(root, 'remote.git'), missing = path.join(root, 'missing.git');
+    await mkdir(bare); await git(bare, 'init', '--bare'); await git(root, 'remote', 'add', 'origin', bare);
+    await git(root, 'remote', 'set-url', '--add', '--push', 'origin', bare);
+    await git(root, 'remote', 'set-url', '--add', '--push', 'origin', missing);
+    await git(root, 'tag', 'v1'); await git(root, 'tag', '-a', 'v2', '-m', 'release');
+    const expectedOids = { v1: await git(root, 'rev-parse', 'refs/tags/v1'), v2: await git(root, 'rev-parse', 'refs/tags/v2') };
+    const execute = () => service.execute(repo, { type: 'tag.push', remote: 'origin', names: ['v1', 'v2'], expectedOids });
+    const failure = await execute().catch(error => error);
+    expect(failure).toMatchObject({ code: 'PARTIAL_FAILURE', pushResult: { outcome: 'partial', remote: 'origin', destinations: expect.arrayContaining([
+      expect.objectContaining({ refs: [{ kind: 'tag', name: 'v1', status: 'published' }, { kind: 'tag', name: 'v2', status: 'published' }] }),
+      expect.objectContaining({ refs: [], unconfirmed: true }),
+    ]) } });
+    expect(failure.message).toContain('2 Tag(s) pushed');
+    for (const name of ['v1', 'v2'] as const) expect(await git(bare, 'rev-parse', `refs/tags/${name}`)).toBe(expectedOids[name]);
+    const repeated = await execute().catch(error => error);
+    expect(repeated.pushResult.outcome).toBe('partial');
+    expect(repeated.pushResult.destinations[0].refs.map((ref: { status: string }) => ref.status)).toEqual(['up-to-date', 'up-to-date']);
   });
 
   it('preflights every raw Tag identity before pushing any selection', async () => {

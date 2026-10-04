@@ -44,3 +44,21 @@ export function parsePushResult(stdout: string, stderr: string, code: number, re
   return { kind: 'push', outcome: code ? changed ? 'partial' : 'error' : 'success', remote, localBranch, destinations,
     ...(code ? { error: redactSecrets(stderr.trim() || stdout.trim()) } : {}), output: redactSecrets(`${stdout}\n${stderr}`).trim().slice(0, 16000) };
 }
+
+/** Preserve each destination's confirmed refs across a sequence of Tag commands. */
+export function combinePushResults(results: PushResult[], remote: string, failures: string[] = []): PushResult {
+  const destinations = new Map<string, PushResult['destinations'][number]>();
+  for (const result of results) for (const destination of result.destinations) {
+    const key = destination.repository?.url ?? destination.label;
+    const previous = destinations.get(key);
+    if (previous) {
+      previous.refs.push(...destination.refs);
+      if (destination.unconfirmed) previous.unconfirmed = true;
+    } else destinations.set(key, { ...destination, refs: [...destination.refs] });
+  }
+  const failed = failures.length > 0 || results.some(result => result.outcome !== 'success');
+  const confirmed = [...destinations.values()].some(destination => destination.refs.some(ref => !['rejected', 'deleted'].includes(ref.status)));
+  const errors = [...new Set([...failures, ...results.flatMap(result => result.error ? [result.error] : [])])].map(redactSecrets);
+  return { kind: 'push', remote, outcome: failed ? confirmed ? 'partial' : 'error' : 'success', destinations: [...destinations.values()],
+    ...(errors.length ? { error: errors.join('\n') } : {}), output: results.map(result => result.output).filter(Boolean).join('\n').slice(0, 16000) };
+}
