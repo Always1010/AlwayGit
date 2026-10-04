@@ -20,8 +20,11 @@ export function mergeSessionBaseline(current: SessionState, next: SessionState, 
 export class SessionWriter {
   private pending: Promise<void> = Promise.resolve();
   constructor(private readonly write: (session: SessionState) => PromiseLike<void>) {}
-  save(session: SessionState | (() => SessionState)): Promise<void> {
-    const next = this.pending.catch(() => {}).then(() => this.write(typeof session === 'function' ? session() : session));
+  save(session: SessionState | (() => SessionState), onSaved?: () => void): Promise<void> {
+    const next = this.pending.catch(() => {}).then(async () => {
+      await this.write(typeof session === 'function' ? session() : session);
+      onSaved?.();
+    });
     this.pending = next;
     return next;
   }
