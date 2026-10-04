@@ -1,0 +1,59 @@
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import type { GitRef } from '../src/protocol/types';
+import { Button, Icon, Modal } from './ui';
+import { useWorkbench } from './store';
+import { useTranslation } from './i18n';
+import { selectedTagRemote, tagQueryKey, tagState } from './tagStatus';
+
+const icons = { synced: 'cloud', local: 'device-desktop', different: 'warning', unknown: 'question', stale: 'history' } as const;
+const labels = { synced: 'tags.synced', local: 'tags.local', different: 'tags.different', unknown: 'tags.unknown', stale: 'tags.stale' } as const;
+const hints = { synced: 'tags.syncedHint', local: 'tags.localHint', different: 'tags.differentHint' } as const;
+const clockListeners = new Set<() => void>();
+let clock = Date.now(), clockTimer: ReturnType<typeof setInterval> | undefined;
+function subscribeClock(listener: () => void) {
+  clockListeners.add(listener);
+  if (!clockTimer) { clock = Date.now(); clockTimer = setInterval(() => { clock = Date.now(); for (const notify of clockListeners) notify(); }, 15_000); }
+  return () => { clockListeners.delete(listener); if (!clockListeners.size) { clearInterval(clockTimer); clockTimer = undefined; } };
+}
+export function useTagStatus(ref: GitRef) {
+  const t = useTranslation(), now = useSyncExternalStore(subscribeClock, () => clock, () => clock);
+  const snapshot = useWorkbench(state => state.snapshot), preferred = useWorkbench(state => state.tagRemote);
+  const remote = selectedTagRemote(snapshot, preferred), key = snapshot && remote ? tagQueryKey(snapshot, remote) : undefined;
+  const query = useWorkbench(state => key ? state.tagQueries[key] : undefined);
+  const status = tagState(ref, remote, query, Math.max(now, Date.now())), label = t(labels[status]);
+  const result = query?.result, lines = [ref.fullName];
+  if (!remote) lines.push(t('tags.noRemote'));
+  else if (status === 'stale' || status === 'unknown') {
+    lines.push(t('tags.unknownHint', { remote }));
+    if (result) lines.push(t('tags.previous', { status: t(labels[tagState(ref, remote, { ...query!, error: undefined }, result.checkedAt)]) }));
+  } else lines.push(t(hints[status], { remote }));
+  if (result) lines.push(t('tags.checkedAt', { time: new Date(result.checkedAt).toLocaleString() }));
+  if (status === 'different' && result) lines.push(t('tags.objects', { local: ref.refOid!.slice(0, 12), remote: result.refs[ref.fullName].slice(0, 12) }));
+  if (result?.separatePush) lines.push(t('tags.separatePush'));
+  if (query?.loading) lines.push(t('tags.checking'));
+  if (query?.error) lines.push(t('tags.failed', { error: query.error }));
+  return { status, label, title: lines.join('\n'), icon: icons[status], loading: query?.loading };
+}
+
+export function TagStatus({ tag, compact = false }: { tag: GitRef; compact?: boolean }) {
+  const view = useTagStatus(tag), t = useTranslation(), [open, setOpen] = useState(false);
+  const repoId = useWorkbench(state => state.repoId);
+  useEffect(() => { setOpen(false); }, [repoId, tag.fullName]);
+  const className = `tag-status tag-status-${view.status}${compact ? ' tag-status-compact' : ''}`;
+  if (compact) return <span className={className} role="img" aria-label={view.title} title={view.title}><Icon name={view.icon}/></span>;
+  return <><button className={className} title={view.title} aria-label={`${tag.name}: ${view.title}`} onClick={() => setOpen(true)}><Icon name={view.icon}/><span>{view.label}</span></button>
+    {open && <Modal title={`${tag.name} · ${t('tags.details')}`} onClose={() => setOpen(false)} footer={<Button icon={view.loading ? 'loading' : 'refresh'} disabled={view.loading} onClick={() => void useWorkbench.getState().loadTagStatuses(true)}>{t('tags.check')}</Button>}><div className="tag-status-details">{view.title}</div></Modal>}
+  </>;
+}
+
+export function TagRemoteControls() {
+  const snapshot = useWorkbench(state => state.snapshot), preferred = useWorkbench(state => state.tagRemote);
+  const collapsed = useWorkbench(state => state.collapsedSidebarGroups.includes('tag'));
+  const remote = selectedTagRemote(snapshot, preferred), key = snapshot && remote ? tagQueryKey(snapshot, remote) : undefined;
+  const query = useWorkbench(state => key ? state.tagQueries[key] : undefined), t = useTranslation();
+  useEffect(() => { if (!collapsed) void useWorkbench.getState().loadTagStatuses(); }, [key, collapsed]);
+  return <div className="tag-remote-controls">
+    {remote ? snapshot!.remotes!.length > 1 ? <select value={remote} aria-label={t('tags.selectRemote')} title={t('tags.selectRemote')} onChange={event => useWorkbench.getState().setTagRemote(event.target.value)}>{snapshot!.remotes!.map(name => <option key={name}>{name}</option>)}</select> : <span className="truncate" title={remote}>{remote}</span> : <span className="truncate">{t('tags.noRemote')}</span>}
+    <Button className="icon-only" icon={query?.loading ? 'loading' : 'refresh'} disabled={!remote || query?.loading} title={query?.loading ? t('tags.checking') : t('tags.check')} aria-label={t('tags.check')} onClick={() => void useWorkbench.getState().loadTagStatuses(true)}/>
+  </div>;
+}

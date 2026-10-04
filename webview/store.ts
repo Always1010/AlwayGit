@@ -1,3 +1,5 @@
+import { selectedTagRemote, tagQueryKey, tagStatusTtl, type TagQuery } from './tagStatus';
+import type { RemoteTags } from '../src/protocol/types';
 import { normalizeShortcutOverrides, type ShortcutOverrides } from '../src/protocol/shortcuts';
 import { useDock } from './dock-store';
 import { translate, uiText, setLanguageReader } from './text';
@@ -17,6 +19,8 @@ import { normalizeAppearance, type Appearance, type InterfaceSettings, type Inte
 import { groupRepositories } from '../src/protocol/repositories';
 
 let catalogEpoch = 0, repositoryEpoch = 0, repositoryStatusEpoch = 0, snapshotEpoch = 0, historyEpoch = 0, detailEpoch = 0;
+let tagController: AbortController | undefined;
+let tagQuerySequence = 0;
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 let historyController: AbortController | undefined;
 function cancelSearchTimer() { clearTimeout(searchTimer); searchTimer = undefined; }
@@ -49,6 +53,8 @@ function rememberHistory(): void {
   useWorkbench.setState({ historyBackDepth: stack.length });
 }
 interface WorkbenchState {
+  tagRemote?: string; tagQueries: Record<string, TagQuery>;
+  setTagRemote(remote: string): void; loadTagStatuses(force?: boolean, remote?: string): Promise<void>;
   catalogState: 'loading' | 'ready' | 'error'; catalogError?: string;
   historyBackDepth: number; historyScrollTop: number; historyRestoreTop: number; historyRestoreToken: number;
   backHistory(): void; resetHistory(): void; setHistoryScroll(top: number): void;
@@ -106,6 +112,34 @@ const initialLayout = layout(session.layout);
 // Only the old default density migrates; custom dimensions and drafts are kept.
 if (!session.appearance && initialLayout.row === 26) initialLayout.row = 24;
 export const useWorkbench = create<WorkbenchState>((set, get) => ({
+  tagQueries: {},
+  setTagRemote(remote) {
+    if (!get().snapshot?.remotes?.includes(remote)) return;
+    tagController?.abort(); ++tagQuerySequence;
+    set(state => ({ tagRemote: remote, tagQueries: Object.fromEntries(Object.entries(state.tagQueries).map(([key, value]) => [key, value.loading ? { ...value, loading: false, attemptedAt: 0 } : value])) })); void get().loadTagStatuses();
+  },
+  async loadTagStatuses(force = false, requestedRemote) {
+    const snapshot = get().snapshot, repoId = get().repoId;
+    const remote = requestedRemote ?? selectedTagRemote(snapshot, get().tagRemote);
+    if (!snapshot || !repoId || !remote || !snapshot.remoteReadDestinations?.[remote]) return;
+    const key = tagQueryKey(snapshot, remote), previous = get().tagQueries[key];
+    if (!force && previous && (previous.loading || Date.now() - previous.attemptedAt < tagStatusTtl)) return;
+    tagController?.abort(); const controller = tagController = new AbortController(), sequence = ++tagQuerySequence;
+    set(state => ({ tagQueries: { ...Object.fromEntries(Object.entries(state.tagQueries).slice(-31).map(([key, value]) => [key, { ...value, loading: false }])), [key]: { ...previous, requestId: sequence, loading: true, attemptedAt: Date.now(), error: undefined } } }));
+    const active = () => sequence === tagQuerySequence && get().repoId === repoId && get().snapshot && tagQueryKey(get().snapshot!, remote) === key;
+    try {
+      const result = await rpc<RemoteTags>('remoteTags', repoId, { remote, expectedDestination: snapshot.remoteReadDestinations[remote] }, { signal: controller.signal });
+      if (!active()) return;
+      if (!result || result.remote !== remote || result.destination !== snapshot.remoteReadDestinations[remote] || !result.refs || !Number.isFinite(result.checkedAt)) throw new Error(uiText('tags.unavailable'));
+      set(state => ({ tagQueries: { ...state.tagQueries, [key]: { result, loading: false, attemptedAt: Date.now() } } }));
+    } catch (error) {
+      if (!active()) return;
+      set(state => ({ tagQueries: { ...state.tagQueries, [key]: { ...state.tagQueries[key], loading: false, error: message(error) } } }));
+    } finally {
+      if (get().tagQueries[key]?.requestId === sequence && get().tagQueries[key]?.loading) set(state => ({ tagQueries: { ...state.tagQueries, [key]: { ...state.tagQueries[key], loading: false, attemptedAt: 0 } } }));
+      if (sequence === tagQuerySequence) tagController = undefined;
+    }
+  },
   historyBackDepth: 0, historyScrollTop: 0, historyRestoreTop: 0, historyRestoreToken: 0,
   setHistoryScroll(top) { set({ historyScrollTop: Math.max(0, top) }); },
   backHistory() {
@@ -215,13 +249,15 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     } catch { /* Repository badges are supplementary; the selected repository still refreshes normally. */ }
   },
   async selectRepository(id) {
+    tagController?.abort(); ++tagQuerySequence;
+    set(state => ({ tagQueries: Object.fromEntries(Object.entries(state.tagQueries).map(([key, value]) => [key, value.loading ? { ...value, loading: false, attemptedAt: 0 } : value])) }));
     cancelSearchTimer();
     historyController?.abort();
     set({ historyBackDepth: historyViews.get(id)?.length ?? 0, historyScrollTop: 0 });
     set({ displayedHistory: undefined, displayedHistoryKey: undefined, historyError: undefined });
     ++repositoryEpoch; ++historyEpoch; ++detailEpoch; const view = views[id];
     set({ operationReview: undefined });
-    set({ repoId: id, locatingOid: undefined, snapshot: undefined, commits: [], historyHead: undefined, selectedOids:[], selectionAnchor:undefined, selectedRefs:[],refSelectionAnchor:undefined, selectedWorktreePaths:[],worktreeSelectionAnchor:undefined, tips: [], details: undefined, comparison:undefined, stashDetails: undefined, selectedStashSection:undefined, diffTarget: undefined, diffRevision:0, selectedFile: view?.selectedFile, selectedOid: view?.selectedOid, selectedParent: view?.selectedParent, selectedStashOid: view?.selectedStashOid, ref: view?.ref, checkedRefs: view?.checkedRefs ? [...view.checkedRefs] : view?.ref ? [view.ref] : undefined, expandedRefGroups:view?.expandedRefGroups?[...view.expandedRefGroups]:undefined,collapsedSidebarGroups:[...(view?.collapsedSidebarGroups??[])], search: view?.search ?? '', tab: view?.tab ?? 'history', remoteRequest: undefined, checkoutFailure: undefined, stashApplyFailure: undefined, error: undefined, notice: undefined, actionFeedback: actionFeedbacks.get(id), loading: true, busy: executingRepositories.has(id) || hostBusyRepositories.has(id), activity: '', detailsLoading: false, historyLoading: false });
+    set({ repoId: id, tagRemote: view?.tagRemote, locatingOid: undefined, snapshot: undefined, commits: [], historyHead: undefined, selectedOids:[], selectionAnchor:undefined, selectedRefs:[],refSelectionAnchor:undefined, selectedWorktreePaths:[],worktreeSelectionAnchor:undefined, tips: [], details: undefined, comparison:undefined, stashDetails: undefined, selectedStashSection:undefined, diffTarget: undefined, diffRevision:0, selectedFile: view?.selectedFile, selectedOid: view?.selectedOid, selectedParent: view?.selectedParent, selectedStashOid: view?.selectedStashOid, ref: view?.ref, checkedRefs: view?.checkedRefs ? [...view.checkedRefs] : view?.ref ? [view.ref] : undefined, expandedRefGroups:view?.expandedRefGroups?[...view.expandedRefGroups]:undefined,collapsedSidebarGroups:[...(view?.collapsedSidebarGroups??[])], search: view?.search ?? '', tab: view?.tab ?? 'history', remoteRequest: undefined, checkoutFailure: undefined, stashApplyFailure: undefined, error: undefined, notice: undefined, actionFeedback: actionFeedbacks.get(id), loading: true, busy: executingRepositories.has(id) || hostBusyRepositories.has(id), activity: '', detailsLoading: false, historyLoading: false });
     await get().refresh();
   },
   async refresh(options = {}) {
@@ -244,6 +280,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       const reloadHistory = !previous || invalidation.forceHistory || stashDisappeared || historyKey(previous, previousRefs) !== historyKey(snapshot, checkedRefs);
       const selectedRefs=get().selectedRefs.filter(ref=>snapshot.refs.some(item=>item.fullName===ref)),refSelectionAnchor=get().refSelectionAnchor&&selectedRefs.includes(get().refSelectionAnchor!)?get().refSelectionAnchor:undefined;
       set(state => ({ snapshot, checkedRefs: shareValue(state.checkedRefs, checkedRefs), expandedRefGroups, selectedRefs: shareValue(state.selectedRefs, selectedRefs), refSelectionAnchor, repositoryStatuses: shareValue(state.repositoryStatuses, { ...state.repositoryStatuses, [snapshot.repository.id]: { repositoryId: snapshot.repository.id, branch: snapshot.branch, ...(snapshot.upstream ? { upstream: snapshot.upstream } : {}), ahead: snapshot.ahead, unpushed: snapshot.unpushed ?? snapshot.ahead } }) }));
+      if (!get().collapsedSidebarGroups.includes('tag')) void get().loadTagStatuses();
       if (get().tab === 'changes') {
         const target = workingTarget(snapshot, get().diffTarget, get().selectedFile);
         if (target) get().selectFile(target, false); else if (get().diffTarget || get().selectedFile) set({ selectedFile: undefined, diffTarget: undefined });
@@ -464,6 +501,10 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         else if (snapshot && ['pull','merge','rebase','reset','cherry-pick','revert','operation.continue','operation.abort','operation.skip'].includes(action.type)) finalResult = {kind:'update',head:snapshot.head,previousHead:before?.head};
       }
       const failed = published && published.outcome !== 'success';
+      if (epoch === repositoryEpoch && ['fetch', 'pull', 'push', 'tag.push', 'tag.create', 'tag.delete'].includes(action.type)) {
+        const remote = action.type === 'tag.create' ? action.pushRemote : 'remote' in action ? action.remote : undefined;
+        void get().loadTagStatuses(true, remote).then(() => { if (epoch === repositoryEpoch && remote && remote !== selectedTagRemote(get().snapshot, get().tagRemote)) void get().loadTagStatuses(true); });
+      }
       finish(failed ? 'error' : 'success', failed ? published.error : undefined, finalResult);
       if (failed && get().repoId === repoId) set({ error: published.error });
       return !failed;
@@ -472,6 +513,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         const structured = error as { code?: string; details?: CheckoutBlocker | StashApplyBlocker };
         // Failed Merge / Cherry-pick can leave a new operation and conflicts on disk.
         await get().refresh({ background: true });
+        if (epoch === repositoryEpoch && ['fetch', 'pull', 'push', 'tag.push', 'tag.create'].includes(action.type)) void get().loadTagStatuses(true);
         if (get().repoId !== repoId) { finish('error', message(error), (error as {pushResult?: ActionFeedback['result']})?.pushResult); return false; }
         const details=structured.details;
         set({ error: message(error), stashApplyFailure: details&&'kind' in details&&details.kind==='stash-apply'?details:undefined, checkoutFailure: details&&'target' in details ? { ...details, detached: action.type === 'commit.checkout' || action.type === 'checkout.stash' && action.detached } : undefined });
@@ -512,10 +554,10 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
 }));
 let persistedSelection: unknown[] = [];
 useWorkbench.subscribe(state => {
-  const selection = [state.repoId, state.drafts, state.ref, state.checkedRefs, state.expandedRefGroups, state.collapsedSidebarGroups, state.search, state.selectedOid, state.selectedParent, state.selectedStashOid, state.selectedFile, state.tab, state.language, state.layout, state.appearance, state.diffNavigationScope, state.singleKeyShortcuts, state.shortcutOverrides, state.changeListMode, state.settingsBaseline];
+  const selection = [state.tagRemote, state.repoId, state.drafts, state.ref, state.checkedRefs, state.expandedRefGroups, state.collapsedSidebarGroups, state.search, state.selectedOid, state.selectedParent, state.selectedStashOid, state.selectedFile, state.tab, state.language, state.layout, state.appearance, state.diffNavigationScope, state.singleKeyShortcuts, state.shortcutOverrides, state.changeListMode, state.settingsBaseline];
   if (selection.every((value, index) => Object.is(value, persistedSelection[index]))) return;
   persistedSelection = selection;
-  if (state.repoId) views[state.repoId] = { ref: state.ref, checkedRefs: state.checkedRefs, expandedRefGroups:state.expandedRefGroups,collapsedSidebarGroups:state.collapsedSidebarGroups, search: state.search, selectedOid: state.selectedOid, selectedParent: state.selectedParent, selectedStashOid: state.selectedStashOid, selectedFile: state.selectedFile, tab: state.tab };
+  if (state.repoId) views[state.repoId] = { tagRemote: state.tagRemote, ref: state.ref, checkedRefs: state.checkedRefs, expandedRefGroups:state.expandedRefGroups,collapsedSidebarGroups:state.collapsedSidebarGroups, search: state.search, selectedOid: state.selectedOid, selectedParent: state.selectedParent, selectedStashOid: state.selectedStashOid, selectedFile: state.selectedFile, tab: state.tab };
   const baseline = state.settingsBaseline;
   saveSession({ version: 2, changeListMode: baseline?.changeListMode ?? state.changeListMode, diffNavigationScope: baseline?.diffNavigationScope ?? state.diffNavigationScope, singleKeyShortcuts: baseline?.singleKeyShortcuts ?? state.singleKeyShortcuts, shortcutOverrides: baseline?.shortcutOverrides ?? state.shortcutOverrides, repoId: state.repoId, drafts: state.drafts, views, language: baseline?.language ?? state.language, layout: baseline ? { ...state.layout, font: baseline.font, row: baseline.row } : state.layout, appearance: baseline?.appearance ?? state.appearance }, error => useWorkbench.getState().report(new Error(`${translate(state.language, "notices.couldNotSaveTheRecoveryBaselineDraftsRemainIn")} ${error.message}`)));
 });
