@@ -47,7 +47,6 @@ h1,h2,p {margin:0;}
 .repository-folder-shell,.repository-folder-base,.repository-folder-fold {fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;}
 .repository-folder-fold {stroke-width:1.65;}
 .open-repository-icon>.repository-folder-vscode {position:absolute;z-index:1;left:11px;top:8px;font-size:18px;line-height:1;color:var(--vscode-brand,#007acc);text-shadow:0 0 2px var(--bg),0 0 2px var(--bg);}
-.toolbar-notification-dot {width:7px;height:7px;margin-left:2px;border-radius:50%;background:var(--notification-badge,#d61f3c);box-shadow:0 0 0 1px color-mix(in srgb,var(--notification-badge,#d61f3c) 45%,transparent);flex:none;}
 .notification-badge {display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;margin-left:2px;border:1px solid color-mix(in srgb,var(--notification-badge,#d61f3c) 60%,#fff);border-radius:999px;background:var(--notification-badge,#d61f3c);color:var(--notification-badge-fg,#fff);box-shadow:0 0 0 1px color-mix(in srgb,var(--notification-badge,#d61f3c) 38%,transparent);font-size:10px;font-weight:800;line-height:1;box-sizing:border-box;}
 .toolbar-divider {width:1px;height:20px;background:var(--border);margin:0 6px;}
 .workspace {display:grid;grid-template-columns:var(--sidebar-width,210px) 6px minmax(0,1fr);flex:1;min-height:0;min-width:0;}
