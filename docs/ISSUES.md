@@ -2,6 +2,17 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-097：Tag 推送核验后仍会重新解析可变引用
+
+- 日期：2026-10-05
+- 状态：待修复
+- 优先级与可信度：P2；真实本地 Bare Remote 已复现。
+- 现象：Tag Push 核验确认的原始对象 OID 后，外部客户端替换同名 Tag，实际推送成功却发布了替换后的对象。批量推送期间也存在相同窗口。
+- 原因：预检全部 `expectedOids` 后，发送 source 仍为 `refs/tags/<name>`，Git 在实际运行时再次解析可变引用。
+- 解决方案：待实施；用确认的原始 Tag 对象 OID 作为推送 source，保持完整目标 Tag ref，保留注解 Tag 对象及既有拒绝覆盖规则。
+- 验证方式：0.47.1 / faf4524；真实临时仓库与本地 Bare Remote 中，在实际 Push 启动前替换 Tag，远端最终 OID 为新对象而非已确认对象。现有测试仅覆盖初次核验前的替换，缺发送前及批处理中变化。
+- 相关文件：`src/git/service.ts`（`tag.push`）、`tests/git-tag-push.test.ts`。
+
 ## BUG-096：URL 查询凭据和跨块 stderr 未被完整脱敏
 
 - 日期：2026-10-05
