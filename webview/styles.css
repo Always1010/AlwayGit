@@ -413,6 +413,12 @@ h1,h2,p {margin:0;}
 .repository-folder-empty>.codicon,.repository-result-empty>.codicon {font-size:28px;}
 .repository-folder-empty strong,.repository-result-empty strong {color:var(--fg);}
 .repository-folder-empty code {max-width:100%;overflow-wrap:anywhere;}
+.repository-folder-empty {min-height:260px;justify-content:center;padding:28px 12px;gap:10px;}
+.repository-folder-empty strong {font-size:16px;font-weight:600;}
+.repository-folder-empty .repository-dialog-intro {max-width:440px;line-height:1.5;}
+.repository-folder-empty .repository-dialog-intro+.repository-dialog-intro {margin-top:-6px;}
+.repository-folder-empty>.primary {margin-top:12px;padding:8px 16px;}
+.repository-dialog .repository-scan-header code,.repository-dialog .repository-candidate code {background:transparent;padding:0;color:var(--muted);}
 .repository-scanning {display:flex;align-items:flex-start;gap:12px;padding:20px 10px;}
 .repository-scanning>.codicon {font-size:24px;color:var(--accent);}
 .repository-scanning>div {display:flex;flex-direction:column;gap:5px;min-width:0;}
@@ -443,10 +449,11 @@ h1,h2,p {margin:0;}
 .repository-scan-issues summary {color:var(--muted);cursor:pointer;}
 .repository-scan-issues>div {display:grid;gap:2px;padding:5px 8px;border-left:2px solid var(--error);}
 .repository-scan-issues span {color:var(--error);overflow-wrap:anywhere;}
-.repository-destination {display:grid;grid-template-columns:minmax(190px,1fr) auto minmax(190px,1fr);align-items:end;gap:8px;padding-top:2px;}
+.repository-destination {display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:8px;padding-top:2px;}
 .repository-new-group {align-self:end;}
+.repository-destination>p,.repository-destination>.repository-name-error {grid-column:1/-1;margin:0;}
 .repository-add-summary {margin-right:auto;color:var(--muted);font-size:12px;}
-@media (max-width:620px){.repository-result-summary {align-items:flex-start;flex-direction:column;}.repository-destination {grid-template-columns:1fr;}.repository-new-group {justify-self:start;}.repository-candidate-list {max-height:240px;}}
+@media (max-width:620px){.repository-result-summary {align-items:flex-start;flex-direction:column;}.repository-destination {grid-template-columns:minmax(0,1fr) auto;}.repository-candidate-list {max-height:240px;}}
 .action-form {display:flex;flex-direction:column;gap:12px;}
 .form-field {display:flex;flex-direction:column;gap:5px;}
 .form-field input,.form-field select {padding:6px 8px;width:100%;}
@@ -518,10 +525,13 @@ h1,h2,p {margin:0;}
 .repository-drag-handle[draggable="true"]{cursor:grab}
 .repository-drag-handle[draggable="true"]:active{cursor:grabbing}
 
-.repository-add-tabs{align-self:flex-start}
-.repository-add-tabs button{display:flex;align-items:center;gap:6px}
+.repository-add-tabs{display:flex;gap:16px;border-bottom:1px solid var(--border)}
+.repository-add-tabs button{display:flex;align-items:center;gap:6px;padding:8px 2px;border-radius:0;border-bottom:2px solid transparent;color:var(--muted)}
+.repository-add-tabs button.is-active{border-bottom-color:var(--accent);color:var(--fg)}
 .repository-add-panel,.repository-group-form{display:flex;flex-direction:column;gap:12px}
-.repository-group-form{padding:4px 0 16px}
+.repository-group-form{width:100%;max-width:440px;align-self:center;padding:18px 0 24px;gap:14px}
+.repository-group-form h3{margin:0;font-size:16px;font-weight:600}
+.repository-group-form .repository-dialog-intro{line-height:1.5}
 .repository-name-error{color:var(--vscode-errorForeground,#c33)}
 .history-read-status {display:flex;align-items:center;gap:5px;min-width:0;}
 .history-read-status>.truncate {flex:1;min-width:0;}

@@ -160,7 +160,7 @@ export async function verifyWorktrees(browser, url) {
     assert.equal(await createButton.isDisabled(),true,'Duplicate group names show an inline error');
     await groupName.fill('Other');
     await groupDialog.getByRole('tab',{name:'Add Repository',exact:true}).click();
-    await groupDialog.getByText('No folder selected',{exact:true}).waitFor();
+    await groupDialog.getByText('Choose a folder containing repositories',{exact:true}).waitFor();
     await groupDialog.getByRole('tab',{name:'Add Group',exact:true}).click();
     assert.equal(await groupName.inputValue(),'Other','Type switching preserves the group draft');
     await groupName.press('Enter');
@@ -202,7 +202,7 @@ export async function verifyWorktrees(browser, url) {
     await repositoryDialog.getByRole('tab',{name:'Add Repository',exact:true}).click();
     await repositoryDialog.getByText('Choose another folder or scan this folder again.',{exact:true}).waitFor();
     assert.equal(await repositoryDialog.locator('.repository-candidate').count(),0,'A cancelled late scan cannot restore its candidate list');
-    await repositoryDialog.getByRole('button',{name:'Cancel',exact:true}).click();
+    await repositoryDialog.press('Escape');
     await repositoryDialog.waitFor({state:'hidden'});
     assert.equal(await page.evaluate(()=>window.__worktreeFixture.calls.filter(call=>call.method==='addRepository').length),1,'Switching or cancelling never adds partial scan results');
     assert.equal(await page.evaluate(()=>window.__worktreeFixture.calls.filter(call=>call.method==='createRepositoryCollection').length),1,'Closing the group draft never creates a second group');
