@@ -5235,6 +5235,98 @@ export const catalog = {
     "en": "The Stash was saved and retained, but cleanup did not complete. Inspect the remaining files.\n{{value}}",
     "zh-CN": "Stash 已保存并保留，但清理未完成。请检查剩余文件。\n{{value}}"
   },
+  "tags.synced": {
+    "en": "Synced",
+    "zh-CN": "同步"
+  },
+  "tags.local": {
+    "en": "Local",
+    "zh-CN": "本地"
+  },
+  "tags.different": {
+    "en": "Differs",
+    "zh-CN": "差异"
+  },
+  "tags.unknown": {
+    "en": "Unknown",
+    "zh-CN": "未知"
+  },
+  "tags.stale": {
+    "en": "Recheck",
+    "zh-CN": "待核对"
+  },
+  "tags.noRemote": {
+    "en": "No remote",
+    "zh-CN": "未配置远端"
+  },
+  "tags.selectRemote": {
+    "en": "Remote to compare local Tags against",
+    "zh-CN": "选择本地标签的比较远端"
+  },
+  "tags.check": {
+    "en": "Check remote Tag status",
+    "zh-CN": "核对远端标签状态"
+  },
+  "tags.scope": {
+    "en": "Local Tags · status compares the selected remote's read address",
+    "zh-CN": "本地标签 · 状态对应所选远端的读取地址"
+  },
+  "tags.syncedHint": {
+    "en": "{{remote}}: the local and remote Tag objects match",
+    "zh-CN": "{{remote}}：本地与远端标签对象一致"
+  },
+  "tags.localHint": {
+    "en": "{{remote}}: this Tag is absent from the remote",
+    "zh-CN": "{{remote}}：远端没有此标签"
+  },
+  "tags.differentHint": {
+    "en": "{{remote}}: the same Tag name has a different object",
+    "zh-CN": "{{remote}}：同名标签的对象不同"
+  },
+  "tags.unknownHint": {
+    "en": "{{remote}}: remote status has not been verified",
+    "zh-CN": "{{remote}}：尚未核实远端状态"
+  },
+  "tags.checkedAt": {
+    "en": "Last checked: {{time}}",
+    "zh-CN": "最后核对：{{time}}"
+  },
+  "tags.previous": {
+    "en": "Previous result: {{status}}",
+    "zh-CN": "上次结果：{{status}}"
+  },
+  "tags.failed": {
+    "en": "Status check failed: {{error}}",
+    "zh-CN": "状态核对失败：{{error}}"
+  },
+  "tags.separatePush": {
+    "en": "Read and push addresses differ; this status describes the read address",
+    "zh-CN": "读取与推送地址不同；此状态描述读取地址"
+  },
+  "tags.objects": {
+    "en": "Local: {{local}}\nRemote: {{remote}}",
+    "zh-CN": "本地：{{local}}\n远端：{{remote}}"
+  },
+  "tags.checking": {
+    "en": "Checking remote Tags…",
+    "zh-CN": "正在核对远端标签…"
+  },
+  "tags.details": {
+    "en": "Tag remote status",
+    "zh-CN": "标签远端状态"
+  },
+  "tags.commitLegend": {
+    "en": "Commit availability on known remote branches; Tag status is shown on each Tag label",
+    "zh-CN": "提交在已知远端分支上的状态；标签状态单独显示在各标签上"
+  },
+  "tags.remoteChanged": {
+    "en": "The remote address changed. Refresh the repository and check again.",
+    "zh-CN": "远端地址已变更，请刷新仓库后重新核对。"
+  },
+  "tags.unavailable": {
+    "en": "Remote Tag queries are unavailable. Reload the workbench after updating the extension.",
+    "zh-CN": "远端标签查询不可用，请更新扩展后重新加载工作台。"
+  },
   "tracking.enterALocalBranchName": {
     "en": "Enter a local branch name.",
     "zh-CN": "请输入本地分支名称。"
@@ -6975,6 +7067,29 @@ export interface MessageParameters {
   "stash.theProjectChangedWhileCreatingTheStashNoFiles": {  };
   "stash.theStashWasSavedButTheProjectChangedBefore": {  };
   "stash.theStashWasSavedAndRetainedButCleanupDid": { value: ParameterValue };
+  "tags.synced": {  };
+  "tags.local": {  };
+  "tags.different": {  };
+  "tags.unknown": {  };
+  "tags.stale": {  };
+  "tags.noRemote": {  };
+  "tags.selectRemote": {  };
+  "tags.check": {  };
+  "tags.scope": {  };
+  "tags.syncedHint": { remote: ParameterValue };
+  "tags.localHint": { remote: ParameterValue };
+  "tags.differentHint": { remote: ParameterValue };
+  "tags.unknownHint": { remote: ParameterValue };
+  "tags.checkedAt": { time: ParameterValue };
+  "tags.previous": { status: ParameterValue };
+  "tags.failed": { error: ParameterValue };
+  "tags.separatePush": {  };
+  "tags.objects": { local: ParameterValue; remote: ParameterValue };
+  "tags.checking": {  };
+  "tags.details": {  };
+  "tags.commitLegend": {  };
+  "tags.remoteChanged": {  };
+  "tags.unavailable": {  };
   "tracking.enterALocalBranchName": {  };
   "tracking.duplicateLocalName": {  };
   "tracking.nameAlreadyExistsWithADifferentUpstream": {  };

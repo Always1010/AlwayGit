@@ -10,6 +10,7 @@ import { remoteNameProblem, remoteUrlProblem } from '../protocol/remote';
 import { parsePushResult } from './push-result';
 import { hostingRepository } from '../protocol/hosting';
 import type { PushResult, RemoteLinks } from '../protocol/types';
+import type { RemoteTags } from '../protocol/types';
 import type { DiscardRequest, DiscardPlan, FileOperationProgress } from '../protocol/types';
 import { inferDefaultBranch } from './default-branch';
 import { GitError, GitReadTerminationError, GitTerminationError } from './error';
@@ -136,7 +137,7 @@ export class GitService implements GitServiceContract {
         args: [...prefix, ...prepared.args],
         env: { ...commandEnv, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never', GIT_EDITOR: 'true', GIT_SEQUENCE_EDITOR: 'true', ...(['status', 'log', 'show', 'ls-tree', 'ls-files', 'for-each-ref'].includes(args[0]) ? { GIT_OPTIONAL_LOCKS: '0' } : {}), ...execution.env },
         input: prepared.input, signal: execution.signal && scopeSignal ? AbortSignal.any([execution.signal,scopeSignal]) : execution.signal ?? scopeSignal, readOnly, captureBytes,
-        timeoutMs: this.options.timeoutMs ?? (['fetch', 'pull', 'push'].includes(args[0]) ? this.options.networkTimeoutMs ?? 600_000 : undefined), onStop: wrapped?.cancelPrompts, maxOutputBytes: this.options.maxOutputBytes,
+        timeoutMs: this.options.timeoutMs ?? (args[0] === 'ls-remote' ? 30_000 : ['fetch', 'pull', 'push'].includes(args[0]) ? this.options.networkTimeoutMs ?? 600_000 : undefined), onStop: wrapped?.cancelPrompts, maxOutputBytes: this.options.maxOutputBytes,
         onStderr: execution.silent ? undefined : chunk => this.options.onOutput?.(repo, chunk.toString('utf8')),
       });
       if(scope){
@@ -173,6 +174,28 @@ export class GitService implements GitServiceContract {
     if (requireSingle && urls.length !== 1) throw new GitError(localizeMessage("service.thisRemoteHasMultiplePushDestinationsSelectARemote"), 'MULTIPLE_PUSH_DESTINATIONS');
     // The UI only receives a fingerprint; URLs may contain authentication secrets.
     return createHash('sha256').update(JSON.stringify(urls)).digest('hex');
+  }
+  private async remoteReadDestination(repo: Repository, remote: string): Promise<string> {
+    const url = await this.text(repo, ['remote', 'get-url', token(remote, 'remote')]);
+    return createHash('sha256').update(url).digest('hex');
+  }
+  async remoteTags(repo: Repository, remote: string, expectedDestination: string): Promise<RemoteTags> {
+    const configured = (await this.text(repo, ['remote'])).split('\n');
+    if (!configured.includes(token(remote, 'remote'))) throw new GitError(localizeMessage('service.unknownRemote', { destination: remote }), 'INVALID_ARGUMENT');
+    const url = await this.text(repo, ['remote', 'get-url', remote]);
+    const destination = createHash('sha256').update(url).digest('hex');
+    if (destination !== expectedDestination) throw new GitError(localizeMessage('tags.remoteChanged'), 'OPERATION_CHANGED');
+    const pushUrls = (await this.text(repo, ['remote', 'get-url', '--push', '--all', remote])).split('\n').filter(Boolean);
+    // Query the captured read address, never a moving remote configuration.
+    const output = (await this.run(repo, ['ls-remote', '--tags', '--refs', '--', url], false, undefined, { silent: true, env: { GIT_ASKPASS: '', SSH_ASKPASS: '', SSH_ASKPASS_REQUIRE: 'never' } })).stdout.toString('utf8');
+    if (await this.remoteReadDestination(repo, remote) !== destination) throw new GitError(localizeMessage('tags.remoteChanged'), 'OPERATION_CHANGED');
+    const refs: Record<string, string> = {};
+    for (const line of output.split('\n').filter(Boolean)) {
+      const match = /^([a-f0-9]{40}|[a-f0-9]{64})\t(refs\/tags\/[^\s]+)$/.exec(line);
+      if (!match) throw new GitError(localizeMessage('service.malformedGitStatusOutput'), 'PARSE_ERROR');
+      refs[match[2]] = match[1];
+    }
+    return { remote, destination, separatePush: pushUrls.some(value => value !== url), refs, checkedAt: Date.now() };
   }
   private async confirmRemoteDestination(repo: Repository, remote: string, expected?: string): Promise<void> {
     const actual = await this.remoteDestination(repo, remote, true);
@@ -245,6 +268,7 @@ export class GitService implements GitServiceContract {
     const stashes: Stash[] = stashOutput ? stashOutput.split('\n').map(line => { const [selector, oid, subject] = line.split('\0'); return { selector, oid, subject }; }) : [];
     const remotes = remoteOutput ? remoteOutput.split('\n') : [];
     const remoteDestinations = Object.fromEntries(await mapGitQueries(remotes, async remote => [remote, await this.remoteDestination(repo, remote)] as const));
+    const remoteReadDestinations = Object.fromEntries(await mapGitQueries(remotes, async remote => [remote, await this.remoteReadDestination(repo, remote)] as const));
     const defaultBranch=inferDefaultBranch(refs,remotes,status.upstream);
     const operation: OperationState = { conflicts: status.changes.filter(x => x.conflict).length, canContinue: false, canAbort: false, canSkip: false };
     const markers = await Promise.all(['rebase-merge', 'rebase-apply', 'MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'sequencer'].map(name => exists(path.join(gitDir, name))));
@@ -272,7 +296,7 @@ export class GitService implements GitServiceContract {
       const remoteBranch = remote && remote === upstreamRemote && upstreamBranch ? upstreamBranch : remote && remote === branchRemote && configuredBranch ? configuredBranch : status.branch;
       pushTarget = { localBranch: status.branch, ...(remote ? { remote } : {}), remoteBranch, configured: !!upstream };
     }
-    return { repository: repo, ...status, unpushed: status.branch ? unpushed : 0, refs, remotes, remoteDestinations, ...(defaultBranch ? { defaultBranch } : {}), ...(pushTarget ? { pushTarget } : {}), stashes, worktrees, operation, version: ++this.version };
+    return { repository: repo, ...status, unpushed: status.branch ? unpushed : 0, refs, remotes, remoteDestinations, remoteReadDestinations, ...(defaultBranch ? { defaultBranch } : {}), ...(pushTarget ? { pushTarget } : {}), stashes, worktrees, operation, version: ++this.version };
   }
   private async worktrees(repo: Repository): Promise<Worktree[]> {
     const records = decodePaths((await this.run(repo, ['worktree', 'list', '--porcelain', '-z'])).stdout).split('\0'); const result: Worktree[] = []; let current: Worktree | undefined;

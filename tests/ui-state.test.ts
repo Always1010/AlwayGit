@@ -167,13 +167,13 @@ describe('repository UI consistency', () => {
       expect(menu[1].disabled).toBe(false);menu[1].run();
       expect(open).toHaveBeenLastCalledWith({type:'branch.create',target:'old',checkout:true,requireCheckout:true});
       const tagMenu=menuFor({kind:'ref',ref:tag},api).items;
-      expect(tagMenu).toHaveLength(6);
+      expect(tagMenu).toHaveLength(7);
       expect(tagMenu.some(item=>item.label.includes('Detached HEAD'))).toBe(false);
       expect(tagMenu.some(item=>item.label.includes('Create Branch'))).toBe(false);
       expect(tagMenu.some(item=>item.label.includes('Graph Scope'))).toBe(false);
     }
     store.setState({language:'en'});
-    expect(menuFor({kind:'ref',ref:tag},api).items.map(item=>item.label)).toEqual(['Show Only This Tag History','Locate Tag Commit in Graph','Push Tag…','Delete Tag…','Copy Tag Name','Copy Commit ID']);
+    expect(menuFor({kind:'ref',ref:tag},api).items.map(item=>item.label)).toEqual(['Show Only This Tag History','Locate Tag Commit in Graph','Check remote Tag status','Push Tag…','Delete Tag…','Copy Tag Name','Copy Commit ID']);
     store.setState({language:'en',operationSettings:{allowDetachedHead:true,pushFollowTags:false,pushTagAfterCreate:false,defaultResetMode:'mixed',scope:'workspace'}});
     const enabled=menuFor(target,api).items;
     expect(enabled.filter(item=>item.label.includes('Detached HEAD'))).toHaveLength(1);
@@ -985,4 +985,58 @@ it('synchronizes applied user settings while keeping a local preview and cancell
   await expect(store.getState().finishSettings(true)).rejects.toThrow('user settings unavailable');
   expect(store.getState().settingsBaseline?.appearance.theme).toBe('forest');
   expect(bridge.save.mock.calls.at(-1)?.[0].appearance.theme).toBe('forest');
+});
+
+describe('Tag remote queries', () => {
+  const tagSnapshot = () => ({ ...snapshot(a), remotes: ['origin', 'upstream'], remoteReadDestinations: { origin: 'read-origin', upstream: 'read-upstream' }, remoteDestinations: { origin: 'push-origin', upstream: 'push-upstream' } });
+  it('restores each repository selection without overwriting the repository being left', async () => {
+    await store.getState().selectRepository('a'); store.setState({ tagRemote: 'upstream' });
+    await store.getState().selectRepository('b'); store.setState({ tagRemote: 'origin' });
+    await store.getState().selectRepository('a');
+    expect(store.getState().tagRemote).toBe('upstream');
+    await store.getState().selectRepository('b');
+    expect(store.getState().tagRemote).toBe('origin');
+  });
+  it('deduplicates fresh queries and retains the last successful result when a forced check fails', async () => {
+    await store.getState().selectRepository('a'); store.setState({ snapshot: tagSnapshot() });
+    const result = { remote: 'origin', destination: 'read-origin', refs: { 'refs/tags/v1': 'abc' }, separatePush: false, checkedAt: Date.now() };
+    bridge.rpc.mockResolvedValue(result);
+    await store.getState().loadTagStatuses(); await store.getState().loadTagStatuses();
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'remoteTags')).toHaveLength(1);
+    bridge.rpc.mockRejectedValue(new Error('offline'));
+    await store.getState().loadTagStatuses(true);
+    const query = Object.values(store.getState().tagQueries)[0];
+    expect(query).toMatchObject({ result, error: 'offline', loading: false });
+    expect(store.getState().error).toBeUndefined();
+  });
+
+  it('ignores an obsolete remote response and remembers the chosen comparison remote', async () => {
+    await store.getState().selectRepository('a'); store.setState({ snapshot: tagSnapshot() });
+    const old = deferred<unknown>();
+    bridge.rpc.mockImplementation((method, _repoId, payload) => method === 'remoteTags' && payload.remote === 'origin' ? old.promise : Promise.resolve({ remote: 'upstream', destination: 'read-upstream', refs: {}, separatePush: false, checkedAt: Date.now() }));
+    const pending = store.getState().loadTagStatuses();
+    store.getState().setTagRemote('upstream');
+    await vi.waitFor(() => expect(Object.values(store.getState().tagQueries).some(query => query.result?.remote === 'upstream')).toBe(true));
+    old.resolve({ remote: 'origin', destination: 'read-origin', refs: {}, separatePush: false, checkedAt: Date.now() }); await pending;
+    expect(Object.values(store.getState().tagQueries).some(query => query.result?.remote === 'origin')).toBe(false);
+    expect(Object.values(store.getState().tagQueries).every(query => !query.loading)).toBe(true);
+    expect(bridge.save.mock.calls.at(-1)?.[0].views.a.tagRemote).toBe('upstream');
+  });
+
+  it('cannot apply a result after the read address changes or the repository is switched', async () => {
+    await store.getState().selectRepository('a'); store.setState({ snapshot: tagSnapshot() });
+    const old = deferred<unknown>(); bridge.rpc.mockReturnValueOnce(old.promise);
+    const pending = store.getState().loadTagStatuses();
+    store.setState({ snapshot: { ...tagSnapshot(), remoteReadDestinations: { origin: 'new-address', upstream: 'read-upstream' } } });
+    old.resolve({ remote: 'origin', destination: 'read-origin', refs: {}, separatePush: false, checkedAt: Date.now() }); await pending;
+    expect(Object.values(store.getState().tagQueries).some(query => query.result)).toBe(false);
+    const next = deferred<unknown>(); bridge.rpc.mockReturnValueOnce(next.promise);
+    const request = store.getState().loadTagStatuses();
+    const fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, repoId, ...args) => method === 'snapshot' ? Promise.resolve(snapshot(b)) : fallback(method, repoId, ...args));
+    await store.getState().selectRepository('b');
+    next.resolve({ remote: 'origin', destination: 'new-address', refs: {}, separatePush: false, checkedAt: Date.now() }); await request;
+    expect(store.getState().repoId).toBe('b');
+    expect(Object.values(store.getState().tagQueries).some(query => query.result)).toBe(false);
+  });
 });

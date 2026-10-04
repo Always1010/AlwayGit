@@ -201,6 +201,21 @@ h1,h2,p {margin:0;}
 .commit-subject {display:flex;align-items:center;gap:4px;min-width:0;height:100%;padding:0 4px;overflow:hidden;}
 .commit-message-button {flex:1;min-width:80px;text-align:left;padding:0 2px;height:100%;line-height:var(--row-height,24px);}
 .ref-badge {flex:none;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;border:1px solid var(--border);border-radius:2px;background:var(--panel);padding:0 4px;line-height:18px;}
+.ref-badge:has(.tag-status) {display:inline-flex;align-items:center;gap:3px;}
+.ref-badge-name {overflow:hidden;text-overflow:ellipsis;}
+.tag-row {display:flex;align-items:center;min-width:0;}
+.tag-row .tag-name {flex:1;min-width:0;width:auto;}
+.tag-row .tag-name .truncate {flex:1;}
+.tag-status {display:inline-flex;align-items:center;justify-content:flex-end;gap:3px;flex:none;white-space:nowrap;font-size:11px;min-width:53px;padding:2px 4px;}
+.tag-status .codicon {font-size:13px;}
+.tag-status-compact {min-width:0;padding:0;}
+.tag-status-synced {color:var(--green);}
+.tag-status-different {color:var(--yellow);}
+.tag-status-local,.tag-status-unknown,.tag-status-stale {color:var(--muted);}
+.tag-status-details {white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;}
+.tag-remote-controls {display:flex;align-items:center;gap:2px;min-width:0;max-width:110px;font-size:11px;}
+.tag-remote-controls select {min-width:0;max-width:78px;padding:0 2px;height:22px;font-size:11px;}
+.tag-remote-controls .codicon-loading {animation:feedback-spin 1s linear infinite;}
 .ref-badge.tag {color:var(--yellow);}
 .history-author,.history-date {display:flex;align-items:center;height:100%;padding:0 5px;font-size:inherit;color:var(--muted);}
 .history-date {font-variant-numeric:tabular-nums;}

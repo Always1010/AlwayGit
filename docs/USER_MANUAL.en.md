@@ -682,6 +682,10 @@ Use the operations in this chapter only after you understand the relationships i
 4. To publish tags, right-click one or more Tags, choose Push Tag… or Push N Tags…, then verify the complete Tag list and Remote.
 5. To delete a local tag, right-click the target Tag, choose Delete Tag…, verify the name, and confirm.
 
+Tags lists local Tags. The remote name in its header identifies the comparison target; choose another remote when available, with the selection remembered per repository. Each row uses an icon and short label: Synced (matching Tag objects), Local (absent from that remote), Differs (same name, different object), or Unknown (not checked or the query failed). Results older than five minutes show Recheck. With no configured remote, Tags show Local. Tag labels in the commit graph use the same status icons; the commit node's Pushed indicator still describes availability on known remote branches.
+
+Hover or focus the status for details and the last check time, or click a list status to open its details. The header refresh icon and Check remote Tag status context action perform a read-only query. Opening a repository, expanding Tags, switching remotes and completing Fetch/Pull/Push refresh the status as needed without blocking local history. A query failure never means a Tag is absent. Status describes the selected remote's read address; differing read and push addresses are explicitly identified, so a successful push does not prove availability at a different read address.
+
 **Result:** The local Tag points to the specified version, the explicitly selected Tags are published to the Remote, or the target local Tag has been removed.
 
 **Caution:** Create-and-push keeps the local Tag first; if the remote push fails, retry later with Push Tag. Tag Push sends only the Tags listed in the dialog, supports lightweight and annotated Tags, does not include other local Tags, and does not overwrite a differently identified remote Tag with the same name. Local deletion does not delete a remote Tag; this version does not provide remote Tag deletion or replacement.

@@ -34,10 +34,12 @@ let demoSnapshot: Snapshot = { repository: repo, branch: 'main', head: commits[0
   { name: 'v0.1.0', fullName: 'refs/tags/v0.1.0', kind: 'tag', oid: commits[14].oid, refOid: commits[14].oid },
 ], stashes: [{ selector: 'stash@{0}', oid: commits[9].oid, subject: 'WIP: repository picker styling' }], worktrees: [{ path: repo.root, head: commits[0].oid, branch: 'refs/heads/main', bare: false, detached: false }, { path: 'D:\\Projects\\AlwayGit-graph', head: commits[3].oid, branch: 'refs/heads/feature/history-graph', bare: false, detached: false }], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 1 };
 const website:Repository={id:'demo-website',root:'D:\\Projects\\website',commonDir:'D:\\Projects\\website\\.git',name:'website'};
+const publishedTags = new Map<string, Record<string, string>>();
 const demoStores:Record<string,{snapshot:Snapshot;commits:Commit[];saved:Map<string,Snapshot['changes']>}>=Object.fromEntries([repo,website].map(repository=>[
   repository.id,
   {snapshot:{...structuredClone(demoSnapshot),repository,remotes:['origin'],worktrees:demoSnapshot.worktrees.map((tree,i)=>({...tree,path:i?repository.root+'-graph':repository.root}))},commits:structuredClone(commits),saved:new Map([[commits[9].oid,[{path:'notes.txt',indexStatus:'?',worktreeStatus:'?',conflict:false,untracked:true}] ]])},
 ]));
+for (const { snapshot } of Object.values(demoStores)) publishedTags.set(`${snapshot.repository.id}:origin`, Object.fromEntries(snapshot.refs.filter(ref => ref.kind === 'tag').map(ref => [ref.fullName, ref.refOid ?? ref.oid])));
 if(noRemoteDemo)for(const store of Object.values(demoStores)){store.snapshot.remotes=[];store.snapshot.refs=store.snapshot.refs.filter(ref=>ref.kind!=='remote');delete store.snapshot.upstream;delete store.snapshot.pushTarget;}
 const demoCollections:RepositoryCollection[]=[];
 let demoOrder:RepositoryOrder|undefined;
@@ -112,7 +114,8 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
   }
   if(method==='createRepositoryCollection'){const collection={id:`demo-group-${demoCollections.length+1}`,name:(payload as {name:string}).name};demoCollections.push(collection);return collection;}
   if (method === 'repositoryStatuses') return Object.values(demoStores).map(({ snapshot }) => ({ repositoryId: snapshot.repository.id, branch: snapshot.branch, upstream: snapshot.upstream, ahead: snapshot.ahead, unpushed: snapshot.unpushed ?? snapshot.ahead } satisfies RepositoryStatus));
-  if (method === 'snapshot') return structuredClone(demoSnapshot);
+  if (method === 'snapshot') return structuredClone({ ...demoSnapshot, remoteReadDestinations: Object.fromEntries((demoSnapshot.remotes ?? []).map(remote => [remote, `demo:${remote}`])) });
+  if (method === 'remoteTags') { const remote = (payload as { remote: string }).remote; return { remote, destination: `demo:${remote}`, separatePush: false, refs: { ...(publishedTags.get(`${demoSnapshot.repository.id}:${remote}`) ?? {}) }, checkedAt: Date.now() }; }
   if (method === 'prepareDiscard') {
     const request = payload as DiscardRequest, selected = request.paths && new Set(request.paths);
     if (request.scope === 'all' && (demoSnapshot.operation.kind || demoSnapshot.operation.conflicts)) throw new Error('Finish or abort the active operation before discarding all changes.');
@@ -187,8 +190,8 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
     else if (action.type === 'branch.delete') demoSnapshot.refs = demoSnapshot.refs.filter(r => !(r.kind === 'local' && action.names.includes(r.name)));
     else if(action.type==='remote.add'){demoSnapshot.remotes=[...new Set([...(demoSnapshot.remotes??[]),action.name])];}
     else if(action.type==='remote.delete')demoSnapshot.refs=demoSnapshot.refs.filter(r=>!(r.kind==='remote'&&action.branches.some(branch=>r.name===`${action.remote}/${branch}`)));
-    else if (action.type === 'tag.create') { const oid=resolve(action.target??'HEAD'); demoSnapshot.refs.push({ name: action.name, fullName: `refs/tags/${action.name}`, kind: 'tag', oid, refOid: oid }); }
-    else if (action.type === 'tag.push') { /* Demo keeps remote Tag state implicit. */ }
+    else if (action.type === 'tag.create') { const oid=resolve(action.target??'HEAD'); demoSnapshot.refs.push({ name: action.name, fullName: `refs/tags/${action.name}`, kind: 'tag', oid, refOid: oid }); if (action.pushRemote) { const key = `${demoSnapshot.repository.id}:${action.pushRemote}`; publishedTags.set(key, { ...publishedTags.get(key), [`refs/tags/${action.name}`]: oid }); } }
+    else if (action.type === 'tag.push') { const key = `${demoSnapshot.repository.id}:${action.remote}`; publishedTags.set(key, { ...publishedTags.get(key), ...Object.fromEntries(demoSnapshot.refs.filter(ref => ref.kind === 'tag' && action.names.includes(ref.name)).map(ref => [ref.fullName, ref.refOid ?? ref.oid])) }); }
     else if (action.type === 'tag.delete') { const tag=demoSnapshot.refs.find(r=>r.kind==='tag'&&r.name===action.name); if(!action.expectedOid||tag?.refOid!==action.expectedOid)throw new RpcError('The Tag changed. Refresh and reopen the deletion dialog.','OPERATION_CHANGED'); demoSnapshot.refs=demoSnapshot.refs.filter(r=>r!==tag); }
     else if (action.type === 'stash.create') {
       if(action.paths&&!action.paths.length)throw new Error('Select at least one file to Stash.');
