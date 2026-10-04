@@ -312,6 +312,36 @@ describe('repository UI consistency', () => {
     response.resolve({kind:'merge',token:'late',files:[]});await action;
     expect(store.getState().operationReview).toBeUndefined();expect(store.getState().busy).toBe(false);
   });
+  it.each(['success', 'failure', 'cancelled'])('releases Continue inspection after switching away and back (%s)', async (outcome) => {
+    await store.getState().selectRepository('a');
+    const response = deferred<unknown>(), fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, ...args) => method === 'operationReview' ? response.promise.then(value => {
+      if(outcome !== 'success')throw new Error(outcome === 'cancelled' ? 'Query cancelled' : 'Review failed');
+      return value;
+    }) : fallback(method, ...args));
+    const action = store.getState().execute({ type: 'operation.continue', kind: 'merge' });
+    await store.getState().selectRepository('b'); await store.getState().selectRepository('a');
+    expect(store.getState().busy).toBe(true);
+    response.resolve({ kind: 'merge', token: 'stale', files: [] }); await action;
+    expect(store.getState()).toMatchObject({ busy: false, activity: '' });
+    expect(store.getState().operationReview).toBeUndefined(); expect(store.getState().error).toBeUndefined();
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'action')).toHaveLength(0);
+    // The cleared lock must permit another action immediately, without a host activity event.
+    expect(await store.getState().execute({ type: 'fetch' })).toBe(true);
+  });
+  it('keeps current host activity busy when an obsolete Continue inspection finishes', async () => {
+    await store.getState().selectRepository('a');
+    const response = deferred<unknown>(), fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, ...args) => method === 'operationReview' ? response.promise : fallback(method, ...args));
+    const action = store.getState().execute({ type: 'operation.continue', kind: 'merge' });
+    await store.getState().selectRepository('b'); await store.getState().selectRepository('a');
+    bridge.event!({ type: 'activity', repoId: 'a', busy: true, label: 'External Push' });
+    response.resolve({ kind: 'merge', token: 'stale', files: [] }); await action;
+    expect(store.getState()).toMatchObject({ busy: true, activity: 'External Push' });
+    expect(store.getState().operationReview).toBeUndefined();
+    bridge.event!({ type: 'activity', repoId: 'a', busy: false, label: '' });
+    expect(store.getState()).toMatchObject({ busy: false, activity: '' });
+  });
   it('passes a selected ref union and preserves an explicitly empty selection', async () => {
     await store.getState().selectRepository('a');
     store.getState().setCheckedRefs(['refs/heads/main','refs/heads/topic','refs/heads/main']);
