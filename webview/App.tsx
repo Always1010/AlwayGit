@@ -56,6 +56,7 @@ export function App() {
   const showHelp=useCallback(()=>{setContext(undefined);setHelpOpen(true);},[]);
   const theme=useResolvedTheme(state.appearance.theme),lightTheme=isLightTheme(theme);
   const paletteColors=lightTheme?state.appearance.colors.light:state.appearance.colors.dark;
+  useLayoutEffect(()=>{document.documentElement.lang=state.language;},[state.language]);
   useEffect(()=>{if(connected)void useWorkbench.getState().initialize();},[]);
   useEffect(()=>{setDialog(undefined);setContext(undefined);},[state.repoId,state.language]);
   useEffect(()=>{setCommitRepoId(undefined);},[state.repoId]);
