@@ -147,7 +147,7 @@ Fetch、Pull 和 Push 沿用系统 Git Credential Helper、SSH Agent 和配置�
 
 Snapshot 为当前分支解析 Push 目标，依次考虑 `branch.<name>.pushRemote`、`remote.pushDefault`、分支 remote、upstream 和唯一远端，并把本地分支、远端分支及 upstream 状态作为结构化数据交给 Webview。Push 对话框提交明确的本地与远端 refspec；远端分支名可以与本地分支名不同。首次建立跟踪时才请求 `--set-upstream`，已有 upstream 的普通 Push 不隐式改变跟踪关系。分支 Push 始终显式选择 `--follow-tags` 或 `--no-follow-tags`，不继承 Git 配置的隐式行为；开启时只附带该分支可达且远端缺少的注解 Tag。
 
-Tag Push 使用独立的 `tag.push` 动作和完整 `refs/tags/<name>:refs/tags/<name>` refspec，可从单个或多选 Tag 菜单进入。对话框绑定打开时捕获的原始 Tag 对象 OID，宿主在任何网络写入前复核全部选择；注解 Tag 不使用 peeled Commit OID。每个 Tag 单独推送并汇总部分失败，显式 `--no-follow-tags` 防止 Git 配置附带未选择的 Tag；远端同名 Tag 不同且未明确提供替换操作时由 Git 拒绝覆盖。Create Tag 可按设置默认值或本次勾选，在本地创建成功后只把新 Tag 推送到所选 Remote；远端推送失败以部分失败报告，本地 Tag 保留，供显式 Tag Push 重试。
+Tag Push 使用独立的 `tag.push` 动作和完整 `refs/tags/<name>:refs/tags/<name>` refspec，可从单个或多选 Tag 菜单进入。对话框绑定打开时捕获的原始 Tag 对象 OID，宿主在任何网络写入前复核全部选择；注解 Tag 不使用 peeled Commit OID。每个 Tag 单独推送并汇总部分失败，显式 `--no-follow-tags` 防止 Git 配置附带未选择的 Tag；远端同名 Tag 不同且未明确提供替换操作时由 Git 拒绝覆盖。Tags 标题的 Create Tag 不继承 HEAD 或历史选择，目标为空且必须显式输入；提交图入口捕获被右键行的 Commit OID 和 Message，并把目标锁定为只读，添加 Remote 后返回仍保留该身份。可编辑目标在提交前解析为完整 Commit OID，避免创建过程中引用移动。Create Tag 可按设置默认值或本次勾选，在本地创建成功后只把新 Tag 推送到所选 Remote；远端推送失败以部分失败报告，本地 Tag 保留，供显式 Tag Push 重试。
 
 本地 Tag 删除绑定打开对话框时的原始引用对象 OID（注解 Tag 不使用 peeled Commit OID）。宿主预检后通过 `update-ref --no-deref -d <ref> <expectedOid>` 原子比较删除，陈旧或缺失身份拒绝操作；符号引用不递归删除目标。
 

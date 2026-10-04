@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-081：Tags 标题创建标签会静默沿用历史选中提交
+
+- 日期：2026-10-04
+- 状态：已解决
+- 现象：从 Tags 标题执行 Create Tag 时，Target Commit 自动填入此前在提交图中选中的 Commit；对话框只显示 Commit ID，用户容易误以为目标是最新 HEAD，并把 Tag 创建到旧提交。
+- 原因：所有动作共用同一套目标默认值；Create Tag 没有显式目标时依次回退到 `selectedOid`、HEAD，未区分通用入口和提交图上下文入口。提交图入口也把 OID 放进普通可编辑字段，没有展示 Commit Message 或保持上下文身份。
+- 解决方案：Tags 标题入口的目标改为空且必须显式输入，输入后解析并显示 Commit Message，提交时固定为完整 OID。提交图入口捕获被右键行的 OID 和 Message，以只读目标展示；添加 Remote 后返回仍保留固定目标。
+- 验证方式：类型与双语资源检查；状态测试验证提交菜单传递固定目标；本机 Edge 无头验证 Tags 标题入口不继承选择或 HEAD、手动 Commit ID 可解析并显示 Message，以及右键提交固定到实际点击行且不可编辑。未打包或安装扩展。
+- 相关文件：`webview/ActionDialog.tsx`、`webview/menus.ts`、`webview/styles.css`、`src/i18n/catalogs/actions.json`、`src/i18n/generated.ts`、`tests/ui-state.test.ts`、`scripts/test-ui.mjs`、`docs/ARCHITECTURE.md`、`docs/USER_MANUAL.zh-CN.md`、`docs/USER_MANUAL.en.md`、`docs/images/user-manual/figure-28.png`。
+
 ## BUG-080：Pull 与 Push 的待同步提醒样式不一致
 
 - 日期：2026-10-04

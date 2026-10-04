@@ -478,6 +478,8 @@ h1,h2,p {margin:0;}
 .branch-start-point {display:flex;flex-direction:column;gap:5px;padding:9px 10px;border:1px solid var(--section-border);background:color-mix(in srgb,var(--panel) 76%,var(--bg));}
 .branch-start-point>span,.branch-start-point>small {color:var(--muted);font-size:11px;}
 .branch-start-point details code {display:block;margin-top:5px;overflow-wrap:anywhere;}
+.tag-target-summary {display:flex;flex-direction:column;gap:5px;padding:9px 10px;border:1px solid var(--section-border);background:color-mix(in srgb,var(--panel) 76%,var(--bg));}
+.tag-target-summary>span,.tag-target-summary>small {color:var(--muted);font-size:11px;}
 .push-target {display:flex;flex-direction:column;gap:6px;padding:10px 11px;border:1px solid var(--section-border);background:color-mix(in srgb,var(--panel) 76%,var(--bg));}
 .push-target>span {color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em;}
 .push-target>strong {font-family:var(--vscode-editor-font-family,Consolas,monospace);font-size:14px;overflow-wrap:anywhere;}

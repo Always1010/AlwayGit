@@ -182,6 +182,31 @@ async function verifyWorkbench(browser, url) {
       await noRemoteDialog.getByRole('button',{name:'Cancel',exact:true}).click();
     } finally { await noRemotePage.close(); }
 
+    const noRemoteTagPage=await browser.newPage({viewport:{width:1440,height:900}});
+    try {
+      await noRemoteTagPage.goto(`${url}&noRemote=1`);
+      await noRemoteTagPage.evaluate(()=>localStorage.clear());
+      await noRemoteTagPage.reload();
+      const tagSidebar=noRemoteTagPage.getByTestId('sidebar'),tagHistory=noRemoteTagPage.getByTestId('history');
+      await tagSidebar.getByRole('option',{name:/^AlwayGit/}).dblclick();
+      const tagRow=tagHistory.locator('[data-oid]').nth(1),tagOid=await tagRow.getAttribute('data-oid'),tagSubject=(await tagRow.locator('.commit-message-button').innerText()).trim();
+      await tagRow.click({button:'right'});
+      await noRemoteTagPage.getByTestId('context-menu').getByRole('menuitem',{name:'Create Tag…',exact:true}).click();
+      let tagDialog=noRemoteTagPage.getByRole('dialog',{name:'Create Tag',exact:true});
+      await tagDialog.getByText(tagSubject,{exact:true}).waitFor();
+      await tagDialog.getByText('Push this Tag after creation',{exact:true}).click();
+      await tagDialog.getByRole('button',{name:'Add Remote…',exact:true}).click();
+      tagDialog=noRemoteTagPage.getByRole('dialog',{name:'Add Remote',exact:true});
+      await tagDialog.getByLabel('Repository URL',{exact:true}).fill('https://example.com/acme/repo.git');
+      await tagDialog.getByRole('button',{name:'Add Remote',exact:true}).click();
+      tagDialog=noRemoteTagPage.getByRole('dialog',{name:'Create Tag',exact:true});
+      const restoredTarget=tagDialog.getByLabel('Target Commit',{exact:true});
+      assert.equal(await restoredTarget.inputValue(),tagOid,'Adding a Remote must preserve the fixed Commit target');
+      assert.equal(await restoredTarget.getAttribute('readonly'),'','The restored fixed target remains immutable');
+      await tagDialog.getByText(tagSubject,{exact:true}).waitFor();
+      await tagDialog.getByRole('button',{name:'Cancel',exact:true}).click();
+    } finally { await noRemoteTagPage.close(); }
+
     const menu = page.getByTestId('context-menu');
     async function openMenu(locator, keyboard = false) {
       if (keyboard) { await locator.focus(); await locator.press('Shift+F10'); }
@@ -306,7 +331,18 @@ async function verifyWorkbench(browser, url) {
     await remoteBranch.click();await remoteMain.click({modifiers:['Control']});await openMenu(remoteBranch);
     assert.ok((await menu.getByRole('menuitem').allTextContents()).some(value=>value.trim()==='Delete 2 Branches from origin…'),'Remote multi-selection exposes an explicit remote deletion action');
     await menu.getByRole('menuitem',{name:'Delete 2 Branches from origin…',exact:true}).click();dialog=page.getByRole('dialog');await dialog.getByText('Delete from origin',{exact:true}).waitFor();await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
-    await assertIconActions(sidebar.getByRole('button', { name: 'Tags', exact: true }).locator('..'), ['Create Tag…']);
+    const tagHeading=sidebar.getByRole('button', { name: 'Tags', exact: true }).locator('..');
+    await assertIconActions(tagHeading, ['Create Tag…']);
+    const manualCommitRow=history.locator('[data-oid]').first(),manualCommitID=await manualCommitRow.getAttribute('data-oid'),manualCommitMessage=(await manualCommitRow.locator('.commit-message-button').innerText()).trim();
+    await tagHeading.getByRole('button',{name:'Create Tag…',exact:true}).click();
+    dialog=page.getByRole('dialog');
+    let tagTarget=dialog.getByLabel('Target Commit',{exact:true});
+    assert.equal(await tagTarget.inputValue(),'','The Tags heading must not reuse the selected Commit or HEAD');
+    await dialog.getByText('No Commit is selected automatically. Enter the Commit ID that this Tag should identify.',{exact:true}).waitFor();
+    await tagTarget.fill(manualCommitID);
+    await tagTarget.press('Tab');
+    await dialog.getByText(manualCommitMessage,{exact:true}).waitFor();
+    await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
     const tag = sidebar.getByRole('button', { name: 'v0.1.0', exact: true });
     await assertMenu(tag, ['Show Only This Tag History', 'Locate Tag Commit in Graph', 'Push Tag…', 'Delete Tag…', 'Copy Tag Name', 'Copy Commit ID']);
     await assertIconActions(sidebar.getByRole('button', { name: 'Stashes', exact: true }).locator('..'), ['Stash All Changes…']);
@@ -331,6 +367,18 @@ async function verifyWorkbench(browser, url) {
     await dialog.waitFor();
     assert.equal(await dialog.getByLabel('Target Commit', { exact: true }).inputValue(), 'refs/heads/feature/history-graph');
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    const previousCommit=history.locator('[data-oid]').first(),fixedCommit=history.locator('[data-oid]').nth(1);
+    await previousCommit.click();
+    const fixedCommitID=await fixedCommit.getAttribute('data-oid'),fixedCommitMessage=(await fixedCommit.locator('.commit-message-button').innerText()).trim();
+    await openMenu(fixedCommit);
+    await menu.getByRole('menuitem',{name:'Create Tag…',exact:true}).click();
+    dialog=page.getByRole('dialog');
+    tagTarget=dialog.getByLabel('Target Commit',{exact:true});
+    assert.equal(await tagTarget.inputValue(),fixedCommitID,'Commit context Create Tag must use the right-clicked row');
+    assert.equal(await tagTarget.getAttribute('readonly'),'','Commit context target must be immutable');
+    await dialog.getByText(fixedCommitMessage,{exact:true}).waitFor();
+    await dialog.getByText('Fixed to the selected Commit',{exact:false}).waitFor();
+    await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
     await openMenu(remoteBranch);
     await menu.getByRole('menuitem', { name: 'Checkout as Local Branch…', exact: true }).click();
     await dialog.waitFor();

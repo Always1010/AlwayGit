@@ -6,7 +6,7 @@ This manual explains how to inspect changes, save revisions, and collaborate wit
 
 Select the question-mark icon in the upper-right corner of the Workbench to open the offline Help & Guide. It includes quick start instructions, common tasks, common questions, and the full chapters of this manual. Its language follows the workbench setting.
 
-**About the screenshots:** Figures 07 and 08 show the Working Tree and Commit dialog in 0.45.0. Other screenshots mainly come from 0.29.0. Outdated screenshots of the permanent Commit form have been removed. Follow the instructions here and verify current control names, targets and counts.
+**About the screenshots:** Figure 28 shows the Create Tag dialog in 0.47.0. Figures 07 and 08 show the Working Tree and Commit dialog in 0.45.0. Other screenshots mainly come from 0.29.0. Outdated screenshots of the permanent Commit form have been removed. Follow the instructions here and verify current control names, targets and counts.
 
 ## Read by task
 
@@ -676,8 +676,8 @@ Use the operations in this chapter only after you understand the relationships i
 
 **Prerequisite:** Identify the version you want to tag.
 
-1. Right-click the target Commit or branch and choose Create Tag…, or use the entry point in the Tags heading.
-2. Enter a name, such as v1.1.0, in Tag Name and verify Target Commit. Fill in Annotation if needed. To publish immediately, enable “Push this Tag after creation” and select a Remote; use it once or remember it as the default.
+1. Right-click the target Commit or branch and choose Create Tag…, or use the entry point in the Tags heading. A Commit-row action is fixed to the row you right-clicked; the Tags heading action does not reuse HEAD or the Graph selection.
+2. Enter a name, such as v1.1.0, in Tag Name. From the Tags heading, Target Commit starts empty: enter a Commit ID and verify the resolved Commit Message. From a Commit row, Target Commit is read-only and shows that Commit's ID and Message. Fill in Annotation if needed. To publish immediately, enable “Push this Tag after creation” and select a Remote; use it once or remember it as the default.
 3. Check the new tag under Tags and use Locate Tag Commit in Graph to locate it, or Show Only This Tag History to inspect its history.
 4. To publish tags, right-click one or more Tags, choose Push Tag… or Push N Tags…, then verify the complete Tag list and Remote.
 5. To delete a local tag, right-click the target Tag, choose Delete Tag…, verify the name, and confirm.
@@ -690,7 +690,7 @@ Hover or focus the status for details and the last check time, or click a list s
 
 **Caution:** Create-and-push keeps the local Tag first; if the remote push fails, retry later with Push Tag. Tag Push sends only the Tags listed in the dialog, supports lightweight and annotated Tags, does not include other local Tags, and does not overwrite a differently identified remote Tag with the same name. Local deletion does not delete a remote Tag; this version does not provide remote Tag deletion or replacement.
 
-![Create Tag dialog showing Tag Name, Target Commit, and Annotation](images/user-manual/figure-28.png)
+![Create Tag dialog with a fixed target Commit and its Commit Message](images/user-manual/figure-28.png)
 
 <a id="section-09-02"></a>
 

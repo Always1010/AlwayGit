@@ -413,6 +413,26 @@ export const catalog = {
     "en": "Target Commit",
     "zh-CN": "目标提交"
   },
+  "actions.commitIDPlaceholder": {
+    "en": "Enter a Commit ID",
+    "zh-CN": "输入 Commit ID"
+  },
+  "actions.noCommitIsSelectedAutomatically": {
+    "en": "No Commit is selected automatically. Enter the Commit ID that this Tag should identify.",
+    "zh-CN": "不会自动选择 HEAD 或图中已选提交，请输入此 Tag 应指向的 Commit ID。"
+  },
+  "actions.enterATargetCommit": {
+    "en": "Enter a target Commit.",
+    "zh-CN": "请输入目标 Commit。"
+  },
+  "actions.enterACommitIDThatExistsInThisRepository": {
+    "en": "Enter a Commit ID that exists in this repository.",
+    "zh-CN": "请输入此仓库中存在的 Commit ID。"
+  },
+  "actions.fixedToTheSelectedCommit": {
+    "en": "Fixed to the selected Commit",
+    "zh-CN": "已固定到所选 Commit"
+  },
   "actions.annotationOptional": {
     "en": "Annotation (optional)",
     "zh-CN": "说明（可选）"
@@ -5872,6 +5892,11 @@ export interface MessageParameters {
   "actions.directDetachedHEADCheckoutIsNowDisabled": {  };
   "actions.tagName": {  };
   "actions.targetCommit": {  };
+  "actions.commitIDPlaceholder": {  };
+  "actions.noCommitIsSelectedAutomatically": {  };
+  "actions.enterATargetCommit": {  };
+  "actions.enterACommitIDThatExistsInThisRepository": {  };
+  "actions.fixedToTheSelectedCommit": {  };
   "actions.annotationOptional": {  };
   "actions.tag": {  };
   "actions.selectedFiles": { count: number };

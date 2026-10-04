@@ -154,6 +154,7 @@ describe('repository UI consistency', () => {
 
   it('disables direct Detached Checkout in commit menus while preserving branch creation and local branch switching', async () => {
     await store.getState().selectRepository('a');
+    store.setState({commits:[{...commit,oid:'old'}]});
     const { menuFor } = await import('../webview/menus');
     const open=vi.fn(),checkout=vi.fn(),noop=vi.fn(),api={startCommit:noop,open,checkout,openDiff:noop,editFile:noop,host:vi.fn().mockResolvedValue(undefined),addRepository:vi.fn().mockResolvedValue(undefined),removeRepositories:noop,fetchRepositories:noop};
     const tag={name:'v1',fullName:'refs/tags/v1',kind:'tag' as const,oid:'old'};
@@ -166,6 +167,8 @@ describe('repository UI consistency', () => {
       expect(menu[0].reason).toMatch(/disabled|禁止/);
       expect(menu[1].disabled).toBe(false);menu[1].run();
       expect(open).toHaveBeenLastCalledWith({type:'branch.create',target:'old',checkout:true,requireCheckout:true});
+      menu[2].run();
+      expect(open).toHaveBeenLastCalledWith({type:'tag.create',target:'old',fixedTagTarget:{oid:'old',subject:'Example'}});
       const tagMenu=menuFor({kind:'ref',ref:tag},api).items;
       expect(tagMenu).toHaveLength(7);
       expect(tagMenu.some(item=>item.label.includes('Detached HEAD'))).toBe(false);
