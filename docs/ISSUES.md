@@ -2,6 +2,17 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-103：中文界面未同步页面语言和动作字段无障碍名称
+
+- 日期：2026-10-05
+- 状态：待修复
+- 优先级与可信度：P2；代码链路确认。
+- 现象：切换简体中文后，页面仍声明英文语言；多个 Git 动作字段虽显示中文标签，其 aria-label 仍强制英文，辅助技术取得的语言与名称与界面不一致。
+- 原因：构建入口固定 `html lang="en"`，宿主保留该标记，语言切换未更新根元素 lang；ActionDialog 字段与 Tag 目标输入直接调用 `translate('en', ...)`，覆盖当前语言的可见标签。
+- 解决方案：待实施；初始化及语言变化时同步根元素 lang，动作字段使用当前翻译或关联可见标签。
+- 验证方式：0.47.1 / faf4524；逐项核对入口 HTML、宿主 HTML 注入、语言状态及 ActionDialog 字段生成；现有语言和界面测试未断言中文页面语言与动作字段可访问名称。尚未进行真实屏幕阅读器验收。
+- 相关文件：`webview/index.html`、`webview/i18n.ts`、`webview/App.tsx`、`webview/ActionDialog.tsx`、`src/extension/workbench.ts`、`scripts/test-appearance-ui.mjs`。
+
 ## BUG-102：Tag 推送缺少结构化结果且部分发布摘要不准确
 
 - 日期：2026-10-05
