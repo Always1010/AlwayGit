@@ -1,6 +1,8 @@
 import path from 'node:path';
 import os from 'node:os';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GitServiceContract, Repository } from '../src/protocol/types';
 import * as vscode from 'vscode';
@@ -24,18 +26,21 @@ vi.mock('vscode', () => {
   };
 });
 import { RepositoryManager } from '../src/repositories/manager';
+import { GitService } from '../src/git/service';
 
 const root = path.join(process.cwd(), 'fixture');
 const repo: Repository = { id: 'fixture', root, commonDir: path.join(root, '.git'), name: 'Fixture' };
 let manager: RepositoryManager;
 let discover: ReturnType<typeof vi.fn>;
+let trackedPaths: ReturnType<typeof vi.fn>;
 let storage: string;
 beforeEach(async () => {
   vi.useFakeTimers(); surfaces.watchers.length = 0;
   Object.assign(vscode.workspace,{workspaceFolders:[]});
   discover=vi.fn(async()=>repo);
+  trackedPaths=vi.fn(async()=>[]);
   storage = await mkdtemp(path.join(os.tmpdir(), 'alwaygit-watch-'));
-  manager = new RepositoryManager({ discover } as unknown as GitServiceContract, { globalStorageUri: { fsPath: storage }, workspaceState: { get: vi.fn((_key, fallback) => fallback), update: vi.fn() }, globalState: { get: vi.fn((_key, fallback) => fallback), update: vi.fn() } } as any, { appendLine: vi.fn() } as any);
+  manager = new RepositoryManager({ discover, trackedPaths } as unknown as GitServiceContract, { globalStorageUri: { fsPath: storage }, workspaceState: { get: vi.fn((_key, fallback) => fallback), update: vi.fn() }, globalState: { get: vi.fn((_key, fallback) => fallback), update: vi.fn() } } as any, { appendLine: vi.fn() } as any);
   await manager.add(root, false);
 });
 afterEach(async () => {
@@ -45,6 +50,65 @@ afterEach(async () => {
 });
 
 describe('repository change scope', () => {
+  it('watches normal files when a repository ancestor is named node_modules, rejecting outside and .git paths', async () => {
+    const nested = { ...repo, id: 'nested', root: path.join(root, 'node_modules', 'project'), commonDir: path.join(root, 'node_modules', 'project', '.git') };
+    discover.mockResolvedValue(nested); await manager.add(nested.root);
+    const watcher = surfaces.watchers[2], listener = vi.fn(); manager.onDidChange(listener);
+    watcher.change.fire({ fsPath: path.join(nested.root, 'a.txt') });
+    watcher.change.fire({ fsPath: path.join(nested.root, '.git', 'index') });
+    watcher.change.fire({ fsPath: path.join(nested.root, '..', 'outside.txt') });
+    await vi.advanceTimersByTimeAsync(300);
+    expect(listener.mock.calls).toEqual([[{ repoId: nested.id, changes: { paths: ['a.txt'] } }]]);
+    expect(trackedPaths).not.toHaveBeenCalled();
+  });
+
+  it('debounces tracked dependency files and conservatively invalidates on membership failure or overflow', async () => {
+    trackedPaths.mockResolvedValueOnce(['node_modules/tracked.js']).mockRejectedValueOnce(new Error('read failed'));
+    const watcher = surfaces.watchers[0], listener = vi.fn(); manager.onDidChange(listener);
+    for (let index = 0; index < 20; index++) watcher.change.fire({ fsPath: path.join(root, 'node_modules', 'tracked.js') });
+    watcher.change.fire({ fsPath: path.join(root, 'node_modules', 'ignored.js') });
+    await vi.advanceTimersByTimeAsync(600);
+    expect(trackedPaths).toHaveBeenCalledOnce();
+    expect(listener).toHaveBeenLastCalledWith({ repoId: repo.id, changes: { paths: ['node_modules/tracked.js'] } });
+    watcher.remove.fire({ fsPath: path.join(root, 'node_modules', 'tracked.js') });
+    await vi.advanceTimersByTimeAsync(600);
+    expect(listener).toHaveBeenCalledTimes(2);
+    expect(listener).toHaveBeenLastCalledWith({ repoId: repo.id, changes: { paths: ['node_modules/tracked.js'] } });
+    for (let index = 0; index < 500; index++) watcher.create.fire({ fsPath: path.join(root, 'node_modules', `${index}.js`) });
+    await vi.advanceTimersByTimeAsync(600);
+    expect(trackedPaths).toHaveBeenCalledTimes(2);
+    expect(listener).toHaveBeenLastCalledWith({ repoId: repo.id, changes: {} });
+  });
+
+  it('recognizes literal tracked dependency filenames with real Git, including deleted files', async () => {
+    vi.useRealTimers();
+    const directory = path.join(storage, 'node_modules', 'project');
+    await mkdir(path.join(directory, 'node_modules'), { recursive: true });
+    const git = promisify(execFile);
+    await git('git', ['init', directory]);
+    await writeFile(path.join(directory, 'node_modules', '[x].js'), 'tracked');
+    await writeFile(path.join(directory, 'node_modules', 'x.js'), 'untracked');
+    await git('git', ['-C', directory, '--literal-pathspecs', 'add', '--', 'node_modules/[x].js']);
+    const service = new GitService(), actual = await service.discover(directory);
+    await rm(path.join(directory, 'node_modules', '[x].js'));
+    expect(await service.trackedPaths(actual, ['node_modules/[x].js', 'node_modules/x.js'])).toEqual(['node_modules/[x].js']);
+    discover.mockResolvedValue(actual);
+    trackedPaths.mockImplementation((repository: Repository, paths: string[]) => service.trackedPaths(repository, paths));
+    await manager.add(directory);
+    const watcher = surfaces.watchers.find(watcher => watcher.pattern.base === actual.root && watcher.pattern.pattern === '**/*');
+    expect(watcher).toBeDefined();
+    for (const contents of ['first edit', 'second edit with the same dirty status']) {
+      await writeFile(path.join(directory, 'node_modules', '[x].js'), contents);
+      const notification = new Promise<unknown>((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error(`No dependency notification; queries=${trackedPaths.mock.calls.length}`)), 2500);
+        const subscription = manager.onDidChange(event => { clearTimeout(timeout); subscription.dispose(); resolve(event); });
+      });
+      watcher.change.fire({ fsPath: path.join(actual.root, 'node_modules', '[x].js') });
+      expect(await notification).toEqual({ repoId: actual.id, changes: { paths: ['node_modules/[x].js'] } });
+    }
+    expect(trackedPaths).toHaveBeenCalledTimes(2);
+  });
+
   it('combines working-file and Index notifications without losing paths', async () => {
     const listener = vi.fn(); manager.onDidChange(listener);
     surfaces.watchers[0].change.fire({ fsPath: path.join(root, 'a.txt') });

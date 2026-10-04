@@ -267,6 +267,14 @@ export class GitService implements GitServiceContract {
     return provisional;
   }
   private async verify(repo: Repository) { const current = await this.discover(repo.root); if (normalized(current.commonDir) !== normalized(repo.commonDir) || current.id !== repo.id) throw new GitError(localizeMessage("service.repositoryChangedReopenItBeforeContinuing"), 'REPOSITORY_CHANGED'); return current; }
+  /** A bounded watcher batch checks literal Index membership, including deleted tracked files. */
+  async trackedPaths(repo: Repository, paths: string[]): Promise<string[]> {
+    if (!paths.length) return [];
+    await this.verify(repo);
+    const names = new Set(paths.map(validateFilePath));
+    const output = await this.run(repo, ['ls-files', '-z', '--', ...names], false, undefined, { env: { GIT_LITERAL_PATHSPECS: '1' } });
+    return [...new Set(decodePaths(output.stdout).split('\0').filter(name => names.has(name)))];
+  }
   private async oid(repo: Repository, revision: string): Promise<string> { token(revision, 'revision'); return this.text(repo, ['rev-parse', '--verify', '--end-of-options', `${revision}^{commit}`]); }
   private async refName(repo: Repository, name: string): Promise<string> { const problem=branchNameProblem(name);if(problem)throw new GitError(branchNameProblemMessage(problem),'INVALID_BRANCH_NAME');await this.run(repo, ['check-ref-format', `refs/heads/${name}`]); return name; }
   private async status(repo: Repository) { return parseStatus((await this.run(repo, ['status', '--porcelain=v2', '-z', '--branch', '--untracked-files=all'])).stdout); }

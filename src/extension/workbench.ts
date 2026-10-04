@@ -421,7 +421,22 @@ export class Workbench implements vscode.Disposable {
     this.polling = true;
     try {
       await Promise.all([...this.externalBusy.keys()].map(key=>this.refreshExternalActivity(key).catch(error=>this.output.appendLine(redactSecrets(translate('en', "host.activityRefresh", { value: (error instanceof Error?error.message:String(error)) }))))));
-      for(const id of ids){try{const repo=this.repositories.get(id);if(this.isBusy(repo.commonDir))continue;const previous=this.fingerprints.get(repo.id),snapshot=await this.snapshots.read(repo.id, () => this.git.snapshot(repo));if(this.recordFingerprint(snapshot)!==previous)this.post({type:'changed',repoId:repo.id,changes:{paths:[]},snapshot});}catch(error){this.output.appendLine(redactSecrets(translate('en', "host.refresh", { value: (error instanceof Error?error.message:String(error)) })));}}
+      for (const id of ids) {
+        try {
+          const repo = this.repositories.get(id); if (this.isBusy(repo.commonDir)) continue;
+          const previous = this.fingerprints.get(repo.id), snapshot = await this.snapshots.read(repo.id, () => this.git.snapshot(repo));
+          const changed = this.recordFingerprint(snapshot) !== previous;
+          for (const entry of this.panels.values()) {
+            if (!entry.panel.visible || entry.activeRepository !== id) continue;
+            const view = entry.session?.views?.[id];
+            const selected = view?.tab === 'changes' ? snapshot.changes.find(file => file.path === view.selectedFile) ?? snapshot.changes[0] : undefined;
+            // Status remains M or ?? across further edits. Revalidate only the displayed
+            // working file once per interval, without hashing the repository's contents.
+            const paths = selected && (selected.untracked || selected.worktreeStatus !== ' ' || selected.conflict) ? [selected.path] : [];
+            if (changed || paths.length) this.post({ type: 'changed', repoId: id, changes: { paths }, snapshot }, entry);
+          }
+        } catch (error) { this.output.appendLine(redactSecrets(translate('en', "host.refresh", { value: (error instanceof Error ? error.message : String(error)) }))); }
+      }
     }
     finally { this.polling = false; }
   }

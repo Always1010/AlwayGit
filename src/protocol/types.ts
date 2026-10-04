@@ -93,6 +93,7 @@ export interface GitServiceContract {
   discover(root: string): Promise<Repository>;
   repositoryStatus(repo: Repository): Promise<RepositoryStatus>;
   snapshot(repo: Repository): Promise<Snapshot>;
+  trackedPaths?(repo: Repository, paths: string[]): Promise<string[]>;
   reviewOperation(repo: Repository): Promise<OperationReview>;
   history(repo: Repository, query?: HistoryQuery): Promise<HistoryPage>;
   details(repo: Repository, oid: string, parent?: string): Promise<CommitDetails>;
