@@ -10,6 +10,22 @@ const commit = (root: string, filename: string, text: string) => commitFile(root
 afterEach(fixtures.cleanup);
 
 describe('Git safety regressions', () => {
+  it.each([false, true])('retains externally added Stashes when deletion races after confirmation (Pop: %s)', async pop => {
+    const { root, repo } = await setup();
+    await commit(root, 'same.txt', 'base');
+    await writeFile(path.join(root, 'same.txt'), 'confirmed edit'); await git(root, 'stash', 'push', '-m', 'confirmed');
+    const confirmed = await git(root, 'rev-parse', 'refs/stash');
+    await writeFile(path.join(root, 'same.txt'), 'external edit'); const external = await git(root, 'stash', 'create');
+    await git(root, 'restore', '--', 'same.txt');
+    const service = new GitService({ environment: async (_repo, args) => {
+      if (args[0] === 'rev-parse' && args[1] === '--show-ref-format') await git(root, 'stash', 'store', '-m', 'external', external);
+      return {};
+    } });
+    const operation = pop ? { type: 'stash.apply' as const, selector: 'stash@{0}', expectedOid: confirmed, pop: true } : { type: 'stash.drop' as const, selector: 'stash@{0}', expectedOid: confirmed };
+    await expect(service.execute(repo, operation)).rejects.toMatchObject({ code: 'STASH_CHANGED', ...(pop ? { message: expect.stringContaining('were applied') } : {}) });
+    expect(await git(root, 'stash', 'list', '--format=%H')).toBe(`${external}\n${confirmed}`);
+    expect(await readFile(path.join(root, 'same.txt'), 'utf8')).toBe(pop ? 'confirmed edit' : 'base');
+  });
   it.each([false, true])('rejects stale branch names without changing HEAD, refs, Index or files (dirty: %s)', async dirty => {
     const { root, service, repo } = await setup();
     const old = await commit(root, 'a.txt', 'old');

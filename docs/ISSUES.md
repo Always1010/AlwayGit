@@ -148,13 +148,13 @@
 ## BUG-095：Stash 核验后序号变化仍可能删除其他存档
 
 - 日期：2026-10-05
-- 状态：待修复
+- 状态：已解决
 - 优先级与可信度：P1；真实 Git 已复现。
 - 现象：Drop 核验用户确认的 Stash OID 后，其他客户端新增存档使 `stash@{n}` 移位，后续删除会误中未确认的新存档；Pop 成功后的删除也使用相同链路。
 - 原因：`validateStash` 比较 OID 与实际 `stash drop` 分离，删除参数仍为可变序号，宿主队列不能阻止外部 Git 修改 reflog。
-- 解决方案：待实施；在 Git 引用与 reflog 锁保护下将删除绑定到确认的条目身份，不能只增加一次删除前核验。Drop、Pop 及非顶部条目需要同一保护。
-- 验证方式：0.47.1 / faf4524，Windows Git 2.55.0；在系统临时真实仓库中，于实际删除进程启动前由外部 Git 新建 Stash，执行成功后新存档消失、原确认存档仍在。现有测试只覆盖初次核验前变化，缺少核验与删除之间的竞态。
-- 相关文件：`src/git/service.ts`（`validateStash`、`stash.drop`、`stash.apply` 的 Pop 分支）、`tests/git-safety.test.ts`、`tests/stash-state.test.ts`。
+- 解决方案：Drop/Pop 共用 stash-drop helper，在 Git files 引用锁内核对原序号的 OID 并删除，支持 packed refs、非顶部条目、共享工作树和 SHA256；发布失败回滚，回滚失败保留副本并显示恢复路径。只读查询范围禁止动作入口；reftable 等无法证明安全的存储拒绝删除。Pop 删除失败明确说明更改已恢复，避免重复 Apply。
+- 验证方式：2026-10-05：helper 16 项通过 / 1 项因 Windows 符号链接权限跳过；新增恢复路径两项定向回归通过。Stash/Git safety 专项 33 项通过，其中一个 30 秒超时用例独立重跑通过；只读范围 2 项通过。真实外部 Stash 插入竞态下 Drop/Pop 均保留未确认存档。
+- 相关文件：`src/git/service.ts`（`validateStash`、`stash.drop`、`stash.apply` 的 Pop 分支）、`src/git/stash-drop.ts`、`tests/git-stash-drop.test.ts`、`tests/git-safety.test.ts`、`tests/stash-state.test.ts`、`tests/git-read-scope.test.ts`、`src/i18n/catalogs/service.json`。
 
 ## BUG-094：Tag 删除确认框随后台刷新改变远端身份
 

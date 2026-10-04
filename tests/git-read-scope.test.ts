@@ -10,6 +10,11 @@ const repo={id:'read-scope',root:process.cwd(),commonDir:process.cwd(),name:'rea
 beforeEach(()=>vi.clearAllMocks());
 
 describe('Git read request lifetime',()=>{
+  it('rejects a direct Stash deletion before any read or filesystem mutation in a query scope',async()=>{
+    const service=new GitService();
+    await expect(service.withReadSignal(new AbortController().signal,()=>service.execute(repo,{type:'stash.drop',selector:'stash@{0}',expectedOid:'a'.repeat(40)}))).rejects.toMatchObject({code:'WRITE_IN_READ_SCOPE'});
+    expect(runGitProcess).not.toHaveBeenCalled();
+  });
   it('aborts siblings and aggregates their handle completion after a parallel read fails early',async()=>{
     const service=new GitService();vi.spyOn(service,'discover').mockResolvedValue(repo);
     const first=deferred<GitResult>(),second=deferred<GitResult>(),firstClosed=deferred<void>(),secondClosed=deferred<void>();
