@@ -3855,6 +3855,30 @@ export const catalog = {
     "en": "Cannot run Git: {{message}}",
     "zh-CN": "无法运行 Git：{{message}}"
   },
+  "service.stashAppliedCleanupFailed": {
+    "en": "Stash changes were applied, but the archive could not be safely removed. Do not apply them again. Inspect the stash list before retrying deletion.\n{{value}}",
+    "zh-CN": "Stash 更改已恢复，但未能安全删除存档。请勿再次恢复；重试删除前请检查 Stash 列表。\n{{value}}"
+  },
+  "service.stashDeleteUnsupported": {
+    "en": "This repository's stash storage cannot be deleted safely. The stash was retained. Use a files reference backend with ordinary, valid reference and reflog files.",
+    "zh-CN": "无法安全删除此仓库中的存档，存档已保留。此操作需要 files 引用存储格式以及正常有效的引用与 reflog 文件。"
+  },
+  "service.stashDeleteBusy": {
+    "en": "Another Git operation is using the stash reference. The stash was retained. Retry after it finishes.",
+    "zh-CN": "另一个 Git 操作正在使用存档引用，存档已保留。请等待该操作结束后重试。"
+  },
+  "service.stashDeletePartial": {
+    "en": "Stash deletion failed and the original reference state could not be fully restored. Inspect the stash list and these recovery copies before continuing:\n{{paths}}",
+    "zh-CN": "存档删除失败，且无法完整恢复原引用状态。请在继续前检查存档列表及以下恢复副本：\n{{paths}}"
+  },
+  "service.stashDeleteCleanupFailed": {
+    "en": "The stash was deleted, but Git lock cleanup failed. Check these paths before retrying:\n{{paths}}",
+    "zh-CN": "存档已删除，但 Git 锁文件清理失败。请在重试前检查以下路径：\n{{paths}}"
+  },
+  "service.stashDeleteCleanupAfterError": {
+    "en": "{{value}}\nGit lock cleanup also failed. Check these paths before retrying:\n{{paths}}",
+    "zh-CN": "{{value}}\nGit 锁文件清理也失败了。请在重试前检查以下路径：\n{{paths}}"
+  },
   "service.branchNotMerged": {
     "en": "Branch is not fully merged into its upstream or HEAD: {{name}}. Use force deletion only if you intend to discard it.",
     "zh-CN": "分支尚未完全合并到其 upstream 或 HEAD：{{name}}。仅在确定丢弃时使用强制删除。"
@@ -4198,10 +4222,6 @@ export const catalog = {
   "service.cannotRestoreTheStashBecauseTheProjectAlreadyContains": {
     "en": "Cannot restore the Stash because the project already contains {{summary}}. Existing files were not overwritten, and the Stash is still saved.",
     "zh-CN": "无法恢复 Stash，因为项目中已包含{{summary}}。未覆盖现有文件，Stash 仍然保留。"
-  },
-  "service.stashChangesWereAppliedButTheStashListChanged": {
-    "en": "Stash changes were applied, but the Stash list changed before Drop. The saved entry was retained; refresh the list.",
-    "zh-CN": "已应用 Stash 更改，但 Stash 列表在删除前已变化。保存的条目已保留；请刷新列表。"
   },
   "service.detachedWorktreesCannotAlsoSelectABranch": {
     "en": "Detached worktrees cannot also select a branch",
@@ -6814,6 +6834,12 @@ export interface MessageParameters {
   "runner.gitTimedOutCheckCredentialsHooksOrAnotherGit": {  };
   "runner.gitOutputExceededTheConfiguredLimit": {  };
   "runner.cannotRunGit": { message: ParameterValue };
+  "service.stashAppliedCleanupFailed": { value: ParameterValue };
+  "service.stashDeleteUnsupported": {  };
+  "service.stashDeleteBusy": {  };
+  "service.stashDeletePartial": { paths: ParameterValue };
+  "service.stashDeleteCleanupFailed": { paths: ParameterValue };
+  "service.stashDeleteCleanupAfterError": { value: ParameterValue; paths: ParameterValue };
   "service.branchNotMerged": { name: ParameterValue };
   "service.cannotBindRemoteDestination": {  };
   "service.discardFilesRemain": { paths: ParameterValue };
@@ -6900,7 +6926,6 @@ export interface MessageParameters {
   "service.finishTheActiveOperationOrResolveConflictsBeforeSaving": {  };
   "service.savedUntrackedFiles": { count: number };
   "service.cannotRestoreTheStashBecauseTheProjectAlreadyContains": { summary: ParameterValue };
-  "service.stashChangesWereAppliedButTheStashListChanged": {  };
   "service.detachedWorktreesCannotAlsoSelectABranch": {  };
   "service.chooseAnExistingOrANewBranch": {  };
   "service.worktreeAlreadyRegistered": {  };

@@ -24,6 +24,7 @@ import { createSelectedStash, preflightStash, StashStateError, type StashExecuti
 import { commitSelected } from './selected-commit';
 import { safeWorkingPath } from '../editor/paths';
 import { requireExactFileScope } from './file-scope';
+import { dropStash } from './stash-drop';
 import { redactSecrets, SecretRedactor } from '../application/logging';
 
 export interface GitServiceOptions {
@@ -536,6 +537,7 @@ export class GitService implements GitServiceContract {
     }
   }
   async execute(repo: Repository, action: GitAction, onProgress?: (progress: FileOperationProgress) => void): Promise<void | PushResult> {
+    if (this.readSignal.getStore()) throw new GitError(localizeMessage('service.aReadOnlyRequestCannotRunGitMutations'), 'WRITE_IN_READ_SCOPE');
     const key = normalized(repo.commonDir); const prior = queues.get(key) ?? Promise.resolve();
     const operation = prior.catch(() => {}).then(async () => { const unsafe = unsafeTerminations.get(key); if (unsafe) throw unsafe; await this.verify(repo); return this.executeNow(repo, action, onProgress); });
     queues.set(key, operation);
@@ -1071,13 +1073,19 @@ export class GitService implements GitServiceContract {
         // Apply the captured object, restore the Index, and keep the original archive.
         await this.run(repo, ['stash', 'apply', '--index', stashOid]);
         if (action.pop) {
-          try { await this.validateStash(repo, selector, stashOid); }
-          catch { throw new GitError(localizeMessage("service.stashChangesWereAppliedButTheStashListChanged"), 'STASH_CHANGED'); }
-          await this.run(repo, ['stash', 'drop', selector]);
+          try { await dropStash(repo, selector, stashOid, args => this.run(repo, args, true)); }
+          catch (error) {
+            throw new GitError(localizeMessage('service.stashAppliedCleanupFailed', { value: error instanceof Error ? error.message : String(error) }), error instanceof GitError ? error.code : 'STASH_DELETE_FAILED', error instanceof GitError ? error.stdout : '', error instanceof GitError ? error.stderr : '');
+          }
         }
         return;
       }
-      case 'stash.drop': args = ['stash', 'drop', await this.validateStash(repo, action.selector, action.expectedOid)]; break;
+      case 'stash.drop': {
+        const selector = await this.validateStash(repo, action.selector, action.expectedOid);
+        const oid = action.expectedOid ?? await this.oid(repo, selector);
+        await dropStash(repo, selector, oid, args => this.run(repo, args, true));
+        return;
+      }
       case 'worktree.add': {
         // A revision without -b or an existing branch implicitly creates a detached Worktree.
         if (action.detach || !action.branch && !action.newBranch && !!action.start) this.requireDetachedHead();
