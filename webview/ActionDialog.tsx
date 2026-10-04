@@ -2,11 +2,11 @@ import { Button, Modal } from './ui';
 
 import { RemoteTrackingDialog } from './RemoteTrackingDialog';
 import { uiText } from './text';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CommitDetails, GitAction, Snapshot } from '../src/protocol/types';
 import { branchNameConflict, branchNameProblem, type BranchNameProblem } from '../src/protocol/ref-name';
 import { remoteNameProblem, remoteUrlProblem } from '../src/protocol/remote';
-import { useWorkbench } from './store';
+import { captureActionContext, isActionContextCurrent, useWorkbench } from './store';
 import { demoMode, rpc } from './rpc';
 import { useTranslation, translate, type StaticMessageKey, type Translator } from './i18n';
 
@@ -41,8 +41,15 @@ export function ActionDialog({ dialog, onClose, openAbort, replaceDialog }: { di
   if(dialog.type==='branch.track')return <RemoteTrackingDialog dialog={dialog} onClose={onClose}/>;
   return <StandardActionDialog dialog={dialog} onClose={onClose} openAbort={openAbort} replaceDialog={replaceDialog}/>;
 }
-function StandardActionDialog({ dialog, onClose, openAbort, replaceDialog }: { dialog: DialogRequest; onClose(): void; openAbort(): void; replaceDialog(dialog:DialogRequest):void }) {
+function StandardActionDialog({ dialog, onClose: closeDialog, openAbort, replaceDialog: changeDialog }: { dialog: DialogRequest; onClose(): void; openAbort(): void; replaceDialog(dialog:DialogRequest):void }) {
   const state = useWorkbench(), snapshot = state.snapshot!, t = useTranslation(), { type } = dialog;
+  const [repositoryContext] = useState(captureActionContext);
+  const mounted = useRef(false), submission = useRef(0), pending = useRef(false);
+  const [submitting, setSubmitting] = useState(false);
+  const invalidate = () => { ++submission.current; ++tagTargetRequest.current; };
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; invalidate(); }; }, [dialog]);
+  const onClose = () => { invalidate(); closeDialog(); };
+  const replaceDialog = (next: DialogRequest) => { invalidate(); changeDialog(next); };
   const fixedTagTarget=dialog.fixedTagTarget??dialog.tagDraft?.fixedTarget;
   const local = snapshot.refs.filter(r => r.kind === 'local'), tags = snapshot.refs.filter(r => r.kind === 'tag');
   const push=pushDefaults(snapshot,dialog);
@@ -106,14 +113,19 @@ function StandardActionDialog({ dialog, onClose, openAbort, replaceDialog }: { d
     if(!target){setTagTargetDetails(undefined);setTagTargetError(undefined);return;}
     try{
       const details=await rpc<CommitDetails>('details',state.repoId,{oid:target}),resolved={oid:details.commit.oid,subject:details.commit.subject};
-      if(request===tagTargetRequest.current){setTagTargetDetails(resolved);setTagTargetError(undefined);}
+      if(mounted.current&&isActionContextCurrent(repositoryContext)&&request===tagTargetRequest.current){setTagTargetDetails(resolved);setTagTargetError(undefined);}
       return resolved;
     }catch(error){
-      if(request===tagTargetRequest.current){setTagTargetDetails(undefined);if(showError)setTagTargetError(t('actions.enterACommitIDThatExistsInThisRepository'));}
+      if(mounted.current&&isActionContextCurrent(repositoryContext)&&request===tagTargetRequest.current){setTagTargetDetails(undefined);if(showError)setTagTargetError(t('actions.enterACommitIDThatExistsInThisRepository'));}
       return;
     }
   }
   async function executeAction(branchCheckout?:boolean) {
+    if (pending.current || state.busy || !isActionContextCurrent(repositoryContext)) return;
+    pending.current = true; setSubmitting(true);
+    const request = ++submission.current;
+    const active = () => mounted.current && request === submission.current && isActionContextCurrent(repositoryContext);
+    try {
     setValidation(undefined); const v = Object.fromEntries(Object.entries(values).map(([key,value]) => [key,type==='branch.create'&&key==='name'?value:value.trim()])); let action: GitAction;
     if(type==='branch.create'&&branchValidation){setBranchTouched(true);setValidation(branchValidation);branchInput.current?.focus();return;}
     switch(type) {
@@ -126,7 +138,7 @@ function StandardActionDialog({ dialog, onClose, openAbort, replaceDialog }: { d
       case 'commit.checkout': if(!state.operationSettings.allowDetachedHead){setValidation(t("actions.directDetachedHEADCheckoutIsDisabledCreateAndSwitch"));return;} action={type,target:v.target}; break;
       case 'branch.delete': action={type,names:dialog.names?.length?dialog.names:[v.name],force:!!checks.force,expectedOids:dialog.expectedOids}; break;
       case 'remote.delete': if(!dialog.remote||!dialog.remoteBranches?.length)return;action={type,remote:dialog.remote,branches:dialog.remoteBranches,expectedOids:dialog.expectedOids,expectedDestination:dialog.expectedDestination};break;
-      case 'tag.create': { if(!v.target){setValidation(t('actions.enterATargetCommit'));return;}const target=await resolveTagTarget(v.target);if(!target){setValidation(t('actions.enterACommitIDThatExistsInThisRepository'));return;}if(checks.pushAfterCreate&&!v.remote){setValidation(t("actions.selectARemoteForTheNewTag"));return;}action={type,name:v.name,target:target.oid,message:v.message || undefined,pushRemote:checks.pushAfterCreate?v.remote:undefined}; break; }
+      case 'tag.create': { if(!v.target){setValidation(t('actions.enterATargetCommit'));return;}const target=await resolveTagTarget(v.target);if(!active())return;if(!target){setValidation(t('actions.enterACommitIDThatExistsInThisRepository'));return;}if(checks.pushAfterCreate&&!v.remote){setValidation(t("actions.selectARemoteForTheNewTag"));return;}action={type,name:v.name,target:target.oid,message:v.message || undefined,pushRemote:checks.pushAfterCreate?v.remote:undefined}; break; }
       case 'tag.push': if(!v.remote||!dialog.names?.length||!dialog.expectedOids){setValidation(t("actions.selectTagsAndRemote"));return;}action={type,remote:v.remote,names:dialog.names,expectedOids:dialog.expectedOids};break;
       case 'tag.delete': { const expectedOid=deleteLocal?tagChoices.find(tag=>tag.name===v.name)?.refOid:undefined;if(deleteLocal&&!expectedOid){setValidation(t("actions.refreshAndReopenTheTagDeletionDialog"));return;}if(checks.deleteRemote&&deleteRemoteUnavailable){setValidation(deleteRemoteSeparate?t('actions.remoteTagDeletionRequiresMatchingAddresses'):t('actions.checkTheRemoteTagBeforeDeletingIt'));return;} action={type,name:v.name,...(expectedOid?{expectedOid}:{}),...(checks.deleteRemote?{remote:v.remote,expectedRemoteOid:deleteRemoteOid!,expectedDestination:deleteRemoteDestination!}:{})}; break; }
       case 'stash.create': if(stashPaths&&!stashPaths.length){setValidation(t("actions.selectAtLeastOneFileToStash"));return;}action={type,message:v.message || undefined,includeUntracked:stashPaths?true:!!checks.includeUntracked,...(stashPaths?{paths:stashPaths}:{})}; break;
@@ -143,8 +155,10 @@ function StandardActionDialog({ dialog, onClose, openAbort, replaceDialog }: { d
       case 'operation.abort': if(!snapshot.operation.kind)return; action={type,kind:snapshot.operation.kind}; break;
       default: return;
     }
-    if((type==='push'||type==='tag.create'||type==='reset')&&checks.rememberDefault){try{await state.saveOperationSettings({allowDetachedHead:state.operationSettings.allowDetachedHead,pushFollowTags:type==='push'?!!checks.followTags:state.operationSettings.pushFollowTags,pushTagAfterCreate:type==='tag.create'?!!checks.pushAfterCreate:state.operationSettings.pushTagAfterCreate,defaultResetMode:type==='reset'?v.mode as 'soft'|'mixed'|'hard':state.operationSettings.defaultResetMode});}catch(error){setValidation(error instanceof Error?error.message:String(error));return;}}
-    if(await state.execute(action)){if(['branch.checkout','commit.checkout'].includes(action.type)||action.type==='branch.create'&&action.checkout){const latest=useWorkbench.getState();if(latest.repoId===state.repoId&&latest.snapshot?.head)void latest.selectCommit(latest.snapshot.head);}if(action.type==='remote.add'&&dialog.returnTo==='push')replaceDialog({type:'push',branch:dialog.branch});else if(action.type==='remote.add'&&dialog.returnTo==='tag.push')replaceDialog({type:'tag.push',names:dialog.names,expectedOids:dialog.expectedOids});else if(action.type==='remote.add'&&dialog.returnTo==='tag.create')replaceDialog({type:'tag.create',tagDraft:dialog.tagDraft});else onClose();}
+    if((type==='push'||type==='tag.create'||type==='reset')&&checks.rememberDefault){try{await state.saveOperationSettings({allowDetachedHead:state.operationSettings.allowDetachedHead,pushFollowTags:type==='push'?!!checks.followTags:state.operationSettings.pushFollowTags,pushTagAfterCreate:type==='tag.create'?!!checks.pushAfterCreate:state.operationSettings.pushTagAfterCreate,defaultResetMode:type==='reset'?v.mode as 'soft'|'mixed'|'hard':state.operationSettings.defaultResetMode});}catch(error){if(active())setValidation(error instanceof Error?error.message:String(error));return;}}
+    if(!active())return;
+    if(await state.execute(action, repositoryContext)){if(!active())return;if(['branch.checkout','commit.checkout'].includes(action.type)||action.type==='branch.create'&&action.checkout){const latest=useWorkbench.getState();if(latest.repoId===state.repoId&&latest.snapshot?.head)void latest.selectCommit(latest.snapshot.head);}if(action.type==='remote.add'&&dialog.returnTo==='push')replaceDialog({type:'push',branch:dialog.branch});else if(action.type==='remote.add'&&dialog.returnTo==='tag.push')replaceDialog({type:'tag.push',names:dialog.names,expectedOids:dialog.expectedOids});else if(action.type==='remote.add'&&dialog.returnTo==='tag.create')replaceDialog({type:'tag.create',tagDraft:dialog.tagDraft});else onClose();}
+    } finally { pending.current = false; if(mounted.current && request === submission.current)setSubmitting(false); }
   }
   const submit=(event:React.FormEvent)=>{event.preventDefault();void executeAction(type==='branch.create'?true:undefined);};
   const destructive = ['discard','branch.delete','remote.delete','tag.delete','stash.drop','worktree.remove','operation.abort'].includes(type) || type==='reset' && values.mode==='hard';
@@ -157,7 +171,7 @@ function StandardActionDialog({ dialog, onClose, openAbort, replaceDialog }: { d
       <Button className="primary" icon="files" disabled={state.busy} onClick={()=>{onClose();state.selectWorking();const file=files[0]??snapshot.changes.find(file=>file.indexStatus!==' '&&!file.untracked);if(file)state.selectFile({kind:'change',path:file.path,area:file.conflict?'conflict':'staged'});state.setLayout({diffCollapsed:false});}}>{files.length?t("actions.viewHandleConflicts"):t("actions.reviewStagedResult")}</Button>
     </>}><p>{snapshot.repository.name} · {branch}</p><p>{t("actions.closingThisWindowLeavesTheGitOperationPausedEdit")}</p>{state.error&&<details><summary>{t("common.gitDetails")}</summary><pre>{state.error}</pre></details>}</Modal>;
   }
-  return <Modal title={title} busy={state.busy} onClose={onClose} footer={stashFailure?<Button onClick={onClose} disabled={state.busy}>{t("actions.cancelAndKeepCurrentState")}</Button>:missingRemote?<><Button onClick={onClose} disabled={state.busy}>{t("common.cancel")}</Button><Button className="primary" icon="cloud-upload" disabled={state.busy} onClick={()=>replaceDialog({type:'remote.add',returnTo:type==='tag.push'?'tag.push':type==='tag.create'?'tag.create':'push',branch:values.branch,names:dialog.names,expectedOids:dialog.expectedOids,...(type==='tag.create'?{tagDraft:{name:values.name,target:values.target,message:values.message,pushAfterCreate:!!checks.pushAfterCreate,rememberDefault:!!checks.rememberDefault,fixedTarget:fixedTagTarget}}:{})})}>{t("actions.addRemote")}</Button></>:type==='branch.create'?<><Button onClick={onClose} disabled={state.busy}>{t("common.cancel")}</Button>{!dialog.requireCheckout&&<Button type="button" disabled={state.busy||!!branchValidation} onClick={()=>void executeAction(false)}>{t("actions.createOnly")}</Button>}<Button type="submit" form="ag-action-form" className="primary" disabled={state.busy||!!branchValidation}>{state.busy?t("common.working"):t("actions.createAndCheckout")}</Button></>:<><Button onClick={onClose} disabled={state.busy}>{t("common.cancel")}</Button><Button type="submit" form="ag-action-form" className={destructive?'danger':'primary'} disabled={state.busy||deleteRemoteUnavailable||type==='cherry-pick'&&!!dialog.reapply&&!checks.allowIncluded}>{state.busy?t("common.working"):submitLabel}</Button></>}><form id="ag-action-form" className="action-form" onSubmit={submit}>
+  return <Modal title={title} busy={state.busy} onClose={onClose} footer={stashFailure?<Button onClick={onClose} disabled={state.busy}>{t("actions.cancelAndKeepCurrentState")}</Button>:missingRemote?<><Button onClick={onClose} disabled={state.busy}>{t("common.cancel")}</Button><Button className="primary" icon="cloud-upload" disabled={state.busy} onClick={()=>replaceDialog({type:'remote.add',returnTo:type==='tag.push'?'tag.push':type==='tag.create'?'tag.create':'push',branch:values.branch,names:dialog.names,expectedOids:dialog.expectedOids,...(type==='tag.create'?{tagDraft:{name:values.name,target:values.target,message:values.message,pushAfterCreate:!!checks.pushAfterCreate,rememberDefault:!!checks.rememberDefault,fixedTarget:fixedTagTarget}}:{})})}>{t("actions.addRemote")}</Button></>:type==='branch.create'?<><Button onClick={onClose} disabled={state.busy}>{t("common.cancel")}</Button>{!dialog.requireCheckout&&<Button type="button" disabled={state.busy||submitting||!!branchValidation} onClick={()=>void executeAction(false)}>{t("actions.createOnly")}</Button>}<Button type="submit" form="ag-action-form" className="primary" disabled={state.busy||submitting||!!branchValidation}>{state.busy?t("common.working"):t("actions.createAndCheckout")}</Button></>:<><Button onClick={onClose} disabled={state.busy}>{t("common.cancel")}</Button><Button type="submit" form="ag-action-form" className={destructive?'danger':'primary'} disabled={state.busy||submitting||deleteRemoteUnavailable||type==='cherry-pick'&&!!dialog.reapply&&!checks.allowIncluded}>{state.busy?t("common.working"):submitLabel}</Button></>}><form id="ag-action-form" className="action-form" onSubmit={submit}><fieldset style={{display:'contents'}} disabled={state.busy||submitting}>
     <p className="muted">{snapshot.repository.name} · {branch}{guardedContext && <>{uiText("actions.hEAD")}<code>{actionContext.expectedHead || '(unborn)'}</code></>}</p>
     {type==='branch.create' && <><label className="form-field"><span>{t("actions.branchName")}</span><input ref={branchInput} aria-label={uiText("actions.branchNameVariant2")} aria-invalid={branchTouched&&!!branchValidation||undefined} aria-describedby={branchTouched&&branchValidation?'branch-name-error':undefined} required disabled={state.busy} value={values.name} onChange={event=>{setBranchTouched(true);setValidation(undefined);set('name',event.target.value);}} placeholder={uiText("actions.featureMyChange")}/>{branchTouched&&branchValidation&&<small id="branch-name-error" role="alert" className="form-error">{branchValidation}</small>}</label><div className="branch-start-point"><span>{t("actions.startPoint")}</span><strong>{branchStartLabel(snapshot,values.start,t)}</strong>{state.commits.find(commit=>commit.oid===values.start)&&<small>{state.commits.find(commit=>commit.oid===values.start)!.subject}</small>}<small>{dialog.requireCheckout?t("actions.createAndSwitchToABranchToWorkOn"):t("actions.theNewBranchStartsFromThisSelectedVersion")}</small><details><summary>{t("common.gitDetails")}</summary><code>{values.start}</code></details></div></>}
     {(type==='branch.checkout'||type==='branch.delete') && <>{type==='branch.delete'&&dialog.names?.length?<div className="discard-paths">{dialog.names.map(name=><div key={name}>{name}</div>)}</div>:field('name', "actions.branchVariant2", (dialog.candidates ? local.filter(r=>dialog.candidates!.includes(r.name)) : local.filter(r=>type!=='branch.delete'||r.name!==snapshot.branch)).map(r=>({value:r.name,label:r.name})), true)}{type==='branch.delete'&&checkbox('force', "actions.forceDeletionOfUnmergedBranches")}{type==='branch.checkout'&&<p>{t("actions.checkoutPreservesChangesWhenPossibleGitStopsIfThey")}</p>}</>}
@@ -179,5 +193,5 @@ function StandardActionDialog({ dialog, onClose, openAbort, replaceDialog }: { d
     {(type==='stage'||type==='unstage')&&<p>{t('actions.batchFileCount',{count:dialog.paths?.length??0})}</p>}
     {type==='operation.abort'&&<><p className="warning-text">{t("actions.abortTheActiveEditsMadeWhileResolvingConflictsMay", { kind: (snapshot.operation.kind) })}</p>{snapshot.operation.originalHead&&<p>{t("actions.gitWillAttemptToRestoreTheOperationStartState")}<code>{snapshot.operation.originalHead}</code>{t("actions.preExistingLocalChangesMayPreventAFullRestoration")}</p>}</>}
     {validation&&!(type==='branch.create'&&branchValidation)&&<p role="alert" className="form-error">{validation}</p>}{state.error&&!stashFailure&&(type==='branch.create'?<details><summary>{t("common.gitDetails")}</summary><pre>{state.error}</pre></details>:<p role="alert" className="form-error">{state.error}</p>)}{demoMode&&<p className="muted">{t("actions.demoSampleDataOnly")}</p>}
-  </form></Modal>;
+  </fieldset></form></Modal>;
 }

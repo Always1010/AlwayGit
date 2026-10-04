@@ -28,6 +28,9 @@ let refreshInvalidation: { epoch: number; changes?: RepositoryChanges; forceHist
 const session = readSession(), views = session.views ?? {}, executingRepositories = new Set<string>(), hostBusyRepositories = new Set<string>();
 const actionFeedbacks = new Map<string, ActionFeedback>();
 let actionSequence = 0;
+export interface RepositoryActionContext { repoId?: string; epoch: number }
+export function captureActionContext(): RepositoryActionContext { return { repoId: useWorkbench.getState().repoId, epoch: repositoryEpoch }; }
+export function isActionContextCurrent(context: RepositoryActionContext): boolean { return context.repoId === useWorkbench.getState().repoId && context.epoch === repositoryEpoch; }
 export { defaultLayout } from '../src/protocol/interface-settings';
 let preferencesEpoch = 0;
 export type CheckoutFailure = CheckoutBlocker & { detached?: boolean };
@@ -71,7 +74,7 @@ interface WorkbenchState {
   initialize(): Promise<void>; loadRepositoryStatuses(): Promise<void>; selectRepository(id: string): Promise<void>; refresh(options?: { background?: boolean; changes?: RepositoryChanges; snapshot?: Snapshot }): Promise<void>; loadHistory(append?: boolean): Promise<void>; selectCommit(oid: string, parent?: string, stashOid?: string, preserveSelection?: boolean): Promise<void>; selectStashSection(section:StashSection):void; compareCommits(left:string,right:string,preserveOrder?:boolean):Promise<void>; setCommitSelection(oids:string[],anchor?:string,primary?:string):void; setRefSelection(refs:string[],anchor?:string):void; setRepositorySelection(keys:string[],anchor?:string):void; setWorktreeSelection(paths:string[],anchor?:string):void;
   setFilter(ref?: string, search?: string): void; setCheckedRefs(refs: string[]): void; setExpandedRefGroup(key:string,expanded:boolean):void; toggleSidebarGroup(key:string):void; setSearch(value: string): void; selectWorking(): void; selectFile(target: DiffTarget, activate?: boolean): void; locateHead():void;
   workingFilters: Record<string, string>; setWorkingFilter(value: string): void;
-  execute(action: GitAction): Promise<boolean>; dismissFeedback(): void; setDraft(value: string): void; setLanguage(value: Language): void; setLayout(value: Partial<LayoutState>): void; report(error: unknown): void;
+  execute(action: GitAction, context?: RepositoryActionContext): Promise<boolean>; dismissFeedback(): void; setDraft(value: string): void; setLanguage(value: Language): void; setLayout(value: Partial<LayoutState>): void; report(error: unknown): void;
 }
 const message = (error: unknown) => errorMessage(error, useWorkbench.getState().language);
 const clamp = (n: number, min: number, max: number, fallback: number) => Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : fallback;
@@ -435,7 +438,8 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       if(repositoryEpoch===repoEpoch&&get().locateToken===token)set({locatingOid:undefined});
     }
   },
-  async execute(action) {
+  async execute(action, context) {
+    if (context && !isActionContextCurrent(context)) return false;
     const repoId = get().repoId, epoch = repositoryEpoch; if (!repoId || get().busy) return false;
     if ((action.type === 'operation.continue' || action.type === 'commit' && get().snapshot?.operation.kind) && !action.reviewToken) {
       executingRepositories.add(repoId); set({ busy: true, activity: uiText("notices.inspectStagedResult"), error: undefined, operationReview: undefined });
