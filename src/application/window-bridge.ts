@@ -8,6 +8,8 @@ import { diffSchema, fileSchema } from '../protocol/validation';
 
 const LIMIT = 64 * 1024;
 const HEARTBEAT = 5000;
+const MAX_WINDOWS = 256;
+const REGISTRY_READ_BATCH = 32;
 const recordSchema = z.object({ version: z.literal(1), id: z.string().regex(/^[a-f0-9]{32}$/), port: z.number().int().min(1).max(65535), token: z.string().regex(/^[a-f0-9]{64}$/), roots: z.array(z.string().max(4096)).max(128), focusedAt: z.number(), updatedAt: z.number() });
 export type WindowRecord = z.infer<typeof recordSchema>;
 const rootSchema = z.string().min(1).max(4096).refine(value => path.isAbsolute(value) && !value.includes('\0'));
@@ -109,17 +111,23 @@ export class WindowBridge {
     return this.writes;
   }
   private async records(): Promise<WindowRecord[]> {
-    const filenames = (await readdir(this.directory)).filter(name => /^[a-f0-9]{32}\.json$/.test(name)).slice(0, 256);
-    const entries = await Promise.all(filenames.map(async name => {
-      try {
-        const data = await readFile(path.join(this.directory, name));
-        if (data.length > LIMIT) return undefined;
-        const record = recordSchema.parse(JSON.parse(data.toString('utf8')));
-        if (record.id + '.json' !== name || Date.now() - record.updatedAt > HEARTBEAT * 4) return undefined;
-        return record;
-      } catch { return undefined; }
-    }));
-    return entries.filter((entry): entry is WindowRecord => !!entry);
+    const filenames = (await readdir(this.directory)).filter(name => /^[a-f0-9]{32}\.json$/.test(name));
+    const records: WindowRecord[] = [];
+    // Crash leftovers must not consume the live-window limit. Bound concurrent
+    // reads, and leave expired files alone because a heartbeat may replace them.
+    for (let offset = 0; offset < filenames.length && records.length < MAX_WINDOWS; offset += REGISTRY_READ_BATCH) {
+      const entries = await Promise.all(filenames.slice(offset, offset + REGISTRY_READ_BATCH).map(async name => {
+        try {
+          const data = await readFile(path.join(this.directory, name));
+          if (data.length > LIMIT) return undefined;
+          const record = recordSchema.parse(JSON.parse(data.toString('utf8')));
+          if (record.id + '.json' !== name || Date.now() - record.updatedAt > HEARTBEAT * 4) return undefined;
+          return record;
+        } catch { return undefined; }
+      }));
+      records.push(...entries.filter((entry): entry is WindowRecord => !!entry).slice(0, MAX_WINDOWS - records.length));
+    }
+    return records;
   }
   async windows(): Promise<WindowRecord[]> {
     return (await this.records()).sort((a, b) => b.focusedAt - a.focusedAt || a.id.localeCompare(b.id));

@@ -106,6 +106,27 @@ describe('Project window routing', () => {
     expect(await readdir(registry)).not.toContain(bridge.record.id + '.json');
     await expect(WindowBridge.send(bridge.record, undefined, 300)).rejects.toThrow('unavailable');
   });
+  it.each(['expired', 'malformed'] as const)('finds a live window after 256 %s registry records', async kind => {
+    const { registry, root } = await setup(), received: ProjectRequest[] = [];
+    const bridge = new WindowBridge(registry, async request => { received.push(request); });
+    // Keep the live record after all leftovers in the registry's filename order.
+    bridge.record.id = 'f'.repeat(32);
+    bridges.push(bridge);
+    await bridge.start([root]);
+    for (let offset = 0; offset < 256; offset += 32) {
+      await Promise.all(Array.from({ length: 32 }, (_, index) => {
+        const id = (offset + index).toString(16).padStart(32, '0');
+        return writeFile(path.join(registry, id + '.json'), kind === 'malformed' ? '{bad'
+          : JSON.stringify({ ...bridge.record, id, updatedAt: 0 }));
+      }));
+    }
+    expect((await bridge.windows()).map(window => window.id)).toEqual([bridge.record.id]);
+    const candidates = await bridge.candidates(root);
+    expect(candidates.map(window => window.id)).toEqual([bridge.record.id]);
+    await WindowBridge.send(candidates[0], { root, action: 'project' });
+    expect(received).toEqual([{ root: await canonicalPath(root), action: 'project' }]);
+    expect((await readdir(registry)).filter(name => name.endsWith('.json'))).toHaveLength(257);
+  });
   it('isolates different VS Code user data/profile registries', async () => {
     const { registry, directory, root } = await setup();
     const first = await start(registry, [root]), second = await start(path.join(directory, 'another-profile'), [root]);
