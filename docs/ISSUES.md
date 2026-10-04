@@ -2,6 +2,17 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-102：Tag 推送缺少结构化结果且部分发布摘要不准确
+
+- 日期：2026-10-05
+- 状态：待修复
+- 优先级与可信度：P2；真实多目的地本地推送已复现。
+- 现象：Tag Push 成功没有实际目的地、引用状态及链接的结构化反馈；一个 Remote 的多个 Push 地址部分成功时，已发布 Tag 仍可能被摘要计为零成功。
+- 原因：逐 Tag 调用普通 `run` 而非 `push` 的 porcelain 解析，成功返回 undefined，失败只拼文本且没有 `pushResult`；按单条命令退出码计数不能表达各目的地的部分发布。
+- 解决方案：待实施；复用 porcelain PushResult 解析并聚合逐 Tag、逐目的地状态，失败保留实际已发布部分，前端沿用现有结构化反馈。
+- 验证方式：0.47.1 / faf4524；origin 配置一个有效本地 Bare Remote 和一个不可用本地地址，前者发布成功，动作却报“0 Tag(s) pushed; 1 failed”且无 pushResult。已复核宿主 envelope 与前端反馈链路；现有测试只检查引用和错误码，没有检查结构化返回及多地址部分成功。
+- 相关文件：`src/git/service.ts`、`src/git/push-result.ts`、`webview/store.ts`、`webview/ActionFeedbackBar.tsx`、`tests/git-tag-push.test.ts`、`scripts/test-feedback-ui.mjs`。
+
 ## BUG-101：完整路径的依赖目录过滤使工作区 Diff 持续陈旧
 
 - 日期：2026-10-05
