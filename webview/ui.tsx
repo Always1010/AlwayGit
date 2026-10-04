@@ -16,6 +16,10 @@ export function Button({ children, icon, shortcut, className = '', ...props }: R
 export function BranchIcon({remote=false}:{remote?:boolean}) { return <span className="branch-icon" aria-hidden="true"><Icon name={remote?'cloud':'git-branch'}/></span>; }
 export function Empty({ title, children }: { title: string; children?: React.ReactNode }) { return <div className="empty"><Icon name="git-commit" /><strong>{title}</strong>{children && <p>{children}</p>}</div>; }
 
+export function hasOpenInteractionLayer(): boolean {
+  return !!document.querySelector('[aria-modal="true"], [role="menu"]');
+}
+
 export function ResizeHandle({ axis, label, value, onChange, min, max, reverse = false, className = '' }: { axis: 'x' | 'y'; label: string; value: number; onChange(value: number): void; min: number; max: number; reverse?: boolean; className?: string }) {
   const bound = (next: number) => Math.round(Math.max(min, Math.min(max, next)));
   const listeners = useRef<(() => void) | undefined>(undefined);
@@ -38,7 +42,13 @@ export function Modal({ title, children, onClose, busy = false, footer, classNam
     const previous = document.activeElement as HTMLElement;
     (panel.current?.querySelector<HTMLElement>('[data-autofocus="true"]') ?? panel.current?.querySelector<HTMLElement>('input:not([type=checkbox]),select,textarea,button'))?.focus();
     const key = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !panel.current?.getAttribute('aria-busy')?.includes('true')) callback.current();
+      if (event.key === 'Escape') {
+        const dialogs=[...document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]')];
+        if(dialogs.at(-1)!==panel.current)return;
+        event.preventDefault();event.stopImmediatePropagation();
+        if(panel.current?.getAttribute('aria-busy')!=='true')callback.current();
+        return;
+      }
       if (event.key !== 'Tab') return;
       const controls = [...(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled)') ?? [])];
       const first = controls[0], last = controls.at(-1); if (!first || !last) return;
