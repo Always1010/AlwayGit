@@ -8,7 +8,7 @@ import path from 'node:path';
 import type { Change, CheckoutBlocker, Commit, CommitComparison, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationReview, OperationState, Repository, RepositoryStatus, Snapshot, Stash, StashApplyBlocker, StashDetails, Worktree } from '../protocol/types';
 import { branchNameConflict, branchNameConflictMessage, branchNameProblem, branchNameProblemMessage } from '../protocol/ref-name';
 import { remoteNameProblem, remoteUrlProblem } from '../protocol/remote';
-import { parsePushResult } from './push-result';
+import { combinePushResults, parsePushResult } from './push-result';
 import { hostingRepository } from '../protocol/hosting';
 import type { PushResult, RemoteLinks } from '../protocol/types';
 import type { RemoteTags } from '../protocol/types';
@@ -979,10 +979,22 @@ export class GitService implements GitServiceContract {
           if(current.code||current.stdout.toString('utf8').trim()!==expected)throw new GitError(localizeMessage("service.theTagChangedRefreshAndReopenThePushDialog", { name: (name) }),'OPERATION_CHANGED');
           plan.push({ name, oid: expected });
         }
-        const failures:string[]=[];let pushed=0;
-        for(const {name,oid} of plan){try{await this.run(repo,['push','--no-follow-tags',destination,`${oid}:refs/tags/${name}`]);pushed++;}catch(error){if(error instanceof GitTerminationError)throw error;failures.push(`${destination}/${name}: ${error instanceof Error?error.message:String(error)}`);}}
-        if(failures.length)throw new GitError(localizeMessage("service.tagEsPushedFailed", { pushed: (pushed), count: (failures.length), value: (failures.join('\n')) }),'PARTIAL_FAILURE');
-        return;
+        const failures: string[] = [], results: PushResult[] = [];
+        for (const { name, oid } of plan) {
+          try { results.push(await this.push(repo, ['push', '--no-follow-tags', destination, `${oid}:refs/tags/${name}`], destination)); }
+          catch (error) {
+            if (error instanceof GitTerminationError) throw error;
+            if (error instanceof GitError && error.pushResult) results.push(error.pushResult);
+            failures.push(`${destination}/${name}: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }
+        const result = combinePushResults(results, destination, failures);
+        if (failures.length) {
+          const pushed = new Set(result.destinations.flatMap(destination => destination.refs.filter(ref => !['rejected', 'deleted'].includes(ref.status)).map(ref => ref.name))).size;
+          const error = new GitError(localizeMessage('service.tagEsPushedFailed', { pushed, count: failures.length, value: result.error ?? '' }), 'PARTIAL_FAILURE');
+          error.pushResult = result; throw error;
+        }
+        return result;
       }
       case 'tag.delete': {
         const ref = `refs/tags/${token(action.name, 'tag name')}`, expected = action.expectedOid;
