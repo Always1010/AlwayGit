@@ -138,8 +138,8 @@ export async function verifyFeedback(browser, url) {
     await page.evaluate(()=>{window.__feedbackFixture.holdRemoteLinks=true;});
     await createRequest.click(); await createRequest.click();
     await page.waitForFunction(()=>window.__feedbackFixture.pendingRemoteLinks.length===2);
-    await page.evaluate(()=>window.__feedbackFixture.completeRemoteLinks(1,{repositories:[{url:'https://gitlab.com/new/repo',label:'gitlab.com/new/repo',provider:'gitlab'}],defaultBranch:'trunk'}));
-    const newestRequest=page.getByRole('dialog',{name:'Create MR on GitLab',exact:true});await newestRequest.waitFor();
+    await page.evaluate(()=>window.__feedbackFixture.completeRemoteLinks(1,{repositories:[{url:'https://github.com/new/repo',label:'github.com/new/repo',provider:'github'}],defaultBranch:'trunk'}));
+    const newestRequest=page.getByRole('dialog',{name:'Create PR on GitHub',exact:true});await newestRequest.waitFor();
     assert.equal(await newestRequest.getByLabel('Target branch (blank uses website default)').inputValue(),'trunk');
     await newestRequest.getByRole('button',{name:'Cancel',exact:true}).click();
     await page.evaluate(()=>window.__feedbackFixture.completeRemoteLinks(0,{repositories:[{url:'https://github.com/old/repo',label:'github.com/old/repo',provider:'github'}],defaultBranch:'main'}));
