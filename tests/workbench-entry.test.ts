@@ -6,6 +6,7 @@ import { createWorkbenchActivityLauncher } from '../src/extension/workbench-laun
 import { Workbench } from '../src/extension/workbench';
 import type { RepositoryChanges } from '../src/protocol/types';
 import type { RepositoryManager } from '../src/repositories/manager';
+import type { SessionState } from '../src/protocol/session';
 
 vi.mock('vscode', () => {
   class EventEmitter<T> {
@@ -46,6 +47,38 @@ function workbenchFixture(output = { appendLine: vi.fn() }, events?: { changes: 
 }
 
 describe('Workbench entry presentation', () => {
+  it.each([false, true])('uses the latest successful panel baseline when activation overlaps queued saves (failed first write: %s)', async failed => {
+    const output = { appendLine: vi.fn() }, workbench = workbenchFixture(output);
+    const baseline: SessionState = { repoId: 'a', drafts: { a: 'old A', b: 'old B' }, views: { a: { search: 'old', tab: 'history' } } };
+    let stored = baseline, release!: () => void, started!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    const writing = new Promise<void>(resolve => { started = resolve; });
+    const context = (workbench as unknown as { context: vscode.ExtensionContext }).context;
+    vi.spyOn(context.workspaceState, 'get').mockImplementation((_key, fallback) => stored ?? fallback);
+    const write = vi.spyOn(context.workspaceState, 'update').mockImplementationOnce(async (_key, session) => {
+      started(); await gate;
+      if (failed) throw new Error('storage full');
+      stored = session;
+    }).mockImplementation(async (_key, session) => { stored = session; });
+    const a = panelFixture(), b = panelFixture();
+    vi.mocked(vscode.window.createWebviewPanel).mockReturnValueOnce(a.panel as unknown as vscode.WebviewPanel).mockReturnValueOnce(b.panel as unknown as vscode.WebviewPanel);
+    await workbench.open('a'); await workbench.open('a', undefined, true);
+    b.panel.active = false;
+    const sessionA: SessionState = { ...baseline, drafts: { a: 'A draft', b: 'old B' }, views: { a: { search: 'A view', tab: 'history' } } };
+    const saveA = a.receive({ id: 'a', method: 'saveSession', payload: sessionA });
+    await writing;
+    a.panel.active = false; b.panel.active = true;
+    const sessionB: SessionState = { ...baseline, drafts: { a: 'B draft', b: 'B other draft' }, views: { a: { search: 'B view', tab: 'history' } } };
+    const saveB = b.receive({ id: 'b', method: 'saveSession', payload: sessionB });
+    b.panel.active = false; a.panel.active = true;
+    a.stateChanged.fire({ webviewPanel: a.panel as unknown as vscode.WebviewPanel });
+    // This final no-op save drains the real host writer, including the activation sync.
+    const syncA = a.receive({ id: 'a-sync', method: 'saveSession', payload: sessionA });
+    release(); await Promise.all([saveA, saveB, syncA]);
+    expect(write).toHaveBeenCalledTimes(4);
+    expect(stored).toMatchObject({ drafts: { a: failed ? 'A draft' : 'B draft', b: 'B other draft' }, views: { a: { search: failed ? 'A view' : 'B view' } } });
+    expect(a.panel.webview.postMessage).toHaveBeenCalledWith(failed ? expect.objectContaining({ id: 'a', error: expect.anything() }) : { type: 'response', id: 'a', result: null });
+  });
   it('writes the explicit Git settings scope while keeping workspace overrides effective', async () => {
     vi.spyOn(vscode.workspace, 'workspaceFolders', 'get').mockReturnValue([{ name: 'project', index: 0, uri: {} as vscode.Uri }]);
     const user = new Map<string, unknown>(), workspace = new Map<string, unknown>([['allowDetachedHead', true], ['defaultResetMode', 'soft']]);

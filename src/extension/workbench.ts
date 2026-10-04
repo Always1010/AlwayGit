@@ -394,10 +394,11 @@ export class Workbench implements vscode.Disposable {
       }
     }
   }
-  private async saveSessionBaseline(session: SessionState, source?: WorkbenchPanel): Promise<void> {
-    const panelBaseline = source?.savedSession, blank = source?.blank;
-    await this.sessions.save(() => mergeSessionBaseline(this.context.workspaceState.get<SessionState>('alwaygit.session', {}), session, panelBaseline, blank));
-    if (source) source.savedSession = session;
+  private saveSessionBaseline(session: SessionState, source?: WorkbenchPanel): Promise<void> {
+    return this.sessions.save(
+      () => mergeSessionBaseline(this.context.workspaceState.get<SessionState>('alwaygit.session', {}), session, source?.savedSession, source?.blank),
+      () => { if (source) source.savedSession = session; },
+    );
   }
   private async repositoryStatuses(): Promise<RepositoryStatus[]> {
     const repositories = this.repositories.list(), results: Array<RepositoryStatus | undefined> = new Array(repositories.length);
