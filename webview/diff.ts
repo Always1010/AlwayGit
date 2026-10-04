@@ -82,10 +82,16 @@ export function remapChange(rowsBefore: readonly DiffRow[], rowsAfter: readonly 
 }
 export interface ChangedParts { prefix: string; before: string; after: string; suffix: string }
 export function changedParts(before: string, after: string): ChangedParts {
-  let start=0,endBefore=before.length,endAfter=after.length;
-  while(start<endBefore&&start<endAfter&&before[start]===after[start])start++;
-  while(endBefore>start&&endAfter>start&&before[endBefore-1]===after[endAfter-1]){endBefore--;endAfter--;}
-  return {prefix:before.slice(0,start),before:before.slice(start,endBefore),after:after.slice(start,endAfter),suffix:before.slice(endBefore)};
+  const beforePoints=Array.from(before),afterPoints=Array.from(after);
+  let start=0,endBefore=beforePoints.length,endAfter=afterPoints.length;
+  while(start<endBefore&&start<endAfter&&beforePoints[start]===afterPoints[start])start++;
+  while(endBefore>start&&endAfter>start&&beforePoints[endBefore-1]===afterPoints[endAfter-1]){endBefore--;endAfter--;}
+  return {
+    prefix:beforePoints.slice(0,start).join(''),
+    before:beforePoints.slice(start,endBefore).join(''),
+    after:afterPoints.slice(start,endAfter).join(''),
+    suffix:beforePoints.slice(endBefore).join(''),
+  };
 }
 // A bounded look-ahead aligns context without an unbounded quadratic matrix.
 // Every input line is emitted once; ambiguous blocks remain conservative replacements.
