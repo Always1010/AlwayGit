@@ -32,10 +32,8 @@ export async function verifyFeedback(browser, url) {
     await page.goto(url);
     await page.getByRole('option', { name: 'Feedback fixture' }).dblclick();
     const toolbar=page.locator('.toolbar'),pull=toolbar.getByRole('button',{name:'Pull, 2 incoming commits',exact:true}),pushButton=toolbar.getByRole('button',{name:'Push, 1 unpushed commits',exact:true});
-    assert.equal((await pull.innerText()).trim(),'Pull','Pull keeps the count out of its visible label');
-    assert.equal((await pushButton.innerText()).trim(),'Push','Push keeps the count out of its visible label');
-    assert.equal(await pull.locator('.toolbar-notification-dot').count(),1,'Pull shows the shared notification dot');
-    assert.equal(await pushButton.locator('.toolbar-notification-dot').count(),1,'Push shows the shared notification dot');
+    assert.equal(await pull.locator('.notification-badge').innerText(),'2','Pull shows its incoming count in the shared badge');
+    assert.equal(await pushButton.locator('.notification-badge').innerText(),'1','Push shows its unpushed count in the shared badge');
     assert.match(await pull.getAttribute('title'),/2 incoming commits/,'Pull keeps the count in its tooltip');
     assert.match(await pushButton.getAttribute('title'),/1 unpushed commits/,'Push keeps the count in its tooltip');
     const bar = page.getByTestId('action-feedback');
