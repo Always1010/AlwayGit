@@ -96,7 +96,8 @@ it('bounds nested tag and remote destination resolution in snapshots while prese
   let snapshot;
   try { snapshot = await service.snapshot(repo); }
   finally { wrapped.mockRestore(); }
-  expect(queries).toBe(names.length * 3);
+  // Two nested-tag reads plus both Push and Read destinations per remote.
+  expect(queries).toBe(names.length * 4);
   expect(maximum).toBeGreaterThan(0);
   expect(maximum).toBeLessThanOrEqual(4);
   expect(active).toBe(0);

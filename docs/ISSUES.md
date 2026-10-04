@@ -27,12 +27,12 @@
 ## BUG-106：快照查询计数断言过时导致全量测试失败
 
 - 日期：2026-10-05
-- 状态：待修复
+- 状态：已解决
 - 优先级与可信度：P2；当前全量 Vitest 已失败并定位。
 - 现象：`bounds nested tag and remote destination resolution in snapshots while preserving identities` 期望 36 条查询，实际 48 条，使全量测试以及依赖该检查的发布验证无法通过。
 - 原因：快照增加远端 Read 地址解析后，每个 Remote 同时查询 Push 和 Read 地址；测试仍按每项三条计数。12 个嵌套 Tag 各两条，加 12 个 Remote 各两条，当前应为 48 条。
-- 解决方案：待实施；更新与当前安全读取需求一致的计数预期，保留最多四条并行、对象身份和顺序等有意义的断言，不放宽并发保护。
-- 验证方式：0.47.1 / faf4524；一次全量 Vitest 共 59 文件、538 项，其中 58 文件 / 537 项通过，唯一失败位于 `tests/git-history-scale.test.ts:99`，实际 48、预期 36。代码复核确认各批仍使用最多四条并行的 mapGitQueries。
+- 解决方案：按每个嵌套 Tag 两条读取及每个 Remote 的 Push/Read 地址两条读取更新计数；保留最多四条并行、身份和顺序断言。
+- 验证方式：2026-10-05：定向 git-history-scale 单测 1 文件 / 5 项通过；查询总数为 48，最大并发不超过 4。
 - 相关文件：`tests/git-history-scale.test.ts`、`src/git/service.ts`（Snapshot 的远端地址解析）、`.github/workflows/release.yml`。
 
 ## BUG-105：非 BMP 字符的行内 Diff 高亮拆分代理对
