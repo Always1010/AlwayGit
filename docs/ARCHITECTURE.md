@@ -151,7 +151,7 @@ Tag Push 使用独立的 `tag.push` 动作和完整 `refs/tags/<name>:refs/tags/
 
 Tag 删除绑定打开对话框时捕获的本地与远端原始引用对象 OID（注解 Tag 不使用 peeled Commit OID）。本地删除通过 `update-ref --no-deref -d <ref> <expectedOid>` 原子比较，陈旧或缺失身份拒绝操作；符号引用不递归删除目标。远端删除只在读取地址与唯一 Push 地址一致时开放，提交前同时固定远端 OID 和 Push 地址指纹，并使用显式 `--force-with-lease=<ref>:<oid>` 删除，避免覆盖核对后被他人替换的同名 Tag。组合删除先写远端，成功后再比较删除本地；远端失败时本地保留，远端成功后本地发生竞态则报告部分失败并保留新的本地对象。
 
-远端删除与 Force-with-lease 在确认时固定远端 OID 和 Push 地址指纹；执行使用显式 `--force-with-lease=<ref>:<oid>`，空 OID 表示仅允许仍不存在的目标。后台 Fetch 不更新已确认 OID；地址变化、缺少确认或多个 Push 地址拒绝危险操作。指纹不向 Webview 暴露含凭据的地址。批量删除逐项报告成功与失败，终止未确认立即停止后续操作。
+远端删除与 Force-with-lease 在确认时固定远端 OID 和 Push 地址指纹；执行使用显式 `--force-with-lease=<ref>:<oid>`，空 OID 表示仅允许仍不存在的目标。后台 Fetch 不更新已确认 OID；地址变化、缺少确认或多个 Push 地址拒绝危险操作。核验后捕获唯一地址，使用命令级 `remote.<name>.pushurl` 空值清空列表，再指定已捕获地址，避免后续 pushurl 修改重定向本次操作。临时私有系统配置首先添加整个捕获地址的原样 insteadOf 规则，再包含原系统配置；整个地址的最长匹配及最前位置阻止后续 URL rewrite 重定向，同时保留系统设置、全局和仓库配置、远端名称、upstream 和跟踪引用，不修改持久配置。临时文件随进程结束清理，未确认终止时延迟到进程句柄关闭。发送前以同一覆盖只读解析地址，无法证明固定为唯一捕获地址时停止；[Git 的空值清空列表语义](https://git-scm.com/docs/git-config#Documentation/git-config.txt-remotenamepushurl)要求 Git 2.46 或更新版本。指纹不向 Webview 暴露含凭据的地址。批量删除逐项报告成功与失败，终止未确认立即停止后续操作。
 
 Reset、Merge 和 Rebase 在确认前将目标解析为固定 Commit OID，并绑定对话框打开时显示的当前分支与 HEAD，后台刷新不替换该身份；宿主确认后在共享写队列内再次核对，现场变化时拒绝操作，要求刷新后重新确认。Reset 原生确认显示当前分支、HEAD 与固定目标。外部 Git 仍可能在最后核对后竞争，Git 锁与执行错误继续生效。
 

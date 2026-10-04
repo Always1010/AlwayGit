@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-092：远端目标核验后仍可能向另一仓库执行危险操作
+
+- 日期：2026-10-05
+- 状态：已解决
+- 现象：远端删除或强推核验地址后，其他客户端修改 pushurl，若另一仓库引用 OID 相同，操作可误作用于另一仓库。
+- 原因：核验后仍按可变 remote 名称解析推送地址，Git 的 URL rewrite 规则也可能再次重定向已解析地址。
+- 解决方案：捕获唯一已确认地址，命令级先清空 pushurl 列表再固定该地址；临时私有配置将整个捕获地址的原样重写放在最前，并继续包含原系统配置，阻止后续 insteadOf 改址。保持远端名称、upstream、跟踪引用和系统配置语义，不修改持久配置，进程结束后清理临时文件。只读能力检查无法证明绑定有效时拒绝发送；此能力要求 Git 2.46 或更新版本。
+- 验证方式：远端租约专项 12 项通过，真实双裸仓库覆盖分支删除、强推、Tag 删除发送前修改 pushurl 和 insteadOf，核对 upstream/跟踪引用与系统配置保留；旧 Git 能力不满足时不发送；差异格式检查通过。
+- 相关文件：`src/git/service.ts`、`src/i18n/catalogs/service.json`、`src/i18n/generated.ts`、`tests/git-remote-lease.test.ts`、`docs/ARCHITECTURE.md`、`docs/USER_MANUAL.zh-CN.md`、`docs/USER_MANUAL.en.md`、`package.json`。
+
 ## BUG-091：暂存和取消暂存越过所选文件边界
 
 - 日期：2026-10-05

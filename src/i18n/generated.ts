@@ -3855,6 +3855,10 @@ export const catalog = {
     "en": "Cannot run Git: {{message}}",
     "zh-CN": "无法运行 Git：{{message}}"
   },
+  "service.cannotBindRemoteDestination": {
+    "en": "This Git version cannot safely bind the confirmed push address. Use Git 2.46 or later, refresh and confirm again.",
+    "zh-CN": "当前 Git 无法安全固定已确认的推送地址。请使用 Git 2.46 或更新版本，刷新后重新确认。"
+  },
   "service.discardFilesRemain": {
     "en": "Some confirmed paths still contain changes or could not be deleted (for example, a protected nested repository). Inspect them before retrying:\n{{paths}}",
     "zh-CN": "部分已确认路径仍有更改或未能删除（例如受保护的嵌套仓库）。请检查后重试：\n{{paths}}"
@@ -6810,6 +6814,7 @@ export interface MessageParameters {
   "runner.gitTimedOutCheckCredentialsHooksOrAnotherGit": {  };
   "runner.gitOutputExceededTheConfiguredLimit": {  };
   "runner.cannotRunGit": { message: ParameterValue };
+  "service.cannotBindRemoteDestination": {  };
   "service.discardFilesRemain": { paths: ParameterValue };
   "service.discardAllOperationBlocked": {  };
   "service.discardPlanExpired": {  };

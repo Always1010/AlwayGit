@@ -1,11 +1,14 @@
-import { it, expect, afterEach } from 'vitest';
+import { it, expect, afterEach, vi } from 'vitest';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { gitFixtures, git, commitFile } from './support/git-fixture';
 import { captureRemoteLease, updateRemoteLease } from '../webview/remoteLease';
 import { actionSchema } from '../src/protocol/validation';
+import { GitService } from '../src/git/service';
+import type { GitResult } from '../src/git/runner';
+import type { Repository } from '../src/protocol/types';
 const fixtures = gitFixtures('alwaygit-lease-test-');
-afterEach(fixtures.cleanup);
+afterEach(async () => { vi.restoreAllMocks(); await fixtures.cleanup(); });
 it('deletes only selected remote branches even when push.followTags is enabled', async () => {
   const { root, service, repo } = await fixtures.setup();
   const head = await commitFile(root, 'base.txt', 'base'), bare = path.join(root, 'remote.git');
@@ -76,4 +79,71 @@ it('retains confirmation when editing whitespace or selecting the same normalize
   expect(updateRemoteLease(previous, snapshot, ' origin ', 'main ')).toBe(previous);
   expect(updateRemoteLease(previous, snapshot, 'origin', 'main')).toBe(previous);
   expect(updateRemoteLease(previous, snapshot, 'origin', 'new-branch')).toMatchObject({ remoteBranch: 'new-branch', expectedOid: '', expectedDestination: 'changed' });
+});
+
+it.each((['remote.delete', 'push', 'tag.delete'] as const).flatMap(type => (['pushurl', 'insteadOf'] as const).map(change => ({ type, change }))))('pins the confirmed destination when $change changes immediately before $type sends', async ({ type, change }) => {
+  const { root, service: observer, repo } = await fixtures.setup();
+  const head = await commitFile(root, 'base.txt', 'base'), first = path.join(root, 'first.git'), second = path.join(root, 'second.git');
+  for (const bare of [first, second]) { await mkdir(bare); await git(bare, 'init', '--bare'); }
+  await git(root, 'tag', 'release');
+  for (const bare of [first, second]) await git(root, 'push', bare, 'main', 'refs/tags/release');
+  await git(root, 'remote', 'add', 'origin', first);
+  await git(root, 'config', 'remote.origin.pushurl', first);
+  const snapshot = await observer.snapshot(repo), expectedDestination = snapshot.remoteDestinations!.origin;
+  const desired = type === 'push' ? await commitFile(root, 'next.txt', 'next') : head;
+  let pushes = 0;
+  const service = new GitService({ environment: async (_repo, args) => {
+    if (args[0] === 'push') {
+      pushes++;
+      if (change === 'pushurl') await git(root, 'config', 'remote.origin.pushurl', second);
+      else await git(root, 'config', `url.${second}.insteadOf`, first);
+    }
+    return {};
+  } });
+  if (type === 'remote.delete') await service.execute(repo, { type, remote: 'origin', branches: ['main'], expectedOids: { main: head }, expectedDestination });
+  else if (type === 'push') await service.execute(repo, { type, remote: 'origin', branch: 'main', remoteBranch: 'main', forceWithLease: true, setUpstream: true, expectedOid: head, expectedDestination });
+  else await service.execute(repo, { type, name: 'release', remote: 'origin', expectedRemoteOid: head, expectedDestination });
+  expect(pushes).toBe(1);
+  expect(await git(root, 'config', '--get-all', 'remote.origin.pushurl')).toBe(change === 'pushurl' ? second : first);
+  if (change === 'insteadOf') expect(await git(root, 'config', '--get-all', `url.${second}.insteadOf`)).toBe(first);
+  expect(await git(second, 'rev-parse', 'refs/heads/main')).toBe(head);
+  expect(await git(second, 'rev-parse', 'refs/tags/release')).toBe(head);
+  const selected = type === 'tag.delete' ? 'refs/tags/release' : 'refs/heads/main';
+  expect(await git(first, 'for-each-ref', '--format=%(objectname)', selected)).toBe(type === 'push' ? desired : '');
+  if (type === 'push') {
+    expect(await git(root, 'config', '--get', 'branch.main.remote')).toBe('origin');
+    expect(await git(root, 'config', '--get', 'branch.main.merge')).toBe('refs/heads/main');
+    expect(await git(root, 'rev-parse', 'refs/remotes/origin/main')).toBe(desired);
+  }
+});
+
+it('rejects unsupported pushurl resetting before sending any push', async () => {
+  const { root, service, repo } = await fixtures.setup();
+  const head = await commitFile(root, 'base.txt', 'base'), bare = path.join(root, 'remote.git');
+  await mkdir(bare); await git(bare, 'init', '--bare'); await git(root, 'remote', 'add', 'origin', bare);
+  await git(root, 'push', 'origin', 'main');
+  const snapshot = await service.snapshot(repo);
+  const internal = service as unknown as { run: (repo: Repository, args: string[], allowFailure?: boolean, captureBytes?: number, execution?: { configOverrides?: [string, string][] }) => Promise<GitResult> };
+  const original = internal.run.bind(service);
+  const run = vi.spyOn(internal, 'run').mockImplementation(async (repository, args, allowFailure, captureBytes, execution) => {
+    // Older Git appends the empty value and captured URL instead of clearing previous values.
+    if (args[0] === 'remote' && args[1] === 'get-url' && execution?.configOverrides) return { stdout: Buffer.from(`${bare}\n\n${bare}\n`), stderr: Buffer.alloc(0), code: 0 };
+    return original(repository, args, allowFailure, captureBytes, execution);
+  });
+  await expect(service.execute(repo, { type: 'push', remote: 'origin', branch: 'main', remoteBranch: 'main', forceWithLease: true, expectedOid: head, expectedDestination: snapshot.remoteDestinations!.origin })).rejects.toMatchObject({ code: 'REMOTE_BINDING_UNSUPPORTED' });
+  expect(run.mock.calls.some(([, args]) => args[0] === 'push')).toBe(false);
+  expect(await git(bare, 'rev-parse', 'refs/heads/main')).toBe(head);
+});
+
+it('preserves supplied system configuration while pinning a force Push destination', async () => {
+  const { root, service: observer, repo } = await fixtures.setup();
+  const head = await commitFile(root, 'base.txt', 'base'), bare = path.join(root, 'remote.git'), system = path.join(root, 'system.gitconfig');
+  await mkdir(bare); await git(bare, 'init', '--bare'); await git(root, 'remote', 'add', 'origin', bare);
+  await git(root, 'push', 'origin', 'main');
+  const snapshot = await observer.snapshot(repo);
+  await commitFile(root, 'next.txt', 'next');
+  await git(root, 'config', '--file', system, 'protocol.file.allow', 'never');
+  const service = new GitService({ environment: { GIT_CONFIG_SYSTEM: system, GIT_CONFIG_NOSYSTEM: '0' } });
+  await expect(service.execute(repo, { type: 'push', remote: 'origin', branch: 'main', remoteBranch: 'main', forceWithLease: true, expectedOid: head, expectedDestination: snapshot.remoteDestinations!.origin })).rejects.toMatchObject({ code: 'GIT_FAILED', message: expect.stringContaining("transport 'file' not allowed") });
+  expect(await git(bare, 'rev-parse', 'refs/heads/main')).toBe(head);
 });

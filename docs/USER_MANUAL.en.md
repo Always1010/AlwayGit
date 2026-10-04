@@ -49,7 +49,7 @@ The screenshots mostly show the English interface. Exact button names are retain
 
 ### Requirements
 
-Use VS Code 1.95 or later. Basic features require Git 2.40 or later; saving a Stash of selected files and performing isolated restores with Apply / Pop require Git 2.43 or later. Install AlwayGit from a VSIX package obtained from a source you trust. An existing project must already be a valid Git repository.
+Use VS Code 1.95 or later. Basic features require Git 2.40 or later; saving a Stash of selected files and performing isolated restores with Apply / Pop require Git 2.43 or later; force-with-lease pushes, remote branch deletion and remote Tag deletion require Git 2.46 or later. Install AlwayGit from a VSIX package obtained from a source you trust. An existing project must already be a valid Git repository.
 
 <a id="section-01-02"></a>
 
@@ -971,7 +971,7 @@ The results bar retains the operation name, target, and success or failure statu
 
 ### Environment requirements and support boundaries
 
-Basic functionality requires VS Code 1.95+ and Git 2.40+. Saving selected files in a Stash and isolated restoration with Apply / Pop require Git 2.43+. When using a remote host, also check the Git version on that host.
+Basic functionality requires VS Code 1.95+ and Git 2.40+. Saving selected files in a Stash and isolated restoration with Apply / Pop require Git 2.43+; force-with-lease pushes, remote branch deletion and remote Tag deletion require Git 2.46+. When using a remote host, also check the Git version on that host.
 
 Git runs in the VS Code extension host where the repository resides. The product architecture is designed for local environments, WSL, Remote SSH, and Dev Containers; Git, paths, permissions, and authentication still need to be verified separately in each environment. Git is not executed in untrusted workspaces, and browser-only virtual workspaces are not supported.
 
