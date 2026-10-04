@@ -1000,9 +1000,9 @@ describe('Tag remote queries', () => {
     await store.getState().selectRepository('b');
     expect(store.getState().tagRemote).toBe('origin');
   });
-  it('deduplicates fresh queries and retains the last successful result when a forced check fails', async () => {
+  it('reuses the last successful query regardless of age and retains it when a forced check fails', async () => {
     await store.getState().selectRepository('a'); store.setState({ snapshot: tagSnapshot() });
-    const result = { remote: 'origin', destination: 'read-origin', refs: { 'refs/tags/v1': 'abc' }, separatePush: false, checkedAt: Date.now() };
+    const result = { remote: 'origin', destination: 'read-origin', refs: { 'refs/tags/v1': 'abc' }, separatePush: false, checkedAt: 0 };
     bridge.rpc.mockResolvedValue(result);
     await store.getState().loadTagStatuses(); await store.getState().loadTagStatuses();
     expect(bridge.rpc.mock.calls.filter(([method]) => method === 'remoteTags')).toHaveLength(1);

@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-082：Tag 远端状态在五分钟后被时间自动覆盖
+
+- 日期：2026-10-04
+- 状态：已解决
+- 现象：Tag 与所选远端已经显示“同步”“本地”或“差异”后，即使没有执行任何 Git 或远端操作，五分钟后也会自动变成“待核对 / Recheck”，用户无法继续看到上次成功核对的结果。
+- 原因：实现把远端比较结果与缓存新鲜度合并成同一个状态，并由 15 秒界面计时器把超过五分钟的结果改写为 `stale`；查询失败也会用“未知”覆盖仍然有效的上次成功结果。
+- 解决方案：Tag 状态改为最后一次成功核对的远端快照，时间经过不再改变“同步”“本地”或“差异”；重新核对期间及失败后保留旧结果，在详情中显示上次成功时间、查询进度和失败原因。首次展开、切换远端、明确的网络操作及手动核对仍会查询，普通本地刷新复用已有结果；从未成功核对时才显示“未知”。
+- 验证方式：状态单测覆盖任意旧时间与失败查询仍保留成功结果、旧请求隔离和地址变化；类型与双语资源检查、生产构建通过；本机 Edge 无头 Tag 状态专项验证一天前的结果仍显示原状态，失败后不被“未知”覆盖。未打包或安装扩展。
+- 相关文件：`webview/tagStatus.ts`、`webview/TagRemoteStatus.tsx`、`webview/store.ts`、`webview/styles.css`、`src/i18n/catalogs/tags.json`、`src/i18n/generated.ts`、`tests/git-tag-status.test.ts`、`tests/ui-state.test.ts`、`scripts/test-tag-status-ui.mjs`、`docs/WORKBENCH_SPEC.md`、`docs/USER_MANUAL.zh-CN.md`、`docs/USER_MANUAL.en.md`。
+
 ## BUG-081：Tags 标题创建标签会静默沿用历史选中提交
 
 - 日期：2026-10-04

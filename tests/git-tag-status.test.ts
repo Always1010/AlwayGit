@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { commitFile, git, gitFixtures } from './support/git-fixture';
-import { tagState, tagStatusTtl } from '../webview/tagStatus';
+import { tagState } from '../webview/tagStatus';
 
 const fixtures = gitFixtures('alwaygit-tag-status-');
 afterEach(fixtures.cleanup);
@@ -24,8 +24,8 @@ describe('remote Tag status', () => {
     expect(Object.keys(result.refs)).toEqual(expect.arrayContaining(['refs/tags/light', 'refs/tags/annotated']));
     expect(Object.keys(result.refs).some(ref => ref.endsWith('^{}'))).toBe(false);
     const light = snapshot.refs.find(ref => ref.name === 'light')!;
-    expect(tagState(light, 'origin', { ...query, error: 'offline' })).toBe('unknown');
-    expect(tagState(light, 'origin', query, result.checkedAt + tagStatusTtl)).toBe('stale');
+    expect(tagState(light, 'origin', { ...query, error: 'offline' })).toBe('synced');
+    expect(tagState(light, 'origin', { ...query, result: { ...result, checkedAt: 0 } })).toBe('synced');
     expect(await git(root, 'rev-parse', 'annotated^{}')).toBe(await git(bare, 'rev-parse', 'annotated^{}'));
   });
 

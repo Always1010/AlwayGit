@@ -1,4 +1,4 @@
-import { selectedTagRemote, tagQueryKey, tagStatusTtl, type TagQuery } from './tagStatus';
+import { selectedTagRemote, tagQueryKey, tagQueryRetryDelay, type TagQuery } from './tagStatus';
 import type { RemoteTags } from '../src/protocol/types';
 import { normalizeShortcutOverrides, type ShortcutOverrides } from '../src/protocol/shortcuts';
 import { useDock } from './dock-store';
@@ -123,7 +123,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     const remote = requestedRemote ?? selectedTagRemote(snapshot, get().tagRemote);
     if (!snapshot || !repoId || !remote || !snapshot.remoteReadDestinations?.[remote]) return;
     const key = tagQueryKey(snapshot, remote), previous = get().tagQueries[key];
-    if (!force && previous && (previous.loading || Date.now() - previous.attemptedAt < tagStatusTtl)) return;
+    if (!force && previous && (previous.loading || !!previous.result || Date.now() - previous.attemptedAt < tagQueryRetryDelay)) return;
     tagController?.abort(); const controller = tagController = new AbortController(), sequence = ++tagQuerySequence;
     set(state => ({ tagQueries: { ...Object.fromEntries(Object.entries(state.tagQueries).slice(-31).map(([key, value]) => [key, { ...value, loading: false }])), [key]: { ...previous, requestId: sequence, loading: true, attemptedAt: Date.now(), error: undefined } } }));
     const active = () => sequence === tagQuerySequence && get().repoId === repoId && get().snapshot && tagQueryKey(get().snapshot!, remote) === key;
