@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { commitFile, git, gitFixtures } from './support/git-fixture';
-import { tagState } from '../webview/tagStatus';
+import { tagListEntries, tagState } from '../webview/tagStatus';
 
 const fixtures = gitFixtures('alwaygit-tag-status-');
 afterEach(fixtures.cleanup);
@@ -21,6 +21,12 @@ describe('remote Tag status', () => {
     const query = { result, loading: false, attemptedAt: result.checkedAt };
     const states = Object.fromEntries(snapshot.refs.filter(ref => ref.kind === 'tag').map(ref => [ref.name, tagState(ref, 'origin', query)]));
     expect(states).toEqual({ annotated: 'different', light: 'synced', local: 'local' });
+    const entries = tagListEntries(snapshot.refs.filter(ref => ref.kind === 'tag'), 'origin', { ...query, result: { ...result, refs: { ...result.refs, 'refs/tags/remote-only': 'c'.repeat(40) } } });
+    expect(entries.map(entry => [entry.name, entry.state])).toEqual([
+      ['annotated', 'different'], ['light', 'synced'], ['local', 'local'], ['remote-only', 'remote'],
+    ]);
+    expect(entries.find(entry => entry.name === 'remote-only')?.remoteOid).toBe('c'.repeat(40));
+    expect(entries.find(entry => entry.name === 'remote-only')?.local).toBeUndefined();
     expect(Object.keys(result.refs)).toEqual(expect.arrayContaining(['refs/tags/light', 'refs/tags/annotated']));
     expect(Object.keys(result.refs).some(ref => ref.endsWith('^{}'))).toBe(false);
     const light = snapshot.refs.find(ref => ref.name === 'light')!;
