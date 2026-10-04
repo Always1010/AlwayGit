@@ -5271,10 +5271,6 @@ export const catalog = {
     "en": "Unknown",
     "zh-CN": "未知"
   },
-  "tags.stale": {
-    "en": "Recheck",
-    "zh-CN": "待核对"
-  },
   "tags.noRemote": {
     "en": "No remote",
     "zh-CN": "未配置远端"
@@ -5308,12 +5304,8 @@ export const catalog = {
     "zh-CN": "{{remote}}：尚未核实远端状态"
   },
   "tags.checkedAt": {
-    "en": "Last checked: {{time}}",
-    "zh-CN": "最后核对：{{time}}"
-  },
-  "tags.previous": {
-    "en": "Previous result: {{status}}",
-    "zh-CN": "上次结果：{{status}}"
+    "en": "Last successful check: {{time}}",
+    "zh-CN": "上次成功核对：{{time}}"
   },
   "tags.failed": {
     "en": "Status check failed: {{error}}",
@@ -7096,7 +7088,6 @@ export interface MessageParameters {
   "tags.local": {  };
   "tags.different": {  };
   "tags.unknown": {  };
-  "tags.stale": {  };
   "tags.noRemote": {  };
   "tags.selectRemote": {  };
   "tags.check": {  };
@@ -7106,7 +7097,6 @@ export interface MessageParameters {
   "tags.differentHint": { remote: ParameterValue };
   "tags.unknownHint": { remote: ParameterValue };
   "tags.checkedAt": { time: ParameterValue };
-  "tags.previous": { status: ParameterValue };
   "tags.failed": { error: ParameterValue };
   "tags.separatePush": {  };
   "tags.objects": { local: ParameterValue; remote: ParameterValue };

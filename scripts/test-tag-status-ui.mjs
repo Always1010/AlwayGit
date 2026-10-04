@@ -26,7 +26,7 @@ export async function verifyTagStatus(browser, url) {
           else if (request.method === 'operationSettings') result = { allowDetachedHead: false, pushFollowTags: false, pushTagAfterCreate: false, defaultResetMode: 'mixed', scope: 'workspace' };
           else if (request.method === 'remoteTags') {
             window.__tagFixture.requests++;
-            result = { remote: request.payload.remote, destination: request.payload.expectedDestination, separatePush: request.payload.remote === 'origin', refs: request.payload.remote === 'origin' ? { 'refs/tags/synced': oid, 'refs/tags/different': other } : {}, checkedAt: Date.now() };
+            result = { remote: request.payload.remote, destination: request.payload.expectedDestination, separatePush: request.payload.remote === 'origin', refs: request.payload.remote === 'origin' ? { 'refs/tags/synced': oid, 'refs/tags/different': other } : {}, checkedAt: Date.now() - 24 * 60 * 60_000 };
           }
           const error = request.method === 'remoteTags' && window.__tagFixture.fail ? { message: 'offline', code: 'GIT_FAILED' } : undefined;
           setTimeout(() => window.dispatchEvent(new MessageEvent('message', { data: { type: 'response', id: request.id, result, error } })), 10);
@@ -51,13 +51,14 @@ export async function verifyTagStatus(browser, url) {
     }
     await rows.locator('.tag-status-synced').click();
     const dialog = page.getByRole('dialog', { name: 'synced · Tag remote status' });
-    await dialog.waitFor(); assert.ok((await dialog.innerText()).includes('Last checked:'));
+    await dialog.waitFor(); assert.ok((await dialog.innerText()).includes('Last successful check:'));
     await dialog.getByRole('button', { name: 'Close', exact: true }).click();
     await page.getByRole('combobox', { name: 'Remote to compare local Tags against' }).selectOption('upstream');
     await page.waitForFunction(() => document.querySelectorAll('.tag-row .tag-status-local').length === 3);
     await page.evaluate(() => { window.__tagFixture.fail = true; });
     await page.locator('.tag-remote-controls').getByRole('button', { name: 'Check remote Tag status' }).click();
-    await page.waitForFunction(() => document.querySelectorAll('.tag-row .tag-status-unknown').length === 3);
+    await page.waitForFunction(() => document.querySelector('.tag-row .tag-status')?.getAttribute('title')?.includes('Status check failed: offline'));
+    assert.equal(await page.locator('.tag-row .tag-status-local').count(), 3);
     assert.ok((await rows.locator('.tag-status').first().getAttribute('title')).includes('Status check failed: offline'));
     await page.evaluate(() => { window.__tagFixture.fail = false; });
     await page.locator('.tag-remote-controls').getByRole('button', { name: 'Check remote Tag status' }).click();

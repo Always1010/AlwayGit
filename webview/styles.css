@@ -211,7 +211,7 @@ h1,h2,p {margin:0;}
 .tag-status-compact {min-width:0;padding:0;}
 .tag-status-synced {color:var(--green);}
 .tag-status-different {color:var(--yellow);}
-.tag-status-local,.tag-status-unknown,.tag-status-stale {color:var(--muted);}
+.tag-status-local,.tag-status-unknown {color:var(--muted);}
 .tag-status-details {white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;}
 .tag-remote-controls {display:flex;align-items:center;gap:2px;min-width:0;max-width:110px;font-size:11px;}
 .tag-remote-controls select {min-width:0;max-width:78px;padding:0 2px;height:22px;font-size:11px;}

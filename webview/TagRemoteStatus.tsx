@@ -1,32 +1,23 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useState } from 'react';
 import type { GitRef } from '../src/protocol/types';
 import { Button, Icon, Modal } from './ui';
 import { useWorkbench } from './store';
 import { useTranslation } from './i18n';
 import { selectedTagRemote, tagQueryKey, tagState } from './tagStatus';
 
-const icons = { synced: 'cloud', local: 'device-desktop', different: 'warning', unknown: 'question', stale: 'history' } as const;
-const labels = { synced: 'tags.synced', local: 'tags.local', different: 'tags.different', unknown: 'tags.unknown', stale: 'tags.stale' } as const;
+const icons = { synced: 'cloud', local: 'device-desktop', different: 'warning', unknown: 'question' } as const;
+const labels = { synced: 'tags.synced', local: 'tags.local', different: 'tags.different', unknown: 'tags.unknown' } as const;
 const hints = { synced: 'tags.syncedHint', local: 'tags.localHint', different: 'tags.differentHint' } as const;
-const clockListeners = new Set<() => void>();
-let clock = Date.now(), clockTimer: ReturnType<typeof setInterval> | undefined;
-function subscribeClock(listener: () => void) {
-  clockListeners.add(listener);
-  if (!clockTimer) { clock = Date.now(); clockTimer = setInterval(() => { clock = Date.now(); for (const notify of clockListeners) notify(); }, 15_000); }
-  return () => { clockListeners.delete(listener); if (!clockListeners.size) { clearInterval(clockTimer); clockTimer = undefined; } };
-}
 export function useTagStatus(ref: GitRef) {
-  const t = useTranslation(), now = useSyncExternalStore(subscribeClock, () => clock, () => clock);
+  const t = useTranslation();
   const snapshot = useWorkbench(state => state.snapshot), preferred = useWorkbench(state => state.tagRemote);
   const remote = selectedTagRemote(snapshot, preferred), key = snapshot && remote ? tagQueryKey(snapshot, remote) : undefined;
   const query = useWorkbench(state => key ? state.tagQueries[key] : undefined);
-  const status = tagState(ref, remote, query, Math.max(now, Date.now())), label = t(labels[status]);
+  const status = tagState(ref, remote, query), label = t(labels[status]);
   const result = query?.result, lines = [ref.fullName];
   if (!remote) lines.push(t('tags.noRemote'));
-  else if (status === 'stale' || status === 'unknown') {
-    lines.push(t('tags.unknownHint', { remote }));
-    if (result) lines.push(t('tags.previous', { status: t(labels[tagState(ref, remote, { ...query!, error: undefined }, result.checkedAt)]) }));
-  } else lines.push(t(hints[status], { remote }));
+  else if (status === 'unknown') lines.push(t('tags.unknownHint', { remote }));
+  else lines.push(t(hints[status], { remote }));
   if (result) lines.push(t('tags.checkedAt', { time: new Date(result.checkedAt).toLocaleString() }));
   if (status === 'different' && result) lines.push(t('tags.objects', { local: ref.refOid!.slice(0, 12), remote: result.refs[ref.fullName].slice(0, 12) }));
   if (result?.separatePush) lines.push(t('tags.separatePush'));
