@@ -870,9 +870,50 @@ export class GitService implements GitServiceContract {
         const state=await this.snapshot(repo),current=state.branch,occupied=new Set(state.worktrees.map(tree=>tree.branch?.replace(/^refs\/heads\//,'')).filter(Boolean));
         if(current&&names.includes(current))throw new GitError(localizeMessage("service.theCurrentBranchCannotBeDeleted", { current: (current) }),'INVALID_ARGUMENT');
         const inUse=names.find(name=>occupied.has(name));if(inUse)throw new GitError(localizeMessage("service.branchIsUsedByAWorktree", { inUse: (inUse) }),'WORKTREE_OCCUPIED');
-        for(const name of names){const expected=action.expectedOids?.[name];if(expected&&await this.oid(repo,`refs/heads/${name}`)!==expected)throw new GitError(localizeMessage("service.branchChangedBeforeDeletion", { name: (name) }),'OPERATION_CHANGED');}
+        const expectedOids = new Map<string, string>();
+        for (const name of names) {
+          const oid = await this.oid(repo, `refs/heads/${name}`), expected = action.expectedOids?.[name];
+          if (expected !== undefined && expected !== oid) throw new GitError(localizeMessage("service.branchChangedBeforeDeletion", { name }), 'OPERATION_CHANGED');
+          expectedOids.set(name, oid);
+        }
         const failures:string[]=[];let deleted=0;
-        for(const name of names){try{await this.run(repo,['branch',action.force?'-D':'-d','--',name]);deleted++;}catch(error){failures.push(`${name}: ${error instanceof Error?error.message:String(error)}`);}}
+        for (const name of names) {
+          try {
+            const expected = expectedOids.get(name)!;
+            // The ref transaction compares the old object while holding its lock.
+            // It also deletes the reflog, without touching a symbolic ref's target.
+            const result = await this.run(repo, ['update-ref', '--no-deref', '-d', `refs/heads/${name}`, expected], true, undefined, { beforeSpawn: async () => {
+              const occupied = (await this.worktrees(repo)).find(tree => tree.branch === name);
+              if (occupied) throw new GitError(localizeMessage('service.branchIsUsedByAWorktree', { inUse: name }), 'WORKTREE_OCCUPIED');
+              if (!action.force) {
+                // Match native branch -d: use a valid upstream, otherwise current HEAD.
+                const upstream = await this.text(repo, ['for-each-ref', '--format=%(upstream)', `refs/heads/${name}`]);
+                const upstreamOid = upstream ? await this.run(repo, ['rev-parse', '--verify', `${upstream}^{commit}`], true) : undefined;
+                const mergeTarget = upstreamOid?.code === 0 ? upstreamOid.stdout.toString('utf8').trim() : (await this.status(repo)).head;
+                const merged = mergeTarget ? await this.run(repo, ['merge-base', '--is-ancestor', expected, mergeTarget], true) : undefined;
+                if (!merged || merged.code === 1) throw new GitError(localizeMessage('service.branchNotMerged', { name }), 'BRANCH_NOT_MERGED');
+                if (merged.code) throw new GitError(merged.stderr.toString('utf8').trim(), 'GIT_FAILED');
+              }
+            } });
+            if (result.code) throw new GitError(localizeMessage('service.branchChangedBeforeDeletion', { name }), 'OPERATION_CHANGED', result.stdout.toString('utf8'), result.stderr.toString('utf8'));
+            deleted++;
+            // A newly recreated branch owns its own configuration.
+            const recreated = await this.run(repo, ['show-ref', '--verify', '--quiet', '--', `refs/heads/${name}`], true);
+            if (!recreated.code) continue;
+            if (recreated.code !== 1) throw new GitError(recreated.stderr.toString('utf8').trim(), 'GIT_FAILED');
+            const config = await this.run(repo, ['config', '--remove-section', `branch.${name}`], true);
+            if (config.code) {
+              const pattern = `^branch\\.${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.`;
+              const remaining = await this.run(repo, ['config', '--get-regexp', pattern], true);
+              // Git versions differ in the missing-section exit code. Only
+              // confirmed absence makes failed cleanup harmless.
+              if (remaining.code !== 1) throw new GitError(config.stderr.toString('utf8').trim(), 'GIT_FAILED');
+            }
+          } catch (error) {
+            if (error instanceof GitTerminationError) throw error;
+            failures.push(`${name}: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }
         if(failures.length)throw new GitError(localizeMessage("service.branchEsDeletedFailed", { deleted: (deleted), count: (failures.length), value: (failures.join('\n')) }),'PARTIAL_FAILURE');
         return;
       }
