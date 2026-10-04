@@ -2,6 +2,17 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-096：URL 查询凭据和跨块 stderr 未被完整脱敏
+
+- 日期：2026-10-05
+- 状态：待修复
+- 优先级与可信度：P1；真实 Git 与进程输出最小复现通过。
+- 现象：远端 URL 的 `access_token` 等查询参数原样进入输出日志和 RPC 错误；userinfo URL 在 stderr 管道中跨块输出时，也可能完整泄露到日志。
+- 原因：`redactSecrets` 仅覆盖完整 HTTP(S) userinfo URL 与 Authorization；扩展对每个 stderr 块独立处理，没有保存未完成的 URL 或行。stdout 当前在命令结束后整体输出。
+- 解决方案：待实施；统一覆盖 URL 查询认证参数，并使用有状态的流式脱敏，在结束时处理剩余内容；错误响应、结构化 Push 结果及日志使用一致的机密处理边界。
+- 验证方式：0.47.1 / faf4524；临时仓库 Fetch 带伪造查询令牌的回环 HTTP 404 地址，真实 Git 错误及现有脱敏函数仍包含该令牌。真实 runner 接收分两次写出的 userinfo URL，逐块脱敏后拼接仍含伪造凭据，而整段脱敏正常。未使用真实凭据或外网写入；现有日志测试缺查询参数及跨块用例。
+- 相关文件：`src/application/logging.ts`、`src/extension/extension.ts`、`src/git/runner.ts`、`src/git/service.ts`、`src/git/push-result.ts`、`tests/logging.test.ts`。
+
 ## BUG-095：Stash 核验后序号变化仍可能删除其他存档
 
 - 日期：2026-10-05
