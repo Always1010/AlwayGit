@@ -59,6 +59,7 @@ export async function verifyAppearance(browser, url) {
 
     const workbench = page.getByTestId('workbench'), history = page.getByTestId('history'), details = page.getByTestId('details');
     await Promise.all([workbench.waitFor(), history.locator('[data-oid]').first().waitFor(), details.waitFor()]);
+    assert.equal(await page.locator('html').getAttribute('lang'),'en','The initial document language follows the restored workbench language');
     assert.equal(await workbench.getAttribute('data-theme'), 'light', 'System appearance follows the simulated light VS Code host');
     assert.equal(await workbench.evaluate(element => getComputedStyle(element).backgroundColor), 'rgb(255, 255, 255)', 'Workbench light theme overrides gray host surface tokens');
     const currentIndicator = workbench.locator('[data-worktree-path][aria-current="true"] .current-indicator-glyph');
@@ -282,6 +283,27 @@ export async function verifyAppearance(browser, url) {
         assert.ok(buttonBox.x >= headingBox.x - .5 && buttonBox.x + buttonBox.width <= headingBox.x + headingBox.width + .5, `${label} actions must not overflow a 230px panel`);
       }
     }
+
+    await page.locator('.settings-trigger').click();
+    dialog=page.getByRole('dialog',{name:'Settings',exact:true});settings=page.getByTestId('interface-settings');
+    await settings.getByRole('button',{name:'Language',exact:true}).click();
+    await settings.locator('.settings-page select').selectOption('zh-CN');
+    await page.waitForFunction(()=>document.documentElement.lang==='zh-CN');
+    await dialog.getByRole('button',{name:'应用',exact:true}).click();
+    await dialog.waitFor({state:'hidden'});
+    const tagHeading=page.getByTestId('sidebar').getByRole('button',{name:'标签',exact:true}).locator('..');
+    await tagHeading.getByRole('button',{name:'创建标签…',exact:true}).click();
+    const tagDialog=page.getByRole('dialog',{name:'创建标签',exact:true});await tagDialog.waitFor();
+    assert.equal(await tagDialog.getByLabel('标签名称',{exact:true}).count(),1);
+    assert.equal(await tagDialog.getByLabel('目标提交',{exact:true}).count(),1);
+    assert.equal(await tagDialog.getByLabel('Target Commit',{exact:true}).count(),0,'Chinese action fields do not retain forced English accessible names');
+    await tagDialog.getByRole('button',{name:'取消',exact:true}).click();
+    await page.locator('.toolbar button:has(.codicon-arrow-down)').click();
+    const pullDialog=page.getByRole('dialog',{name:'拉取',exact:true});await pullDialog.waitFor();
+    assert.equal(await pullDialog.getByLabel('远端（可选）',{exact:true}).count(),1,'Shared action fields use the current language for their accessible names');
+    await pullDialog.getByRole('button',{name:'取消',exact:true}).click();
+    await page.reload();await workbench.waitFor();
+    assert.equal(await page.locator('html').getAttribute('lang'),'zh-CN','A saved Chinese session initializes the document language before use');
 
     assert.deepEqual(runtimeErrors, [], 'Appearance flow must not throw page errors');
     assert.deepEqual(consoleErrors, [], 'Appearance flow must not log console errors');
