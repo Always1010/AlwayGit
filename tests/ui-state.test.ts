@@ -21,6 +21,21 @@ beforeEach(async () => {
 });
 afterEach(() => { vi.useRealTimers(); });
 describe('repository UI consistency', () => {
+  it.each([false, true])('rejects a captured action after switching repositories (switch back=$switchBack)', async (switchBack) => {
+    const { captureActionContext } = await import('../webview/store');
+    await store.getState().selectRepository('a');
+    const context = captureActionContext();
+    await store.getState().selectRepository('b');
+    if(switchBack)await store.getState().selectRepository('a');
+    expect(await store.getState().execute({ type: 'push', remote: 'origin', branch: 'main', remoteBranch: 'main' }, context)).toBe(false);
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'action')).toHaveLength(0);
+  });
+  it('executes a valid captured action only in its original repository', async () => {
+    const { captureActionContext } = await import('../webview/store');
+    await store.getState().selectRepository('a');
+    expect(await store.getState().execute({ type: 'fetch' }, captureActionContext())).toBe(true);
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'action')).toEqual([['action', 'a', { type: 'fetch' }]]);
+  });
   it('refreshes working Diff without stealing a terminal tab, but explicit file selection activates Diff', async () => {
     const { useDock } = await import('../webview/dock-store');
     await store.getState().selectRepository('a');

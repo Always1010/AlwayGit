@@ -18,9 +18,11 @@ import { verifyHelp } from './test-help-ui.mjs';
 import { verifyShortcuts } from './test-shortcuts-ui.mjs';
 import { verifyTerminalDock } from './test-terminal-ui.mjs';
 import { verifyTagStatus } from './test-tag-status-ui.mjs';
+import { verifyActionSafety } from './test-action-safety-ui.mjs';
 
 // Full and targeted runs share one registry, so a new suite cannot be omitted from full runs.
 const suites = new Map([
+  ['action-safety', verifyActionSafety],
   ['tag-status', verifyTagStatus],
   ['terminal', verifyTerminalDock],
   ['workbench', verifyWorkbench],
