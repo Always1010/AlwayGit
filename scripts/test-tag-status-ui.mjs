@@ -26,7 +26,7 @@ export async function verifyTagStatus(browser, url) {
           else if (request.method === 'operationSettings') result = { allowDetachedHead: false, pushFollowTags: false, pushTagAfterCreate: false, defaultResetMode: 'mixed', scope: 'workspace' };
           else if (request.method === 'remoteTags') {
             window.__tagFixture.requests++;
-            result = { remote: request.payload.remote, destination: request.payload.expectedDestination, separatePush: request.payload.remote === 'origin', refs: request.payload.remote === 'origin' ? { 'refs/tags/synced': oid, 'refs/tags/different': other } : {}, checkedAt: Date.now() - 24 * 60 * 60_000 };
+            result = { remote: request.payload.remote, destination: request.payload.expectedDestination, separatePush: request.payload.remote === 'origin', refs: request.payload.remote === 'origin' ? { 'refs/tags/synced': oid, 'refs/tags/different': other, 'refs/tags/remote-only': 'c'.repeat(40) } : {}, checkedAt: Date.now() - 24 * 60 * 60_000 };
           }
           const error = request.method === 'remoteTags' && window.__tagFixture.fail ? { message: 'offline', code: 'GIT_FAILED' } : undefined;
           setTimeout(() => window.dispatchEvent(new MessageEvent('message', { data: { type: 'response', id: request.id, result, error } })), 10);
@@ -37,15 +37,17 @@ export async function verifyTagStatus(browser, url) {
     const rows = page.locator('.tag-row');
     await rows.locator('.tag-status').first().waitFor({ timeout: 10_000 });
     await page.waitForFunction(() => document.querySelector('.tag-status-synced'));
-    assert.deepEqual(await rows.locator('.tag-status').allTextContents(), ['Synced', 'Local', 'Differs']);
+    assert.deepEqual(await rows.locator('.tag-status').allTextContents(), ['', '', '', '']);
+    assert.equal(await rows.locator('.tag-status-remote').count(), 1);
+    assert.ok((await rows.locator('.tag-status-remote').getAttribute('title')).includes('exists only on the remote'));
     assert.equal(await page.locator('.ref-badge.tag .tag-status').count(), 3);
     assert.equal(await page.locator('.tag-status-compact.tag-status-synced').count(), 1);
     assert.ok((await rows.locator('.tag-status-synced').getAttribute('title')).includes('Read and push addresses differ'));
     for (const theme of ['paper', 'dark']) {
       await page.getByTestId('workbench').evaluate((element, theme) => element.setAttribute('data-theme', theme), theme);
-      assert.ok(await rows.locator('.tag-status').evaluateAll(elements => elements.every(element => element.getBoundingClientRect().width >= 45 && getComputedStyle(element).display !== 'none')));
+      assert.ok(await rows.locator('.tag-status').evaluateAll(elements => elements.every(element => element.getBoundingClientRect().width >= 22 && element.getBoundingClientRect().width <= 32 && getComputedStyle(element).display !== 'none')));
       const colors = await rows.locator('.tag-status').evaluateAll(elements => elements.map(element => getComputedStyle(element).color));
-      assert.equal(new Set(colors).size, 3, 'Synced, local and differing Tags need distinct theme colors');
+      assert.equal(new Set(colors).size, 4, 'Synced, local, remote-only and differing Tags need distinct theme colors');
       assert.ok(await rows.locator('.tag-status .codicon').evaluateAll(elements => elements.every(element => !['none', 'normal', '""'].includes(getComputedStyle(element, '::before').content))));
       assert.ok(await rows.locator('.tag-status').evaluateAll(elements => elements.every(element => element.getBoundingClientRect().right <= element.closest('[data-testid="sidebar"]').getBoundingClientRect().right + 1)));
     }

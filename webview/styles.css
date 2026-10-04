@@ -206,12 +206,14 @@ h1,h2,p {margin:0;}
 .tag-row {display:flex;align-items:center;min-width:0;}
 .tag-row .tag-name {flex:1;min-width:0;width:auto;}
 .tag-row .tag-name .truncate {flex:1;}
-.tag-status {display:inline-flex;align-items:center;justify-content:flex-end;gap:3px;flex:none;white-space:nowrap;font-size:11px;min-width:53px;padding:2px 4px;}
+.tag-status {display:inline-flex;align-items:center;justify-content:center;flex:none;white-space:nowrap;font-size:11px;min-width:24px;padding:2px 4px;}
 .tag-status .codicon {font-size:13px;}
 .tag-status-compact {min-width:0;padding:0;}
 .tag-status-synced {color:var(--green);}
 .tag-status-different {color:var(--yellow);}
 .tag-status-local,.tag-status-unknown {color:var(--muted);}
+.tag-status-remote {color:var(--accent);}
+.tag-row-remote .tag-name {color:var(--muted);cursor:default;}
 .tag-status-details {white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;}
 .tag-remote-controls {display:flex;align-items:center;gap:2px;min-width:0;max-width:110px;font-size:11px;}
 .tag-remote-controls select {min-width:0;max-width:78px;padding:0 2px;height:22px;font-size:11px;}

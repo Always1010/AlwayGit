@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-083：删除本地 Tag 后无法看见仍存在的远端 Tag
+
+- 日期：2026-10-05
+- 状态：已解决
+- 现象：Tags 只列出本地标签，远端状态又以图标和短文字附着在本地行上；删除本地 Tag 后，即使所选远端仍保留同名 Tag，整行也会消失，容易误以为远端已同步删除，状态文字还占用较多侧栏宽度。
+- 原因：远端查询结果仅用于计算本地 Tag 的状态，没有和本地列表合并；侧栏状态沿用文字按钮，而提交图已经使用纯图标。
+- 解决方案：Tags 改为合并本地与上次成功查询到的远端名称，并增加“仅远端”状态；远端独有对象不伪装成本地引用，不能定位本地历史。侧栏状态统一为项目现有图标，文字移入悬浮、键盘焦点和详情说明。
+- 验证方式：状态单测覆盖本地、同步、差异和仅远端条目的合并与原始对象身份；类型与双语资源检查；Tag 状态无头 UI 专项覆盖纯图标尺寸、四种主题颜色、悬浮说明和远端独有行。
+- 相关文件：`webview/tagStatus.ts`、`webview/TagRemoteStatus.tsx`、`webview/Sidebar.tsx`、`webview/History.tsx`、`webview/styles.css`、`src/i18n/catalogs/tags.json`、`src/i18n/generated.ts`、`tests/git-tag-status.test.ts`、`scripts/test-tag-status-ui.mjs`、`docs/WORKBENCH_SPEC.md`、`docs/USER_MANUAL.zh-CN.md`、`docs/USER_MANUAL.en.md`。
+
 ## BUG-082：Tag 远端状态在五分钟后被时间自动覆盖
 
 - 日期：2026-10-04

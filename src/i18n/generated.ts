@@ -5263,6 +5263,10 @@ export const catalog = {
     "en": "Local",
     "zh-CN": "本地"
   },
+  "tags.remote": {
+    "en": "Remote",
+    "zh-CN": "远端"
+  },
   "tags.different": {
     "en": "Differs",
     "zh-CN": "差异"
@@ -5295,6 +5299,10 @@ export const catalog = {
     "en": "{{remote}}: this Tag is absent from the remote",
     "zh-CN": "{{remote}}：远端没有此标签"
   },
+  "tags.remoteHint": {
+    "en": "{{remote}}: this Tag exists only on the remote",
+    "zh-CN": "{{remote}}：此标签仅存在于远端"
+  },
   "tags.differentHint": {
     "en": "{{remote}}: the same Tag name has a different object",
     "zh-CN": "{{remote}}：同名标签的对象不同"
@@ -5318,6 +5326,10 @@ export const catalog = {
   "tags.objects": {
     "en": "Local: {{local}}\nRemote: {{remote}}",
     "zh-CN": "本地：{{local}}\n远端：{{remote}}"
+  },
+  "tags.remoteObject": {
+    "en": "Remote object: {{oid}}",
+    "zh-CN": "远端对象：{{oid}}"
   },
   "tags.checking": {
     "en": "Checking remote Tags…",
@@ -7086,6 +7098,7 @@ export interface MessageParameters {
   "stash.theStashWasSavedAndRetainedButCleanupDid": { value: ParameterValue };
   "tags.synced": {  };
   "tags.local": {  };
+  "tags.remote": {  };
   "tags.different": {  };
   "tags.unknown": {  };
   "tags.noRemote": {  };
@@ -7094,12 +7107,14 @@ export interface MessageParameters {
   "tags.scope": {  };
   "tags.syncedHint": { remote: ParameterValue };
   "tags.localHint": { remote: ParameterValue };
+  "tags.remoteHint": { remote: ParameterValue };
   "tags.differentHint": { remote: ParameterValue };
   "tags.unknownHint": { remote: ParameterValue };
   "tags.checkedAt": { time: ParameterValue };
   "tags.failed": { error: ParameterValue };
   "tags.separatePush": {  };
   "tags.objects": { local: ParameterValue; remote: ParameterValue };
+  "tags.remoteObject": { oid: ParameterValue };
   "tags.checking": {  };
   "tags.details": {  };
   "tags.commitLegend": {  };
