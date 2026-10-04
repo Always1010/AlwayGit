@@ -54,7 +54,7 @@
 - 现象：例如将 😀 改为 😁，行内变化高亮可能只覆盖零宽的低代理字符，未覆盖实际显示的 emoji；正文字符本身仍可正确显示，不属于内容损坏。
 - 原因：`changedParts` 按 UTF-16 code unit 求公共前后缀，共同高代理进入 prefix，变化的低代理进入 mark；浏览器字形跨节点组合，实际宽度落在 prefix。
 - 解决方案：changedParts 按完整 Unicode 码点比较公共前后缀，保留完整代理对及现有输出结构；差异专项增加 emoji DOM 高亮断言。
-- 验证方式：2026-10-05：workbench-helpers 1 文件 / 7 项通过，😀→😁 返回完整码点分段；DOM 高亮验收将在统一构建后执行。
+- 验证方式：2026-10-05：workbench-helpers 1 文件 / 7 项通过，😀→😁 返回完整码点分段；无头 --diff-only 完整通过，DOM 断言确认高亮节点包含完整 emoji 且具有可见宽度。
 - 相关文件：`webview/diff.ts`（`changedParts`）、`webview/DiffPreview.tsx`（`content`）、`tests/diff-navigation.test.ts`、`tests/workbench-helpers.test.ts`。
 
 ## BUG-104：Escape 关闭浮窗时同时取消后层面板最大化
@@ -65,7 +65,7 @@
 - 现象：最大化底栏后打开设置等浮窗，Escape 关闭浮窗时还会恢复底栏大小；最大化图片 Diff 的全局 Escape 监听存在同类后层处理。
 - 原因：Modal 的 window 键盘监听没有消费 Escape；BottomDock 无条件处理同一事件，图片 Diff 的捕获监听也没有排除模态浮窗。
 - 解决方案：模态窗口只由最上层处理 Escape 并消费事件，busy 状态仍阻断后层；底栏和图片 Diff 的 Escape 监听识别已处理事件与模态/菜单层。
-- 验证方式：2026-10-05：dock-ui、diff-navigation 2 文件 / 11 项通过；终端、图片和 busy 浮窗专项补齐按键分层断言，统一构建后执行无头验收。
+- 验证方式：2026-10-05：dock-ui、diff-navigation 2 文件 / 11 项通过；无头 --terminal-only、--diff-only、--feedback-only 完整通过，验证浮窗关闭保留后层最大化，busy 浮窗消费 Escape。
 - 相关文件：`webview/ui.tsx`、`webview/BottomDock.tsx`、`webview/DiffPreview.tsx`、`scripts/test-terminal-ui.mjs`、`scripts/test-appearance-ui.mjs`。
 
 ## BUG-103：中文界面未同步页面语言和动作字段无障碍名称
@@ -76,7 +76,7 @@
 - 现象：切换简体中文后，页面仍声明英文语言；多个 Git 动作字段虽显示中文标签，其 aria-label 仍强制英文，辅助技术取得的语言与名称与界面不一致。
 - 原因：构建入口固定 `html lang="en"`，宿主保留该标记，语言切换未更新根元素 lang；ActionDialog 字段与 Tag 目标输入直接调用 `translate('en', ...)`，覆盖当前语言的可见标签。
 - 解决方案：App 初始化及语言变化时同步根元素 lang；动作通用字段、分支名和 Tag 目标使用当前翻译提供可访问名称，外观专项增加中文名称和恢复会话语言断言。
-- 验证方式：2026-10-05：i18n、ui-state 2 文件 / 97 项通过；生产构建通过，外观无头专项正在验证页面语言及动作字段。
+- 验证方式：2026-10-05：i18n、ui-state 2 文件 / 97 项通过；生产构建及无头 --appearance-only 完整通过，验证初始英文、切换中文、中文动作字段名称及重载后的页面语言。
 - 相关文件：`webview/index.html`、`webview/i18n.ts`、`webview/App.tsx`、`webview/ActionDialog.tsx`、`src/extension/workbench.ts`、`scripts/test-appearance-ui.mjs`。
 
 ## BUG-102：Tag 推送缺少结构化结果且部分发布摘要不准确
@@ -98,7 +98,7 @@
 - 现象：仓库祖先目录包含 `node_modules`，或查看仓库内已跟踪的同名目录文件时，文件内容再次变化可能不刷新当前 Working Tree Diff，需手动刷新才能恢复。
 - 原因：watcher 用完整 `uri.fsPath` 排除 `node_modules`，可误排整个仓库；补偿轮询只比较状态快照，不包含文件内容，同一 M 或未跟踪状态的再次修改没有指纹变化。
 - 解决方案：工作区 watcher 按仓库相对路径过滤，依赖目录事件经有界批量 Index 查询保留已跟踪路径；补偿轮询定向重验可见 Working Tree 文件，连续同状态修改及冲突内容均可使 Diff 失效。
-- 验证方式：2026-10-05：watcher 9 项及 Workbench 入口 23 项通过；真实 Git/Manager 验证 node_modules 祖先、字面特殊文件名与同状态连续编辑，定向补偿保留历史和 staged 比较。
+- 验证方式：2026-10-05：watcher 9 项及 Workbench 入口 23 项通过；真实 Git/Manager 验证 node_modules 祖先、字面特殊文件名与同状态连续编辑，定向补偿保留历史和 staged 比较；最终生产构建的无头 --refresh-only 完整通过。
 - 相关文件：`src/repositories/manager.ts`、`src/extension/workbench.ts`、`webview/refresh.ts`、`webview/store.ts`、`tests/repository-watch.test.ts`、`scripts/test-refresh-ui.mjs`。
 
 ## BUG-100：面板重叠保存可覆盖其他标签较新的恢复草稿

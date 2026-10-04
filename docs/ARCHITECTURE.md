@@ -16,7 +16,7 @@ AlwayGit 是 Workspace 类型的 VS Code 扩展。每个 React WebviewPanel 提�
 | --- | --- | --- |
 | `src/extension` | `extension.ts`、`workbench.ts`、`workbench-launcher.ts`、`project-windows.ts` | 扩展激活、活动栏入口、面板集合、RPC 路由、VS Code 命令和生命周期 |
 | `src/application` | `confirm.ts`、`credentials.ts`、`window-bridge.ts`、`operation-lock.ts`、`snapshot-coordinator.ts`、`query-coordinator.ts`、`session-persistence.ts` | 操作确认、认证与窗口 IPC、跨宿主写操作租约、查询与保存协调 |
-| `src/git` | `service.ts`、`runner.ts`、`error.ts`、`stash.ts`、`default-branch.ts` | 系统 Git 执行、结构化解析、查询、操作、Stash 隔离及共享仓库队列 |
+| `src/git` | `service.ts`、`runner.ts`、`error.ts`、`stash.ts`、`stash-drop.ts`、`default-branch.ts` | 系统 Git 执行、结构化解析、查询、操作、Stash 隔离与身份核验删除及共享仓库队列 |
 | `src/repositories` | `manager.ts`、`catalog-store.ts`、`discovery.ts` | 仓库注册、递归发现、文件监听和持久化 |
 | `src/editor` | `paths.ts`、`documents.ts` | 安全路径解析、Git 内容文档、只读预览和 VS Code 原生 Diff |
 | `src/protocol` | `types.ts`、`validation.ts`、`session.ts`、`repositories.ts` | 数据模型、RPC 请求响应、运行时校验和仓库展示分组 |
@@ -42,7 +42,7 @@ Git 发现比较 Git 目录与共享目录识别主工作目录；linked 工作�
 
 手动添加目录由 `src/repositories/discovery.ts` 使用异步迭代遍历，仅对有 `.git` 标记的候选目录调用 Git 验证，并在有效仓库处停止深入。仓库与空分组统一从 Webview 内嵌添加浮窗创建，空分组提交经过 Zod 校验的名称给宿主，宿主再次校验同名规则后保存并广播。Webview 只通过原生目录选择器取得扫描根目录；随后用带面板归属的扫描 ID 请求发现，宿主向该面板发布进度，关闭浮窗或取消扫描会使遍历停止。发现结果暂存在宿主且不注册监听或写入状态，Webview 显示按逻辑仓库分组的候选项、已添加状态、问题和目标 Collection；最终提交只携带扫描 ID 与选中键，宿主重新核对缓存结果和 Collection 后才批量去重、注册监听、保存、归组并发布目录变化，不能由 Webview 提交任意磁盘路径。扫描取消或关闭确认列表均不注册。根层与各 Collection 的展示顺序在共享目录快照中保存，条目通过 Collection ID 或规范化的逻辑仓库键标识。宿主重新核对排序源与目标的存在性及同层归属，仅接受相对目标的前后插入；暂不可访问仓库的排序位置保留，显式移除时清理。用户主动添加的路径、排除项、Collection、归属和顺序以扩展 `globalStorageUri/repository-catalog.v1.json` 为权威快照，包含 schema 与 revision。按规范化存储目录的 OS 回环端口短时互斥，在锁内重读、校验并临时文件原子替换；同宿主预备监听、事务与发布使用 FIFO。扫描和兼容 `globalState` 镜像在锁外，镜像失败不反转已提交操作；添加、建组和归组一次提交。未知 schema 或损坏文件保留并报错。窗口桥通知同一隔离域的其他宿主重读权威文件、重新发现路径并释放移除项，过期扫描不能提交。旧 `globalState` 在首次建档时迁移，旧 `workspaceState` 按工作区一次导入并尊重当前排除项。Webview 内嵌确认浮窗只提交已展示的逻辑仓库键，宿主重新核对其存在性和忙碌状态后才移除仓库；移除会释放其监听、删除保存路径和分组归属并保存逻辑仓库排除项，防止工作区或内置 Git 自动发现立即恢复；再次明确添加时解除排除。启动恢复只重新验证已保存路径及 VS Code 提供的仓库，不重复递归扫描分类目录。本地路径不参与 Settings Sync。
 
-同一 commonDir 共用引用计数的 Git 元数据监听；refs 变化广播，HEAD、Index 和操作标记按 gitDir 通知所属 工作树。工作区文件监听仍按目录独立管理，最后一个成员移除才释放公共监听。自动发现与跨窗口同步共用扫描任务，目录或移除状态变化使旧结果失效；后续重新读取当前根目录，避免旧扫描恢复已移除项。
+同一 commonDir 共用引用计数的 Git 元数据监听；refs 变化广播，HEAD、Index 和操作标记按 gitDir 通知所属 工作树。工作区文件监听仍按目录独立管理，按仓库相对路径排除 Git 元数据；node_modules 事件经有界批量 Index 查询保留已跟踪路径，查询失败或范围溢出时保守失效。最后一个成员移除才释放公共监听。自动发现与跨窗口同步共用扫描任务，目录或移除状态变化使旧结果失效；后续重新读取当前根目录，避免旧扫描恢复已移除项。
 
 Status 使用 porcelain v2 与 NUL 分隔，分别保存 Index 和工作区状态。历史查询接受一组完整引用名；输入引用先去重，解析最多并发 4 条；默认引用直接使用 for-each-ref 给出的不可变 Commit ID，仅嵌套 Tag 需要追加解析。首次查询固定 tips，后续分页沿用同一组 tips，避免翻页过程中引用移动造成重复或遗漏；已解析的 tips 经标准输入传入 log/rev-list，避免引用数量突破命令行长度。多个引用的结果使用 Git 可达提交并集，共同祖先只返回一次。图算法的 pending lanes 跨页延续，虚拟列表只渲染可见行。
 
@@ -56,7 +56,7 @@ History、Details（含 Stash 和比较）、Diff 预览按面板与类别替换
 
 后台及 Git 操作后的刷新按已选引用、HEAD 和全部远端引用的 OID 判断是否重读 History；远端引用参与判断以更新推送标记，单纯 Stage/Unstage 不强制重读历史。手动 Refresh 仍重新查询 History。已加载的 Commit 详情按仓库、OID 和所选 Parent 保留，History 查询不重新选择同一个 Commit。Merge Parent 作为可选会话字段保存，兼容既有 version 2 会话。
 
-工作台标签仅在从隐藏变为可见时后台检查当前仓库，保持已有画面、选择、草稿及滚动位置；持续可见时的焦点变化不触发检查。无文件失效通知时，只比较新快照，不重新读取未受影响的 History 或 Diff。隐藏期间的仓库目录变化与当前仓库文件失效范围由宿主合并保存，恢复可见后一次补发；未知范围继续按完整失效处理。仓库列表仅在目录确有变化时重读，已加载列表和仓库的后台读取不进入首次加载状态。
+工作台标签仅在从隐藏变为可见时后台检查当前仓库，保持已有画面、选择、草稿及滚动位置；持续可见时的焦点变化不触发检查。无文件失效通知时，补偿轮询除比较新快照外，还定向重验可见 Working Tree 的已选 dirty 文件，使状态标记未变的再次编辑也能刷新；历史和纯 Staged 比较不参与该补偿。隐藏期间的仓库目录变化与当前仓库文件失效范围由宿主合并保存，恢复可见后一次补发；未知范围继续按完整失效处理。仓库列表仅在目录确有变化时重读，已加载列表和仓库的后台读取不进入首次加载状态。
 
 ## 工作台状态
 
@@ -127,7 +127,7 @@ Diff 的加载依赖比较目标的语义身份。历史比较不依赖 Snapshot
 
 Git 使用参数数组与 `shell: false`，引用和路径额外校验，文件操作使用 literal pathspec。Add/Restore/Rm/Reset 的文件范围以 NUL 分隔经标准输入传递，Commit/Tag 消息用 `--file=-`；消息含 NUL 拒绝执行。Clean 按保守参数预算预先划定全部批次，失败明确报告部分完成；不支持标准输入的超长参数在启动前拒绝，Stash 消息在准备现场前检查。命令执行集中在 `runner.ts`，提供输出限制、超时、AbortSignal 和非交互编辑器。停止时等待 Git 与终止器关闭；5 秒宽限后仍不能确认写进程树停止则显式隔离 commonDir，禁止继续写入。认证资源延迟到已知进程句柄关闭后释放；根进程退出本身不证明全部后代已结束。外部 Git 不受内存队列控制，因此 Git 锁和实际返回结果仍是最终依据。
 
-同一个 `commonDir` 同时只执行一个写操作。单宿主仍使用内存忙碌状态；跨宿主使用隔离临时目录登记与 OS 管理的回环端口存活租约，按规范化共享 Git 目录散列。目录级短时端口互斥串行化登记、恢复与释放；存活持有者不因时间戳陈旧失锁，未知监听器、超时及互斥门不可用时保守拒绝。写入前原子记录运行标记，无法确认终止则持久保留保护。宿主死亡遗留的运行记录需原生确认且锁身份与已知进程检查通过才可解除，本次请求不会重放，用户需重新执行；旧格式登记仅按原超时规则兼容迁移。活动开始与结束通过窗口桥同步给其他宿主，并映射到该 Git 存储下所有已注册 工作树；广播失败只记录，清理始终执行；行动前与轮询核对实际租约，丢失结束通知可恢复。广播只负责界面反馈，租约才是执行互斥边界，外部 Git 仍由 Git 自身锁保护。GitService 在写队列内动态读取宿主提供的 Detached HEAD 策略，显式 Commit/Tag Checkout、Detached Stash 重试及显式或隐式 Detached 工作树 默认拒绝；Stash 创建和实际切换前再次校验，避免配置在预检期间变化。Rebase 内部操作保持原有流程。Checkout 在宿主检查当前分支、未提交修改、未解决冲突和 工作树 占用。远程分支本地化使用完整 `refs/remotes/*` 来源和预期 OID；批量创建在任何写入前验证全部本地名称、upstream、符号引用与层级冲突，单项创建并切换先按固定源 OID 创建引用、设置 upstream，成功后再普通 Checkout；引用或 upstream 失败不进入 Stash 或文件切换，Checkout 受阻保留分支并支持原跟踪动作重试。`Stash Changes & Checkout` 的 Stash 与 Checkout 分别报告结果；若远程分支 Checkout 受阻，重试保留原来源、名称和 OID；若 Stash 成功但 Checkout 失败，保留 Stash，不隐式恢复或删除。Stash 保存与恢复由 `stash.ts` 提供隔离状态支持，恢复的结构化阻塞结果交由 Webview 展示；具体流程见下节。
+同一个 `commonDir` 同时只执行一个写操作。单宿主仍使用内存忙碌状态；跨宿主使用隔离临时目录登记与 OS 管理的回环端口存活租约，按规范化共享 Git 目录散列。目录级短时端口互斥串行化登记、恢复与释放；存活持有者不因时间戳陈旧失锁，未知监听器、超时及互斥门不可用时保守拒绝。写入前原子记录运行标记，无法确认终止则持久保留保护。宿主死亡遗留的运行记录需原生确认且锁身份与已知进程检查通过才可解除，本次请求不会重放，用户需重新执行；旧格式登记仅按原超时规则兼容迁移。活动开始与结束通过窗口桥同步给其他宿主，并映射到该 Git 存储下所有已注册 工作树；广播失败只记录，清理始终执行；行动前与轮询核对实际租约，丢失结束通知可恢复。广播只负责界面反馈，租约才是执行互斥边界，外部 Git 仍由 Git 自身锁保护。GitService 在写队列内动态读取宿主提供的 Detached HEAD 策略，显式 Commit/Tag Checkout、Detached Stash 重试及显式或隐式 Detached 工作树 默认拒绝；Stash 创建和实际切换前再次校验，避免配置在预检期间变化。Rebase 内部操作保持原有流程。Checkout 在宿主检查当前分支、未提交修改、未解决冲突和 工作树 占用。远程分支本地化使用完整 `refs/remotes/*` 来源和预期 OID；批量创建在任何写入前验证全部本地名称、upstream、符号引用与层级冲突，批量创建与单项创建并切换均先按固定源 OID 创建引用，再设置 upstream；upstream 失败时准确报告已保留分支，只有单项创建并切换继续执行普通 Checkout；引用或 upstream 失败不进入 Stash 或文件切换，Checkout 受阻保留分支并支持原跟踪动作重试。`Stash Changes & Checkout` 的 Stash 与 Checkout 分别报告结果；若远程分支 Checkout 受阻，重试保留原来源、名称和 OID；若 Stash 成功但 Checkout 失败，保留 Stash，不隐式恢复或删除。Stash 保存与恢复由 `stash.ts` 提供隔离状态支持，恢复的结构化阻塞结果交由 Webview 展示；具体流程见下节。
 
 ### 所选文件提交
 
@@ -135,19 +135,21 @@ Git 使用参数数组与 `shell: false`，引用和路径额外校验，文件�
 
 ### Stash 保存与隔离恢复
 
+`stash-drop.ts` 在 Git files 后端的 `refs/stash.lock` 与 packed refs 锁内读取 reflog，核对原序号对应的已确认 OID 后重写日志链与引用，避免外部 Git 插入条目后误删。支持非顶部条目、packed refs、共享工作树及 SHA256；reftable 或无法核验的路径与文件类型拒绝删除。发布失败尝试回滚，回滚失败保留恢复副本和锁并显示路径。该流程保证与遵守 Git 引用锁的客户端之间的身份核验，不承诺多文件断电原子性。只读请求作用域在动作入口拒绝写入，包括此处直接文件操作。
+
 `stash.create` 不带 paths 表示全局范围；非空 paths 表示精确所选文件范围，空数组拒绝执行。选中一侧仍以文件为单位保存完整 Index 与 Working Tree，所选未跟踪文件随该范围保存。所选暂存 Tree 以 HEAD 为基线，仅覆盖选中路径；不能直接把整个 Index 当作存档的暂存 parent，否则未选中的暂存修改也会进入存档。清理只作用于所选范围，其他文件状态保持。交互规则由 [工作台规格](WORKBENCH_SPEC.md#working-tree-与-diff) 维护。
 
 恢复先解析固定 Stash OID，检查未跟踪路径占用，再捕获 HEAD、原始 Index 字节、split Index 的共享文件、相关本地文件、有效配置与属性来源。工作区根及相关祖先目录的 `.gitattributes` 独立捕获，不受 ignore 过滤；缺失来源也进入指纹，属性的创建、删除和改动均使旧现场失效，属性链接不跟随。在临时独立 Git 目录中复制原始 Index 和文件内容，以只读 object alternates 读取源仓库对象；副本的 Index、工作树和新对象写入均留在临时目录。隔离命令抑制全局配置、hooks 和外部程序执行，保留受支持的 Git 合并与属性语义。在副本运行 `stash apply --index`，读取冲突或错误；失败返回包含原因、路径、Stash 身份、存档保留及本次未改动真实现场的结构化 blocker。
 
-试恢复成功后重新捕获并比较 fingerprint，覆盖 HEAD、Index、本地文件、配置、属性与 split Index 共享内容；发现变化则停止。随后真实仓库执行 `stash apply --index`；默认保留存档，显式 Pop 仅在 Apply 成功及身份重新校验后 Drop。外部进程仍可能在最后核对后修改现场，正式写入也可能失败，因此预检不提供真实 Apply 的原子回滚保证。临时目录在结束时清理，清理前校验它属于预定系统临时目录。
+试恢复成功后重新捕获并比较 fingerprint，覆盖 HEAD、Index、本地文件、配置、属性与 split Index 共享内容；发现变化则停止。随后真实仓库执行 `stash apply --index`；默认保留存档，显式 Pop 仅在 Apply 成功后调用同一安全删除入口；删除失败明确报告已恢复更改及仍保留的存档，防止重复 Apply。外部进程仍可能在最后核对后修改现场，正式写入也可能失败，因此预检不提供真实 Apply 的原子回滚保证。临时目录在结束时清理，清理前校验它属于预定系统临时目录。
 
 隔离依赖 Git 2.43 或更新版本读取系统/全局属性来源。支持范围按能否准确复现现场判断：sparse checkout、受影响的 gitlink/submodule、活动的外部 filter、自定义 merge driver 或默认外部 merge driver 均拒绝隔离；单文件超过 32 MiB 或本地文件快照累计超过 128 MiB 也拒绝。非普通且无法受支持地复制的文件类型、无法完整复制的占位目录，以及路径父级的符号链接会阻止操作；可完整复制的普通文件与受支持的叶子符号链接按实际状态复制。这些边界限定 AlwayGit 的隔离试验能力，不是 Git Stash 本身的限制；遇到不支持的现场不会退回真实仓库试运行。
 
-Fetch、Pull 和 Push 沿用系统 Git Credential Helper、SSH Agent 和配置。需要输入时，使用每条命令独立的回环 IPC AskPass 桥接到 VS Code 输入框。桥接使用随机令牌；Git 超时、取消或输出超限立即取消输入框，连接关闭也取消对应输入。认证桥资源在进程及终止句柄关闭后释放，终止未确认时继续保留写隔离。Fetch、Pull、Push 默认有 10 分钟宿主命令预算，普通查询默认 60 秒；Webview 的 action 等待宿主结果，不以读请求的 180 秒超时提前报告失败，原生确认等待不消耗 Git 命令预算。凭据不持久化，也不传到 Webview。日志与前端错误隐藏 URL 中的认证信息。
+Fetch、Pull 和 Push 沿用系统 Git Credential Helper、SSH Agent 和配置。需要输入时，使用每条命令独立的回环 IPC AskPass 桥接到 VS Code 输入框。桥接使用随机令牌；Git 超时、取消或输出超限立即取消输入框，连接关闭也取消对应输入。认证桥资源在进程及终止句柄关闭后释放，终止未确认时继续保留写隔离。Fetch、Pull、Push 默认有 10 分钟宿主命令预算，普通查询默认 60 秒；Webview 的 action 等待宿主结果，不以读请求的 180 秒超时提前报告失败，原生确认等待不消耗 Git 命令预算。凭据不持久化，也不传到 Webview。日志与前端错误统一隐藏 URL userinfo、认证查询参数及 Authorization。每条 Git 命令独立进行 UTF-8 流解码，完整行脱敏后才交付日志；末尾残留在结束时处理，超过缓冲上限的行安全省略，跨管道块不输出凭据片段。
 
 Snapshot 为当前分支解析 Push 目标，依次考虑 `branch.<name>.pushRemote`、`remote.pushDefault`、分支 remote、upstream 和唯一远端，并把本地分支、远端分支及 upstream 状态作为结构化数据交给 Webview。Push 对话框提交明确的本地与远端 refspec；远端分支名可以与本地分支名不同。首次建立跟踪时才请求 `--set-upstream`，已有 upstream 的普通 Push 不隐式改变跟踪关系。分支 Push 始终显式选择 `--follow-tags` 或 `--no-follow-tags`，不继承 Git 配置的隐式行为；开启时只附带该分支可达且远端缺少的注解 Tag。
 
-Tag Push 使用独立的 `tag.push` 动作和完整 `refs/tags/<name>:refs/tags/<name>` refspec，可从单个或多选 Tag 菜单进入。对话框绑定打开时捕获的原始 Tag 对象 OID，宿主在任何网络写入前复核全部选择；注解 Tag 不使用 peeled Commit OID。每个 Tag 单独推送并汇总部分失败，显式 `--no-follow-tags` 防止 Git 配置附带未选择的 Tag；远端同名 Tag 不同且未明确提供替换操作时由 Git 拒绝覆盖。Tags 标题的 Create Tag 不继承 HEAD 或历史选择，目标为空且必须显式输入；提交图入口捕获被右键行的 Commit OID 和 Message，并把目标锁定为只读，添加 Remote 后返回仍保留该身份。可编辑目标在提交前解析为完整 Commit OID，避免创建过程中引用移动。Create Tag 可按设置默认值或本次勾选，在本地创建成功后只把新 Tag 推送到所选 Remote；远端推送失败以部分失败报告，本地 Tag 保留，供显式 Tag Push 重试。
+Tag Push 使用独立的 `tag.push` 动作和固定对象的 `<confirmedOid>:refs/tags/<name>` refspec，可从单个或多选 Tag 菜单进入。对话框绑定打开时捕获的原始 Tag 对象 OID，宿主在任何网络写入前复核全部选择；注解 Tag 不使用 peeled Commit OID。每个 Tag 单独推送并汇总部分失败，显式 `--no-follow-tags` 防止 Git 配置附带未选择的 Tag；远端同名 Tag 不同且未明确提供替换操作时由 Git 拒绝覆盖。Tags 标题的 Create Tag 不继承 HEAD 或历史选择，目标为空且必须显式输入；提交图入口捕获被右键行的 Commit OID 和 Message，并把目标锁定为只读，添加 Remote 后返回仍保留该身份。可编辑目标在提交前解析为完整 Commit OID，避免创建过程中引用移动。Create Tag 可按设置默认值或本次勾选，在本地创建成功后只把新 Tag 推送到所选 Remote；远端推送失败以部分失败报告，本地 Tag 保留，供显式 Tag Push 重试。
 
 本地分支删除先捕获确认的 OID，逐项通过 `update-ref --no-deref -d <ref> <expectedOid>` 原子比较删除，避免核验后引用被替换时误删新分支。实际写入前重新检查工作树占用；普通删除以有效 upstream 或当前 HEAD 判断已合并，强制删除仍检查占用。删除后清理原分支配置和 reflog，已重新创建的分支保留配置；批量操作报告部分失败，无法确认进程终止时停止后续写入。
 
