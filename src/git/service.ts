@@ -796,7 +796,7 @@ export class GitService implements GitServiceContract {
         const relatedPaths = (area: 'indexStatus' | 'worktreeStatus') => [...new Set(paths.flatMap(name => { const rename = byPath.get(name); return rename?.[area] === 'R' && rename.originalPath ? [validateFilePath(rename.path), validateFilePath(rename.originalPath)] : [name]; }))];
         if (action.type === 'resolve-and-stage' && paths.some(name => !byPath.get(name)?.conflict)) throw new GitError(localizeMessage("service.theSelectedConflictFilesChangedRefreshAndSelectThem"), 'OPERATION_CHANGED');
         const selected = relatedPaths(action.type === 'unstage' ? 'indexStatus' : 'worktreeStatus');
-        await requireExactFileScope(repo, selected, args => this.run(repo, args), status.head);
+        await requireExactFileScope(repo, selected, args => this.run(repo, args), status.head, new Set(selected));
         if (action.type === 'stage' || action.type === 'resolve-and-stage') args = ['add', '--', ...selected];
         else args = status.head ? ['restore', '--staged', '--source=HEAD', '--', ...selected] : ['rm', '-f', '--cached', '--ignore-unmatch', '--', ...selected];
         break;
@@ -817,7 +817,7 @@ export class GitService implements GitServiceContract {
                 const change = beforeByPath.get(file.path);
                 return change?.originalPath && (change.indexStatus === 'R' || file.area === 'unstaged' && change.worktreeStatus === 'R') ? [file.path, change.originalPath] : [file.path];
               }))];
-              await requireExactFileScope(repo, selectedPaths, args => this.run(repo, args), current.head);
+              await requireExactFileScope(repo, selectedPaths, args => this.run(repo, args), current.head, new Set(files.filter(file => file.area === 'staged').map(file => file.path)));
               this.requireActionContext(action, current);
               if (current.operation.kind || current.changes.some(change => change.conflict) || files.some(file => {
                 const before = beforeByPath.get(file.path), after = afterByPath.get(file.path);

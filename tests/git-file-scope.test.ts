@@ -42,6 +42,36 @@ it.each([
   expect(await git(root, 'stash', 'list')).toBe('');
 });
 
+it('stages, unstages and commits a selected gitlink while preserving unselected staged content', async () => {
+  const { root, repo, service } = await fixtures.setup(), child = await fixtures.setup();
+  await commitFile(child.root, 'child.txt', 'child base');
+  await commitFile(root, 'other.txt', 'other base');
+  await git(root, '-c', 'protocol.file.allow=always', 'submodule', 'add', child.root, 'sub');
+  await git(root, 'commit', '-m', 'submodule');
+  const sub = path.join(root, 'sub');
+  await git(sub, 'config', 'user.name', 'Submodule Test'); await git(sub, 'config', 'user.email', 'sub@example.com');
+  await git(sub, 'config', 'commit.gpgsign', 'false');
+  const next = await commitFile(sub, 'child.txt', 'next child');
+  await writeFile(path.join(root, 'other.txt'), 'unselected staged'); await git(root, 'add', 'other.txt');
+  await service.execute(repo, { type: 'stage', paths: ['sub', 'other.txt'] });
+  expect(await git(root, 'rev-parse', ':sub')).toBe(next);
+  await service.execute(repo, { type: 'unstage', paths: ['sub'] });
+  expect(await git(root, 'rev-parse', ':sub')).not.toBe(next);
+  await service.execute(repo, { type: 'stage', paths: ['sub'] });
+  const snapshot = await service.snapshot(repo);
+  await service.execute(repo, { type: 'commit', message: 'sub only', files: [{ path: 'sub', area: 'staged' }], expectedHead: snapshot.head, expectedBranch: snapshot.branch });
+  expect(await git(root, 'rev-parse', 'HEAD:sub')).toBe(next);
+  expect(await git(root, 'show', 'HEAD:other.txt')).toBe('other base');
+  expect(await git(root, 'show', ':other.txt')).toBe('unselected staged');
+  await commitFile(sub, 'child.txt', 'another child');
+  await expect(service.prepareDiscard(repo, { paths: ['sub'] })).rejects.toMatchObject({ code: 'FILE_SCOPE_CHANGED' });
+  await expect(service.execute(repo, { type: 'stash.create', paths: ['sub'] })).rejects.toMatchObject({ code: 'UNSUPPORTED_STASH_STATE' });
+  const index = await git(root, 'ls-files', '--stage');
+  await rm(path.join(sub, '.git')); await writeFile(path.join(sub, 'unselected.txt'), 'preserve');
+  await expect(service.execute(repo, { type: 'stage', paths: ['sub'] })).rejects.toMatchObject({ code: 'FILE_SCOPE_CHANGED' });
+  expect(await git(root, 'ls-files', '--stage')).toBe(index);
+}, 60000);
+
 it('rejects a confirmed Discard after its selected file becomes a directory', async () => {
   const { root, repo, service } = await fixtures.setup();
   await commitFile(root, 'target', 'base');

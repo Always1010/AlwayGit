@@ -104,12 +104,12 @@
 ## BUG-099：精确文件范围保护误拒绝已跟踪子模块
 
 - 日期：2026-10-05
-- 状态：待修复
+- 状态：已解决
 - 优先级与可信度：P2；真实本地子模块已复现。
 - 现象：已跟踪子模块更新后，Stage、Unstage 和选择性 staged Commit 均报 `FILE_SCOPE_CHANGED`；包含该路径的全量暂存也会受阻，原生 Git 暂存正常。
 - 原因：范围校验一律拒绝非斜杠结尾的磁盘目录，没有区分 Git 模式 `160000` 的 gitlink。gitlink 在 Git 中是精确叶节点，其磁盘形态正常为目录。
-- 解决方案：待实施；读取 Index/HEAD 模式，为相应操作识别并允许已跟踪 gitlink，继续拒绝普通目录替换及未选择的父子条目，避免放宽丢弃和隔离 Stash 的安全边界。
-- 验证方式：0.47.1 / faf4524；使用两个临时本地仓库添加子模块并推进子模块提交，三个扩展操作均拒绝，原生 `git add -- sub` 成功。现有范围测试未包含 gitlink；隔离 Stash 的既有子模块限制不属于本问题。
+- 解决方案：范围校验解析 Index/HEAD 模式，仅对暂存、取消暂存及选择性 staged Commit 允许已跟踪 gitlink；保留父子条目保护，并拒绝失去 Git 元数据的普通目录替换，Discard 和隔离 Stash 保持原安全限制。
+- 验证方式：2026-10-05：file-scope/selected-commit 原定向检查 27 项通过；修正新测试的既有 Stash 错误码预期并增加 gitlink 普通目录替换后，gitlink 定向 1 项通过，验证真实子模块 Stage/Unstage/选择提交及未选中 Index 保留。
 - 相关文件：`src/git/file-scope.ts`、`src/git/service.ts`、`src/git/selected-commit.ts`、`tests/git-file-scope.test.ts`、`tests/selected-commit.test.ts`。
 
 ## BUG-098：批量跟踪分支创建丢失已捕获的起点 OID
