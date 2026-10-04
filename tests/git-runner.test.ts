@@ -108,7 +108,10 @@ describe('Git process termination', () => {
 
   it('isolates later writes across service instances when taskkill fails', async () => {
     const git = processFixture(46), killer = processFixture(47), dispose = vi.fn();
-    vi.mocked(spawn).mockImplementationOnce(() => completedProcess()).mockReturnValueOnce(git as unknown as ChildProcess).mockReturnValueOnce(killer as unknown as ChildProcess);
+    vi.mocked(spawn).mockImplementation(((executable: string, args: readonly string[]) => {
+      if (executable === 'taskkill') return killer;
+      return args.includes('add') ? git : completedProcess();
+    }) as typeof spawn);
     const repo = { id: 'runner-test', name: 'test', root: process.cwd(), commonDir: `${process.cwd()}/runner-quarantine-test` };
     const first = new GitService({ timeoutMs: 100, environment: async () => ({ env: {}, dispose }) });
     const second = new GitService();
@@ -116,16 +119,17 @@ describe('Git process termination', () => {
     const verifySecond = vi.spyOn(second, 'discover').mockResolvedValue(repo);
     const result = first.execute(repo, { type: 'stage', paths: ['a.txt'] }).catch(error => error);
     await vi.advanceTimersByTimeAsync(0);
+    await vi.waitUntil(() => vi.mocked(spawn).mock.calls.some(([, args]) => Array.isArray(args) && args.includes('add')), { interval: 1 });
     await vi.advanceTimersByTimeAsync(100);
     killer.emit('close', 5);
     expect(git.kill).toHaveBeenCalledWith('SIGKILL');
-    expect(dispose).toHaveBeenCalledTimes(1); // Completed status; add still owns its environment.
+    expect(dispose).toHaveBeenCalledTimes(2); // Completed status and file-scope reads; add still owns its environment.
     git.emit('close', 1);
     expect(await result).toMatchObject({ code: 'GIT_TERMINATION_UNCONFIRMED', terminationUnconfirmed: true, pid: 46 });
     await expect(second.execute(repo, { type: 'stage', paths: ['a.txt'] })).rejects.toMatchObject({ terminationUnconfirmed: true });
     expect(verifySecond).not.toHaveBeenCalled();
-    expect(dispose).toHaveBeenCalledTimes(2);
-    expect(spawn).toHaveBeenCalledTimes(3);
+    expect(dispose).toHaveBeenCalledTimes(3);
+    expect(spawn).toHaveBeenCalledTimes(4);
   });
 
   it('preserves write isolation when a batch catches and wraps the termination error', async () => {
@@ -135,15 +139,15 @@ describe('Git process termination', () => {
     vi.spyOn(service, 'snapshot').mockResolvedValue({ repository: repo, branch: 'main', ahead: 0, behind: 0, changes: [], refs: [], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 1 });
     vi.mocked(spawn).mockImplementation(((executable: string, args: readonly string[]) => {
       if (executable === 'taskkill') return killer;
-      return args.includes('-d') ? git : completedProcess();
+      return args.includes('-d') ? git : completedProcess(args.includes('rev-parse') ? 'a'.repeat(40) : '');
     }) as typeof spawn);
-    const result = service.execute(repo, { type: 'branch.delete', names: ['one', 'two'] }).catch(error => error);
+    const result = service.execute(repo, { type: 'branch.delete', names: ['one', 'two'], force: true, expectedOids: { one: 'a'.repeat(40), two: 'a'.repeat(40) } }).catch(error => error);
     await vi.advanceTimersByTimeAsync(100);
     killer.emit('close', 5); git.emit('close', 1);
     expect(await result).toMatchObject({ code: 'GIT_TERMINATION_UNCONFIRMED', terminationUnconfirmed: true, pid: 50 });
     const deletes = vi.mocked(spawn).mock.calls.filter(([, args]) => Array.isArray(args) && args.includes('-d'));
     expect(deletes).toHaveLength(1);
-    expect(deletes[0][1]).toContain('one');
+    expect(deletes[0][1]).toContain('refs/heads/one');
   });
 
   it('cancels a read-only request without isolating subsequent writes', async () => {

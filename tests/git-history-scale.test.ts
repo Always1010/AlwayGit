@@ -38,7 +38,7 @@ it.each(['local', 'remote'] as const)('bounds bulk %s branch validation, dedupli
   let active = 0, maximum = 0, validations = 0;
   const deleted: string[] = [];
   const service = new GitService({ environment: async (_repo, args) => {
-    if (args[0] === 'branch' && args[1] === '-d') deleted.push(args.at(-1)!);
+    if (args[0] === 'update-ref' && args[2] === '-d') deleted.push(args[3].replace('refs/heads/', ''));
     if (args[0] === 'push') deleted.push(args.at(-1)!.replace(':refs/heads/', ''));
     if (args[0] !== 'check-ref-format') return {};
     validations++; active++; maximum = Math.max(maximum, active);

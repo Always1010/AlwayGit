@@ -3855,6 +3855,10 @@ export const catalog = {
     "en": "Cannot run Git: {{message}}",
     "zh-CN": "无法运行 Git：{{message}}"
   },
+  "service.branchNotMerged": {
+    "en": "Branch is not fully merged into its upstream or HEAD: {{name}}. Use force deletion only if you intend to discard it.",
+    "zh-CN": "分支尚未完全合并到其 upstream 或 HEAD：{{name}}。仅在确定丢弃时使用强制删除。"
+  },
   "service.cannotBindRemoteDestination": {
     "en": "This Git version cannot safely bind the confirmed push address. Use Git 2.46 or later, refresh and confirm again.",
     "zh-CN": "当前 Git 无法安全固定已确认的推送地址。请使用 Git 2.46 或更新版本，刷新后重新确认。"
@@ -6814,6 +6818,7 @@ export interface MessageParameters {
   "runner.gitTimedOutCheckCredentialsHooksOrAnotherGit": {  };
   "runner.gitOutputExceededTheConfiguredLimit": {  };
   "runner.cannotRunGit": { message: ParameterValue };
+  "service.branchNotMerged": { name: ParameterValue };
   "service.cannotBindRemoteDestination": {  };
   "service.discardFilesRemain": { paths: ParameterValue };
   "service.discardAllOperationBlocked": {  };

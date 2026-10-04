@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-093：本地分支核验后被替换仍可能遭到删除
+
+- 日期：2026-10-05
+- 状态：已解决
+- 现象：删除前核验 OID 后，外部 Git 修改同名分支，后续按名称删除可能误删新引用；批量删除遇到终止未确认后仍可能继续写入。
+- 原因：OID 校验与 `branch -d/-D` 删除分离，没有在引用锁内比较；批量错误处理未保留进程终止隔离语义。
+- 解决方案：捕获预期 OID，通过 update-ref 原子比较删除；写入前重新核对工作树占用及普通删除的 upstream/HEAD 合并状态，清理 reflog 和分支配置，保留重新创建的分支配置；终止未确认立即停止批量操作。
+- 验证方式：真实 Git 分支删除专项 7 项通过，覆盖普通/强制删除竞态、合并规则、工作树占用及 HEAD 移动；runner 专项 11 项通过，覆盖写入隔离及批量终止；批量顺序和并发范围定向检查通过。
+- 相关文件：`src/git/service.ts`、`src/i18n/catalogs/service.json`、`src/i18n/generated.ts`、`tests/git-branch-delete.test.ts`、`tests/git-runner.test.ts`、`tests/git-history-scale.test.ts`、`docs/ARCHITECTURE.md`。
+
 ## BUG-092：远端目标核验后仍可能向另一仓库执行危险操作
 
 - 日期：2026-10-05
