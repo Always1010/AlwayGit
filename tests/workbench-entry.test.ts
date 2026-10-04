@@ -4,9 +4,10 @@ import { readFileSync } from 'node:fs';
 import { panelSession, statusBarPresentation } from '../src/extension/workbench-entry';
 import { createWorkbenchActivityLauncher } from '../src/extension/workbench-launcher';
 import { Workbench } from '../src/extension/workbench';
-import type { RepositoryChanges } from '../src/protocol/types';
+import type { RepositoryChanges, Snapshot, GitServiceContract } from '../src/protocol/types';
 import type { RepositoryManager } from '../src/repositories/manager';
 import type { SessionState } from '../src/protocol/session';
+import { affectsWorkingDiff } from '../webview/refresh';
 
 vi.mock('vscode', () => {
   class EventEmitter<T> {
@@ -47,6 +48,39 @@ function workbenchFixture(output = { appendLine: vi.fn() }, events?: { changes: 
 }
 
 describe('Workbench entry presentation', () => {
+  it.each([false, true])('revalidates visible Working Tree content with unchanged Git status while retaining historical and staged comparisons (untracked: %s)', async untracked => {
+    const repository = { id: 'fixture', root: '/fixture', commonDir: '/fixture/.git', name: 'Fixture' };
+    const snapshot: Snapshot = { repository, branch: 'main', ahead: 0, behind: 0, version: 1, refs: [], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, changes: [
+      { path: 'a.txt', indexStatus: untracked ? '?' : 'M', worktreeStatus: untracked ? '?' : 'M', untracked, conflict: false },
+      { path: 'staged.txt', indexStatus: 'M', worktreeStatus: ' ', untracked: false, conflict: false },
+      { path: 'conflict.txt', indexStatus: 'U', worktreeStatus: 'U', untracked: false, conflict: true },
+    ] };
+    const workbench = workbenchFixture(undefined, undefined, { list: () => [repository] });
+    const internals = workbench as unknown as { git: GitServiceContract; repositories: { get(): typeof repository }; poll(): Promise<void> };
+    const read = vi.fn(async () => ({ ...snapshot, version: snapshot.version++ }));
+    internals.git.snapshot = read; internals.repositories.get = () => repository;
+    const working = panelFixture(), history = panelFixture(), staged = panelFixture(), hidden = panelFixture();
+    for (const fixture of [working, history, staged, hidden]) {
+      vi.mocked(vscode.window.createWebviewPanel).mockReturnValueOnce(fixture.panel as unknown as vscode.WebviewPanel);
+      await workbench.open('fixture', undefined, true);
+      const tab = fixture === history ? 'history' : 'changes', selectedFile = fixture === staged ? 'staged.txt' : 'a.txt';
+      await fixture.receive({ id: selectedFile, method: 'saveSession', payload: { repoId: 'fixture', views: { fixture: { tab, search: '', selectedFile } } } });
+    }
+    hidden.panel.visible = false;
+    await internals.poll();
+    for (const fixture of [working, history, staged, hidden]) fixture.panel.webview.postMessage.mockClear();
+    await internals.poll();
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(working.panel.webview.postMessage).toHaveBeenCalledOnce();
+    const event = working.panel.webview.postMessage.mock.calls[0][0] as { changes: RepositoryChanges };
+    expect(event.changes).toEqual({ paths: ['a.txt'] });
+    expect(history.panel.webview.postMessage).not.toHaveBeenCalled();
+    expect(staged.panel.webview.postMessage).not.toHaveBeenCalled();
+    expect(hidden.panel.webview.postMessage).not.toHaveBeenCalled();
+    expect(affectsWorkingDiff(snapshot, snapshot, { kind: 'change', area: 'unstaged', path: 'a.txt' }, event.changes)).toBe(true);
+    expect(affectsWorkingDiff(snapshot, snapshot, { kind: 'change', area: 'staged', path: 'a.txt' }, event.changes)).toBe(false);
+    expect(affectsWorkingDiff(snapshot, snapshot, { kind: 'change', area: 'conflict', path: 'conflict.txt' }, { paths: ['conflict.txt'] })).toBe(true);
+  });
   it.each([false, true])('uses the latest successful panel baseline when activation overlaps queued saves (failed first write: %s)', async failed => {
     const output = { appendLine: vi.fn() }, workbench = workbenchFixture(output);
     const baseline: SessionState = { repoId: 'a', drafts: { a: 'old A', b: 'old B' }, views: { a: { search: 'old', tab: 'history' } } };

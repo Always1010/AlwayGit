@@ -82,12 +82,12 @@
 ## BUG-101：完整路径的依赖目录过滤使工作区 Diff 持续陈旧
 
 - 日期：2026-10-05
-- 状态：待修复
+- 状态：已解决
 - 优先级与可信度：P2；真实 Git 与 RepositoryManager 最小复现通过。
 - 现象：仓库祖先目录包含 `node_modules`，或查看仓库内已跟踪的同名目录文件时，文件内容再次变化可能不刷新当前 Working Tree Diff，需手动刷新才能恢复。
 - 原因：watcher 用完整 `uri.fsPath` 排除 `node_modules`，可误排整个仓库；补偿轮询只比较状态快照，不包含文件内容，同一 M 或未跟踪状态的再次修改没有指纹变化。
-- 解决方案：待实施；目录判断限定于仓库相对路径，依赖过滤保留受 Git 管理文件的变化；核对补偿刷新对当前工作区 Diff 的内容失效策略。
-- 验证方式：0.47.1 / faf4524；临时 `node_modules/project` 仓库中连续修改同一文件，真实 Manager watcher 事件通知为零，两次真实快照除 version 外相同；前端失效链路确认空 paths 与相同状态不能触发 Diff 重取。现有 watcher 测试仅断言依赖目录排除，缺同名祖先及已跟踪文件。普通路径 BUG-001 修复不覆盖本条件。
+- 解决方案：工作区 watcher 按仓库相对路径过滤，依赖目录事件经有界批量 Index 查询保留已跟踪路径；补偿轮询定向重验可见 Working Tree 文件，连续同状态修改及冲突内容均可使 Diff 失效。
+- 验证方式：2026-10-05：watcher 9 项及 Workbench 入口 23 项通过；真实 Git/Manager 验证 node_modules 祖先、字面特殊文件名与同状态连续编辑，定向补偿保留历史和 staged 比较。
 - 相关文件：`src/repositories/manager.ts`、`src/extension/workbench.ts`、`webview/refresh.ts`、`webview/store.ts`、`tests/repository-watch.test.ts`、`scripts/test-refresh-ui.mjs`。
 
 ## BUG-100：面板重叠保存可覆盖其他标签较新的恢复草稿

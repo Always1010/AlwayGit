@@ -31,6 +31,9 @@ export class RepositoryManager implements vscode.Disposable {
   private disposed = false;
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly pendingChanges = new Map<string, RepositoryChanges>();
+  private readonly dependencyChanges = new Map<string, { paths: Set<string>; overflow: boolean }>();
+  private readonly dependencyTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly dependencyReads = new Set<string>();
   private readonly changedEmitter = new vscode.EventEmitter<{ repoId: string; changes: RepositoryChanges }>();
   private readonly listEmitter = new vscode.EventEmitter<void>();
   readonly onDidChange = this.changedEmitter.event;
@@ -163,8 +166,11 @@ export class RepositoryManager implements vscode.Disposable {
         const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(base, pattern));
         disposables.push(watcher);
         const notify = (uri: vscode.Uri) => {
-          if (/[\\/](node_modules|\.git)([\\/]|$)/.test(uri.fsPath)) return;
           const relative = path.relative(repo.root, uri.fsPath).replace(/\\/g, '/');
+          if (!relative || relative === '..' || relative.startsWith('../') || path.isAbsolute(relative)) return;
+          const segments = relative.split('/').map(segment => process.platform === 'win32' ? segment.toLowerCase() : segment);
+          if (segments.includes('.git')) return;
+          if (segments.includes('node_modules')) { this.queueDependencyChange(repo, relative); return; }
           this.notify(repo.id, { paths: [relative] });
         };
         for (const event of [watcher.onDidChange, watcher.onDidCreate, watcher.onDidDelete]) disposables.push(event(notify));
@@ -213,6 +219,7 @@ export class RepositoryManager implements vscode.Disposable {
   }
   private unregister(id: string): void {
     clearTimeout(this.timers.get(id)); this.timers.delete(id); this.pendingChanges.delete(id);
+    clearTimeout(this.dependencyTimers.get(id)); this.dependencyTimers.delete(id); this.dependencyChanges.delete(id);
     for (const watcher of this.watchers.get(id) ?? []) watcher.dispose();
     const repo=this.repositories.get(id),key=repo&&pathKey(path.resolve(repo.commonDir)),shared=key&&this.commonWatchers.get(key);
     if(shared){shared.ids.delete(id);if(!shared.ids.size){for(const item of shared.disposables)item.dispose();this.commonWatchers.delete(key!);}}
@@ -388,6 +395,42 @@ export class RepositoryManager implements vscode.Disposable {
       if(!accepted){for(const item of prepared)item.registration.dispose();this.scanDirty=true;continue;}
       if(!this.disposed)this.listEmitter.fire();
     }while(this.scanDirty&&!this.disposed&&vscode.workspace.isTrusted);
+  }
+  private queueDependencyChange(repo: Repository, relative: string): void {
+    const pending = this.dependencyChanges.get(repo.id) ?? { paths: new Set<string>(), overflow: false };
+    // Bound both memory and Windows command arguments under an installation event storm.
+    if (!pending.overflow) {
+      pending.paths.add(relative);
+      if (pending.paths.size > 128 || [...pending.paths].reduce((size, name) => size + name.length * 2 + 3, 0) > 12000) {
+        pending.paths.clear(); pending.overflow = true;
+      }
+    }
+    this.dependencyChanges.set(repo.id, pending);
+    clearTimeout(this.dependencyTimers.get(repo.id));
+    this.dependencyTimers.set(repo.id, setTimeout(() => { void this.flushDependencyChanges(repo); }, 300));
+  }
+  private async flushDependencyChanges(repo: Repository): Promise<void> {
+    this.dependencyTimers.delete(repo.id);
+    if (this.dependencyReads.has(repo.id)) return;
+    const pending = this.dependencyChanges.get(repo.id);
+    if (!pending || this.disposed || this.repositories.get(repo.id) !== repo) return;
+    this.dependencyChanges.delete(repo.id); this.dependencyReads.add(repo.id);
+    try {
+      if (pending.overflow) { this.notify(repo.id); return; }
+      const paths = [...pending.paths];
+      const tracked = this.git.trackedPaths ? await this.git.trackedPaths(repo, paths) : paths;
+      if (this.repositories.get(repo.id) === repo && tracked.length) this.notify(repo.id, { paths: tracked });
+    } catch {
+      // A failed membership read must not leave a tracked file's Diff stale.
+      if (this.repositories.get(repo.id) === repo) this.notify(repo.id, { paths: [...pending.paths] });
+    } finally {
+      this.dependencyReads.delete(repo.id);
+      const current = this.repositories.get(repo.id);
+      if (this.dependencyChanges.has(repo.id) && !this.disposed && current) {
+        clearTimeout(this.dependencyTimers.get(repo.id));
+        this.dependencyTimers.set(repo.id, setTimeout(() => { void this.flushDependencyChanges(current); }, 300));
+      }
+    }
   }
   notify(id: string, changes: RepositoryChanges = {}): void {
     if(this.disposed||!this.repositories.has(id))return;
