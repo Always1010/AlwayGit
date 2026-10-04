@@ -5,12 +5,12 @@
 ## BUG-108：创建 PR 或 MR 的迟到查询覆盖较新的来源
 
 - 日期：2026-10-05
-- 状态：待修复
+- 状态：已解决
 - 优先级与可信度：P2；真实入口函数与受控 RPC 乱序最小复现通过。
 - 现象：同仓库先后发起分支 A、B 的创建 PR/MR 入口，B 结果先到后，A 的迟到结果会将浮窗来源替换为 A；关闭较新浮窗后迟到结果也可重新打开。
 - 原因：showRemoteRequest 等待 remoteLinks 后只核对 repoId，没有请求代次、取消或完整来源身份检查；组件 key 无法阻止旧异步结果写入 Store。
-- 解决方案：待实施；用请求代次或取消控制绑定仓库、分支及来源身份，关闭或切换意图使旧结果失效，再按当前请求初始化浮窗。
-- 验证方式：0.47.1 / faf4524；当前真实 showRemoteRequest 经临时 esbuild 打包，受控 RPC 先启动 A 再启动 B，先完成 B 时状态为 branch-B，随后完成 A 时退回 branch-A。无外网或实际 PR/MR 创建；现有反馈专项仅覆盖单个请求。
+- 解决方案：PR/MR 入口绑定请求代次、仓库切换代次及完整来源身份，关闭使待处理查询失效；迟到成功和失败不再覆盖当前状态，按请求身份重建浮窗字段。
+- 验证方式：2026-10-05：ui-state 1 文件 / 93 项通过；覆盖乱序、关闭、仓库切走再返回、迟到失败和错误仓库调用；无头反馈专项将在统一构建后执行。
 - 相关文件：`webview/RemoteRequestDialog.tsx`、`webview/App.tsx`、`webview/menus.ts`、`webview/PushFeedback.tsx`、`scripts/test-feedback-ui.mjs`。
 
 ## BUG-107：刷新验收夹具缺少 Cherry-pick 检查响应
