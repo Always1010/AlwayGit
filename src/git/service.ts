@@ -744,8 +744,10 @@ export class GitService implements GitServiceContract {
         const byPath = new Map(status.changes.flatMap(change => [[change.path, change] as const, ...(change.originalPath ? [[change.originalPath, change] as const] : [])]));
         const relatedPaths = (area: 'indexStatus' | 'worktreeStatus') => [...new Set(paths.flatMap(name => { const rename = byPath.get(name); return rename?.[area] === 'R' && rename.originalPath ? [validateFilePath(rename.path), validateFilePath(rename.originalPath)] : [name]; }))];
         if (action.type === 'resolve-and-stage' && paths.some(name => !byPath.get(name)?.conflict)) throw new GitError(localizeMessage("service.theSelectedConflictFilesChangedRefreshAndSelectThem"), 'OPERATION_CHANGED');
-        if (action.type === 'stage' || action.type === 'resolve-and-stage') args = ['add', '--', ...relatedPaths('worktreeStatus')];
-        else { const selected = relatedPaths('indexStatus'); args = status.head ? ['restore', '--staged', '--source=HEAD', '--', ...selected] : ['rm', '-f', '--cached', '--ignore-unmatch', '--', ...selected]; }
+        const selected = relatedPaths(action.type === 'unstage' ? 'indexStatus' : 'worktreeStatus');
+        await requireExactFileScope(repo, selected, args => this.run(repo, args), status.head);
+        if (action.type === 'stage' || action.type === 'resolve-and-stage') args = ['add', '--', ...selected];
+        else args = status.head ? ['restore', '--staged', '--source=HEAD', '--', ...selected] : ['rm', '-f', '--cached', '--ignore-unmatch', '--', ...selected];
         break;
       }
       case 'commit': {
