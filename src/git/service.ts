@@ -22,6 +22,7 @@ export { GitError } from './error';
 import { createSelectedStash, preflightStash, StashStateError, type StashExecution } from './stash';
 import { commitSelected } from './selected-commit';
 import { safeWorkingPath } from '../editor/paths';
+import { requireExactFileScope } from './file-scope';
 
 export interface GitServiceOptions {
   allowDetachedHead?: () => boolean;
@@ -451,6 +452,7 @@ export class GitService implements GitServiceContract {
     const status = await this.status(repo), changes = this.discardChanges(status, request);
     if (request.scope === 'all') await this.requireDiscardAllAvailable(repo, status);
     const paths = [...new Set(changes.flatMap(change => [validateFilePath(change.path), ...(change.originalPath && (request.scope === 'all' && change.indexStatus === 'R' || change.worktreeStatus === 'R') ? [validateFilePath(change.originalPath)] : [])]))];
+    await requireExactFileScope(repo, paths, args => this.run(repo, args), status.head);
     const untracked = changes.filter(change => change.untracked).length;
     const plan: DiscardPlan = { token: randomUUID(), scope: request.scope === 'all' ? 'all' : 'unstaged', paths, tracked: paths.length - untracked, untracked, staged: changes.filter(change => !change.untracked && change.indexStatus !== ' ').length, branch: status.branch, ...(status.head ? { head: status.head } : {}) };
     const fingerprint = await this.discardFingerprint(repo, status, changes);
@@ -463,6 +465,7 @@ export class GitService implements GitServiceContract {
     const entry = this.discards.get(token);
     if (!entry || entry.root !== normalized(repo.root) || entry.expires < Date.now()) throw new GitError(localizeMessage('service.discardPlanExpired'), 'DISCARD_CHANGED');
     const status = await this.status(repo), changes = this.discardChanges(status, entry.request);
+    await requireExactFileScope(repo, entry.plan.paths, args => this.run(repo, args), status.head);
     if (entry.plan.scope === 'all') await this.requireDiscardAllAvailable(repo, status);
     if (await this.discardFingerprint(repo, status, changes) !== entry.fingerprint) throw new GitError(localizeMessage('service.discardPlanChanged'), 'DISCARD_CHANGED');
     return { plan: entry.plan, status };
@@ -704,6 +707,7 @@ export class GitService implements GitServiceContract {
       ...(untracked.size > destinations.length ? splitCleanArguments(await this.gitPath(), prefix, ['clean', '-f', '--', ...[...untracked].filter(name => !destinationSet.has(name))]) : []),
     ];
     const total = tracked.length + untracked.size; let completed = 0, indexCleared = false;
+    await requireExactFileScope(repo, [...new Set([...tracked, ...untracked])], args => this.run(repo, args), status.head);
     if (action.planToken) this.discards.delete(action.planToken);
     try {
       onProgress?.({ completed, total, phase: 'restoring' });
@@ -756,6 +760,11 @@ export class GitService implements GitServiceContract {
           await commitSelected((args, execution) => this.run(repo, args, false, undefined, execution), files, snapshot.changes, snapshot.head,
             ['commit', ...(action.amend ? ['--amend'] : []), '-m', action.message], async () => {
               const current = await this.snapshot(repo), afterByPath = new Map(current.changes.map(change => [change.path, change]));
+              const selectedPaths = [...new Set(files.flatMap(file => {
+                const change = beforeByPath.get(file.path);
+                return change?.originalPath && (change.indexStatus === 'R' || file.area === 'unstaged' && change.worktreeStatus === 'R') ? [file.path, change.originalPath] : [file.path];
+              }))];
+              await requireExactFileScope(repo, selectedPaths, args => this.run(repo, args), current.head);
               this.requireActionContext(action, current);
               if (current.operation.kind || current.changes.some(change => change.conflict) || files.some(file => {
                 const before = beforeByPath.get(file.path), after = afterByPath.get(file.path);

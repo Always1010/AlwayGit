@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-084：选择性文件操作越过同名目录边界
+
+- 日期：2026-10-05
+- 状态：已解决
+- 现象：选中的已跟踪文件被同名目录替换后，选择性 Commit 会包含未选子文件，Stash 和 Discard 可能清理未选子文件，包括忽略文件。
+- 原因：Git 的 literal pathspec 仍匹配后代路径；临时 Index 投影、restore 和 clean 将文件路径当作目录范围，没有复核 HEAD、Index 与磁盘的文件边界。
+- 解决方案：共享精确文件范围检查，拒绝同名目录和会替换未选 HEAD/Index 父子文件的操作；Commit 写入前、Discard 确认与执行、Stash 保存与清理前均复核。保存后检查失败保留 Stash，不执行清理；复用父目录检查并限制并发，避免大批量操作退化。显式的嵌套仓库目录仍由 Git clean 的原有保护处理。
+- 验证方式：真实 Git 回归覆盖三种操作、已暂存和未暂存子文件、忽略文件、确认后替换以及未选父文件；原选择性 Commit、Stash、Discard 测试及万文件专项；类型与双语资源检查。
+- 相关文件：`src/git/file-scope.ts`、`src/git/service.ts`、`src/git/stash.ts`、`src/i18n/catalogs/paths.json`、`src/i18n/generated.ts`、`tests/git-file-scope.test.ts`、`docs/WORKBENCH_SPEC.md`。
+
 ## BUG-083：删除本地 Tag 后无法看见仍存在的远端 Tag
 
 - 日期：2026-10-05

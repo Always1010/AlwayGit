@@ -3455,6 +3455,10 @@ export const catalog = {
     "en": "More colors for histories with many concurrent paths.",
     "zh-CN": "更多颜色，适合同时存在较多路径的历史。"
   },
+  "paths.selectedFileScopeBlocked": {
+    "en": "Cannot safely operate on the selected file {{path}}: a directory or an unselected parent/child file occupies its path. Move the conflicting path, then refresh and select the files again.",
+    "zh-CN": "无法安全操作选中的文件 {{path}}：其路径被目录或未选中的父子文件占据。请先移开冲突路径，再刷新并重新选择文件。"
+  },
   "paths.invalidRepositoryRelativeFilePath": {
     "en": "Invalid repository-relative file path.",
     "zh-CN": "无效的仓库相对文件路径。"
@@ -6706,6 +6710,7 @@ export interface MessageParameters {
   "palettes.aSmallerSetWithStrongerHueSeparation": {  };
   "palettes.extended16Colors": {  };
   "palettes.moreColorsForHistoriesWithManyConcurrentPaths": {  };
+  "paths.selectedFileScopeBlocked": { path: ParameterValue };
   "paths.invalidRepositoryRelativeFilePath": {  };
   "paths.filePathIsOutsideTheRepository": {  };
   "paths.fileResolvesOutsideTheRepository": {  };
