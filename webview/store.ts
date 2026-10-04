@@ -450,7 +450,11 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
           set({ operationReview: { repoId, action, review } });
         }
       } catch (error) { if (epoch === repositoryEpoch) { get().report(error); await get().refresh({ background: true }); } }
-      finally { executingRepositories.delete(repoId); if (epoch === repositoryEpoch) set({ busy: hostBusyRepositories.has(repoId), activity: '' }); }
+      finally {
+        // Results require the original view epoch; releasing this repository's lock does not.
+        executingRepositories.delete(repoId);
+        if (get().repoId === repoId) set({ busy: hostBusyRepositories.has(repoId), activity: hostBusyRepositories.has(repoId) ? get().activity : '' });
+      }
       return false;
     }
     set({ operationReview: undefined });
