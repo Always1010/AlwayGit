@@ -1,0 +1,102 @@
+name: Release repository statistics
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Published stable release tag
+        required: true
+        type: string
+      release_run_id:
+        description: Original tag-triggered Release VSIX run containing the test summary
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published stable release tag (vMAJOR.MINOR.PATCH)
+        required: true
+        type: string
+      release_run_id:
+        description: Original Release VSIX run ID; retained test summary required
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    name: Analyze published tag and deploy Pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: repository-statistics-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Validate requested tag and release run ID
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_RUN_ID: ${{ inputs.release_run_id }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+          [[ "$RELEASE_RUN_ID" =~ ^[0-9]+$ ]]
+
+      - name: Check out exact release tag
+        uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Download original release test summary
+        uses: actions/download-artifact@v8
+        with:
+          name: release-test-summary-${{ inputs.tag }}
+          path: artifacts/release-statistics-input
+          run-id: ${{ inputs.release_run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Generate statistics from tagged snapshot and original test results
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_RUN_ID: ${{ inputs.release_run_id }}
+        run: |
+          node scripts/repository-stats.mjs generate \
+            --tag "$RELEASE_TAG" \
+            --repository "$GITHUB_REPOSITORY" \
+            --run-id "$RELEASE_RUN_ID" \
+            --summary artifacts/release-statistics-input/release-test-summary.json \
+            --output artifacts/repository-statistics-site
+
+      - name: Read Pages configuration
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Verify published release and prevent older-version replacement
+        id: guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PAGES_BASE_URL: ${{ steps.pages.outputs.base_url }}
+        run: node scripts/repository-stats-deploy.mjs artifacts/repository-statistics-site/repository-stats.json "$PAGES_BASE_URL"
+
+      - name: Upload generated Pages site
+        if: steps.guard.outputs.deploy == 'true'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: artifacts/repository-statistics-site
+
+      - name: Deploy statistics to Pages
+        if: steps.guard.outputs.deploy == 'true'
+        id: deployment
+        uses: actions/deploy-pages@v4
