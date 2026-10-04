@@ -5431,6 +5431,10 @@ export const catalog = {
     "en": "Push, {{unpushed}} unpushed commits",
     "zh-CN": "推送，{{unpushed}} 个未推送提交"
   },
+  "workbench.pullIncomingCommits": {
+    "en": "Pull, {{behind}} incoming commits",
+    "zh-CN": "拉取，{{behind}} 个待拉取提交"
+  },
   "workbench.pushRequiresALocalBranch": {
     "en": "Push requires a local branch.",
     "zh-CN": "推送要求当前位于本地分支。"
@@ -7012,6 +7016,7 @@ export interface MessageParameters {
   "workbench.restoreLayout": {  };
   "workbench.helpGuide": {  };
   "workbench.pushUnpushedCommits": { unpushed: ParameterValue };
+  "workbench.pullIncomingCommits": { behind: ParameterValue };
   "workbench.pushRequiresALocalBranch": {  };
   "workbench.addARemoteBeforePush": {  };
   "workbench.refreshCurrentRepositoryStatusAndHistory": {  };

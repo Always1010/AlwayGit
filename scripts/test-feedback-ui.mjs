@@ -11,7 +11,7 @@ export async function verifyFeedback(browser, url) {
       const commit = { oid: 'a'.repeat(40), parents: [], author: 'Fixture', email: 'test@example.com', timestamp: 0, subject: 'Test operations' };
       const fixture = window.__feedbackFixture = {
         pending: undefined, calls: [], cleanReview: false,
-        snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 1, behind: 0, pushTarget: { localBranch: 'main', remote: 'origin', remoteBranch: 'release', configured: true }, remotes: ['origin'], changes: [], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
+        snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 1, behind: 2, pushTarget: { localBranch: 'main', remote: 'origin', remoteBranch: 'release', configured: true }, remotes: ['origin'], changes: [], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
         complete(error, publication) { window.postMessage({ type: 'response', id: this.pending.id, result: error ? undefined : publication ? {snapshot:structuredClone({...this.snapshot,version:++this.snapshot.version}),result:publication} : structuredClone({ ...this.snapshot, version: ++this.snapshot.version }), error: error ? { message: error } : undefined }, '*'); this.pending = undefined; },
       };
       window.acquireVsCodeApi = () => ({ getState: () => ({}), setState: () => {}, postMessage(request) {
@@ -31,6 +31,13 @@ export async function verifyFeedback(browser, url) {
     });
     await page.goto(url);
     await page.getByRole('option', { name: 'Feedback fixture' }).dblclick();
+    const toolbar=page.locator('.toolbar'),pull=toolbar.getByRole('button',{name:'Pull, 2 incoming commits',exact:true}),pushButton=toolbar.getByRole('button',{name:'Push, 1 unpushed commits',exact:true});
+    assert.equal((await pull.innerText()).trim(),'Pull','Pull keeps the count out of its visible label');
+    assert.equal((await pushButton.innerText()).trim(),'Push','Push keeps the count out of its visible label');
+    assert.equal(await pull.locator('.toolbar-notification-dot').count(),1,'Pull shows the shared notification dot');
+    assert.equal(await pushButton.locator('.toolbar-notification-dot').count(),1,'Push shows the shared notification dot');
+    assert.match(await pull.getAttribute('title'),/2 incoming commits/,'Pull keeps the count in its tooltip');
+    assert.match(await pushButton.getAttribute('title'),/1 unpushed commits/,'Push keeps the count in its tooltip');
     const bar = page.getByTestId('action-feedback');
     await page.evaluate(()=>{
       const fixture=window.__feedbackFixture;
