@@ -46,4 +46,16 @@ describe('Hosting links and Push results', () => {
     expect(result.destinations[1].refs[0].url).toBeUndefined();
     expect(parsePushResult('','authentication failed',128).outcome).toBe('error');
   });
+  it('preserves successful Push results and later valid links after a malformed remote compare URL', () => {
+    const stdout='To git@github.com:acme/repo.git\n*\trefs/heads/topic:refs/heads/feature/x\t[new branch]';
+    const malformed='remote: https://github.com/acme/repo/compare/%';
+    const result=parsePushResult(stdout,malformed,0);
+    expect(result.outcome).toBe('success');
+    expect(result.destinations[0].refs[0]).toMatchObject({name:'feature/x',status:'published',url:'https://github.com/acme/repo/tree/feature%2Fx'});
+    expect(result.destinations[0].refs[0].requestUrl).toBeUndefined();
+    const valid='https://github.com/acme/repo/compare/main...feature%2Fx?expand=1';
+    const withValid=parsePushResult(stdout,`${malformed}\nremote: ${valid}`,0);
+    expect(withValid.outcome).toBe('success');
+    expect(withValid.destinations[0].refs[0]).toMatchObject({status:'published',requestKind:'create',requestUrl:valid});
+  });
 });

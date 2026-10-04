@@ -61,7 +61,9 @@ export function remoteRequestUrl(output: string, repository: HostingRepository, 
     const route = url.pathname.slice(repo.pathname.length);
     if (allowExisting && (repository.provider === 'github' && /^\/pull\/\d+$/.test(route) || repository.provider !== 'github' && /^\/-\/merge_requests\/\d+$/.test(route))) return value;
     if (repository.provider === 'github' && route.startsWith('/compare/')) {
-      const compare = decodeURIComponent(route.slice('/compare/'.length));
+      let compare: string;
+      try { compare = decodeURIComponent(route.slice('/compare/'.length)); }
+      catch { continue; }
       if (compare === branch || compare.endsWith(`...${branch}`)) return value;
     }
     if (repository.provider !== 'github' && route === '/-/merge_requests/new' && url.searchParams.get('merge_request[source_branch]') === branch) return value;
