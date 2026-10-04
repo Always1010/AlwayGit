@@ -2,6 +2,17 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-100：面板重叠保存可覆盖其他标签较新的恢复草稿
+
+- 日期：2026-10-05
+- 状态：待修复
+- 优先级与可信度：P2；真实 Workbench 无界面最小复现通过。
+- 现象：面板 A 的保存尚未完成时，B 保存同仓库较新的草稿；A 再次激活并同步未再次编辑的旧内容，最终恢复基线仍会回退 B 的新草稿或视图。
+- 原因：`saveSessionBaseline` 在串行任务入队前捕获 `source.savedSession`；同一面板重复入队会使用旧成功基线，把没有再次编辑的字段误判为新改动。
+- 解决方案：待实施；在串行保存任务实际执行时读取最新面板成功基线，并让成功基线推进与写入顺序一致。
+- 验证方式：0.47.1 / faf4524；延迟 A 首次持久化，依次排队 B 的新草稿与 A 的激活同步，释放后同仓库草稿退回 A 的旧值、另一仓库 B 的新值保留。使用真实 Workbench、受控 VS Code Memento；现有测试未覆盖同面板保存与激活同步重叠。BUG-047 的常规旧标签保护仍有效。
+- 相关文件：`src/extension/workbench.ts`、`src/application/session-persistence.ts`、`tests/session-persistence.test.ts`、`tests/workbench-entry.test.ts`。
+
 ## BUG-099：精确文件范围保护误拒绝已跟踪子模块
 
 - 日期：2026-10-05
