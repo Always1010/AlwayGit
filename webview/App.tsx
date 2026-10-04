@@ -61,7 +61,7 @@ export function App() {
   useEffect(()=>{setCommitRepoId(undefined);},[state.repoId]);
   const closeMenu=useCallback(()=>setContext(undefined),[]);
   const host=useCallback(async(method:RpcRequest['method'],payload?:unknown,repoId?:string)=>{
-    const current=useWorkbench.getState();try{await rpc(method,repoId??current.repoId,payload);if(demoMode&&method!=='copyText')useWorkbench.setState({notice:translate(current.language, "workbench.demoNativeVSCodeCommandPreview")});if(method==='copyText')useWorkbench.setState({notice:translate(current.language, "workbench.copied")});}catch(error){current.report(error);}
+    const current=useWorkbench.getState();try{await rpc(method,repoId??current.repoId,payload);if(demoMode&&method!=='copyText')useWorkbench.setState({notice:translate(current.language, "workbench.demoNativeVSCodeCommandPreview")});}catch(error){current.report(error);}
   },[]);
   const addRepository=useCallback(async()=>{if(useWorkbench.getState().catalogState!=='ready')return;setContext(undefined);setRepositoryDialog(true);},[]);
   const open=useCallback((request:DialogRequest)=>{setContext(undefined);useWorkbench.setState({error:undefined,checkoutFailure:undefined,stashApplyFailure:undefined});setDialog(request);},[]);
