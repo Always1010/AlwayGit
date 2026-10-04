@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-086：删除远端分支隐式推送未选注解标签
+
+- 日期：2026-10-05
+- 状态：已解决
+- 现象：开启 `push.followTags` 时，删除远端分支会同时把本地未选中的注解 Tag 推送到远端。
+- 原因：分支删除使用 Push refspec，但未显式关闭 follow-tags，继承了用户 Git 配置。
+- 解决方案：每项远端分支删除显式传入 `--no-follow-tags`，保持原有目标地址、完整分支 refspec、force-with-lease 和部分失败保护。
+- 验证方式：真实裸仓库测试开启 follow-tags、创建未推送的可达注解 Tag，批量删除两个分支后核对全部远端引用和本地 Tag 不变；远端 lease 测试与类型检查。
+- 相关文件：`src/git/service.ts`、`tests/git-remote-lease.test.ts`、`docs/WORKBENCH_SPEC.md`。
+
 ## BUG-085：保存默认配置后旧动作跨仓库执行
 
 - 日期：2026-10-05

@@ -6,6 +6,20 @@ import { captureRemoteLease, updateRemoteLease } from '../webview/remoteLease';
 import { actionSchema } from '../src/protocol/validation';
 const fixtures = gitFixtures('alwaygit-lease-test-');
 afterEach(fixtures.cleanup);
+it('deletes only selected remote branches even when push.followTags is enabled', async () => {
+  const { root, service, repo } = await fixtures.setup();
+  const head = await commitFile(root, 'base.txt', 'base'), bare = path.join(root, 'remote.git');
+  await mkdir(bare); await git(bare, 'init', '--bare'); await git(root, 'remote', 'add', 'origin', bare);
+  await git(root, 'push', 'origin', 'main', 'HEAD:refs/heads/first', 'HEAD:refs/heads/second');
+  // The tag is reachable from a retained remote branch, but has never been selected or pushed.
+  await git(root, '-c', 'tag.gpgsign=false', 'tag', '-a', 'private-release', '-m', 'private annotation');
+  await git(root, 'config', 'push.followTags', 'true');
+  const localTag = await git(root, 'rev-parse', 'refs/tags/private-release');
+  const snapshot = await service.snapshot(repo);
+  await service.execute(repo, { type: 'remote.delete', remote: 'origin', branches: ['first', 'second'], expectedOids: { first: head, second: head }, expectedDestination: snapshot.remoteDestinations!.origin });
+  expect(await git(bare, 'for-each-ref', '--format=%(refname):%(objectname)')).toBe(`refs/heads/main:${head}`);
+  expect(await git(root, 'rev-parse', 'refs/tags/private-release')).toBe(localTag);
+});
 it('protects a remotely advanced branch without fetching while reporting partial batch deletion', async () => {
   const { root, service, repo } = await fixtures.setup();
   await commitFile(root, 'base.txt', 'base');
