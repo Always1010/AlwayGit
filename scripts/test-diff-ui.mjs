@@ -187,13 +187,15 @@ async function verifyImagePreview(browser, url) {
 
 async function addDiffFixture(page, diffNavigationScope) {
     await page.addInitScript(scope => {
+      const preferences=JSON.parse(localStorage.getItem('alwaygit.diff-fixture-preferences')||'null')??(scope?{diffNavigationScope:scope}:{});
+      window.__ALWAYGIT_PREFERENCES__=preferences;
       const repo = { id: 'diff', root: '/diff', commonDir: '/diff/.git', name: 'Diff fixture' };
       const commit = { oid: 'a'.repeat(40), parents: ['b'.repeat(40), 'c'.repeat(40)], author: 'Fixture', email: 'test@example.com', timestamp: 0, subject: 'Diff navigation' };
       const lines = Array.from({ length: 130 }, (_, i) => `context line ${i}`);
       lines[26] = 'emoji 😀 stays';
       lines[81] = 'left long ' + '0123456789'.repeat(120);
       const right = lines.map((line, i) => [26, 27, 28, 40, 41, 42, 80, 81, 82].includes(i) ? i === 26 ? 'emoji 😁 stays' : i === 81 ? 'right long ' + 'abcdefghij'.repeat(120) : `changed line ${i}` : line);
-      const fixture = window.__diffFixture = { commit, calls: [], previews: [], failPath: null, holdPath: null, held: [], emptyFiles: false, left: lines.join('\n'), right: right.join('\n'), truncated: false,
+      const fixture = window.__diffFixture = { commit, calls: [], previews: [], failPath: null, holdPath: null, held: [], emptyFiles: false, left: lines.join('\n'), right: right.join('\n'), truncated: false, preferences,
         snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 0, behind: 0, changes: [{ path: 'diff.txt', indexStatus: ' ', worktreeStatus: 'M', conflict: false, untracked: false }], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
         emit() { window.postMessage({ type: 'changed', repoId: repo.id, changes: { paths: ['diff.txt'] } }, '*'); },
       };
@@ -201,6 +203,8 @@ async function addDiffFixture(page, diffNavigationScope) {
         if (request.method === 'saveSession') { setTimeout(() => window.postMessage({ type: 'response', id: request.id, result: null }, '*'), 0); return; }
         fixture.calls.push(request.method);
         let result;
+        if(request.method==='interfaceSettings')result=structuredClone(fixture.preferences);
+        if(request.method==='saveInterfaceSettings'){fixture.preferences={...fixture.preferences,...request.payload};localStorage.setItem('alwaygit.diff-fixture-preferences',JSON.stringify(fixture.preferences));window.__ALWAYGIT_PREFERENCES__=fixture.preferences;result=structuredClone(fixture.preferences);}
         if (request.method === 'repositories') result = [repo];
         if (request.method === 'snapshot') result = structuredClone({ ...fixture.snapshot, version: ++fixture.snapshot.version });
         if (request.method === 'history') result = { commits: [commit], tips: [commit.oid], nextOffset: 1, hasMore: false };

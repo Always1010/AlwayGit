@@ -2,6 +2,17 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-109：界面验收夹具未对齐应用级偏好存储
+
+- 日期：2026-10-05
+- 状态：已解决
+- 优先级与可信度：P2；当前无头 Diff、Appearance 专项失败并定位，修正夹具后完整通过。
+- 现象：Diff 专项要求当前文件导航，却被空应用级偏好覆盖为 Commit 导航；Appearance 专项把应用后的主题、字号和密度继续从旧面板会话读取，造成错误断言。
+- 原因：界面设置拆分为应用级偏好后，受控宿主仍只提供面板会话初值或断言旧会话字段，未对齐 interfaceSettings/saveInterfaceSettings 与权威持久化位置。
+- 解决方案：Diff 夹具注入应用级初值并实现设置读写、跨重载持久化；Appearance 验收等待设置应用完成，按应用级偏好检查主题、字号与密度，继续用会话检查布局、草稿和未应用预览。
+- 验证方式：2026-10-05：同一生产构建的无头 --diff-only（三阶段）与 --appearance-only 完整通过；保留导航、预览、取消、应用和重载断言。
+- 相关文件：`scripts/test-diff-ui.mjs`、`scripts/test-appearance-ui.mjs`、`webview/session-persistence.ts`、`src/protocol/interface-settings.ts`。
+
 ## BUG-108：创建 PR 或 MR 的迟到查询覆盖较新的来源
 
 - 日期：2026-10-05
