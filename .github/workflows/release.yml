@@ -88,7 +88,28 @@ jobs:
         run: npm run typecheck
 
       - name: Run unit tests
-        run: npm test
+        run: npm test -- --reporter=default --reporter=json --outputFile=artifacts/vitest-release.json
+
+      - name: Summarize the same release test run
+        id: test_summary
+        continue-on-error: true
+        run: |
+          node scripts/repository-stats.mjs summarize-tests \
+            --tag "$GITHUB_REF_NAME" \
+            --repository "$GITHUB_REPOSITORY" \
+            --run-id "$GITHUB_RUN_ID" \
+            --report artifacts/vitest-release.json \
+            --output artifacts/release-test-summary.json
+
+      - name: Retain release test summary for statistics and deployment recovery
+        if: steps.test_summary.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-test-summary-${{ github.ref_name }}
+          path: artifacts/release-test-summary.json
+          if-no-files-found: error
+          retention-days: 90
 
       - name: Package VSIX
         run: node scripts/package.mjs
@@ -177,3 +198,16 @@ jobs:
             --verify-tag \
             --generate-notes \
             --title "AlwayGit $VERSION"
+
+  statistics:
+    name: Publish release repository statistics
+    needs: publish
+    permissions:
+      contents: read
+      actions: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/repository-stats.yml
+    with:
+      tag: ${{ github.ref_name }}
+      release_run_id: ${{ github.run_id }}

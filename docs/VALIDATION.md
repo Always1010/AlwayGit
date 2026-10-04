@@ -141,6 +141,30 @@ git push origin v0.40.0
 
 必须先让发布工作流进入 Tag 指向的 Commit，再推送 Tag；历史 Tag 不会因后来加入工作流而自动补发。已发布的 Tag 和 Release 不复用、不覆盖；发现问题时修复并递增版本重新发布。GitHub Release 提供可下载的 VSIX，但不等同于发布到 VS Code Marketplace，也不会让 VS Code 自动获取更新。
 
+## 发布版本代码分析
+
+README 的图卡和 [完整统计页](https://always1010.github.io/AlwayGit/) 展示最新成功发布的稳定版本，版本与 Commit 直接取自对应 Tag。普通分支推送、PR 和本地编辑不更新图卡；只在推送 `vMAJOR.MINOR.PATCH` Tag、现有 Release 校验与发布成功之后，调用 `.github/workflows/repository-stats.yml` 分析该 Tag 并部署 GitHub Pages。首次部署前 README 图片不可用。
+
+统计口径：
+
+- 文件总数与文件类型来自 `git ls-tree` 读取的 Tag 快照，包括源码、测试、脚本、配置、锁文件、文档、图片与生成代码；不会扫描 Runner 上安装的依赖、构建产物或未跟踪文件。后缀统一小写，无后缀文件单列，`.gitignore` 等点文件以文件名分类。当前不支持含子模块的统计，遇到子模块会停止并要求确定口径。
+- 语言占比按自有源码字节数计算，包含源码、测试和维护脚本；`.ts/.tsx` 合并为 TypeScript，`.js/.jsx/.mjs/.cjs` 合并为 JavaScript，另外识别 CSS、HTML、PowerShell 和 Shell。JSON、Markdown、SVG 等只计入文件分析。声明文件、`src/i18n/generated.ts`、`generated/`、`.generated.*`、压缩代码，以及已识别的依赖、第三方与构建目录不参与语言占比；符号链接不作为源码。该规则不保证与 GitHub Linguist 完全一致。
+- 测试数量复用 Release 中同一次 `npm test` 的 Vitest JSON 报告，逐项统计测试用例，参数化测试按展开结果计数，`describe` 分组不计数。图卡显示总数、通过、跳过与待实现数量，不代表测试覆盖率，也不包括未在 Release 中执行的桌面/UI 测试。原始报告和内部路径不会发布到 Pages。
+
+首次启用需要仓库管理员完成 GitHub 设置：
+
+1. 免费账号使用公开仓库；进入 **Settings → Pages → Build and deployment → Source**，选择 **GitHub Actions**。无需自定义域名、服务器或生成文件分支。
+2. 在 **Settings → Environments → github-pages** 核对部署规则。使用 **Selected branches and tags** 时，分别允许发布 Tag `v*` 和默认分支 `main`；后者用于从默认分支手动恢复。核对仓库允许工作流运行所用的官方 Actions。
+3. 先将本功能合入主干，再推送新的发布 Tag。已有 Pages 站点应先合并部署内容，本工作流上传的是完整统计站点，不能与其他工作流各自覆盖同一 Pages 站点。
+
+`scripts/repository-stats.mjs` 生成 `repository-stats.svg`、包含全部文件类型的 `index.html` 及汇总数据 `repository-stats.json`。图卡只显示前八种文件类型并汇总其余类型。生成文件位于忽略目录 `artifacts/`，通过 `upload-pages-artifact` / `deploy-pages` 部署，不执行 Git commit 或 push，不使用 `gh-pages` 分支。首次配置所需的脚本、工作流和 README 引用是正常项目提交，后续生成结果不进入 Git。
+
+统计部署使用仓库/Actions 只读及 Pages/OIDC 发布权限，不使用代码写入权限。部署任务统一串行，发布前检查原始 Release run 的工作流、提交及报告身份，再检查已发布稳定版本与 Pages 当前版本；低版本不会覆盖高版本。图卡统计或 Pages 失败不撤回已创建的 Release，上一版已部署图卡继续可用；Actions 中可查看失败原因。Pages 发布及 GitHub 图片缓存会带来显示延迟，图卡版本是统计对象的依据。
+
+Release 会把已通过的测试计数、Tag、Commit、仓库和 run ID 保存为 `release-test-summary-<Tag>` Artifact，申请保留 90 天（以仓库允许的实际保留期为准）。统计恢复不重新运行测试或打包：在 **Actions → Release repository statistics → Run workflow** 中选择默认分支，填写 `tag` 和原始 **Release VSIX** 的 `release_run_id`（运行详情网址 `/actions/runs/<ID>` 中的数字）。恢复仅适用于包含本功能且已成功发布的稳定 Tag；必须仍能下载原始统计 Artifact，过期或被删除时明确失败，不用重跑结果冒充原始发布测试。失败的统计任务也可直接重跑；不要为图卡失败重跑整个 Release 创建流程。
+
+本功能定向检查：`npx vitest run tests/repository-stats.test.ts`。覆盖 Tag 快照隔离、语言/类型口径、运行用例计数、报告与版本身份绑定、输出转义，以及原始发布验证和低版本覆盖保护。生成数据与报告不得提交。
+
 ## 验证证据与覆盖边界
 
 下表保留不同版本实际执行过的检查范围，不把旧版本结果视为当前版本的全量验证。问题级回归摘要见 [问题日志](ISSUES.md)。

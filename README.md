@@ -2,6 +2,10 @@
 
 AlwayGit 是运行在 VS Code 编辑器区域中的 Git 图形化工作台。它把仓库与引用导航、提交图、提交详情、工作区状态和只读 Diff 放在同一界面中；文本文件可继续使用 VS Code 原生编辑器，图片和其他二进制文件仅在工作台中预览。
 
+[![发布版本代码分析：语言占比、文件类型与数量、Vitest 测试用例](https://always1010.github.io/AlwayGit/repository-stats.svg)](https://always1010.github.io/AlwayGit/)
+
+图卡标明对应的发布 Tag，仅在稳定版本 Release 成功后更新；首次 Pages 部署前图片暂不可用。[统计口径、Pages 设置与恢复方式](docs/VALIDATION.md#发布版本代码分析)。
+
 ## 安装与启动
 
 运行环境为 VS Code 1.95 或更新版本、Git 2.40 或更新版本。源码构建使用 Node.js 24 和 npm。
