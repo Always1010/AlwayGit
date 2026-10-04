@@ -86,7 +86,11 @@ export async function verifyFiles(browser, url) {
     const menu = page.getByTestId('context-menu');
     await menu.waitFor();
     assert.deepEqual((await menu.getByRole('menuitem').allTextContents()).map(value=>value.trim()), ['Open Diff in VS Code','Edit in VS Code','Copy Path']);
-    await page.keyboard.press('Escape');
+    await menu.getByRole('menuitem', { name: 'Copy Path', exact: true }).click();
+    await page.waitForFunction(() => window.__filesFixture.calls.filter(call => call.method === 'copyText').length === 3);
+    assert.equal(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'copyText').at(-1).payload.text), 'README.md');
+    await page.waitForTimeout(50);
+    assert.equal(await page.locator('.banner.notice').count(), 0, 'Successful copy actions must not create a global notice');
     const workingNode = page.getByTestId('history').locator('[data-working-tree]');
     await workingNode.click({ button: 'right' });
     assert.deepEqual((await menu.getByRole('menuitem').allTextContents()).map(value => value.trim()), ['Stage All', 'Unstage All', 'Stash All Changes…', 'Discard All Unstaged Changes…', 'Discard All Changes…']);

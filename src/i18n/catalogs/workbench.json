@@ -299,12 +299,6 @@
     "review": "translated",
     "context": "webview/App.tsx / App / host"
   },
-  "workbench.copied": {
-    "en": "Copied.",
-    "zh-CN": "已复制。",
-    "review": "translated",
-    "context": "webview/App.tsx / App / host"
-  },
   "workbench.demoEditInVSCode": {
     "en": "Demo: edit in VS Code.",
     "zh-CN": "模拟：在 VS Code 中编辑。",

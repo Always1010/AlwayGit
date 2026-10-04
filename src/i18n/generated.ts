@@ -5763,10 +5763,6 @@ export const catalog = {
     "en": "Demo: native VS Code command preview.",
     "zh-CN": "模拟原生 VS Code 操作；未修改实际文件。"
   },
-  "workbench.copied": {
-    "en": "Copied.",
-    "zh-CN": "已复制。"
-  },
   "workbench.demoEditInVSCode": {
     "en": "Demo: edit in VS Code.",
     "zh-CN": "模拟：在 VS Code 中编辑。"
@@ -7295,7 +7291,6 @@ export interface MessageParameters {
   "workbench.branchWasCreatedAndRetainedYouHaveNotSwitched": { target: ParameterValue };
   "workbench.viewAffectedFiles": {  };
   "workbench.demoNativeVSCodeCommandPreview": {  };
-  "workbench.copied": {  };
   "workbench.demoEditInVSCode": {  };
   "workbench.detached": {  };
   "workbench.detachedHEAD": {  };
