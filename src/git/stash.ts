@@ -4,6 +4,7 @@ import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, readlink, rm, symlink,
 import os from 'node:os';
 import path from 'node:path';
 import type { Change, OperationState, Repository, StashApplyBlocker } from '../protocol/types';
+import { requireExactFileScope } from './file-scope';
 
 export interface StashExecution { root?: string; env?: NodeJS.ProcessEnv; config?: Record<string, string>; input?: Buffer; silent?: boolean; isolated?: boolean; allowFailure?: boolean }
 type Result = { stdout: Buffer; stderr: Buffer; code: number };
@@ -202,7 +203,9 @@ export async function createSelectedStash(repo: Repository, selected: string[], 
   for (const change of changes) if (change.originalPath && (names.has(change.path) || names.has(change.originalPath))) { names.add(change.path); names.add(change.originalPath); }
   const scope = [...names].sort();
   await checkAttributes([...new Set([...changes.filter(change => !change.untracked).map(change => change.path), ...scope])], run);
-  const before = await capture(repo, scope, run), sandbox = await makeSandbox(repo, before, run);
+  const before = await capture(repo, scope, run);
+  await requireExactFileScope(repo, scope, run, before.head);
+  const sandbox = await makeSandbox(repo, before, run);
   let saved = false;
   try {
     const full = changes.some(change => !change.untracked) ? await text(sandbox.git, ['stash', 'create']) : '';
@@ -229,6 +232,7 @@ export async function createSelectedStash(repo: Repository, selected: string[], 
     const headEntries = treeEntries((await run(['ls-tree', '-r', '-z', before.head])).stdout);
     const indexNames = new Set(indexPaths((await run(['ls-files', '--stage', '-z'])).stdout));
     const tracked = scope.filter(name => headEntries.has(name) || indexNames.has(name));
+    await requireExactFileScope(repo, scope, run, before.head);
     if (tracked.length) await run(['restore', `--source=${before.head}`, '--staged', '--worktree', '--', ...tracked]);
     const removable = untracked.filter(name => !headEntries.has(name));
     if (removable.length) await run(['clean', '-f', '--', ...removable]);

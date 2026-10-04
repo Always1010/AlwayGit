@@ -1,4 +1,10 @@
 {
+  "paths.selectedFileScopeBlocked": {
+    "en": "Cannot safely operate on the selected file {{path}}: a directory or an unselected parent/child file occupies its path. Move the conflicting path, then refresh and select the files again.",
+    "zh-CN": "无法安全操作选中的文件 {{path}}：其路径被目录或未选中的父子文件占据。请先移开冲突路径，再刷新并重新选择文件。",
+    "review": "translated",
+    "context": "src/git/file-scope.ts / requireExactFileScope"
+  },
   "paths.invalidRepositoryRelativeFilePath": {
     "en": "Invalid repository-relative file path.",
     "zh-CN": "无效的仓库相对文件路径。",
