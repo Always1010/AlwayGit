@@ -2,6 +2,17 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-104：Escape 关闭浮窗时同时取消后层面板最大化
+
+- 日期：2026-10-05
+- 状态：待修复
+- 优先级与可信度：P2；Edge 无头界面已复现。
+- 现象：最大化底栏后打开设置等浮窗，Escape 关闭浮窗时还会恢复底栏大小；最大化图片 Diff 的全局 Escape 监听存在同类后层处理。
+- 原因：Modal 的 window 键盘监听没有消费 Escape；BottomDock 无条件处理同一事件，图片 Diff 的捕获监听也没有排除模态浮窗。
+- 解决方案：待实施；模态浮窗优先消费 Escape，后层布局监听识别模态状态及已处理事件，统一保证一次按键只关闭当前交互层。
+- 验证方式：0.47.1 / faf4524；当前构建 Demo 中最大化底栏，用逗号快捷键打开设置，Escape 后浮窗关闭且 `dock-maximized` 从 true 变为 false。现有终端专项验证了菜单关闭保留最大化，未覆盖 Modal；图片 Diff 链路由代码核对，未单独执行界面复现。
+- 相关文件：`webview/ui.tsx`、`webview/BottomDock.tsx`、`webview/DiffPreview.tsx`、`scripts/test-terminal-ui.mjs`、`scripts/test-appearance-ui.mjs`。
+
 ## BUG-103：中文界面未同步页面语言和动作字段无障碍名称
 
 - 日期：2026-10-05
