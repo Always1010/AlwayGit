@@ -3583,17 +3583,9 @@ export const catalog = {
     "en": "Group name",
     "zh-CN": "分组名称"
   },
-  "repositoriesDialog.chooseOneFolderAlwayGitRecursivelyFindsGitRepositoriesBelow": {
-    "en": "Choose one folder. AlwayGit recursively finds Git repositories below it, then adds only the repositories you confirm.",
-    "zh-CN": "选择一个文件夹。AlwayGit 会递归查找其中的 Git 仓库，并且只添加你确认的项目。"
-  },
   "repositoriesDialog.chooseAnotherFolderOrScanThisFolderAgain": {
     "en": "Choose another folder or scan this folder again.",
     "zh-CN": "可以选择其他文件夹，或者重新扫描当前文件夹。"
-  },
-  "repositoriesDialog.noFolderSelected": {
-    "en": "No folder selected",
-    "zh-CN": "尚未选择文件夹"
   },
   "repositoriesDialog.scanningForGitRepositories": {
     "en": "Scanning for Git repositories…",
@@ -3635,10 +3627,6 @@ export const catalog = {
     "en": "Already added",
     "zh-CN": "已添加"
   },
-  "repositoriesDialog.available": {
-    "en": "Available",
-    "zh-CN": "可添加"
-  },
   "repositoriesDialog.noRepositoriesMatchThisFilter": {
     "en": "No repositories match this filter.",
     "zh-CN": "没有匹配当前筛选条件的仓库。"
@@ -3660,8 +3648,8 @@ export const catalog = {
     "zh-CN": "添加到"
   },
   "repositoriesDialog.repositoryRoot": {
-    "en": "Repository root",
-    "zh-CN": "仓库根层"
+    "en": "Ungrouped",
+    "zh-CN": "不分组"
   },
   "repositoriesDialog.useExistingGroup": {
     "en": "Use Existing Group",
@@ -3678,6 +3666,26 @@ export const catalog = {
   "repositoriesDialog.scan": {
     "en": "scan-{{value}}-{{request}}",
     "zh-CN": "scan-{{value}}-{{request}}"
+  },
+  "repositoriesDialog.chooseRepositoryFolder": {
+    "en": "Choose a folder containing repositories",
+    "zh-CN": "选择仓库所在文件夹"
+  },
+  "repositoriesDialog.folderChoiceHint": {
+    "en": "Choose a repository folder, or a folder containing multiple repositories.",
+    "zh-CN": "可选择一个仓库，或包含多个仓库的目录。"
+  },
+  "repositoriesDialog.scanConfirmationHint": {
+    "en": "AlwayGit scans subfolders. You confirm which repositories to add.",
+    "zh-CN": "AlwayGit 会扫描子目录，再由你确认要添加哪些仓库。"
+  },
+  "repositoriesDialog.groupNameExample": {
+    "en": "e.g. Work projects, Personal projects",
+    "zh-CN": "例如：工作项目、个人项目"
+  },
+  "repositoriesDialog.createGroupAndAddHint": {
+    "en": "Create the group and add the selected repositories in one step.",
+    "zh-CN": "创建分组，并将选中的仓库加入其中。"
   },
   "repositoriesRemove.removed1RepositoryFromAlwayGit": {
     "en": "Removed 1 repository from AlwayGit.",
@@ -6554,9 +6562,7 @@ export interface MessageParameters {
   "repositoriesDialog.addGroup": {  };
   "repositoriesDialog.createAGroupToOrganizeRepositoriesYouCanAdd": {  };
   "repositoriesDialog.groupName": {  };
-  "repositoriesDialog.chooseOneFolderAlwayGitRecursivelyFindsGitRepositoriesBelow": {  };
   "repositoriesDialog.chooseAnotherFolderOrScanThisFolderAgain": {  };
-  "repositoriesDialog.noFolderSelected": {  };
   "repositoriesDialog.scanningForGitRepositories": {  };
   "repositoriesDialog.scannedFoldersFoundRepositories": { scanned: ParameterValue; found: ParameterValue };
   "repositoriesDialog.scanFolder": {  };
@@ -6567,7 +6573,6 @@ export interface MessageParameters {
   "repositoriesDialog.selectAllAvailable": {  };
   "repositoriesDialog.discoveredRepositories": {  };
   "repositoriesDialog.alreadyAddedVariant2": {  };
-  "repositoriesDialog.available": {  };
   "repositoriesDialog.noRepositoriesMatchThisFilter": {  };
   "repositoriesDialog.noGitRepositoriesFound": {  };
   "repositoriesDialog.chooseADifferentFolderAndTryAgain": {  };
@@ -6578,6 +6583,11 @@ export interface MessageParameters {
   "repositoriesDialog.newGroup": {  };
   "repositoriesDialog.newGroupName": {  };
   "repositoriesDialog.scan": { value: ParameterValue; request: ParameterValue };
+  "repositoriesDialog.chooseRepositoryFolder": {  };
+  "repositoriesDialog.folderChoiceHint": {  };
+  "repositoriesDialog.scanConfirmationHint": {  };
+  "repositoriesDialog.groupNameExample": {  };
+  "repositoriesDialog.createGroupAndAddHint": {  };
   "repositoriesRemove.removed1RepositoryFromAlwayGit": {  };
   "repositoriesRemove.removedRepositoriesFromAlwayGit": { removed: ParameterValue };
   "repositoriesRemove.removeRepository": {  };

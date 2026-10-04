@@ -776,9 +776,9 @@ First select the item you intend to operate on, then identify the current workin
 **Prerequisite:** The target directory is already a Git repository, or contains several Git repositories, and you have permission to read these directories.
 
 1. Click the Add… plus button to the right of the Repositories heading and choose Add Repository.
-2. Select a repository directory, or a parent directory containing multiple projects.
+2. Click Choose Folder… in the center of the dialog. Select a repository directory, or a parent directory containing multiple projects. Close the initial page with the top-right close button or Esc.
 3. Wait for the scan to finish. Check the repository names and whether each can be added or has already been added. Filter, deselect items, or select a contiguous range as needed.
-4. Select the target group, creating a new group within the same workflow if necessary. Check the number of repositories shown on the primary add button, then confirm.
+4. Select the target group, or Ungrouped. To create a group, click the plus beside Add to and enter its name in place. The add action creates the group and imports the selected repositories together. Check the number shown on the primary add button, then confirm.
 5. Double-click a newly added repository in the navigation, or focus its row and press Enter.
 
 **Result:** The selected repositories appear in the navigation. Existing repositories are not added again; only the repositories included in your final confirmation are registered.
@@ -786,8 +786,6 @@ First select the item you intend to operate on, then identify the current workin
 **Caution:** Once the scan finds a valid repository, it does not continue scanning inside it, so it will not also discover nested repositories or submodules. Closing or canceling the scan does not add a partial selection.
 
 **Troubleshooting:** Inaccessible directories are skipped. Review the reasons in the scan results, check the paths and permissions, then retry those directories individually.
-
-![Figure 05 Add popover containing Add Repository and Add Group, with Choose Folder for directory selection](images/user-manual/figure-05.png)
 
 <a id="section-02-02"></a>
 
