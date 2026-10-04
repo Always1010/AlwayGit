@@ -2,6 +2,17 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-099：精确文件范围保护误拒绝已跟踪子模块
+
+- 日期：2026-10-05
+- 状态：待修复
+- 优先级与可信度：P2；真实本地子模块已复现。
+- 现象：已跟踪子模块更新后，Stage、Unstage 和选择性 staged Commit 均报 `FILE_SCOPE_CHANGED`；包含该路径的全量暂存也会受阻，原生 Git 暂存正常。
+- 原因：范围校验一律拒绝非斜杠结尾的磁盘目录，没有区分 Git 模式 `160000` 的 gitlink。gitlink 在 Git 中是精确叶节点，其磁盘形态正常为目录。
+- 解决方案：待实施；读取 Index/HEAD 模式，为相应操作识别并允许已跟踪 gitlink，继续拒绝普通目录替换及未选择的父子条目，避免放宽丢弃和隔离 Stash 的安全边界。
+- 验证方式：0.47.1 / faf4524；使用两个临时本地仓库添加子模块并推进子模块提交，三个扩展操作均拒绝，原生 `git add -- sub` 成功。现有范围测试未包含 gitlink；隔离 Stash 的既有子模块限制不属于本问题。
+- 相关文件：`src/git/file-scope.ts`、`src/git/service.ts`、`src/git/selected-commit.ts`、`tests/git-file-scope.test.ts`、`tests/selected-commit.test.ts`。
+
 ## BUG-098：批量跟踪分支创建丢失已捕获的起点 OID
 
 - 日期：2026-10-05
