@@ -236,6 +236,25 @@ describe('Git safety regressions', () => {
     await expect(git(root, 'show-ref', '--verify', 'refs/heads/feature/c')).rejects.toThrow();
   });
 
+  it.each([false, true])('pins bulk tracking branches to confirmed OIDs and retains creations after upstream failure (%s)', async failUpstream => {
+    const { root, repo } = await setup();
+    const original = await commit(root, 'a.txt', 'base');
+    await git(root, 'remote', 'add', 'origin', path.join(root, 'unused.git'));
+    for (const name of ['topic-a', 'topic-b']) await git(root, 'update-ref', `refs/remotes/origin/${name}`, original);
+    const advanced = await commit(root, 'a.txt', 'advance');
+    const service = new GitService({ environment: async (_repo, args) => {
+      if (args[0] === 'branch' && args[1] === '--no-track') await git(root, 'update-ref', `refs/remotes/origin/${args[3]}`, advanced);
+      if (failUpstream && args[0] === 'branch' && args[1] === '--set-upstream-to=refs/remotes/origin/topic-b') throw new Error('upstream configuration failed');
+      return {};
+    } });
+    const action = service.execute(repo, { type: 'branch.track', branches: ['topic-a', 'topic-b'].map(name => ({ source: `refs/remotes/origin/${name}`, name, expectedOid: original })) });
+    if (failUpstream) await expect(action).rejects.toMatchObject({ code: 'PARTIAL_FAILURE', message: expect.stringContaining('2') });
+    else await action;
+    for (const name of ['topic-a', 'topic-b']) expect(await git(root, 'rev-parse', `refs/heads/${name}`)).toBe(original);
+    expect(await git(root, 'rev-parse', '--symbolic-full-name', 'topic-a@{upstream}')).toBe('refs/remotes/origin/topic-a');
+    expect(await git(root, 'rev-parse', 'HEAD')).toBe(advanced);
+  });
+
   it('rejects stale, symbolic, missing and ambiguous remote references before creating tracking branches', async () => {
     const { root, service, repo } = await setup();
     const base = await commit(root, 'a.txt', 'base');

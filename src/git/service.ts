@@ -713,7 +713,10 @@ export class GitService implements GitServiceContract {
     let created = 0;
     for (const branch of plan) {
       if (branch.exists) continue;
-      try { await this.run(repo, ['branch', '--track', '--', branch.name, branch.source]); created++; }
+      try {
+        await this.run(repo, ['branch', '--no-track', '--', branch.name, branch.oid]); created++;
+        await this.run(repo, ['branch', `--set-upstream-to=${branch.source}`, '--', branch.name]);
+      }
       catch (error) {
         // An external Git process can race the preflight. Report exactly how far
         // this operation got; never roll back refs which the user may now be using.
