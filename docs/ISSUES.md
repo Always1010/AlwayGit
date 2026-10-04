@@ -16,12 +16,12 @@
 ## BUG-107：刷新验收夹具缺少 Cherry-pick 检查响应
 
 - 日期：2026-10-05
-- 状态：待修复
+- 状态：已解决
 - 优先级与可信度：P2；原专项失败及内存修正后通过均已验证。
 - 现象：当前无头 `--refresh-only` 专项在打开历史 Commit 菜单后产生 `Cannot read properties of undefined (reading 'head')`，最终运行时错误断言失败。
 - 原因：刷新专项的受控宿主未处理新增 `cherryPickCheck` RPC，成功响应 undefined；前端检查回调读取 `.head` 时抛错。真实宿主提供结构化响应，不是本次发现的生产刷新逻辑故障。
-- 解决方案：待实施；夹具返回与当前 HEAD、分支一致的结构化 CherryPickCheck，保留原刷新断言；其他受控宿主同步核对协议响应完整性。
-- 验证方式：0.47.1 / faf4524 的当前构建；原专项捕获两次 pageerror，增强堆栈定位到 useCherryPickCheck；仅在内存副本增加该 RPC 的正确响应，仓库脚本及其余断言不变，专项完整通过。此内存验证不表示仓库中的夹具已经修复。
+- 解决方案：刷新受控宿主补齐 cherryPickCheck，按当前快照 HEAD、分支和选择返回结构化响应；核对现有 Cherry-pick 专项协议，保留全部刷新断言。
+- 验证方式：2026-10-05：使用当前生产构建执行无头 --refresh-only 完整通过，运行时错误列表为空。
 - 相关文件：`scripts/test-refresh-ui.mjs`、`webview/useCherryPickCheck.ts`、`src/protocol/types.ts`。
 
 ## BUG-106：快照查询计数断言过时导致全量测试失败
