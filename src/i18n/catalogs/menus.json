@@ -502,6 +502,18 @@
     "review": "translated",
     "context": "webview/menus.ts / menuFor"
   },
+  "menus.deleteRemoteTag": {
+    "en": "Delete Remote Tag…",
+    "zh-CN": "删除远端标签…",
+    "review": "translated",
+    "context": "webview/menus.ts / remote-only Tag"
+  },
+  "menus.remoteTagDeletionRequiresMatchingAddresses": {
+    "en": "Remote Tag deletion requires matching read and push addresses.",
+    "zh-CN": "删除远端标签要求读取与推送地址一致。",
+    "review": "translated",
+    "context": "webview/menus.ts / remote-only Tag disabled reason"
+  },
   "menus.copyTagName": {
     "en": "Copy Tag Name",
     "zh-CN": "复制标签名称",

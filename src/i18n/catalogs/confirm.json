@@ -72,8 +72,20 @@
     "context": "src/application/confirm.ts / confirmAction"
   },
   "confirm.deleteTag": {
-    "en": "Delete local tag {{name}}?",
-    "zh-CN": "删除本地标签 {{name}}？",
+    "en": "Delete local Tag {{name}}? No remote repository will be changed.",
+    "zh-CN": "删除本地标签 {{name}}？此操作不会修改任何远端仓库。",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.deleteRemoteTag": {
+    "en": "Delete Tag {{name}} from remote {{remote}}? This changes the shared remote repository.",
+    "zh-CN": "从远端 {{remote}} 删除标签 {{name}}？此操作会修改共享远端仓库。",
+    "review": "translated",
+    "context": "src/application/confirm.ts / confirmAction"
+  },
+  "confirm.deleteLocalAndRemoteTag": {
+    "en": "Delete local Tag {{name}} and delete it from remote {{remote}}? This changes the shared remote repository.",
+    "zh-CN": "删除本地标签 {{name}}，并从远端 {{remote}} 删除？此操作会修改共享远端仓库。",
     "review": "translated",
     "context": "src/application/confirm.ts / confirmAction"
   },

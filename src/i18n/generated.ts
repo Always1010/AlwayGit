@@ -732,6 +732,38 @@ export const catalog = {
     "en": "Delete Tag",
     "zh-CN": "删除标签"
   },
+  "actions.alsoDeleteFromRemote": {
+    "en": "Also delete from a remote",
+    "zh-CN": "同时从远端删除"
+  },
+  "actions.deleteLocalTag": {
+    "en": "Delete Local Tag",
+    "zh-CN": "删除本地标签"
+  },
+  "actions.deleteRemoteTag": {
+    "en": "Delete Remote Tag",
+    "zh-CN": "删除远端标签"
+  },
+  "actions.deleteLocalAndRemoteTag": {
+    "en": "Delete Local and Remote Tag",
+    "zh-CN": "删除本地和远端标签"
+  },
+  "actions.thisDeletesTheTagFromTheSharedRemoteRepository": {
+    "en": "This deletes the Tag from the shared remote repository {{remote}}. The operation stops if the remote Tag has changed.",
+    "zh-CN": "这会从共享远端仓库 {{remote}} 删除标签；远端标签发生变化时操作会停止。"
+  },
+  "actions.localAndRemoteTagsIdentifyDifferentObjects": {
+    "en": "The local and remote Tags identify different objects. Both named Tags will be deleted.",
+    "zh-CN": "本地与远端的同名标签指向不同对象；两个标签都会被删除。"
+  },
+  "actions.checkTheRemoteTagBeforeDeletingIt": {
+    "en": "Check the remote Tag before deleting it.",
+    "zh-CN": "请先核对远端标签，再执行删除。"
+  },
+  "actions.remoteTagDeletionRequiresMatchingAddresses": {
+    "en": "Remote Tag deletion requires this remote to use the same read and push address.",
+    "zh-CN": "删除远端标签要求该远端使用相同的读取与推送地址。"
+  },
   "actions.stashChanges": {
     "en": "Stash Changes",
     "zh-CN": "Stash 更改"
@@ -1127,8 +1159,16 @@ export const catalog = {
     "zh-CN": "从远端 {{remote}} Delete {{count}} 个分支？\n{{names}}\n此操作会修改共享远端仓库。"
   },
   "confirm.deleteTag": {
-    "en": "Delete local tag {{name}}?",
-    "zh-CN": "删除本地标签 {{name}}？"
+    "en": "Delete local Tag {{name}}? No remote repository will be changed.",
+    "zh-CN": "删除本地标签 {{name}}？此操作不会修改任何远端仓库。"
+  },
+  "confirm.deleteRemoteTag": {
+    "en": "Delete Tag {{name}} from remote {{remote}}? This changes the shared remote repository.",
+    "zh-CN": "从远端 {{remote}} 删除标签 {{name}}？此操作会修改共享远端仓库。"
+  },
+  "confirm.deleteLocalAndRemoteTag": {
+    "en": "Delete local Tag {{name}} and delete it from remote {{remote}}? This changes the shared remote repository.",
+    "zh-CN": "删除本地标签 {{name}}，并从远端 {{remote}} 删除？此操作会修改共享远端仓库。"
   },
   "confirm.dropStash": {
     "en": "Drop {{selector}}? Its saved uncommitted changes may become unreachable.",
@@ -3051,6 +3091,14 @@ export const catalog = {
     "en": "Delete Tag…",
     "zh-CN": "删除标签…"
   },
+  "menus.deleteRemoteTag": {
+    "en": "Delete Remote Tag…",
+    "zh-CN": "删除远端标签…"
+  },
+  "menus.remoteTagDeletionRequiresMatchingAddresses": {
+    "en": "Remote Tag deletion requires matching read and push addresses.",
+    "zh-CN": "删除远端标签要求读取与推送地址一致。"
+  },
   "menus.copyTagName": {
     "en": "Copy Tag Name",
     "zh-CN": "复制标签名称"
@@ -4110,6 +4158,18 @@ export const catalog = {
   "service.tagDeletionFailed": {
     "en": "Tag deletion failed.",
     "zh-CN": "删除标签失败。"
+  },
+  "service.remoteTagDeletionRequiresMatchingReadAndPushAddresses": {
+    "en": "Remote Tag deletion requires the selected remote to use the same read and push address. Change the remote configuration or delete the Tag explicitly at the push destination.",
+    "zh-CN": "删除远端标签要求所选远端使用相同的读取与推送地址。请调整远端配置，或在推送目标上明确删除该标签。"
+  },
+  "service.remoteTagWasDeletedButTheLocalTagChangedAndWasRetained": {
+    "en": "The remote Tag was deleted, but the local Tag changed during the operation and was retained. Refresh before deciding whether to delete it.",
+    "zh-CN": "远端标签已删除，但本地标签在操作期间发生变化，因此已保留。请刷新后再决定是否删除。"
+  },
+  "service.remoteTagWasDeletedButTheLocalTagCouldNotBeDeleted": {
+    "en": "The remote Tag was deleted, but the local Tag could not be deleted and was retained.",
+    "zh-CN": "远端标签已删除，但本地标签删除失败并已保留。"
   },
   "service.messagesCannotContainNULCharacters": {
     "en": "Messages cannot contain NUL characters",
@@ -5975,6 +6035,14 @@ export interface MessageParameters {
   "actions.deleteRemoteBranches": {  };
   "actions.createTag": {  };
   "actions.deleteTag": {  };
+  "actions.alsoDeleteFromRemote": {  };
+  "actions.deleteLocalTag": {  };
+  "actions.deleteRemoteTag": {  };
+  "actions.deleteLocalAndRemoteTag": {  };
+  "actions.thisDeletesTheTagFromTheSharedRemoteRepository": { remote: ParameterValue };
+  "actions.localAndRemoteTagsIdentifyDifferentObjects": {  };
+  "actions.checkTheRemoteTagBeforeDeletingIt": {  };
+  "actions.remoteTagDeletionRequiresMatchingAddresses": {  };
   "actions.stashChanges": {  };
   "actions.applyStash": {  };
   "actions.dropStash": {  };
@@ -6073,6 +6141,8 @@ export interface MessageParameters {
   "confirm.forceDeleteBranches": {  };
   "confirm.deleteRemoteBranches": { count: number; remote: ParameterValue; names: ParameterValue };
   "confirm.deleteTag": { name: ParameterValue };
+  "confirm.deleteRemoteTag": { name: ParameterValue; remote: ParameterValue };
+  "confirm.deleteLocalAndRemoteTag": { name: ParameterValue; remote: ParameterValue };
   "confirm.dropStash": { selector: ParameterValue };
   "confirm.removeWorktree": { path: ParameterValue; effect: ParameterValue };
   "confirm.forceRemoveWorktree": {  };
@@ -6545,6 +6615,8 @@ export interface MessageParameters {
   "menus.deleteBranch": {  };
   "menus.deleteRemoteBranch": {  };
   "menus.deleteTag": {  };
+  "menus.deleteRemoteTag": {  };
+  "menus.remoteTagDeletionRequiresMatchingAddresses": {  };
   "menus.copyTagName": {  };
   "menus.copyCommitID": {  };
   "menus.copyBranchName": {  };
@@ -6810,6 +6882,9 @@ export interface MessageParameters {
   "service.theTagChangedRefreshAndReopenTheDeletionDialog": {  };
   "service.theTagChangedBeforeDeletionRefreshAndReopenThe": {  };
   "service.tagDeletionFailed": {  };
+  "service.remoteTagDeletionRequiresMatchingReadAndPushAddresses": {  };
+  "service.remoteTagWasDeletedButTheLocalTagChangedAndWasRetained": {  };
+  "service.remoteTagWasDeletedButTheLocalTagCouldNotBeDeleted": {  };
   "service.messagesCannotContainNULCharacters": {  };
   "service.finishTheActiveOperationOrResolveConflictsBeforeSaving": {  };
   "service.savedUntrackedFiles": { count: number };

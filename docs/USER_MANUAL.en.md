@@ -680,15 +680,16 @@ Use the operations in this chapter only after you understand the relationships i
 2. Enter a name, such as v1.1.0, in Tag Name. From the Tags heading, Target Commit starts empty: enter a Commit ID and verify the resolved Commit Message. From a Commit row, Target Commit is read-only and shows that Commit's ID and Message. Fill in Annotation if needed. To publish immediately, enable “Push this Tag after creation” and select a Remote; use it once or remember it as the default.
 3. Check the new tag under Tags and use Locate Tag Commit in Graph to locate it, or Show Only This Tag History to inspect its history.
 4. To publish tags, right-click one or more Tags, choose Push Tag… or Push N Tags…, then verify the complete Tag list and Remote.
-5. To delete a local tag, right-click the target Tag, choose Delete Tag…, verify the name, and confirm.
+5. To delete a local tag, right-click the target Tag and choose Delete Tag…. It deletes only the local Tag by default. To delete the matching Tag from the selected Remote too, enable “Also delete from Remote,” then verify the Remote, warning, and confirmation list.
+6. For a remote-only Tag marked with a cloud icon, right-click it and choose Delete Remote Tag…. This deletes the confirmed remote object without creating or deleting a local Tag.
 
 Tags combines local Tags with Tags that exist only on the selected remote. The remote name in its header identifies the comparison target; choose another remote when available, with the selection remembered per repository. Each row shows only a status icon: a green check means Synced, a desktop means Local only, a cloud means Remote only, a warning means the same name identifies different objects, and a question mark means no query has succeeded yet. Hover, focus or click for the full meaning. A remote-only object is not yet a local ref and cannot be located in local history. Results do not expire with time and change only after another successful query; a failed query preserves the previous successful result. With no configured remote, Tags show Local. Local Tag labels in the commit graph use the same status icons; the commit node's Pushed indicator still describes availability on known remote branches.
 
 Hover or focus the status for details and the last successful check time, or click a list status to open its details. The header refresh icon and Check remote Tag status context action perform a read-only query. The first Tags expansion, switching remotes and completing Fetch/Pull/Push refresh the status as needed; ordinary local refreshes reuse the existing result. Queries do not block local history, and a failure neither means a Tag is absent nor replaces the previous result. Status describes the selected remote's read address; differing read and push addresses are explicitly identified, so a successful push does not prove availability at a different read address.
 
-**Result:** The local Tag points to the specified version, the explicitly selected Tags are published to the Remote, or the target local Tag has been removed.
+**Result:** The local Tag points to the specified version, the explicitly selected Tags are published to the Remote, or the target Tag is removed locally, remotely, or from both locations as explicitly selected.
 
-**Caution:** Create-and-push keeps the local Tag first; if the remote push fails, retry later with Push Tag. Tag Push sends only the Tags listed in the dialog, supports lightweight and annotated Tags, does not include other local Tags, and does not overwrite a differently identified remote Tag with the same name. Local deletion does not delete a remote Tag; this version does not provide remote Tag deletion or replacement.
+**Caution:** Create-and-push keeps the local Tag first; if the remote push fails, retry later with Push Tag. Tag Push sends only the Tags listed in the dialog, supports lightweight and annotated Tags, does not include other local Tags, and does not overwrite a differently identified remote Tag with the same name. Delete Tag still deletes only locally by default. Remote deletion must be explicitly enabled or opened from a remote-only Tag, followed by native confirmation. Before execution, AlwayGit verifies the remote Tag identity and destination; deletion is unavailable when read and push addresses differ or multiple push addresses exist. A combined deletion removes the remote first and retains the local Tag if that remote step fails. Remote Tag replacement is not provided.
 
 ![Create Tag dialog with a fixed target Commit and its Commit Message](images/user-manual/figure-28.png)
 
@@ -974,7 +975,7 @@ Basic functionality requires VS Code 1.95+ and Git 2.40+. Saving selected files 
 
 Git runs in the VS Code extension host where the repository resides. The product architecture is designed for local environments, WSL, Remote SSH, and Dev Containers; Git, paths, permissions, and authentication still need to be verified separately in each environment. Git is not executed in untrusted workspaces, and browser-only virtual workspaces are not supported.
 
-Current scope: whole-file staging, standard Rebase, remote branch management, and explicit Tag Push. Not currently provided: hunk staging, interactive Rebase, commit reordering, Squash, Fixup, Format Patch, remote Tag deletion or replacement, or freely floating panels.
+Current scope: whole-file staging, standard Rebase, remote branch management, explicit Tag Push, and lease-protected remote Tag deletion. Not currently provided: hunk staging, interactive Rebase, commit reordering, Squash, Fixup, Format Patch, remote Tag replacement, or freely floating panels.
 
 | Setting | Default or range | Description |
 | --- | --- | --- |

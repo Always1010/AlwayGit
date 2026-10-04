@@ -844,6 +844,54 @@
     "review": "translated",
     "context": "webview/ActionDialog.tsx / actionTitles"
   },
+  "actions.alsoDeleteFromRemote": {
+    "en": "Also delete from a remote",
+    "zh-CN": "同时从远端删除",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / Tag deletion"
+  },
+  "actions.deleteLocalTag": {
+    "en": "Delete Local Tag",
+    "zh-CN": "删除本地标签",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / Tag deletion submit"
+  },
+  "actions.deleteRemoteTag": {
+    "en": "Delete Remote Tag",
+    "zh-CN": "删除远端标签",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / Tag deletion submit"
+  },
+  "actions.deleteLocalAndRemoteTag": {
+    "en": "Delete Local and Remote Tag",
+    "zh-CN": "删除本地和远端标签",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / Tag deletion submit"
+  },
+  "actions.thisDeletesTheTagFromTheSharedRemoteRepository": {
+    "en": "This deletes the Tag from the shared remote repository {{remote}}. The operation stops if the remote Tag has changed.",
+    "zh-CN": "这会从共享远端仓库 {{remote}} 删除标签；远端标签发生变化时操作会停止。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / remote Tag deletion warning"
+  },
+  "actions.localAndRemoteTagsIdentifyDifferentObjects": {
+    "en": "The local and remote Tags identify different objects. Both named Tags will be deleted.",
+    "zh-CN": "本地与远端的同名标签指向不同对象；两个标签都会被删除。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / differing Tag deletion warning"
+  },
+  "actions.checkTheRemoteTagBeforeDeletingIt": {
+    "en": "Check the remote Tag before deleting it.",
+    "zh-CN": "请先核对远端标签，再执行删除。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / missing remote Tag identity"
+  },
+  "actions.remoteTagDeletionRequiresMatchingAddresses": {
+    "en": "Remote Tag deletion requires this remote to use the same read and push address.",
+    "zh-CN": "删除远端标签要求该远端使用相同的读取与推送地址。",
+    "review": "translated",
+    "context": "webview/ActionDialog.tsx / separate push address"
+  },
   "actions.stashChanges": {
     "en": "Stash Changes",
     "zh-CN": "Stash 更改",

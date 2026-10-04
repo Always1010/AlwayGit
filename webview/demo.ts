@@ -114,7 +114,11 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
   }
   if(method==='createRepositoryCollection'){const collection={id:`demo-group-${demoCollections.length+1}`,name:(payload as {name:string}).name};demoCollections.push(collection);return collection;}
   if (method === 'repositoryStatuses') return Object.values(demoStores).map(({ snapshot }) => ({ repositoryId: snapshot.repository.id, branch: snapshot.branch, upstream: snapshot.upstream, ahead: snapshot.ahead, unpushed: snapshot.unpushed ?? snapshot.ahead } satisfies RepositoryStatus));
-  if (method === 'snapshot') return structuredClone({ ...demoSnapshot, remoteReadDestinations: Object.fromEntries((demoSnapshot.remotes ?? []).map(remote => [remote, `demo:${remote}`])) });
+  if (method === 'snapshot') return structuredClone({
+    ...demoSnapshot,
+    remoteDestinations: Object.fromEntries((demoSnapshot.remotes ?? []).map(remote => [remote, 'd'.repeat(64)])),
+    remoteReadDestinations: Object.fromEntries((demoSnapshot.remotes ?? []).map(remote => [remote, `demo:${remote}`])),
+  });
   if (method === 'remoteTags') { const remote = (payload as { remote: string }).remote; return { remote, destination: `demo:${remote}`, separatePush: false, refs: { ...(publishedTags.get(`${demoSnapshot.repository.id}:${remote}`) ?? {}) }, checkedAt: Date.now() }; }
   if (method === 'prepareDiscard') {
     const request = payload as DiscardRequest, selected = request.paths && new Set(request.paths);
@@ -192,7 +196,12 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
     else if(action.type==='remote.delete')demoSnapshot.refs=demoSnapshot.refs.filter(r=>!(r.kind==='remote'&&action.branches.some(branch=>r.name===`${action.remote}/${branch}`)));
     else if (action.type === 'tag.create') { const oid=resolve(action.target??'HEAD'); demoSnapshot.refs.push({ name: action.name, fullName: `refs/tags/${action.name}`, kind: 'tag', oid, refOid: oid }); if (action.pushRemote) { const key = `${demoSnapshot.repository.id}:${action.pushRemote}`; publishedTags.set(key, { ...publishedTags.get(key), [`refs/tags/${action.name}`]: oid }); } }
     else if (action.type === 'tag.push') { const key = `${demoSnapshot.repository.id}:${action.remote}`; publishedTags.set(key, { ...publishedTags.get(key), ...Object.fromEntries(demoSnapshot.refs.filter(ref => ref.kind === 'tag' && action.names.includes(ref.name)).map(ref => [ref.fullName, ref.refOid ?? ref.oid])) }); }
-    else if (action.type === 'tag.delete') { const tag=demoSnapshot.refs.find(r=>r.kind==='tag'&&r.name===action.name); if(!action.expectedOid||tag?.refOid!==action.expectedOid)throw new RpcError('The Tag changed. Refresh and reopen the deletion dialog.','OPERATION_CHANGED'); demoSnapshot.refs=demoSnapshot.refs.filter(r=>r!==tag); }
+    else if (action.type === 'tag.delete') {
+      const tag=demoSnapshot.refs.find(r=>r.kind==='tag'&&r.name===action.name);
+      if(action.expectedOid&&tag?.refOid!==action.expectedOid)throw new RpcError('The Tag changed. Refresh and reopen the deletion dialog.','OPERATION_CHANGED');
+      if(action.remote){const key=`${demoSnapshot.repository.id}:${action.remote}`,published=publishedTags.get(key)??{},ref=`refs/tags/${action.name}`;if(!action.expectedRemoteOid||published[ref]!==action.expectedRemoteOid)throw new RpcError('The remote Tag changed. Check it again before deletion.','OPERATION_CHANGED');const next={...published};delete next[ref];publishedTags.set(key,next);}
+      if(action.expectedOid)demoSnapshot.refs=demoSnapshot.refs.filter(r=>r!==tag);
+    }
     else if (action.type === 'stash.create') {
       if(action.paths&&!action.paths.length)throw new Error('Select at least one file to Stash.');
       if(demoSnapshot.operation.kind||demoSnapshot.operation.conflicts)throw new Error('Resolve the current Git operation or conflicts before Stash.');

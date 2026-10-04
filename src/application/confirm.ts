@@ -13,7 +13,7 @@ export async function confirmAction(repo: Repository, action: GitAction, languag
   if (action.type === 'push' && action.forceWithLease) warning = warningText('confirm.forcePush');
   if (action.type === 'branch.delete') warning = warningText('confirm.deleteBranches', { count: action.names.length, names: action.names.join('\n'), effect: action.force ? warningText('confirm.forceDeleteBranches') : '' });
   if (action.type === 'remote.delete') warning = warningText('confirm.deleteRemoteBranches', { count: action.branches.length, remote: action.remote, names: action.branches.join('\n') });
-  if (action.type === 'tag.delete') warning = warningText('confirm.deleteTag', { name: action.name });
+  if (action.type === 'tag.delete') warning = action.remote ? warningText(action.expectedOid ? 'confirm.deleteLocalAndRemoteTag' : 'confirm.deleteRemoteTag', { name: action.name, remote: action.remote }) : warningText('confirm.deleteTag', { name: action.name });
   if (action.type === 'stash.drop') warning = warningText('confirm.dropStash', { selector: action.selector });
   if (action.type === 'worktree.remove') warning = warningText('confirm.removeWorktree', { path: action.path, effect: action.force ? warningText('confirm.forceRemoveWorktree') : '' });
   if (action.type === 'operation.abort') warning = warningText('confirm.abort', { kind: action.kind });
