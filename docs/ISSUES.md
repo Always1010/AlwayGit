@@ -38,12 +38,12 @@
 ## BUG-105：非 BMP 字符的行内 Diff 高亮拆分代理对
 
 - 日期：2026-10-05
-- 状态：待修复
+- 状态：已解决
 - 优先级与可信度：P3；纯函数与 Edge 无头 DOM 最小复现通过。
 - 现象：例如将 😀 改为 😁，行内变化高亮可能只覆盖零宽的低代理字符，未覆盖实际显示的 emoji；正文字符本身仍可正确显示，不属于内容损坏。
 - 原因：`changedParts` 按 UTF-16 code unit 求公共前后缀，共同高代理进入 prefix，变化的低代理进入 mark；浏览器字形跨节点组合，实际宽度落在 prefix。
-- 解决方案：待实施；按完整 Unicode 码点或字素边界划分行内变化，不在代理对中间拆开 DOM 文本。
-- 验证方式：0.47.1 / faf4524；😀→😁 返回高代理 prefix 与低代理差异，Edge 中完整和拆分字符宽度相同，prefix 范围有字形宽度而 mark 内文本范围宽度为零。现有差异 helper 测试未覆盖非 BMP 字符。
+- 解决方案：changedParts 按完整 Unicode 码点比较公共前后缀，保留完整代理对及现有输出结构；差异专项增加 emoji DOM 高亮断言。
+- 验证方式：2026-10-05：workbench-helpers 1 文件 / 7 项通过，😀→😁 返回完整码点分段；DOM 高亮验收将在统一构建后执行。
 - 相关文件：`webview/diff.ts`（`changedParts`）、`webview/DiffPreview.tsx`（`content`）、`tests/diff-navigation.test.ts`、`tests/workbench-helpers.test.ts`。
 
 ## BUG-104：Escape 关闭浮窗时同时取消后层面板最大化

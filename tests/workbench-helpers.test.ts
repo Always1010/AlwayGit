@@ -26,6 +26,7 @@ describe('readonly Diff alignment',()=>{
   it('isolates changed text while preserving shared prefixes and suffixes',()=>{
     expect(changedParts('const version = "0.2.0";','const version = "0.3.0";')).toEqual({prefix:'const version = "0.',before:'2',after:'3',suffix:'.0";'});
     expect(changedParts('old','new')).toEqual({prefix:'',before:'old',after:'new',suffix:''});
+    expect(changedParts('emoji 😀 stays','emoji 😁 stays')).toEqual({prefix:'emoji ',before:'😀',after:'😁',suffix:' stays'});
   });
 });
 describe('branch reference tree',()=>{

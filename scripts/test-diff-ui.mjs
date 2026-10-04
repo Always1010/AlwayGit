@@ -23,6 +23,10 @@ export async function verifyDiffNavigation(browser, url) {
     assert.equal(await summary.locator('.diff-change-added').innerText(), '+0');
     assert.equal(await summary.locator('.diff-change-modified').innerText(), '~3');
     assert.equal(await summary.locator('.diff-change-removed').innerText(), '−0');
+    const emojiMark = diff.locator('mark.diff-word-added', { hasText: '😁' });
+    await emojiMark.waitFor();
+    assert.equal(await emojiMark.innerText(), '😁', 'Inline highlighting keeps the changed emoji in one DOM node');
+    assert.ok((await emojiMark.boundingBox()).width > 0, 'The changed emoji highlight covers the rendered glyph');
     assert.equal(await count.evaluate(element => getComputedStyle(element).borderTopWidth), '0px', 'Current/total count is flat text, not an input-like badge');
     const resize = page.getByRole('separator', { name: 'Resize Diff panel' });
     await resize.press('End');
@@ -181,8 +185,9 @@ async function addDiffFixture(page, diffNavigationScope) {
       const repo = { id: 'diff', root: '/diff', commonDir: '/diff/.git', name: 'Diff fixture' };
       const commit = { oid: 'a'.repeat(40), parents: ['b'.repeat(40), 'c'.repeat(40)], author: 'Fixture', email: 'test@example.com', timestamp: 0, subject: 'Diff navigation' };
       const lines = Array.from({ length: 130 }, (_, i) => `context line ${i}`);
+      lines[26] = 'emoji 😀 stays';
       lines[81] = 'left long ' + '0123456789'.repeat(120);
-      const right = lines.map((line, i) => [26, 27, 28, 40, 41, 42, 80, 81, 82].includes(i) ? i === 81 ? 'right long ' + 'abcdefghij'.repeat(120) : `changed line ${i}` : line);
+      const right = lines.map((line, i) => [26, 27, 28, 40, 41, 42, 80, 81, 82].includes(i) ? i === 26 ? 'emoji 😁 stays' : i === 81 ? 'right long ' + 'abcdefghij'.repeat(120) : `changed line ${i}` : line);
       const fixture = window.__diffFixture = { commit, calls: [], previews: [], failPath: null, holdPath: null, held: [], emptyFiles: false, left: lines.join('\n'), right: right.join('\n'), truncated: false,
         snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 0, behind: 0, changes: [{ path: 'diff.txt', indexStatus: ' ', worktreeStatus: 'M', conflict: false, untracked: false }], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
         emit() { window.postMessage({ type: 'changed', repoId: repo.id, changes: { paths: ['diff.txt'] } }, '*'); },
