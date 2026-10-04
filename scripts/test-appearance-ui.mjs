@@ -7,6 +7,10 @@ async function readSession(page) {
   return page.evaluate(key => JSON.parse(localStorage.getItem(key) || '{}'), sessionKey);
 }
 
+async function readPreferences(page) {
+  return page.evaluate(() => JSON.parse(localStorage.getItem('alwaygit.demo-interfaceSettings') || '{}'));
+}
+
 async function requiredBox(locator, label) {
   const box = await locator.boundingBox();
   assert.ok(box, `${label} must have a visible bounding box`);
@@ -219,7 +223,8 @@ export async function verifyAppearance(browser, url) {
     await settings.getByRole('textbox', { name: 'Path color 1', exact: true }).fill('#0066DD');
     await settings.getByRole('textbox', { name: 'Path color 1', exact: true }).press('Enter');
     await dialog.getByRole('button', { name: 'Apply', exact: true }).click();
-    let applied = await readSession(page);
+    await dialog.waitFor({state:'hidden'});
+    let applied = await readPreferences(page);
     assert.equal(applied.appearance.theme, 'berry');
     assert.equal(applied.appearance.badgeColor, '#006BFF');
     assert.equal(applied.appearance.palette, 'extended');
@@ -229,8 +234,8 @@ export async function verifyAppearance(browser, url) {
     assert.equal(applied.appearance.colors.light[0], '#0066DD');
     assert.equal(applied.appearance.colors.light.length, 16);
     assert.equal(applied.appearance.colors.dark.length, 16);
-    assert.equal(applied.layout.font, 16);
-    assert.equal(applied.layout.row, 22);
+    assert.equal(applied.font, 16);
+    assert.equal(applied.row, 22);
     await page.screenshot({ path: 'artifacts/appearance-dark.png' });
 
     await page.reload();
@@ -252,9 +257,9 @@ export async function verifyAppearance(browser, url) {
     assert.equal(Number(await separators.graph.getAttribute('aria-valuenow')), 64);
     assert.equal(await workbench.getAttribute('data-theme'), 'berry', 'Restore Layout does not reset theme');
     assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--workbench-font').trim()), '16px', 'Restore Layout does not reset interface font');
-    applied = await readSession(page);
+    applied = await readPreferences(page);
     assert.equal(applied.appearance.theme, 'berry');
-    assert.equal(applied.layout.font, 16);
+    assert.equal(applied.font, 16);
     assert.equal(applied.appearance.codeRowHeight, 23, 'Restore Layout preserves custom Diff height');
 
     const largeRow = history.locator('[data-oid]').first(), largeRowBox = await requiredBox(largeRow, '16px commit row');
@@ -289,6 +294,7 @@ export async function verifyAppearance(browser, url) {
     await settings.getByRole('button',{name:'Language',exact:true}).click();
     await settings.locator('.settings-page select').selectOption('zh-CN');
     await page.waitForFunction(()=>document.documentElement.lang==='zh-CN');
+    dialog=page.getByRole('dialog',{name:'设置',exact:true});
     await dialog.getByRole('button',{name:'应用',exact:true}).click();
     await dialog.waitFor({state:'hidden'});
     const tagHeading=page.getByTestId('sidebar').getByRole('button',{name:'标签',exact:true}).locator('..');
