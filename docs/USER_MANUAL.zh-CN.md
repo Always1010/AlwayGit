@@ -6,7 +6,7 @@
 
 在 Workbench 右上角点击问号，可打开离线“帮助与指南”，阅读快速开始、常见任务、常见问题和本手册的完整章节。帮助语言跟随工作台设置。
 
-**截图说明：** 图 07、08 来自 0.45.0 的工作区与 Commit 浮窗，其他截图主要来自 0.29.0。失效的常驻 Commit 表单截图已移除。请按正文及当前按钮的名称、对象和数量操作。
+**截图说明：** 图 28 来自 0.47.0 的 Create Tag 浮窗，图 07、08 来自 0.45.0 的工作区与 Commit 浮窗，其他截图主要来自 0.29.0。失效的常驻 Commit 表单截图已移除。请按正文及当前按钮的名称、对象和数量操作。
 
 ## 按任务阅读
 
@@ -676,8 +676,8 @@ Stash 用于暂时保存尚未提交的修改。它与 Stage 完全不同：Stag
 
 **前提：** 明确要标记的版本。
 
-1. 右键目标 Commit 或分支选择 Create Tag…，或使用 Tags 标题入口。
-2. 在 Tag Name 输入名称，例如 v1.1.0；核对 Target Commit。需要说明时填写 Annotation。若希望立即发布，勾选“创建后推送此标签”并选择 Remote；该选择可以仅用于本次操作，也可记为默认。
+1. 右键目标 Commit 或分支选择 Create Tag…，或使用 Tags 标题入口。提交图右键会固定到被右键的 Commit；Tags 标题入口不会沿用 HEAD 或图中选择。
+2. 在 Tag Name 输入名称，例如 v1.1.0。若从 Tags 标题进入，Target Commit 默认为空，必须手动输入 Commit ID，并核对解析后显示的 Commit Message；若从提交图进入，Target Commit 只读，同时显示该提交的 ID 和 Message。需要说明时填写 Annotation。若希望立即发布，勾选“创建后推送此标签”并选择 Remote；该选择可以仅用于本次操作，也可记为默认。
 3. 在 Tags 中检查新标签，使用 Locate Tag Commit in Graph 定位，或使用 Show Only This Tag History 查看标签历史。
 4. 要发布标签时，右键单个或多选 Tag，选择 Push Tag… / Push N Tags…，核对完整标签清单和 Remote 后执行。
 5. 删除本地标签时，右键目标 Tag 选择 Delete Tag…，核对名称后确认。
@@ -690,7 +690,7 @@ Tags 列表显示本地标签，标题右侧的远端名称表示比较对象；
 
 **注意：** 创建后推送会先保留本地 Tag；远端失败时可稍后通过 Push Tag 重试。Tag Push 只发送对话框列出的标签，支持轻量和注解 Tag，不会附带其他本地 Tag，也不会覆盖远端身份不同的同名 Tag。本地删除不会删除远端 Tag；本版本不提供远端 Tag 删除或替换。
 
-![图 28  Tag Name 与 Target Commit 确定版本 Annotation 为可选说明](images/user-manual/figure-28.png)
+![图 28  从提交图创建 Tag 时目标 Commit 固定并显示 Commit Message](images/user-manual/figure-28.png)
 
 <a id="section-09-02"></a>
 
