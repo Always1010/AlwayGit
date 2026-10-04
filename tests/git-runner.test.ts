@@ -36,6 +36,19 @@ function start(options: Partial<Parameters<typeof runGitProcess>[0]> = {}) {
 }
 
 describe('Git process termination', () => {
+  it('sanitizes streamed Git stderr before invoking the output callback', async () => {
+    const child = processFixture(41), output: string[] = [];
+    vi.mocked(spawn).mockReturnValueOnce(child as unknown as ChildProcess);
+    const service = new GitService({ onOutput: (_repo, text) => output.push(text) });
+    const runtime = service as unknown as { run(repo: { id: string; root: string; commonDir: string; name: string }, args: string[]): Promise<unknown> };
+    const result = runtime.run({ id: 'log', root: process.cwd(), commonDir: process.cwd(), name: 'log' }, ['fetch']).catch(error => error);
+    await vi.waitFor(() => expect(spawn).toHaveBeenCalledOnce());
+    child.stderr.emit('data', Buffer.from('https://user:'));
+    expect(output).toEqual([]);
+    child.stderr.emit('data', Buffer.from('private@example.test/r?access_token=query-secret'));
+    child.emit('close', 1); await result;
+    expect(output.join('')).toBe('https://***@example.test/r?access_token=***');
+  });
   it.each([undefined, 'D:\\Git\\git.exe'])('resolves Git only on demand, sharing initialization and respecting the configured path (%s)', async configured => {
     let finish!: (value: string) => void;
     const gate = new Promise<string>(resolve => { finish = resolve; }), resolveGitPath = vi.fn(() => gate);
