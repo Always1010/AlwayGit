@@ -12,11 +12,16 @@ export const useDock = create<DockState>((set, get) => ({
   sessions: [], activeId: 'diff', creating: false,
   select(activeId) { set({ activeId }); },
   load() {
-    loadTask ??= (async () => {
+    if (loadTask) return loadTask;
+    const task = (async () => {
       const result = await rpc<TerminalSession[]>('terminalList'), sessions = Array.isArray(result) ? result : [];
       set({ sessions, activeId: get().activeId === 'diff' || sessions.some(s => s.id === get().activeId) ? get().activeId : 'diff' });
-    })();
-    return loadTask;
+    })().catch(error => {
+      if (loadTask === task) loadTask = undefined;
+      throw error;
+    });
+    loadTask = task;
+    return task;
   },
   async create(repoId, shell = 'default') {
     if (get().creating) return; set({ creating: true });
