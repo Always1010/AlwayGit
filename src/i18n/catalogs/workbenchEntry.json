@@ -11,12 +11,6 @@
     "review": "translated",
     "context": "src/extension/workbench-entry.ts / statusBarPresentation"
   },
-  "workbenchEntry.viewTitle": {
-    "en": "Workbench",
-    "zh-CN": "工作台",
-    "review": "translated",
-    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
-  },
   "workbenchEntry.editorMode": {
     "en": "Editor Tab",
     "zh-CN": "编辑器标签页",
@@ -96,8 +90,8 @@
     "context": "Workbench locations and default routing"
   },
   "workbenchEntry.sidebarMode": {
-    "en": "Sidebar",
-    "zh-CN": "侧边栏",
+    "en": "Primary Sidebar",
+    "zh-CN": "主侧边栏",
     "review": "translated",
     "context": "Workbench locations and default routing"
   },
@@ -118,5 +112,17 @@
     "zh-CN": "各位置可同时使用，状态独立。",
     "review": "translated",
     "context": "webview/WorkbenchLocationsDialog.tsx / location settings dialog"
+  },
+  "workbenchEntry.auxiliaryMode": {
+    "en": "Secondary Sidebar",
+    "zh-CN": "第二侧边栏",
+    "review": "translated",
+    "context": "Workbench locations and default routing"
+  },
+  "workbenchEntry.locationsDescription": {
+    "en": "Choose where to display the Workbench to suit your workflow and preferences. You can enable multiple locations and choose a default opening location.",
+    "zh-CN": "根据你的使用习惯和偏好，选择工作台的显示位置。你可以同时启用多个位置，并设置默认打开位置。",
+    "review": "translated",
+    "context": "Workbench locations and default routing"
   }
 }

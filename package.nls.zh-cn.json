@@ -29,7 +29,9 @@
   "manifest.defaultLocationDescription": "Open Workbench 的打开位置，必须属于已启用的位置。",
   "manifest.panelWorkbench": "工作台（面板）",
   "manifest.openInEditor": "在标签页打开工作台",
-  "manifest.openInSidebar": "在侧边栏打开工作台",
+  "manifest.openInSidebar": "在主侧边栏打开工作台",
   "manifest.openInPanel": "在面板打开工作台",
-  "manifest.copyToEditor": "携带当前状态新建标签页"
+  "manifest.copyToEditor": "携带当前状态新建标签页",
+  "manifest.openInAuxiliary": "在第二侧边栏打开工作台",
+  "manifest.auxiliaryWorkbench": "工作台（第二侧边栏）"
 }

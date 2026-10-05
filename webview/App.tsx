@@ -1,3 +1,4 @@
+import { flushSync } from 'react-dom';
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { isStaged, isUnstaged } from './changeEntries';
 import type { CommitSelection } from '../src/protocol/types';
@@ -55,7 +56,7 @@ export function App() {
   const root = useRef<HTMLDivElement>(null);
   const [compact, setCompact] = useState(false);
   const [region, setRegion] = useState<'repositories' | 'history' | 'details' | 'diff'>('repositories');
-  const docked = ['docked', 'sidebar', 'panel'].includes(window.__ALWAYGIT_HOST__ ?? '');
+  const docked = ['docked', 'sidebar', 'auxiliary', 'panel'].includes(window.__ALWAYGIT_HOST__ ?? '');
   useLayoutEffect(() => {
     const element = root.current; if (!element || !docked) return;
     const measure = () => setCompact(element.clientWidth < 600 || element.clientHeight < 440);
@@ -186,7 +187,7 @@ export function App() {
     {helpOpen&&<Suspense fallback={null}><HelpDialog onClose={()=>setHelpOpen(false)}/></Suspense>}
     {state.remoteRequest&&<RemoteRequestDialog key={state.remoteRequest.identity}/>}
     {blockInteraction&&<OperationProgress key={`${state.repoId}-${progressFeedback?.id ?? 'host'}`} feedback={progressFeedback}/>}
-    {locationSettings && <WorkbenchLocationsDialog locations={locationSettings} language={state.language} onApply={locations => rpc('saveWorkbenchLocations', undefined, locations)} onClose={() => setLocationSettings(undefined)}/>}
+    {locationSettings && <WorkbenchLocationsDialog locations={locationSettings} language={state.language} onApply={locations => rpc('saveWorkbenchLocations', undefined, locations)} onClose={() => { flushSync(() => setLocationSettings(undefined)); void rpc('workbenchLocationsClosed').catch(() => {}); }}/>}
   </div>;
 }
 

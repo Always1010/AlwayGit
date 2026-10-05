@@ -29,7 +29,9 @@
   "manifest.defaultLocationDescription": "Destination for Open Workbench. Must be one of the enabled locations.",
   "manifest.panelWorkbench": "Workbench (Panel)",
   "manifest.openInEditor": "Open Workbench in Editor Tab",
-  "manifest.openInSidebar": "Open Workbench in Sidebar",
+  "manifest.openInSidebar": "Open Workbench in Primary Sidebar",
   "manifest.openInPanel": "Open Workbench in Panel",
-  "manifest.copyToEditor": "Copy Current State to a New Editor Tab"
+  "manifest.copyToEditor": "Copy Current State to a New Editor Tab",
+  "manifest.openInAuxiliary": "Open Workbench in Secondary Sidebar",
+  "manifest.auxiliaryWorkbench": "Workbench (Secondary Sidebar)"
 }

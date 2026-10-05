@@ -2,12 +2,13 @@ import { z } from 'zod';
 import { sessionSchema } from './session';
 import { diffSchema } from './validation';
 
-export type WorkbenchLocation = 'editor' | 'sidebar' | 'panel';
+export type WorkbenchLocation = 'editor' | 'sidebar' | 'auxiliary' | 'panel';
+export type DockedWorkbenchLocation = Exclude<WorkbenchLocation, 'editor'>;
 /** The old injected docked name remains readable by restored and demo hosts. */
 export type WorkbenchOpenMode = WorkbenchLocation | 'docked';
 export const workbenchLocationsSchema = z.object({
-  enabled: z.array(z.enum(['editor', 'sidebar', 'panel'])).min(1).max(3),
-  default: z.enum(['editor', 'sidebar', 'panel']),
+  enabled: z.array(z.enum(['editor', 'sidebar', 'auxiliary', 'panel'])).min(1).max(4),
+  default: z.enum(['editor', 'sidebar', 'auxiliary', 'panel']),
 });
 export type WorkbenchLocations = z.infer<typeof workbenchLocationsSchema>;
 /** Writes must be valid as a whole; legacy reads remain tolerant. */

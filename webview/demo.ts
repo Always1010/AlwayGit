@@ -9,6 +9,7 @@ import { readWorkbenchLocations, saveWorkbenchLocationsSchema } from '../src/pro
 
 /** Construct sample state only when the explicit Demo transport is used. */
 export function createDemoRequest(emit: (event: HostMessage) => void) {
+let appliedLocation: string | undefined;
 const noRemoteDemo = new URLSearchParams(location.search).get('noRemote') === '1';
 const discardPlans = new Map<string, DiscardPlan>();
 const terminals = new Map<string, TerminalSnapshot>();
@@ -57,12 +58,16 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
   if (method === 'workbenchOpenModeSettings' || method === 'saveWorkbenchLocations') {
     if (method === 'saveWorkbenchLocations') {
       const settings = saveWorkbenchLocationsSchema.parse(payload);
-      localStorage.setItem('alwaygit.demo-workbenchLocations', JSON.stringify(settings)); return settings;
+      localStorage.setItem('alwaygit.demo-workbenchLocations', JSON.stringify(settings)); appliedLocation = settings.default; return settings;
     }
     let saved: unknown;
     try { saved = JSON.parse(localStorage.getItem('alwaygit.demo-workbenchLocations') ?? 'null'); } catch { /* Use the legacy default. */ }
     const language = document.documentElement.lang === 'zh-CN' ? 'zh-CN' : 'en';
     emit({ type: 'showWorkbenchLocations', locations: readWorkbenchLocations(saved), language }); return null;
+  }
+  if (method === 'workbenchLocationsClosed') {
+    if (appliedLocation) localStorage.setItem('alwaygit.demo-openedLocation', appliedLocation);
+    appliedLocation = undefined; return null;
   }
   if (method === 'interfaceSettings' || method === 'saveInterfaceSettings') {
     let settings: InterfacePreferences = {};

@@ -2789,8 +2789,8 @@ export const catalog = {
     "zh-CN": "在标签页打开工作台"
   },
   "manifest.openInSidebar": {
-    "en": "Open Workbench in Sidebar",
-    "zh-CN": "在侧边栏打开工作台"
+    "en": "Open Workbench in Primary Sidebar",
+    "zh-CN": "在主侧边栏打开工作台"
   },
   "manifest.openInPanel": {
     "en": "Open Workbench in Panel",
@@ -2799,6 +2799,14 @@ export const catalog = {
   "manifest.copyToEditor": {
     "en": "Copy Current State to a New Editor Tab",
     "zh-CN": "携带当前状态新建标签页"
+  },
+  "manifest.openInAuxiliary": {
+    "en": "Open Workbench in Secondary Sidebar",
+    "zh-CN": "在第二侧边栏打开工作台"
+  },
+  "manifest.auxiliaryWorkbench": {
+    "en": "Workbench (Secondary Sidebar)",
+    "zh-CN": "工作台（第二侧边栏）"
   },
   "menus.discardAllUnstaged": {
     "en": "Discard All Unstaged Changes…",
@@ -5951,10 +5959,6 @@ export const catalog = {
     "en": "Open AlwayGit Workbench",
     "zh-CN": "打开 AlwayGit Workbench"
   },
-  "workbenchEntry.viewTitle": {
-    "en": "Workbench",
-    "zh-CN": "工作台"
-  },
   "workbenchEntry.editorMode": {
     "en": "Editor Tab",
     "zh-CN": "编辑器标签页"
@@ -6008,8 +6012,8 @@ export const catalog = {
     "zh-CN": "请至少保留一个工作台显示位置。"
   },
   "workbenchEntry.sidebarMode": {
-    "en": "Sidebar",
-    "zh-CN": "侧边栏"
+    "en": "Primary Sidebar",
+    "zh-CN": "主侧边栏"
   },
   "workbenchEntry.panelMode": {
     "en": "Panel",
@@ -6022,6 +6026,14 @@ export const catalog = {
   "workbenchEntry.independentLocationsHelp": {
     "en": "Locations can be used simultaneously, with independent state.",
     "zh-CN": "各位置可同时使用，状态独立。"
+  },
+  "workbenchEntry.auxiliaryMode": {
+    "en": "Secondary Sidebar",
+    "zh-CN": "第二侧边栏"
+  },
+  "workbenchEntry.locationsDescription": {
+    "en": "Choose where to display the Workbench to suit your workflow and preferences. You can enable multiple locations and choose a default opening location.",
+    "zh-CN": "根据你的使用习惯和偏好，选择工作台的显示位置。你可以同时启用多个位置，并设置默认打开位置。"
   }
 } as const;
 export interface MessageParameters {
@@ -6718,6 +6730,8 @@ export interface MessageParameters {
   "manifest.openInSidebar": {  };
   "manifest.openInPanel": {  };
   "manifest.copyToEditor": {  };
+  "manifest.openInAuxiliary": {  };
+  "manifest.auxiliaryWorkbench": {  };
   "menus.discardAllUnstaged": {  };
   "menus.discardAllChanges": {  };
   "menus.createLocalTrackingBranches": {  };
@@ -7502,7 +7516,6 @@ export interface MessageParameters {
   "workbench.retryRepositories": {  };
   "workbenchEntry.showAlwayGitWorkbench": {  };
   "workbenchEntry.openAlwayGitWorkbench": {  };
-  "workbenchEntry.viewTitle": {  };
   "workbenchEntry.editorMode": {  };
   "workbenchEntry.moveView": {  };
   "workbenchEntry.openModeSettings": {  };
@@ -7520,4 +7533,6 @@ export interface MessageParameters {
   "workbenchEntry.panelMode": {  };
   "workbenchEntry.defaultLocationHelp": {  };
   "workbenchEntry.independentLocationsHelp": {  };
+  "workbenchEntry.auxiliaryMode": {  };
+  "workbenchEntry.locationsDescription": {  };
 }

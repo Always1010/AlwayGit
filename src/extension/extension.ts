@@ -62,10 +62,12 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('alwaygit.showWorkbench', () => workbench.show()),
     vscode.commands.registerCommand('alwaygit.openWorkbenchInEditor', () => workbench.show('editor')),
     vscode.commands.registerCommand('alwaygit.openWorkbenchInSidebar', () => workbench.show('sidebar')),
+    vscode.commands.registerCommand('alwaygit.openWorkbenchInAuxiliary', () => workbench.show('auxiliary')),
     vscode.commands.registerCommand('alwaygit.openWorkbenchInPanel', () => workbench.show('panel')),
     vscode.commands.registerCommand('alwaygit.workbenchOpenModeSettings', () => workbench.showOpenModeSettings()),
     // Webview view titles do not forward a source context: bind each native gear explicitly.
     vscode.commands.registerCommand('alwaygit.sidebarLocationSettings', () => workbench.showOpenModeSettings('alwaygit.workbenchLauncher')),
+    vscode.commands.registerCommand('alwaygit.auxiliaryLocationSettings', () => workbench.showOpenModeSettings('alwaygit.workbenchAuxiliary')),
     vscode.commands.registerCommand('alwaygit.panelLocationSettings', () => workbench.showOpenModeSettings('alwaygit.workbenchPanel')),
     vscode.commands.registerCommand('alwaygit.copyWorkbenchToEditor', () => workbench.copyWorkbenchToEditor()),
     vscode.commands.registerCommand('alwaygit.moveWorkbenchView', () => workbench.moveDockedView()),
