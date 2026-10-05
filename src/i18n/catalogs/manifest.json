@@ -180,8 +180,8 @@
     "context": "Workbench locations and default routing"
   },
   "manifest.openInSidebar": {
-    "en": "Open Workbench in Sidebar",
-    "zh-CN": "在侧边栏打开工作台",
+    "en": "Open Workbench in Primary Sidebar",
+    "zh-CN": "在主侧边栏打开工作台",
     "review": "translated",
     "context": "Workbench locations and default routing"
   },
@@ -196,5 +196,17 @@
     "zh-CN": "携带当前状态新建标签页",
     "review": "translated",
     "context": "Command palette / independent state copy"
+  },
+  "manifest.openInAuxiliary": {
+    "en": "Open Workbench in Secondary Sidebar",
+    "zh-CN": "在第二侧边栏打开工作台",
+    "review": "translated",
+    "context": "Workbench locations and default routing"
+  },
+  "manifest.auxiliaryWorkbench": {
+    "en": "Workbench (Secondary Sidebar)",
+    "zh-CN": "工作台（第二侧边栏）",
+    "review": "translated",
+    "context": "Workbench locations and default routing"
   }
 }

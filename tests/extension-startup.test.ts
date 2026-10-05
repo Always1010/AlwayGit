@@ -51,7 +51,7 @@ it('registers commands and window routing without awaiting slow Git activation o
     expect(startup.builtin).not.toHaveBeenCalled();
     const api = await activating;
     const locations = vi.spyOn(api.workbench, 'showOpenModeSettings').mockResolvedValue(undefined);
-    for (const [command, viewId] of [['alwaygit.sidebarLocationSettings', 'alwaygit.workbenchLauncher'], ['alwaygit.panelLocationSettings', 'alwaygit.workbenchPanel']]) {
+    for (const [command, viewId] of [['alwaygit.sidebarLocationSettings', 'alwaygit.workbenchLauncher'], ['alwaygit.panelLocationSettings', 'alwaygit.workbenchPanel'], ['alwaygit.auxiliaryLocationSettings', 'alwaygit.workbenchAuxiliary']]) {
       const registration = vi.mocked(vscode.commands.registerCommand).mock.calls.find(([id]) => id === command);
       expect(registration).toBeDefined();
       await registration![1]();

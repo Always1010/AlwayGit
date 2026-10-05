@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-113：工作台位置缺少第二侧边栏且应用后忽略默认入口
+
+- 日期：2026-10-06
+- 状态：已解决
+- 现象：位置设置只有三个复选框，无法独立选择 VS Code 的主侧边栏与第二侧边栏；默认设为面板后点击应用，当前右侧边栏加载工作台，默认面板未打开。
+- 原因：协议、贡献视图与会话模型只有 editor/sidebar/panel，缺少 auxiliary。保存配置未触发默认入口打开，配置刷新与启动页关闭回调却直接加载已启用的当前侧栏；原生 focus 命令本身也会遵循视图移动后的历史位置。
+- 解决方案：新增独立第二侧边栏视图、命令、会话与第四个复选框，使用 VS Code 1.106 起稳定提供的 secondarySidebar 贡献接口，保留旧侧栏身份和会话。启动页与完整工作台保存成功后同步关闭弹窗并恢复旧焦点，再发送关闭消息；宿主按来源消费一次性默认位置，打开或聚焦目标，保留其他实例。配置刷新只更新启动页，不自动打开启用位置；取消和保存失败不打开。显式打开先恢复对应 AlwayGit 容器及视图的原生区域，再聚焦；左右方向仍跟随 VS Code 设置。补充中英文使用偏好说明。
+- 验证方式：类型检查、1498 条双语资源检查与生产构建通过；入口/启动/协议/会话/双语五文件 66 项测试通过，删去未使用文案后双语 4 项通过。无头 --locations-only 中英文四个宿主形状通过，覆盖四项多选、默认回退、取消/关闭/Esc、空选择拦截、持久化、先卸载弹窗再通知宿主、启动页保存失败重试。原生贡献接口与区域恢复命令已核对官方版本说明和本机 VS Code 实现；未运行真实 VS Code 桌面集成，未打包、安装或推送。
+- 相关文件：`src/extension/workbench.ts`、`src/extension/workbench-launcher.ts`、`src/extension/extension.ts`、`src/protocol/workbench-host.ts`、`webview/WorkbenchLocationsDialog.tsx`、`webview/App.tsx`、`webview/launcher.tsx`、`webview/demo.ts`、`src/i18n/catalogs/workbenchEntry.json`、`src/i18n/catalogs/manifest.json`、`tests/workbench-entry.test.ts`、`tests/extension-startup.test.ts`、`scripts/test-workbench-host-ui.mjs`、`package.json`。
+
 ## BUG-112：工作台显示位置入口偏离约定弹窗且无法整体取消
 
 - 日期：2026-10-06

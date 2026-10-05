@@ -49,7 +49,7 @@ The screenshots mostly show the English interface. Exact button names are retain
 
 ### Requirements
 
-Use VS Code 1.95 or later. Basic features require Git 2.40 or later; saving a Stash of selected files and performing isolated restores with Apply / Pop require Git 2.43 or later; force-with-lease pushes, remote branch deletion and remote Tag deletion require Git 2.46 or later. Install AlwayGit from a VSIX package obtained from a source you trust. An existing project must already be a valid Git repository.
+Use VS Code 1.106 or later. Basic features require Git 2.40 or later; saving a Stash of selected files and performing isolated restores with Apply / Pop require Git 2.43 or later; force-with-lease pushes, remote branch deletion and remote Tag deletion require Git 2.46 or later. Install AlwayGit from a VSIX package obtained from a source you trust. An existing project must already be a valid Git repository.
 
 <a id="section-01-02"></a>
 
@@ -64,7 +64,7 @@ Use VS Code 1.95 or later. Basic features require Git 2.40 or later; saving a St
 
 **Result:** The AlwayGit workbench appears in the editor area. Once the repository has loaded, you can see its branches and history.
 
-**Workbench locations:** Use the gear in either AlwayGit view title to open the location dialog. Select Editor Tab, Sidebar and Panel (multiple choices), choose the default destination from the selected locations, and select Apply to save them together. Cancel, Close and Esc discard changes; keep at least one location selected. Enabled locations can be used together; each keeps its own drafts, selection and terminals. Changing the default or disabling a location preserves live workbenches. Explicit commands open each location. The sidebar can be moved to the secondary sidebar with the native view menu. The separate Copy Current State to a New Editor Tab command copies the current repository, draft and browsing state into a new editor tab while retaining the source and all existing tabs; live terminals stay in the source. Narrow sidebars and short panels use region navigation. See the [workbench specification](WORKBENCH_SPEC.md#布局与视觉).
+**Workbench locations:** Use the gear in any AlwayGit view title to open the location dialog. Select Editor Tab, Primary Sidebar, Secondary Sidebar and Panel (multiple choices), choose the default destination from the selected locations, and select Apply to save them together, close the dialog, and open or focus the default destination. Cancel, Close and Esc discard changes; keep at least one location selected. Enabled locations can be used together; each keeps its own drafts, selection and terminals. Changing the default or disabling a location preserves live workbenches. Explicit commands open each location. The sidebars follow VS Code’s primary sidebar position setting. Opening a location restores its native region before focusing the view. The separate Copy Current State to a New Editor Tab command copies the current repository, draft and browsing state into a new editor tab while retaining the source and all existing tabs; live terminals stay in the source. Narrow sidebars and short panels use region navigation. See the [workbench specification](WORKBENCH_SPEC.md#布局与视觉).
 
 **Troubleshooting:** If Git is unavailable, check its installation and the Git path configured in VS Code. If the workspace is in Restricted Mode, change its trust settings only after confirming that the project is trustworthy.
 
@@ -971,7 +971,7 @@ The results bar retains the operation name, target, and success or failure statu
 
 ### Environment requirements and support boundaries
 
-Basic functionality requires VS Code 1.95+ and Git 2.40+. Saving selected files in a Stash and isolated restoration with Apply / Pop require Git 2.43+; force-with-lease pushes, remote branch deletion and remote Tag deletion require Git 2.46+. When using a remote host, also check the Git version on that host.
+Basic functionality requires VS Code 1.106+ and Git 2.40+. Saving selected files in a Stash and isolated restoration with Apply / Pop require Git 2.43+; force-with-lease pushes, remote branch deletion and remote Tag deletion require Git 2.46+. When using a remote host, also check the Git version on that host.
 
 Git runs in the VS Code extension host where the repository resides. The product architecture is designed for local environments, WSL, Remote SSH, and Dev Containers; Git, paths, permissions, and authentication still need to be verified separately in each environment. Git is not executed in untrusted workspaces, and browser-only virtual workspaces are not supported.
 

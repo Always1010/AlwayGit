@@ -1,3 +1,4 @@
+import { flushSync } from 'react-dom';
 import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { WorkbenchLocationsDialog } from './WorkbenchLocationsDialog';
@@ -30,7 +31,7 @@ function LauncherSettings() {
     return () => window.removeEventListener('message', receive);
   }, []);
   return settings && <WorkbenchLocationsDialog {...settings} onApply={locations => request('saveWorkbenchLocations', locations)} onClose={() => {
-    setSettings(undefined); void request('workbenchLocationsClosed').catch(() => {});
+    flushSync(() => setSettings(undefined)); void request('workbenchLocationsClosed').catch(() => {});
   }}/>;
 }
 createRoot(document.getElementById('locations-root')!).render(<LauncherSettings/>);

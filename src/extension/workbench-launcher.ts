@@ -3,11 +3,13 @@ import { preferredLanguage } from '../application/language';
 import { translate } from '../i18n/index';
 import type { Workbench } from './workbench';
 
-export const workbenchViewIds = { sidebar: 'alwaygit.workbenchLauncher', panel: 'alwaygit.workbenchPanel' } as const;
+export const workbenchViewIds = { sidebar: 'alwaygit.workbenchLauncher', auxiliary: 'alwaygit.workbenchAuxiliary', panel: 'alwaygit.workbenchPanel' } as const;
 
-/** Retain the legacy sidebar identity and register an independent panel view. */
+export const workbenchContainerIds = { sidebar: 'workbench.view.extension.alwaygit', auxiliary: 'workbench.view.extension.alwaygit.auxiliary', panel: 'workbench.view.extension.alwaygit.panel' } as const;
+
+/** Retain the legacy sidebar identity and register independent secondary-sidebar and panel views. */
 export function createWorkbenchActivityLauncher(workbench: Workbench): vscode.Disposable {
-  const registrations = (['sidebar', 'panel'] as const).map(location => vscode.window.registerWebviewViewProvider(workbenchViewIds[location], {
+  const registrations = (['sidebar', 'auxiliary', 'panel'] as const).map(location => vscode.window.registerWebviewViewProvider(workbenchViewIds[location], {
     resolveWebviewView: (view, context) => workbench.resolveDockedView(view, context.state, location),
   }, { webviewOptions: { retainContextWhenHidden: true } }));
   return { dispose() { for (const registration of registrations) registration.dispose(); } };
