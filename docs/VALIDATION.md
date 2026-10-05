@@ -48,7 +48,9 @@
 
 `test:extension` 默认下载并运行稳定版 VS Code；可通过 `ALWAYGIT_VSCODE_EXECUTABLE` 使用现有安装，或通过 `ALWAYGIT_VSCODE_VERSION` 检查指定版本。测试在系统临时目录创建独立仓库，网络操作使用本地 Bare Remote。
 
-`test:windows` 使用独立临时 Profile、测试仓库和测试伴随扩展，验证项目窗口激活、跨窗口 Diff/编辑、保留标签和未保存文档，以及未打开项目的新窗口启动；还会独立打开另一个项目和 AlwayGit，通过真实面板的 `repositorySelected` / `captureWorkbench` 消息验证两个窗口继续响应、原窗口切换仓库及窗口会话隔离，不能以直接调用后端方法替代面板响应。测试进程不使用或关闭用户的 VS Code 窗口。多根工作区和不同 Worktree 的目录匹配同时由 IPC 单元测试覆盖。此新增真实面板场景需取得桌面测试许可后执行，尚无通过记录。
+`test:windows` 使用独立临时 Profile、测试仓库和测试伴随扩展，验证项目窗口激活、跨窗口 Diff/编辑、保留标签和未保存文档，以及未打开项目的新窗口启动；还会独立打开另一个项目和 AlwayGit，通过真实面板的 `repositorySelected` / `captureWorkbench` 消息验证两个窗口继续响应、原窗口切换仓库及窗口会话隔离，不能以直接调用后端方法替代面板响应。测试进程不使用或关闭用户的 VS Code 窗口，结束时验证路径归属后删除测试 Profile 与其窗口注册目录。多根工作区和不同 Worktree 的目录匹配同时由 IPC 单元测试覆盖。
+
+2026-10-05，经用户许可，使用本机 VS Code 1.140.0 执行真实窗口验证：当前 0.48.0 源码与现有 0.47.2 VSIX 均通过独立项目启动、两窗口面板通信及原窗口切换仓库场景，未复现用户报告的短暂失联。0.47.2 缺少 captureWorkbench，伴随扩展只在隔离测试页面注入探针，验证 saveSession/snapshot 的真实请求及应答和页面本地选择状态，不修改原 VSIX 或生产请求处理。旧包可使用 `node scripts/test-windows.mjs --vsix artifacts/alwaygit-0.47.2.vsix` 验证；设置 `ALWAYGIT_VSCODE_EXECUTABLE` 指向已有 VS Code 可避免下载。首轮测试因仓库标题变化导致标签断言过时而失败，修正后通过；后补的注册目录清理通过语法和路径归属检查，未为清理逻辑重复启动桌面测试。此结果不代表已定位或修复本次失联，日常扩展与固定安装包未更新。
 
 ## 浏览器验收矩阵
 

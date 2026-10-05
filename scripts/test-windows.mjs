@@ -1,6 +1,6 @@
 import { build } from 'esbuild';
 import { downloadAndUnzipVSCode, resolveCliPathFromVSCodeExecutablePath } from '@vscode/test-electron';
-import { mkdtemp, mkdir, readFile, writeFile, rm, readdir } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, rm, readdir, copyFile, realpath } from 'node:fs/promises';
 import { spawn, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { tmpdir } from 'node:os';
@@ -8,6 +8,9 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 
 const exec = promisify(execFile);
+const args = process.argv.slice(2);
+if (args.length && (args.length !== 2 || args[0] !== '--vsix')) throw new Error('Usage: test-windows.mjs [--vsix existing-package.vsix]');
+const existingPackage = args.length ? path.resolve(args[1]) : undefined;
 const directory = await mkdtemp(path.join(tmpdir(), 'alwaygit-windows-test-'));
 const mailbox = path.join(directory, 'mailbox');
 const profile = path.join(directory, 'profile');
@@ -66,7 +69,8 @@ try {
   code = process.env.ALWAYGIT_VSCODE_EXECUTABLE || await downloadAndUnzipVSCode(process.env.ALWAYGIT_VSCODE_VERSION || 'stable');
   // Installed extensions allow multiple ordinary windows; development hosts deliberately reuse one window.
   const pack = async (cwd, output) => exec(process.execPath, [path.join(extensionRoot, 'node_modules/@vscode/vsce/vsce'), 'package', '--allow-missing-repository', '--skip-license', '--no-dependencies', '--no-rewrite-relative-links', '--out', output], { cwd, windowsHide: true, maxBuffer: 2 * 1024 * 1024 });
-  await pack(extensionRoot, path.join(directory, 'alwaygit.vsix'));
+  if (existingPackage) await copyFile(existingPackage, path.join(directory, 'alwaygit.vsix'));
+  else await pack(extensionRoot, path.join(directory, 'alwaygit.vsix'));
   await pack(controller, path.join(directory, 'controller.vsix'));
   const cli = resolveCliPathFromVSCodeExecutablePath(code);
   const cliArguments = ['--user-data-dir', profile, '--shared-data-dir', path.join(directory, 'shared'), '--extensions-dir', extensionDirectory, '--install-extension', path.join(directory, 'alwaygit.vsix'), '--install-extension', path.join(directory, 'controller.vsix'), '--force'];
@@ -79,6 +83,7 @@ try {
   const initialTarget = await waitFor('Target startup', async () => (await read('target.state.json'))?.ready && await read('target.state.json'));
   launch(roots.source);
   await waitFor('Source startup', async () => (await read('source.state.json'))?.ready);
+  await action('source', { type: 'probe-workbench', root: roots.source });
   // The workbench knows target, but its actual workspace is still source.
   await action('source', { root: roots.target, method: 'openProject' });
   const focusedTarget = await waitFor('Target window focus', async () => { const state = await read('target.state.json'); return state?.focused && state; });
@@ -100,13 +105,13 @@ try {
   assert.equal(tabs(edited).find(tab => tab.uri?.endsWith('/sample.ts'))?.preview, false);
   const source = await read('source.state.json');
   assertPreserved(source);
-  assert.ok(tabs(source).some(tab => tab.label === 'AlwayGit'));
+  assert.ok(tabs(source).some(tab => tab.label.startsWith('AlwayGit')));
   assert.equal(tabs(source).filter(tab => tab.left || tab.uri?.endsWith('/sample.ts')).length, 0, 'Native editors must be opened in target, not in the workbench source window');
   await action('source', { root: roots['new-project'], method: 'openFile', payload: { path: 'sample.ts' } });
   const fresh = await waitFor('New project file tab', async () => { const state = await read('new-project.state.json'); return state && tabs(state).some(tab => tab.uri?.endsWith('/sample.ts')) && state; });
   assertPreserved(fresh);
   await action('source', { root: roots['workbench-project'], method: 'openRepository', payload: { newWindow: true } });
-  const workbenchProject = await waitFor('New project workbench tab', async () => { const state = await read('workbench-project.state.json'); return state && tabs(state).some(tab => tab.label === 'AlwayGit') && state; });
+  const workbenchProject = await waitFor('New project workbench tab', async () => { const state = await read('workbench-project.state.json'); return state && tabs(state).some(tab => tab.label.startsWith('AlwayGit')) && state; });
   assertPreserved(workbenchProject);
   assert.equal((await readdir(source.registry)).filter(name => name.endsWith('.json')).length, 4, 'Existing project windows must be reused and explicit Workbench opens get one new window');
   // User flow: independently open another project with VS Code, then open AlwayGit there.
@@ -124,7 +129,11 @@ try {
     assert.equal(peerProbe.probe.session.repoId, peer.probe.session.repoId, 'Source selection must not replace the independent window session');
   }
   console.log('ALWAYGIT_WINDOW_TESTS_PASSED: project routing/focus, staged/unstaged Diff, pinned tabs, unsaved editors, independent project startup, real panel message round trips and repository switches in both windows');
+  console.log('Tested extension: ' + (existingPackage ?? 'current workspace build'));
 } finally {
+  const testNames = ['peer-project', 'new-project', 'workbench-project', 'source', 'target'];
+  const states = await Promise.all(testNames.map(name => read(name + '.state.json')));
+  const registries = new Set(states.map(state => state?.registry).filter(Boolean));
   // Only terminate processes launched with this isolated test profile; never touch user VS Code.
   for (const child of children) {
     if (child.exitCode !== null || !child.pid) continue;
@@ -132,8 +141,21 @@ try {
     else child.kill('SIGTERM');
   }
   // A reused main process can leave child windows; ask only the test companion to close them.
-  for (const name of ['new-project', 'workbench-project', 'source', 'target']) await writeFile(path.join(mailbox, name + '.action.json'), JSON.stringify({ id: 'close-' + (++sequence), type: 'close' })).catch(() => {});
+  for (const name of testNames) await writeFile(path.join(mailbox, name + '.action.json'), JSON.stringify({ id: 'close-' + (++sequence), type: 'close' })).catch(() => {});
   await new Promise(resolve => setTimeout(resolve, 1500));
+  // Forced shutdown bypasses extension disposal. Remove only registries reported by
+  // this isolated profile and verify every surviving endpoint belongs to its roots.
+  const canonicalTemp = await realpath(tmpdir()), canonicalTest = await realpath(directory);
+  for (const registry of registries) {
+    const resolved = await realpath(registry).catch(() => undefined);
+    if (!resolved) continue;
+    if (path.dirname(resolved) !== canonicalTemp || !/^alwaygit-windows-[a-f0-9]{24}$/.test(path.basename(resolved))) throw new Error('Unsafe registry cleanup target');
+    for (const filename of (await readdir(resolved)).filter(name => name.endsWith('.json'))) {
+      const record = JSON.parse(await readFile(path.join(resolved, filename), 'utf8'));
+      if (!record.roots.every(root => root.toLowerCase().startsWith((canonicalTest + path.sep).toLowerCase()))) throw new Error('Registry contains a window outside the isolated test profile');
+    }
+    await rm(resolved, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
+  }
   const absolute = path.resolve(directory);
   if (path.dirname(absolute) !== path.resolve(tmpdir()) || !path.basename(absolute).startsWith('alwaygit-windows-test-')) throw new Error('Unsafe window test cleanup target');
   await rm(absolute, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
