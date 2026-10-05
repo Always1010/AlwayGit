@@ -60,7 +60,13 @@ export async function rpc<T>(method: RpcRequest['method'], repoId?: string, payl
   const id = `webview-${++sequence}`;
   return new Promise<T>((resolve, reject) => {
     // The host owns mutation deadlines, including time spent in native confirmation.
-    const timer = ['action','pickRepositoryDirectory','discoverRepositories','addRepository'].includes(method) ? undefined : setTimeout(() => { if(category)cancelRead(id,new RpcError(message("rpc.theReadRequestTimedOut"),'TIMEOUT'));else{pending.delete(id);reject(new MessageError(message("rpc.theGitOperationTimedOutRefreshToCheckIts")));} }, method === 'saveSession' ? 10_000 : 180_000);
+    const timer = ['action','pickRepositoryDirectory','discoverRepositories','addRepository'].includes(method) ? undefined : setTimeout(() => {
+      if (category) cancelRead(id, new RpcError(message("rpc.theReadRequestTimedOut"), 'TIMEOUT'));
+      else {
+        pending.delete(id);
+        reject(new RpcError(message(method === 'saveSession' ? "rpc.theSessionSaveTimedOut" : "rpc.theGitOperationTimedOutRefreshToCheckIts"), 'TIMEOUT'));
+      }
+    }, method === 'saveSession' ? 10_000 : 180_000);
     const abort=()=>cancelRead(id);
     pending.set(id, { resolve: value => resolve(value as T), reject, timer, category, repoId, cleanup:signal?()=>signal.removeEventListener('abort',abort):undefined });
     signal?.addEventListener('abort',abort,{once:true});
