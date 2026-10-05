@@ -5,6 +5,7 @@ import type { Workbench } from '../../src/extension/workbench';
 import type { RepositoryManager } from '../../src/repositories/manager';
 import type { ProjectWindows } from '../../src/extension/project-windows';
 import type { RpcRequest } from '../../src/protocol/types';
+import type { WorkbenchTransfer } from '../../src/protocol/workbench-host';
 
 /** A test-only companion extension installed exclusively in the isolated test profile. */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -20,6 +21,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   if (name === 'source') { const repository = await api.manager.add(root); await api.workbench.open(repository.id); }
   const state = () => ({
     ready: true, name, focused: vscode.window.state.focused, registry: api.projects.bridge.directory,
+    webviewRequests: api.workbench.receivedWebviewRequests,
     sentinel: { uri: sentinel.uri.toString(), dirty: sentinel.isDirty, text: sentinel.getText(), closed: sentinel.isClosed },
     groups: vscode.window.tabGroups.all.map(group => ({ column: group.viewColumn, tabs: group.tabs.map(tab => ({
       label: tab.label, preview: tab.isPreview, dirty: tab.isDirty,
@@ -37,17 +39,36 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const action = await readFile(path.join(mailbox, name + '.action.json'), 'utf8').then(value => JSON.parse(value)).catch(() => undefined);
       if (!action || action.id === lastId) return;
       lastId = action.id;
-      let error: string | undefined;
+      let error: string | undefined, probe: WorkbenchTransfer | undefined;
       try {
         if (action.type === 'close') { await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor'); await vscode.commands.executeCommand('workbench.action.closeWindow'); return; }
         if (action.type === 'focus') {
           await api.projects.openProject(root);
+        } else if (action.type === 'probe-workbench') {
+          const repository = await api.manager.add(action.root, false);
+          await api.workbench.open(repository.id);
+          // Test the real Webview transport and production repositorySelected/captureWorkbench
+          // handlers, rather than substituting a direct backend call for panel responsiveness.
+          const diagnostic = api.workbench as unknown as {
+            panels: Map<unknown, { ready: boolean; session?: { repoId?: string } }>;
+            capture(panel: unknown): Promise<WorkbenchTransfer>;
+          };
+          const deadline = Date.now() + 15_000;
+          while (Date.now() < deadline) {
+            const panel = [...diagnostic.panels.values()].find(panel => panel.ready && panel.session?.repoId === repository.id);
+            if (panel) {
+              probe = await diagnostic.capture(panel);
+              if (probe.session.repoId === repository.id && probe.session.views?.[repository.id]?.checkedRefs?.includes('refs/heads/main')) break;
+            }
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+          if (probe?.session.repoId !== repository.id || !probe.session.views?.[repository.id]?.checkedRefs?.includes('refs/heads/main')) throw new Error('The real panel did not acknowledge repository selection and snapshot state');
         } else {
           const repository = await api.manager.add(action.root, false);
           await api.workbench.handle({ id: action.id, method: action.method as RpcRequest['method'], repoId: repository.id, payload: action.payload });
         }
       } catch (caught) { error = caught instanceof Error ? caught.message : String(caught); }
-      await writeFile(path.join(mailbox, name + '.result.json'), JSON.stringify({ id: action.id, error, state: state() }));
+      await writeFile(path.join(mailbox, name + '.result.json'), JSON.stringify({ id: action.id, error, probe, state: state() }));
     } finally { busy = false; }
   };
   const interval = setInterval(() => { void poll().catch(() => {}); }, 100);

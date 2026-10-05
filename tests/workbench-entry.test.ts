@@ -365,6 +365,31 @@ describe('Workbench entry presentation', () => {
     expect(response).toMatchObject({ type: 'response', id: 'blocked', error: { code: 'STASH_RESTORE_BLOCKED', details: { output: 'staged-only.txt: Index was not unstashed. https://***@example.test/repo' } } });
     expect(output.appendLine).toHaveBeenCalledWith(`[request:action] Restore blocked; Stash retained.\n${response.error.details.output}`);
   });
+  it.each(['undelivered', 'rejected'] as const)('logs a %s reply without exposing the saved draft', async failure => {
+    const fixture = panelFixture(), output = { appendLine: vi.fn() }, workbench = workbenchFixture(output);
+    vi.mocked(vscode.window.createWebviewPanel).mockReturnValue(fixture.panel as unknown as vscode.WebviewPanel);
+    await workbench.open();
+    if (failure === 'undelivered') fixture.panel.webview.postMessage.mockResolvedValue(false);
+    else fixture.panel.webview.postMessage.mockRejectedValue(new Error('transport unavailable'));
+    await fixture.receive({ id: 'save', method: 'saveSession', payload: { drafts: { a: 'private draft' } } });
+    expect(output.appendLine).toHaveBeenCalledWith(expect.stringContaining('[webview:response]'));
+    expect(JSON.stringify(output.appendLine.mock.calls)).not.toContain('private draft');
+  });
+  it('distinguishes a stalled VS Code state write from a message delivery failure', async () => {
+    vi.useFakeTimers();
+    const fixture = panelFixture(), output = { appendLine: vi.fn() }, workbench = workbenchFixture(output);
+    vi.mocked(vscode.window.createWebviewPanel).mockReturnValue(fixture.panel as unknown as vscode.WebviewPanel);
+    await workbench.open();
+    let finish!: () => void;
+    const context = (workbench as unknown as { context: vscode.ExtensionContext }).context;
+    vi.spyOn(context.workspaceState, 'update').mockReturnValue(new Promise<void>(resolve => { finish = resolve; }));
+    const save = fixture.receive({ id: 'save', method: 'saveSession', payload: { drafts: { a: 'keep' } } });
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(output.appendLine).toHaveBeenCalledWith(expect.stringContaining('[request:saveSession]'));
+    expect(fixture.panel.webview.postMessage).not.toHaveBeenCalledWith(expect.objectContaining({ id: 'save' }));
+    finish(); await save;
+    expect(fixture.panel.webview.postMessage).toHaveBeenCalledWith({ type: 'response', id: 'save', result: null });
+  });
   it('opens a missing workbench and focuses an existing hidden workbench', () => {
     expect(statusBarPresentation({ open: false, active: false })).toEqual({ visible: true, tooltip: 'Open AlwayGit Workbench' });
     expect(statusBarPresentation({ open: true, active: false })).toEqual({ visible: true, tooltip: 'Show AlwayGit Workbench' });
