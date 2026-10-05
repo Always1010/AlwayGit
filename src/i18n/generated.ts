@@ -6000,8 +6000,8 @@ export const catalog = {
     "zh-CN": "请等待当前 Git 操作完成后再切换工作台。"
   },
   "workbenchEntry.showGitWorkbench": {
-    "en": "Show Git Workbench",
-    "zh-CN": "显示 Git Workbench"
+    "en": "Open Workbench",
+    "zh-CN": "打开工作台"
   },
   "workbenchEntry.defaultLocation": {
     "en": "Default Open Workbench Location",
@@ -6021,15 +6021,47 @@ export const catalog = {
   },
   "workbenchEntry.defaultLocationHelp": {
     "en": "Open Workbench opens the default location.",
-    "zh-CN": "Open Workbench 打开默认位置。"
+    "zh-CN": "打开工作台时进入默认位置。"
   },
   "workbenchEntry.independentLocationsHelp": {
-    "en": "Locations can be used simultaneously, with independent state.",
-    "zh-CN": "各位置可同时使用，状态独立。"
+    "en": "Enabled locations can be used simultaneously, with independent state. Opening the Workbench opens only the default location.",
+    "zh-CN": "已启用的位置可同时使用，状态独立。打开工作台只进入默认位置。"
   },
   "workbenchEntry.auxiliaryMode": {
     "en": "Secondary Sidebar",
     "zh-CN": "第二侧边栏"
+  },
+  "workbenchEntry.getStarted": {
+    "en": "Get started with AlwayGit",
+    "zh-CN": "开始使用 AlwayGit"
+  },
+  "workbenchEntry.launcherDescription": {
+    "en": "Display the Workbench in an editor tab, the primary sidebar, the secondary sidebar or the panel. You can enable multiple locations and choose a default opening location.",
+    "zh-CN": "工作台可在编辑器标签页、主侧边栏、第二侧边栏或底部面板中显示。你可以启用多个位置，并选择默认打开位置。"
+  },
+  "workbenchEntry.currentDefault": {
+    "en": "Current default",
+    "zh-CN": "当前默认"
+  },
+  "workbenchEntry.enabledLocations": {
+    "en": "Enabled locations",
+    "zh-CN": "已启用"
+  },
+  "workbenchEntry.opensInLocation": {
+    "en": "Opens in: {{location}}",
+    "zh-CN": "将在{{location}}中打开"
+  },
+  "workbenchEntry.configureLocations": {
+    "en": "Configure display locations and default…",
+    "zh-CN": "配置显示位置与默认位置…"
+  },
+  "workbenchEntry.newWindowHelp": {
+    "en": "Create a separate Workbench window with no repository selected.",
+    "zh-CN": "创建一个未选择仓库的独立工作台窗口。"
+  },
+  "workbenchEntry.applyAndOpen": {
+    "en": "Apply and Open",
+    "zh-CN": "应用并打开"
   },
   "workbenchEntry.locationsDescription": {
     "en": "Choose where to display the Workbench to suit your workflow and preferences. You can enable multiple locations and choose a default opening location.",
@@ -7534,5 +7566,13 @@ export interface MessageParameters {
   "workbenchEntry.defaultLocationHelp": {  };
   "workbenchEntry.independentLocationsHelp": {  };
   "workbenchEntry.auxiliaryMode": {  };
+  "workbenchEntry.getStarted": {  };
+  "workbenchEntry.launcherDescription": {  };
+  "workbenchEntry.currentDefault": {  };
+  "workbenchEntry.enabledLocations": {  };
+  "workbenchEntry.opensInLocation": { location: ParameterValue };
+  "workbenchEntry.configureLocations": {  };
+  "workbenchEntry.newWindowHelp": {  };
+  "workbenchEntry.applyAndOpen": {  };
   "workbenchEntry.locationsDescription": {  };
 }

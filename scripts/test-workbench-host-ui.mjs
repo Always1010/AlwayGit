@@ -4,8 +4,8 @@ import assert from 'node:assert/strict';
 export async function verifyWorkbenchLocations(browser, url) {
   for (const language of ['en', 'zh-CN']) {
     const names = language === 'en'
-      ? { title: 'Workbench Locations', editor: 'Editor Tab', sidebar: 'Primary Sidebar', auxiliary: 'Secondary Sidebar', panel: 'Panel', default: 'Default Open Workbench Location', cancel: 'Cancel', apply: 'Apply', close: 'Close' }
-      : { title: '工作台显示位置', editor: '编辑器标签页', sidebar: '主侧边栏', auxiliary: '第二侧边栏', panel: '底部面板', default: '默认打开位置', cancel: '取消', apply: '应用', close: '关闭' };
+      ? { title: 'Workbench Locations', editor: 'Editor Tab', sidebar: 'Primary Sidebar', auxiliary: 'Secondary Sidebar', panel: 'Panel', default: 'Default Open Workbench Location', cancel: 'Cancel', apply: 'Apply and Open', close: 'Close' }
+      : { title: '工作台显示位置', editor: '编辑器标签页', sidebar: '主侧边栏', auxiliary: '第二侧边栏', panel: '底部面板', default: '默认打开位置', cancel: '取消', apply: '应用并打开', close: '关闭' };
     for (const { host, viewport } of [
       { host: 'editor', viewport: { width: 1100, height: 760 } },
       { host: 'sidebar', viewport: { width: 340, height: 760 } },
@@ -28,7 +28,7 @@ export async function verifyWorkbenchLocations(browser, url) {
         assert.ok((await dialog.textContent()).includes(language === 'en' ? 'workflow and preferences' : '根据你的使用习惯和偏好'));
         assert.equal(await dialog.getByRole('checkbox').count(), 4);
         assert.equal(await dialog.getByRole('combobox').count(), 1);
-        assert.equal(await dialog.getByRole('button').count(), 3, 'Only close, Cancel and Apply belong to the dialog');
+        assert.equal(await dialog.getByRole('button').count(), 3, 'Only Close, Cancel and Apply and Open belong to the dialog');
         assert.equal(await dialog.getByRole('combobox').inputValue(), 'panel');
         await dialog.getByRole('checkbox', { name: names.panel, exact: true }).uncheck();
         assert.equal(await dialog.getByRole('combobox').inputValue(), 'editor');

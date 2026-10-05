@@ -59,7 +59,7 @@ export function WorkbenchLocationsDialog({ locations, language, onApply, onClose
         {!draft.enabled.length && <p className="locations-error" role="alert">{t('workbenchEntry.atLeastOneLocation')}</p>}
         {error && <p className="locations-error" role="alert">{error}</p>}
       </div>
-      <div className="locations-footer"><button type="button" disabled={busy} onClick={onClose}>{t('common.cancel')}</button><button type="button" className="locations-primary" disabled={busy || !draft.enabled.length} onClick={() => void apply()}>{t('common.apply')}</button></div>
+      <div className="locations-footer"><button type="button" disabled={busy} onClick={onClose}>{t('common.cancel')}</button><button type="button" className="locations-primary" disabled={busy || !draft.enabled.length} onClick={() => void apply()}>{t('workbenchEntry.applyAndOpen')}</button></div>
     </div>
   </div>;
 }
