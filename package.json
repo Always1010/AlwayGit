@@ -26,10 +26,7 @@
   ],
   "activationEvents": [
     "*",
-    "onView:alwaygit.workbenchLauncher",
-    "onWebviewPanel:alwaygit.workbench",
-    "onView:alwaygit.workbenchPanel",
-    "onView:alwaygit.workbenchAuxiliary"
+    "onWebviewPanel:alwaygit.workbench"
   ],
   "capabilities": {
     "untrustedWorkspaces": {
