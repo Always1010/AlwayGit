@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { readFileSync } from 'node:fs';
 import { panelSession, statusBarPresentation } from '../src/extension/workbench-entry';
-import { createWorkbenchActivityLauncher, workbenchContainerIds, workbenchLauncherHtml } from '../src/extension/workbench-launcher';
+import { createWorkbenchActivityLauncher, workbenchContainerIds, workbenchLauncherHtml, workbenchLocationSettingsCommands } from '../src/extension/workbench-launcher';
 import { Workbench } from '../src/extension/workbench';
 import type { RepositoryChanges, Snapshot, GitServiceContract } from '../src/protocol/types';
 import type { RepositoryManager } from '../src/repositories/manager';
@@ -120,6 +120,7 @@ describe('Workbench entry presentation', () => {
     expect(bottom.view.webview.html).toBe('<html></html>');
     expect(sidebar.view.webview.html).toContain('locations-root');
     expect(vscode.commands.executeCommand).toHaveBeenLastCalledWith(`${viewId}.focus`);
+    expect(sidebar.view.webview.html).toContain(`Opens in: ${destination === 'panel' ? 'Panel' : 'Secondary Sidebar'}`);
     expect(vscode.window.showErrorMessage).not.toHaveBeenCalled();
     expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
     expect(vscode.window.showQuickPick).not.toHaveBeenCalled();
@@ -574,14 +575,16 @@ describe('Workbench entry presentation', () => {
     expect(interactive).toContain('script-src &#39;nonce-test-nonce&#39;');
   });
 
-  it('registers the retained movable view without opening an editor', async () => {
+  it.each(['sidebar', 'auxiliary', 'panel'] as const)('registers the retained %s launcher with its own settings entry without opening an editor', async location => {
     const workbench = workbenchFixture();
     const registration = createWorkbenchActivityLauncher(workbench);
-    const provider = vi.mocked(vscode.window.registerWebviewViewProvider).mock.calls[0][1];
+    const provider = vi.mocked(vscode.window.registerWebviewViewProvider).mock.calls[['sidebar', 'auxiliary', 'panel'].indexOf(location)][1];
     const view = viewFixture();
     await provider.resolveWebviewView(view.view as unknown as vscode.WebviewView, { state: undefined }, {} as vscode.CancellationToken);
     expect(view.view.webview.html).toContain('command:alwaygit.showWorkbench');
-    expect(view.view.webview.options).toMatchObject({ enableCommandUris: ['alwaygit.showWorkbench', 'alwaygit.openWorkbenchInNewWindow'] });
+    expect(view.view.webview.html).toContain(`command:${workbenchLocationSettingsCommands[location]}`);
+    expect(view.view.webview.html).toContain('Opens in: Editor Tab');
+    expect(view.view.webview.options).toMatchObject({ enableCommandUris: ['alwaygit.showWorkbench', 'alwaygit.openWorkbenchInNewWindow', workbenchLocationSettingsCommands[location]] });
     expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
     expect(vscode.window.registerWebviewViewProvider).toHaveBeenCalledTimes(3);
     expect(vscode.window.registerWebviewViewProvider).toHaveBeenCalledWith('alwaygit.workbenchAuxiliary', expect.anything(), { webviewOptions: { retainContextWhenHidden: true } });

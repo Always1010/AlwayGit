@@ -25,7 +25,7 @@ Select the question-mark icon in the upper-right corner of the Workbench to open
 
 Use a practice repository with existing Git history. Confirm the current branch and finish any active Git operation first. For installation, see [Install and launch](#section-01-02).
 
-1. Open the AlwayGit launch sidebar and select **Show Git Workbench**. Use **Add…** in Repositories to add a repository, then double-click it or press Enter to enter it.
+1. Open the AlwayGit launch sidebar and select **Open Workbench**. Use **Add…** in Repositories to add a repository, then double-click it or press Enter to enter it.
 2. Edit and save a file in VS Code. Return to the workbench, select **Working Tree**, then select the file under Unstaged to inspect its Diff.
 3. Right-click the file you want to commit and choose **Stage**. Select it under Staged and check the actual content prepared for the commit.
 4. Select **Commit…** to the right of Unstage in the Staged heading (or Commit in the toolbar), enter a Commit Message in the dialog, then select **Commit**. Only Staged content is committed; other unstaged changes remain in the Working Tree.
@@ -59,12 +59,12 @@ Use VS Code 1.106 or later. Basic features require Git 2.40 or later; saving a S
 
 1. Open the Extensions view in VS Code. From the view’s menu, choose Install from VSIX… and select the AlwayGit VSIX file.
 2. After installation, check the extension details to confirm that the installed AlwayGit version matches the package. If VS Code prompts you to reload, do so.
-3. Click the AlwayGit icon in the Activity Bar, then click Show Git Workbench. Alternatively, run AlwayGit: Show Workbench from the Command Palette.
+3. Click the AlwayGit icon in the Activity Bar, then click Open Workbench. Alternatively, run AlwayGit: Show Workbench from the Command Palette.
 4. On your first visit, use Add… under Repositories to add a repository, then double-click the target repository to open it.
 
 **Result:** The AlwayGit workbench appears in the editor area. Once the repository has loaded, you can see its branches and history.
 
-**Workbench locations:** Use the gear in any AlwayGit view title to open the location dialog. Select Editor Tab, Primary Sidebar, Secondary Sidebar and Panel (multiple choices), choose the default destination from the selected locations, and select Apply to save them together, close the dialog, and open or focus the default destination. Cancel, Close and Esc discard changes; keep at least one location selected. Enabled locations can be used together; each keeps its own drafts, selection and terminals. Changing the default or disabling a location preserves live workbenches. Explicit commands open each location. The sidebars follow VS Code’s primary sidebar position setting. Opening a location restores its native region before focusing the view. The separate Copy Current State to a New Editor Tab command copies the current repository, draft and browsing state into a new editor tab while retaining the source and all existing tabs; live terminals stay in the source. Narrow sidebars and short panels use region navigation. See the [workbench specification](WORKBENCH_SPEC.md#布局与视觉).
+**Workbench locations:** The launch page explains the four available locations and shows the current default and enabled locations. The hint below Open Workbench identifies its destination. Use Configure display locations and default… on the launch page or the gear in any AlwayGit view title to open the location dialog. Select Editor Tab, Primary Sidebar, Secondary Sidebar and Panel (multiple choices), choose the default destination from the selected locations, and select Apply and Open to save them together, close the dialog, and open or focus the default destination. Cancel, Close and Esc discard changes; keep at least one location selected. Enabled locations can be used together; each keeps its own drafts, selection and terminals. Changing the default or disabling a location preserves live workbenches. Explicit commands open each location. The sidebars follow VS Code’s primary sidebar position setting. Opening a location restores its native region before focusing the view. The separate Copy Current State to a New Editor Tab command copies the current repository, draft and browsing state into a new editor tab while retaining the source and all existing tabs; live terminals stay in the source. Narrow sidebars and short panels use region navigation. See the [workbench specification](WORKBENCH_SPEC.md#布局与视觉).
 
 **Troubleshooting:** If Git is unavailable, check its installation and the Git path configured in VS Code. If the workspace is in Restricted Mode, change its trust settings only after confirming that the project is trustworthy.
 

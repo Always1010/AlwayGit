@@ -30,7 +30,7 @@ import { RepositoryOperationBusyError, RepositoryOperationRecoveryRequiredError 
 import { discardRequestSchema } from '../protocol/validation';
 import { operationSettingsScopeSchema } from '../protocol/validation';
 import { captureWorkbenchSchema, readWorkbenchLocations, saveWorkbenchLocationsSchema, type DockedWorkbenchLocation, type WorkbenchLocation, type WorkbenchTransfer } from '../protocol/workbench-host';
-import { workbenchContainerIds, workbenchLauncherHtml, workbenchViewIds } from './workbench-launcher';
+import { workbenchContainerIds, workbenchLauncherHtml, workbenchLocationSettingsCommands, workbenchViewIds } from './workbench-launcher';
 
 type WorkbenchSurface = vscode.WebviewPanel | vscode.WebviewView;
 interface WorkbenchPanel { panel: WorkbenchSurface; kind: WorkbenchLocation; ready: boolean; subscriptions: vscode.Disposable[]; visible: boolean; activeRepository?: string; blank: boolean; session?: SessionState; savedSession?: SessionState; pendingTerminal?: boolean; pendingChanges?: { repoId: string; changes?: RepositoryChanges }; catalogDirty?: boolean }
@@ -182,7 +182,7 @@ export class Workbench implements vscode.Disposable {
     this.releaseLauncher(view);
     view.title = this.locationLabel(location);
     const root = vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'launcher');
-    view.webview.options = { enableScripts: true, localResourceRoots: [root], enableCommandUris: ['alwaygit.showWorkbench', 'alwaygit.openWorkbenchInNewWindow'] };
+    view.webview.options = { enableScripts: true, localResourceRoots: [root], enableCommandUris: ['alwaygit.showWorkbench', 'alwaygit.openWorkbenchInNewWindow', workbenchLocationSettingsCommands[location]] };
     this.launcherSubscriptions.set(view, view.webview.onDidReceiveMessage(async raw => {
       const parsed = requestSchema.safeParse(raw);
       if (!parsed.success || !['workbenchLocationsReady', 'workbenchLocationsClosed', 'saveWorkbenchLocations'].includes(parsed.data.method)) return;
@@ -203,7 +203,7 @@ export class Workbench implements vscode.Disposable {
       script: String(view.webview.asWebviewUri(vscode.Uri.joinPath(root, 'launcher.js'))),
       stylesheet: String(view.webview.asWebviewUri(vscode.Uri.joinPath(root, 'launcher.css'))),
       cspSource: view.webview.cspSource, nonce: randomBytes(20).toString('base64'),
-    });
+    }, this.locations, location);
   }
   private saveLocations(payload: unknown, target?: WorkbenchSurface) {
     const settings = saveWorkbenchLocationsSchema.parse(payload);

@@ -2,7 +2,7 @@
   "name": "alwaygit",
   "displayName": "%manifest.displayName%",
   "description": "%manifest.description%",
-  "version": "0.50.1",
+  "version": "0.51.0",
   "publisher": "alwaygit-dev",
   "private": true,
   "type": "module",
