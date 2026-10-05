@@ -37,7 +37,7 @@ const fixture = await build({ stdin: { resolveDir: root, contents: `
     layout: { preset: 'workbench', sidebar: 248, details: 350, diff: 260, graph: 75, author: 105, date: 120, font: 13, row: 24 },
     drafts: {}, views: { 'demo-alwaygit': { search: '', tab: 'changes', expandedRefGroups: ['local:feature'] } } };
   window.__ALWAYGIT_HOST__ = options.host || 'editor';
-  window.__ALWAYGIT_PREFERENCES__ = { appearance: { theme: 'dark' }, changeListMode: options.unified ? 'unified' : 'split' };
+  window.__ALWAYGIT_PREFERENCES__ = { appearance: { theme: 'system' }, changeListMode: options.unified ? 'unified' : 'split' };
   window.acquireVsCodeApi = () => ({ getState: () => session, setState: value => { session = value; }, postMessage: async call => {
     window.__capturePending++;
     try {
@@ -49,7 +49,7 @@ const fixture = await build({ stdin: { resolveDir: root, contents: `
       let result = await request(call.method, call.payload, call.repoId);
       if (beforeCommit && !call.payload.amend) committed = { oid: result.head, paths: call.payload.files?.map(file => file.path) ?? beforeCommit.changes.filter(file => !file.untracked && file.indexStatus !== ' ').map(file => file.path) };
       if (call.method === 'details' && committed?.oid === result.commit.oid) { result.files = committed.paths.map(path => ({ path, status: 'M' })); result.body = ''; }
-      if (call.method === 'interfaceSettings') result = { appearance: { theme: 'dark' }, changeListMode: options.unified ? 'unified' : 'split' };
+      if (call.method === 'interfaceSettings') result = { appearance: { theme: 'system' }, changeListMode: options.unified ? 'unified' : 'split' };
       if (call.method === 'repositories') result[0].collectionId = 'learning';
       if (call.method === 'repositoryCollections') result = [{ id: 'learning', name: 'learning labs' }];
       if (call.method === 'snapshot' && options.operation) {
@@ -138,7 +138,7 @@ try {
   const selected = scenes.filter(([id]) => (!only || only === id) && (!from || id >= from));
   assert.ok(selected.length, 'Unknown scene');
   for (const [id, options, prepare] of selected) {
-    const context = await browser.newContext({ viewport: options.viewport ?? { width: 1440, height: 900 }, deviceScaleFactor: 1, locale: 'en-US', timezoneId: 'Asia/Shanghai', colorScheme: 'dark', reducedMotion: 'reduce' });
+    const context = await browser.newContext({ viewport: options.viewport ?? { width: 1440, height: 900 }, deviceScaleFactor: 1, locale: 'en-US', timezoneId: 'Asia/Shanghai', colorScheme: 'light', reducedMotion: 'reduce' });
     const page = await context.newPage(), errors = [];
     page.setDefaultTimeout(10000);
     page.on('pageerror', error => errors.push(error.message));

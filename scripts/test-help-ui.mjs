@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readdir } from 'node:fs/promises';
 
 /** Exercise the installed Webview's CSP shape, offline assets, and read-only behavior. */
 export async function verifyHelp(browser, url) {
   await mkdir('artifacts', { recursive: true });
+  const expectedFigures = (await readdir('docs/images/user-manual')).filter(name => name.endsWith('.png')).length;
   for (const language of ['en', 'zh-CN']) {
     const active = language === 'zh-CN', page = await browser.newPage({ viewport: { width: 1440, height: 940 } });
     const errors = [], externalRequests = [];
@@ -19,6 +20,7 @@ export async function verifyHelp(browser, url) {
         await route.fulfill({ response, body, headers: { ...response.headers(), 'content-security-policy': "default-src 'none'; img-src 'self' data:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'nonce-help-test'; connect-src 'none'" } });
       });
       await page.addInitScript(({ language, active }) => {
+        window.__ALWAYGIT_PREFERENCES__ = { language };
         const repo = { id: 'help-repo', root: '/help-repo', commonDir: '/help-repo/.git', name: 'Help fixture' };
         const commit = { oid: 'a'.repeat(40), parents: [], author: 'Fixture', email: 'test@example.com', timestamp: 0, subject: 'Existing commit' };
         const fixture = window.__helpFixture = {
@@ -29,6 +31,7 @@ export async function verifyHelp(browser, url) {
           let result;
           if (request.method === 'repositories') result = active ? [repo] : [];
           if (request.method === 'repositoryCollections' || request.method === 'repositoryStatuses') result = [];
+          if (request.method === 'interfaceSettings') result = { language };
           if (request.method === 'operationSettings') result = { allowDetachedHead: false, scope: 'user' };
           if (request.method === 'snapshot') result = { repository: repo, branch: 'main', head: commit.oid, ahead: 0, behind: 0, remotes: [], changes: [{ path: 'notes.txt', indexStatus: ' ', worktreeStatus: 'M', untracked: false }], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 1 };
           if (request.method === 'history') result = { commits: [commit], tips: [commit.oid], nextOffset: 1, hasMore: false };
@@ -58,6 +61,24 @@ export async function verifyHelp(browser, url) {
       await dialog.getByRole('button', { name: language === 'en' ? 'Install and launch' : '安装与启动', exact: true }).click();
       assert.equal(await dialog.getByRole('button', { name: language === 'en' ? 'Full manual' : '完整手册', exact: true }).getAttribute('aria-pressed'), 'true');
       assert.ok(await dialog.locator('.help-content').evaluate(element => element.scrollTop > 0), 'An internal link locates the requested subsection');
+      // Decode every maintained figure through the packaged manual under the Webview CSP.
+      const figures = new Set();
+      const chapters = dialog.locator('.help-topic');
+      for (let chapter = 0; chapter < await chapters.count(); chapter++) {
+        await chapters.nth(chapter).click();
+        const images = dialog.locator('.help-content img');
+        for (let index = 0; index < await images.count(); index++) {
+          const figure = images.nth(index);
+          await figure.scrollIntoViewIfNeeded();
+          const source = await figure.evaluate(async element => {
+            await element.decode();
+            if (!element.naturalWidth) throw new Error('Empty manual image');
+            return element.currentSrc;
+          });
+          figures.add(source);
+        }
+      }
+      assert.equal(figures.size, expectedFigures, 'The full manual loads every maintained shared figure');
       await dialog.getByRole('button', { name: language === 'en' ? 'Common tasks' : '常见任务', exact: true }).click();
       const search = dialog.getByRole('searchbox');
       await search.fill('INDEX');

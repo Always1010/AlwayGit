@@ -21,9 +21,9 @@ export type HelpCategory = 'start' | 'tasks' | 'questions' | 'manual';
 
 /** IDs are shared by both editions and do not depend on translated titles or chapter ordering. */
 export const helpTopics: Record<Exclude<HelpCategory, 'manual'>, readonly string[]> = {
-  start: ['quick-start', 'section-01-04', 'section-01-05', 'section-12-01'],
-  tasks: ['section-03-01', 'section-03-02', 'section-03-04', 'section-03-05', 'section-04-04', 'section-05-02', 'section-08-02', 'section-08-03', 'section-07-02', 'section-07-03', 'section-06-02', 'section-06-03', 'section-09-03'],
-  questions: ['section-11-04', 'section-11-02', 'section-07-04', 'section-07-06', 'section-11-05'],
+  start: ['quick-start', 'section-01-02', 'workbench-locations', 'workbench-instances', 'section-01-04', 'section-01-05', 'help-guide', 'section-12-01'],
+  tasks: ['section-02-01', 'section-02-02', 'file-list-modes', 'section-03-01', 'section-03-02', 'section-03-04', 'selected-file-commit', 'section-03-05', 'section-03-06', 'section-04-01', 'section-04-02', 'section-04-04', 'section-04-05', 'section-05-02', 'section-05-03', 'section-08-02', 'section-08-03', 'section-07-02', 'section-07-03', 'section-06-02', 'section-06-03', 'section-09-01', 'tag-status', 'section-09-02', 'section-09-03', 'section-10-01', 'section-13-01', 'section-13-02', 'section-11-01', 'shortcut-settings'],
+  questions: ['section-11-04', 'section-11-02', 'section-07-04', 'section-07-06', 'section-11-05', 'workbench-instances', 'section-13-02', 'help-guide'],
 };
 
 export function blockText(block: ManualBlock): string {
