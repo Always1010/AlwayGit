@@ -3471,6 +3471,10 @@ export const catalog = {
     "en": "File resolves outside the repository.",
     "zh-CN": "文件解析后位于仓库之外。"
   },
+  "projectWindows.repositoryRevealFailed": {
+    "en": "[project-window] Could not reveal the repository in Explorer: {{value}}",
+    "zh-CN": "[project-window] 无法在资源管理器中定位仓库：{{value}}"
+  },
   "projectWindows.repositoryActivity": {
     "en": "[repository-activity] {{value}}",
     "zh-CN": "[repository-activity] {{value}}"
@@ -5676,8 +5680,16 @@ export const catalog = {
     "zh-CN": "打开当前仓库文件夹"
   },
   "workbench.switchesToItsVSCodeWindowWhenAlreadyOpen": {
-    "en": "Switches to its VS Code window when already open.",
-    "zh-CN": "如果已经打开，则切换到对应的 VS Code 窗口。"
+    "en": "Switches to its VS Code window when already open. Shows Explorer if already in this window.",
+    "zh-CN": "如果已经打开，则切换到对应的 VS Code 窗口；已在当前窗口时显示资源管理器。"
+  },
+  "workbench.currentRepositoryExplorerShown": {
+    "en": "This window is already using the repository folder. Explorer is now visible.",
+    "zh-CN": "当前窗口已位于此仓库目录，已显示资源管理器。"
+  },
+  "workbench.workspaceRepositoryExplorerShown": {
+    "en": "This repository is in the current window's workspace. Explorer is now visible.",
+    "zh-CN": "此仓库位于当前窗口的工作区中，已显示资源管理器。"
   },
   "workbench.selectARepositoryFirst": {
     "en": "Select a repository first",
@@ -6738,6 +6750,7 @@ export interface MessageParameters {
   "paths.invalidRepositoryRelativeFilePath": {  };
   "paths.filePathIsOutsideTheRepository": {  };
   "paths.fileResolvesOutsideTheRepository": {  };
+  "projectWindows.repositoryRevealFailed": { value: ParameterValue };
   "projectWindows.repositoryActivity": { value: ParameterValue };
   "projectWindows.trustTheProjectWorkspaceBeforeOpeningItFromAlwayGit": {  };
   "projectWindows.theRepositoryDirectoryChangedReopenItFromAlwayGit": {  };
@@ -7290,6 +7303,8 @@ export interface MessageParameters {
   "workbench.locateHEAD": {  };
   "workbench.openRepositoryFolder": {  };
   "workbench.switchesToItsVSCodeWindowWhenAlreadyOpen": {  };
+  "workbench.currentRepositoryExplorerShown": {  };
+  "workbench.workspaceRepositoryExplorerShown": {  };
   "workbench.selectARepositoryFirst": {  };
   "workbench.dismissNotification": {  };
   "workbench.showLog": {  };

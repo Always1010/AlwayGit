@@ -23,7 +23,7 @@ import { Button, Empty, Icon, Modal, ResizeHandle } from './ui';
 import { translate, uiText } from './text';
 
 import type React from 'react';
-import type { Repository, RpcRequest } from '../src/protocol/types';
+import type { OpenProjectResult, Repository, RpcRequest } from '../src/protocol/types';
 import { connected, demoMode, flushSession, rpc } from './rpc';
 import { useWorkbench } from './store';
 import { useWorkbenchFields } from './subscriptions';
@@ -51,6 +51,14 @@ export function App() {
   const blockInteraction = state.busy && state.actionFeedback?.status !== 'error' && blocksWorkbench(progressFeedback?.action ?? state.activity);
   const mainPanel=useRef<HTMLElement>(null),[mainPanelHeight,setMainPanelHeight]=useState(0);
   const [helpOpen,setHelpOpen]=useState(false);
+  const [projectNotice,setProjectNotice]=useState<Extract<OpenProjectResult,{kind:'current-window'}>>();
+  const projectRequest=useRef(0);
+  useEffect(()=>{projectRequest.current++;setProjectNotice(undefined);return()=>{projectRequest.current++;};},[state.repoId]);
+  useEffect(()=>{
+    if(!projectNotice)return;
+    const timer=setTimeout(()=>setProjectNotice(undefined),3000);
+    return()=>clearTimeout(timer);
+  },[projectNotice]);
   const [commitRepoId,setCommitRepoId]=useState<string>();
   const [commitFiles,setCommitFiles]=useState<CommitSelection[]>();
   const showHelp=useCallback(()=>{setContext(undefined);setHelpOpen(true);},[]);
@@ -86,7 +94,17 @@ export function App() {
   const startCommit=useCallback((files?:CommitSelection[])=>{const current=useWorkbench.getState();if(!current.repoId||!current.snapshot||current.busy)return;setContext(undefined);setDialog(undefined);current.selectWorking();setCommitFiles(files);setCommitRepoId(current.repoId);},[]);
   const closeCommit=useCallback((repoId:string)=>{flushSession();setCommitRepoId(current=>current===repoId?undefined:current);},[]);
   const showSettings=useCallback(()=>{setContext(undefined);useWorkbench.getState().beginSettings();},[]);
-  const openRepository=useCallback(()=>void host('openProject'),[host]);
+  const openRepository=useCallback(()=>{
+    const current=useWorkbench.getState(),repoId=current.repoId,request=++projectRequest.current;
+    setProjectNotice(undefined);
+    void rpc<OpenProjectResult|undefined>('openProject',repoId).then(result=>{
+      if(request!==projectRequest.current||useWorkbench.getState().repoId!==repoId)return;
+      if(result?.kind==='current-window')setProjectNotice(result);
+      else if(demoMode)useWorkbench.setState({notice:translate(current.language,"workbench.demoNativeVSCodeCommandPreview")});
+    }).catch(error=>{
+      if(request===projectRequest.current&&useWorkbench.getState().repoId===repoId)current.report(error);
+    });
+  },[]);
   useWorkbenchKeyboard(blockInteraction || !!(state.remoteRequest||commitRepoId||dialog||repositoryDialog||repositoryRemoval||repositoryFetch||context||helpOpen||state.settingsBaseline||state.checkoutFailure||state.operationReview));
   useLayoutEffect(()=>{const element=mainPanel.current;if(!element)return;const measure=()=>setMainPanelHeight(element.clientHeight);measure();const observer=new ResizeObserver(measure);observer.observe(element);return()=>observer.disconnect();},[]);
   const snapshot=state.snapshot,layout=state.layout,unpushed=snapshot?.unpushed??snapshot?.ahead??0,repositoryState=repositoryViewState(snapshot,!!state.repoId,state.loading),hasRepositories=state.repositories.length>0;
@@ -126,6 +144,7 @@ export function App() {
       <Button icon="archive" shortcut="stash" disabled={!canStash} onClick={()=>open({type:'stash.create'})}>{uiText("workbench.stashAllChanges")}</Button>
       <div className="toolbar-spacer"/><Button icon="refresh" shortcut="refresh" title={t("workbench.refreshCurrentRepositoryStatusAndHistory")} aria-label={t("workbench.refreshCurrentRepositoryStatusAndHistory")} disabled={!canOperate} onClick={()=>void state.refresh()}/><div className="toolbar-repository-actions"><Button className="icon-only toolbar-special" icon="location" shortcut="head" title={t("workbench.locateTheCurrentCommitHEAD")} aria-label={t("workbench.locateHEAD")} disabled={!snapshot?.head} onClick={state.locateHead}/><Button className="icon-only toolbar-special open-repository" shortcut="repository" data-testid="open-project" title={snapshot?`${t("workbench.openRepositoryFolder")}\n${t("workbench.switchesToItsVSCodeWindowWhenAlreadyOpen")}\n${snapshot.repository.root}`:t("workbench.selectARepositoryFirst")} aria-label={t("workbench.openRepositoryFolder")} disabled={!snapshot} onClick={openRepository}><OpenRepositoryFolderIcon/></Button></div>
     </div>
+    {projectNotice&&<div className="project-open-notice" role="status" aria-live="polite" aria-atomic="true"><Icon name="info"/><div><span>{projectNotice.exactRoot?t("workbench.currentRepositoryExplorerShown"):t("workbench.workspaceRepositoryExplorerShown")}</span><div className="project-open-notice-path">{projectNotice.root}</div></div></div>}
     <OperationNotice abort={()=>open({type:'operation.abort'})}/>
     {!blockInteraction&&<ActionFeedbackBar showLog={()=>void host('showLog')} openAction={open}/>}
     {state.notice&&!state.busy&&!state.actionFeedback&&<div className="banner notice" role="status"><Icon name="info"/><span>{state.notice}</span><Button className="icon-only" icon="close" title={t("workbench.dismissNotification")} aria-label={t("workbench.dismissNotification")} onClick={()=>useWorkbench.setState({notice:undefined})}/></div>}

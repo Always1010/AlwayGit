@@ -1,4 +1,10 @@
 {
+  "projectWindows.repositoryRevealFailed": {
+    "en": "[project-window] Could not reveal the repository in Explorer: {{value}}",
+    "zh-CN": "[project-window] 无法在资源管理器中定位仓库：{{value}}",
+    "review": "translated",
+    "context": "src/extension/project-windows.ts / openProject"
+  },
   "projectWindows.repositoryActivity": {
     "en": "[repository-activity] {{value}}",
     "zh-CN": "[repository-activity] {{value}}",

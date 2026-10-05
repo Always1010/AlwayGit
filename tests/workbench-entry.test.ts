@@ -48,6 +48,14 @@ function workbenchFixture(output = { appendLine: vi.fn() }, events?: { changes: 
 }
 
 describe('Workbench entry presentation', () => {
+  it('returns the current-window Explorer result through the openProject RPC', async () => {
+    const workbench = workbenchFixture(), repo = { id: 'repo', root: '/repo' };
+    const result = { kind: 'current-window', root: repo.root, exactRoot: true };
+    const openProject = vi.fn(async () => result);
+    Object.assign(workbench as unknown as object, { repositories: { get: () => repo }, projects: { openProject } });
+    await expect(workbench.handle({ id: 'open', method: 'openProject', repoId: repo.id })).resolves.toEqual(result);
+    expect(openProject).toHaveBeenCalledWith(repo.root);
+  });
   it.each([false, true])('revalidates visible Working Tree content with unchanged Git status while retaining historical and staged comparisons (untracked: %s)', async untracked => {
     const repository = { id: 'fixture', root: '/fixture', commonDir: '/fixture/.git', name: 'Fixture' };
     const snapshot: Snapshot = { repository, branch: 'main', ahead: 0, behind: 0, version: 1, refs: [], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, changes: [

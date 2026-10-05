@@ -7,7 +7,7 @@ import { WindowBridge, canonicalPath, type ProjectRequest, type WindowRecord } f
 import { RepositoryOperationLock } from '../application/operation-lock';
 import type { GitDocuments } from '../editor/documents';
 import type { RepositoryManager } from '../repositories/manager';
-import type { DiffTarget } from '../protocol/types';
+import type { DiffTarget, OpenProjectResult } from '../protocol/types';
 
 /** Routes only to windows where the repository is part of the actual workspace. */
 export class ProjectWindows implements vscode.Disposable {
@@ -28,7 +28,17 @@ export class ProjectWindows implements vscode.Disposable {
     const update = () => { void this.bridge.update(this.roots(), vscode.window.state.focused).catch(error => this.log.appendLine(String(error))); };
     this.disposables.push(vscode.workspace.onDidChangeWorkspaceFolders(update), vscode.window.onDidChangeWindowState(update));
   }
-  async openProject(root: string): Promise<void> { await this.route({ root, action: 'project' }); }
+  async openProject(root: string): Promise<OpenProjectResult> {
+    const canonical = await canonicalPath(root);
+    const target = await this.route({ root: canonical, action: 'project' });
+    if (target.id !== this.bridge.record.id) return { kind: 'other-window' };
+    // Reveal the folder only in the requesting window. Other project windows
+    // retain their editor and sidebar state when the command merely focuses them.
+    await vscode.commands.executeCommand('workbench.files.action.focusFilesExplorer');
+    try { await vscode.commands.executeCommand('revealInExplorer', vscode.Uri.file(root)); }
+    catch (error) { this.log.appendLine(translate('en', 'projectWindows.repositoryRevealFailed', { value: String(error) })); }
+    return { kind: 'current-window', root, exactRoot: target.roots.length === 1 && target.roots.includes(canonical) };
+  }
   async openWorkbenchInNewWindow(root: string): Promise<void> {
     const canonical = await canonicalPath(root), key = `workbench:${canonical}`;
     let opened = this.opening.get(key);
@@ -111,11 +121,11 @@ export class ProjectWindows implements vscode.Disposable {
     while (!vscode.window.state.focused && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50));
     if (!vscode.window.state.focused) throw new MessageError(localizeMessage("projectWindows.vSCodeCouldNotActivateTheSelectedProjectWindow"));
   }
-  private async route(request: ProjectRequest): Promise<void> {
+  private async route(request: ProjectRequest): Promise<WindowRecord> {
     if (request.action === 'show-workbench' || request.action === 'catalog-changed' || request.action === 'repository-activity') throw new MessageError(localizeMessage("projectWindows.aWindowLevelRequestCannotBeRoutedAsA"));
     const root = await canonicalPath(request.root);
     const existing = await this.find(root);
-    if (existing) { await WindowBridge.send(existing, { ...request, root }); return; }
+    if (existing) { await WindowBridge.send(existing, { ...request, root }); return existing; }
     let opened = this.opening.get(root);
     if (!opened) {
       opened = this.openAndWait(root);
@@ -123,7 +133,9 @@ export class ProjectWindows implements vscode.Disposable {
       void opened.finally(() => { if (this.opening.get(root) === opened) this.opening.delete(root); }).catch(() => {});
     }
     // Concurrent clicks share startup, but each action is delivered once after readiness.
-    await WindowBridge.send(await opened, { ...request, root });
+    const target = await opened;
+    await WindowBridge.send(target, { ...request, root });
+    return target;
   }
   private async find(root: string): Promise<WindowRecord | undefined> {
     for (const candidate of await this.bridge.candidates(root)) {

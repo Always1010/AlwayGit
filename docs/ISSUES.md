@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-110：打开当前窗口仓库目录时静默结束
+
+- 日期：2026-10-05
+- 状态：已解决
+- 现象：当前 VS Code 窗口已经打开目标仓库且资源管理器侧边栏关闭时，点击 Open Repository Folder 没有可见响应，用户无法确认自己已经位于该项目窗口。
+- 原因：窗口路由命中当前宿主后只聚焦窗口，已聚焦时直接返回；openProject RPC 统一返回 null，前端无法区分当前窗口命中与其他窗口打开成功。
+- 解决方案：路由返回实际目标窗口；当前窗口命中后显式显示资源管理器并尝试定位仓库目录，定位失败记日志并保留已显示的资源管理器；RPC 返回当前窗口及工作区关系，前端按单根精确目录或多根/包含目录显示双语短提示和完整路径。提示三秒自动消失，重复点击续期，仓库切换与请求代次阻止旧响应覆盖新状态。其他窗口继续沿用原路由与聚焦行为。
+- 验证方式：类型与 1462 条双语资源检查通过；project-windows/window-bridge/workbench-entry 三文件 46 项定向测试通过，日志文案修正后只重跑受影响的 project-windows 8 项并通过；生产构建和无头 --project-only 中英文专项通过，覆盖提示续期、快捷键、窄窗口、其他窗口/失败分支、迟到响应与草稿保留。原生显示/定位命令已核对本机 VS Code 实现；未运行真实 VS Code 桌面集成，未打包或安装扩展。
+- 相关文件：`src/extension/project-windows.ts`、`src/extension/workbench.ts`、`src/protocol/types.ts`、`webview/App.tsx`、`webview/styles.css`、`src/i18n/catalogs/workbench.json`、`src/i18n/catalogs/projectWindows.json`、`tests/project-windows.test.ts`、`tests/workbench-entry.test.ts`、`scripts/test-project-ui.mjs`、`scripts/test-ui.mjs`、`docs/WORKBENCH_SPEC.md`、`docs/VALIDATION.md`。
+
 ## BUG-109：界面验收夹具未对齐应用级偏好存储
 
 - 日期：2026-10-05
