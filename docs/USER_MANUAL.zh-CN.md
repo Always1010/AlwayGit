@@ -6,7 +6,7 @@
 
 在 Workbench 右上角点击问号，可打开离线“帮助与指南”，阅读快速开始、常见任务、常见问题和本手册的完整章节。帮助语言跟随工作台设置。
 
-**截图说明：** 图 28 来自 0.47.0 的 Create Tag 浮窗，图 07、08 来自 0.45.0 的工作区与 Commit 浮窗，其他截图主要来自 0.29.0。失效的常驻 Commit 表单截图已移除。请按正文及当前按钮的名称、对象和数量操作。
+**截图说明：** 全部 40 张共用截图于 2026-10-06 从 0.52.0 源码构建重新采集，使用英文界面与示例仓库，主题为默认主题在浅色宿主下的白色外观；语言页展示中文预览。窄侧栏图展示对应尺寸下的区域导航，图片不含 VS Code 原生外壳。实际项目的名称、路径和提交 ID 可以不同。
 
 ## 按任务阅读
 
@@ -16,6 +16,7 @@
 | 认识工作台 | [安装与界面](#chapter-01)、[选择与快捷键](#section-12-01)、[常用术语](#section-12-02) |
 | 日常任务 | [工作区与提交](#chapter-03)、[历史与比较](#chapter-04)、[分支与旧版本](#chapter-05)、[远程协作](#chapter-08)、[Stash](#chapter-07) |
 | 进阶操作 | [合并与冲突](#chapter-06)、[整理历史与 Tag](#chapter-09)、[仓库和分组](#chapter-02)、[工作树](#chapter-10) |
+| 终端与帮助 | [内嵌终端](#chapter-13)、[自定义快捷键](#shortcut-settings)、[离线帮助](#help-guide) |
 | 排错与速查 | [设置与常见问题](#chapter-11)、[快捷键、术语与任务索引](#chapter-12) |
 
 <a id="quick-start"></a>
@@ -28,14 +29,14 @@
 1. 打开 AlwayGit 启动侧栏，点击 **Open Workbench（打开工作台）**。在 Repositories 的 **Add…** 中添加仓库，然后双击仓库或按 Enter 进入。
 2. 在 VS Code 中编辑并保存文件。回到工作台，单击中间的 **Working Tree**，在 Unstaged 中单击文件检查底部 Diff。
 3. 右键准备提交的文件并执行 **Stage**。在 Staged 中再次检查将提交的实际内容。
-4. 点击 Staged 标题中 Unstage 右侧的 **Commit…**（也可点击顶部 Commit），在浮窗填写 Commit Message，再点击 **Commit**。Commit 只保存 Staged 内容，其他未暂存修改会留在工作区。
+4. 点击顶部 **Commit** 或 Staged 标题中的 **Commit…**，在浮窗填写 Commit Message，再点击 **Commit**。普通提交默认勾选全部 Staged 文件，可以取消部分文件；其他未暂存修改留在工作区。
 5. 在结果栏点击 **View Commit**，或从 History 打开新提交，核对提交说明、文件清单与剩余修改。
 
 **结果：** 新提交出现在历史中，内容与检查过的 Staged 一致。本地 Commit 后，可按 [远程协作](#chapter-08) 将提交 Push 到远端。
 
 Commit 失败时保留草稿，展开错误详情，处理 Git 身份、钩子或提示的其他原因后重试。
 
-![从 History 核对新提交的 ID 和文件清单](images/user-manual/figure-04.png)
+![图 04 提交后选择新 Commit，核对实际提交 ID、说明和文件 Diff](images/user-manual/figure-04.png)
 
 <a id="chapter-01"></a>
 
@@ -59,16 +60,37 @@ AlwayGit 把 Git 的仓库导航、提交历史、文件状态与只读差异放
 
 1. 打开 VS Code 的扩展视图，在视图菜单中选择 Install from VSIX…，选择 AlwayGit 的 VSIX 文件。
 2. 安装后，在扩展详情中核对 AlwayGit 的已安装版本与安装包对应；若 VS Code 提示重新加载，完成重新加载。
-3. 点击活动栏中的 AlwayGit 图标，再点击 Open Workbench（打开工作台）。也可从命令面板执行 AlwayGit: Show Workbench。
+3. 点击活动栏中的 AlwayGit 图标，再点击打开工作台（Open Workbench）。也可从命令面板执行 AlwayGit: 显示 Workbench（英文界面为 AlwayGit: Show Workbench）。
 4. 首次进入后，通过 Repositories 的 Add… 添加仓库，然后双击目标仓库进入。
 
-**结果：** 编辑器区域出现 AlwayGit 工作台；仓库加载后，能看到对应分支和历史。
-
-**显示位置：** 启动页说明四个可选位置，并显示当前默认位置和已启用位置；打开按钮下方提示目标位置。点击正文“配置显示位置与默认位置…”或任一 AlwayGit 视图标题齿轮，在弹窗中多选标签页、主侧边栏、第二侧边栏和底部面板，并从已勾选位置中选择默认打开位置，点击“应用并打开”统一保存，关闭弹窗后立即打开或聚焦默认位置。取消、关闭或 Esc 均不保存；至少保留一个位置。启用位置可同时使用，各自保留草稿、选择与终端。主侧边栏启动图标始终保留；第二侧边栏和面板入口随各自勾选状态显示或隐藏。取消勾选会隐藏这两个位置的视图，保留会话、草稿与运行中的终端，重新启用并打开后恢复；修改默认位置保留各实例状态。各位置有独立打开命令；主侧边栏与第二侧边栏的左右方向跟随 VS Code 设置；按位置打开会恢复对应原生区域。独立命令“携带当前状态新建标签页”可携带当前仓库、草稿和浏览状态新建标签页，保留源工作台与所有已有标签，运行中的终端留在源实例。窄侧栏和较矮面板使用区域导航。详见[工作台规格](WORKBENCH_SPEC.md#布局与视觉)。
+**结果：** 默认显示位置出现 AlwayGit 工作台；仓库加载后，能看到对应分支和历史。
 
 **排错：** 若 Git 不可用，检查安装和 VS Code 的 Git 路径；若工作区处于受限模式，仅在确认项目可信后再更改信任设置。
 
-![图 01  扩展详情中的 Version 为 0.29.0 Source 为 VSIX](images/user-manual/figure-01.png)
+<a id="workbench-locations"></a>
+
+### 选择显示位置和默认入口
+
+1. 点击启动页“配置显示位置与默认位置…”，或工作台顶部布局位置图标、AlwayGit 视图标题栏齿轮。
+2. 勾选标签页、主侧边栏、第二侧边栏和底部面板中的一个或多个位置。至少保留一个。
+3. 从已勾选位置中选择默认打开位置；取消默认位置时自动改用剩余位置。
+4. 点击“应用并打开”保存并进入默认位置；取消、关闭和 Esc 不保存。
+
+启动页显示当前默认和已启用位置，打开按钮下方标明目标。状态栏 AlwayGit 图标、“显示 Workbench”命令和启动页打开按钮都打开或聚焦默认位置；启用多个位置不会一次打开全部。工作台内部界面设置齿轮与显示位置入口用途不同。
+
+![图 01 显示位置弹窗可同时启用四个位置，并选择默认打开位置](images/user-manual/figure-01.png)
+
+<a id="workbench-instances"></a>
+
+### 同时使用多个工作台实例
+
+四个位置可同时使用，各位置与编辑器标签分别保留当前仓库、草稿、历史筛选、文件选择、比较、布局和内嵌终端；仓库目录、实际 Git 状态与界面偏好共享。主侧边栏启动入口始终保留；关闭第二侧边栏或面板的启用设置会隐藏对应视图，保留会话、草稿与运行中的终端，重新启用后恢复。
+
+主侧边栏和第二侧边栏的左右方向跟随 VS Code 设置；按位置打开会恢复对应区域。窄侧栏和较矮面板使用仓库、History、详情／更改、Diff／终端区域导航，切换区域保留选择。
+
+“携带当前状态新建标签页”复制当前仓库、草稿和浏览状态，保留源实例及已有标签；运行中的终端留在源实例。启动页的新窗口入口创建尚未选择仓库的独立窗口。
+
+![图 39 窄侧栏尺寸下的真实工作台组件，通过区域导航切换到 History](images/user-manual/figure-39.png)
 
 <a id="section-01-03"></a>
 
@@ -82,13 +104,13 @@ AlwayGit 把 Git 的仓库导航、提交历史、文件状态与只读差异放
 
 **注意：** 文件名、分支名、提交说明和 Git 原始错误不会被翻译。
 
-![图 02  选择简体中文后立即预览 点击右下角应用保存](images/user-manual/figure-02.png)
+![图 02 设置中的语言页，选择简体中文即时预览，应用后保存](images/user-manual/figure-02.png)
 
 <a id="section-01-04"></a>
 
 ### 认识四个区域
 
-![图 03  左侧仓库与引用 中间历史 右侧详情 底部只读 Diff](images/user-manual/figure-03.png)
+![图 03 当前工作台：仓库与引用、历史、详情，以及底部 Diff／终端标签面板](images/user-manual/figure-03.png)
 
 | 区域 | 用途 | 先看什么 |
 | --- | --- | --- |
@@ -97,9 +119,7 @@ AlwayGit 把 Git 的仓库导航、提交历史、文件状态与只读差异放
 | 右侧详情 | 提交文件列表或 Working Tree 文件列表 | 变更文件与 Staged 范围 |
 | 底部标签面板 | 固定 Diff 预览与多个内嵌终端 | 当前文件差异或终端工作目录 |
 
-底部加号创建一个终端标签，以当前仓库根目录启动；旁边下拉可选择默认 Shell、PowerShell、cmd 或 Bash（需在宿主安装）。终端标签与 Diff 共用高度；切换仓库不会改变已有终端目录。单击文件切回 Diff，后台刷新不切换标签。
-
-终端可双击标签重命名，或使用工具栏清空显示；Shell 退出后保留输出和退出码，并显示重新启动按钮。关闭标签结束 Shell，收起面板或隐藏工作台继续运行。“全部标签”列表方便切换较多标签，最大化按钮临时扩展面板。选中文本后 Ctrl+C / Ctrl+Shift+C 复制，Ctrl+Shift+V 粘贴；没有选择时 Ctrl+C 中断 Shell 命令。关闭工作台或重载 VS Code 后终端不恢复，命令和输出不保存。也可以从命令面板执行“AlwayGit：新建内嵌终端”，默认快捷键为 Ctrl+Alt+Shift+T（macOS 为 Cmd+Alt+Shift+T）。
+底部 Diff 与多个终端共用标签面板，具体操作见[内嵌终端](#section-13-01)。
 
 <a id="section-01-05"></a>
 
@@ -107,13 +127,19 @@ AlwayGit 把 Git 的仓库导航、提交历史、文件状态与只读差异放
 
 Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区；Commit 是已经保存到 Git 历史的版本。Stage 把所选文件当前的修改放进 Index。普通 Commit 默认提交 Index 内容；统一列表中的“提交所选文件”也支持自动暂存所选未暂存文件后提交。
 
+<a id="help-guide"></a>
+
+### 查找离线帮助与完整手册
+
+右上角问号打开“帮助与指南”；未选择仓库时也可从空状态的“快速开始”进入。四类导航分别为快速开始、常见任务、常见问题和完整手册。搜索只筛选当前分类的主题标题与正文；找不到时可清空搜索或切换完整手册。正文内的章节链接会切换到完整手册并定位小节。
+
+帮助跟随工作台语言，中英文正文及图片随扩展提供，离线可用。Esc、关闭按钮或点击遮罩退出，焦点返回入口；阅读帮助不会执行 Git、打开项目或改变仓库、草稿、布局与 Diff。
+
 <a id="chapter-03"></a>
 
 ## 工作区和提交
 
 提交前最重要的检查点是 Staged。同一文件同时出现未暂存和已暂存条目并不矛盾：Index 已保存一个版本，而磁盘文件在暂存后又发生了修改。
-
-设置 → 界面 → 文件列表可选择默认的分组列表或统一变更列表。统一列表先显示未暂存，再显示已暂存，每类按文件名排序；有冲突时置于最前。同路径的两种版本各占一行，点击查看对应差异。统一模式顶部 Stage All、Unstage All、Discard All 带图标和文字，固定处理完整仓库，筛选及选择不改变范围；Discard All 仅丢弃未暂存更改，保留已暂存内容。
 
 | 状态或分组 | 含义 | 推荐动作 |
 | --- | --- | --- |
@@ -122,6 +148,16 @@ Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区�
 | Staged | Index 中准备提交的变更 | 检查这一区域的 Diff 后再 Commit |
 | M / A / D / R | 修改 / 新增 / 删除 / 重命名 | 同时核对文件名与完整父目录 |
 | ? / ! | 未跟踪 / 冲突 | 确认是否应纳入版本或先解决冲突 |
+
+<a id="file-list-modes"></a>
+
+### 选择分组或统一文件列表
+
+设置 → 界面 → 文件列表可选择默认的分组列表或统一变更列表。统一列表先显示未暂存，再显示已暂存，每类按文件名排序；有冲突时置于最前。同路径的两种版本各占一行，点击查看对应差异。统一模式顶部 Stage All、Unstage All、Discard All 带图标和文字，固定处理完整仓库，筛选及选择不改变范围；Discard All 仅丢弃未暂存更改，保留已暂存内容。
+
+分组模式的标题按钮按当前文件筛选处理匹配范围；统一模式顶部全量按钮始终处理完整仓库。局部选择操作使用文件右键菜单。文件间距单独调整，不改变 History 的列表密度。
+
+![图 05 文件列表设置：分组与统一列表，以及独立的文件间距](images/user-manual/figure-05.png)
 
 <a id="section-03-01"></a>
 
@@ -140,7 +176,7 @@ Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区�
 
 **排错：** 内容未更新时先确认编辑器已保存，再 Refresh；仍异常则查看输出与错误详情。
 
-![图 07 工作区文件搜索与 Staged 标题中的 Commit 入口，零暂存时也可写草稿](images/user-manual/figure-07.png)
+![图 07 工作区筛选 webview 路径后，检查未暂存文件与对应 Diff](images/user-manual/figure-07.png)
 
 <a id="section-03-02"></a>
 
@@ -179,7 +215,7 @@ Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区�
 **前提：** 至少有一个 Staged 文件，提交说明已准备好。
 
 1. 逐个检查 Staged 文件，包括删除和重命名。
-2. 点击 Staged 标题中 Unstage 右侧的 Commit…，在浮窗填写 Commit Message。确认当前仓库、分支和文件清单（默认勾选全部 Staged，可取消部分文件），点击 Commit 或按 Ctrl/Cmd+Enter；Enter 用于换行。
+2. 点击顶部 Commit 或 Staged 标题中的 Commit…，在浮窗填写 Commit Message。确认当前仓库、分支和文件清单（默认勾选全部 Staged，可取消部分文件），点击 Commit 或按 Ctrl/Cmd+Enter；Enter 用于换行。
 3. 在 History 中单击新提交，核对实际文件列表；再回到 Working Tree 检查剩余未提交变更。
 4. 若还存在 Unstaged 修改，可继续编辑或暂存，另作一次提交。
 
@@ -189,9 +225,15 @@ Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区�
 
 **排错：** 失败时展开 Git 错误；保留草稿，先处理原因，再重新核对 Staged 范围。
 
+![图 40 提交结果栏展开操作详情，核对新 Commit 与剩余更改](images/user-manual/figure-40.png)
+
+<a id="selected-file-commit"></a>
+
+### 只提交所选文件
+
 统一列表中右键选择“提交所选文件…”时，浮窗只列出当次选中的文件，每个路径一行，可取消勾选。已暂存条目提交 Index 版本；未暂存条目提交最新已保存的磁盘版本，并在执行时自动暂存。同路径两种条目都选中时按未暂存版本提交一次。未暂存条目同时有已暂存更改时显示“合并提交”，上方提示两部分一并提交。未选文件的暂存内容保留，取消浮窗不改变 Index。Git Hook 和签名正常执行；Hook 可格式化所选文件，但若最终提交包含范围外更改，会在更新 HEAD 前拒绝提交并保留原有暂存内容。Hook 对磁盘文件的修改可能仍保留，须检查后再提交。活动 Git 操作中应检查并提交完整暂存结果。
 
-![图 08 所选文件提交清单，可取消勾选，合并提交用一条提示说明两部分一并提交](images/user-manual/figure-08.png)
+![图 08 统一列表的所选文件提交浮窗，未暂存版本同时包含已有暂存内容](images/user-manual/figure-08.png)
 
 <a id="section-03-05"></a>
 
@@ -210,7 +252,7 @@ Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区�
 
 **排错：** 想撤销已分享提交的影响时，通常优先使用 Revert；不确定时先创建备份分支。
 
-![图 11  Amend 后从 History 核对新说明与新提交 ID 不依赖完成横幅](images/user-manual/figure-11.png)
+![图 11 Amend 后选择新的 HEAD，核对替换后的说明和文件内容](images/user-manual/figure-11.png)
 
 <a id="section-03-06"></a>
 
@@ -272,7 +314,7 @@ Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区�
 
 **排错：** 找不到目标时，检查关键词和引用筛选范围；不要假定搜索覆盖未选择的所有分支。
 
-![图 13  搜索 guide 时隐藏 Graph 保留消息与提交详情](images/user-manual/figure-13.png)
+![图 13 搜索 native diff 后隐藏 Graph，选择匹配 Commit 并检查详情](images/user-manual/figure-13.png)
 
 <a id="section-04-03"></a>
 
@@ -304,7 +346,7 @@ Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区�
 
 **注意：** 选择三个或更多提交会转回最后操作的提交详情，并保留多选供批量操作；不是多版本同时比较。
 
-![图 14  恰好选择两个 Commit 后自动比较 右侧显示两端版本和文件](images/user-manual/figure-14.png)
+![图 14 恰好选择两个 Commit 后自动比较，右侧列出两端版本与文件](images/user-manual/figure-14.png)
 
 <a id="section-04-05"></a>
 
@@ -321,6 +363,8 @@ Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区�
 
 **注意：** 整个 Commit 模式包含路径筛选隐藏的文件，标题显示实际文件路径，文件列表会提示当前文件被隐藏。二进制及没有文本修改块的文件自动跳过，仍可手动查看；读取失败时停止并显示错误。若提示预览截断，统计和导航仅覆盖已预览内容；到原生 Diff 或编辑器查看完整内容。Working Tree、Stash 和 Commit 比较仍在当前文件内循环。
 
+![图 38 Diff 设置提供字号、行高、代码预览和修改导航范围](images/user-manual/figure-38.png)
+
 <a id="chapter-05"></a>
 
 ## 分支与历史版本
@@ -334,7 +378,7 @@ Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区�
 **前提：** 起点已确认；工作区修改已妥善保存。
 
 1. 在 Local Branches 标题点击 Create Branch…；也可右键指定分支或 Commit，从固定起点创建。
-2. 核对对话框显示的起点，输入新分支名，例如 feature/readme。
+2. 核对对话框显示的起点，输入新分支名，例如 feature/guide。
 3. 处理名称提示。同名、非法名称和父子路径冲突必须先改名。
 4. 只想建立引用时选择 Create Only（仅创建）；要开始在新分支工作时选择 Create and Checkout（创建并切换）。
 5. 读取完成反馈，并用当前分支标记确认是否真正切换。
@@ -345,7 +389,7 @@ Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区�
 
 **排错：** 若创建成功但 Checkout 被修改阻挡，新分支可能已经保留。先检查反馈，不要盲目再次创建同名分支。
 
-![图 15  创建分支时明确起点 并区分 Create Only 与 Create and Checkout](images/user-manual/figure-15.png)
+![图 15 创建 feature/guide，核对起点后选择只创建或创建并切换](images/user-manual/figure-15.png)
 
 <a id="section-05-02"></a>
 
@@ -365,8 +409,6 @@ Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区�
 
 **排错：** 有冲突或正在进行的操作时，先完成或 Abort。单击分支名称只定位，不代表 Checkout 已执行。
 
-![图 16  Checkout 对话框明确目标分支 main 并提示覆盖保护](images/user-manual/figure-16.png)
-
 <a id="section-05-03"></a>
 
 ### 把远程分支转为本地跟踪分支
@@ -382,6 +424,8 @@ Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区�
 **结果：** 本地分支跟踪正确的远程来源；批量创建流程保持当前分支。
 
 **注意：** 这个动作不会自动 Fetch 或 Pull。origin/HEAD 等符号引用不是可创建为普通本地分支的目标。
+
+![图 16 将 origin/develop 转为本地跟踪分支，核对来源和新分支名称](images/user-manual/figure-16.png)
 
 <a id="section-05-04"></a>
 
@@ -435,7 +479,7 @@ Fetch 更新本机知道的远端状态；Pull 把远端改动整合进当前分
 
 **排错：** 认证失败时使用托管服务与 VS Code 支持的认证流程处理，不要反复修改仓库内容来试错。
 
-![图 25  填写 Remote Name 与自己的 Repository URL 占位示例不是实际仓库](images/user-manual/figure-25.png)
+![图 25 添加 upstream 远端；example.com 地址仅作示例](images/user-manual/figure-25.png)
 
 <a id="section-08-02"></a>
 
@@ -452,7 +496,9 @@ Fetch 更新本机知道的远端状态；Pull 把远端改动整合进当前分
 
 **注意：** Graph 的“已在远端”状态以最近一次 Fetch 后本机知道的远端引用为依据，并非实时查询服务器。
 
-![图 26  Pull 对话框中的 Fast forward Only 策略](images/user-manual/figure-26.png)
+![图 26 Pull 默认从 origin/main 拉取到 main，来源完整时可确认执行](images/user-manual/figure-26.png)
+
+![图 35 展开 Pull 来源选择，本次从 origin/develop 拉取但不更改 upstream](images/user-manual/figure-35.png)
 
 <a id="section-08-03"></a>
 
@@ -474,7 +520,7 @@ Fetch 更新本机知道的远端状态；Pull 把远端改动整合进当前分
 
 **排错：** 被拒绝时先 Fetch 并检查分叉、认证与权限。不要把 Force-with-lease 当成常规重试。
 
-![图 27  首次 Push 明确 feature/release → origin/feature/release 并建立 upstream](images/user-manual/figure-27.png)
+![图 27 首次推送 feature/test 到 origin/feature/test，并明确建立 upstream](images/user-manual/figure-27.png)
 
 <a id="section-08-04"></a>
 
@@ -509,7 +555,7 @@ Stash 用于暂时保存尚未提交的修改。它与 Stage 完全不同：Stag
 
 **注意：** Include untracked files 不包含被 .gitignore 忽略的文件；未勾选时，也不会保存普通未跟踪文件。Stash 不能替代完整项目备份。
 
-![图 21  保存全部修改前检查 Include untracked files 勾选范围](images/user-manual/figure-21.png)
+![图 21 保存全部修改时明确选择是否包含未跟踪文件](images/user-manual/figure-21.png)
 
 <a id="section-07-02"></a>
 
@@ -526,7 +572,7 @@ Stash 用于暂时保存尚未提交的修改。它与 Stage 完全不同：Stag
 
 **注意：** 即使从 Staged 一侧选择，也会保存该文件完整的 Index 与 Working Tree 状态，不是只保存你看到的那一侧。
 
-![图 22  所选文件 Stash 同时保存完整 Index 与 Working Tree 状态](images/user-manual/figure-22.png)
+![图 22 保存所选文件前核对范围及 Index／Working Tree 两部分](images/user-manual/figure-22.png)
 
 <a id="section-07-03"></a>
 
@@ -546,7 +592,7 @@ Stash 用于暂时保存尚未提交的修改。它与 Stage 完全不同：Stag
 
 **排错：** 出现受阻说明时先处理路径占用或冲突，再关闭对话框并重新尝试，触发新的预检。
 
-![图 23  所选文件 Stash 的 Index 页签 显示保存的暂存版本与对应 Diff](images/user-manual/figure-23.png)
+![图 23 Stash 的 Index 分类显示保存的暂存版本及其 Diff](images/user-manual/figure-23.png)
 
 <a id="section-07-04"></a>
 
@@ -563,7 +609,7 @@ Stash 用于暂时保存尚未提交的修改。它与 Stage 完全不同：Stag
 
 **注意：** 预检受阻会停止整次恢复；正式执行后若遭遇新的外部修改或写入错误，不应假定现场一定完全未变。始终检查实际结果。
 
-![图 24  Pop 在预检受阻时停止恢复并保留原 Stash](images/user-manual/figure-24.png)
+![图 24 Pop 预检发现冲突时停止恢复，保留原 Stash 并列出确认的冲突路径](images/user-manual/figure-24.png)
 
 图中是旧版受阻提示。当前版本会区分已确认的冲突文件与恢复涉及文件，并在 Git details 中显示具体诊断。
 
@@ -609,7 +655,7 @@ Stash 用于暂时保存尚未提交的修改。它与 Stage 完全不同：Stag
 
 **注意：** “右键哪一个分支”表示合并来源，当前分支是被更新的目标。
 
-![图 17  将 feature/guide 合并进当前 main 核对方向后执行](images/user-manual/figure-17.png)
+![图 17 将 feature/test 合并到当前 main，执行前核对方向](images/user-manual/figure-17.png)
 
 <a id="section-06-02"></a>
 
@@ -629,6 +675,8 @@ Stash 用于暂时保存尚未提交的修改。它与 Stage 完全不同：Stag
 
 **排错：** 若选错内容，先继续编辑并保存，再次暂存并检查；不要把“冲突数为零”当成验证通过。原生编辑提示 Trust the project workspace 时，按第 11 章处理目标窗口的信任状态。
 
+![图 18 Merge 暂停时显示冲突数量、冲突文件和继续操作的前置条件](images/user-manual/figure-18.png)
+
 <a id="section-06-03"></a>
 
 ### 检查暂存结果并继续
@@ -646,6 +694,8 @@ Stash 用于暂时保存尚未提交的修改。它与 Stage 完全不同：Stag
 
 **注意：** 检查有大小、二进制、编码和子模块边界。没有疑似标记也不保证语义正确；检查后 Index 或分支变化会要求重新检查。
 
+![图 19 冲突解决并暂存后，继续前检查暂存结果清单](images/user-manual/figure-19.png)
+
 <a id="section-06-04"></a>
 
 ### 中止一次进行中的操作
@@ -662,7 +712,7 @@ Stash 用于暂时保存尚未提交的修改。它与 Stage 完全不同：Stag
 
 **排错：** Abort 失败时停止重复写操作，保留错误信息，检查实际 Git 状态后再处理。
 
-![图 20  Abort 显示起点和恢复风险 关闭窗口并不中止 Git 操作](images/user-manual/figure-20.png)
+![图 20 中止 Merge 前显示操作起点和冲突解决期间修改的恢复风险](images/user-manual/figure-20.png)
 
 <a id="chapter-09"></a>
 
@@ -683,15 +733,23 @@ Stash 用于暂时保存尚未提交的修改。它与 Stage 完全不同：Stag
 5. 删除本地标签时，右键目标 Tag 选择 Delete Tag…。默认只删除本地；如需同步删除所选 Remote 的同名标签，勾选“同时从远端删除”，核对 Remote、警告和确认清单后执行。
 6. 对云图标标出的仅远端标签，可右键选择 Delete Remote Tag…，直接删除已核对的远端对象，不会创建或删除本地标签。
 
-Tags 列表合并显示本地标签和仅存在于所选远端的标签，标题右侧的远端名称表示比较对象；多个远端时可切换，并按仓库记住选择。每行右侧只显示状态图标：绿色勾表示同步，电脑表示仅本地，云表示仅远端，警告表示同名对象不同，问号表示尚未成功查询；完整含义可悬停、聚焦或点击查看。仅远端的对象尚不是本地引用，不能用于定位本地历史。结果不会因时间经过而失效，只有新的成功查询才会改变；查询失败时保留上次成功结果。没有配置远端时显示本地。提交图的本地 Tag 标签使用相同状态图标，提交节点原有的 Pushed 标记仍只说明提交在已知远端分支上的状态。
-
-悬停或聚焦状态可查看说明和上次成功核对时间；点击列表中的状态打开详情。标题刷新图标及标签右键的“核对远端标签状态”执行只读查询。首次展开列表、切换远端及 Fetch／Pull／Push 后按需更新，普通本地刷新复用已有结果；查询不阻塞本地历史，失败不会被当作远端缺失或覆盖旧结果。状态描述所选远端的读取地址；读取与推送地址不同时会明确提示，因此推送反馈成功不代表另一个读取地址也已有该标签。
-
 **结果：** 本地 Tag 指向指定版本、明确选择的 Tag 已发布到 Remote，或按本次选择删除本地、远端或两处的目标 Tag。
 
 **注意：** 创建后推送会先保留本地 Tag；远端失败时可稍后通过 Push Tag 重试。Tag Push 只发送对话框列出的标签，支持轻量和注解 Tag，不会附带其他本地 Tag，也不会覆盖远端身份不同的同名 Tag。Delete Tag 默认仍只删除本地；远端删除必须显式勾选或从仅远端标签的菜单进入，并再次原生确认。执行前会核对远端 Tag 身份和地址，读取地址与 Push 地址分离或存在多个 Push 地址时不提供删除；组合删除先删远端，远端失败会保留本地。本版本不提供远端 Tag 替换。
 
-![图 28  从提交图创建 Tag 时目标 Commit 固定并显示 Commit Message](images/user-manual/figure-28.png)
+![图 28 从 Commit 创建 v1.1.0，固定目标 ID 并显示提交说明](images/user-manual/figure-28.png)
+
+![图 36 删除 Tag 默认仅本地，勾选远端后明确显示共享远端删除范围](images/user-manual/figure-36.png)
+
+<a id="tag-status"></a>
+
+### 核对本地与远端 Tag 状态
+
+Tags 列表合并显示本地标签和仅存在于所选远端的标签，标题右侧的远端名称表示比较对象；多个远端时可切换，并按仓库记住选择。每行右侧只显示状态图标：绿色勾表示同步，电脑表示仅本地，云表示仅远端，警告表示同名对象不同，问号表示尚未成功查询；完整含义可悬停、聚焦或点击查看。仅远端的对象尚不是本地引用，不能用于定位本地历史。结果不会因时间经过而失效，只有新的成功查询才会改变；查询失败时保留上次成功结果。没有配置远端时显示本地。提交图的本地 Tag 标签使用相同状态图标，提交节点原有的 Pushed 标记仍只说明提交在已知远端分支上的状态。
+
+悬停或聚焦状态可查看说明和上次成功核对时间；点击列表中的状态打开详情。标题刷新图标及标签右键的“核对远端标签状态”执行只读查询。首次展开列表、切换远端及 Fetch／Pull／Push 后按需更新，普通本地刷新复用已有结果；查询不阻塞本地历史，失败不会被当作远端缺失或覆盖旧结果。状态描述所选远端的读取地址；读取与推送地址不同时会明确提示，因此推送反馈成功不代表另一个读取地址也已有该标签。
+
+![图 12 Tag 远端状态详情展示所选远端、同步情况和上次成功核对时间](images/user-manual/figure-12.png)
 
 <a id="section-09-02"></a>
 
@@ -709,7 +767,7 @@ Tags 列表合并显示本地标签和仅存在于所选远端的标签，标题
 
 **注意：** 当前 HEAD 和当前分支历史中已有的提交会将普通 Cherry-pick 入口置灰，并显示原因；多选中包含这些提交时整体禁用，请先取消选择。其他普通 Commit 在关系检查通过后可直接执行，点击前就要确认目标。包含 Merge Commit 的批量选择不支持批量 Cherry-pick。若历史提交的改动曾被撤销或移除，可选择 `重新应用历史提交…`（英文界面为 `Reapply Historical Commits…`），勾选明确确认后执行；当前 HEAD 不提供此入口，重新应用仍可能产生冲突或空结果。
 
-![图 29  Commit 菜单明确 Cherry-pick to main 此动作会应用到当前分支](images/user-manual/figure-29.png)
+![图 29 历史中已有 Commit 的普通 Cherry-pick 禁用，菜单提供重新应用入口](images/user-manual/figure-29.png)
 
 <a id="section-09-03"></a>
 
@@ -726,7 +784,7 @@ Tags 列表合并显示本地标签和仅存在于所选远端的标签，标题
 
 **注意：** Revert 不等于直接恢复整棵仓库到该提交，也不保证与之后改动自动兼容。Merge Commit 需明确 Mainline Parent；不清楚父版本含义时先取消，避免抵消错误范围。
 
-![图 30  Revert 核对提交 ID 普通提交不需要 Mainline Parent](images/user-manual/figure-30.png)
+![图 30 Revert 核对目标 Commit，普通提交不填写 Mainline Parent](images/user-manual/figure-30.png)
 
 <a id="section-09-04"></a>
 
@@ -746,7 +804,7 @@ Tags 列表合并显示本地标签和仅存在于所选远端的标签，标题
 
 **排错：** 误操作后停止进一步修改，优先从备份分支恢复。Git reflog 可能帮助找回旧提交，但不能保证找回未提交文件内容。
 
-![图 31  Reset 必须同时核对 Target Commit 和 Reset Mode 此处是 Soft](images/user-manual/figure-31.png)
+![图 31 Reset 同时核对目标和模式，Soft 保留 Index 与工作区修改](images/user-manual/figure-31.png)
 
 <a id="section-09-05"></a>
 
@@ -766,7 +824,7 @@ Tags 列表合并显示本地标签和仅存在于所选远端的标签，标题
 
 **排错：** 进行中可以 Abort；完成后的恢复应使用事先保存的备份引用，避免未经检查地继续改写。
 
-![图 32  Rebase feature/guide onto main 新基础为 main 提交 ID 会变化](images/user-manual/figure-32.png)
+![图 32 将当前 main Rebase 到 feature/test，核对新基础和方向](images/user-manual/figure-32.png)
 
 <a id="chapter-02"></a>
 
@@ -792,6 +850,8 @@ Tags 列表合并显示本地标签和仅存在于所选远端的标签，标题
 
 **排错：** 无法访问的目录会被跳过；查看扫描结果中的原因，确认路径与权限后单独重试。
 
+![图 34 添加仓库的扫描结果，已有仓库不可重复添加，确认前核对选择和目标分组](images/user-manual/figure-34.png)
+
 <a id="section-02-02"></a>
 
 ### 创建和整理项目分组
@@ -805,7 +865,7 @@ Tags 列表合并显示本地标签和仅存在于所选远端的标签，标题
 
 **注意：** 分组只组织导航，不移动磁盘目录，也不会合并不同仓库的内容。
 
-![图 06  learning labs 分组和其中四个示例仓库 atlas-project 示例仓库的当前状态标记](images/user-manual/figure-06.png)
+![图 06 learning labs 分组中的 AlwayGit，以及独立的 website 仓库入口](images/user-manual/figure-06.png)
 
 <a id="section-02-03"></a>
 
@@ -872,7 +932,7 @@ Tags 列表合并显示本地标签和仅存在于所选远端的标签，标题
 
 **注意：** 默认不允许创建 Detached 工作树。不要把独立克隆与 linked 工作树 混为一谈。
 
-![图 33  Add 工作树 中的新分支与起点设置 此图聚焦分支选项](images/user-manual/figure-33.png)
+![图 33 新建工作树目录与 feature/guide 分支，核对起点](images/user-manual/figure-33.png)
 
 <a id="section-10-02"></a>
 
@@ -902,6 +962,24 @@ Tags 列表合并显示本地标签和仅存在于所选远端的标签，标题
 
 **结果：** 目标 工作树 的目录被移除；分支引用仍可保留，需另行管理。
 
+<a id="chapter-13"></a>
+
+## 底部面板与内嵌终端
+
+<a id="section-13-01"></a>
+
+### 创建终端并切换标签
+
+底部加号创建一个终端标签，以当前仓库根目录启动；旁边下拉可选择默认 Shell、PowerShell、cmd 或 Bash（需在宿主安装）。终端标签与 Diff 共用高度；切换仓库不会改变已有终端目录。单击文件切回 Diff，后台刷新不切换标签。
+
+![图 09 底部固定 Diff 与多个终端共用标签面板，活动终端已重命名为 dev server](images/user-manual/figure-09.png)
+
+<a id="section-13-02"></a>
+
+### 管理终端和退出后的状态
+
+终端可双击标签重命名，或使用工具栏清空显示；Shell 退出后保留输出和退出码，并显示重新启动按钮。关闭标签结束 Shell，收起面板或隐藏工作台继续运行。“全部标签”列表方便切换较多标签，最大化按钮临时扩展面板。选中文本后 Ctrl+C / Ctrl+Shift+C 复制，Ctrl+Shift+V 粘贴；没有选择时 Ctrl+C 中断 Shell 命令。关闭工作台或重载 VS Code 后终端不恢复，命令和输出不保存。也可以从命令面板执行“AlwayGit：新建内嵌终端”，默认快捷键为 Ctrl+Alt+Shift+T（macOS 为 Cmd+Alt+Shift+T）。
+
 <a id="chapter-11"></a>
 
 ## 设置和常见问题
@@ -921,6 +999,8 @@ Tags 列表合并显示本地标签和仅存在于所选远端的标签，标题
 
 
 Git 操作设置默认编辑“用户”范围；需要项目例外时，先选择“当前工作区”，再修改并应用。工作区覆盖值优先生效，保存用户默认值不会替换现有覆盖。空窗口不能选择工作区范围；此处工作区指 VS Code 工作区，而非 AlwayGit 当前选中的单个仓库。
+
+![图 37 Git 操作设置区分用户默认和当前 VS Code 工作区覆盖](images/user-manual/figure-37.png)
 
 <a id="section-11-02"></a>
 
@@ -986,7 +1066,9 @@ Git 在仓库所在的 VS Code 扩展宿主中执行。产品架构面向本地�
 | alwaygit.pushFollowTags | false | 普通 Push 默认是否附带相关注解 Tag |
 | alwaygit.pushTagAfterCreate | false | 新建 Tag 后默认是否推送到所选 Remote |
 | alwaygit.defaultResetMode | mixed | Reset 对话框默认选中的 Soft、Mixed 或 Hard 模式 |
-| alwaygit.language | en / zh-CN / auto | 初始语言，工作台保存的选择优先 |
+| alwaygit.language | en / zh-CN / auto；用户级 | 界面语言；应用后的用户设置跨工作台同步 |
+| alwaygit.interfaceSettings | 对象；用户级 | 外观、字号、密度、文件列表、快捷键和 Diff 阅读偏好 |
+| alwaygit.workbenchLocations | 默认仅 editor；用户级 | enabled 启用位置列表；default 必须是已启用位置 |
 
 修改 Git 路径或刷新间隔后重新加载 VS Code 窗口。工作台内的主题、配色、字号、密度和语言在应用后即时生效。
 
@@ -1025,12 +1107,6 @@ Git 在仓库所在的 VS Code 扩展宿主中执行。产品架构面向本地�
 
 D、E、[、] 和 \ 仅在 Diff 标签活动时可用；终端输入区暂停工作台单键。全局操作以顶部当前打开的仓库和当前预览文件为目标，不随侧栏临时选择或鼠标悬停改变目标。按钮禁用时对应快捷键也不执行。A/U 的操作范围遵循上表中的列表模式，不随批量选择或分组折叠改变；所选文件操作使用原有右键菜单。
 
-悬停相关按钮可查看当前绑定。Settings → 常规 → 快捷键提供搜索、分类和“仅显示已修改”筛选。点击按键录制替换绑定，或用加号增加备用键；每个动作最多两个绑定。按键旁的关闭图标移除单个绑定，禁用图标清空该动作的绑定，恢复图标恢复默认；顶部恢复按钮恢复全部默认。
-
-录制框获得焦点后，按下单键或组合键；Ctrl/Cmd 自动按平台适配。Esc 仅取消录制，Tab 移至确认按钮。列表内冲突会显示占用动作，不能直接保存；明确选择“将绑定移至此处”会移除原动作的冲突绑定。恢复默认发生冲突时也需要确认移动。基础导航、选择和文字编辑键保留，输入法组合和 AltGr 不用于录制；不支持连续多段组合键。VS Code 或操作系统可能优先处理组合键，此页面无法完整检查外部冲突。
-
-点击 Apply 应用并保存到用户设置，跨窗口共享；Cancel 恢复原绑定。关闭单键开关会暂停无修饰键及 Shift 加可打印字符的绑定，保留配置；其他组合键仍可用。默认 Ctrl/Cmd+R 可修改或禁用，原有选择操作保持不变；草稿、仓库选择和布局继续保留。独立的新建内嵌终端快捷键由 VS Code 管理，可通过页面中的“打开 VS Code 键盘快捷方式”入口修改。
-
 | 动作 | 含义 | 范围提醒 |
 | --- | --- | --- |
 | 单击仓库或 工作树 | 选择操作对象 | 不切换当前工作目录 |
@@ -1042,6 +1118,20 @@ D、E、[、] 和 \ 仅在 Diff 标签活动时可用；终端输入区暂停工
 | Escape | 清除当前范围选择或关闭菜单 | 输入框保留原生行为 |
 | Shift + F10 / 菜单键 | 打开当前对象菜单 | 方向键移动，Enter 执行 |
 | History 恰好选两个 Commit | 自动 Compare Commits | Working Tree 不参加 Commit 多选 |
+
+侧栏的全选会把焦点所在范围设为唯一操作选择范围；Escape 清除该范围的选择，不切换其他范围。分支操作选择与 Graph 引用复选框独立，这些按键不会改变历史筛选。
+
+<a id="shortcut-settings"></a>
+
+### 自定义快捷键与恢复默认
+
+悬停相关按钮可查看当前绑定。Settings → 常规 → 快捷键提供搜索、分类和“仅显示已修改”筛选。点击按键录制替换绑定，或用加号增加备用键；每个动作最多两个绑定。按键旁的关闭图标移除单个绑定，禁用图标清空该动作的绑定，恢复图标恢复默认；顶部恢复按钮恢复全部默认。
+
+录制框获得焦点后，按下单键或组合键；Ctrl/Cmd 自动按平台适配。Esc 仅取消录制，Tab 移至确认按钮。列表内冲突会显示占用动作，不能直接保存；明确选择“将绑定移至此处”会移除原动作的冲突绑定。恢复默认发生冲突时也需要确认移动。基础导航、选择和文字编辑键保留，输入法组合和 AltGr 不用于录制；不支持连续多段组合键。VS Code 或操作系统可能优先处理组合键，此页面无法完整检查外部冲突。
+
+点击 Apply 应用并保存到用户设置，跨窗口共享；Cancel 恢复原绑定。关闭单键开关会暂停无修饰键及 Shift 加可打印字符的绑定，保留配置；其他组合键仍可用。默认 Ctrl/Cmd+R 可修改或禁用，原有选择操作保持不变；草稿、仓库选择和布局继续保留。独立的新建内嵌终端快捷键由 VS Code 管理，可通过页面中的“打开 VS Code 键盘快捷方式”入口修改。
+
+![图 10 快捷键设置支持搜索、分类、录制、备用绑定和恢复默认](images/user-manual/figure-10.png)
 
 <a id="section-12-02"></a>
 

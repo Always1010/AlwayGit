@@ -6,7 +6,7 @@ This manual explains how to inspect changes, save revisions, and collaborate wit
 
 Select the question-mark icon in the upper-right corner of the Workbench to open the offline Help & Guide. It includes quick start instructions, common tasks, common questions, and the full chapters of this manual. Its language follows the workbench setting.
 
-**About the screenshots:** Figure 28 shows the Create Tag dialog in 0.47.0. Figures 07 and 08 show the Working Tree and Commit dialog in 0.45.0. Other screenshots mainly come from 0.29.0. Outdated screenshots of the permanent Commit form have been removed. Follow the instructions here and verify current control names, targets and counts.
+**About the screenshots:** All 40 shared figures were recaptured on 2026-10-06 from the 0.52.0 source build with an English interface and sample repositories, using the default theme's white appearance on a light host; the language page previews Chinese. The narrow sidebar figure demonstrates region navigation at that viewport size. Images do not include native VS Code chrome. Names, paths, and Commit IDs may differ in your project.
 
 ## Read by task
 
@@ -16,6 +16,7 @@ Select the question-mark icon in the upper-right corner of the Workbench to open
 | Understand the workbench | [Installation and interface](#chapter-01), [selection and shortcuts](#section-12-01), [common terms](#section-12-02) |
 | Everyday tasks | [Working Tree and commits](#chapter-03), [history and comparisons](#chapter-04), [branches and old revisions](#chapter-05), [remote collaboration](#chapter-08), [Stash](#chapter-07) |
 | Advanced tasks | [Merging and conflicts](#chapter-06), [history and Tags](#chapter-09), [repositories and groups](#chapter-02), [Worktrees](#chapter-10) |
+| Terminals and help | [Embedded terminals](#chapter-13), [custom shortcuts](#shortcut-settings), [offline help](#help-guide) |
 | Troubleshooting and reference | [Settings and common questions](#chapter-11), [shortcuts, terms, and task index](#chapter-12) |
 
 <a id="quick-start"></a>
@@ -35,15 +36,15 @@ Use a practice repository with existing Git history. Confirm the current branch 
 
 If Commit fails, keep the draft and expand the error details. Address the reported Git identity, hook, or other cause before retrying.
 
-![Verify the new commit ID and file list in History](images/user-manual/figure-04.png)
+![Figure 04 New Commit selected after submission to inspect its ID, message, and file Diff](images/user-manual/figure-04.png)
 
 <a id="chapter-01"></a>
 
 ## Installation and the Workbench
 
-AlwayGit brings Git repository navigation, commit history, file status, and read-only diffs into the VS Code editor area. When you first use it, complete the “edit → Stage → check Staged → Commit” cycle in a practice repository before attempting remote synchronization or history rewriting.
+AlwayGit brings Git repository navigation, commit history, file status, and read-only diffs into VS Code editor tabs and docked views. When you first use it, complete the “edit → Stage → check Staged → Commit” cycle in a practice repository before attempting remote synchronization or history rewriting.
 
-The screenshots mostly show the English interface. Exact button names are retained so you can find each action. You can choose English or Simplified Chinese; Git action names such as Stage, Commit, and Fetch remain in English.
+The screenshots mostly show the English interface. Exact button names are retained so you can find each action. You can choose English or Simplified Chinese. Common actions and objects are translated in Simplified Chinese; Rebase, Cherry-pick, Graph, Stash, HEAD, Index, and Diff retain their Git names.
 
 <a id="section-01-01"></a>
 
@@ -62,13 +63,34 @@ Use VS Code 1.106 or later. Basic features require Git 2.40 or later; saving a S
 3. Click the AlwayGit icon in the Activity Bar, then click Open Workbench. Alternatively, run AlwayGit: Show Workbench from the Command Palette.
 4. On your first visit, use Add… under Repositories to add a repository, then double-click the target repository to open it.
 
-**Result:** The AlwayGit workbench appears in the editor area. Once the repository has loaded, you can see its branches and history.
-
-**Workbench locations:** The launch page explains the four available locations and shows the current default and enabled locations. The hint below Open Workbench identifies its destination. Use Configure display locations and default… on the launch page or the gear in any AlwayGit view title to open the location dialog. Select Editor Tab, Primary Sidebar, Secondary Sidebar and Panel (multiple choices), choose the default destination from the selected locations, and select Apply and Open to save them together, close the dialog, and open or focus the default destination. Cancel, Close and Esc discard changes; keep at least one location selected. Enabled locations can be used together; each keeps its own drafts, selection and terminals. The Primary Sidebar launcher stays available. Secondary Sidebar and Panel entries follow their enabled settings; disabling either hides its view while preserving its session, drafts and live terminals for reopening. Changing the default preserves all instance states. Explicit commands open each location. The sidebars follow VS Code’s primary sidebar position setting. Opening a location restores its native region before focusing the view. The separate Copy Current State to a New Editor Tab command copies the current repository, draft and browsing state into a new editor tab while retaining the source and all existing tabs; live terminals stay in the source. Narrow sidebars and short panels use region navigation. See the [workbench specification](WORKBENCH_SPEC.md#布局与视觉).
+**Result:** The AlwayGit workbench opens in its default location. Once the repository has loaded, you can see its branches and history.
 
 **Troubleshooting:** If Git is unavailable, check its installation and the Git path configured in VS Code. If the workspace is in Restricted Mode, change its trust settings only after confirming that the project is trustworthy.
 
-![Figure 01 AlwayGit extension details showing version 0.29.0 and VSIX as the installation source](images/user-manual/figure-01.png)
+<a id="workbench-locations"></a>
+
+### Choose display locations and the default entry
+
+1. Use Configure display locations and default… on the launch page, the layout location icon in the Workbench header, or the gear in an AlwayGit view title.
+2. Enable one or more of Editor Tab, Primary Sidebar, Secondary Sidebar, and Panel. Keep at least one enabled.
+3. Choose the default from enabled locations; disabling the default selects a remaining location.
+4. Apply and Open saves and enters the default location. Cancel, Close, and Esc discard the draft.
+
+The launch page shows the default and enabled locations and the opening destination. The AlwayGit status bar icon, Show Workbench command, and launch page button open or focus the default location. Enabling several locations does not open them all at once. The interface Settings gear inside the Workbench has a different purpose from the location control.
+
+![Figure 01 Workbench Locations with four enabled locations and a default opening location](images/user-manual/figure-01.png)
+
+<a id="workbench-instances"></a>
+
+### Use multiple Workbench instances
+
+The four locations can coexist. Each location and editor tab keeps its own repository, drafts, history filters, file selection, comparison, layout, and embedded terminals. Repository directories, actual Git state, and interface preferences are shared. The Primary Sidebar launcher remains available; disabling Secondary Sidebar or Panel hides its view while retaining its session, drafts, and running terminals for reopening.
+
+Sidebar directions follow VS Code settings. Opening a location restores its native region. Narrow sidebars and short panels use region navigation for repositories, History, Details / Changes, and Diff / Terminal; switching regions retains selection.
+
+Copy Current State to a New Editor Tab copies the repository, draft, and browsing state while retaining the source and existing tabs. Running terminals remain in the source. The launch page new-window entry creates an independent window with no repository selected.
+
+![Figure 39 Real Workbench components at narrow sidebar dimensions with History selected through region navigation](images/user-manual/figure-39.png)
 
 <a id="section-01-03"></a>
 
@@ -82,13 +104,13 @@ Use VS Code 1.106 or later. Basic features require Git 2.40 or later; saving a S
 
 **Caution:** File names, branch names, commit messages, and raw Git errors are not translated.
 
-![Figure 02 Language settings previewing Simplified Chinese with Apply at the lower right](images/user-manual/figure-02.png)
+![Figure 02 Language settings previewing Simplified Chinese before Apply](images/user-manual/figure-02.png)
 
 <a id="section-01-04"></a>
 
 ### Understand the four areas
 
-![Figure 03 Workbench layout with repository navigation, history, details, and a read-only Diff pane](images/user-manual/figure-03.png)
+![Figure 03 Current Workbench with repositories and refs, history, details, and the Diff / terminal dock](images/user-manual/figure-03.png)
 
 | Area | Purpose | What to check first |
 | --- | --- | --- |
@@ -97,9 +119,7 @@ Use VS Code 1.106 or later. Basic features require Git 2.40 or later; saving a S
 | Right details | The commit’s file list or the Working Tree file list | Changed files and the scope of Staged changes |
 | Bottom tabbed panel | A fixed Diff preview and multiple embedded terminals | The selected file comparison or terminal working directory |
 
-The plus icon creates a terminal at the current repository root. Its dropdown selects the default shell, PowerShell, cmd, or Bash (the shell must exist on the host). Terminals and Diff share the panel height. Switching repositories keeps existing terminal directories; clicking a file selects Diff, while background refreshes keep the active tab.
-
-Double-click a terminal tab to rename it. The toolbar clears the display and offers restart only after the shell exits; exit codes and output remain visible. Closing a terminal ends its shell; collapsing the panel or hiding the workbench keeps it running. Use All tabs to switch among many terminals and maximize to expand the panel temporarily. Ctrl+C with a selection or Ctrl+Shift+C copies; Ctrl+Shift+V pastes. Without a selection, Ctrl+C interrupts the shell command. Closing the workbench or reloading VS Code releases terminals; commands and output are not saved or restored. The command palette also provides `AlwayGit: New Embedded Terminal`, with `Ctrl+Alt+Shift+T` as the default shortcut (`Cmd+Alt+Shift+T` on macOS).
+Diff and embedded terminals share the bottom tab dock. See [embedded terminals](#section-13-01) for operations.
 
 <a id="section-01-05"></a>
 
@@ -107,13 +127,19 @@ Double-click a terminal tab to rename it. The toolbar clears the display and off
 
 Working Tree means the working files on disk; Index is the staging area for the next commit; a Commit is a version already saved in Git history. Stage places the selected files’ current changes into the Index. Ordinary Commit defaults to Index content. Commit Selected in the unified list can also stage and commit selected unstaged files.
 
+<a id="help-guide"></a>
+
+### Find offline help and the full manual
+
+Use the question-mark icon to open Help & Guide, or Quick start in an empty Workbench. Its four categories are Quick start, Common tasks, Common questions, and Full manual. Search filters topic titles and body text in the current category only; clear the query or switch to Full manual if needed. Internal chapter links open the full chapter and locate the requested subsection.
+
+Help follows the Workbench language. Both manuals and their images are included with the extension and work offline. Esc, Close, or the backdrop closes Help and returns focus to its entry. Reading Help does not execute Git, open projects, or change the repository, drafts, layout, or Diff.
+
 <a id="chapter-03"></a>
 
 ## Working Tree and Commits
 
 Staged is the most important place to check before committing. A file appearing as both unstaged and staged is not a contradiction: the Index contains one version, while the file on disk has changed again since it was staged.
-
-Settings → Interface → File List offers the default split list or a unified changed-files list. The unified list places unstaged entries before staged entries and sorts each area by file name; conflicts come first. Each version has its own row and Diff. Stage All, Unstage All and Discard All in the top toolbar always operate on the complete repository, independently of filtering or selection. Discard All discards only unstaged changes and preserves staged content.
 
 | Status or group | Meaning | Recommended action |
 | --- | --- | --- |
@@ -122,6 +148,16 @@ Settings → Interface → File List offers the default split list or a unified 
 | Staged | Changes in the Index that are ready to commit | Check the Diff in this area before using Commit |
 | M / A / D / R | Modified / Added / Deleted / Renamed | Check both the file name and the complete parent directory path |
 | ? / ! | Untracked / Conflict | Decide whether to track the file or resolve the conflict first |
+
+<a id="file-list-modes"></a>
+
+### Choose split or unified file lists
+
+Settings → Interface → File List offers the default split list or a unified changed-files list. The unified list places unstaged entries before staged entries and sorts each area by file name; conflicts come first. Each version has its own row and Diff. Stage All, Unstage All and Discard All in the top toolbar always operate on the complete repository, independently of filtering or selection. Discard All discards only unstaged changes and preserves staged content.
+
+Split-mode heading actions use the current file filter; unified-mode toolbar bulk actions always use the whole repository. Use file context menus for selected files. File spacing is separate from History row density.
+
+![Figure 05 File list settings with split and unified modes and independent file spacing](images/user-manual/figure-05.png)
 
 <a id="section-03-01"></a>
 
@@ -140,7 +176,7 @@ Settings → Interface → File List offers the default split list or a unified 
 
 **Troubleshooting:** If the content has not updated, first confirm that you saved it in the editor, then use Refresh. If the problem persists, check the output and error details.
 
-![Figure 07 Working Tree path search and the Staged Commit entry, available for drafting with zero Staged files](images/user-manual/figure-07.png)
+![Figure 07 Working Tree filtered by webview with an unstaged file and its Diff selected](images/user-manual/figure-07.png)
 
 <a id="section-03-02"></a>
 
@@ -179,19 +215,25 @@ Settings → Interface → File List offers the default split list or a unified 
 **Prerequisite:** At least one file is Staged, and you have prepared a commit message.
 
 1. Check each Staged file, including deletions and renames.
-2. Select Commit… to the right of Unstage in the Staged heading and enter a Commit Message in the dialog. Confirm the repository, branch, and file checklist (all staged files are selected by default; you may deselect files), then select Commit or press Ctrl/Cmd+Enter. Enter inserts a new line.
+2. Select Commit in the toolbar or Commit… in the Staged heading and enter a Commit Message in the dialog. Confirm the repository, branch, and file checklist (all staged files are selected by default; you may deselect files), then select Commit or press Ctrl/Cmd+Enter. Enter inserts a new line.
 3. Click the new commit in History to verify the actual file list. Then return to Working Tree and check the remaining uncommitted changes.
 4. If Unstaged changes remain, continue editing or staging them for a separate commit.
 
 **Result:** History contains one new commit, and only the content in the Index is included in it.
 
-In the unified list, Commit Selected… opens a checklist containing only the initially selected files. Each path appears once and may be deselected. Staged entries commit their Index version; unstaged entries automatically stage and commit the latest saved disk version. Selecting both versions uses the disk version once. An unstaged entry with staged changes is marked Combined, with one shared notice explaining that both parts are included. Unselected staged content is preserved; cancelling does not change the Index. Git hooks and signing run normally. Hooks may format selected files, but a candidate commit containing changes outside the selection is rejected before HEAD updates, preserving the original staged content. Hook changes on disk may remain; review them before retrying. During an active Git operation, review and commit the complete staged result.
-
 **Caution:** Drafts save automatically per repository. Cancel, Close, Escape and the backdrop preserve the complete message for the next opening, including after reopening the workbench. Failures also keep drafts; a successful Commit clears the draft used by that action. You can open the dialog to write a draft before staging; the submission button reflects the prerequisites. View Commit in the success banner opens the new commit returned by this operation. Check its actual file content.
 
 **Troubleshooting:** If the commit fails, expand the Git error. Keep the draft, address the cause first, then recheck the scope of Staged changes.
 
-![Figure 08 Selected-file checklist with deselection and one shared notice explaining combined content](images/user-manual/figure-08.png)
+![Figure 40 Expanded Commit operation details with the new Commit and remaining changes](images/user-manual/figure-40.png)
+
+<a id="selected-file-commit"></a>
+
+### Commit only selected files
+
+In the unified list, Commit Selected… opens a checklist containing only the initially selected files. Each path appears once and may be deselected. Staged entries commit their Index version; unstaged entries automatically stage and commit the latest saved disk version. Selecting both versions uses the disk version once. An unstaged entry with staged changes is marked Combined, with one shared notice explaining that both parts are included. Unselected staged content is preserved; cancelling does not change the Index. Git hooks and signing run normally. Hooks may format selected files, but a candidate commit containing changes outside the selection is rejected before HEAD updates, preserving the original staged content. Hook changes on disk may remain; review them before retrying. During an active Git operation, review and commit the complete staged result.
+
+![Figure 08 Commit Selected checklist in unified mode with unstaged content combined with existing Index content](images/user-manual/figure-08.png)
 
 <a id="section-03-05"></a>
 
@@ -210,7 +252,7 @@ In the unified list, Commit Selected… opens a checklist containing only the in
 
 **Troubleshooting:** To undo the effect of a commit that has already been shared, Revert is generally the preferred choice. If you are unsure, create a backup branch first.
 
-![Figure 11 Amended commit selected in History to verify the new message and commit ID](images/user-manual/figure-11.png)
+![Figure 11 New HEAD selected after Amend to verify the replacement message and files](images/user-manual/figure-11.png)
 
 <a id="section-03-06"></a>
 
@@ -272,7 +314,7 @@ Ref checkboxes control which history you see; branch names and row selections co
 
 **Troubleshooting:** If you cannot find the target, check the keyword and ref filter scope. Do not assume that the search covers all unselected branches.
 
-![Figure 13 Search results for guide with the Graph hidden and commit messages and details still visible](images/user-manual/figure-13.png)
+![Figure 13 Search for native diff with Graph hidden and a matching Commit selected](images/user-manual/figure-13.png)
 
 <a id="section-04-03"></a>
 
@@ -304,7 +346,7 @@ Ref checkboxes control which history you see; branch names and row selections co
 
 **Caution:** Selecting three or more commits returns to the details of the last commit you interacted with, while retaining the multiple selection for batch actions. It does not compare several versions at once.
 
-![Figure 14 Exactly two selected commits automatically opening a comparison with both versions and their files on the right](images/user-manual/figure-14.png)
+![Figure 14 Exactly two selected Commits automatically compared with endpoints and files on the right](images/user-manual/figure-14.png)
 
 <a id="section-04-05"></a>
 
@@ -321,6 +363,8 @@ Ref checkboxes control which history you see; branch names and row selections co
 
 **Caution:** Entire Commit includes files hidden by the path filter. The Diff title shows the actual path, and the file list identifies a hidden current file. Binary files and files without text change blocks are skipped but remain available for manual inspection. Read failures stop navigation and show an error. Truncated previews only count and navigate previewed changes; open the native Diff or editor for the full content. Working Tree, Stash, and Commit comparisons still cycle within the current file.
 
+![Figure 38 Diff settings with font, line height, code preview, and change navigation scope](images/user-manual/figure-38.png)
+
 <a id="chapter-05"></a>
 
 ## Branches and Historical Versions
@@ -334,7 +378,7 @@ A branch is a movable reference to a version. Creating a branch, switching branc
 **Prerequisite:** Confirm the starting point and safely save any changes in your working directory.
 
 1. Click Create Branch… in the Local Branches header. You can also right-click a specific branch, Tag, or Commit to create a branch from that fixed starting point.
-2. Check the starting point shown in the dialog and enter a new branch name, such as feature/readme.
+2. Check the starting point shown in the dialog and enter a new branch name, such as feature/guide.
 3. Resolve any name warnings. Duplicate names, invalid names, and parent/child path conflicts require a different name before you can proceed.
 4. Choose Create Only to create just the reference, or Create and Checkout to start working on the new branch.
 5. Read the completion feedback and check the current-branch indicator to confirm whether you actually switched branches.
@@ -345,7 +389,7 @@ A branch is a movable reference to a version. Creating a branch, switching branc
 
 **Troubleshooting:** If creation succeeds but changes block Checkout, the new branch may already exist. Check the feedback first rather than blindly trying to create another branch with the same name.
 
-![Branch creation dialog showing the starting point and the Create Only and Create and Checkout options](images/user-manual/figure-15.png)
+![Figure 15 Create feature/guide from the displayed start point, with or without Checkout](images/user-manual/figure-15.png)
 
 <a id="section-05-02"></a>
 
@@ -365,8 +409,6 @@ A branch is a movable reference to a version. Creating a branch, switching branc
 
 **Troubleshooting:** If there are conflicts or an operation is in progress, complete it or use Abort first. A single click on a branch name only navigates to it; it does not mean that Checkout has run.
 
-![Checkout dialog identifying main as the target branch and explaining overwrite protection](images/user-manual/figure-16.png)
-
 <a id="section-05-03"></a>
 
 ### Create a local tracking branch from a remote branch
@@ -382,6 +424,8 @@ A branch is a movable reference to a version. Creating a branch, switching branc
 **Result:** The local branch tracks the correct remote source. Batch creation leaves the current branch unchanged.
 
 **Caution:** This action does not automatically run Fetch or Pull. Symbolic references such as origin/HEAD are not targets that can be turned into ordinary local branches.
+
+![Figure 16 Create a local tracking branch from origin/develop after checking its source and local name](images/user-manual/figure-16.png)
 
 <a id="section-05-04"></a>
 
@@ -435,7 +479,7 @@ Fetch updates your local knowledge of the remote state. Pull integrates remote c
 
 **Troubleshooting:** If authentication fails, use the authentication flows supported by the hosting service and VS Code. Do not repeatedly change repository contents as a way of troubleshooting.
 
-![Add Remote dialog with Remote Name and Repository URL fields](images/user-manual/figure-25.png)
+![Figure 25 Add upstream remote with an example.com placeholder URL](images/user-manual/figure-25.png)
 
 <a id="section-08-02"></a>
 
@@ -452,7 +496,9 @@ Fetch updates your local knowledge of the remote state. Pull integrates remote c
 
 **Caution:** The Graph status indicating that a commit is already on the remote is based on the remote references known locally after the most recent Fetch. It is not a live query of the server.
 
-![Pull dialog showing the Fast-forward Only strategy](images/user-manual/figure-26.png)
+![Figure 26 Pull from the default origin/main source into main with a complete source ready for confirmation](images/user-manual/figure-26.png)
+
+![Figure 35 Expanded Pull source selection using origin/develop for this Pull without changing upstream](images/user-manual/figure-35.png)
 
 <a id="section-08-03"></a>
 
@@ -474,7 +520,7 @@ Fetch updates your local knowledge of the remote state. Pull integrates remote c
 
 **Troubleshooting:** If the push is rejected, run Fetch first and check for diverging histories, authentication issues, and permission problems. Do not treat Force-with-lease as a routine retry.
 
-![First Push dialog showing feature/release → origin/feature/release and upstream setup](images/user-manual/figure-27.png)
+![Figure 27 First Push of feature/test to origin/feature/test with explicit upstream setup](images/user-manual/figure-27.png)
 
 <a id="section-08-04"></a>
 
@@ -509,7 +555,7 @@ Stash temporarily saves changes that have not yet been committed. It is entirely
 
 **Caution:** Include untracked files does not include files ignored by .gitignore. When it is not selected, ordinary untracked files are not saved either. Stash is not a substitute for a full project backup.
 
-![Stash All Changes dialog with the Include untracked files option](images/user-manual/figure-21.png)
+![Figure 21 Stash all changes with an explicit Include untracked files choice](images/user-manual/figure-21.png)
 
 <a id="section-07-02"></a>
 
@@ -526,7 +572,7 @@ Stash temporarily saves changes that have not yet been committed. It is entirely
 
 **Caution:** Even if you select a file from the Staged side, the file's complete Index and Working Tree state is saved, not just the side you are viewing.
 
-![Stash Selected Files dialog explaining that both the Index and Working Tree states are saved](images/user-manual/figure-22.png)
+![Figure 22 Stash selected files after checking the scope and Index / Working Tree content](images/user-manual/figure-22.png)
 
 <a id="section-07-03"></a>
 
@@ -546,7 +592,7 @@ Stash temporarily saves changes that have not yet been committed. It is entirely
 
 **Troubleshooting:** If a message explains that restoration is blocked, resolve the occupied paths or conflicts first, then close the dialog and try again to trigger a new preflight.
 
-![Index tab showing the saved staged version and its Diff for a selected-files Stash](images/user-manual/figure-23.png)
+![Figure 23 Stash Index category showing the saved staged version and its Diff](images/user-manual/figure-23.png)
 
 <a id="section-07-04"></a>
 
@@ -563,7 +609,7 @@ Stash temporarily saves changes that have not yet been committed. It is entirely
 
 **Caution:** A preflight block stops the entire restoration. If new external changes or write errors occur after actual execution begins, do not assume that the working state is necessarily completely unchanged. Always inspect the actual result.
 
-![Pop restoration blocked during preflight with the original Stash retained](images/user-manual/figure-24.png)
+![Figure 24 Pop stopped by preflight with the Stash retained and confirmed conflicting paths listed](images/user-manual/figure-24.png)
 
 This is the older blocked-restoration dialog. The current version distinguishes confirmed conflicting files from files involved in restoration, and Git details provides the specific diagnosis.
 
@@ -609,7 +655,7 @@ The goal of conflict resolution is to produce the correct final file contents. M
 
 **Caution:** The branch you right-click is the merge source. The current branch is the target that will be updated.
 
-![Merge dialog for merging feature/guide into the current main branch](images/user-manual/figure-17.png)
+![Figure 17 Merge feature/test into the current main branch after checking the direction](images/user-manual/figure-17.png)
 
 <a id="section-06-02"></a>
 
@@ -629,6 +675,8 @@ The goal of conflict resolution is to produce the correct final file contents. M
 
 **Troubleshooting:** If you chose the wrong contents, continue editing, save, then stage again and review. Do not treat a conflict count of zero as proof that validation passed. If the native editing flow prompts you to Trust the project workspace, follow Chapter 11 to handle the trust status of the target window.
 
+![Figure 18 Paused Merge with its conflict count, conflicting file, and Continue prerequisites](images/user-manual/figure-18.png)
+
 <a id="section-06-03"></a>
 
 ### Review the staged result and continue
@@ -646,6 +694,8 @@ The goal of conflict resolution is to produce the correct final file contents. M
 
 **Caution:** The review has limits involving size, binary files, encoding, and submodules. An absence of suspected markers does not guarantee semantic correctness. Changes to the Index or branch after the review require another review.
 
+![Figure 19 Review the staged result before continuing an operation after conflicts are resolved](images/user-manual/figure-19.png)
+
 <a id="section-06-04"></a>
 
 ### Abort an in-progress operation
@@ -662,7 +712,7 @@ The goal of conflict resolution is to produce the correct final file contents. M
 
 **Troubleshooting:** If Abort fails, stop repeating write operations, retain the error information, and inspect the actual Git state before taking further action.
 
-![Abort dialog showing the starting point and restoration risks](images/user-manual/figure-20.png)
+![Figure 20 Abort Merge confirmation showing its start point and restoration risks](images/user-manual/figure-20.png)
 
 <a id="chapter-09"></a>
 
@@ -680,18 +730,26 @@ Use the operations in this chapter only after you understand the relationships i
 2. Enter a name, such as v1.1.0, in Tag Name. From the Tags heading, Target Commit starts empty: enter a Commit ID and verify the resolved Commit Message. From a Commit row, Target Commit is read-only and shows that Commit's ID and Message. Fill in Annotation if needed. To publish immediately, enable “Push this Tag after creation” and select a Remote; use it once or remember it as the default.
 3. Check the new tag under Tags and use Locate Tag Commit in Graph to locate it, or Show Only This Tag History to inspect its history.
 4. To publish tags, right-click one or more Tags, choose Push Tag… or Push N Tags…, then verify the complete Tag list and Remote.
-5. To delete a local tag, right-click the target Tag and choose Delete Tag…. It deletes only the local Tag by default. To delete the matching Tag from the selected Remote too, enable “Also delete from Remote,” then verify the Remote, warning, and confirmation list.
+5. To delete a local tag, right-click the target Tag and choose Delete Tag…. It deletes only the local Tag by default. To delete the matching Tag from the selected Remote too, enable “Also delete from a remote,” then verify the Remote, warning, and confirmation list.
 6. For a remote-only Tag marked with a cloud icon, right-click it and choose Delete Remote Tag…. This deletes the confirmed remote object without creating or deleting a local Tag.
-
-Tags combines local Tags with Tags that exist only on the selected remote. The remote name in its header identifies the comparison target; choose another remote when available, with the selection remembered per repository. Each row shows only a status icon: a green check means Synced, a desktop means Local only, a cloud means Remote only, a warning means the same name identifies different objects, and a question mark means no query has succeeded yet. Hover, focus or click for the full meaning. A remote-only object is not yet a local ref and cannot be located in local history. Results do not expire with time and change only after another successful query; a failed query preserves the previous successful result. With no configured remote, Tags show Local. Local Tag labels in the commit graph use the same status icons; the commit node's Pushed indicator still describes availability on known remote branches.
-
-Hover or focus the status for details and the last successful check time, or click a list status to open its details. The header refresh icon and Check remote Tag status context action perform a read-only query. The first Tags expansion, switching remotes and completing Fetch/Pull/Push refresh the status as needed; ordinary local refreshes reuse the existing result. Queries do not block local history, and a failure neither means a Tag is absent nor replaces the previous result. Status describes the selected remote's read address; differing read and push addresses are explicitly identified, so a successful push does not prove availability at a different read address.
 
 **Result:** The local Tag points to the specified version, the explicitly selected Tags are published to the Remote, or the target Tag is removed locally, remotely, or from both locations as explicitly selected.
 
 **Caution:** Create-and-push keeps the local Tag first; if the remote push fails, retry later with Push Tag. Tag Push sends only the Tags listed in the dialog, supports lightweight and annotated Tags, does not include other local Tags, and does not overwrite a differently identified remote Tag with the same name. Delete Tag still deletes only locally by default. Remote deletion must be explicitly enabled or opened from a remote-only Tag, followed by native confirmation. Before execution, AlwayGit verifies the remote Tag identity and destination; deletion is unavailable when read and push addresses differ or multiple push addresses exist. A combined deletion removes the remote first and retains the local Tag if that remote step fails. Remote Tag replacement is not provided.
 
-![Create Tag dialog with a fixed target Commit and its Commit Message](images/user-manual/figure-28.png)
+![Figure 28 Create v1.1.0 from a Commit with its fixed target ID and message](images/user-manual/figure-28.png)
+
+![Figure 36 Delete Tag with explicit shared remote deletion selected in addition to local deletion](images/user-manual/figure-36.png)
+
+<a id="tag-status"></a>
+
+### Check local and remote Tag status
+
+Tags combines local Tags with Tags that exist only on the selected remote. The remote name in its header identifies the comparison target; choose another remote when available, with the selection remembered per repository. Each row shows only a status icon: a green check means Synced, a desktop means Local only, a cloud means Remote only, a warning means the same name identifies different objects, and a question mark means no query has succeeded yet. Hover, focus or click for the full meaning. A remote-only object is not yet a local ref and cannot be located in local history. Results do not expire with time and change only after another successful query; a failed query preserves the previous successful result. With no configured remote, Tags show Local. Local Tag labels in the commit graph use the same status icons; the commit node's Pushed indicator still describes availability on known remote branches.
+
+Hover or focus the status for details and the last successful check time, or click a list status to open its details. The header refresh icon and Check remote Tag status context action perform a read-only query. The first Tags expansion, switching remotes and completing Fetch/Pull/Push refresh the status as needed; ordinary local refreshes reuse the existing result. Queries do not block local history, and a failure neither means a Tag is absent nor replaces the previous result. Status describes the selected remote's read address; differing read and push addresses are explicitly identified, so a successful push does not prove availability at a different read address.
+
+![Figure 12 Tag remote status details showing the selected remote, synchronization state, and last successful check](images/user-manual/figure-12.png)
 
 <a id="section-09-02"></a>
 
@@ -709,7 +767,7 @@ Hover or focus the status for details and the last successful check time, or cli
 
 **Caution:** Ordinary Cherry-pick is disabled for the current HEAD and commits already in the current branch history, with an explanation. A batch containing any such commit is disabled as a whole; deselect those commits first. Other ordinary Commits can execute immediately after ancestry checks pass, so verify the target before clicking. Batch Cherry-pick is not supported for a selection that includes a Merge Commit. If changes from a historical commit were reverted or removed, use `Reapply Historical Commits…` and explicitly check the confirmation before submitting. This entry is unavailable for the current HEAD, and reapplication can still produce conflicts or an empty result.
 
-![Commit context menu showing Cherry-pick to main](images/user-manual/figure-29.png)
+![Figure 29 Ordinary Cherry-pick disabled for an included historical Commit with an explicit Reapply entry](images/user-manual/figure-29.png)
 
 <a id="section-09-03"></a>
 
@@ -726,7 +784,7 @@ Hover or focus the status for details and the last successful check time, or cli
 
 **Caution:** Revert is not the same as restoring the entire repository directly to that commit, and it does not guarantee automatic compatibility with later changes. For a Merge Commit, you must specify Mainline Parent. If you do not understand the parent versions, cancel first to avoid undoing the wrong set of changes.
 
-![Revert dialog for checking the target Commit ID](images/user-manual/figure-30.png)
+![Figure 30 Revert with the target Commit identified and Mainline Parent unused for an ordinary Commit](images/user-manual/figure-30.png)
 
 <a id="section-09-04"></a>
 
@@ -746,7 +804,7 @@ Hover or focus the status for details and the last successful check time, or cli
 
 **Troubleshooting:** After an accidental operation, stop making further changes and try to recover from the backup branch first. Git reflog may help recover old commits, but it cannot guarantee recovery of uncommitted file contents.
 
-![Reset dialog showing Target Commit and Reset Mode set to Soft](images/user-manual/figure-31.png)
+![Figure 31 Reset with its target and Soft mode, which preserves Index and working files](images/user-manual/figure-31.png)
 
 <a id="section-09-05"></a>
 
@@ -766,7 +824,7 @@ Hover or focus the status for details and the last successful check time, or cli
 
 **Troubleshooting:** You can Abort while the operation is in progress. To recover after completion, use the backup reference saved beforehand; avoid further history rewriting without first checking the state.
 
-![Rebase dialog for rebasing feature/guide onto main](images/user-manual/figure-32.png)
+![Figure 32 Rebase current main onto feature/test after checking the new base and direction](images/user-manual/figure-32.png)
 
 <a id="chapter-02"></a>
 
@@ -792,6 +850,8 @@ First select the item you intend to operate on, then identify the current workin
 
 **Troubleshooting:** Inaccessible directories are skipped. Review the reasons in the scan results, check the paths and permissions, then retry those directories individually.
 
+![Figure 34 Repository discovery results with existing entries excluded and selection and destination checked before adding](images/user-manual/figure-34.png)
+
 <a id="section-02-02"></a>
 
 ### Create and organize project groups
@@ -805,7 +865,7 @@ First select the item you intend to operate on, then identify the current workin
 
 **Caution:** Groups organize the navigation only. They do not move directories on disk or combine the contents of different repositories.
 
-![Figure 06 The learning labs group and an example current repository marker](images/user-manual/figure-06.png)
+![Figure 06 AlwayGit in the learning labs group and the separate website repository entry](images/user-manual/figure-06.png)
 
 <a id="section-02-03"></a>
 
@@ -872,7 +932,7 @@ Worktree lets a single repository have multiple working directories so you can w
 
 **Caution:** Creating a Detached Worktree is not allowed by default. Do not confuse a separate clone with a linked Worktree.
 
-![Add Worktree dialog showing new-branch and start-point options](images/user-manual/figure-33.png)
+![Figure 33 Add a Worktree directory and feature/guide branch after checking the start point](images/user-manual/figure-33.png)
 
 <a id="section-10-02"></a>
 
@@ -902,6 +962,24 @@ Worktree lets a single repository have multiple working directories so you can w
 
 **Result:** The target Worktree's directory has been removed. The branch reference may remain and must be managed separately.
 
+<a id="chapter-13"></a>
+
+## Bottom Dock and Embedded Terminals
+
+<a id="section-13-01"></a>
+
+### Create terminals and switch tabs
+
+The plus icon creates a terminal at the current repository root. Its dropdown selects the default shell, PowerShell, cmd, or Bash (the shell must exist on the host). Terminals and Diff share the panel height. Switching repositories keeps existing terminal directories; clicking a file selects Diff, while background refreshes keep the active tab.
+
+![Figure 09 Fixed Diff and multiple terminal tabs with the active terminal renamed dev server](images/user-manual/figure-09.png)
+
+<a id="section-13-02"></a>
+
+### Manage terminals and exited shells
+
+Double-click a terminal tab to rename it. The toolbar clears the display and offers restart only after the shell exits; exit codes and output remain visible. Closing a terminal ends its shell; collapsing the panel or hiding the workbench keeps it running. Use All tabs to switch among many terminals and maximize to expand the panel temporarily. Ctrl+C with a selection or Ctrl+Shift+C copies; Ctrl+Shift+V pastes. Without a selection, Ctrl+C interrupts the shell command. Closing the workbench or reloading VS Code releases terminals; commands and output are not saved or restored. The command palette also provides `AlwayGit: New Embedded Terminal`, with `Ctrl+Alt+Shift+T` as the default shortcut (`Cmd+Alt+Shift+T` on macOS).
+
 <a id="chapter-11"></a>
 
 ## Settings and Common Questions
@@ -917,10 +995,12 @@ Worktree lets a single repository have multiple working directories so you can w
 
 **Result:** Language, theme, colors, font sizes, density, shortcuts and reading preferences are saved in user settings and shared with other workbench windows in the same configuration environment. Cancel rolls back only this panel’s unapplied preview. Panel dimensions, browsing state and commit drafts are restored separately.
 
-**Caution:** The Simplified Chinese interface retains Git action names such as Stage, Commit, and Fetch. Paths, branch names, and Git errors remain in their original form.
+**Caution:** The Simplified Chinese interface translates ordinary actions and objects such as Stage, Commit, Fetch, Push, Merge, Tag, and Worktree. Rebase, Cherry-pick, Graph, Stash, HEAD, Index, and Diff retain their Git names. Paths, branch names, user content, and raw Git output remain unchanged.
 
 
 Git operation settings default to User. Select Current workspace before editing to override the defaults for that VS Code workspace. Workspace overrides remain effective after user defaults are saved; empty windows cannot save workspace settings. The workspace scope covers all repositories managed in that window.
+
+![Figure 37 Git operation settings distinguish user defaults from current VS Code workspace overrides](images/user-manual/figure-37.png)
 
 <a id="section-11-02"></a>
 
@@ -986,7 +1066,9 @@ Current scope: whole-file staging, standard Rebase, remote branch management, ex
 | alwaygit.pushFollowTags | false | Whether normal Push includes related annotated Tags by default |
 | alwaygit.pushTagAfterCreate | false | Whether a new Tag is pushed to the selected Remote by default |
 | alwaygit.defaultResetMode | mixed | Soft, Mixed, or Hard initially selected in the Reset dialog |
-| alwaygit.language | en / zh-CN / auto | Initial language; the choice saved in the workbench takes precedence |
+| alwaygit.language | en / zh-CN / auto; user scope | Display language; applied user settings synchronize across Workbenches |
+| alwaygit.interfaceSettings | Object; user scope | Appearance, font, density, file lists, shortcuts, and Diff reading preferences |
+| alwaygit.workbenchLocations | editor only by default; user scope | enabled locations and a default belonging to that list |
 
 Reload the VS Code window after changing the Git path or refresh interval. Theme, color scheme, font size, density, and language settings within the workbench take effect immediately after you apply them.
 
@@ -1025,12 +1107,6 @@ Single-key shortcuts are enabled by default. The table below lists default bindi
 
 D, E, [, ], and \ are available only while the Diff tab is active. Terminal inputs suspend workbench single-key shortcuts. Global actions target the currently open repository and preview file. Temporary sidebar selection and pointer hover do not change their targets. Disabled buttons have disabled shortcuts. A/U follow the list-mode scope in the table above, independently of batch selection or collapsed groups; use the existing context menu for selected-file actions.
 
-Hover over supported actions to see their current bindings. Settings → General → Keyboard shortcuts provides search, category filters and an Only modified filter. Click a binding to record its replacement, or use the plus icon to add an alternate; each action supports up to two bindings. The close icon removes one binding, the disable icon clears the action, and the restore icon restores its defaults. The top restore button restores all defaults.
-
-Focus the recording field and press a single key or combination. Ctrl/Cmd adapts to the platform. Esc cancels recording without closing Settings; Tab moves to confirmation. Conflicts show the actions using the key and block normal confirmation; Move binding here explicitly removes their conflicting bindings. Restoring defaults also requires moving conflicting bindings when necessary. Basic navigation, selection and text editing keys are reserved; input-method composition and AltGr are excluded from recording. Multi-step chords are not supported. VS Code or the operating system may handle combinations first; external conflicts are not fully checked here.
-
-Apply saves bindings in user settings and shares them across windows; Cancel restores previous bindings. Turning off single keys pauses bindings without modifiers and Shift with printable characters while retaining their configuration; other combinations remain active. The default Ctrl/Cmd+R can be changed or disabled. Existing selection controls, drafts, repository selection and layout are preserved. The separate New Embedded Terminal shortcut is managed by VS Code through the Open VS Code Keyboard Shortcuts entry.
-
 | Action | Meaning | Scope reminder |
 | --- | --- | --- |
 | Single-click a repository or Worktree | Select the target for an operation | Does not switch the current working directory |
@@ -1042,6 +1118,20 @@ Apply saves bindings in user settings and shares them across windows; Cancel res
 | Escape | Clear the selection in the current scope or close a menu | Input fields retain their native behavior |
 | Shift + F10 / Menu key | Open the current item's menu | Use the arrow keys to move and Enter to execute |
 | Select exactly two Commits in History | Automatically Compare Commits | Working Tree is not included in Commit multiple selection |
+
+Select all in the sidebar makes the focused scope the sole action-selection scope. Escape clears that scope without activating another. Branch action selection is independent of Graph ref checkboxes, so these keys do not change history filters.
+
+<a id="shortcut-settings"></a>
+
+### Customize shortcuts and restore defaults
+
+Hover over supported actions to see their current bindings. Settings → General → Keyboard shortcuts provides search, category filters and an Only modified filter. Click a binding to record its replacement, or use the plus icon to add an alternate; each action supports up to two bindings. The close icon removes one binding, the disable icon clears the action, and the restore icon restores its defaults. The top restore button restores all defaults.
+
+Focus the recording field and press a single key or combination. Ctrl/Cmd adapts to the platform. Esc cancels recording without closing Settings; Tab moves to confirmation. Conflicts show the actions using the key and block normal confirmation; Move binding here explicitly removes their conflicting bindings. Restoring defaults also requires moving conflicting bindings when necessary. Basic navigation, selection and text editing keys are reserved; input-method composition and AltGr are excluded from recording. Multi-step chords are not supported. VS Code or the operating system may handle combinations first; external conflicts are not fully checked here.
+
+Apply saves bindings in user settings and shares them across windows; Cancel restores previous bindings. Turning off single keys pauses bindings without modifiers and Shift with printable characters while retaining their configuration; other combinations remain active. The default Ctrl/Cmd+R can be changed or disabled. Existing selection controls, drafts, repository selection and layout are preserved. The separate New Embedded Terminal shortcut is managed by VS Code through the Open VS Code Keyboard Shortcuts entry.
+
+![Figure 10 Keyboard shortcut settings with search, categories, recording, alternate bindings, and defaults](images/user-manual/figure-10.png)
 
 <a id="section-12-02"></a>
 
