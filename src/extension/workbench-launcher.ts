@@ -5,7 +5,7 @@ import type { Workbench } from './workbench';
 
 export const workbenchViewIds = { sidebar: 'alwaygit.workbenchLauncher', auxiliary: 'alwaygit.workbenchAuxiliary', panel: 'alwaygit.workbenchPanel' } as const;
 
-export const workbenchContainerIds = { sidebar: 'workbench.view.extension.alwaygit', auxiliary: 'workbench.view.extension.alwaygit.auxiliary', panel: 'workbench.view.extension.alwaygit.panel' } as const;
+export const workbenchContainerIds = { sidebar: 'workbench.view.extension.alwaygit', auxiliary: 'workbench.view.extension.alwaygit-auxiliary', panel: 'workbench.view.extension.alwaygit-panel' } as const;
 
 /** Retain the legacy sidebar identity and register independent secondary-sidebar and panel views. */
 export function createWorkbenchActivityLauncher(workbench: Workbench): vscode.Disposable {

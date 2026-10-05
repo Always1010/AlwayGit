@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { readFileSync } from 'node:fs';
 import { panelSession, statusBarPresentation } from '../src/extension/workbench-entry';
-import { createWorkbenchActivityLauncher, workbenchLauncherHtml } from '../src/extension/workbench-launcher';
+import { createWorkbenchActivityLauncher, workbenchContainerIds, workbenchLauncherHtml } from '../src/extension/workbench-launcher';
 import { Workbench } from '../src/extension/workbench';
 import type { RepositoryChanges, Snapshot, GitServiceContract } from '../src/protocol/types';
 import type { RepositoryManager } from '../src/repositories/manager';
@@ -95,25 +95,32 @@ describe('Workbench entry presentation', () => {
     expect(editor.panel.reveal).toHaveBeenCalledOnce();
     expect(vscode.window.createWebviewPanel).toHaveBeenCalledOnce();
   });
-  it('applies from a sidebar launcher and opens the cold default panel only after the dialog closes', async () => {
+  it.each(['panel', 'auxiliary'] as const)('applies from a sidebar launcher and opens the cold default %s only after the dialog closes', async destination => {
     const values = configure(['editor'], 'editor'), workbench = workbenchFixture(), sidebar = viewFixture(), bottom = viewFixture();
     await workbench.resolveDockedView(sidebar.view as unknown as vscode.WebviewView, undefined, 'sidebar');
     await sidebar.receive({ id: 'ready', method: 'workbenchLocationsReady' });
     await workbench.showOpenModeSettings('alwaygit.workbenchLauncher');
-    const applied = { enabled: ['editor', 'sidebar', 'panel'], default: 'panel' };
+    const applied = { enabled: ['editor', 'sidebar', destination], default: destination };
+    const viewId = destination === 'panel' ? 'alwaygit.workbenchPanel' : 'alwaygit.workbenchAuxiliary';
     await sidebar.receive({ id: 'apply', method: 'saveWorkbenchLocations', payload: applied });
     (workbench as unknown as { refreshLaunchers(): void }).refreshLaunchers();
     expect(sidebar.view.webview.postMessage).toHaveBeenCalledWith({ type: 'response', id: 'apply', result: applied });
     expect(sidebar.view.webview.html).toContain('locations-root');
     expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
+    const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+    const nativeContainerCommands = new Set(Object.values(manifest.contributes.viewsContainers).flatMap(containers =>
+      (containers as Array<{ id: string }>).filter(container => /^[a-z0-9_-]+$/i.test(container.id))
+        .map(container => `workbench.view.extension.${container.id}.resetViewContainerLocation`)));
     vi.mocked(vscode.commands.executeCommand).mockImplementation(async command => {
-      if (command === 'alwaygit.workbenchPanel.focus') await workbench.resolveDockedView(bottom.view as unknown as vscode.WebviewView, { drafts: { panel: 'restored' } }, 'panel');
+      if (command.endsWith('.resetViewContainerLocation') && !nativeContainerCommands.has(command)) throw new Error(`command '${command}' not found`);
+      if (command === `${viewId}.focus`) await workbench.resolveDockedView(bottom.view as unknown as vscode.WebviewView, { drafts: { destination: 'restored' } }, destination);
     });
     await sidebar.receive({ id: 'close', method: 'workbenchLocationsClosed' });
     expect(values.get('workbenchLocations')).toEqual(applied);
     expect(bottom.view.webview.html).toBe('<html></html>');
     expect(sidebar.view.webview.html).toContain('locations-root');
-    expect(vscode.commands.executeCommand).toHaveBeenLastCalledWith('alwaygit.workbenchPanel.focus');
+    expect(vscode.commands.executeCommand).toHaveBeenLastCalledWith(`${viewId}.focus`);
+    expect(vscode.window.showErrorMessage).not.toHaveBeenCalled();
     expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
     expect(vscode.window.showQuickPick).not.toHaveBeenCalled();
     vi.mocked(vscode.commands.executeCommand).mockClear();
@@ -133,7 +140,7 @@ describe('Workbench entry presentation', () => {
     if (destination === 'editor') expect(vscode.window.createWebviewPanel).toHaveBeenCalledOnce();
     else {
       const viewId = destination === 'sidebar' ? 'alwaygit.workbenchLauncher' : destination === 'auxiliary' ? 'alwaygit.workbenchAuxiliary' : 'alwaygit.workbenchPanel';
-      const containerId = destination === 'sidebar' ? 'alwaygit' : 'alwaygit.' + destination;
+      const containerId = destination === 'sidebar' ? 'alwaygit' : 'alwaygit-' + destination;
       expect(vi.mocked(vscode.commands.executeCommand).mock.calls.map(call => call[0])).toEqual([
         `workbench.view.extension.${containerId}.resetViewContainerLocation`, `${viewId}.resetViewLocation`, `${viewId}.focus`,
       ]);
@@ -528,10 +535,23 @@ describe('Workbench entry presentation', () => {
         menus?: Record<string, Array<{ command: string; when?: string; group?: string }>>;
       };
     };
+    // VS Code rejects dotted container IDs and falls their views back to Explorer.
+    const containers = manifest.contributes!.viewsContainers!;
+    const viewContributions = manifest.contributes!.views!;
+    for (const [region, location, viewId] of [
+      ['activitybar', 'sidebar', 'alwaygit.workbenchLauncher'],
+      ['secondarySidebar', 'auxiliary', 'alwaygit.workbenchAuxiliary'],
+      ['panel', 'panel', 'alwaygit.workbenchPanel'],
+    ] as const) {
+      const containerId = containers[region]![0].id!;
+      expect(containerId).toMatch(/^[a-z0-9_-]+$/i);
+      expect(viewContributions[containerId]).toEqual([expect.objectContaining({ id: viewId, type: 'webview' })]);
+      expect(workbenchContainerIds[location]).toBe(`workbench.view.extension.${containerId}`);
+    }
     expect(manifest.contributes?.viewsContainers?.activitybar?.some(item => item.id === 'alwaygit')).toBe(true);
     expect(manifest.contributes?.views?.alwaygit?.some(item => item.id === 'alwaygit.workbenchLauncher')).toBe(true);
-    expect(manifest.contributes?.viewsContainers?.secondarySidebar).toEqual([expect.objectContaining({ id: 'alwaygit.auxiliary' })]);
-    expect(manifest.contributes?.views?.['alwaygit.auxiliary']).toEqual([expect.objectContaining({ id: 'alwaygit.workbenchAuxiliary', type: 'webview' })]);
+    expect(manifest.contributes?.viewsContainers?.secondarySidebar).toEqual([expect.objectContaining({ id: 'alwaygit-auxiliary' })]);
+    expect(manifest.contributes?.views?.['alwaygit-auxiliary']).toEqual([expect.objectContaining({ id: 'alwaygit.workbenchAuxiliary', type: 'webview' })]);
     expect(manifest.activationEvents).toContain('onView:alwaygit.workbenchAuxiliary');
     expect(manifest.activationEvents).toContain('onView:alwaygit.workbenchLauncher');
     expect(manifest.activationEvents).toContain('*');

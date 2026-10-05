@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-114：非法停靠容器 ID 导致视图回落及区域恢复命令不存在
+
+- 日期：2026-10-06
+- 状态：已解决
+- 现象：应用默认面板或第二侧边栏时，分别报 workbench.view.extension.alwaygit.panel.resetViewContainerLocation 和 workbench.view.extension.alwaygit.auxiliary.resetViewContainerLocation 命令不存在；VS Code renderer 日志确认两个容器不存在，视图被回落到资源管理器。
+- 原因：贡献的容器 ID 使用 alwaygit.panel 与 alwaygit.auxiliary，但 VS Code 的容器注册校验只接受字母、数字、下划线和连字符，因点号拒绝注册，故对应原生恢复命令也未生成。原测试只检查贡献声明存在，并模拟所有原生命令可执行，遗漏了容器 ID 的平台约束。
+- 解决方案：容器改为合法的 alwaygit-panel 和 alwaygit-auxiliary，同步 views 的归属键和宿主的完整容器 ID。保留 alwaygit.workbenchPanel、alwaygit.workbenchAuxiliary 的视图身份、位置配置及会话键。原生区域恢复与默认入口打开流程保持不变；无需删除用户数据。
+- 验证方式：类型检查、1498 条双语资源检查与生产构建通过；入口/启动两文件 42 项定向测试通过。测试检查三个停靠容器的 ID 规则、视图归属及运行时命令目标，并让从启动页应用默认面板/第二侧边栏的场景拒绝非法容器命令。直接读取本机 VS Code 注册器的实际正则，确认两个旧 ID 被拒绝、两个新 ID 通过，视图身份未变化。未启动桌面集成；未打包、安装或推送。
+- 相关文件：`package.json`、`package-lock.json`、`src/extension/workbench-launcher.ts`、`tests/workbench-entry.test.ts`、`docs/ARCHITECTURE.md`、`docs/VALIDATION.md`。
+
 ## BUG-113：工作台位置缺少第二侧边栏且应用后忽略默认入口
 
 - 日期：2026-10-06
