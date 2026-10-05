@@ -1,6 +1,6 @@
 # AlwayGit
 
-AlwayGit 是运行在 VS Code 编辑器区域中的 Git 图形化工作台。它把仓库与引用导航、提交图、提交详情、工作区状态和只读 Diff 放在同一界面中；文本文件可继续使用 VS Code 原生编辑器，图片和其他二进制文件仅在工作台中预览。
+AlwayGit 是可在 VS Code 编辑器标签页、侧边栏或面板中使用的 Git 图形化工作台。它把仓库与引用导航、提交图、提交详情、工作区状态和只读 Diff 放在同一界面中；文本文件可继续使用 VS Code 原生编辑器，图片和其他二进制文件仅在工作台中预览。
 
 [![发布版本代码分析：语言占比、文件类型与数量、Vitest 测试用例](https://always1010.github.io/AlwayGit/repository-stats.svg)](https://always1010.github.io/AlwayGit/)
 
@@ -15,7 +15,7 @@ npm ci
 npm run build
 ```
 
-在 VS Code 中打开项目，按 F5 启动 Extension Development Host，然后点击活动栏的 AlwayGit 图标，在侧栏点击 **Show Git Workbench**：已有工作台标签时聚焦该标签，没有时新建。侧栏的 **Open Workbench in New Window** 创建一个尚未选择仓库的独立窗口。状态栏图标和 **AlwayGit: Show Workbench** 命令复用当前窗口的显示入口；仓库添加、分组、选择和移除都在 Workbench 内完成。
+在 VS Code 中打开项目，按 F5 启动 Extension Development Host，然后点击活动栏的 AlwayGit 图标，在侧栏点击 **Show Git Workbench**：已有工作台标签时聚焦该标签，没有时新建。侧栏的 **Open Workbench in New Window** 创建一个尚未选择仓库的独立窗口。AlwayGit 视图标题栏齿轮可选择标签页或停靠模式，停靠视图可移到主侧边栏、辅助侧边栏或面板。状态栏图标和 **AlwayGit: Show Workbench** 命令遵循所选打开方式；仓库添加、分组、选择和移除都在 Workbench 内完成。
 
 安装包使用固定路径 `artifacts/alwaygit.vsix`。首次手动安装可在扩展视图菜单选择 **Install from VSIX…**；构建、后续本地更新、安装校验与 Tag 触发的 GitHub Release 见 [验证与本地更新](docs/VALIDATION.md#打包与本地更新)。
 

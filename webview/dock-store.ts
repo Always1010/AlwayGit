@@ -9,7 +9,7 @@ interface DockState {
 }
 let loadTask: Promise<void> | undefined;
 export const useDock = create<DockState>((set, get) => ({
-  sessions: [], activeId: 'diff', creating: false,
+  sessions: [], activeId: globalThis.window?.__ALWAYGIT_TRANSFER__?.activeTerminal ?? 'diff', creating: false,
   select(activeId) { set({ activeId }); },
   load() {
     if (loadTask) return loadTask;

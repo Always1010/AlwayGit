@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { readFileSync } from 'node:fs';
 import { panelSession, statusBarPresentation } from '../src/extension/workbench-entry';
-import { createWorkbenchActivityLauncher } from '../src/extension/workbench-launcher';
+import { createWorkbenchActivityLauncher, workbenchLauncherHtml } from '../src/extension/workbench-launcher';
 import { Workbench } from '../src/extension/workbench';
 import type { RepositoryChanges, Snapshot, GitServiceContract } from '../src/protocol/types';
 import type { RepositoryManager } from '../src/repositories/manager';
@@ -18,8 +18,8 @@ vi.mock('vscode', () => {
   }
   return {
     EventEmitter, ConfigurationTarget: { Global: 1, Workspace: 2 }, ViewColumn: { Active: -1 }, Uri: { joinPath: vi.fn(() => ({})) }, env: { language: 'en' },
-    workspace: { isTrusted: true, get workspaceFolders() { return undefined; }, onDidChangeConfiguration: () => ({ dispose() {} }), getConfiguration: () => ({ get: (_key: string, fallback: unknown) => fallback, inspect: () => undefined, update: async () => {} }) },
-    window: { createTreeView: vi.fn(), createWebviewPanel: vi.fn() },
+    workspace: { isTrusted: true, get workspaceFolders() { return undefined; }, onDidGrantWorkspaceTrust: () => ({ dispose() {} }), onDidChangeConfiguration: () => ({ dispose() {} }), getConfiguration: () => ({ get: (_key: string, fallback: unknown) => fallback, inspect: () => undefined, update: async () => {} }) },
+    window: { registerWebviewViewProvider: vi.fn(() => ({ dispose() {} })), showQuickPick: vi.fn(), showErrorMessage: vi.fn(), createWebviewPanel: vi.fn() },
     commands: { executeCommand: vi.fn(), registerCommand: vi.fn() },
   };
 });
@@ -35,6 +35,13 @@ function panelFixture() {
   return { panel, stateChanged, receive: (message: unknown) => receive(message) };
 }
 
+function viewFixture() {
+  const panel = panelFixture(), visibility = new vscode.EventEmitter<void>();
+  const { active, reveal, onDidChangeViewState, ...surface } = panel.panel;
+  const view = { ...surface, viewType: 'alwaygit.workbenchLauncher', show: vi.fn(), onDidChangeVisibility: visibility.event };
+  return { view, visibility, receive: panel.receive };
+}
+
 const workbenches: Workbench[] = [];
 beforeEach(() => vi.clearAllMocks());
 afterEach(() => { for (const workbench of workbenches.splice(0)) workbench.dispose(); vi.useRealTimers(); vi.restoreAllMocks(); });
@@ -48,6 +55,67 @@ function workbenchFixture(output = { appendLine: vi.fn() }, events?: { changes: 
 }
 
 describe('Workbench entry presentation', () => {
+  it('creates a new editor with the latest docked draft and selection while preserving existing tabs', async () => {
+    const values = new Map<string, unknown>([['openMode', 'docked']]);
+    vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({ get: (key: string, fallback: unknown) => values.get(key) ?? fallback, inspect: () => undefined, update: async (key: string, value: unknown) => { values.set(key, value); } } as unknown as vscode.WorkspaceConfiguration);
+    const workbench = workbenchFixture(), existing = panelFixture(), fresh = panelFixture(), dock = viewFixture();
+    vi.mocked(vscode.window.createWebviewPanel).mockReturnValueOnce(existing.panel as unknown as vscode.WebviewPanel).mockReturnValueOnce(fresh.panel as unknown as vscode.WebviewPanel);
+    await workbench.open('existing'); existing.panel.webview.html = 'independent existing draft';
+    await workbench.resolveDockedView(dock.view as unknown as vscode.WebviewView, { repoId: 'dock', drafts: { dock: 'old draft' } });
+    await dock.receive({ id: 'ready', method: 'workbenchReady' });
+    const transfer = { session: { repoId: 'dock', drafts: { dock: 'just typed' }, views: { dock: { tab: 'history', search: 'latest filter', selectedOid: 'selected' } } }, workingFilters: { dock: 'src/' }, activeTerminal: 'diff' };
+    dock.view.webview.postMessage.mockImplementation(async message => {
+      if ((message as { type: string }).type === 'captureWorkbench') await dock.receive({ id: 'capture', method: 'captureWorkbench', payload: { ...transfer, token: (message as { token: string }).token } });
+      return true;
+    });
+    vi.mocked(vscode.window.showQuickPick).mockResolvedValue({ action: 'editor' } as never);
+    await workbench.showOpenModeSettings();
+    expect(vscode.window.createWebviewPanel).toHaveBeenCalledTimes(2);
+    expect(existing.panel.webview.html).toBe('independent existing draft');
+    expect(existing.panel.reveal).not.toHaveBeenCalled();
+    expect(dock.view.webview.html).toContain('command:alwaygit.showWorkbench');
+    expect(values.get('openMode')).toBe('editor');
+    const calls = vi.mocked((workbench as unknown as { html: (...args: unknown[]) => Promise<string> }).html).mock.calls;
+    expect(calls.at(-1)?.[3]).toEqual(transfer.session);
+    expect(calls.at(-1)?.[5]).toEqual(transfer);
+  });
+
+  it('hands the selected editor state to a docked view resolved by the focus command without modifying that editor', async () => {
+    const values = new Map<string, unknown>();
+    vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({ get: (key: string, fallback: unknown) => values.get(key) ?? fallback, inspect: () => undefined, update: async (key: string, value: unknown) => { values.set(key, value); } } as unknown as vscode.WorkspaceConfiguration);
+    const workbench = workbenchFixture(), existing = panelFixture(), dock = viewFixture();
+    vi.mocked(vscode.window.createWebviewPanel).mockReturnValue(existing.panel as unknown as vscode.WebviewPanel);
+    await workbench.open('selected');
+    await existing.receive({ id: 'draft', method: 'saveSession', payload: { repoId: 'selected', drafts: { selected: 'editor draft' } } });
+    existing.panel.webview.html = 'retained editor';
+    vi.mocked(vscode.commands.executeCommand).mockImplementation(async command => {
+      if (command === 'alwaygit.workbenchLauncher.focus') setTimeout(() => { void workbench.resolveDockedView(dock.view as unknown as vscode.WebviewView, { repoId: 'old-side-view' }); }, 0);
+      return undefined;
+    });
+    vi.mocked(vscode.window.showQuickPick).mockResolvedValue({ action: 'docked' } as never);
+    await workbench.showOpenModeSettings();
+    expect(existing.panel.webview.html).toBe('retained editor');
+    expect(vscode.window.createWebviewPanel).toHaveBeenCalledOnce();
+    const calls = vi.mocked((workbench as unknown as { html: (...args: unknown[]) => Promise<string> }).html).mock.calls;
+    expect(calls.at(-1)?.[3]).toEqual({ repoId: 'selected', drafts: { selected: 'editor draft' } });
+    expect(calls.at(-1)?.[4]).toBe('docked');
+    expect(values.get('openMode')).toBe('docked');
+  });
+
+  it('keeps a docked workbench and its mode when capturing current state times out', async () => {
+    vi.useFakeTimers(); const values = new Map<string, unknown>([['openMode', 'docked']]);
+    vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({ get: (key: string, fallback: unknown) => values.get(key) ?? fallback, inspect: () => undefined, update: async (key: string, value: unknown) => { values.set(key, value); } } as unknown as vscode.WorkspaceConfiguration);
+    const workbench = workbenchFixture(), dock = viewFixture();
+    await workbench.resolveDockedView(dock.view as unknown as vscode.WebviewView, { repoId: 'dock' });
+    await dock.receive({ id: 'ready', method: 'workbenchReady' });
+    vi.mocked(vscode.window.showQuickPick).mockResolvedValue({ action: 'editor' } as never);
+    const switching = workbench.showOpenModeSettings();
+    await vi.advanceTimersByTimeAsync(5001); await switching;
+    expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
+    expect(dock.view.webview.html).toBe('<html></html>');
+    expect(values.get('openMode')).toBe('docked');
+    expect(vscode.window.showErrorMessage).toHaveBeenCalledOnce();
+  });
   it('returns the current-window Explorer result through the openProject RPC', async () => {
     const workbench = workbenchFixture(), repo = { id: 'repo', root: '/repo' };
     const result = { kind: 'current-window', root: repo.root, exactRoot: true };
@@ -320,24 +388,24 @@ describe('Workbench entry presentation', () => {
     expect(manifest.activationEvents).toContain('onView:alwaygit.workbenchLauncher');
     expect(manifest.activationEvents).toContain('*');
     expect(manifest.activationEvents).not.toContain('onStartupFinished');
-    const english = JSON.parse(readFileSync(new URL('../package.nls.json', import.meta.url), 'utf8')) as Record<string, string>;
-    expect(manifest.contributes?.viewsWelcome?.filter(item => item.view === 'alwaygit.workbenchLauncher').map(item => item.contents?.replace(/^%(.*)%$/, (_, key: string) => english[key]))).toEqual([
-      '[Show Git Workbench](command:alwaygit.showWorkbench)\n[Open Workbench in New Window](command:alwaygit.openWorkbenchInNewWindow)',
-    ]);
+    expect(manifest.contributes?.views?.alwaygit?.[0]).toMatchObject({ type: 'webview' });
+    const launcher = workbenchLauncherHtml();
+    expect(launcher).toContain('command:alwaygit.showWorkbench');
+    expect(launcher).toContain('command:alwaygit.openWorkbenchInNewWindow');
+    expect(launcher).toContain("default-src 'none'");
   });
 
-  it.each([false, true])('does not launch or close the sidebar when launcher visibility starts at %s', visible => {
-    vi.useFakeTimers();
-    const visibility = new vscode.EventEmitter<vscode.TreeViewVisibilityChangeEvent>();
-    vi.mocked(vscode.window.createTreeView).mockReturnValue({ visible, onDidChangeVisibility: visibility.event, dispose() {} } as vscode.TreeView<vscode.TreeItem>);
-    const launcher = createWorkbenchActivityLauncher();
-    const options = vi.mocked(vscode.window.createTreeView).mock.calls[0][1];
-    expect(options.treeDataProvider.getChildren()).toEqual([]);
-    visibility.fire({ visible: true });
-    expect(vi.getTimerCount()).toBe(0);
-    expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
-    expect(vscode.commands.registerCommand).not.toHaveBeenCalled();
-    launcher.dispose(); visibility.dispose();
+  it('registers the retained movable view without opening an editor', async () => {
+    const workbench = workbenchFixture();
+    const registration = createWorkbenchActivityLauncher(workbench);
+    const provider = vi.mocked(vscode.window.registerWebviewViewProvider).mock.calls[0][1];
+    const view = viewFixture();
+    await provider.resolveWebviewView(view.view as unknown as vscode.WebviewView, { state: undefined }, {} as vscode.CancellationToken);
+    expect(view.view.webview.html).toContain('command:alwaygit.showWorkbench');
+    expect(view.view.webview.options).toMatchObject({ enableCommandUris: ['alwaygit.showWorkbench', 'alwaygit.openWorkbenchInNewWindow'] });
+    expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
+    expect(vscode.window.registerWebviewViewProvider).toHaveBeenCalledWith('alwaygit.workbenchLauncher', expect.anything(), { webviewOptions: { retainContextWhenHidden: true } });
+    registration.dispose();
   });
 
   it('creates one Workbench, reveals it on repeated Show, and recreates it after closing', async () => {

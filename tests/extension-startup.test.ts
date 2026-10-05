@@ -26,7 +26,7 @@ vi.mock('vscode', () => ({
   window: {
     createOutputChannel: () => ({ appendLine: vi.fn(), dispose() {} }),
     createStatusBarItem: () => ({ show() {}, hide() {}, dispose() {} }),
-    createTreeView: () => ({ dispose() {} }), registerWebviewPanelSerializer: () => ({ dispose() {} }),
+    registerWebviewViewProvider: () => ({ dispose() {} }), registerWebviewPanelSerializer: () => ({ dispose() {} }),
   },
   commands: { registerCommand: vi.fn(() => ({ dispose() {} })) },
   extensions: { getExtension: () => ({ activate: startup.builtin }) },

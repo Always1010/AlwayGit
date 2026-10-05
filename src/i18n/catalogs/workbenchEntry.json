@@ -10,5 +10,113 @@
     "zh-CN": "打开 AlwayGit Workbench",
     "review": "translated",
     "context": "src/extension/workbench-entry.ts / statusBarPresentation"
+  },
+  "workbenchEntry.viewTitle": {
+    "en": "Workbench",
+    "zh-CN": "工作台",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
+  },
+  "workbenchEntry.editorMode": {
+    "en": "Editor Tab",
+    "zh-CN": "编辑器标签页",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
+  },
+  "workbenchEntry.dockedMode": {
+    "en": "Docked View",
+    "zh-CN": "停靠视图",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
+  },
+  "workbenchEntry.editorDescription": {
+    "en": "Open in the editor area. Switching creates an independent new tab.",
+    "zh-CN": "在编辑器区域打开。切换时新建独立标签页。",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
+  },
+  "workbenchEntry.dockedDescription": {
+    "en": "Open in a movable view in a sidebar or the panel.",
+    "zh-CN": "在可移到侧边栏或面板的视图中打开。",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
+  },
+  "workbenchEntry.moveView": {
+    "en": "Adjust Dock Location…",
+    "zh-CN": "调整停靠位置…",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
+  },
+  "workbenchEntry.openSettings": {
+    "en": "Open AlwayGit Settings",
+    "zh-CN": "打开 AlwayGit 设置",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
+  },
+  "workbenchEntry.openModeSettings": {
+    "en": "Workbench Opening Mode",
+    "zh-CN": "工作台打开方式",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
+  },
+  "workbenchEntry.chooseOpenMode": {
+    "en": "Choose the default opening mode or adjust the dock location",
+    "zh-CN": "选择默认打开方式或调整停靠位置",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
+  },
+  "workbenchEntry.switchFailed": {
+    "en": "Could not switch the Workbench. Its previous opening mode and state have been preserved. {{reason}}",
+    "zh-CN": "无法切换工作台，已保留原来的打开方式和状态。{{reason}}",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
+  },
+  "workbenchEntry.captureFailed": {
+    "en": "Could not read the current Workbench state. Try switching again after it finishes loading.",
+    "zh-CN": "无法读取当前工作台状态。请在加载完成后重试切换。",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
+  },
+  "workbenchEntry.repositoriesTab": {
+    "en": "Repositories",
+    "zh-CN": "仓库",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
+  },
+  "workbenchEntry.historyTab": {
+    "en": "History",
+    "zh-CN": "历史",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
+  },
+  "workbenchEntry.detailsTab": {
+    "en": "Details / Changes",
+    "zh-CN": "详情 / 改动",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
+  },
+  "workbenchEntry.diffTab": {
+    "en": "Diff / Terminal",
+    "zh-CN": "差异 / 终端",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
+  },
+  "workbenchEntry.compactNavigation": {
+    "en": "Workbench Regions",
+    "zh-CN": "工作台区域",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
+  },
+  "workbenchEntry.waitForOperation": {
+    "en": "Wait until the current Git operation finishes before switching the Workbench.",
+    "zh-CN": "请等待当前 Git 操作完成后再切换工作台。",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / capture"
+  },
+  "workbenchEntry.showGitWorkbench": {
+    "en": "Show Git Workbench",
+    "zh-CN": "显示 Git Workbench",
+    "review": "translated",
+    "context": "src/extension/workbench-launcher.ts / launch button"
   }
 }

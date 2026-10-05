@@ -13,6 +13,14 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('host request timeouts', () => {
+  it('uses a handoff session instead of the dock view stale local state and keeps ordinary restoration unchanged', async () => {
+    const local = { repoId: 'old', drafts: { old: 'keep' } }, transferred = { repoId: 'new', drafts: { new: 'latest' } };
+    Object.assign(window, { acquireVsCodeApi: () => ({ postMessage, getState: () => local }), __ALWAYGIT_TRANSFER__: { session: transferred } });
+    const { readSession } = await import('../webview/rpc');
+    expect(readSession()).toMatchObject(transferred);
+    window.__ALWAYGIT_TRANSFER__ = undefined;
+    expect(readSession()).toMatchObject(local);
+  });
   it('waits for the host result while an action exceeds the frontend query deadline', async () => {
     const { rpc } = await import('../webview/rpc');
     const pending = rpc('action', 'repo', { type: 'fetch' });

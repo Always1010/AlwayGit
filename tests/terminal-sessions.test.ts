@@ -18,6 +18,24 @@ function fixture() {
 }
 afterEach(() => vi.useRealTimers());
 describe('embedded terminal boundary and lifecycle', () => {
+  it('moves a live shell and replay buffer to a new host without affecting other workbenches', () => {
+    vi.useFakeTimers(); const { manager, processes, events } = fixture(), source = {}, target = {}, other = {};
+    const terminal = manager.create(source, 'repo', '/repo', 'default', launch, 80, 24);
+    const independent = manager.create(other, 'other', '/other', 'default', launch, 80, 24);
+    processes[0].data('before');
+    manager.transferOwner(source, target); manager.disposeOwner(source);
+    expect(processes[0].kill).not.toHaveBeenCalled();
+    expect(manager.list(source)).toEqual([]);
+    expect(manager.list(target)).toEqual([terminal]);
+    expect(manager.list(other)).toEqual([independent]);
+    expect(manager.snapshot(target, terminal.id).output).toBe('before');
+    processes[0].data('after'); vi.advanceTimersByTime(16);
+    expect(events).toHaveBeenLastCalledWith(target, expect.objectContaining({ type: 'terminalOutput', data: 'after' }));
+    processes[0].exit(3);
+    expect(events).toHaveBeenLastCalledWith(target, expect.objectContaining({ type: 'terminalUpdated', session: expect.objectContaining({ exitCode: 3 }) }));
+    expect(() => manager.input(source, terminal.id, 'stale')).toThrow();
+    manager.dispose(); expect(processes[1].kill).toHaveBeenCalledOnce();
+  });
   it('isolates workbenches and keeps the creation directory independent of repository selection', () => {
     const { manager, spawn, processes } = fixture(), owner = {}, other = {};
     const terminal = manager.create(owner, 'repo-a', '/repo-a', 'default', launch, 80, 24);

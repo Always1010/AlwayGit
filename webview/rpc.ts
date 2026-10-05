@@ -8,13 +8,14 @@ import { overlayInterfaceSettings, type InterfacePreferences } from '../src/prot
 export type { LayoutState, SessionState } from '../src/protocol/session';
 import { SessionPersistence } from './session-persistence';
 import { readQueryCategory, type ReadQueryCategory } from '../src/protocol/queries';
+import type { WorkbenchTransfer, WorkbenchOpenMode } from '../src/protocol/workbench-host';
 
-declare global { interface Window { __ALWAYGIT_SESSION__?: SessionState; __ALWAYGIT_PREFERENCES__?: InterfacePreferences; acquireVsCodeApi?: () => { postMessage(message: unknown): void; getState?(): SessionState | undefined; setState?(state: SessionState): void }; } }
+declare global { interface Window { __ALWAYGIT_SESSION__?: SessionState; __ALWAYGIT_PREFERENCES__?: InterfacePreferences; __ALWAYGIT_HOST__?: WorkbenchOpenMode; __ALWAYGIT_TRANSFER__?: WorkbenchTransfer; acquireVsCodeApi?: () => { postMessage(message: unknown): void; getState?(): SessionState | undefined; setState?(state: SessionState): void }; } }
 const vscode = typeof window.acquireVsCodeApi === 'function' ? window.acquireVsCodeApi() : undefined;
 export const demoMode = !vscode && new URLSearchParams(location.search).get('demo') === '1';
 export const connected = !!vscode || demoMode;
 export function readSession(): SessionState {
-  if (vscode) return overlayInterfaceSettings(vscode.getState?.() ?? window.__ALWAYGIT_SESSION__ ?? {}, window.__ALWAYGIT_PREFERENCES__ ?? {});
+  if (vscode) return overlayInterfaceSettings(window.__ALWAYGIT_TRANSFER__?.session ?? vscode.getState?.() ?? window.__ALWAYGIT_SESSION__ ?? {}, window.__ALWAYGIT_PREFERENCES__ ?? {});
   if (demoMode) try {
     const session = JSON.parse(localStorage.getItem('alwaygit.demo-session') || '{}');
     const preferences = localStorage.getItem('alwaygit.demo-interfaceSettings');

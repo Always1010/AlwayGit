@@ -1,19 +1,26 @@
 import * as vscode from 'vscode';
+import { preferredLanguage } from '../application/language';
+import { translate } from '../i18n/index';
+import type { Workbench } from './workbench';
 
-class WorkbenchLauncherProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
-  getTreeItem(item: vscode.TreeItem): vscode.TreeItem {
-    return item;
-  }
+export const workbenchViewId = 'alwaygit.workbenchLauncher';
 
-  getChildren(): vscode.TreeItem[] {
-    // Empty views render the native command buttons contributed by viewsWelcome.
-    return [];
-  }
+/** Keep the existing view identity so VS Code retains the user's dock location. */
+export function createWorkbenchActivityLauncher(workbench: Workbench): vscode.Disposable {
+  return vscode.window.registerWebviewViewProvider(workbenchViewId, {
+    resolveWebviewView: (view, context) => workbench.resolveDockedView(view, context.state),
+  }, { webviewOptions: { retainContextWhenHidden: true } });
 }
 
-export function createWorkbenchActivityLauncher(): vscode.Disposable {
-  return vscode.window.createTreeView('alwaygit.workbenchLauncher', {
-    treeDataProvider: new WorkbenchLauncherProvider(),
-    showCollapseAll: false,
-  });
+export function workbenchLauncherHtml(): string {
+  const language = preferredLanguage();
+  const escape = (value: string) => value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!);
+  return `<!DOCTYPE html><html lang="${language}"><head><meta charset="UTF-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';"><style>
+    body{margin:0;padding:20px;font-family:var(--vscode-font-family);font-size:var(--vscode-font-size);color:var(--vscode-foreground);background:var(--vscode-sideBar-background)}
+    a{display:block;margin:0 0 16px;padding:5px 8px;text-align:center;text-decoration:none;border-radius:2px;color:var(--vscode-button-foreground);background:var(--vscode-button-background)}
+    a:hover{background:var(--vscode-button-hoverBackground)}a:focus-visible{outline:1px solid var(--vscode-focusBorder);outline-offset:2px}
+  </style></head><body>
+    <a href="command:alwaygit.showWorkbench">${escape(translate(language, 'workbenchEntry.showGitWorkbench'))}</a>
+    <a href="command:alwaygit.openWorkbenchInNewWindow">${escape(translate(language, 'manifest.contributes.commands.item1.title'))}</a>
+  </body></html>`;
 }

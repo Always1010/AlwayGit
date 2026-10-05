@@ -9,7 +9,6 @@
   "manifest.contributes.commands.item1.category": "AlwayGit",
   "manifest.contributes.viewsContainers.activitybar.item0.title": "AlwayGit",
   "manifest.contributes.views.alwaygit.item0.name": "Workbench",
-  "manifest.contributes.viewsWelcome.item0.contents": "[Show Git Workbench](command:alwaygit.showWorkbench)\n[Open Workbench in New Window](command:alwaygit.openWorkbenchInNewWindow)",
   "manifest.contributes.configuration.title": "AlwayGit",
   "manifest.contributes.configuration.properties.alwaygit.language.description": "Workbench language. Git operation names remain in English. The in-workbench language selector is remembered for this workspace.",
   "manifest.contributes.configuration.properties.alwaygit.gitPath.description": "Git executable path. Empty uses the built-in Git extension path or PATH.",
@@ -19,5 +18,10 @@
   "manifest.contributes.configuration.properties.alwaygit.pushFollowTags.description": "Default to pushing missing annotated Tags reachable from the selected branch during Push. The Push dialog can override and remember this choice.",
   "manifest.contributes.configuration.properties.alwaygit.pushTagAfterCreate.description": "Push a newly created Tag to the selected remote by default. The Create Tag dialog can override and remember this choice.",
   "manifest.contributes.configuration.properties.alwaygit.defaultResetMode.description": "Default mode selected when opening Reset. The dialog can override and remember Soft, Mixed, or Hard.",
-  "manifest.contributes.configuration.properties.alwaygit.interfaceSettings.description": "Workbench appearance, keyboard and reading preferences shared across windows."
+  "manifest.contributes.configuration.properties.alwaygit.interfaceSettings.description": "Workbench appearance, keyboard and reading preferences shared across windows.",
+  "manifest.openModeSettings": "Workbench Opening Mode",
+  "manifest.moveWorkbenchView": "Adjust Dock Location…",
+  "manifest.editorModeDescription": "Open in the editor area. Switching creates an independent new tab.",
+  "manifest.dockedModeDescription": "Open in a movable view in a sidebar or the panel.",
+  "manifest.openModeDescription": "Default Workbench opening mode. Docked views can be moved using the view title menu. Switching to editor mode creates a new tab with the docked Workbench state and preserves existing tabs."
 }

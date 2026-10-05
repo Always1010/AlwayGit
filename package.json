@@ -2,7 +2,7 @@
   "name": "alwaygit",
   "displayName": "%manifest.displayName%",
   "description": "%manifest.description%",
-  "version": "0.47.3",
+  "version": "0.48.0",
   "publisher": "alwaygit-dev",
   "private": true,
   "type": "module",
@@ -57,6 +57,18 @@
         "title": "%manifest.contributes.commands.item1.title%",
         "category": "%manifest.contributes.commands.item1.category%",
         "icon": "$(window)"
+      },
+      {
+        "command": "alwaygit.workbenchOpenModeSettings",
+        "title": "%manifest.openModeSettings%",
+        "category": "AlwayGit",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "alwaygit.moveWorkbenchView",
+        "title": "%manifest.moveWorkbenchView%",
+        "category": "AlwayGit",
+        "icon": "$(move)"
       }
     ],
     "keybindings": [
@@ -79,16 +91,11 @@
       "alwaygit": [
         {
           "id": "alwaygit.workbenchLauncher",
-          "name": "%manifest.contributes.views.alwaygit.item0.name%"
+          "name": "%manifest.contributes.views.alwaygit.item0.name%",
+          "type": "webview"
         }
       ]
     },
-    "viewsWelcome": [
-      {
-        "view": "alwaygit.workbenchLauncher",
-        "contents": "%manifest.contributes.viewsWelcome.item0.contents%"
-      }
-    ],
     "configuration": {
       "title": "%manifest.contributes.configuration.title%",
       "properties": {
@@ -193,8 +200,41 @@
             }
           },
           "description": "%manifest.contributes.configuration.properties.alwaygit.interfaceSettings.description%"
+        },
+        "alwaygit.openMode": {
+          "type": "string",
+          "enum": [
+            "editor",
+            "docked"
+          ],
+          "enumDescriptions": [
+            "%manifest.editorModeDescription%",
+            "%manifest.dockedModeDescription%"
+          ],
+          "default": "editor",
+          "scope": "application",
+          "description": "%manifest.openModeDescription%"
         }
       }
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "alwaygit.workbenchOpenModeSettings",
+          "when": "view == alwaygit.workbenchLauncher",
+          "group": "navigation@1"
+        },
+        {
+          "command": "alwaygit.openWorkbenchInNewWindow",
+          "when": "view == alwaygit.workbenchLauncher",
+          "group": "workbench@1"
+        },
+        {
+          "command": "alwaygit.moveWorkbenchView",
+          "when": "view == alwaygit.workbenchLauncher",
+          "group": "workbench@2"
+        }
+      ]
     }
   },
   "scripts": {
