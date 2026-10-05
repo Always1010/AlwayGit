@@ -19,9 +19,17 @@
   "manifest.contributes.configuration.properties.alwaygit.pushTagAfterCreate.description": "Push a newly created Tag to the selected remote by default. The Create Tag dialog can override and remember this choice.",
   "manifest.contributes.configuration.properties.alwaygit.defaultResetMode.description": "Default mode selected when opening Reset. The dialog can override and remember Soft, Mixed, or Hard.",
   "manifest.contributes.configuration.properties.alwaygit.interfaceSettings.description": "Workbench appearance, keyboard and reading preferences shared across windows.",
-  "manifest.openModeSettings": "Workbench Opening Mode",
+  "manifest.openModeSettings": "Workbench Locations",
   "manifest.moveWorkbenchView": "Adjust Dock Location…",
-  "manifest.editorModeDescription": "Open in the editor area. Switching creates an independent new tab.",
+  "manifest.editorModeDescription": "Open in the editor area.",
   "manifest.dockedModeDescription": "Open in a movable view in a sidebar or the panel.",
-  "manifest.openModeDescription": "Default Workbench opening mode. Docked views can be moved using the view title menu. Switching to editor mode creates a new tab with the docked Workbench state and preserves existing tabs."
+  "manifest.legacyOpenMode": "Legacy opening mode. Used only until Workbench Locations is configured.",
+  "manifest.workbenchLocationsDescription": "Available Workbench locations and the default destination of Open Workbench. Changing this setting preserves existing workbenches and drafts.",
+  "manifest.enabledLocationsDescription": "Select one or more locations. Disabling a location does not close a live Workbench.",
+  "manifest.defaultLocationDescription": "Destination for Open Workbench. Must be one of the enabled locations.",
+  "manifest.panelWorkbench": "Workbench (Panel)",
+  "manifest.openInEditor": "Open Workbench in Editor Tab",
+  "manifest.openInSidebar": "Open Workbench in Sidebar",
+  "manifest.openInPanel": "Open Workbench in Panel",
+  "manifest.copyToEditor": "Copy Current State to a New Editor Tab"
 }

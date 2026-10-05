@@ -15,7 +15,7 @@ npm ci
 npm run build
 ```
 
-在 VS Code 中打开项目，按 F5 启动 Extension Development Host，然后点击活动栏的 AlwayGit 图标，在侧栏点击 **Show Git Workbench**：已有工作台标签时聚焦该标签，没有时新建。侧栏的 **Open Workbench in New Window** 创建一个尚未选择仓库的独立窗口。AlwayGit 视图标题栏齿轮可选择标签页或停靠模式，停靠视图可移到主侧边栏、辅助侧边栏或面板。状态栏图标和 **AlwayGit: Show Workbench** 命令遵循所选打开方式；仓库添加、分组、选择和移除都在 Workbench 内完成。
+在 VS Code 中打开项目，按 F5 启动 Extension Development Host，然后点击活动栏的 AlwayGit 图标，在侧栏点击 **Show Git Workbench**：已有工作台标签时聚焦该标签，没有时新建。侧栏的 **Open Workbench in New Window** 创建一个尚未选择仓库的独立窗口。AlwayGit 视图标题栏齿轮可多选标签页、侧边栏和底部面板，并单独设置默认入口。三个位置可同时使用，状态独立；状态栏图标和 **AlwayGit: Show Workbench** 命令只打开或聚焦默认位置。侧边栏视图可用 VS Code 原生菜单移到辅助侧边栏；仓库添加、分组、选择和移除都在 Workbench 内完成。
 
 安装包使用固定路径 `artifacts/alwaygit.vsix`。首次手动安装可在扩展视图菜单选择 **Install from VSIX…**；构建、后续本地更新、安装校验与 Tag 触发的 GitHub Release 见 [验证与本地更新](docs/VALIDATION.md#打包与本地更新)。
 

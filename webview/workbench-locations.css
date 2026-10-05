@@ -1,0 +1,18 @@
+.locations-backdrop {position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:12px;background:#0007;box-sizing:border-box;}
+.locations-dialog {display:flex;flex-direction:column;width:360px;max-width:100%;max-height:100%;overflow:hidden;box-sizing:border-box;border:1px solid var(--border,var(--vscode-widget-border,#777));border-radius:6px;box-shadow:0 12px 36px #0006;color:var(--fg,var(--vscode-foreground));background:var(--vscode-editorWidget-background,var(--bg,var(--vscode-editor-background)));font-family:var(--vscode-font-family,sans-serif);font-size:13px;}
+.locations-heading {display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border,var(--vscode-widget-border,#777));}
+.locations-heading h2 {margin:0;font-size:15px;font-weight:600;}
+.locations-dialog button {cursor:pointer;border:1px solid var(--border,var(--vscode-button-border,transparent));border-radius:3px;padding:5px 12px;font:inherit;color:inherit;background:var(--vscode-button-secondaryBackground,var(--bg,#555));}
+.locations-heading button {padding:0 4px;border:none;background:transparent;font-size:22px;line-height:24px;}
+.locations-body {display:flex;flex-direction:column;gap:22px;padding:16px;overflow:auto;}
+.locations-checkboxes {display:flex;flex-direction:column;gap:12px;}
+.locations-checkboxes label {display:flex;align-items:center;gap:8px;cursor:pointer;}
+.locations-checkboxes input {margin:0;accent-color:var(--vscode-focusBorder,#007acc);}
+.locations-default {display:flex;flex-direction:column;gap:8px;}
+.locations-default select {width:100%;min-height:30px;box-sizing:border-box;font:inherit;border:1px solid var(--vscode-dropdown-border,var(--border,#777));border-radius:2px;padding:4px 8px;color:var(--vscode-dropdown-foreground,var(--fg));background:var(--vscode-dropdown-background,var(--bg));}
+.locations-body p {margin:0;line-height:1.65;}
+.locations-body .locations-error {color:var(--vscode-errorForeground,#f48771);overflow-wrap:anywhere;}
+.locations-footer {display:flex;justify-content:flex-end;gap:8px;padding:10px 14px;border-top:1px solid var(--border,var(--vscode-widget-border,#777));}
+.locations-footer .locations-primary {color:var(--vscode-button-foreground,#fff);background:var(--vscode-button-background,#007acc);}
+.locations-dialog button:disabled {cursor:default;opacity:.5;}
+.locations-dialog :is(button,input,select):focus-visible {outline:1px solid var(--vscode-focusBorder,#007acc);outline-offset:2px;}

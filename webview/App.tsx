@@ -2,6 +2,8 @@ import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRe
 import { isStaged, isUnstaged } from './changeEntries';
 import type { CommitSelection } from '../src/protocol/types';
 import { SettingsDialog } from './SettingsDialog';
+import { WorkbenchLocationsDialog } from './WorkbenchLocationsDialog';
+import type { WorkbenchLocations } from '../src/protocol/workbench-host';
 import { ActionDialog } from './ActionDialog';
 import { ContextMenu } from './ContextMenu';
 import { RepositoryDialog } from './RepositoryDialog';
@@ -24,7 +26,7 @@ import { translate, uiText } from './text';
 
 import type React from 'react';
 import type { OpenProjectResult, Repository, RpcRequest } from '../src/protocol/types';
-import { connected, demoMode, flushSession, rpc } from './rpc';
+import { connected, demoMode, flushSession, rpc, subscribe } from './rpc';
 import { useWorkbench } from './store';
 import { useWorkbenchFields } from './subscriptions';
 import { diffRowHeight, effectiveRowHeight, fileRowHeight, isLightTheme, textColorForBackground, useResolvedTheme } from './appearance';
@@ -53,13 +55,17 @@ export function App() {
   const root = useRef<HTMLDivElement>(null);
   const [compact, setCompact] = useState(false);
   const [region, setRegion] = useState<'repositories' | 'history' | 'details' | 'diff'>('repositories');
-  const docked = window.__ALWAYGIT_HOST__ === 'docked';
+  const docked = ['docked', 'sidebar', 'panel'].includes(window.__ALWAYGIT_HOST__ ?? '');
   useLayoutEffect(() => {
     const element = root.current; if (!element || !docked) return;
     const measure = () => setCompact(element.clientWidth < 600 || element.clientHeight < 440);
     measure(); const observer = new ResizeObserver(measure); observer.observe(element);
     return () => observer.disconnect();
   }, [docked]);
+  const [locationSettings, setLocationSettings] = useState<WorkbenchLocations>();
+  useEffect(() => subscribe(event => {
+    if (event.type === 'showWorkbenchLocations') { setContext(undefined); setLocationSettings(current => current ?? event.locations); }
+  }), []);
   const [helpOpen,setHelpOpen]=useState(false);
   const [projectNotice,setProjectNotice]=useState<Extract<OpenProjectResult,{kind:'current-window'}>>();
   const projectRequest=useRef(0);
@@ -115,7 +121,7 @@ export function App() {
       if(request===projectRequest.current&&useWorkbench.getState().repoId===repoId)current.report(error);
     });
   },[]);
-  useWorkbenchKeyboard(blockInteraction || !!(state.remoteRequest||commitRepoId||dialog||repositoryDialog||repositoryRemoval||repositoryFetch||context||helpOpen||state.settingsBaseline||state.checkoutFailure||state.operationReview));
+  useWorkbenchKeyboard(blockInteraction || !!(locationSettings||state.remoteRequest||commitRepoId||dialog||repositoryDialog||repositoryRemoval||repositoryFetch||context||helpOpen||state.settingsBaseline||state.checkoutFailure||state.operationReview));
   useLayoutEffect(()=>{const element=mainPanel.current;if(!element)return;const measure=()=>setMainPanelHeight(element.clientHeight);measure();const observer=new ResizeObserver(measure);observer.observe(element);return()=>observer.disconnect();},[]);
   const snapshot=state.snapshot,layout=state.layout,unpushed=snapshot?.unpushed??snapshot?.ahead??0,repositoryState=repositoryViewState(snapshot,!!state.repoId,state.loading),hasRepositories=state.repositories.length>0;
   const canOperate=!!snapshot&&!state.busy,canPush=canOperate&&!!snapshot?.branch,canStash=canOperate&&!!snapshot?.changes.length&&!snapshot?.operation.kind;
@@ -180,6 +186,7 @@ export function App() {
     {helpOpen&&<Suspense fallback={null}><HelpDialog onClose={()=>setHelpOpen(false)}/></Suspense>}
     {state.remoteRequest&&<RemoteRequestDialog key={state.remoteRequest.identity}/>}
     {blockInteraction&&<OperationProgress key={`${state.repoId}-${progressFeedback?.id ?? 'host'}`} feedback={progressFeedback}/>}
+    {locationSettings && <WorkbenchLocationsDialog locations={locationSettings} language={state.language} onApply={locations => rpc('saveWorkbenchLocations', undefined, locations)} onClose={() => setLocationSettings(undefined)}/>}
   </div>;
 }
 

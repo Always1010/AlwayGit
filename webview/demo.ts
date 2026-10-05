@@ -5,6 +5,7 @@ import { reconcileRepositoryOrder } from '../src/protocol/repository-order';
 import type { RepositoryOrder, ReorderRepository, Commit, CommitComparison, CommitDetails, GitAction, HistoryPage, HistoryQuery, HostMessage, Repository, RepositoryCollection, RepositoryStatus, RpcRequest, Snapshot, OperationSettings, StashDetails, DiscardPlan, DiscardRequest } from '../src/protocol/types';
 import { RpcError } from './rpc-error';
 import type { TerminalSnapshot, TerminalShell } from '../src/protocol/terminal';
+import { readWorkbenchLocations, saveWorkbenchLocationsSchema } from '../src/protocol/workbench-host';
 
 /** Construct sample state only when the explicit Demo transport is used. */
 export function createDemoRequest(emit: (event: HostMessage) => void) {
@@ -53,6 +54,16 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
   await new Promise(resolve => setTimeout(resolve, 110));
   const data=demoStores[repoId??repo.id]??demoStores[repo.id],demoSnapshot=data.snapshot,commits=data.commits;
   const resolve=(ref:string)=>ref==='HEAD'?demoSnapshot.head!:demoSnapshot.refs.find(r=>r.name===ref||r.fullName===ref)?.oid??ref;
+  if (method === 'workbenchOpenModeSettings' || method === 'saveWorkbenchLocations') {
+    if (method === 'saveWorkbenchLocations') {
+      const settings = saveWorkbenchLocationsSchema.parse(payload);
+      localStorage.setItem('alwaygit.demo-workbenchLocations', JSON.stringify(settings)); return settings;
+    }
+    let saved: unknown;
+    try { saved = JSON.parse(localStorage.getItem('alwaygit.demo-workbenchLocations') ?? 'null'); } catch { /* Use the legacy default. */ }
+    const language = document.documentElement.lang === 'zh-CN' ? 'zh-CN' : 'en';
+    emit({ type: 'showWorkbenchLocations', locations: readWorkbenchLocations(saved), language }); return null;
+  }
   if (method === 'interfaceSettings' || method === 'saveInterfaceSettings') {
     let settings: InterfacePreferences = {};
     try { settings = JSON.parse(localStorage.getItem('alwaygit.demo-interfaceSettings') ?? 'null') ?? legacyInterfaceSettings(JSON.parse(localStorage.getItem('alwaygit.demo-session') ?? '{}')); } catch { /* Start with default preferences. */ }
