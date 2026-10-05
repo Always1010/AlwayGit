@@ -3819,6 +3819,10 @@ export const catalog = {
     "en": "The read request timed out.",
     "zh-CN": "读取请求超时。"
   },
+  "rpc.theSessionSaveTimedOut": {
+    "en": "The panel state save timed out waiting for VS Code. Keep this panel open and copy any important draft text before reloading the window.",
+    "zh-CN": "保存面板状态时等待 VS Code 响应超时。请保留此面板，并在重新加载窗口前复制重要草稿。"
+  },
   "rpc.theGitOperationTimedOutRefreshToCheckIts": {
     "en": "The Git operation timed out. Refresh to check its result before retrying.",
     "zh-CN": "Git 操作超时。重试前请刷新以检查操作结果。"
@@ -6925,6 +6929,7 @@ export interface MessageParameters {
   "rpc.theReadRequestWasCancelled": {  };
   "rpc.openAlwayGitInVSCodeToConnectToYour": {  };
   "rpc.theReadRequestTimedOut": {  };
+  "rpc.theSessionSaveTimedOut": {  };
   "rpc.theGitOperationTimedOutRefreshToCheckIts": {  };
   "runner.gitOperationWasCancelled": {  };
   "runner.theReadOnlyQueryDidNotConfirmProcessTree": { value: ParameterValue; message: ParameterValue };

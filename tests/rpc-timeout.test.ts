@@ -13,6 +13,20 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('host request timeouts', () => {
+  it('reports an unacknowledged panel save without implying a Git operation failed', async () => {
+    const { rpc } = await import('../webview/rpc');
+    const failed = expect(rpc('saveSession', undefined, { drafts: { repo: 'keep' } })).rejects.toMatchObject({
+      code: 'TIMEOUT', message: expect.stringContaining('panel state save timed out'),
+    });
+    await vi.advanceTimersByTimeAsync(10_001);
+    await failed;
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    // A late acknowledgement must not interfere with the next save.
+    receive({ data: { type: 'response', id: postMessage.mock.calls[0][0].id, result: null } });
+    const next = rpc('saveSession', undefined, { drafts: { repo: 'latest' } });
+    receive({ data: { type: 'response', id: postMessage.mock.calls[1][0].id, result: null } });
+    await expect(next).resolves.toBeNull();
+  });
   it('uses a handoff session instead of the dock view stale local state and keeps ordinary restoration unchanged', async () => {
     const local = { repoId: 'old', drafts: { old: 'keep' } }, transferred = { repoId: 'new', drafts: { new: 'latest' } };
     Object.assign(window, { acquireVsCodeApi: () => ({ postMessage, getState: () => local }), __ALWAYGIT_TRANSFER__: { session: transferred } });
