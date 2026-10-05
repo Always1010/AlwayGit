@@ -346,7 +346,7 @@ export class Workbench implements vscode.Disposable {
         return null;
       }
       case 'openFile': await this.projects.openFile(repo.root, fileSchema.parse(request.payload).path); return null;
-      case 'openProject': await this.projects.openProject(repo.root); return null;
+      case 'openProject': return this.projects.openProject(repo.root);
       case 'openWorktree': {
         const data = openWorktreeSchema.parse(request.payload);
         const snapshot = await this.snapshots.read(repo.id, () => this.git.snapshot(repo));

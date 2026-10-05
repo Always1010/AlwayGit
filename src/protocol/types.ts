@@ -1,6 +1,7 @@
 import type { MessageDescriptor } from '../i18n';
 import type { TerminalEvent } from './terminal';
 export interface Repository { id: string; root: string; commonDir: string; gitDir?: string; name: string; mainRoot?: string; collectionId?: string }
+export type OpenProjectResult = { kind: 'current-window'; root: string; exactRoot: boolean } | { kind: 'other-window' };
 export interface RepositoryCollection { id: string; name: string }
 export interface RepositoryOrder { root: string[]; collections: Record<string, string[]> }
 export interface ReorderRepository { key: string; targetKey: string; position: 'before' | 'after' }

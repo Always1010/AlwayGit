@@ -49,6 +49,9 @@ h1,h2,p {margin:0;}
 .open-repository-icon>.repository-folder-vscode {position:absolute;z-index:1;left:11px;top:8px;font-size:18px;line-height:1;color:var(--vscode-brand,#007acc);text-shadow:0 0 2px var(--bg),0 0 2px var(--bg);}
 .notification-badge {display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;margin-left:2px;border:1px solid color-mix(in srgb,var(--notification-badge,#d61f3c) 60%,#fff);border-radius:999px;background:var(--notification-badge,#d61f3c);color:var(--notification-badge-fg,#fff);box-shadow:0 0 0 1px color-mix(in srgb,var(--notification-badge,#d61f3c) 38%,transparent);font-size:10px;font-weight:800;line-height:1;box-sizing:border-box;}
 .toolbar-divider {width:1px;height:20px;background:var(--border);margin:0 6px;}
+.project-open-notice {position:fixed;z-index:20;top:80px;right:12px;max-width:min(480px,calc(100vw - 24px));display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border:1px solid var(--accent);border-radius:5px;background:var(--panel);color:var(--fg);box-shadow:0 3px 12px #0004;pointer-events:none;overflow-wrap:anywhere;}
+.project-open-notice>.codicon {color:var(--accent);margin-top:2px;}
+.project-open-notice-path {margin-top:4px;color:var(--muted);font-size:12px;}
 .workspace {display:grid;grid-template-columns:var(--sidebar-width,210px) 6px minmax(0,1fr);flex:1;min-height:0;min-width:0;}
 .sidebar {background:var(--panel);overflow:auto;min-width:0;box-shadow:inset -1px 0 var(--section-border);}
 .sidebar-heading {display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--section-border);border-bottom:1px solid var(--section-border);min-height:26px;padding:0 4px;font-weight:600;background:var(--surface-header);font-size:12px;user-select:none;}

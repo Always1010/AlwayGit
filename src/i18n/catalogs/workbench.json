@@ -138,8 +138,20 @@
     "context": "webview/App.tsx / App"
   },
   "workbench.switchesToItsVSCodeWindowWhenAlreadyOpen": {
-    "en": "Switches to its VS Code window when already open.",
-    "zh-CN": "如果已经打开，则切换到对应的 VS Code 窗口。",
+    "en": "Switches to its VS Code window when already open. Shows Explorer if already in this window.",
+    "zh-CN": "如果已经打开，则切换到对应的 VS Code 窗口；已在当前窗口时显示资源管理器。",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.currentRepositoryExplorerShown": {
+    "en": "This window is already using the repository folder. Explorer is now visible.",
+    "zh-CN": "当前窗口已位于此仓库目录，已显示资源管理器。",
+    "review": "translated",
+    "context": "webview/App.tsx / App"
+  },
+  "workbench.workspaceRepositoryExplorerShown": {
+    "en": "This repository is in the current window's workspace. Explorer is now visible.",
+    "zh-CN": "此仓库位于当前窗口的工作区中，已显示资源管理器。",
     "review": "translated",
     "context": "webview/App.tsx / App"
   },
