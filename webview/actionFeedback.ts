@@ -43,6 +43,7 @@ export function operationName(kind: string): string {
 }
 
 export function actionTarget(action: GitAction, snapshot?: Snapshot): string | undefined {
+  if (action.type === 'pull' && action.remote && action.remoteBranch) return `${action.remote}/${action.remoteBranch} → ${action.expectedBranch ?? snapshot?.branch ?? ''}`;
   if (action.type === 'push') {
     const branch = action.branch ?? snapshot?.branch;
     const remote = action.remote ?? snapshot?.pushTarget?.remote;

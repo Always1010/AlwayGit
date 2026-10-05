@@ -10,6 +10,34 @@ const setup = fixtures.setup;
 afterEach(fixtures.cleanup);
 
 describe('Git service integration', () => {
+  it('pulls an explicit source into the captured local branch without changing its upstream', async () => {
+    const { root, service, repo } = await setup();
+    const base = await commit(root, 'base.txt', 'base');
+    const bare = path.join(root, 'remote.git'); await mkdir(bare); await git(bare, 'init', '--bare');
+    await git(root, 'remote', 'add', 'origin', bare); await git(root, 'push', '-u', 'origin', 'main');
+    await git(root, 'checkout', '-b', 'feature/source');
+    const source = await commit(root, 'source.txt', 'source'); await git(root, 'push', 'origin', 'feature/source');
+    await git(root, 'checkout', 'main');
+    const action = { type: 'pull' as const, strategy: 'ff-only' as const, remote: 'origin', remoteBranch: 'feature/source', expectedHead: base, expectedBranch: 'main' };
+    await expect(service.execute(repo, { ...action, expectedBranch: 'other' })).rejects.toThrow('changed');
+    await expect(service.execute(repo, { ...action, remoteBranch: '--all' })).rejects.toThrow();
+    expect(await git(root, 'rev-parse', 'HEAD')).toBe(base);
+    await service.execute(repo, action);
+    expect(await git(root, 'rev-parse', 'HEAD')).toBe(source);
+    expect(await git(root, 'branch', '--show-current')).toBe('main');
+    expect(await git(root, 'config', '--get', 'branch.main.merge')).toBe('refs/heads/main');
+    expect((await service.snapshot(repo)).pullTarget).toEqual({ localBranch: 'main', remote: 'origin', remoteBranch: 'main' });
+    await git(root, 'checkout', '-b', 'untracked', base);
+    await service.execute(repo, { ...action, expectedBranch: 'untracked' });
+    expect((await service.snapshot(repo)).pullTarget).toBeUndefined();
+    expect(await git(root, 'rev-parse', 'HEAD')).toBe(source);
+    // Tracking aliases must not be mistaken for source names on the remote.
+    await git(root, 'config', 'remote.origin.fetch', '+refs/heads/*:refs/remotes/origin/alias/*');
+    await git(root, 'fetch', 'origin'); await git(root, 'checkout', 'main');
+    const aliased = await service.snapshot(repo);
+    expect(aliased.upstream).toBe('origin/alias/main');
+    expect(aliased.pullTarget?.remoteBranch).toBe('main');
+  });
   it('adds a remote only after validating its name and URL',async()=>{
     const {service,repo}=await setup();
     await expect(service.execute(repo,{type:'remote.add',name:'bad name',url:'https://example.com/acme/repo.git'})).rejects.toThrow('without spaces');

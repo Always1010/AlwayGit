@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-115：Pull 对话框未显示实际来源且远程输入含义不明确
+
+- 日期：2026-10-06
+- 状态：已解决
+- 现象：Pull 仅显示空白的 Remote (optional)，用户无法从窗口核对默认来源分支，容易将远程仓库输入误解成分支选择；更换 Remote 后也无法明确指定来源分支。
+- 原因：Pull 与 Fetch 共用可选远程输入，只向 Git 传远程名称，未显示上游来源或提供明确的来源分支。
+- 解决方案：按 Git 分支配置提供独立的 Pull 来源快照，默认显示来源 → 当前分支。更改来源时选择远程和来源分支，支持已知分支建议与手工输入；无上游需明确选择。后端使用完整分支 refspec 并校验打开时的本地 HEAD/分支；本次选择不修改上游。
+- 验证方式：类型检查、1517 条双语资源检查及生产构建通过；15 项协议测试和 2 项 Pull Git 集成测试通过。定向无头 UI 验证默认来源、自定义远程与未 Fetch 分支、无上游、来源恢复、非法分支禁用和符号 HEAD 排除；Git 集成确认上游保留、分支变化拒绝及自定义 fetch refspec 的来源名称准确。
+- 相关文件：`webview/ActionDialog.tsx`、`webview/actionFeedback.ts`、`src/git/service.ts`、`src/protocol/types.ts`、`src/protocol/validation.ts`、`src/i18n/catalogs/actions.json`、`src/i18n/catalogs/service.json`、`scripts/test-transfer-ui.mjs`、`tests/git-service.test.ts`、`tests/workbench-protocol.test.ts`、`docs/USER_MANUAL.zh-CN.md`、`docs/USER_MANUAL.en.md`。
+
 ## BUG-114：非法停靠容器 ID 导致视图回落及区域恢复命令不存在
 
 - 日期：2026-10-06

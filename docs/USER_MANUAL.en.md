@@ -445,7 +445,7 @@ Fetch updates your local knowledge of the remote state. Pull integrates remote c
 
 1. Run Fetch for the target Remote and wait for the results bar to report success.
 2. Inspect the remote branches and history differences to understand the commits you are about to integrate.
-3. Use Pull when you need to update the current branch. Check the source in the optional Remote field and the current upstream information. In Pull Strategy, select a strategy that follows your collaboration conventions. Use Fast-forward Only when only fast-forward updates are allowed.
+3. Use Pull to update the current branch. Check the source branch → current local branch shown under Pull source. The upstream source is selected by default; the Change pull source icon opens remote and source branch selection, including an input for branches not yet fetched. Without an upstream, select the source explicitly. This choice applies only to this Pull and does not change upstream configuration. Choose your collaboration strategy in Pull Strategy; use Fast-forward Only when only fast-forward updates are allowed. Add a remote first if none exists, and switch to a local branch before pulling from Detached HEAD.
 4. After success, inspect the history. If conflicts occur, complete or abort the operation as described in “Merging and Resolving Conflicts.”
 
 **Result:** After Fetch, remote references have been updated. After Pull, the current branch has integrated the target changes or has clearly entered a state requiring further action.
