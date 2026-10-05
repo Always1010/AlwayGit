@@ -2,7 +2,7 @@
   "name": "alwaygit",
   "displayName": "%manifest.displayName%",
   "description": "%manifest.description%",
-  "version": "0.48.0",
+  "version": "0.49.0",
   "publisher": "alwaygit-dev",
   "private": true,
   "type": "module",
@@ -27,7 +27,8 @@
   "activationEvents": [
     "*",
     "onView:alwaygit.workbenchLauncher",
-    "onWebviewPanel:alwaygit.workbench"
+    "onWebviewPanel:alwaygit.workbench",
+    "onView:alwaygit.workbenchPanel"
   ],
   "capabilities": {
     "untrustedWorkspaces": {
@@ -69,6 +70,38 @@
         "title": "%manifest.moveWorkbenchView%",
         "category": "AlwayGit",
         "icon": "$(move)"
+      },
+      {
+        "command": "alwaygit.openWorkbenchInEditor",
+        "title": "%manifest.openInEditor%",
+        "category": "AlwayGit"
+      },
+      {
+        "command": "alwaygit.openWorkbenchInSidebar",
+        "title": "%manifest.openInSidebar%",
+        "category": "AlwayGit"
+      },
+      {
+        "command": "alwaygit.openWorkbenchInPanel",
+        "title": "%manifest.openInPanel%",
+        "category": "AlwayGit"
+      },
+      {
+        "command": "alwaygit.copyWorkbenchToEditor",
+        "title": "%manifest.copyToEditor%",
+        "category": "AlwayGit"
+      },
+      {
+        "command": "alwaygit.sidebarLocationSettings",
+        "title": "%manifest.openModeSettings%",
+        "category": "AlwayGit",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "alwaygit.panelLocationSettings",
+        "title": "%manifest.openModeSettings%",
+        "category": "AlwayGit",
+        "icon": "$(settings-gear)"
       }
     ],
     "keybindings": [
@@ -85,6 +118,13 @@
           "title": "%manifest.contributes.viewsContainers.activitybar.item0.title%",
           "icon": "media/alwaygit.svg"
         }
+      ],
+      "panel": [
+        {
+          "id": "alwaygit.panel",
+          "title": "AlwayGit",
+          "icon": "media/alwaygit.svg"
+        }
       ]
     },
     "views": {
@@ -92,6 +132,13 @@
         {
           "id": "alwaygit.workbenchLauncher",
           "name": "%manifest.contributes.views.alwaygit.item0.name%",
+          "type": "webview"
+        }
+      ],
+      "alwaygit.panel": [
+        {
+          "id": "alwaygit.workbenchPanel",
+          "name": "%manifest.panelWorkbench%",
           "type": "webview"
         }
       ]
@@ -213,26 +260,93 @@
           ],
           "default": "editor",
           "scope": "application",
-          "description": "%manifest.openModeDescription%"
+          "description": "%manifest.legacyOpenMode%",
+          "deprecationMessage": "%manifest.legacyOpenMode%"
+        },
+        "alwaygit.workbenchLocations": {
+          "type": "object",
+          "scope": "application",
+          "description": "%manifest.workbenchLocationsDescription%",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "editor",
+                  "sidebar",
+                  "panel"
+                ]
+              },
+              "minItems": 1,
+              "maxItems": 3,
+              "uniqueItems": true,
+              "description": "%manifest.enabledLocationsDescription%"
+            },
+            "default": {
+              "type": "string",
+              "enum": [
+                "editor",
+                "sidebar",
+                "panel"
+              ],
+              "description": "%manifest.defaultLocationDescription%"
+            }
+          },
+          "required": [
+            "enabled",
+            "default"
+          ]
         }
       }
     },
     "menus": {
       "view/title": [
         {
-          "command": "alwaygit.workbenchOpenModeSettings",
+          "command": "alwaygit.sidebarLocationSettings",
           "when": "view == alwaygit.workbenchLauncher",
           "group": "navigation@1"
         },
         {
+          "command": "alwaygit.panelLocationSettings",
+          "when": "view == alwaygit.workbenchPanel",
+          "group": "navigation@1"
+        },
+        {
           "command": "alwaygit.openWorkbenchInNewWindow",
-          "when": "view == alwaygit.workbenchLauncher",
+          "when": "view == alwaygit.workbenchLauncher || view == alwaygit.workbenchPanel",
           "group": "workbench@1"
         },
         {
           "command": "alwaygit.moveWorkbenchView",
-          "when": "view == alwaygit.workbenchLauncher",
+          "when": "view == alwaygit.workbenchLauncher || view == alwaygit.workbenchPanel",
           "group": "workbench@2"
+        },
+        {
+          "command": "alwaygit.openWorkbenchInEditor",
+          "when": "view == alwaygit.workbenchLauncher || view == alwaygit.workbenchPanel",
+          "group": "workbench@3"
+        },
+        {
+          "command": "alwaygit.openWorkbenchInSidebar",
+          "when": "view == alwaygit.workbenchLauncher || view == alwaygit.workbenchPanel",
+          "group": "workbench@4"
+        },
+        {
+          "command": "alwaygit.openWorkbenchInPanel",
+          "when": "view == alwaygit.workbenchLauncher || view == alwaygit.workbenchPanel",
+          "group": "workbench@5"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "alwaygit.sidebarLocationSettings",
+          "when": "false"
+        },
+        {
+          "command": "alwaygit.panelLocationSettings",
+          "when": "false"
         }
       ]
     }

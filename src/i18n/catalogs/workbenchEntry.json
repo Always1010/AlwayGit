@@ -23,59 +23,23 @@
     "review": "translated",
     "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
   },
-  "workbenchEntry.dockedMode": {
-    "en": "Docked View",
-    "zh-CN": "停靠视图",
-    "review": "translated",
-    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
-  },
-  "workbenchEntry.editorDescription": {
-    "en": "Open in the editor area. Switching creates an independent new tab.",
-    "zh-CN": "在编辑器区域打开。切换时新建独立标签页。",
-    "review": "translated",
-    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
-  },
-  "workbenchEntry.dockedDescription": {
-    "en": "Open in a movable view in a sidebar or the panel.",
-    "zh-CN": "在可移到侧边栏或面板的视图中打开。",
-    "review": "translated",
-    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
-  },
   "workbenchEntry.moveView": {
     "en": "Adjust Dock Location…",
     "zh-CN": "调整停靠位置…",
     "review": "translated",
     "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
   },
-  "workbenchEntry.openSettings": {
-    "en": "Open AlwayGit Settings",
-    "zh-CN": "打开 AlwayGit 设置",
-    "review": "translated",
-    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
-  },
   "workbenchEntry.openModeSettings": {
-    "en": "Workbench Opening Mode",
-    "zh-CN": "工作台打开方式",
+    "en": "Workbench Locations",
+    "zh-CN": "工作台显示位置",
     "review": "translated",
-    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
-  },
-  "workbenchEntry.chooseOpenMode": {
-    "en": "Choose the default opening mode or adjust the dock location",
-    "zh-CN": "选择默认打开方式或调整停靠位置",
-    "review": "translated",
-    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
-  },
-  "workbenchEntry.switchFailed": {
-    "en": "Could not switch the Workbench. Its previous opening mode and state have been preserved. {{reason}}",
-    "zh-CN": "无法切换工作台，已保留原来的打开方式和状态。{{reason}}",
-    "review": "translated",
-    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
+    "context": "Workbench locations and default routing"
   },
   "workbenchEntry.captureFailed": {
-    "en": "Could not read the current Workbench state. Try switching again after it finishes loading.",
-    "zh-CN": "无法读取当前工作台状态。请在加载完成后重试切换。",
+    "en": "Could not read the current Workbench state. Try again after it finishes loading.",
+    "zh-CN": "无法读取当前工作台状态，请在加载完成后重试。",
     "review": "translated",
-    "context": "src/extension/workbench.ts / workbench opening mode and compact navigation"
+    "context": "Workbench locations and default routing"
   },
   "workbenchEntry.repositoriesTab": {
     "en": "Repositories",
@@ -118,5 +82,41 @@
     "zh-CN": "显示 Git Workbench",
     "review": "translated",
     "context": "src/extension/workbench-launcher.ts / launch button"
+  },
+  "workbenchEntry.defaultLocation": {
+    "en": "Default Open Workbench Location",
+    "zh-CN": "默认打开位置",
+    "review": "translated",
+    "context": "Workbench locations and default routing"
+  },
+  "workbenchEntry.atLeastOneLocation": {
+    "en": "Keep at least one Workbench location enabled.",
+    "zh-CN": "请至少保留一个工作台显示位置。",
+    "review": "translated",
+    "context": "Workbench locations and default routing"
+  },
+  "workbenchEntry.sidebarMode": {
+    "en": "Sidebar",
+    "zh-CN": "侧边栏",
+    "review": "translated",
+    "context": "Workbench locations and default routing"
+  },
+  "workbenchEntry.panelMode": {
+    "en": "Panel",
+    "zh-CN": "底部面板",
+    "review": "translated",
+    "context": "Workbench locations and default routing"
+  },
+  "workbenchEntry.defaultLocationHelp": {
+    "en": "Open Workbench opens the default location.",
+    "zh-CN": "Open Workbench 打开默认位置。",
+    "review": "translated",
+    "context": "webview/WorkbenchLocationsDialog.tsx / location settings dialog"
+  },
+  "workbenchEntry.independentLocationsHelp": {
+    "en": "Locations can be used simultaneously, with independent state.",
+    "zh-CN": "各位置可同时使用，状态独立。",
+    "review": "translated",
+    "context": "webview/WorkbenchLocationsDialog.tsx / location settings dialog"
   }
 }

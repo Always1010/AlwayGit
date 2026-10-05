@@ -20,10 +20,11 @@ import { verifyTerminalDock } from './test-terminal-ui.mjs';
 import { verifyTagStatus } from './test-tag-status-ui.mjs';
 import { verifyActionSafety } from './test-action-safety-ui.mjs';
 import { verifyProjectOpen } from './test-project-ui.mjs';
-import { verifyDockedWorkbench } from './test-workbench-host-ui.mjs';
+import { verifyDockedWorkbench, verifyWorkbenchLocations } from './test-workbench-host-ui.mjs';
 
 // Full and targeted runs share one registry, so a new suite cannot be omitted from full runs.
 const suites = new Map([
+  ['locations', verifyWorkbenchLocations],
   ['docking', verifyDockedWorkbench],
   ['project', verifyProjectOpen],
   ['action-safety', verifyActionSafety],
@@ -59,8 +60,10 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
 const server = createServer(async (request, response) => {
   const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
   if (pathname === '/favicon.ico') { response.writeHead(204); response.end(); return; }
-  const filename = path.resolve(root, '.' + (pathname === '/' ? '/index.html' : pathname));
-  if (path.relative(root, filename).startsWith('..')) { response.writeHead(403); response.end(); return; }
+  const fileRoot = pathname.startsWith('/launcher/') ? path.resolve('dist/launcher') : root;
+  const resource = pathname.startsWith('/launcher/') ? pathname.slice('/launcher'.length) : pathname === '/' ? '/index.html' : pathname;
+  const filename = path.resolve(fileRoot, '.' + resource);
+  if (path.relative(fileRoot, filename).startsWith('..')) { response.writeHead(403); response.end(); return; }
   try { const data = await readFile(filename); response.setHeader('Content-Type', mime[path.extname(filename)] ?? 'application/octet-stream'); response.end(data); }
   catch { response.writeHead(404); response.end(); }
 });

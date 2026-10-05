@@ -19,9 +19,17 @@
   "manifest.contributes.configuration.properties.alwaygit.pushTagAfterCreate.description": "默认把新建标签推送到所选远端；创建标签对话框可以单次覆盖并记住该选择。",
   "manifest.contributes.configuration.properties.alwaygit.defaultResetMode.description": "打开重置对话框时默认选择的模式；可在对话框中覆盖并记住 Soft、Mixed 或 Hard。",
   "manifest.contributes.configuration.properties.alwaygit.interfaceSettings.description": "跨窗口共享的工作台外观、快捷键与阅读偏好。",
-  "manifest.openModeSettings": "工作台打开方式",
+  "manifest.openModeSettings": "工作台显示位置",
   "manifest.moveWorkbenchView": "调整停靠位置…",
-  "manifest.editorModeDescription": "在编辑器区域打开。切换时新建独立标签页。",
+  "manifest.editorModeDescription": "在编辑器区域打开。",
   "manifest.dockedModeDescription": "在可移到侧边栏或面板的视图中打开。",
-  "manifest.openModeDescription": "工作台默认打开方式。停靠视图可通过视图标题菜单移动位置。切换到标签页模式时携带停靠工作台状态新建标签页，保留已有标签页。"
+  "manifest.legacyOpenMode": "旧版打开方式，仅在尚未配置工作台显示位置时使用。",
+  "manifest.workbenchLocationsDescription": "可用工作台位置及 Open Workbench 默认入口。修改设置保留已有工作台与草稿。",
+  "manifest.enabledLocationsDescription": "选择一个或多个位置。取消勾选不会关闭正在使用的工作台。",
+  "manifest.defaultLocationDescription": "Open Workbench 的打开位置，必须属于已启用的位置。",
+  "manifest.panelWorkbench": "工作台（面板）",
+  "manifest.openInEditor": "在标签页打开工作台",
+  "manifest.openInSidebar": "在侧边栏打开工作台",
+  "manifest.openInPanel": "在面板打开工作台",
+  "manifest.copyToEditor": "携带当前状态新建标签页"
 }

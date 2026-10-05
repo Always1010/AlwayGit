@@ -2749,24 +2749,56 @@ export const catalog = {
     "zh-CN": "跨窗口共享的工作台外观、快捷键与阅读偏好。"
   },
   "manifest.openModeSettings": {
-    "en": "Workbench Opening Mode",
-    "zh-CN": "工作台打开方式"
+    "en": "Workbench Locations",
+    "zh-CN": "工作台显示位置"
   },
   "manifest.moveWorkbenchView": {
     "en": "Adjust Dock Location…",
     "zh-CN": "调整停靠位置…"
   },
   "manifest.editorModeDescription": {
-    "en": "Open in the editor area. Switching creates an independent new tab.",
-    "zh-CN": "在编辑器区域打开。切换时新建独立标签页。"
+    "en": "Open in the editor area.",
+    "zh-CN": "在编辑器区域打开。"
   },
   "manifest.dockedModeDescription": {
     "en": "Open in a movable view in a sidebar or the panel.",
     "zh-CN": "在可移到侧边栏或面板的视图中打开。"
   },
-  "manifest.openModeDescription": {
-    "en": "Default Workbench opening mode. Docked views can be moved using the view title menu. Switching to editor mode creates a new tab with the docked Workbench state and preserves existing tabs.",
-    "zh-CN": "工作台默认打开方式。停靠视图可通过视图标题菜单移动位置。切换到标签页模式时携带停靠工作台状态新建标签页，保留已有标签页。"
+  "manifest.legacyOpenMode": {
+    "en": "Legacy opening mode. Used only until Workbench Locations is configured.",
+    "zh-CN": "旧版打开方式，仅在尚未配置工作台显示位置时使用。"
+  },
+  "manifest.workbenchLocationsDescription": {
+    "en": "Available Workbench locations and the default destination of Open Workbench. Changing this setting preserves existing workbenches and drafts.",
+    "zh-CN": "可用工作台位置及 Open Workbench 默认入口。修改设置保留已有工作台与草稿。"
+  },
+  "manifest.enabledLocationsDescription": {
+    "en": "Select one or more locations. Disabling a location does not close a live Workbench.",
+    "zh-CN": "选择一个或多个位置。取消勾选不会关闭正在使用的工作台。"
+  },
+  "manifest.defaultLocationDescription": {
+    "en": "Destination for Open Workbench. Must be one of the enabled locations.",
+    "zh-CN": "Open Workbench 的打开位置，必须属于已启用的位置。"
+  },
+  "manifest.panelWorkbench": {
+    "en": "Workbench (Panel)",
+    "zh-CN": "工作台（面板）"
+  },
+  "manifest.openInEditor": {
+    "en": "Open Workbench in Editor Tab",
+    "zh-CN": "在标签页打开工作台"
+  },
+  "manifest.openInSidebar": {
+    "en": "Open Workbench in Sidebar",
+    "zh-CN": "在侧边栏打开工作台"
+  },
+  "manifest.openInPanel": {
+    "en": "Open Workbench in Panel",
+    "zh-CN": "在面板打开工作台"
+  },
+  "manifest.copyToEditor": {
+    "en": "Copy Current State to a New Editor Tab",
+    "zh-CN": "携带当前状态新建标签页"
   },
   "menus.discardAllUnstaged": {
     "en": "Discard All Unstaged Changes…",
@@ -5927,41 +5959,17 @@ export const catalog = {
     "en": "Editor Tab",
     "zh-CN": "编辑器标签页"
   },
-  "workbenchEntry.dockedMode": {
-    "en": "Docked View",
-    "zh-CN": "停靠视图"
-  },
-  "workbenchEntry.editorDescription": {
-    "en": "Open in the editor area. Switching creates an independent new tab.",
-    "zh-CN": "在编辑器区域打开。切换时新建独立标签页。"
-  },
-  "workbenchEntry.dockedDescription": {
-    "en": "Open in a movable view in a sidebar or the panel.",
-    "zh-CN": "在可移到侧边栏或面板的视图中打开。"
-  },
   "workbenchEntry.moveView": {
     "en": "Adjust Dock Location…",
     "zh-CN": "调整停靠位置…"
   },
-  "workbenchEntry.openSettings": {
-    "en": "Open AlwayGit Settings",
-    "zh-CN": "打开 AlwayGit 设置"
-  },
   "workbenchEntry.openModeSettings": {
-    "en": "Workbench Opening Mode",
-    "zh-CN": "工作台打开方式"
-  },
-  "workbenchEntry.chooseOpenMode": {
-    "en": "Choose the default opening mode or adjust the dock location",
-    "zh-CN": "选择默认打开方式或调整停靠位置"
-  },
-  "workbenchEntry.switchFailed": {
-    "en": "Could not switch the Workbench. Its previous opening mode and state have been preserved. {{reason}}",
-    "zh-CN": "无法切换工作台，已保留原来的打开方式和状态。{{reason}}"
+    "en": "Workbench Locations",
+    "zh-CN": "工作台显示位置"
   },
   "workbenchEntry.captureFailed": {
-    "en": "Could not read the current Workbench state. Try switching again after it finishes loading.",
-    "zh-CN": "无法读取当前工作台状态。请在加载完成后重试切换。"
+    "en": "Could not read the current Workbench state. Try again after it finishes loading.",
+    "zh-CN": "无法读取当前工作台状态，请在加载完成后重试。"
   },
   "workbenchEntry.repositoriesTab": {
     "en": "Repositories",
@@ -5990,6 +5998,30 @@ export const catalog = {
   "workbenchEntry.showGitWorkbench": {
     "en": "Show Git Workbench",
     "zh-CN": "显示 Git Workbench"
+  },
+  "workbenchEntry.defaultLocation": {
+    "en": "Default Open Workbench Location",
+    "zh-CN": "默认打开位置"
+  },
+  "workbenchEntry.atLeastOneLocation": {
+    "en": "Keep at least one Workbench location enabled.",
+    "zh-CN": "请至少保留一个工作台显示位置。"
+  },
+  "workbenchEntry.sidebarMode": {
+    "en": "Sidebar",
+    "zh-CN": "侧边栏"
+  },
+  "workbenchEntry.panelMode": {
+    "en": "Panel",
+    "zh-CN": "底部面板"
+  },
+  "workbenchEntry.defaultLocationHelp": {
+    "en": "Open Workbench opens the default location.",
+    "zh-CN": "Open Workbench 打开默认位置。"
+  },
+  "workbenchEntry.independentLocationsHelp": {
+    "en": "Locations can be used simultaneously, with independent state.",
+    "zh-CN": "各位置可同时使用，状态独立。"
   }
 } as const;
 export interface MessageParameters {
@@ -6677,7 +6709,15 @@ export interface MessageParameters {
   "manifest.moveWorkbenchView": {  };
   "manifest.editorModeDescription": {  };
   "manifest.dockedModeDescription": {  };
-  "manifest.openModeDescription": {  };
+  "manifest.legacyOpenMode": {  };
+  "manifest.workbenchLocationsDescription": {  };
+  "manifest.enabledLocationsDescription": {  };
+  "manifest.defaultLocationDescription": {  };
+  "manifest.panelWorkbench": {  };
+  "manifest.openInEditor": {  };
+  "manifest.openInSidebar": {  };
+  "manifest.openInPanel": {  };
+  "manifest.copyToEditor": {  };
   "menus.discardAllUnstaged": {  };
   "menus.discardAllChanges": {  };
   "menus.createLocalTrackingBranches": {  };
@@ -7464,14 +7504,8 @@ export interface MessageParameters {
   "workbenchEntry.openAlwayGitWorkbench": {  };
   "workbenchEntry.viewTitle": {  };
   "workbenchEntry.editorMode": {  };
-  "workbenchEntry.dockedMode": {  };
-  "workbenchEntry.editorDescription": {  };
-  "workbenchEntry.dockedDescription": {  };
   "workbenchEntry.moveView": {  };
-  "workbenchEntry.openSettings": {  };
   "workbenchEntry.openModeSettings": {  };
-  "workbenchEntry.chooseOpenMode": {  };
-  "workbenchEntry.switchFailed": { reason: ParameterValue };
   "workbenchEntry.captureFailed": {  };
   "workbenchEntry.repositoriesTab": {  };
   "workbenchEntry.historyTab": {  };
@@ -7480,4 +7514,10 @@ export interface MessageParameters {
   "workbenchEntry.compactNavigation": {  };
   "workbenchEntry.waitForOperation": {  };
   "workbenchEntry.showGitWorkbench": {  };
+  "workbenchEntry.defaultLocation": {  };
+  "workbenchEntry.atLeastOneLocation": {  };
+  "workbenchEntry.sidebarMode": {  };
+  "workbenchEntry.panelMode": {  };
+  "workbenchEntry.defaultLocationHelp": {  };
+  "workbenchEntry.independentLocationsHelp": {  };
 }

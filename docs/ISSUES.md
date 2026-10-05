@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-112：工作台显示位置入口偏离约定弹窗且无法整体取消
+
+- 日期：2026-10-06
+- 状态：已解决
+- 现象：视图右上角位置齿轮弹出含搜索框的长菜单，混入打开、移动、新窗口和扩展设置；三个位置多选与默认位置分开设置，没有取消/应用的整体事务，与约定的单页弹窗不一致。
+- 原因：设置入口使用 VS Code Quick Pick，并在各选择步骤立即保存；启动页没有弹窗消息桥接，已有界面检查只验证入口存在。
+- 解决方案：启动页与完整工作台共用位置弹窗，按来源视图投递并等待脚本就绪；三个复选框和默认位置下拉只修改草稿，应用严格校验并一次保存，取消/关闭/Esc 丢弃；保存应答到达并关闭弹窗后才替换启动页。其他操作保留独立入口，三处工作台会话继续隔离。
+- 验证方式：类型检查、1495 条双语资源检查与生产构建通过；5 个定向测试文件 61 项通过，原生齿轮独立绑定调整后仅重跑受影响的入口/启动/双语 3 文件 40 项并通过。无头 --locations-only 通过，覆盖中英文、编辑器/340 px 侧栏/320 px 面板、取消/关闭/Esc、默认位置回退、空选择拦截、持久化、弹窗按键层级、启动页保存失败与重试。88 个本地文档与图片目标有效。未启动真实 VS Code 桌面集成，未打包或安装。
+- 相关文件：`src/extension/workbench.ts`、`src/extension/workbench-launcher.ts`、`src/extension/extension.ts`、`src/protocol/workbench-host.ts`、`src/protocol/types.ts`、`src/protocol/validation.ts`、`webview/WorkbenchLocationsDialog.tsx`、`webview/workbench-locations.css`、`webview/launcher.tsx`、`webview/App.tsx`、`webview/demo.ts`、`scripts/build.mjs`、`scripts/test-workbench-host-ui.mjs`、`scripts/test-ui.mjs`、`tests/workbench-entry.test.ts`、`src/i18n/catalogs/workbenchEntry.json`、`src/i18n/catalogs/manifest.json`、`package.json`。
+
 ## BUG-111：面板恢复状态保存超时被误报为 Git 操作超时
 
 - 日期：2026-10-05

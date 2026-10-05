@@ -7,6 +7,7 @@ import { Workbench } from '../src/extension/workbench';
 import type { RepositoryChanges, Snapshot, GitServiceContract } from '../src/protocol/types';
 import type { RepositoryManager } from '../src/repositories/manager';
 import type { SessionState } from '../src/protocol/session';
+import { readWorkbenchLocations } from '../src/protocol/workbench-host';
 import { affectsWorkingDiff } from '../webview/refresh';
 
 vi.mock('vscode', () => {
@@ -29,7 +30,7 @@ function panelFixture() {
   let receive!: (message: unknown) => Promise<void>;
   const panel = {
     active: true, visible: true, title: '',
-    webview: { options: {}, html: '', onDidReceiveMessage: (listener: typeof receive) => { receive = listener; return { dispose() {} }; }, postMessage: vi.fn(async (_message: unknown) => true) },
+    webview: { options: {}, html: '', cspSource: 'vscode-webview:', asWebviewUri: () => 'vscode-webview:/launcher', onDidReceiveMessage: (listener: typeof receive) => { receive = listener; return { dispose() {} }; }, postMessage: vi.fn(async (_message: unknown) => true) },
     reveal: vi.fn(), dispose: () => closed.fire(), onDidDispose: closed.event, onDidChangeViewState: stateChanged.event,
   };
   return { panel, stateChanged, receive: (message: unknown) => receive(message) };
@@ -55,66 +56,147 @@ function workbenchFixture(output = { appendLine: vi.fn() }, events?: { changes: 
 }
 
 describe('Workbench entry presentation', () => {
-  it('creates a new editor with the latest docked draft and selection while preserving existing tabs', async () => {
-    const values = new Map<string, unknown>([['openMode', 'docked']]);
+  function configure(enabled: Array<'editor' | 'sidebar' | 'panel'>, defaultLocation: 'editor' | 'sidebar' | 'panel') {
+    const values = new Map<string, unknown>([['workbenchLocations', { enabled, default: defaultLocation }]]);
     vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({ get: (key: string, fallback: unknown) => values.get(key) ?? fallback, inspect: () => undefined, update: async (key: string, value: unknown) => { values.set(key, value); } } as unknown as vscode.WorkspaceConfiguration);
-    const workbench = workbenchFixture(), existing = panelFixture(), fresh = panelFixture(), dock = viewFixture();
+    return values;
+  }
+  it('normalizes legacy preferences and keeps the default among enabled locations', () => {
+    expect(readWorkbenchLocations(undefined, 'docked')).toEqual({ enabled: ['editor', 'sidebar'], default: 'sidebar' });
+    expect(readWorkbenchLocations(undefined)).toEqual({ enabled: ['editor'], default: 'editor' });
+    expect(readWorkbenchLocations({ enabled: ['panel', 'panel'], default: 'editor' })).toEqual({ enabled: ['panel'], default: 'panel' });
+  });
+  it('keeps editor, sidebar and panel drafts independent while routing Show only to the default', async () => {
+    const values = configure(['editor', 'sidebar', 'panel'], 'panel');
+    const workbench = workbenchFixture(), editor = panelFixture(), sidebar = viewFixture(), bottom = viewFixture();
+    vi.mocked(vscode.window.createWebviewPanel).mockReturnValue(editor.panel as unknown as vscode.WebviewPanel);
+    await workbench.open('editor');
+    await workbench.resolveDockedView(sidebar.view as unknown as vscode.WebviewView, { repoId: 'sidebar', drafts: { sidebar: 'side draft' } });
+    await workbench.resolveDockedView(bottom.view as unknown as vscode.WebviewView, { repoId: 'panel', drafts: { panel: 'panel draft' } }, 'panel');
+    const context = (workbench as unknown as { context: vscode.ExtensionContext }).context;
+    const save = vi.spyOn(context.workspaceState, 'update');
+    await sidebar.receive({ id: 'side-save', method: 'saveSession', payload: { repoId: 'sidebar', drafts: { sidebar: 'updated sidebar' } } });
+    await bottom.receive({ id: 'panel-save', method: 'saveSession', payload: { repoId: 'panel', drafts: { panel: 'updated panel' } } });
+    expect(save).toHaveBeenCalledWith('alwaygit.dockedSession', expect.objectContaining({ drafts: { sidebar: 'updated sidebar' } }));
+    expect(save).toHaveBeenCalledWith('alwaygit.panelSession', expect.objectContaining({ drafts: { panel: 'updated panel' } }));
+    await workbench.show(); await workbench.show();
+    expect(vscode.commands.executeCommand).toHaveBeenLastCalledWith('alwaygit.workbenchPanel.focus');
+    expect(sidebar.view.show).not.toHaveBeenCalled();
+    expect(editor.panel.reveal).not.toHaveBeenCalled();
+    expect(vscode.window.createWebviewPanel).toHaveBeenCalledOnce();
+    await workbench.handle({ id: 'apply', method: 'saveWorkbenchLocations', payload: { enabled: ['editor', 'sidebar', 'panel'], default: 'editor' } });
+    expect(values.get('workbenchLocations')).toEqual({ enabled: ['editor', 'sidebar', 'panel'], default: 'editor' });
+    expect(bottom.view.webview.html).toBe('<html></html>');
+    await workbench.show();
+    expect(editor.panel.reveal).toHaveBeenCalledOnce();
+    expect(vscode.window.createWebviewPanel).toHaveBeenCalledOnce();
+  });
+  it('applies multiple locations from the launcher after acknowledging the save and preserves the live source', async () => {
+    const values = configure(['editor', 'sidebar'], 'sidebar'), workbench = workbenchFixture(), sidebar = viewFixture(), bottom = viewFixture();
+    await workbench.resolveDockedView(bottom.view as unknown as vscode.WebviewView, { repoId: 'restored-panel', drafts: { 'restored-panel': 'saved while disabled' } }, 'panel');
+    expect(bottom.view.webview.html).toContain('command:alwaygit.showWorkbench');
+    await workbench.resolveDockedView(sidebar.view as unknown as vscode.WebviewView, { repoId: 'side', drafts: { side: 'keep' } });
+    await bottom.receive({ id: 'ready', method: 'workbenchLocationsReady' });
+    await workbench.showOpenModeSettings('alwaygit.workbenchPanel');
+    const applied = { enabled: ['editor', 'panel'], default: 'editor' };
+    await bottom.receive({ id: 'apply', method: 'saveWorkbenchLocations', payload: applied });
+    (workbench as unknown as { refreshLaunchers(): void }).refreshLaunchers();
+    expect(bottom.view.webview.postMessage).toHaveBeenCalledWith({ type: 'response', id: 'apply', result: applied });
+    expect(bottom.view.webview.html).toContain('locations-root');
+    await bottom.receive({ id: 'close', method: 'workbenchLocationsClosed' });
+    expect(values.get('workbenchLocations')).toEqual({ enabled: ['editor', 'panel'], default: 'editor' });
+    expect(bottom.view.webview.html).toBe('<html></html>');
+    const calls = vi.mocked((workbench as unknown as { html: (...args: unknown[]) => Promise<string> }).html).mock.calls;
+    expect(calls.at(-1)?.[3]).toEqual({ repoId: 'restored-panel', drafts: { 'restored-panel': 'saved while disabled' } });
+    expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
+    expect(sidebar.view.webview.html).toBe('<html></html>');
+    expect(workbench.presence.open).toBe(true);
+    expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
+    expect(vscode.window.showQuickPick).not.toHaveBeenCalled();
+    await expect(workbench.handle({ id: 'empty', method: 'saveWorkbenchLocations', payload: { enabled: [], default: 'editor' } })).rejects.toThrow();
+    expect(values.get('workbenchLocations')).toEqual({ enabled: ['editor', 'panel'], default: 'editor' });
+    await expect(workbench.handle({ id: 'invalid', method: 'saveWorkbenchLocations', payload: { enabled: ['editor'], default: 'panel' } })).rejects.toThrow();
+  });
+  it('opens a dialog in the requested native view after it is ready, with no configuration write or editor creation', async () => {
+    const values = configure(['editor'], 'editor'), workbench = workbenchFixture(), sidebar = viewFixture(), bottom = viewFixture();
+    const update = vi.spyOn(vscode.workspace.getConfiguration('alwaygit'), 'update');
+    await workbench.resolveDockedView(sidebar.view as unknown as vscode.WebviewView, undefined, 'sidebar');
+    await workbench.resolveDockedView(bottom.view as unknown as vscode.WebviewView, undefined, 'panel');
+    await workbench.showOpenModeSettings('alwaygit.workbenchPanel');
+    expect(bottom.view.webview.postMessage).not.toHaveBeenCalled();
+    await bottom.receive({ id: 'ready', method: 'workbenchLocationsReady' });
+    expect(bottom.view.webview.postMessage).toHaveBeenCalledWith({ type: 'showWorkbenchLocations', locations: values.get('workbenchLocations'), language: 'en' });
+    expect(sidebar.view.webview.postMessage).not.toHaveBeenCalled();
+    await bottom.receive({ id: 'cancel', method: 'workbenchLocationsClosed' });
+    expect(update).not.toHaveBeenCalled();
+    expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
+    expect(vscode.window.showQuickPick).not.toHaveBeenCalled();
+    await sidebar.receive({ id: 'git', method: 'snapshot', repoId: 'any' });
+    expect(sidebar.view.webview.postMessage).not.toHaveBeenCalled();
+  });
+  it('delivers an early native dialog request only after the full workbench listener is ready', async () => {
+    configure(['sidebar', 'panel'], 'sidebar');
+    const workbench = workbenchFixture(), sidebar = viewFixture();
+    await workbench.resolveDockedView(sidebar.view as unknown as vscode.WebviewView, undefined, 'sidebar');
+    await workbench.showOpenModeSettings('alwaygit.workbenchLauncher');
+    expect(sidebar.view.webview.postMessage).not.toHaveBeenCalled();
+    await sidebar.receive({ id: 'ready', method: 'workbenchReady' });
+    expect(sidebar.view.webview.postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'showWorkbenchLocations' }));
+  });
+  it('writes the entire location preference once and preserves the previous value when persistence fails', async () => {
+    const values = configure(['editor'], 'editor'), workbench = workbenchFixture();
+    const configuration = vscode.workspace.getConfiguration('alwaygit'), update = vi.spyOn(configuration, 'update');
+    const next = { enabled: ['editor', 'sidebar', 'panel'], default: 'panel' };
+    await workbench.handle({ id: 'apply', method: 'saveWorkbenchLocations', payload: next });
+    expect(update).toHaveBeenCalledExactlyOnceWith('workbenchLocations', next, vscode.ConfigurationTarget.Global);
+    update.mockRejectedValueOnce(new Error('write failed'));
+    await expect(workbench.handle({ id: 'fail', method: 'saveWorkbenchLocations', payload: { enabled: ['editor'], default: 'editor' } })).rejects.toThrow('write failed');
+    expect(values.get('workbenchLocations')).toEqual(next);
+    await expect(workbench.handle({ id: 'duplicate', method: 'saveWorkbenchLocations', payload: { enabled: ['editor', 'editor'], default: 'editor' } })).rejects.toThrow();
+    expect(update).toHaveBeenCalledTimes(2);
+  });
+  it('copies live sidebar state into a fresh editor while retaining source and existing tabs', async () => {
+    configure(['editor', 'sidebar'], 'sidebar');
+    const workbench = workbenchFixture(), existing = panelFixture(), fresh = panelFixture(), sidebar = viewFixture();
     vi.mocked(vscode.window.createWebviewPanel).mockReturnValueOnce(existing.panel as unknown as vscode.WebviewPanel).mockReturnValueOnce(fresh.panel as unknown as vscode.WebviewPanel);
-    await workbench.open('existing'); existing.panel.webview.html = 'independent existing draft';
-    await workbench.resolveDockedView(dock.view as unknown as vscode.WebviewView, { repoId: 'dock', drafts: { dock: 'old draft' } });
-    await dock.receive({ id: 'ready', method: 'workbenchReady' });
-    const transfer = { session: { repoId: 'dock', drafts: { dock: 'just typed' }, views: { dock: { tab: 'history', search: 'latest filter', selectedOid: 'selected' } } }, workingFilters: { dock: 'src/' }, activeTerminal: 'diff' };
-    dock.view.webview.postMessage.mockImplementation(async message => {
-      if ((message as { type: string }).type === 'captureWorkbench') await dock.receive({ id: 'capture', method: 'captureWorkbench', payload: { ...transfer, token: (message as { token: string }).token } });
+    await workbench.open('existing'); existing.panel.webview.html = 'existing draft';
+    await workbench.resolveDockedView(sidebar.view as unknown as vscode.WebviewView, { repoId: 'side' });
+    await sidebar.receive({ id: 'ready', method: 'workbenchReady' });
+    const transfer = { session: { repoId: 'side', drafts: { side: 'just typed' } }, workingFilters: { side: 'src/' }, activeTerminal: 'diff', selectedOids: ['selected'] };
+    sidebar.view.webview.postMessage.mockImplementation(async message => {
+      if ((message as { type: string }).type === 'captureWorkbench') await sidebar.receive({ id: 'capture', method: 'captureWorkbench', payload: { ...transfer, token: (message as { token: string }).token } });
       return true;
     });
-    vi.mocked(vscode.window.showQuickPick).mockResolvedValue({ action: 'editor' } as never);
-    await workbench.showOpenModeSettings();
+    await workbench.copyWorkbenchToEditor();
     expect(vscode.window.createWebviewPanel).toHaveBeenCalledTimes(2);
-    expect(existing.panel.webview.html).toBe('independent existing draft');
+    expect(existing.panel.webview.html).toBe('existing draft');
     expect(existing.panel.reveal).not.toHaveBeenCalled();
-    expect(dock.view.webview.html).toContain('command:alwaygit.showWorkbench');
-    expect(values.get('openMode')).toBe('editor');
+    expect(sidebar.view.webview.html).toBe('<html></html>');
     const calls = vi.mocked((workbench as unknown as { html: (...args: unknown[]) => Promise<string> }).html).mock.calls;
-    expect(calls.at(-1)?.[3]).toEqual(transfer.session);
-    expect(calls.at(-1)?.[5]).toEqual(transfer);
+    expect(calls.at(-1)?.[5]).toEqual({ session: transfer.session, workingFilters: transfer.workingFilters, selectedOids: transfer.selectedOids });
   });
-
-  it('hands the selected editor state to a docked view resolved by the focus command without modifying that editor', async () => {
-    const values = new Map<string, unknown>();
-    vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({ get: (key: string, fallback: unknown) => values.get(key) ?? fallback, inspect: () => undefined, update: async (key: string, value: unknown) => { values.set(key, value); } } as unknown as vscode.WorkspaceConfiguration);
-    const workbench = workbenchFixture(), existing = panelFixture(), dock = viewFixture();
-    vi.mocked(vscode.window.createWebviewPanel).mockReturnValue(existing.panel as unknown as vscode.WebviewPanel);
-    await workbench.open('selected');
-    await existing.receive({ id: 'draft', method: 'saveSession', payload: { repoId: 'selected', drafts: { selected: 'editor draft' } } });
-    existing.panel.webview.html = 'retained editor';
-    vi.mocked(vscode.commands.executeCommand).mockImplementation(async command => {
-      if (command === 'alwaygit.workbenchLauncher.focus') setTimeout(() => { void workbench.resolveDockedView(dock.view as unknown as vscode.WebviewView, { repoId: 'old-side-view' }); }, 0);
-      return undefined;
-    });
-    vi.mocked(vscode.window.showQuickPick).mockResolvedValue({ action: 'docked' } as never);
-    await workbench.showOpenModeSettings();
-    expect(existing.panel.webview.html).toBe('retained editor');
-    expect(vscode.window.createWebviewPanel).toHaveBeenCalledOnce();
-    const calls = vi.mocked((workbench as unknown as { html: (...args: unknown[]) => Promise<string> }).html).mock.calls;
-    expect(calls.at(-1)?.[3]).toEqual({ repoId: 'selected', drafts: { selected: 'editor draft' } });
-    expect(calls.at(-1)?.[4]).toBe('docked');
-    expect(values.get('openMode')).toBe('docked');
-  });
-
-  it('keeps a docked workbench and its mode when capturing current state times out', async () => {
-    vi.useFakeTimers(); const values = new Map<string, unknown>([['openMode', 'docked']]);
-    vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({ get: (key: string, fallback: unknown) => values.get(key) ?? fallback, inspect: () => undefined, update: async (key: string, value: unknown) => { values.set(key, value); } } as unknown as vscode.WorkspaceConfiguration);
-    const workbench = workbenchFixture(), dock = viewFixture();
-    await workbench.resolveDockedView(dock.view as unknown as vscode.WebviewView, { repoId: 'dock' });
-    await dock.receive({ id: 'ready', method: 'workbenchReady' });
-    vi.mocked(vscode.window.showQuickPick).mockResolvedValue({ action: 'editor' } as never);
-    const switching = workbench.showOpenModeSettings();
-    await vi.advanceTimersByTimeAsync(5001); await switching;
+  it('leaves the source intact when a live state copy times out', async () => {
+    vi.useFakeTimers(); configure(['editor', 'sidebar'], 'sidebar');
+    const workbench = workbenchFixture(), sidebar = viewFixture();
+    await workbench.resolveDockedView(sidebar.view as unknown as vscode.WebviewView, { repoId: 'side' });
+    await sidebar.receive({ id: 'ready', method: 'workbenchReady' });
+    const copying = expect(workbench.copyWorkbenchToEditor()).rejects.toThrow();
+    await vi.advanceTimersByTimeAsync(5001); await copying;
     expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
-    expect(dock.view.webview.html).toBe('<html></html>');
-    expect(values.get('openMode')).toBe('docked');
-    expect(vscode.window.showErrorMessage).toHaveBeenCalledOnce();
+    expect(sidebar.view.webview.html).toBe('<html></html>');
+    expect(workbench.openMode).toBe('sidebar');
+  });
+  it('waits for the correct view when a cold focus resolves asynchronously', async () => {
+    configure(['sidebar', 'panel'], 'panel');
+    const workbench = workbenchFixture(), bottom = viewFixture();
+    vi.mocked(vscode.commands.executeCommand).mockImplementation(async command => {
+      if (command === 'alwaygit.workbenchPanel.focus') setTimeout(() => { void workbench.resolveDockedView(bottom.view as unknown as vscode.WebviewView, { repoId: 'panel' }, 'panel'); }, 0);
+    });
+    await workbench.show();
+    expect(workbench.presence.open).toBe(true);
+    expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
+    const calls = vi.mocked((workbench as unknown as { html: (...args: unknown[]) => Promise<string> }).html).mock.calls;
+    expect(calls.at(-1)?.[4]).toBe('panel');
   });
   it('returns the current-window Explorer result through the openProject RPC', async () => {
     const workbench = workbenchFixture(), repo = { id: 'repo', root: '/repo' };
@@ -406,6 +488,7 @@ describe('Workbench entry presentation', () => {
         viewsContainers?: { activitybar?: Array<{ id?: string }> };
         views?: Record<string, Array<{ id?: string }>>;
         viewsWelcome?: Array<{ view?: string; contents?: string }>;
+        menus?: Record<string, Array<{ command: string; when?: string; group?: string }>>;
       };
     };
     expect(manifest.contributes?.viewsContainers?.activitybar?.some(item => item.id === 'alwaygit')).toBe(true);
@@ -414,10 +497,20 @@ describe('Workbench entry presentation', () => {
     expect(manifest.activationEvents).toContain('*');
     expect(manifest.activationEvents).not.toContain('onStartupFinished');
     expect(manifest.contributes?.views?.alwaygit?.[0]).toMatchObject({ type: 'webview' });
+    expect(manifest.contributes?.menus?.['view/title']?.filter(item => item.group === 'navigation@1')).toEqual([
+      { command: 'alwaygit.sidebarLocationSettings', when: 'view == alwaygit.workbenchLauncher', group: 'navigation@1' },
+      { command: 'alwaygit.panelLocationSettings', when: 'view == alwaygit.workbenchPanel', group: 'navigation@1' },
+    ]);
     const launcher = workbenchLauncherHtml();
     expect(launcher).toContain('command:alwaygit.showWorkbench');
     expect(launcher).toContain('command:alwaygit.openWorkbenchInNewWindow');
     expect(launcher).toContain("default-src 'none'");
+    const interactive = workbenchLauncherHtml({ script: 'vscode-webview:/launcher.js', stylesheet: 'vscode-webview:/launcher.css', cspSource: 'vscode-webview:', nonce: 'test-nonce' });
+    expect(interactive).toContain('id="locations-root"');
+    expect(interactive).toContain('nonce="test-nonce"');
+    expect(interactive).toContain('src="vscode-webview:/launcher.js"');
+    expect(interactive).toContain('href="vscode-webview:/launcher.css"');
+    expect(interactive).toContain('script-src &#39;nonce-test-nonce&#39;');
   });
 
   it('registers the retained movable view without opening an editor', async () => {
@@ -429,6 +522,8 @@ describe('Workbench entry presentation', () => {
     expect(view.view.webview.html).toContain('command:alwaygit.showWorkbench');
     expect(view.view.webview.options).toMatchObject({ enableCommandUris: ['alwaygit.showWorkbench', 'alwaygit.openWorkbenchInNewWindow'] });
     expect(vscode.window.createWebviewPanel).not.toHaveBeenCalled();
+    expect(vscode.window.registerWebviewViewProvider).toHaveBeenCalledTimes(2);
+    expect(vscode.window.registerWebviewViewProvider).toHaveBeenCalledWith('alwaygit.workbenchPanel', expect.anything(), { webviewOptions: { retainContextWhenHidden: true } });
     expect(vscode.window.registerWebviewViewProvider).toHaveBeenCalledWith('alwaygit.workbenchLauncher', expect.anything(), { webviewOptions: { retainContextWhenHidden: true } });
     registration.dispose();
   });

@@ -120,10 +120,10 @@
     "context": "package.json / contributes.configuration.properties.alwaygit.interfaceSettings.description"
   },
   "manifest.openModeSettings": {
-    "en": "Workbench Opening Mode",
-    "zh-CN": "工作台打开方式",
+    "en": "Workbench Locations",
+    "zh-CN": "工作台显示位置",
     "review": "translated",
-    "context": "package.json"
+    "context": "Workbench locations and default routing"
   },
   "manifest.moveWorkbenchView": {
     "en": "Adjust Dock Location…",
@@ -132,10 +132,10 @@
     "context": "package.json"
   },
   "manifest.editorModeDescription": {
-    "en": "Open in the editor area. Switching creates an independent new tab.",
-    "zh-CN": "在编辑器区域打开。切换时新建独立标签页。",
+    "en": "Open in the editor area.",
+    "zh-CN": "在编辑器区域打开。",
     "review": "translated",
-    "context": "package.json"
+    "context": "Workbench locations and default routing"
   },
   "manifest.dockedModeDescription": {
     "en": "Open in a movable view in a sidebar or the panel.",
@@ -143,10 +143,58 @@
     "review": "translated",
     "context": "package.json"
   },
-  "manifest.openModeDescription": {
-    "en": "Default Workbench opening mode. Docked views can be moved using the view title menu. Switching to editor mode creates a new tab with the docked Workbench state and preserves existing tabs.",
-    "zh-CN": "工作台默认打开方式。停靠视图可通过视图标题菜单移动位置。切换到标签页模式时携带停靠工作台状态新建标签页，保留已有标签页。",
+  "manifest.legacyOpenMode": {
+    "en": "Legacy opening mode. Used only until Workbench Locations is configured.",
+    "zh-CN": "旧版打开方式，仅在尚未配置工作台显示位置时使用。",
     "review": "translated",
-    "context": "package.json"
+    "context": "Workbench locations and default routing"
+  },
+  "manifest.workbenchLocationsDescription": {
+    "en": "Available Workbench locations and the default destination of Open Workbench. Changing this setting preserves existing workbenches and drafts.",
+    "zh-CN": "可用工作台位置及 Open Workbench 默认入口。修改设置保留已有工作台与草稿。",
+    "review": "translated",
+    "context": "Workbench locations and default routing"
+  },
+  "manifest.enabledLocationsDescription": {
+    "en": "Select one or more locations. Disabling a location does not close a live Workbench.",
+    "zh-CN": "选择一个或多个位置。取消勾选不会关闭正在使用的工作台。",
+    "review": "translated",
+    "context": "Workbench locations and default routing"
+  },
+  "manifest.defaultLocationDescription": {
+    "en": "Destination for Open Workbench. Must be one of the enabled locations.",
+    "zh-CN": "Open Workbench 的打开位置，必须属于已启用的位置。",
+    "review": "translated",
+    "context": "Workbench locations and default routing"
+  },
+  "manifest.panelWorkbench": {
+    "en": "Workbench (Panel)",
+    "zh-CN": "工作台（面板）",
+    "review": "translated",
+    "context": "Workbench locations and default routing"
+  },
+  "manifest.openInEditor": {
+    "en": "Open Workbench in Editor Tab",
+    "zh-CN": "在标签页打开工作台",
+    "review": "translated",
+    "context": "Workbench locations and default routing"
+  },
+  "manifest.openInSidebar": {
+    "en": "Open Workbench in Sidebar",
+    "zh-CN": "在侧边栏打开工作台",
+    "review": "translated",
+    "context": "Workbench locations and default routing"
+  },
+  "manifest.openInPanel": {
+    "en": "Open Workbench in Panel",
+    "zh-CN": "在面板打开工作台",
+    "review": "translated",
+    "context": "Workbench locations and default routing"
+  },
+  "manifest.copyToEditor": {
+    "en": "Copy Current State to a New Editor Tab",
+    "zh-CN": "携带当前状态新建标签页",
+    "review": "translated",
+    "context": "Command palette / independent state copy"
   }
 }
