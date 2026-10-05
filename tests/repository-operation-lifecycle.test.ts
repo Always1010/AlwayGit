@@ -11,6 +11,7 @@ vi.mock('vscode', () => ({
   EventEmitter: class { event = () => ({ dispose() {} }); fire() {} dispose() {} },
   workspace: { isTrusted: true, workspaceFolders: [], getConfiguration: () => ({ get: (_key: string, fallback: unknown) => fallback }), onDidChangeConfiguration: () => ({ dispose() {} }) },
   env: { appRoot: 'test', language: 'en' }, window: { showWarningMessage: vi.fn() },
+  commands: { executeCommand: vi.fn(async () => {}) },
 }));
 vi.mock('../src/application/confirm', () => ({ confirmAction: async () => true }));
 

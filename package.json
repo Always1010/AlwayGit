@@ -2,7 +2,7 @@
   "name": "alwaygit",
   "displayName": "%manifest.displayName%",
   "description": "%manifest.description%",
-  "version": "0.51.0",
+  "version": "0.51.1",
   "publisher": "alwaygit-dev",
   "private": true,
   "type": "module",
@@ -155,6 +155,7 @@
         {
           "id": "alwaygit.workbenchPanel",
           "name": "%manifest.panelWorkbench%",
+          "when": "alwaygit.panelLocationEnabled",
           "type": "webview"
         }
       ],
@@ -162,6 +163,7 @@
         {
           "id": "alwaygit.workbenchAuxiliary",
           "name": "%manifest.auxiliaryWorkbench%",
+          "when": "alwaygit.auxiliaryLocationEnabled",
           "type": "webview"
         }
       ]

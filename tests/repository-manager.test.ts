@@ -25,6 +25,7 @@ vi.mock('vscode', () => {
     EventEmitter, env: { language: 'zh-CN' }, RelativePattern: class { constructor(public base: string, public pattern: string) {} },
     workspace: { isTrusted: true, workspaceFolders: [], createFileSystemWatcher: vi.fn(), onDidChangeConfiguration: () => ({ dispose() {} }), getConfiguration: () => ({ get: (_key: string, fallback: unknown) => fallback }) },
     extensions: { getExtension: vi.fn() }, ProgressLocation: { Notification: 15 },
+    commands: { executeCommand: vi.fn(async () => {}) },
     window: { showInputBox: vi.fn(), showOpenDialog: vi.fn(), showQuickPick: vi.fn(), withProgress: vi.fn(), showInformationMessage: vi.fn(), showWarningMessage: vi.fn() },
   };
 });
