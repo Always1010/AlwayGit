@@ -141,6 +141,46 @@ export const catalog = {
     "en": "Push Tags",
     "zh-CN": "推送标签"
   },
+  "actions.pullSource": {
+    "en": "Pull source",
+    "zh-CN": "拉取来源"
+  },
+  "actions.selectPullSource": {
+    "en": "Select a remote and source branch",
+    "zh-CN": "请选择远程仓库和来源分支"
+  },
+  "actions.sourceBranch": {
+    "en": "Source branch",
+    "zh-CN": "来源分支"
+  },
+  "actions.chooseOrEnterSourceBranch": {
+    "en": "Choose or enter a branch name",
+    "zh-CN": "选择或输入分支名"
+  },
+  "actions.changePullSource": {
+    "en": "Change pull source",
+    "zh-CN": "更改拉取来源"
+  },
+  "actions.useDefaultPullSource": {
+    "en": "Use upstream source",
+    "zh-CN": "恢复上游来源"
+  },
+  "actions.pullSourceIsOneTime": {
+    "en": "This source is used for this Pull only. The upstream configuration stays unchanged.",
+    "zh-CN": "来源仅用于本次拉取，不会修改上游配置。"
+  },
+  "actions.noPullUpstream": {
+    "en": "No upstream source is configured. Select the source for this Pull.",
+    "zh-CN": "尚未配置上游来源，请选择本次拉取的来源。"
+  },
+  "actions.pullRequiresLocalBranch": {
+    "en": "Switch to a local branch before pulling.",
+    "zh-CN": "请先切换到本地分支再拉取。"
+  },
+  "actions.localRepository": {
+    "en": "Local repository",
+    "zh-CN": "本地仓库"
+  },
   "actions.discardAllChanges": {
     "en": "Discard All Changes",
     "zh-CN": "丢弃全部更改"
@@ -3927,6 +3967,10 @@ export const catalog = {
     "en": "Cannot run Git: {{message}}",
     "zh-CN": "无法运行 Git：{{message}}"
   },
+  "service.selectPullRemote": {
+    "en": "Select a remote repository before choosing a Pull source branch.",
+    "zh-CN": "选择拉取来源分支前，请先选择远程仓库。"
+  },
   "service.stashAppliedCleanupFailed": {
     "en": "Stash changes were applied, but the archive could not be safely removed. Do not apply them again. Inspect the stash list before retrying deletion.\n{{value}}",
     "zh-CN": "Stash 更改已恢复，但未能安全删除存档。请勿再次恢复；重试删除前请检查 Stash 列表。\n{{value}}"
@@ -6104,6 +6148,16 @@ export interface MessageParameters {
   "actionNames.abort": { value: ParameterValue };
   "actionNames.skip": { value: ParameterValue };
   "actionNames.pushTags": {  };
+  "actions.pullSource": {  };
+  "actions.selectPullSource": {  };
+  "actions.sourceBranch": {  };
+  "actions.chooseOrEnterSourceBranch": {  };
+  "actions.changePullSource": {  };
+  "actions.useDefaultPullSource": {  };
+  "actions.pullSourceIsOneTime": {  };
+  "actions.noPullUpstream": {  };
+  "actions.pullRequiresLocalBranch": {  };
+  "actions.localRepository": {  };
   "actions.discardAllChanges": {  };
   "actions.discardAllCounts": { total: ParameterValue; tracked: ParameterValue; untracked: ParameterValue };
   "actions.discardAllWarning": {  };
@@ -7040,6 +7094,7 @@ export interface MessageParameters {
   "runner.gitTimedOutCheckCredentialsHooksOrAnotherGit": {  };
   "runner.gitOutputExceededTheConfiguredLimit": {  };
   "runner.cannotRunGit": { message: ParameterValue };
+  "service.selectPullRemote": {  };
   "service.stashAppliedCleanupFailed": { value: ParameterValue };
   "service.stashDeleteUnsupported": {  };
   "service.stashDeleteBusy": {  };

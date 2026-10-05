@@ -21,6 +21,7 @@ export type OperationKind = 'merge' | 'rebase' | 'cherry-pick' | 'revert';
 export interface OperationState { kind?: OperationKind; conflicts: number; canContinue: boolean; canAbort: boolean; canSkip: boolean; originalHead?: string }
 export interface OperationReview { kind: OperationKind; token: string; files: { path: string; lines: number[]; more?: boolean; skipped?: 'binary' | 'large' | 'encoding' | 'submodule' | 'limit' }[] }
 export interface PushTarget { localBranch: string; remote?: string; remoteBranch: string; configured: boolean }
+export interface PullTarget { localBranch: string; remote: string; remoteBranch: string }
 export interface HostingRepository { url: string; label: string; provider?: 'github' | 'gitlab' }
 export interface RemoteLinks { repositories: HostingRepository[]; defaultBranch?: string }
 export interface PublishedRef {
@@ -34,7 +35,7 @@ export interface PushResult {
   error?: string; output: string;
 }
 export interface ActionResponse { snapshot?: Snapshot; result?: PushResult; refreshWarning?: string }
-export interface Snapshot { repository: Repository; branch: string; head?: string; upstream?: string; defaultBranch?: string; pushTarget?: PushTarget; ahead: number; behind: number; unpushed?: number; changes: Change[]; refs: GitRef[]; remotes?: string[]; remoteDestinations?: Record<string, string>; remoteReadDestinations?: Record<string, string>; stashes: Stash[]; worktrees: Worktree[]; operation: OperationState; version: number }
+export interface Snapshot { repository: Repository; branch: string; head?: string; upstream?: string; defaultBranch?: string; pushTarget?: PushTarget; pullTarget?: PullTarget; ahead: number; behind: number; unpushed?: number; changes: Change[]; refs: GitRef[]; remotes?: string[]; remoteDestinations?: Record<string, string>; remoteReadDestinations?: Record<string, string>; stashes: Stash[]; worktrees: Worktree[]; operation: OperationState; version: number }
 export interface Commit { oid: string; parents: string[]; author: string; email: string; timestamp: number; subject: string; pushed?: boolean }
 export interface HistoryQuery { offset?: number; limit?: number; tips?: string[]; ref?: string; search?: string; head?: string }
 export interface HistoryPage { commits: Commit[]; nextOffset: number; hasMore: boolean; tips: string[]; head?: Commit }
@@ -49,7 +50,7 @@ export type GitAction =
   | { type: 'discard'; paths: string[]; planToken?: string; mode?: 'all' }
   | { type: 'commit'; message: string; amend?: boolean; reviewToken?: string; files?: CommitSelection[]; expectedHead?: string; expectedBranch?: string }
   | { type: 'fetch'; remote?: string }
-  | { type: 'pull'; strategy: 'ff-only' | 'merge' | 'rebase'; remote?: string }
+  | { type: 'pull'; strategy: 'ff-only' | 'merge' | 'rebase'; remote?: string; remoteBranch?: string; expectedHead?: string; expectedBranch?: string }
   | { type: 'push'; remote?: string; branch?: string; remoteBranch?: string; setUpstream?: boolean; followTags?: boolean; forceWithLease?: boolean; expectedOid?: string; expectedDestination?: string }
   | { type: 'remote.add'; name: string; url: string }
   | { type: 'branch.create'; name: string; start?: string; checkout?: boolean }

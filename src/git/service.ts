@@ -330,7 +330,7 @@ export class GitService implements GitServiceContract {
       const original = operation.kind === 'merge' ? status.head : await this.readOperationFile(gitDir, markers[0] ? 'rebase-merge/orig-head' : markers[1] ? 'rebase-apply/orig-head' : 'sequencer/head');
       if (original && /^[a-f0-9]{40,64}$/.test(original.trim())) operation.originalHead = original.trim();
     }
-    let pushTarget: Snapshot['pushTarget'];
+    let pushTarget: Snapshot['pushTarget'], pullTarget: Snapshot['pullTarget'];
     if (status.branch) {
       const [branchPushRemote, defaultPushRemote, branchRemote, mergeRef] = await Promise.all([
         this.optionalConfig(repo, `branch.${status.branch}.pushRemote`),
@@ -343,10 +343,11 @@ export class GitService implements GitServiceContract {
       const remote = branchPushRemote ?? defaultPushRemote ?? branchRemote ?? upstreamRemote ?? (remotes.length === 1 ? remotes[0] : undefined);
       const upstreamBranch = upstreamRemote ? upstream!.slice(upstreamRemote.length + 1) : undefined;
       const configuredBranch = mergeRef?.replace(/^refs\/heads\//, '');
+      if (branchRemote && mergeRef?.startsWith('refs/heads/')) pullTarget = { localBranch: status.branch, remote: branchRemote, remoteBranch: configuredBranch! };
       const remoteBranch = remote && remote === upstreamRemote && upstreamBranch ? upstreamBranch : remote && remote === branchRemote && configuredBranch ? configuredBranch : status.branch;
       pushTarget = { localBranch: status.branch, ...(remote ? { remote } : {}), remoteBranch, configured: !!upstream };
     }
-    return { repository: repo, ...status, unpushed: status.branch ? unpushed : 0, refs, remotes, remoteDestinations, remoteReadDestinations, ...(defaultBranch ? { defaultBranch } : {}), ...(pushTarget ? { pushTarget } : {}), stashes, worktrees, operation, version: ++this.version };
+    return { repository: repo, ...status, unpushed: status.branch ? unpushed : 0, refs, remotes, remoteDestinations, remoteReadDestinations, ...(defaultBranch ? { defaultBranch } : {}), ...(pushTarget ? { pushTarget } : {}), ...(pullTarget ? { pullTarget } : {}), stashes, worktrees, operation, version: ++this.version };
   }
   private async worktrees(repo: Repository): Promise<Worktree[]> {
     const records = decodePaths((await this.run(repo, ['worktree', 'list', '--porcelain', '-z'])).stdout).split('\0'); const result: Worktree[] = []; let current: Worktree | undefined;
@@ -832,7 +833,14 @@ export class GitService implements GitServiceContract {
         args = ['commit', ...(action.amend ? ['--amend'] : []), '-m', action.message]; break;
       }
       case 'fetch': args = ['fetch', ...remote(action.remote)]; break;
-      case 'pull': if (!['ff-only', 'merge', 'rebase'].includes(action.strategy)) throw new GitError(localizeMessage("service.invalidPullStrategy"), 'INVALID_ARGUMENT'); args = ['pull', ...(action.strategy === 'merge' ? ['--no-rebase', '--ff'] : [`--${action.strategy}`]), ...remote(action.remote)]; break;
+      case 'pull': {
+        if (!['ff-only', 'merge', 'rebase'].includes(action.strategy)) throw new GitError(localizeMessage("service.invalidPullStrategy"), 'INVALID_ARGUMENT');
+        if (action.expectedHead !== undefined || action.expectedBranch !== undefined) this.requireActionContext(action, await this.status(repo));
+        if (action.remoteBranch && !action.remote) throw new GitError(localizeMessage('service.selectPullRemote'), 'INVALID_ARGUMENT');
+        const source = action.remoteBranch ? `refs/heads/${await this.refName(repo, action.remoteBranch)}` : undefined;
+        args = ['pull', ...(action.strategy === 'merge' ? ['--no-rebase', '--ff'] : [`--${action.strategy}`]), ...(action.remote ? ['--', ...remote(action.remote), ...(source ? [source] : [])] : [])];
+        break;
+      }
       case 'push': {
         if (action.forceWithLease && (!action.remote || !action.branch || !action.remoteBranch)) throw new GitError(localizeMessage("service.selectExplicitLocalAndRemoteBranchesThenReopenThe"), 'OPERATION_CHANGED');
         const branch = action.branch ? await this.refName(repo, action.branch) : undefined; let destination = action.remote;
