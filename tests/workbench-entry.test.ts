@@ -553,8 +553,10 @@ describe('Workbench entry presentation', () => {
     expect(manifest.contributes?.views?.alwaygit?.some(item => item.id === 'alwaygit.workbenchLauncher')).toBe(true);
     expect(manifest.contributes?.viewsContainers?.secondarySidebar).toEqual([expect.objectContaining({ id: 'alwaygit-auxiliary' })]);
     expect(manifest.contributes?.views?.['alwaygit-auxiliary']).toEqual([expect.objectContaining({ id: 'alwaygit.workbenchAuxiliary', type: 'webview' })]);
-    expect(manifest.activationEvents).toContain('onView:alwaygit.workbenchAuxiliary');
-    expect(manifest.activationEvents).toContain('onView:alwaygit.workbenchLauncher');
+    // VS Code generates onView activation from contributed views since 1.74.
+    expect(manifest.activationEvents?.filter(event => event.startsWith('onView:'))).toEqual([]);
+    expect(manifest.activationEvents).toContain('onWebviewPanel:alwaygit.workbench');
+    // Early window routing prevents new workbench windows waiting for startup to finish.
     expect(manifest.activationEvents).toContain('*');
     expect(manifest.activationEvents).not.toContain('onStartupFinished');
     expect(manifest.contributes?.views?.alwaygit?.[0]).toMatchObject({ type: 'webview' });
