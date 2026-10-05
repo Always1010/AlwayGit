@@ -21,7 +21,7 @@ async function read(name) { try { return JSON.parse(await readFile(path.join(mai
 async function waitFor(label, probe, timeout = 45000) {
   const deadline = Date.now() + timeout;
   while (Date.now() < deadline) { const result = await probe(); if (result) return result; await new Promise(resolve => setTimeout(resolve, 100)); }
-  const states = await Promise.all(['source', 'target', 'new-project', 'workbench-project'].map(name => read(name + '.state.json')));
+  const states = await Promise.all(['source', 'target', 'new-project', 'workbench-project', 'peer-project'].map(name => read(name + '.state.json')));
   throw new Error(`${label} timed out. States: ${JSON.stringify(states)}\n${processOutput}`);
 }
 function launch(root) {
@@ -55,7 +55,7 @@ try {
   await writeFile(path.join(controller, 'README.md'), 'Companion extension used only by isolated AlwayGit window integration tests.\n');
   await build({ entryPoints: ['tests/extension/window-controller.ts'], outfile: path.join(controller, 'extension.cjs'), bundle: true, platform: 'node', format: 'cjs', target: 'node20', external: ['vscode'] });
   const roots = {};
-  for (const name of ['source', 'target', 'new-project', 'workbench-project']) {
+  for (const name of ['source', 'target', 'new-project', 'workbench-project', 'peer-project']) {
     const root = roots[name] = path.join(directory, name); await mkdir(root);
     const git = (...args) => exec('git', ['-C', root, ...args], { windowsHide: true });
     await git('init', '-b', 'main'); await git('config', 'user.name', 'Window Test'); await git('config', 'user.email', 'windows@example.com'); await git('config', 'commit.gpgsign', 'false');
@@ -109,7 +109,21 @@ try {
   const workbenchProject = await waitFor('New project workbench tab', async () => { const state = await read('workbench-project.state.json'); return state && tabs(state).some(tab => tab.label === 'AlwayGit') && state; });
   assertPreserved(workbenchProject);
   assert.equal((await readdir(source.registry)).filter(name => name.endsWith('.json')).length, 4, 'Existing project windows must be reused and explicit Workbench opens get one new window');
-  console.log('ALWAYGIT_WINDOW_TESTS_PASSED: exact project window/focus, receiving-host staged/unstaged Diff, pinned file tabs, no side group, preserved unsaved editors/workbench, unopened project startup, new-window Workbench startup');
+  // User flow: independently open another project with VS Code, then open AlwayGit there.
+  // Both panels must still respond through their real message bridge, including repository switches.
+  const original = await action('source', { type: 'probe-workbench', root: roots.source });
+  launch(roots['peer-project']);
+  await waitFor('Independent project startup', async () => (await read('peer-project.state.json'))?.ready);
+  const peer = await action('peer-project', { type: 'probe-workbench', root: roots['peer-project'] });
+  assert.notEqual(original.probe.session.repoId, peer.probe.session.repoId);
+  for (const root of [roots['peer-project'], roots.source]) {
+    const sourceProbe = await action('source', { type: 'probe-workbench', root });
+    assertPreserved(sourceProbe.state);
+    const peerProbe = await action('peer-project', { type: 'probe-workbench', root: roots['peer-project'] });
+    assertPreserved(peerProbe.state);
+    assert.equal(peerProbe.probe.session.repoId, peer.probe.session.repoId, 'Source selection must not replace the independent window session');
+  }
+  console.log('ALWAYGIT_WINDOW_TESTS_PASSED: project routing/focus, staged/unstaged Diff, pinned tabs, unsaved editors, independent project startup, real panel message round trips and repository switches in both windows');
 } finally {
   // Only terminate processes launched with this isolated test profile; never touch user VS Code.
   for (const child of children) {

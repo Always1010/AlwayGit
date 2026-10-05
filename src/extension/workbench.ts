@@ -279,12 +279,17 @@ export class Workbench implements vscode.Disposable {
       if (!parsed.success || this.panels.get(panel) !== entry) return;
       if (kind === 'docked') this.lastPanel = entry;
       this.requestCount++;
+      const waiting = parsed.data.method === 'saveSession' ? setTimeout(() => {
+        if (this.disposed || this.panels.get(panel) !== entry) return;
+        try { this.output.appendLine('[request:saveSession] ' + translate('en', 'host.sessionWritePending')); } catch { /* The output channel may have been closed. */ }
+      }, 10_000) : undefined;
       try { const result = await this.handleRequest(parsed.data, entry); this.post({ type: 'response', id: parsed.data.id, result }, entry); }
       catch (error) {
         const failure = serializeRequestError(error, this.panelLanguage(entry));
         this.output.appendLine('[request:' + parsed.data.method + '] ' + requestErrorText(failure));
         this.post({ type: 'response', id: parsed.data.id, error: failure }, entry);
       }
+      finally { clearTimeout(waiting); }
     }));
     const changed = () => {
       const revealed = panel.visible && !entry.visible; entry.visible = panel.visible;
@@ -640,7 +645,16 @@ export class Workbench implements vscode.Disposable {
         }
         continue;
       }
-      void entry.panel.webview.postMessage(message);
+      const failed = (reason: string) => {
+        if (this.disposed || this.panels.get(entry.panel) !== entry) return;
+        // Record transport failures without exposing drafts, paths or response payloads.
+        try { this.output.appendLine(`[webview:${message.type}] ${redactSecrets(reason)}; mode=${entry.kind}; visible=${entry.panel.visible}`); } catch { /* Output may be disposed while delivery settles. */ }
+      };
+      try {
+        void entry.panel.webview.postMessage(message).then(delivered => {
+          if (!delivered) failed(translate('en', 'host.webviewMessageNotDelivered'));
+        }, error => failed(error instanceof Error ? error.message : String(error)));
+      } catch (error) { failed(error instanceof Error ? error.message : String(error)); }
     }
   }
   private async html(webview: vscode.Webview,activeRepository?:string,blank=false,initialSession?:SessionState,kind:WorkbenchOpenMode='editor',transfer?:WorkbenchTransfer): Promise<string> {

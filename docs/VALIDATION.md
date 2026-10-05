@@ -48,7 +48,7 @@
 
 `test:extension` 默认下载并运行稳定版 VS Code；可通过 `ALWAYGIT_VSCODE_EXECUTABLE` 使用现有安装，或通过 `ALWAYGIT_VSCODE_VERSION` 检查指定版本。测试在系统临时目录创建独立仓库，网络操作使用本地 Bare Remote。
 
-`test:windows` 使用独立临时 Profile、测试仓库和测试伴随扩展，验证项目窗口激活、跨窗口 Diff/编辑、保留标签和未保存文档，以及未打开项目的新窗口启动；测试进程不使用或关闭用户的 VS Code 窗口。多根工作区和不同 Worktree 的目录匹配同时由 IPC 单元测试覆盖。
+`test:windows` 使用独立临时 Profile、测试仓库和测试伴随扩展，验证项目窗口激活、跨窗口 Diff/编辑、保留标签和未保存文档，以及未打开项目的新窗口启动；还会独立打开另一个项目和 AlwayGit，通过真实面板的 `repositorySelected` / `captureWorkbench` 消息验证两个窗口继续响应、原窗口切换仓库及窗口会话隔离，不能以直接调用后端方法替代面板响应。测试进程不使用或关闭用户的 VS Code 窗口。多根工作区和不同 Worktree 的目录匹配同时由 IPC 单元测试覆盖。此新增真实面板场景需取得桌面测试许可后执行，尚无通过记录。
 
 ## 浏览器验收矩阵
 

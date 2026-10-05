@@ -2620,6 +2620,14 @@ export const catalog = {
     "en": "AlwayGit — {{name}}",
     "zh-CN": "AlwayGit — {{name}}"
   },
+  "host.sessionWritePending": {
+    "en": "VS Code state write is still pending after 10 seconds.",
+    "zh-CN": "等待 10 秒后，VS Code 状态写入仍未完成。"
+  },
+  "host.webviewMessageNotDelivered": {
+    "en": "VS Code did not deliver the message",
+    "zh-CN": "VS Code 未投递此消息"
+  },
   "host.couldNotOpenWebLink": {
     "en": "Could not open the web link. Copy it and open it in your browser.",
     "zh-CN": "无法打开网页链接，请复制后在浏览器打开。"
@@ -6633,6 +6641,8 @@ export interface MessageParameters {
   "host.activityRefresh": { value: ParameterValue };
   "host.refresh": { value: ParameterValue };
   "host.alwayGit": { name: ParameterValue };
+  "host.sessionWritePending": {  };
+  "host.webviewMessageNotDelivered": {  };
   "host.couldNotOpenWebLink": {  };
   "manager.theRepositoryOrGroupNoLongerExists": {  };
   "manager.reorderItemsWithinTheSameLevel": {  };
