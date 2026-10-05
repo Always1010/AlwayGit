@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { useTranslation } from './i18n';
 import { useWorkbench } from './store';
 import { shortcutAria, shortcutTitle, type WorkbenchShortcut } from './shortcutKeys';
@@ -38,9 +38,9 @@ export function ResizeHandle({ axis, label, value, onChange, min, max, reverse =
 
 export function Modal({ title, children, onClose, busy = false, footer, className='' }: { title: string; children: React.ReactNode; onClose(): void; busy?: boolean; footer?: React.ReactNode; className?:string }) {
   const t = useTranslation(), panel = useRef<HTMLDivElement>(null), callback = useRef(onClose); callback.current = onClose;
-  useEffect(() => {
+  useLayoutEffect(() => {
     const previous = document.activeElement as HTMLElement;
-    (panel.current?.querySelector<HTMLElement>('[data-autofocus="true"]') ?? panel.current?.querySelector<HTMLElement>('input:not([type=checkbox]),select,textarea,button'))?.focus();
+    (panel.current?.querySelector<HTMLElement>('[data-autofocus="true"]:not(:disabled)') ?? panel.current?.querySelector<HTMLElement>('input:not([type=checkbox]):not(:disabled),select:not(:disabled),textarea:not(:disabled),button:not(:disabled)'))?.focus();
     const key = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         const dialogs=[...document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]')];
