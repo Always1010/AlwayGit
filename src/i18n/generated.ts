@@ -2769,12 +2769,12 @@ export const catalog = {
     "zh-CN": "旧版打开方式，仅在尚未配置工作台显示位置时使用。"
   },
   "manifest.workbenchLocationsDescription": {
-    "en": "Available Workbench locations and the default destination of Open Workbench. Changing this setting preserves existing workbenches and drafts.",
-    "zh-CN": "可用工作台位置及 Open Workbench 默认入口。修改设置保留已有工作台与草稿。"
+    "en": "Available Workbench locations and the default destination of Open Workbench. Changing this setting preserves Workbench sessions, drafts and live terminals.",
+    "zh-CN": "可用工作台位置及 Open Workbench 默认入口。修改设置保留工作台会话、草稿与运行中的终端。"
   },
   "manifest.enabledLocationsDescription": {
-    "en": "Select one or more locations. Disabling a location does not close a live Workbench.",
-    "zh-CN": "选择一个或多个位置。取消勾选不会关闭正在使用的工作台。"
+    "en": "Select one or more locations. Secondary Sidebar and Panel entries follow these settings; the Primary Sidebar launcher stays available. Disabling an optional view preserves its session and live terminals for reopening.",
+    "zh-CN": "选择一个或多个位置。第二侧边栏和面板入口跟随设置显示或隐藏，主侧边栏启动入口始终保留。隐藏可选视图后保留会话与运行中的终端，重新启用时恢复。"
   },
   "manifest.defaultLocationDescription": {
     "en": "Destination for Open Workbench. Must be one of the enabled locations.",
