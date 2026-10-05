@@ -53,6 +53,16 @@
 
 2026-10-05，经用户许可，使用本机 VS Code 1.140.0 执行真实窗口验证：当前 0.48.0 源码与现有 0.47.2 VSIX 均通过独立项目启动、两窗口面板通信及原窗口切换仓库场景，未复现用户报告的短暂失联。0.47.2 缺少 captureWorkbench，伴随扩展只在隔离测试页面注入探针，验证 saveSession/snapshot 的真实请求及应答和页面本地选择状态，不修改原 VSIX 或生产请求处理。旧包可使用 `node scripts/test-windows.mjs --vsix artifacts/alwaygit-0.47.2.vsix` 验证；设置 `ALWAYGIT_VSCODE_EXECUTABLE` 指向已有 VS Code 可避免下载。首轮测试因仓库标题变化导致标签断言过时而失败，修正后通过；后补的注册目录清理通过语法和路径归属检查，未为清理逻辑重复启动桌面测试。此结果不代表已定位或修复本次失联，日常扩展与固定安装包未更新。
 
+### 用户手册截图维护
+
+先执行一次 `npm run build`，再运行 `node scripts/capture-manual.mjs`。脚本使用无头浏览器和当前构建的真实工作台组件，所有 RPC 均由隔离的示例夹具响应，不执行 Git、Shell、原生编辑器或窗口动作，不连接远端。固定主题、语言、字号、视口、时区和示例时间；每个场景有独立浏览器上下文，弹窗按边界裁切以保持文字可读，窄侧栏图是组件适配演示，不代表真实 VS Code 容器验收。
+
+预览输出到忽略目录 `artifacts/manual-capture/`；`--only=NN` 查看单个场景，`--from=NN` 从指定场景继续采集，均不改手册图片。核对场景及图文后使用 `node scripts/capture-manual.mjs --write` 全量采集；全部场景成功才开始替换 `docs/images/user-manual/` 的维护图片。部分采集不能使用 `--write`。场景定义集中在该脚本，不手工保留不同版本的旧图。
+
+两份用户手册共用图片、章节锚点和截图来源说明；新增图片必须同时被两版引用。更新时核对每张图的实际入口、对象、数量、方向和正文，删除失效或未引用资源，保持真正的 PNG 编码。手册来源说明记录实际采集日期与源码版本，不能把 Demo 反馈当作真实 Git 或终端执行证据。需要 VS Code 原生外壳截图或宿主行为验收时，另按项目规则取得可见窗口许可。
+
+完成后检查链接与 `git diff --check`，运行 `npx vitest run tests/help-content.test.ts`，构建最终帮助资源并运行无头 `node scripts/test-ui.mjs --help-only`。修改帮助 TypeScript 时同时运行类型检查；不因为截图变化启动完整功能测试。验证结论记录在本文的“验证证据与覆盖边界”。
+
 ## 浏览器验收矩阵
 
 内嵌终端的真实无窗口宿主检查使用构建后的 `node scripts/test-terminal-host.mjs`，覆盖 PTY 输入/输出、自然退出、主动终止、启动失败和辅助进程退出；Windows 额外验证 PowerShell。该检查不启动 VS Code，它验证当前运行平台的原生模块，不代表其他平台也已验收。
