@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-116：Pull 和 Push 弹窗未聚焦默认确认按钮
+
+- 日期：2026-10-06
+- 状态：已解决
+- 现象：打开 Pull 或 Push 后直接按回车无法执行默认动作，需先点击或切换到确认按钮；目标明确的常用操作被额外的焦点操作打断。
+- 原因：通用 Modal 未收到显式初始焦点标记，按 DOM 顺序选到标题栏关闭按钮；Pull 和 Push 未按目标完整性指定焦点。
+- 解决方案：在弹窗首帧前设置焦点并跳过禁用控件。目标完整时显式聚焦确认；目标不完整时聚焦缺少的远程或分支，无远端时聚焦添加远端入口，Pull 的 Detached HEAD 提示聚焦取消。Push 缺少或含非法目标分支时禁用提交，保留原生 Enter、Tab/Esc 和已有重复提交防护。
+- 验证方式：类型检查和前端生产构建通过。transfer 定向无头 UI 验证 Pull/Push 初始焦点、立即 Enter、连续 Enter 单次提交、缺少来源/目标/远程、添加远程后返回 Pull、Detached HEAD、Tab 循环、Esc 和成功后焦点恢复。既有 action-safety 无头回归通过，覆盖等待默认设置保存、重复提交、取消、仓库切换/切回、正常提交及保存失败。未启动可见桌面集成测试。
+- 相关文件：`webview/ui.tsx`、`webview/ActionDialog.tsx`、`scripts/test-transfer-ui.mjs`、`docs/WORKBENCH_SPEC.md`、`docs/USER_MANUAL.zh-CN.md`、`docs/USER_MANUAL.en.md`。
+
 ## BUG-115：Pull 对话框未显示实际来源且远程输入含义不明确
 
 - 日期：2026-10-06
