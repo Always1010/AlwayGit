@@ -2700,10 +2700,6 @@ export const catalog = {
     "en": "Workbench",
     "zh-CN": "Workbench"
   },
-  "manifest.contributes.viewsWelcome.item0.contents": {
-    "en": "[Show Git Workbench](command:alwaygit.showWorkbench)\n[Open Workbench in New Window](command:alwaygit.openWorkbenchInNewWindow)",
-    "zh-CN": "[显示 Git Workbench](command:alwaygit.showWorkbench)\n[在新窗口中打开 Workbench](command:alwaygit.openWorkbenchInNewWindow)"
-  },
   "manifest.contributes.configuration.title": {
     "en": "AlwayGit",
     "zh-CN": "AlwayGit"
@@ -2743,6 +2739,26 @@ export const catalog = {
   "manifest.contributes.configuration.properties.alwaygit.interfaceSettings.description": {
     "en": "Workbench appearance, keyboard and reading preferences shared across windows.",
     "zh-CN": "跨窗口共享的工作台外观、快捷键与阅读偏好。"
+  },
+  "manifest.openModeSettings": {
+    "en": "Workbench Opening Mode",
+    "zh-CN": "工作台打开方式"
+  },
+  "manifest.moveWorkbenchView": {
+    "en": "Adjust Dock Location…",
+    "zh-CN": "调整停靠位置…"
+  },
+  "manifest.editorModeDescription": {
+    "en": "Open in the editor area. Switching creates an independent new tab.",
+    "zh-CN": "在编辑器区域打开。切换时新建独立标签页。"
+  },
+  "manifest.dockedModeDescription": {
+    "en": "Open in a movable view in a sidebar or the panel.",
+    "zh-CN": "在可移到侧边栏或面板的视图中打开。"
+  },
+  "manifest.openModeDescription": {
+    "en": "Default Workbench opening mode. Docked views can be moved using the view title menu. Switching to editor mode creates a new tab with the docked Workbench state and preserves existing tabs.",
+    "zh-CN": "工作台默认打开方式。停靠视图可通过视图标题菜单移动位置。切换到标签页模式时携带停靠工作台状态新建标签页，保留已有标签页。"
   },
   "menus.discardAllUnstaged": {
     "en": "Discard All Unstaged Changes…",
@@ -5890,6 +5906,78 @@ export const catalog = {
   "workbenchEntry.openAlwayGitWorkbench": {
     "en": "Open AlwayGit Workbench",
     "zh-CN": "打开 AlwayGit Workbench"
+  },
+  "workbenchEntry.viewTitle": {
+    "en": "Workbench",
+    "zh-CN": "工作台"
+  },
+  "workbenchEntry.editorMode": {
+    "en": "Editor Tab",
+    "zh-CN": "编辑器标签页"
+  },
+  "workbenchEntry.dockedMode": {
+    "en": "Docked View",
+    "zh-CN": "停靠视图"
+  },
+  "workbenchEntry.editorDescription": {
+    "en": "Open in the editor area. Switching creates an independent new tab.",
+    "zh-CN": "在编辑器区域打开。切换时新建独立标签页。"
+  },
+  "workbenchEntry.dockedDescription": {
+    "en": "Open in a movable view in a sidebar or the panel.",
+    "zh-CN": "在可移到侧边栏或面板的视图中打开。"
+  },
+  "workbenchEntry.moveView": {
+    "en": "Adjust Dock Location…",
+    "zh-CN": "调整停靠位置…"
+  },
+  "workbenchEntry.openSettings": {
+    "en": "Open AlwayGit Settings",
+    "zh-CN": "打开 AlwayGit 设置"
+  },
+  "workbenchEntry.openModeSettings": {
+    "en": "Workbench Opening Mode",
+    "zh-CN": "工作台打开方式"
+  },
+  "workbenchEntry.chooseOpenMode": {
+    "en": "Choose the default opening mode or adjust the dock location",
+    "zh-CN": "选择默认打开方式或调整停靠位置"
+  },
+  "workbenchEntry.switchFailed": {
+    "en": "Could not switch the Workbench. Its previous opening mode and state have been preserved. {{reason}}",
+    "zh-CN": "无法切换工作台，已保留原来的打开方式和状态。{{reason}}"
+  },
+  "workbenchEntry.captureFailed": {
+    "en": "Could not read the current Workbench state. Try switching again after it finishes loading.",
+    "zh-CN": "无法读取当前工作台状态。请在加载完成后重试切换。"
+  },
+  "workbenchEntry.repositoriesTab": {
+    "en": "Repositories",
+    "zh-CN": "仓库"
+  },
+  "workbenchEntry.historyTab": {
+    "en": "History",
+    "zh-CN": "历史"
+  },
+  "workbenchEntry.detailsTab": {
+    "en": "Details / Changes",
+    "zh-CN": "详情 / 改动"
+  },
+  "workbenchEntry.diffTab": {
+    "en": "Diff / Terminal",
+    "zh-CN": "差异 / 终端"
+  },
+  "workbenchEntry.compactNavigation": {
+    "en": "Workbench Regions",
+    "zh-CN": "工作台区域"
+  },
+  "workbenchEntry.waitForOperation": {
+    "en": "Wait until the current Git operation finishes before switching the Workbench.",
+    "zh-CN": "请等待当前 Git 操作完成后再切换工作台。"
+  },
+  "workbenchEntry.showGitWorkbench": {
+    "en": "Show Git Workbench",
+    "zh-CN": "显示 Git Workbench"
   }
 } as const;
 export interface MessageParameters {
@@ -6561,7 +6649,6 @@ export interface MessageParameters {
   "manifest.contributes.commands.item1.category": {  };
   "manifest.contributes.viewsContainers.activitybar.item0.title": {  };
   "manifest.contributes.views.alwaygit.item0.name": {  };
-  "manifest.contributes.viewsWelcome.item0.contents": {  };
   "manifest.contributes.configuration.title": {  };
   "manifest.contributes.configuration.properties.alwaygit.language.description": {  };
   "manifest.contributes.configuration.properties.alwaygit.gitPath.description": {  };
@@ -6572,6 +6659,11 @@ export interface MessageParameters {
   "manifest.contributes.configuration.properties.alwaygit.pushTagAfterCreate.description": {  };
   "manifest.contributes.configuration.properties.alwaygit.defaultResetMode.description": {  };
   "manifest.contributes.configuration.properties.alwaygit.interfaceSettings.description": {  };
+  "manifest.openModeSettings": {  };
+  "manifest.moveWorkbenchView": {  };
+  "manifest.editorModeDescription": {  };
+  "manifest.dockedModeDescription": {  };
+  "manifest.openModeDescription": {  };
   "menus.discardAllUnstaged": {  };
   "menus.discardAllChanges": {  };
   "menus.createLocalTrackingBranches": {  };
@@ -7355,4 +7447,22 @@ export interface MessageParameters {
   "workbench.retryRepositories": {  };
   "workbenchEntry.showAlwayGitWorkbench": {  };
   "workbenchEntry.openAlwayGitWorkbench": {  };
+  "workbenchEntry.viewTitle": {  };
+  "workbenchEntry.editorMode": {  };
+  "workbenchEntry.dockedMode": {  };
+  "workbenchEntry.editorDescription": {  };
+  "workbenchEntry.dockedDescription": {  };
+  "workbenchEntry.moveView": {  };
+  "workbenchEntry.openSettings": {  };
+  "workbenchEntry.openModeSettings": {  };
+  "workbenchEntry.chooseOpenMode": {  };
+  "workbenchEntry.switchFailed": { reason: ParameterValue };
+  "workbenchEntry.captureFailed": {  };
+  "workbenchEntry.repositoriesTab": {  };
+  "workbenchEntry.historyTab": {  };
+  "workbenchEntry.detailsTab": {  };
+  "workbenchEntry.diffTab": {  };
+  "workbenchEntry.compactNavigation": {  };
+  "workbenchEntry.waitForOperation": {  };
+  "workbenchEntry.showGitWorkbench": {  };
 }

@@ -7,7 +7,7 @@ import { create } from 'zustand';
 import { errorMessage } from './rpc-error';
 import type { ActionResponse, HostingRepository, CheckoutBlocker, Commit, CommitComparison, CommitDetails, DiffTarget, GitAction, HistoryPage, HistoryQuery, OperationReview, OperationSettings, Repository, RepositoryChanges, RepositoryCollection, RepositoryOrder, ReorderRepository, RepositoryStatus, Snapshot, StashApplyBlocker, StashDetails, StashSection } from '../src/protocol/types';
 import { demoMode, readSession, rpc, saveSession, subscribe } from './rpc';
-import type { LayoutState } from './rpc';
+import type { LayoutState, SessionState } from './rpc';
 import type { DiffNavigationScope } from '../src/protocol/session';
 import { defaultLayout, interfaceSettingsSchema, overlayInterfaceSettings, type InterfacePreferences, type InterfacePreferencesUpdate } from '../src/protocol/interface-settings';
 import type { Language } from './i18n';
@@ -26,6 +26,7 @@ let historyController: AbortController | undefined;
 function cancelSearchTimer() { clearTimeout(searchTimer); searchTimer = undefined; }
 let refreshInvalidation: { epoch: number; changes?: RepositoryChanges; forceHistory: boolean } | undefined;
 const session = readSession(), views = session.views ?? {}, executingRepositories = new Set<string>(), hostBusyRepositories = new Set<string>();
+let initialTransfer = globalThis.window?.__ALWAYGIT_TRANSFER__;
 const actionFeedbacks = new Map<string, ActionFeedback>();
 let actionSequence = 0;
 export interface RepositoryActionContext { repoId?: string; epoch: number }
@@ -184,7 +185,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     set({ checkedRefs: [ref], search: '', ref: undefined, selectedOids: [], comparison: undefined });
     void get().locateCommit(oid);
   },
-  workingFilters: {},
+  workingFilters: globalThis.window?.__ALWAYGIT_TRANSFER__?.workingFilters ?? {},
   setWorkingFilter(value) { const repoId = get().repoId; if (repoId) set({ workingFilters: { ...get().workingFilters, [repoId]: value } }); },
   diffNavigationScope: session.diffNavigationScope === 'file' ? 'file' : 'commit',
   changeListMode: session.changeListMode === 'unified' ? 'unified' : 'split',
@@ -262,6 +263,16 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     set({ operationReview: undefined });
     set({ repoId: id, tagRemote: view?.tagRemote, locatingOid: undefined, snapshot: undefined, commits: [], historyHead: undefined, selectedOids:[], selectionAnchor:undefined, selectedRefs:[],refSelectionAnchor:undefined, selectedWorktreePaths:[],worktreeSelectionAnchor:undefined, tips: [], details: undefined, comparison:undefined, stashDetails: undefined, selectedStashSection:undefined, diffTarget: undefined, diffRevision:0, selectedFile: view?.selectedFile, selectedOid: view?.selectedOid, selectedParent: view?.selectedParent, selectedStashOid: view?.selectedStashOid, ref: view?.ref, checkedRefs: view?.checkedRefs ? [...view.checkedRefs] : view?.ref ? [view.ref] : undefined, expandedRefGroups:view?.expandedRefGroups?[...view.expandedRefGroups]:undefined,collapsedSidebarGroups:[...(view?.collapsedSidebarGroups??[])], search: view?.search ?? '', tab: view?.tab ?? 'history', remoteRequest: undefined, checkoutFailure: undefined, stashApplyFailure: undefined, error: undefined, notice: undefined, actionFeedback: actionFeedbacks.get(id), loading: true, busy: executingRepositories.has(id) || hostBusyRepositories.has(id), activity: '', detailsLoading: false, historyLoading: false });
     await get().refresh();
+    const transfer = initialTransfer;
+    if (transfer?.session.repoId === id && get().repoId === id && get().snapshot) {
+      initialTransfer = undefined;
+      const epoch = repositoryEpoch;
+      if (transfer.comparison) await get().compareCommits(transfer.comparison.left, transfer.comparison.right, true);
+      else if (get().tab === 'history' && get().selectedOid) await get().selectCommit(get().selectedOid!, get().selectedParent, get().selectedStashOid);
+      if (epoch !== repositoryEpoch) return;
+      if (transfer.selectedOids) set({ selectedOids: transfer.selectedOids, selectionAnchor: transfer.selectedOids[0] });
+      if (transfer.diffTarget) get().selectFile(transfer.diffTarget, false);
+    }
   },
   async refresh(options = {}) {
     const epoch = repositoryEpoch, request = ++snapshotEpoch, repoId = get().repoId; if (!repoId) return;
@@ -560,18 +571,28 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     synchronizeInterfaceSettings(saved);
   },
 }));
+/** Read live UI state for handoffs instead of waiting for the host-save debounce. */
+function workbenchSession(state: WorkbenchState): SessionState {
+  if (state.repoId) views[state.repoId] = { tagRemote: state.tagRemote, ref: state.ref, checkedRefs: state.checkedRefs, expandedRefGroups:state.expandedRefGroups,collapsedSidebarGroups:state.collapsedSidebarGroups, search: state.search, selectedOid: state.selectedOid, selectedParent: state.selectedParent, selectedStashOid: state.selectedStashOid, selectedFile: state.selectedFile, tab: state.tab };
+  const baseline = state.settingsBaseline;
+  const repoId = state.repoId ?? (state.catalogState === 'loading' ? session.repoId : undefined);
+  return { version: 2, changeListMode: baseline?.changeListMode ?? state.changeListMode, diffNavigationScope: baseline?.diffNavigationScope ?? state.diffNavigationScope, singleKeyShortcuts: baseline?.singleKeyShortcuts ?? state.singleKeyShortcuts, shortcutOverrides: baseline?.shortcutOverrides ?? state.shortcutOverrides, repoId, drafts: state.drafts, views, language: baseline?.language ?? state.language, layout: baseline ? { ...state.layout, font: baseline.font, row: baseline.row } : state.layout, appearance: baseline?.appearance ?? state.appearance };
+}
 let persistedSelection: unknown[] = [];
 useWorkbench.subscribe(state => {
   const selection = [state.tagRemote, state.repoId, state.drafts, state.ref, state.checkedRefs, state.expandedRefGroups, state.collapsedSidebarGroups, state.search, state.selectedOid, state.selectedParent, state.selectedStashOid, state.selectedFile, state.tab, state.language, state.layout, state.appearance, state.diffNavigationScope, state.singleKeyShortcuts, state.shortcutOverrides, state.changeListMode, state.settingsBaseline];
   if (selection.every((value, index) => Object.is(value, persistedSelection[index]))) return;
   persistedSelection = selection;
-  if (state.repoId) views[state.repoId] = { tagRemote: state.tagRemote, ref: state.ref, checkedRefs: state.checkedRefs, expandedRefGroups:state.expandedRefGroups,collapsedSidebarGroups:state.collapsedSidebarGroups, search: state.search, selectedOid: state.selectedOid, selectedParent: state.selectedParent, selectedStashOid: state.selectedStashOid, selectedFile: state.selectedFile, tab: state.tab };
-  const baseline = state.settingsBaseline;
-  saveSession({ version: 2, changeListMode: baseline?.changeListMode ?? state.changeListMode, diffNavigationScope: baseline?.diffNavigationScope ?? state.diffNavigationScope, singleKeyShortcuts: baseline?.singleKeyShortcuts ?? state.singleKeyShortcuts, shortcutOverrides: baseline?.shortcutOverrides ?? state.shortcutOverrides, repoId: state.repoId, drafts: state.drafts, views, language: baseline?.language ?? state.language, layout: baseline ? { ...state.layout, font: baseline.font, row: baseline.row } : state.layout, appearance: baseline?.appearance ?? state.appearance }, error => useWorkbench.getState().report(new Error(`${translate(state.language, "notices.couldNotSaveTheRecoveryBaselineDraftsRemainIn")} ${error.message}`)));
+  saveSession(workbenchSession(state), error => useWorkbench.getState().report(new Error(`${translate(state.language, "notices.couldNotSaveTheRecoveryBaselineDraftsRemainIn")} ${error.message}`)));
 });
 let changedTimer: ReturnType<typeof setTimeout>;
 let pendingChange: { repoId: string; changes?: RepositoryChanges; snapshot?: Snapshot } | undefined;
 subscribe(event => {
+  if (event.type === 'captureWorkbench') {
+    const state = useWorkbench.getState();
+    void rpc('captureWorkbench', undefined, { token: event.token, session: workbenchSession(state), workingFilters: state.workingFilters, activeTerminal: useDock.getState().activeId, selectedOids: state.selectedOids, comparison: state.comparison ? { left: state.comparison.left.oid, right: state.comparison.right.oid } : undefined, diffTarget: state.diffTarget, busy: state.busy }).catch(state.report);
+    return;
+  }
   if (event.type === 'interfaceSettingsChanged') { ++preferencesEpoch; synchronizeInterfaceSettings(event.settings); }
   const state = useWorkbench.getState(); if (event.type === 'operationSettingsChanged') useWorkbench.setState({ operationSettings: event.settings });
   if (event.type === 'fileOperationProgress' && event.repoId === state.repoId && state.actionFeedback?.status === 'running') useWorkbench.setState({ actionFeedback: { ...state.actionFeedback, progress: event.progress } });

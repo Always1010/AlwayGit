@@ -64,7 +64,7 @@ Use VS Code 1.95 or later. Basic features require Git 2.40 or later; saving a St
 
 **Result:** The AlwayGit workbench appears in the editor area. Once the repository has loaded, you can see its branches and history.
 
-**Caution:** Opening the launch sidebar alone does not automatically create a workbench. Show first returns to an existing workbench in the current window, if one is available.
+**Opening mode:** Editor tabs are the default. Use the gear in the AlwayGit view title to choose Docked View, then Adjust Dock Location… to move it to either sidebar or the panel. The title gear remains available. Switching back creates an independent new editor tab with the docked state and leaves existing tabs and drafts intact. Narrow sidebars and short panels use region navigation. See the [workbench specification](WORKBENCH_SPEC.md#布局与视觉) for the full behavior.
 
 **Troubleshooting:** If Git is unavailable, check its installation and the Git path configured in VS Code. If the workspace is in Restricted Mode, change its trust settings only after confirming that the project is trustworthy.
 

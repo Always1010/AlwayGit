@@ -29,13 +29,25 @@ import { interfaceSettingsSchema, interfaceSettingsUpdateSchema, legacyInterface
 import { RepositoryOperationBusyError, RepositoryOperationRecoveryRequiredError } from '../application/operation-lock';
 import { discardRequestSchema } from '../protocol/validation';
 import { operationSettingsScopeSchema } from '../protocol/validation';
+import { captureWorkbenchSchema, type WorkbenchOpenMode, type WorkbenchTransfer } from '../protocol/workbench-host';
+import { workbenchLauncherHtml, workbenchViewId } from './workbench-launcher';
 
-interface WorkbenchPanel { panel: vscode.WebviewPanel; visible: boolean; activeRepository?: string; blank: boolean; session?: SessionState; savedSession?: SessionState; pendingTerminal?: boolean; pendingChanges?: { repoId: string; changes?: RepositoryChanges }; catalogDirty?: boolean }
+type WorkbenchSurface = vscode.WebviewPanel | vscode.WebviewView;
+interface WorkbenchPanel { panel: WorkbenchSurface; kind: WorkbenchOpenMode; ready: boolean; subscriptions: vscode.Disposable[]; visible: boolean; activeRepository?: string; blank: boolean; session?: SessionState; savedSession?: SessionState; pendingTerminal?: boolean; pendingChanges?: { repoId: string; changes?: RepositoryChanges }; catalogDirty?: boolean }
 interface RepositoryDiscoverySession { source?: WorkbenchPanel; cancelled: boolean; root: string; discovery?: DiscoveryResult }
 export interface WorkbenchPresence { open: boolean; active: boolean }
 
 export class Workbench implements vscode.Disposable {
-  private readonly panels = new Map<vscode.WebviewPanel, WorkbenchPanel>();
+  private readonly panels = new Map<WorkbenchSurface, WorkbenchPanel>();
+  private dockedView?: vscode.WebviewView;
+  private dockedPanel?: WorkbenchPanel;
+  private dockOpening?: Promise<WorkbenchPanel | undefined>;
+  private pendingDockTransfer?: WorkbenchTransfer;
+  private readonly viewResolved = new vscode.EventEmitter<void>();
+  private appliedMode: WorkbenchOpenMode;
+  private modeChanges: Promise<void> = Promise.resolve();
+  private disposed = false;
+  private readonly captures = new Map<string, { source: WorkbenchPanel; resolve(value: WorkbenchTransfer): void; reject(error: Error): void; timer: ReturnType<typeof setTimeout> }>();
   private lastPanel?: WorkbenchPanel;
   private readonly terminals = new TerminalSessions(spawnTerminal, (owner, event) => this.post(event, owner as WorkbenchPanel));
   private activeRepository?: string;
@@ -50,7 +62,7 @@ export class Workbench implements vscode.Disposable {
   private readonly repositoryDiscoveries = new Map<string, RepositoryDiscoverySession>();
   private readonly presenceEmitter = new vscode.EventEmitter<WorkbenchPresence>();
   readonly onDidChangePresence = this.presenceEmitter.event;
-  get presence(): WorkbenchPresence { return { open: this.panels.size > 0, active: [...this.panels.keys()].some(panel => panel.active) }; }
+  get presence(): WorkbenchPresence { return { open: this.panels.size > 0, active: [...this.panels.values()].some(entry => this.isActive(entry)) }; }
   /** Diagnostic count used to verify the real Webview message bridge. */
   get receivedWebviewRequests(): number { return this.requestCount; }
   private readonly interval: ReturnType<typeof setInterval>;
@@ -76,6 +88,7 @@ export class Workbench implements vscode.Disposable {
     })().catch(error => { this.preferenceMigration = undefined; throw error; });
   }
   private readonly sessions = new SessionWriter(session => this.context.workspaceState.update('alwaygit.session', session));
+  private readonly dockedSessions = new SessionWriter(session => this.context.workspaceState.update('alwaygit.dockedSession', session));
   private operationSettings(scope?: OperationSettings['scope']): OperationSettings {
     const configuration = vscode.workspace.getConfiguration('alwaygit');
     const workspaceAvailable = !!(vscode.workspace.workspaceFile || vscode.workspace.workspaceFolders?.length);
@@ -96,18 +109,133 @@ export class Workbench implements vscode.Disposable {
   private repositoryKey(commonDir: string): string { const resolved=path.resolve(commonDir);return process.platform==='win32'?resolved.toLowerCase():resolved; }
   private isBusy(commonDir: string): boolean { const key=this.repositoryKey(commonDir);return this.busy.has(key)||this.externalBusy.has(key); }
   constructor(private readonly context: vscode.ExtensionContext, private readonly git: GitServiceContract, private readonly repositories: RepositoryManager, private readonly documents: GitDocuments, private readonly output: vscode.OutputChannel, private readonly projects: ProjectWindows) {
+    this.appliedMode = this.openMode;
     this.disposables.push(repositories.onDidChange(event => { this.snapshots.invalidate(event.repoId); this.post({ type: 'changed', ...event }); }), repositories.onDidChangeRepositories(() => {
       for (const entry of this.panels.values()) this.updatePanelTitle(entry);
       this.post({ type: 'repositoriesChanged' });
     }));
     this.disposables.push(vscode.workspace.onDidChangeConfiguration(event => { if (['allowDetachedHead','pushFollowTags','pushTagAfterCreate','defaultResetMode'].some(name=>event.affectsConfiguration(`alwaygit.${name}`))) this.post({ type: 'operationSettingsChanged', settings: this.operationSettings() }); }));
     this.disposables.push(vscode.workspace.onDidChangeConfiguration(event => {
+      if (event.affectsConfiguration('alwaygit.openMode')) void this.applyOpenMode();
       if (event.affectsConfiguration('alwaygit.interfaceSettings') || event.affectsConfiguration('alwaygit.language')) {
         this.post({ type: 'interfaceSettingsChanged', settings: this.interfaceSettings() });
+        if (this.dockedView && !this.dockedPanel) this.showDockedLauncher();
       }
     }));
     const seconds = vscode.workspace.getConfiguration('alwaygit').get<number>('refreshInterval', 15);
     this.interval = setInterval(() => void this.poll(), seconds * 1000);
+  }
+  get openMode(): WorkbenchOpenMode { return vscode.workspace.getConfiguration('alwaygit').get<string>('openMode', 'editor') === 'docked' ? 'docked' : 'editor'; }
+  private isActive(entry: WorkbenchPanel): boolean { return 'active' in entry.panel ? entry.panel.active : entry.panel.visible && this.lastPanel === entry; }
+  private reveal(entry: WorkbenchPanel): void { if ('reveal' in entry.panel) entry.panel.reveal(); else entry.panel.show(false); }
+  async show(): Promise<void> {
+    await this.modeChanges;
+    if (this.openMode === 'editor') return this.open();
+    if (!vscode.workspace.isTrusted) { await vscode.window.showWarningMessage(this.text('host.trustThisWorkspaceUsingVSCodeWorkspaceTrustThen')); return; }
+    await this.focusDockedView();
+    if (this.dockedView) await this.openDocked();
+  }
+  private async focusDockedView(): Promise<void> {
+    await vscode.commands.executeCommand(`${workbenchViewId}.focus`);
+    if (this.dockedView) return;
+    await new Promise<void>((resolve, reject) => {
+      const subscription = this.viewResolved.event(() => { clearTimeout(timer); subscription.dispose(); resolve(); });
+      const timer = setTimeout(() => { subscription.dispose(); reject(new Error(this.text('workbenchEntry.captureFailed'))); }, 5000);
+    });
+  }
+  async resolveDockedView(view: vscode.WebviewView, restoredState: unknown): Promise<void> {
+    this.dockedView = view;
+    this.viewResolved.fire();
+    const subscription = view.onDidDispose(() => { if (this.dockedView === view) { this.dockedView = undefined; this.dockedPanel = undefined; } });
+    this.disposables.push(subscription);
+    if (this.openMode === 'docked' && vscode.workspace.isTrusted) {
+      const restored = sessionSchema.safeParse(restoredState);
+      await this.openDocked(this.pendingDockTransfer ?? (restored.success ? { session: restored.data } : undefined));
+    } else this.showDockedLauncher();
+  }
+  private showDockedLauncher(): void {
+    const view = this.dockedView; if (!view) return;
+    view.title = this.text('workbenchEntry.viewTitle');
+    view.webview.options = { enableCommandUris: ['alwaygit.showWorkbench', 'alwaygit.openWorkbenchInNewWindow'] };
+    view.webview.html = workbenchLauncherHtml();
+  }
+  private openDocked(transfer?: WorkbenchTransfer): Promise<WorkbenchPanel | undefined> {
+    if (this.dockOpening) return this.dockOpening;
+    const task = this.createDocked(transfer);
+    this.dockOpening = task;
+    void task.finally(() => { if (this.dockOpening === task) this.dockOpening = undefined; }).catch(() => {});
+    return task;
+  }
+  private async createDocked(transfer?: WorkbenchTransfer): Promise<WorkbenchPanel | undefined> {
+    const view = this.dockedView; if (!view || !vscode.workspace.isTrusted) return;
+    if (this.dockedPanel) { this.reveal(this.dockedPanel); this.lastPanel = this.dockedPanel; return this.dockedPanel; }
+    const saved = transfer?.session ?? this.context.workspaceState.get<SessionState>('alwaygit.dockedSession', this.context.workspaceState.get<SessionState>('alwaygit.session', {}));
+    const layout = this.context.workspaceState.get<SessionState>('alwaygit.dockedSession', {}).layout;
+    const initial = transfer && layout ? { ...saved, layout } : saved;
+    const entry = await this.attach(view, 'docked', initial, false, { ...transfer, session: initial });
+    this.dockedPanel = entry; return entry;
+  }
+  async showOpenModeSettings(): Promise<void> {
+    type Choice = vscode.QuickPickItem & { action: WorkbenchOpenMode | 'move' | 'settings' | 'window' };
+    const selected = await vscode.window.showQuickPick<Choice>([
+      { label: `${this.openMode === 'editor' ? '$(check)' : '$(blank)'} ${this.text('workbenchEntry.editorMode')}`, description: this.text('workbenchEntry.editorDescription'), action: 'editor' },
+      { label: `${this.openMode === 'docked' ? '$(check)' : '$(blank)'} ${this.text('workbenchEntry.dockedMode')}`, description: this.text('workbenchEntry.dockedDescription'), action: 'docked' },
+      { label: `$(move) ${this.text('workbenchEntry.moveView')}`, action: 'move' },
+      { label: `$(window) ${this.text('manifest.contributes.commands.item1.title')}`, action: 'window' },
+      { label: `$(settings-gear) ${this.text('workbenchEntry.openSettings')}`, action: 'settings' },
+    ], { title: this.text('workbenchEntry.openModeSettings'), placeHolder: this.text('workbenchEntry.chooseOpenMode') });
+    if (!selected) return;
+    if (selected.action === 'move') return this.moveDockedView();
+    if (selected.action === 'window') return this.projects.openBlankWorkbenchInNewWindow();
+    if (selected.action === 'settings') { await vscode.commands.executeCommand('workbench.action.openSettings', '@ext:alwaygit-dev.alwaygit'); return; }
+    await vscode.workspace.getConfiguration('alwaygit').update('openMode', selected.action, vscode.ConfigurationTarget.Global);
+    await this.applyOpenMode();
+  }
+  async moveDockedView(): Promise<void> {
+    await this.focusDockedView();
+    await vscode.commands.executeCommand('workbench.action.moveFocusedView', workbenchViewId);
+  }
+  private applyOpenMode(): Promise<void> {
+    const mode = this.openMode;
+    const task = this.modeChanges.then(async () => {
+      if (this.disposed || mode === this.appliedMode) return;
+      if (mode === 'docked') {
+        const source = [...this.panels.values()].find(entry => entry.kind === 'editor' && this.isActive(entry)) ?? (this.lastPanel?.kind === 'editor' ? this.lastPanel : undefined);
+        const transfer = source ? await this.capture(source) : undefined;
+        // Existing editor workbenches remain independent, including their terminals.
+        this.pendingDockTransfer = transfer;
+        try { await this.focusDockedView(); await this.openDocked(transfer); }
+        finally { this.pendingDockTransfer = undefined; }
+      } else if (this.dockedPanel) {
+        const source = this.dockedPanel, transfer = await this.capture(source);
+        await this.saveSessionBaseline(transfer.session, source);
+        const target = await this.openTransferredEditor(transfer, source);
+        this.release(source); this.lastPanel = target; this.showDockedLauncher();
+      }
+      this.appliedMode = mode;
+      this.presenceEmitter.fire(this.presence);
+    });
+    this.modeChanges = task.catch(async error => {
+      this.output.appendLine(`[workbench] ${redactSecrets(String(error))}`);
+      if (!this.disposed) {
+        await vscode.workspace.getConfiguration('alwaygit').update('openMode', this.appliedMode, vscode.ConfigurationTarget.Global);
+        if (this.dockedView && !this.dockedPanel) this.showDockedLauncher();
+        await vscode.window.showErrorMessage(this.text('workbenchEntry.switchFailed', { reason: redactSecrets(error instanceof Error ? error.message : String(error)) }));
+      }
+    });
+    return this.modeChanges;
+  }
+  private async capture(source: WorkbenchPanel): Promise<WorkbenchTransfer> {
+    if (!source.ready) return { session: source.session ?? source.savedSession ?? {} };
+    if (source.kind === 'docked') await this.focusDockedView(); else this.reveal(source);
+    const token = randomBytes(16).toString('hex');
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { this.captures.delete(token); reject(new Error(this.text('workbenchEntry.captureFailed'))); }, 5000);
+      this.captures.set(token, { source, resolve, reject, timer });
+      void source.panel.webview.postMessage({ type: 'captureWorkbench', token } satisfies HostMessage).then(delivered => {
+        if (!delivered && this.captures.delete(token)) { clearTimeout(timer); reject(new Error(this.text('workbenchEntry.captureFailed'))); }
+      }, error => { if (this.captures.delete(token)) { clearTimeout(timer); reject(error instanceof Error ? error : new Error(String(error))); } });
+    });
   }
   /** Share startup discovery with data requests, without holding up panel creation. */
   initializeRepositories(): Promise<void> {
@@ -121,44 +249,79 @@ export class Workbench implements vscode.Disposable {
     return this.initialScan;
   }
   async open(repoId?: string, restoredPanel?: vscode.WebviewPanel, newTab = false, blank = false): Promise<void> {
-    if (!vscode.workspace.isTrusted) { await vscode.window.showWarningMessage(this.text("host.trustThisWorkspaceUsingVSCodeWorkspaceTrustThen")); return; }
+    if (!vscode.workspace.isTrusted) { await vscode.window.showWarningMessage(this.text('host.trustThisWorkspaceUsingVSCodeWorkspaceTrustThen')); return; }
     if (repoId) this.activeRepository = repoId;
-    const existing=!restoredPanel&&!newTab?([...this.panels.values()].find(entry=>entry.panel.active)??this.lastPanel??[...this.panels.values()].at(-1)):undefined;
-    if(existing){existing.panel.reveal();this.lastPanel=existing;this.post({type:'repositoriesChanged'},existing);if(repoId)this.selectPanelRepository(existing,repoId);this.presenceEmitter.fire(this.presence);return;}
-    const options = { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview')] };
-    const panel = restoredPanel ?? vscode.window.createWebviewPanel('alwaygit.workbench', 'AlwayGit', vscode.ViewColumn.Active, options);
-    panel.webview.options = options;
-    const entry:WorkbenchPanel={panel,visible:panel.visible,activeRepository:repoId,blank,savedSession:this.context.workspaceState.get<SessionState>('alwaygit.session',{})};
-    this.panels.set(panel,entry);this.lastPanel=entry;this.updatePanelTitle(entry);this.presenceEmitter.fire(this.presence);
+    const editors = [...this.panels.values()].filter(entry => entry.kind === 'editor');
+    const existing = !restoredPanel && !newTab ? editors.find(entry => this.isActive(entry)) ?? (this.lastPanel?.kind === 'editor' ? this.lastPanel : undefined) ?? editors.at(-1) : undefined;
+    if (existing) { this.reveal(existing); this.lastPanel = existing; this.post({ type: 'repositoriesChanged' }, existing); if (repoId) this.selectPanelRepository(existing, repoId); this.presenceEmitter.fire(this.presence); return; }
+    const saved = panelSession(this.context.workspaceState.get<SessionState>('alwaygit.session', {}), repoId, blank) as SessionState;
+    const panel = restoredPanel ?? vscode.window.createWebviewPanel('alwaygit.workbench', 'AlwayGit', vscode.ViewColumn.Active, this.webviewOptions());
     panel.iconPath = vscode.Uri.joinPath(this.context.extensionUri, 'media', 'alwaygit.svg');
-    panel.onDidDispose(() => { this.terminals.disposeOwner(entry);this.queries.cancelOwner(entry);this.panels.delete(panel);for(const [id,scan] of this.repositoryDiscoveries)if(scan.source===entry){scan.cancelled=true;this.repositoryDiscoveries.delete(id);}if(this.lastPanel===entry)this.lastPanel=[...this.panels.values()].at(-1);this.presenceEmitter.fire(this.presence); });
-    panel.webview.onDidReceiveMessage(async (raw: unknown) => {
+    await this.attach(panel, 'editor', saved, blank);
+  }
+  private webviewOptions(): vscode.WebviewPanelOptions & vscode.WebviewOptions {
+    return { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview')] };
+  }
+  private async openTransferredEditor(transfer: WorkbenchTransfer, source: WorkbenchPanel): Promise<WorkbenchPanel> {
+    // Always create a new regular Webview tab; never reveal or replace an existing editor.
+    const panel = vscode.window.createWebviewPanel('alwaygit.workbench', 'AlwayGit', vscode.ViewColumn.Active, this.webviewOptions());
+    panel.iconPath = vscode.Uri.joinPath(this.context.extensionUri, 'media', 'alwaygit.svg');
+    try { return await this.attach(panel, 'editor', transfer.session, source.blank, transfer, source); }
+    catch (error) { panel.dispose(); throw error; }
+  }
+  private async attach(panel: WorkbenchSurface, kind: WorkbenchOpenMode, saved: SessionState, blank: boolean, transfer?: WorkbenchTransfer, terminalSource?: WorkbenchPanel): Promise<WorkbenchPanel> {
+    panel.webview.options = this.webviewOptions();
+    const entry: WorkbenchPanel = { panel, kind, ready: false, subscriptions: [], visible: panel.visible, activeRepository: saved.repoId, blank, savedSession: saved, session: saved };
+    this.panels.set(panel, entry); this.lastPanel = entry; this.updatePanelTitle(entry);
+    entry.subscriptions.push(panel.onDidDispose(() => this.release(entry)));
+    entry.subscriptions.push(panel.webview.onDidReceiveMessage(async (raw: unknown) => {
       const parsed = requestSchema.safeParse(raw);
-      if (!parsed.success) return;
+      if (!parsed.success || this.panels.get(panel) !== entry) return;
+      if (kind === 'docked') this.lastPanel = entry;
       this.requestCount++;
-      try { const result = await this.handleRequest(parsed.data,entry); this.post({ type: 'response', id: parsed.data.id, result },entry); }
+      try { const result = await this.handleRequest(parsed.data, entry); this.post({ type: 'response', id: parsed.data.id, result }, entry); }
       catch (error) {
         const failure = serializeRequestError(error, this.panelLanguage(entry));
-        this.output.appendLine(`[request:${parsed.data.method}] ${requestErrorText(failure)}`);
-        this.post({ type: 'response', id: parsed.data.id, error: failure },entry);
+        this.output.appendLine('[request:' + parsed.data.method + '] ' + requestErrorText(failure));
+        this.post({ type: 'response', id: parsed.data.id, error: failure }, entry);
       }
-    });
-    panel.onDidChangeViewState(event => {
-      const revealed = event.webviewPanel.visible && !entry.visible;
-      entry.visible = event.webviewPanel.visible;
-      if (event.webviewPanel.active) { this.lastPanel=entry; if(entry.session)void this.saveSessionBaseline(entry.session,entry).catch(error=>this.output.appendLine(`[session] ${redactSecrets(String(error))}`)); }
+    }));
+    const changed = () => {
+      const revealed = panel.visible && !entry.visible; entry.visible = panel.visible;
+      if (this.isActive(entry)) { this.lastPanel = entry; if (entry.session) void this.saveSessionBaseline(entry.session, entry).catch(error => this.output.appendLine('[session] ' + redactSecrets(String(error)))); }
       if (revealed) {
         if (entry.catalogDirty) { entry.catalogDirty = false; this.post({ type: 'repositoriesChanged' }, entry); }
         const pending = entry.pendingChanges; entry.pendingChanges = undefined;
         if (entry.activeRepository) this.post({ type: 'changed', repoId: entry.activeRepository, changes: pending?.repoId === entry.activeRepository ? pending.changes : { paths: [] } }, entry);
       }
       this.presenceEmitter.fire(this.presence);
-    });
-    panel.webview.html = await this.html(panel.webview,repoId,blank);
+    };
+    entry.subscriptions.push('onDidChangeViewState' in panel ? panel.onDidChangeViewState(changed) : panel.onDidChangeVisibility(changed));
+    try {
+      const markup = await this.html(panel.webview, saved.repoId, blank, saved, kind, transfer);
+      if (this.disposed || this.panels.get(panel) !== entry) throw new Error(this.text('workbenchEntry.captureFailed'));
+      if (terminalSource) this.terminals.transferOwner(terminalSource, entry);
+      panel.webview.html = markup;
+      this.presenceEmitter.fire(this.presence);
+      return entry;
+    } catch (error) {
+      if (terminalSource && this.panels.get(terminalSource.panel) === terminalSource) this.terminals.transferOwner(entry, terminalSource);
+      this.release(entry); throw error;
+    }
+  }
+  private release(entry: WorkbenchPanel): void {
+    if (this.panels.get(entry.panel) !== entry) return;
+    this.panels.delete(entry.panel); this.terminals.disposeOwner(entry); this.queries.cancelOwner(entry);
+    for (const [token, capture] of this.captures) if (capture.source === entry) { clearTimeout(capture.timer); this.captures.delete(token); capture.reject(new Error(this.text('workbenchEntry.captureFailed'))); }
+    for (const [id, scan] of this.repositoryDiscoveries) if (scan.source === entry) { scan.cancelled = true; this.repositoryDiscoveries.delete(id); }
+    for (const subscription of entry.subscriptions) subscription.dispose();
+    if (this.dockedPanel === entry) this.dockedPanel = undefined;
+    if (this.lastPanel === entry) this.lastPanel = [...this.panels.values()].at(-1);
+    this.presenceEmitter.fire(this.presence);
   }
   async requestTerminal(): Promise<void> {
-    await this.open();
-    const target = [...this.panels.values()].find(entry => entry.panel.active) ?? this.lastPanel;
+    await this.show();
+    const target = this.openMode === 'docked' ? this.dockedPanel : [...this.panels.values()].find(entry => entry.kind === 'editor' && this.isActive(entry)) ?? this.lastPanel;
     if (target) {
       if (target.session?.repoId) this.post({ type: 'terminalRequested' }, target);
       else target.pendingTerminal = true;
@@ -222,6 +385,18 @@ export class Workbench implements vscode.Disposable {
     return this.executeRequest(request,source);
   }
   private async executeRequest(request: RpcRequest, source?:WorkbenchPanel): Promise<unknown> {
+    if (request.method === 'workbenchReady') { if (source) source.ready = true; return null; }
+    if (request.method === 'captureWorkbench') {
+      const { token, busy, ...transfer } = captureWorkbenchSchema.parse(request.payload);
+      const capture = this.captures.get(token);
+      if (capture && capture.source === source) {
+        clearTimeout(capture.timer); this.captures.delete(token);
+        if (busy) capture.reject(new Error(this.text('workbenchEntry.waitForOperation')));
+        else capture.resolve(transfer);
+      }
+      return null;
+    }
+    if (request.method === 'workbenchOpenModeSettings') { await this.showOpenModeSettings(); return null; }
     if (request.method === 'interfaceSettings') { await this.migrateInterfaceSettings(); return this.interfaceSettings(); }
     if (request.method === 'saveInterfaceSettings') {
       const update = interfaceSettingsUpdateSchema.parse(request.payload);
@@ -264,7 +439,7 @@ export class Workbench implements vscode.Disposable {
         this.updatePanelTitle(source);
       }
       // Hidden panels retain their own Webview state without replacing the active baseline.
-      if (!source || source.panel.active) await this.saveSessionBaseline(session, source);
+      if (!source || source.kind === 'docked' || this.isActive(source)) await this.saveSessionBaseline(session, source);
       return null;
     }
     if (request.method === 'openExternal') { const data = externalUrlSchema.parse(request.payload); if (!await vscode.env.openExternal(vscode.Uri.parse(data.url))) throw new Error(this.text('host.couldNotOpenWebLink')); return null; }
@@ -395,8 +570,9 @@ export class Workbench implements vscode.Disposable {
     }
   }
   private saveSessionBaseline(session: SessionState, source?: WorkbenchPanel): Promise<void> {
-    return this.sessions.save(
-      () => mergeSessionBaseline(this.context.workspaceState.get<SessionState>('alwaygit.session', {}), session, source?.savedSession, source?.blank),
+    const docked = source?.kind === 'docked';
+    return (docked ? this.dockedSessions : this.sessions).save(
+      () => mergeSessionBaseline(this.context.workspaceState.get<SessionState>(docked ? 'alwaygit.dockedSession' : 'alwaygit.session', {}), session, source?.savedSession, source?.blank),
       () => { if (source) source.savedSession = session; },
     );
   }
@@ -440,7 +616,7 @@ export class Workbench implements vscode.Disposable {
     }
     finally { this.polling = false; }
   }
-  private selectPanelRepository(entry:WorkbenchPanel,repoId:string):void {if(entry.activeRepository!==repoId)this.queries.cancelOwner(entry);entry.activeRepository=repoId;this.activeRepository=repoId;this.lastPanel=entry;this.updatePanelTitle(entry);entry.panel.reveal();this.post({type:'selectRepository',repoId},entry);}
+  private selectPanelRepository(entry:WorkbenchPanel,repoId:string):void {if(entry.activeRepository!==repoId)this.queries.cancelOwner(entry);entry.activeRepository=repoId;this.activeRepository=repoId;this.lastPanel=entry;this.updatePanelTitle(entry);this.reveal(entry);this.post({type:'selectRepository',repoId},entry);}
   private async refreshExternalActivity(commonDir:string):Promise<void>{
     const key=this.repositoryKey(commonDir),activity=this.externalBusy.get(key);if(!activity)return;
     if(await this.projects.isRepositoryBusy(commonDir)||this.externalBusy.get(key)!==activity)return;
@@ -450,6 +626,7 @@ export class Workbench implements vscode.Disposable {
   private updatePanelTitle(entry:WorkbenchPanel):void {let name:string|undefined;try{name=entry.activeRepository?groupRepositories(this.repositories.list(),entry.activeRepository).find(group=>group.members.some(repo=>repo.id===entry.activeRepository))?.name:undefined;}catch{/* Repository discovery can remove a stale restored ID. */}entry.panel.title=name?translate('en', "host.alwayGit", { name: (name) }):'AlwayGit';}
   private post(message: HostMessage, target?: WorkbenchPanel): void {
     for (const entry of target ? [target] : this.panels.values()) {
+      if (this.panels.get(entry.panel) !== entry) continue;
       // Retain invalidation on the host: hidden Webviews need not receive or process these messages.
       if (!entry.panel.visible && message.type === 'repositoriesChanged') { entry.catalogDirty = true; continue; }
       if (!entry.panel.visible && message.type === 'changed') {
@@ -466,19 +643,30 @@ export class Workbench implements vscode.Disposable {
       void entry.panel.webview.postMessage(message);
     }
   }
-  private async html(webview: vscode.Webview,activeRepository?:string,blank=false): Promise<string> {
+  private async html(webview: vscode.Webview,activeRepository?:string,blank=false,initialSession?:SessionState,kind:WorkbenchOpenMode='editor',transfer?:WorkbenchTransfer): Promise<string> {
     await this.migrateInterfaceSettings();
     const root = vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview');
     let html = await readFile(vscode.Uri.joinPath(root, 'index.html').fsPath, 'utf8');
     const nonce = randomBytes(20).toString('base64');
     html = html.replace(/(src|href)="\.\/([^"\s]+)"/g, (_match, attr, resource: string) => `${attr}="${webview.asWebviewUri(vscode.Uri.joinPath(root, resource))}"`);
     html = html.replace(/<script /g, `<script nonce="${nonce}" `);
-    const saved = this.context.workspaceState.get<Record<string, unknown>>('alwaygit.session', {});
+    const saved = initialSession ?? this.context.workspaceState.get<Record<string, unknown>>('alwaygit.session', {});
     const preferences = this.interfaceSettings();
     const session = JSON.stringify(overlayInterfaceSettings(panelSession(saved,activeRepository,blank) as SessionState, preferences)).replace(/</g, '\\u003c');
     const settings = JSON.stringify(preferences).replace(/</g, '\\u003c');
-    html = html.replace('</head>', `<script nonce="${nonce}">window.__ALWAYGIT_SESSION__=${session};window.__ALWAYGIT_PREFERENCES__=${settings};</script></head>`);
+    html = html.replace('</head>', `<script nonce="${nonce}">window.__ALWAYGIT_HOST__="${kind}";window.__ALWAYGIT_TRANSFER__=${JSON.stringify(transfer ?? null).replace(/</g, '\\u003c')};window.__ALWAYGIT_SESSION__=${session};window.__ALWAYGIT_PREFERENCES__=${settings};</script></head>`);
     return html.replace('<head>', `<head><meta property="csp-nonce" nonce="${nonce}"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">`);
   }
-  dispose(): void { this.terminals.dispose();this.snapshots.dispose();this.queries.dispose();clearInterval(this.interval);for(const scan of this.repositoryDiscoveries.values())scan.cancelled=true;this.repositoryDiscoveries.clear();const panels=[...this.panels.keys()];this.panels.clear();this.lastPanel=undefined;for(const panel of panels)panel.dispose();this.presenceEmitter.dispose();for (const disposable of this.disposables) disposable.dispose(); }
+  dispose(): void {
+    this.disposed = true;
+    for (const capture of this.captures.values()) { clearTimeout(capture.timer); capture.reject(new Error(this.text('workbenchEntry.captureFailed'))); }
+    this.captures.clear();
+    const surfaces = [...this.panels.keys()];
+    for (const entry of [...this.panels.values()]) this.release(entry);
+    this.dockedView = undefined; this.terminals.dispose(); this.snapshots.dispose(); this.queries.dispose(); clearInterval(this.interval);
+    for (const scan of this.repositoryDiscoveries.values()) scan.cancelled = true;
+    this.repositoryDiscoveries.clear(); this.lastPanel = undefined;
+    for (const surface of surfaces) if ('dispose' in surface) surface.dispose();
+    this.presenceEmitter.dispose(); this.viewResolved.dispose(); for (const disposable of this.disposables) disposable.dispose();
+  }
 }

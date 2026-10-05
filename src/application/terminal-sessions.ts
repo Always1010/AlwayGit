@@ -40,7 +40,7 @@ export class TerminalSessions {
       entry.timer ??= setTimeout(() => this.flush(entry), 16);
     }), process.onExit(({ exitCode }) => {
       this.flush(entry); entry.session = { ...entry.session, status: 'exited', exitCode };
-      this.emit(owner, { type: 'terminalUpdated', session: { ...entry.session } });
+      this.emit(entry.owner, { type: 'terminalUpdated', session: { ...entry.session } });
     }));
     if (replacement) { this.rename(owner, session.id, replacement.session.title); this.close(owner, replacement.session.id); }
     return { ...entry.session };
@@ -65,6 +65,16 @@ export class TerminalSessions {
     for (const subscription of entry.subscriptions) subscription.dispose();
     if (entry.session.status === 'running') entry.process.kill();
     this.emit(owner, { type: 'terminalClosed', sessionId: id });
+  }
+  /** Move live processes and their replay buffers without restarting their shells. */
+  transferOwner(source: object, target: object): void {
+    if (this.closedOwners.has(target)) throw new MessageError(message('dock.closed'));
+    for (const entry of this.entries.values()) if (entry.owner === source) {
+      this.flush(entry); entry.owner = target;
+      // A new renderer will acknowledge the replay snapshot, not old in-flight chunks.
+      entry.inflight.clear(); entry.unacknowledged = 0;
+      if (entry.paused && entry.session.status === 'running') { entry.paused = false; entry.process.resume(); }
+    }
   }
   disposeOwner(owner: object): void { this.closedOwners.add(owner); for (const session of this.list(owner)) this.close(owner, session.id); }
   dispose(): void { for (const entry of [...this.entries.values()]) this.disposeOwner(entry.owner); }

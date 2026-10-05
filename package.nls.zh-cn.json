@@ -9,7 +9,6 @@
   "manifest.contributes.commands.item1.category": "AlwayGit",
   "manifest.contributes.viewsContainers.activitybar.item0.title": "AlwayGit",
   "manifest.contributes.views.alwaygit.item0.name": "Workbench",
-  "manifest.contributes.viewsWelcome.item0.contents": "[显示 Git Workbench](command:alwaygit.showWorkbench)\n[在新窗口中打开 Workbench](command:alwaygit.openWorkbenchInNewWindow)",
   "manifest.contributes.configuration.title": "AlwayGit",
   "manifest.contributes.configuration.properties.alwaygit.language.description": "Workbench 显示语言。界面中的语言选择会为当前工作区保存。",
   "manifest.contributes.configuration.properties.alwaygit.gitPath.description": "Git 可执行文件路径。留空时使用内置 Git 扩展的路径或 PATH。",
@@ -19,5 +18,10 @@
   "manifest.contributes.configuration.properties.alwaygit.pushFollowTags.description": "分支 Push 时默认同时推送该分支可达且远端缺少的注解标签。可在 Push 对话框中临时覆盖并记住选择。",
   "manifest.contributes.configuration.properties.alwaygit.pushTagAfterCreate.description": "默认把新建标签推送到所选远端；创建标签对话框可以单次覆盖并记住该选择。",
   "manifest.contributes.configuration.properties.alwaygit.defaultResetMode.description": "打开重置对话框时默认选择的模式；可在对话框中覆盖并记住 Soft、Mixed 或 Hard。",
-  "manifest.contributes.configuration.properties.alwaygit.interfaceSettings.description": "跨窗口共享的工作台外观、快捷键与阅读偏好。"
+  "manifest.contributes.configuration.properties.alwaygit.interfaceSettings.description": "跨窗口共享的工作台外观、快捷键与阅读偏好。",
+  "manifest.openModeSettings": "工作台打开方式",
+  "manifest.moveWorkbenchView": "调整停靠位置…",
+  "manifest.editorModeDescription": "在编辑器区域打开。切换时新建独立标签页。",
+  "manifest.dockedModeDescription": "在可移到侧边栏或面板的视图中打开。",
+  "manifest.openModeDescription": "工作台默认打开方式。停靠视图可通过视图标题菜单移动位置。切换到标签页模式时携带停靠工作台状态新建标签页，保留已有标签页。"
 }

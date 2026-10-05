@@ -540,6 +540,31 @@ h1,h2,p {margin:0;}
 @media(max-width:560px) {.workspace{grid-template-columns:minmax(0,1fr);grid-template-rows:125px minmax(0,1fr);}.workspace>.resize-handle{display:none;}.sidebar{border-bottom:1px solid var(--border);}.main-panel:not(.diff-collapsed){grid-template-rows:minmax(0,1fr) 6px min(150px,var(--diff-height));}.layout-editor .main-panel{grid-template-rows:minmax(0,1fr);}.app-chrome>.button{font-size:11px;}.app-chrome{gap:3px;}.app-chrome select{max-width:120px;}.toolbar-divider{margin:0 2px;}.toolbar .button{font-size:12px;padding:2px 5px;}.ref-badge{max-width:90px;}}
 @media(prefers-reduced-motion:reduce) {*{scroll-behavior:auto;transition:none!important;animation:none!important;}}
 
+/* Narrow sidebars and short VS Code panels show one region at a time. Hidden
+   regions stay mounted so repository, selection, drafts and terminals survive. */
+.compact-regions {display:flex;flex:none;overflow-x:auto;border-bottom:1px solid var(--border);background:var(--surface-header);}
+.compact-regions button {display:flex;align-items:center;justify-content:center;gap:4px;flex:1;white-space:nowrap;min-height:30px;padding:4px 8px;border-bottom:2px solid transparent;color:var(--muted);}
+.compact-regions button[aria-pressed=true] {color:var(--fg);border-bottom-color:var(--accent);background:var(--bg);}
+.workbench[data-host=docked] .app-chrome .brand,.workbench[data-host=docked] .workbench-tab {display:none;}
+.workbench[data-host=docked] .toolbar {overflow-x:auto;flex-wrap:nowrap;flex:none;}
+.workbench[data-host=docked] .toolbar>* {flex-shrink:0;}
+.workbench[data-compact=true] .workspace {display:flex;flex:1;min-height:0;}
+.workbench[data-compact=true] .workspace>.resize-handle {display:none;}
+.workbench[data-compact=true] .workspace>.sidebar {display:none;flex:1;}
+.workbench[data-compact=true][data-region=repositories] .workspace>.sidebar {display:block;}
+.workbench[data-compact=true][data-region=repositories] .main-panel {display:none;}
+.workbench[data-compact=true] .main-panel {display:flex;flex:1;min-height:0;}
+.workbench[data-compact=true] .main-panel>.resize-handle {display:none;}
+.workbench[data-compact=true] .top-panels {display:flex;flex:1;min-height:0;}
+.workbench[data-compact=true] .top-panels>.resize-handle {display:none;}
+.workbench[data-compact=true] .history-panel,.workbench[data-compact=true] .details-panel {display:none;flex:1;min-height:0;}
+.workbench[data-compact=true][data-region=history] .history-panel {display:flex;}
+.workbench[data-compact=true][data-region=details] .details-panel {display:flex;border-top:0;}
+.workbench[data-compact=true] .main-panel>.bottom-dock {display:none;}
+.workbench[data-compact=true][data-region=diff] .main-panel>.bottom-dock {display:flex;flex:1;}
+.workbench[data-compact=true][data-region=diff] .top-panels {display:none;}
+.workbench[data-compact=true] .app-chrome {min-width:0;overflow-x:auto;flex:none;}
+
 /* Same-level repository ordering uses an insertion line without changing row size. */
 .repository-list [data-drop-position="before"]{box-shadow:inset 0 2px 0 var(--vscode-focusBorder,#0078d4)}
 .repository-list [data-drop-position="after"]{box-shadow:inset 0 -2px 0 var(--vscode-focusBorder,#0078d4)}

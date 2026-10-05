@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Commit, HistoryPage, HostMessage, Repository, Snapshot } from '../src/protocol/types';
 const bridge = vi.hoisted(() => ({ rpc: vi.fn(), save: vi.fn(), event: undefined as ((message: HostMessage) => void) | undefined }));
-vi.mock('../webview/rpc', () => ({ demoMode: false, readSession: () => ({}), saveSession: bridge.save, rpc: bridge.rpc, subscribe: (listener: (message: HostMessage) => void) => { bridge.event = listener; return () => {}; } }));
+vi.mock('../webview/rpc', () => ({ demoMode: false, readSession: () => globalThis.window?.__ALWAYGIT_TRANSFER__?.session ?? {}, saveSession: bridge.save, rpc: bridge.rpc, subscribe: (listener: (message: HostMessage) => void) => { bridge.event = listener; return () => {}; } }));
 const a: Repository = { id: 'a', root: '/a', commonDir: '/a/.git', name: 'A' };
 const b: Repository = { id: 'b', root: '/b', commonDir: '/b/.git', name: 'B' };
 const commit: Commit = { oid: 'abc', parents: [], author: 'Test', email: 'test@example.com', timestamp: 0, subject: 'Example' };
@@ -19,8 +19,31 @@ beforeEach(async () => {
   });
   store = (await import('../webview/store')).useWorkbench;
 });
-afterEach(() => { vi.useRealTimers(); });
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 describe('repository UI consistency', () => {
+  it('restores a transferred comparison and its selected file after repository loading', async () => {
+    vi.stubGlobal('window', { __ALWAYGIT_TRANSFER__: { session: { repoId: 'a' }, selectedOids: ['left', 'right'], comparison: { left: 'left', right: 'right' }, diffTarget: { kind: 'comparison', left: 'left', right: 'right', path: 'same.txt' } } });
+    vi.resetModules();
+    const original = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, ...args) => method === 'compare' ? Promise.resolve({ left: { ...commit, oid: 'left' }, right: { ...commit, oid: 'right' }, files: [] }) : original(method, ...args));
+    store = (await import('../webview/store')).useWorkbench;
+    await store.getState().selectRepository('a');
+    expect(store.getState()).toMatchObject({ selectedOids: ['left', 'right'], comparison: { left: { oid: 'left' }, right: { oid: 'right' } }, diffTarget: { kind: 'comparison', left: 'left', right: 'right', path: 'same.txt' } });
+  });
+  it('restores the staged version of a file that also has unstaged changes', async () => {
+    vi.stubGlobal('window', { __ALWAYGIT_TRANSFER__: { session: { repoId: 'a', views: { a: { tab: 'changes', search: '', selectedFile: 'same.txt' } } }, diffTarget: { kind: 'change', area: 'staged', path: 'same.txt' } } });
+    vi.resetModules(); const original = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, ...args) => method === 'snapshot' ? Promise.resolve({ ...snapshot(a), changes: [{ path: 'same.txt', indexStatus: 'M', worktreeStatus: 'M', conflict: false, untracked: false }] }) : original(method, ...args));
+    store = (await import('../webview/store')).useWorkbench;
+    await store.getState().selectRepository('a');
+    expect(store.getState()).toMatchObject({ tab: 'changes', diffTarget: { kind: 'change', area: 'staged', path: 'same.txt' } });
+  });
+  it('captures the live draft, selected commit and path filter before the host-save debounce', async () => {
+    await store.getState().selectRepository('a');
+    store.setState({ drafts: { a: 'latest unsaved message' }, selectedOid: 'chosen', search: 'author query', workingFilters: { a: 'src/' } });
+    bridge.event?.({ type: 'captureWorkbench', token: 'handoff' });
+    expect(bridge.rpc).toHaveBeenLastCalledWith('captureWorkbench', undefined, expect.objectContaining({ token: 'handoff', workingFilters: { a: 'src/' }, session: expect.objectContaining({ repoId: 'a', drafts: { a: 'latest unsaved message' }, views: expect.objectContaining({ a: expect.objectContaining({ selectedOid: 'chosen', search: 'author query' }) }) }) }));
+  });
   it('keeps only the newest remote request and invalidates pending results on close or repository changes', async () => {
     const { closeRemoteRequest, showRemoteRequest } = await import('../webview/RemoteRequestDialog');
     await store.getState().selectRepository('b');

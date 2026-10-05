@@ -20,9 +20,11 @@ import { verifyTerminalDock } from './test-terminal-ui.mjs';
 import { verifyTagStatus } from './test-tag-status-ui.mjs';
 import { verifyActionSafety } from './test-action-safety-ui.mjs';
 import { verifyProjectOpen } from './test-project-ui.mjs';
+import { verifyDockedWorkbench } from './test-workbench-host-ui.mjs';
 
 // Full and targeted runs share one registry, so a new suite cannot be omitted from full runs.
 const suites = new Map([
+  ['docking', verifyDockedWorkbench],
   ['project', verifyProjectOpen],
   ['action-safety', verifyActionSafety],
   ['tag-status', verifyTagStatus],
