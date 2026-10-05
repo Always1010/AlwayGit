@@ -2,7 +2,7 @@
   "name": "alwaygit",
   "displayName": "%manifest.displayName%",
   "description": "%manifest.description%",
-  "version": "0.50.0",
+  "version": "0.50.1",
   "publisher": "alwaygit-dev",
   "private": true,
   "type": "module",
@@ -133,14 +133,14 @@
       ],
       "panel": [
         {
-          "id": "alwaygit.panel",
+          "id": "alwaygit-panel",
           "title": "AlwayGit",
           "icon": "media/alwaygit.svg"
         }
       ],
       "secondarySidebar": [
         {
-          "id": "alwaygit.auxiliary",
+          "id": "alwaygit-auxiliary",
           "title": "AlwayGit",
           "icon": "media/alwaygit.svg"
         }
@@ -154,14 +154,14 @@
           "type": "webview"
         }
       ],
-      "alwaygit.panel": [
+      "alwaygit-panel": [
         {
           "id": "alwaygit.workbenchPanel",
           "name": "%manifest.panelWorkbench%",
           "type": "webview"
         }
       ],
-      "alwaygit.auxiliary": [
+      "alwaygit-auxiliary": [
         {
           "id": "alwaygit.workbenchAuxiliary",
           "name": "%manifest.auxiliaryWorkbench%",
