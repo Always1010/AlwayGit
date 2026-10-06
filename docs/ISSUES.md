@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-118：工作台重载后错误进入 Working Tree
+
+- 日期：2026-10-06
+- 状态：已解决
+- 现象：保存的会话停留在历史 Commit 时，重载工作台或恢复编辑器标签会错误进入 Working Tree，无法恢复原 Commit 详情；主动切换仓库后默认进入 Working Tree 的行为正常。
+- 原因：初始化恢复与主动仓库切换共用 `selectRepository`，默认 Working Tree 逻辑没有区分调用意图，导致初始化读取保存仓库时也覆盖持久化的 `tab`。
+- 解决方案：为仓库选择增加显式会话恢复选项；初始化时恢复保存的 Graph 视图和 Commit 详情，普通侧栏或宿主切换仍默认进入 Working Tree，跨标签页定向传递继续保持原目标。
+- 验证方式：类型检查与 1517 条双语资源检查通过；97 项状态测试通过，新增覆盖历史 Commit 会话初始化恢复及随后主动切换仓库进入 Working Tree。
+- 相关文件：`webview/store.ts`、`tests/ui-state.test.ts`、`docs/WORKBENCH_SPEC.md`。
+
 ## BUG-117：切换仓库后 Graph 默认停留在历史 Commit
 
 - 日期：2026-10-06

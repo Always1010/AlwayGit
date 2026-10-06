@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Commit, HistoryPage, HostMessage, Repository, Snapshot } from '../src/protocol/types';
 const bridge = vi.hoisted(() => ({ rpc: vi.fn(), save: vi.fn(), event: undefined as ((message: HostMessage) => void) | undefined }));
-vi.mock('../webview/rpc', () => ({ demoMode: false, readSession: () => globalThis.window?.__ALWAYGIT_TRANSFER__?.session ?? {}, saveSession: bridge.save, rpc: bridge.rpc, subscribe: (listener: (message: HostMessage) => void) => { bridge.event = listener; return () => {}; } }));
+vi.mock('../webview/rpc', () => ({ demoMode: false, readSession: () => globalThis.window?.__ALWAYGIT_TRANSFER__?.session ?? globalThis.window?.__ALWAYGIT_SESSION__ ?? {}, saveSession: bridge.save, rpc: bridge.rpc, subscribe: (listener: (message: HostMessage) => void) => { bridge.event = listener; return () => {}; } }));
 const a: Repository = { id: 'a', root: '/a', commonDir: '/a/.git', name: 'A' };
 const b: Repository = { id: 'b', root: '/b', commonDir: '/b/.git', name: 'B' };
 const commit: Commit = { oid: 'abc', parents: [], author: 'Test', email: 'test@example.com', timestamp: 0, subject: 'Example' };
@@ -29,6 +29,14 @@ describe('repository UI consistency', () => {
     store = (await import('../webview/store')).useWorkbench;
     await store.getState().selectRepository('a');
     expect(store.getState()).toMatchObject({ selectedOids: ['left', 'right'], comparison: { left: { oid: 'left' }, right: { oid: 'right' } }, diffTarget: { kind: 'comparison', left: 'left', right: 'right', path: 'same.txt' } });
+  });
+  it('restores the saved Commit view on initialization while later repository switches open Working Tree', async () => {
+    vi.stubGlobal('window', { __ALWAYGIT_SESSION__: { version: 2, repoId: 'a', views: { a: { tab: 'history', search: '', selectedOid: commit.oid } } } });
+    vi.resetModules(); store = (await import('../webview/store')).useWorkbench;
+    await store.getState().initialize();
+    expect(store.getState()).toMatchObject({ repoId: 'a', tab: 'history', selectedOid: commit.oid, selectedOids: [commit.oid], details: { commit: { oid: commit.oid } } });
+    await store.getState().selectRepository('b');
+    expect(store.getState()).toMatchObject({ repoId: 'b', tab: 'changes', selectedOids: [], details: undefined });
   });
   it('restores the staged version of a file that also has unstaged changes', async () => {
     vi.stubGlobal('window', { __ALWAYGIT_TRANSFER__: { session: { repoId: 'a', views: { a: { tab: 'changes', search: '', selectedFile: 'same.txt' } } }, diffTarget: { kind: 'change', area: 'staged', path: 'same.txt' } } });
