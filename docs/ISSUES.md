@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-117：切换仓库后 Graph 默认停留在历史 Commit
+
+- 日期：2026-10-06
+- 状态：已解决
+- 现象：双击仓库或按 Enter 切换后，Graph 会恢复该仓库上次查看的 Commit；首次进入则自动选择最近 Commit。Working Tree 虽位于当前 HEAD 上方，仍需再次点击才能核对目标仓库的未提交状态。
+- 原因：仓库视图持久化 `tab` 与 `selectedOid`，切换时直接恢复；没有保存选择时，History 首次加载又自动选择第一条真实 Commit。
+- 解决方案：普通仓库切换统一进入 Working Tree 视图，清空 Commit 操作选择并复用既有虚拟节点滚动逻辑；保留上次 Commit、Merge Parent、草稿、筛选和文件状态作为后续显式导航上下文。跨标签页传递的 Commit 与比较继续优先打开指定目标。
+- 验证方式：类型检查、1517 条双语资源检查与生产构建通过；96 项状态测试覆盖仓库切换后不读取旧 Commit 详情、默认进入 Working Tree，以及再次显式选择时恢复 Merge Parent。Worktrees 与 Transfer 定向无头套件通过，覆盖双击和 Enter 切换后的 Working Tree 节点选中、右侧状态面板及显式跨标签页目标恢复。
+- 相关文件：`webview/store.ts`、`tests/ui-state.test.ts`、`scripts/test-worktrees-ui.mjs`、`docs/WORKBENCH_SPEC.md`。
+
 ## BUG-116：Pull 和 Push 弹窗未聚焦默认确认按钮
 
 - 日期：2026-10-06
