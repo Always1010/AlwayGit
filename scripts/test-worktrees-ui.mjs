@@ -10,7 +10,7 @@ export async function verifyWorktrees(browser, url) {
       const linked = { ...main, id: 'linked', root: 'D:/Projects/App-feature', name: 'App-feature' };
       const clone = { id: 'clone', root: 'D:/Other/App', commonDir: 'D:/Other/App/.git', name: 'App', mainRoot: 'D:/Other/App' };
       const repositories = [linked, main, clone];
-      const session = { version: 2, repoId: linked.id, drafts: { main: 'Main draft', linked: 'Linked draft' }, views: { main: { tab: 'changes', search: '' }, linked: { tab: 'changes', search: '' } } };
+      const session = { version: 2, repoId: linked.id, drafts: { main: 'Main draft', linked: 'Linked draft' }, views: { main: { tab: 'changes', search: '' }, linked: { tab: 'changes', search: '' }, clone: { tab: 'history', search: '', selectedOid: 'c'.repeat(40) } } };
       const collections=[{id:'client',name:'Client Project'}];
       const fixture = window.__worktreeFixture = { session, calls: [], version: 0, order:{root:['repository:d:/other/app/.git','collection:client'],collections:{client:['repository:d:/projects/app/.git']}} };
       window.acquireVsCodeApi = () => ({ getState: () => fixture.session, setState: value => { fixture.session = value; }, postMessage(request) {
@@ -101,6 +101,8 @@ export async function verifyWorktrees(browser, url) {
     await clone.dblclick();
     await page.waitForFunction(() => window.__worktreeFixture.session.repoId === 'clone');
     assert.equal(await clone.getAttribute('aria-current'), 'true', 'The current repository marker follows a double-click switch');
+    assert.equal(await page.getByTestId('history').locator('[data-working-tree]').getAttribute('aria-selected'), 'true', 'Repository switches select the Working Tree graph node instead of restoring a Commit');
+    await page.getByTestId('details').getByText('Working Tree Status', { exact: true }).waitFor();
     await app.press('Enter');
     await page.waitForFunction(() => window.__worktreeFixture.session.repoId === 'main'); await expectDraft('Main draft');
     assert.equal(await groups.count(), 2); assert.equal((await app.getAttribute('title'))?.split('\n')[0], 'D:/Projects/App');

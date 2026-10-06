@@ -526,6 +526,7 @@ describe('repository UI consistency', () => {
   it('opens and preserves a comparison when exactly two commits are selected',async()=>{
     await store.getState().selectRepository('a');const left={...commit,oid:'left',subject:'Left'},right={...commit,oid:'right',subject:'Right'},fallback=bridge.rpc.getMockImplementation()!;
     bridge.rpc.mockImplementation((method,repoId,payload)=>method==='compare'?Promise.resolve({left,right,files:[{path:'changed.txt',status:'M'}]}):method==='details'&&(payload as {oid?:string})?.oid===left.oid?Promise.resolve({commit:left,body:left.subject,files:[]}):fallback(method,repoId,payload));
+    await store.getState().selectCommit(left.oid);
     store.getState().setCommitSelection([left.oid,right.oid],left.oid,right.oid);
     await vi.waitFor(()=>expect(store.getState().comparison).toMatchObject({left:{oid:'left'},right:{oid:'right'}}));
     expect(store.getState().comparison).toMatchObject({left:{oid:'left'},right:{oid:'right'}});expect(store.getState().diffTarget).toEqual({kind:'comparison',left:'left',right:'right',path:'changed.txt'});
@@ -534,7 +535,8 @@ describe('repository UI consistency', () => {
     store.getState().setCommitSelection([]);expect(store.getState()).toMatchObject({selectedOids:[],selectedOid:undefined,details:undefined,comparison:undefined,diffTarget:undefined});
   });
   it('collapses cached multi-selection when the active commit is clicked without modifiers',async()=>{
-    await store.getState().selectRepository('a');await vi.waitFor(()=>expect(store.getState().details?.commit.oid).toBe(commit.oid));
+    await store.getState().selectRepository('a');await store.getState().selectCommit(commit.oid);
+    await vi.waitFor(()=>expect(store.getState().details?.commit.oid).toBe(commit.oid));
     const details=store.getState().details;
     store.setState({selectedOids:['older','middle',commit.oid],selectionAnchor:'older',selectedOid:commit.oid});bridge.rpc.mockClear();
     await store.getState().selectCommit(commit.oid);
@@ -901,12 +903,15 @@ describe('repository UI consistency', () => {
     expect(bridge.save.mock.calls.at(-1)?.[0].views.a.selectedParent).toBe('second');
   });
 
-  it('restores the selected Merge Parent after switching repositories', async () => {
+  it('opens Working Tree after switching repositories and preserves the Merge Parent for explicit reselection', async () => {
     const fallback = bridge.rpc.getMockImplementation()!;
     bridge.rpc.mockImplementation((method, repoId, payload) => method === 'details'
       ? Promise.resolve({ commit: { ...commit, parents: ['first', 'second'] }, body: 'Merge', files: [], parent: payload.parent ?? 'first' }) : fallback(method, repoId, payload));
     await store.getState().selectRepository('a'); await store.getState().selectCommit(commit.oid, 'second');
     await store.getState().selectRepository('b'); bridge.rpc.mockClear(); await store.getState().selectRepository('a');
+    expect(store.getState()).toMatchObject({tab:'changes',selectedOids:[],selectedOid:commit.oid,selectedParent:'second',details:undefined});
+    expect(bridge.rpc.mock.calls.some(([method])=>method==='details')).toBe(false);
+    await store.getState().selectCommit(commit.oid);
     expect(bridge.rpc.mock.calls.find(([method]) => method === 'details')?.[2]).toMatchObject({ parent: 'second' });
   });
 
