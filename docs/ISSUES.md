@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-120：大文件末尾修改被 Diff 截断而显示零差异
+
+- 日期：2026-10-11
+- 状态：已解决
+- 现象：已修改文件的实际改动位于第 4000 行或 256 KiB 之后时，底部 Diff 只显示相同的文件开头，统计和导航显示零修改，无法查看后续上下文。
+- 原因：宿主先按每侧 256 KiB 和 4000 行截断文本，前端仅比较截断后的内容，实际修改没有进入差异计算；原生历史文本另有 8 MiB 限制。
+- 解决方案：宿主读取完整文本后比较，移除行数与前缀字节截断；新增基于 Git 零上下文差异的完整修改索引、不可变文本快照及按范围读取接口。分块读取与索引扫描支持取消，工作文件读取期间发生变化时停止比较。保留每侧文本 32 MiB、文本与索引缓存合计 128 MiB 的资源保护，超限明确报错，不返回部分比较。原生历史文本沿用完整读取及资源保护。
+- 验证方式：类型检查和 1519 条双语资源检查通过；74 项定向回归通过，覆盖第 100001 行修改、工作区/暂存区/历史来源、完整分页行号、混合新增删除与末尾换行、不可变快照、仓库隔离和释放、超限报错、请求取消、Git 进程终止以及既有图片/二进制行为。
+- 相关文件：`src/editor/documents.ts`、`src/editor/text-diff.ts`、`src/git/service.ts`、`src/git/runner.ts`、`src/protocol/diff.ts`、`src/protocol/types.ts`、`src/protocol/validation.ts`、`src/protocol/queries.ts`、`src/extension/workbench.ts`、`tests/documents.test.ts`、`tests/workbench-protocol.test.ts`、`tests/rpc-timeout.test.ts`及当前架构、规格和双语手册。
+
 ## BUG-119：Fetch 后仍显示远端已删除的分支
 
 - 日期：2026-10-11

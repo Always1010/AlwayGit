@@ -6,7 +6,7 @@ import { terminalAckSchema, terminalCreateSchema, terminalIdSchema, terminalInpu
 import { SnapshotCoordinator } from '../application/snapshot-coordinator';
 import { QueryCoordinator } from '../application/query-coordinator';
 import { readQueryCategory } from '../protocol/queries';
-import { externalUrlSchema, remoteLinksSchema, remoteTagsSchema, cancelQuerySchema, actionSchema, operationSettingsSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, cherryPickCheckSchema, diffSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema, repositoryDiscoverySchema, cancelRepositoryDiscoverySchema, addRepositoriesSchema, reorderRepositorySchema, createRepositoryCollectionSchema } from '../protocol/validation';
+import { externalUrlSchema, remoteLinksSchema, remoteTagsSchema, cancelQuerySchema, actionSchema, operationSettingsSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, cherryPickCheckSchema, diffSchema, diffPreviewSchema, diffPageSchema, diffReleaseSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema, repositoryDiscoverySchema, cancelRepositoryDiscoverySchema, addRepositoriesSchema, reorderRepositorySchema, createRepositoryCollectionSchema } from '../protocol/validation';
 import * as vscode from 'vscode';
 import { randomBytes } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -424,6 +424,7 @@ export class Workbench implements vscode.Disposable {
     if (suspend && entry.kind !== 'editor') this.suspendedDockedPanels.set(entry.kind, entry);
     else this.terminals.disposeOwner(entry);
     this.queries.cancelOwner(entry);
+    this.documents.releaseDiffOwner(entry);
     this.pendingLocationDialogs.delete(entry.panel); this.appliedLocationDefaults.delete(entry.panel);
     for (const [token, capture] of this.captures) if (capture.source === entry) { clearTimeout(capture.timer); this.captures.delete(token); capture.reject(new Error(this.text('workbenchEntry.captureFailed'))); }
     for (const [id, scan] of this.repositoryDiscoveries) if (scan.source === entry) { scan.cancelled = true; this.repositoryDiscoveries.delete(id); }
@@ -635,7 +636,9 @@ export class Workbench implements vscode.Disposable {
       case 'stashDetails': { const data = detailsSchema.parse(request.payload); return this.git.stashDetails(repo, data.oid); }
       case 'compare': { const data=comparisonSchema.parse(request.payload); return this.git.compare(repo,data.left,data.right,data.preserveOrder); }
       case 'diff': await this.projects.openDiff(repo.root, diffSchema.parse(request.payload)); return null;
-      case 'diffPreview': return this.documents.preview(repo, diffSchema.parse(request.payload));
+      case 'diffPreview': { const target = diffPreviewSchema.parse(request.payload); return target.paged ? this.documents.indexedPreview(repo, target, !target.summaryOnly, source??this) : this.documents.preview(repo,target); }
+      case 'diffPage': { const { token, start, count } = diffPageSchema.parse(request.payload); return this.documents.diffPage(repo, token, start, count); }
+      case 'diffRelease': this.documents.releaseDiff(repo, diffReleaseSchema.parse(request.payload).token); return null;
       case 'openRepository': {
         const data = openRepositorySchema.parse(request.payload ?? {});
         if (data.newWindow) await this.projects.openWorkbenchInNewWindow(repo.root);
@@ -801,7 +804,7 @@ export class Workbench implements vscode.Disposable {
     this.captures.clear();
     const surfaces = [...this.panels.keys()];
     for (const entry of [...this.panels.values()]) this.release(entry);
-    this.appliedLocationDefaults.clear(); this.locationVisibilityHolds.clear(); this.dockedViews.clear(); this.dockedRestoredStates.clear(); this.dockedPanels.clear(); this.suspendedDockedPanels.clear(); this.terminals.dispose(); this.snapshots.dispose(); this.queries.dispose(); clearInterval(this.interval);
+    this.appliedLocationDefaults.clear(); this.locationVisibilityHolds.clear(); this.dockedViews.clear(); this.dockedRestoredStates.clear(); this.dockedPanels.clear(); this.suspendedDockedPanels.clear(); this.terminals.dispose(); this.snapshots.dispose(); this.queries.dispose(); this.documents.releaseDiffOwner(this); clearInterval(this.interval);
     for (const scan of this.repositoryDiscoveries.values()) scan.cancelled = true;
     this.repositoryDiscoveries.clear(); this.lastPanel = undefined;
     for (const surface of surfaces) if ('dispose' in surface) surface.dispose();

@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { actionSchema, createRepositoryCollectionSchema, reorderRepositorySchema, diffSchema, openRepositorySchema, openWorkbenchSchema, operationSettingsSchema, requestSchema, sessionSchema } from '../src/protocol/validation';
+import { actionSchema, createRepositoryCollectionSchema, reorderRepositorySchema, diffSchema, diffPageSchema, openRepositorySchema, openWorkbenchSchema, operationSettingsSchema, requestSchema, sessionSchema } from '../src/protocol/validation';
 
 describe('Workbench protocol validation', () => {
+  it('accepts bounded page requests and rejects arbitrary snapshot tokens and oversized ranges', () => {
+    const page = { token: '27b25a96-9495-4619-94be-071fe44811d9', start: 100000, count: 128 };
+    expect(requestSchema.parse({ id: 'page', method: 'diffPage', payload: page }).method).toBe('diffPage');
+    expect(diffPageSchema.parse(page)).toEqual(page);
+    for (const invalid of [{ ...page, token: '../file' }, { ...page, start: -1 }, { ...page, start: 1.5 }, { ...page, count: 513 }]) expect(diffPageSchema.safeParse(invalid).success).toBe(false);
+  });
   it('requires a captured context and explicit file versions for selected commits', () => {
     const action={type:'commit',message:'selected',files:[{path:'file.txt',area:'unstaged'}],expectedHead:'a'.repeat(40),expectedBranch:'main'};
     expect(actionSchema.parse(action)).toEqual(action);

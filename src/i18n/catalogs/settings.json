@@ -300,8 +300,8 @@
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
   "settings.navigatesAllFilesInTheCurrentCommitAndSelected": {
-    "en": "Navigates all files in the current Commit and selected Parent, including files hidden by the path filter. Binary files and files without text change blocks are skipped; truncated files only include previewed changes. Working Tree, Stash and comparisons continue to cycle within the current file.",
-    "zh-CN": "范围为当前提交和所选父提交的全部文件，包括路径筛选隐藏的文件。跳过二进制文件及没有文本更改块的文件；截断文件仅导航预览中的更改。工作区、Stash 和提交比较仍在当前文件内循环。",
+    "en": "Navigates all files in the current Commit and selected Parent, including files hidden by the path filter. Binary files and files without text change blocks are skipped; text changes are calculated from complete file contents. Working Tree, Stash and comparisons continue to cycle within the current file.",
+    "zh-CN": "范围为当前提交和所选父提交的全部文件，包括路径筛选隐藏的文件。跳过二进制文件及没有文本更改块的文件；文本修改按完整文件计算。工作区、Stash 和提交比较仍在当前文件内循环。",
     "review": "translated",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },

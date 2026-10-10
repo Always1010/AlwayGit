@@ -27,7 +27,7 @@ function jpeg(width:number,height:number):Buffer { const value=Buffer.alloc(32);
 function webp(width:number,height:number):Buffer { const value=Buffer.alloc(30);value.write('RIFF',0,'ascii');value.writeUInt32LE(22,4);value.write('WEBPVP8X',8,'ascii');value.writeUIntLE(width-1,24,3);value.writeUIntLE(height-1,27,3);return value; }
 afterEach(async () => { for (const root of roots.splice(0)) { if (path.dirname(root) !== os.tmpdir() || !path.basename(root).startsWith('alwaygit-preview-')) throw new Error('Unsafe cleanup target'); await rm(root, { recursive: true, force: true, maxRetries: 5 }); } });
 
-describe('Bounded Git Diff previews', () => {
+describe('Complete Git Diff previews', () => {
   it('compares symbolic-link target text without reading an external target', async () => {
     const { root, repo } = await setup();
     const outside = await mkdtemp(path.join(os.tmpdir(), 'alwaygit-preview-')); roots.push(outside);
@@ -97,17 +97,69 @@ describe('Bounded Git Diff previews', () => {
     expect(await documents.preview(repo,{kind:'stash-working',stashOid:stash.oid,path:'missing.txt'})).toMatchObject({left:'saved content',right:''});
   });
 
-  it('bounds large files by bytes and lines and reports binary content without exposing text', async () => {
+  it('reads complete text beyond the former byte and line limits and rejects binary content', async () => {
     const { root, repo, documents } = await setup();
     await writeFile(path.join(root, 'base.txt'), 'base'); await commit(root, 'initial');
     await writeFile(path.join(root, 'large.txt'), 'x'.repeat(300000));
     const large = textPreview(await documents.preview(repo, { kind: 'change', path: 'large.txt', area: 'unstaged' }));
-    expect(large.truncated).toBe(true); expect(Buffer.byteLength(large.right)).toBe(256 * 1024);
+    expect(large.truncated).toBeUndefined(); expect(Buffer.byteLength(large.right)).toBe(300000);
     await writeFile(path.join(root, 'lines.txt'), 'line\n'.repeat(5000));
     const lines = textPreview(await documents.preview(repo, { kind: 'change', path: 'lines.txt', area: 'unstaged' }));
-    expect(lines.truncated).toBe(true); expect(lines.right.split('\n')).toHaveLength(4000);
+    expect(lines.truncated).toBeUndefined(); expect(lines.right.split('\n')).toHaveLength(5001);
     await writeFile(path.join(root, 'binary.bin'), Buffer.from([0, 255, 1]));
     expect(await documents.preview(repo, { kind: 'change', path: 'binary.bin', area: 'unstaged' })).toMatchObject({ kind: 'binary', reason: 'unsupported' });
+  });
+
+  it('preserves historical and staged modifications after line 100000 and byte 256 KiB', async () => {
+    const { root, repo, service, documents } = await setup();
+    const before = 'unchanged context\n'.repeat(100000) + 'before\n';
+    const after = 'unchanged context\n'.repeat(100000) + 'after\n';
+    await writeFile(path.join(root, 'tail.txt'), before); await commit(root, 'initial');
+    await writeFile(path.join(root, 'tail.txt'), after);
+    const working = textPreview(await documents.preview(repo, { kind: 'change', path: 'tail.txt', area: 'unstaged' }));
+    expect(working.left).toBe(before); expect(working.right).toBe(after);
+    await service.execute(repo, { type: 'stage', paths: ['tail.txt'] });
+    const staged = textPreview(await documents.preview(repo, { kind: 'change', path: 'tail.txt', area: 'staged' }));
+    expect(staged.left).toBe(before); expect(staged.right).toBe(after);
+    const oid = await commit(root, 'tail change');
+    const historical = textPreview(await documents.preview(repo, { kind: 'commit', oid, path: 'tail.txt' }));
+    expect(historical.left).toBe(before); expect(historical.right).toBe(after);
+    const indexed = textPreview(await documents.indexedPreview(repo, { kind: 'commit', oid, path: 'tail.txt' }));
+    expect(indexed.left).toBe(''); expect(indexed.right).toBe('');
+    expect(indexed.index).toMatchObject({ rowCount: 100002, changes: [{ start: 100000, end: 100000 }], summary: { added: 0, modified: 1, removed: 0 } });
+    const page = documents.diffPage(repo, indexed.index!.token, 99999, 3);
+    expect(page.rows).toEqual([
+      { changed: false, before: 'unchanged context', after: 'unchanged context', beforeLine: 100000, afterLine: 100000 },
+      { changed: true, before: 'before', after: 'after', beforeLine: 100001, afterLine: 100001 },
+      { changed: false, before: '', after: '', beforeLine: 100002, afterLine: 100002 },
+    ]);
+    await expect(documents.indexedPreview(repo, { kind: 'commit', oid, path: 'tail.txt' }, false)).resolves.toMatchObject({ index: { token: '', summary: { modified: 1 } } });
+    expect(() => documents.diffPage({ ...repo, id: 'other' }, indexed.index!.token, 0, 1)).toThrow('expired');
+    documents.releaseDiff(repo, indexed.index!.token);
+    expect(() => documents.diffPage(repo, indexed.index!.token, 0, 1)).toThrow('expired');
+  });
+
+  it('pages an immutable working snapshot with additions, removals and a final newline change', async () => {
+    const { root, repo, documents } = await setup();
+    const before = 'first\nremove\ncontext\nlast\n', after = 'insert\nfirst\ncontext\nlast';
+    await writeFile(path.join(root, 'mixed.txt'), before); await commit(root, 'initial');
+    await writeFile(path.join(root, 'mixed.txt'), after);
+    const owner = {}, preview = textPreview(await documents.indexedPreview(repo, { kind: 'change', path: 'mixed.txt', area: 'unstaged' }, true, owner));
+    const first = documents.diffPage(repo, preview.index!.token, 0, 2), rest = documents.diffPage(repo, preview.index!.token, 2, 512);
+    await writeFile(path.join(root, 'mixed.txt'), 'new working content');
+    expect(documents.diffPage(repo, preview.index!.token, 0, 2)).toEqual(first);
+    const rows = [...first.rows, ...rest.rows];
+    expect(rows.filter(row => row.before !== undefined).map(row => row.before).join('\n')).toBe(before);
+    expect(rows.filter(row => row.after !== undefined).map(row => row.after).join('\n')).toBe(after);
+    expect(preview.index!.summary).toEqual({ added: 1, modified: 1, removed: 1 });
+    documents.releaseDiffOwner(owner);
+    expect(() => documents.diffPage(repo, preview.index!.token, 0, 1)).toThrow('expired');
+  });
+
+  it('reports resource exhaustion instead of returning matching prefixes as a complete comparison', async () => {
+    const { root, repo, documents } = await setup();
+    await writeFile(path.join(root, 'too-large.txt'), 'x'.repeat(32 * 1024 * 1024 + 1));
+    await expect(documents.preview(repo, { kind: 'change', path: 'too-large.txt', area: 'unstaged' })).rejects.toThrow('resource limit');
   });
 
   it('previews bounded PNG changes and blocks images from native VS Code editors', async () => {

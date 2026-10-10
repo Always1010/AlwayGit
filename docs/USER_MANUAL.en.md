@@ -361,7 +361,7 @@ Ref checkboxes control which history you see; branch names and row selections co
 
 **Result:** Choose to inspect the entire Commit or the current file block by block. Adjacent changed lines form one contiguous block.
 
-**Caution:** Entire Commit includes files hidden by the path filter. The Diff title shows the actual path, and the file list identifies a hidden current file. Binary files and files without text change blocks are skipped but remain available for manual inspection. Read failures stop navigation and show an error. Truncated previews only count and navigate previewed changes; open the native Diff or editor for the full content. Working Tree, Stash, and Commit comparisons still cycle within the current file.
+**Caution:** Entire Commit includes files hidden by the path filter. The Diff title shows the actual path, and the file list identifies a hidden current file. Binary files and files without text change blocks are skipped but remain available for manual inspection. Read failures stop navigation and show an error. Text statistics and navigation cover the complete file, including changes after line 4000. Scroll to inspect all context. Resource limits produce an error rather than a partial comparison or a misleading zero-change count. Working Tree, Stash, and Commit comparisons still cycle within the current file.
 
 ![Figure 38 Diff settings with font, line height, code preview, and change navigation scope](images/user-manual/figure-38.png)
 
@@ -1044,7 +1044,7 @@ The results bar retains the operation name, target, and success or failure statu
 | Ordinary Commit is unavailable | Whether there are Staged files or conflicts | Check the staged scope and the operation bar; Amend can run without Staged files when only the message is changing |
 | Switching branches is blocked | Files that might be overwritten and whether the branch is in use by a Worktree | Save your changes or open the Worktree using that branch |
 | Push fails | The target, authentication, permissions, and whether the remote has advanced | Fetch and compare first, then address the error |
-| Diff content is incomplete | Whether the file is binary, has encoding issues, or has a truncated preview | Use native Diff or the editor |
+| Diff cannot complete | Whether the file is binary, has encoding issues, or reached a resource limit | Check the error; text is limited to 32 MiB per side, with no partial comparison shown on failure |
 | The commit graph has no connecting lines | Whether a search is active or no references are checked | Clear the search or adjust the reference scope |
 
 <a id="section-11-05"></a>

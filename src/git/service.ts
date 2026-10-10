@@ -1,7 +1,7 @@
 import { message as localizeMessage, translate } from '../i18n/index';
 import { createHash, randomUUID } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { access, lstat, open, realpath, readFile, readlink, rm } from 'node:fs/promises';
+import { access, lstat, mkdtemp, open, realpath, readFile, readlink, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { constants } from 'node:fs';
 import path from 'node:path';
@@ -19,6 +19,7 @@ import { isReadOnlyGitCommand } from './command-kind';
 import { assertGitArgumentBudget, prepareGitArguments, splitCleanArguments } from './arguments';
 import { mapGitQueries } from './query-map';
 import { runGitProcess, type GitResult } from './runner';
+import type { TextDiffHunk } from '../protocol/diff';
 export { GitError } from './error';
 import { createSelectedStash, preflightStash, StashStateError, type StashExecution } from './stash';
 import { commitSelected } from './selected-commit';
@@ -104,7 +105,8 @@ export class GitService implements GitServiceContract {
     }
     finally{signal.removeEventListener('abort',abort);}
   }
-  private async run(repo: Repository, args: string[], allowFailure = false, captureBytes?: number, execution: StashExecution & { signal?: AbortSignal; configOverrides?: [string, string][]; beforeSpawn?: () => Promise<void>; boundRemote?: BoundRemote } = {}): Promise<Result> {
+  throwIfReadCancelled(): void { this.readSignal.getStore()?.controller.signal.throwIfAborted(); }
+  private async run(repo: Repository, args: string[], allowFailure = false, captureBytes?: number, execution: StashExecution & { signal?: AbortSignal; configOverrides?: [string, string][]; beforeSpawn?: () => Promise<void>; boundRemote?: BoundRemote; onStdout?: (chunk: Buffer) => void } = {}): Promise<Result> {
     const readOnly = isReadOnlyGitCommand(args), scope = this.readSignal.getStore(), scopeSignal = scope?.controller.signal;
     if (!readOnly && scopeSignal) throw new GitError(localizeMessage("service.aReadOnlyRequestCannotRunGitMutations"), 'WRITE_IN_READ_SCOPE');
     const unsafe = unsafeTerminations.get(normalized(repo.commonDir));
@@ -163,6 +165,7 @@ export class GitService implements GitServiceContract {
         input: prepared.input, signal: execution.signal && scopeSignal ? AbortSignal.any([execution.signal,scopeSignal]) : execution.signal ?? scopeSignal, readOnly, captureBytes,
         timeoutMs: this.options.timeoutMs ?? (args[0] === 'ls-remote' ? 30_000 : ['fetch', 'pull', 'push'].includes(args[0]) ? this.options.networkTimeoutMs ?? 600_000 : undefined), onStop: wrapped?.cancelPrompts, maxOutputBytes: this.options.maxOutputBytes,
         onStderr: execution.silent ? undefined : chunk => log.write(chunk),
+        onStdout: execution.onStdout,
       });
       if(scope){
         const completion=gitProcess.then(()=>{},error=>(error as {completion?:Promise<void>}|undefined)?.completion?.catch(()=>{}));
@@ -450,6 +453,46 @@ export class GitService implements GitServiceContract {
     if (source.kind === 'revision') { const oid = await this.oid(repo, source.revision); const records = decodePaths((await this.run(repo, ['ls-tree', '-z', oid, '--', name])).stdout).split('\0'); for (const record of records) { const tab = record.indexOf('\t'); if (record.slice(tab + 1) === name) { const meta = record.slice(0, tab).split(' '); if (meta[1] !== 'blob') throw new GitError(localizeMessage("service.theSelectedPathIsNotAFile"), 'INVALID_PATH'); object = meta[2]; } } }
     else { const stage = source.stage ?? 0; if (![0, 1, 2, 3].includes(stage)) throw new GitError(localizeMessage("service.invalidIndexStage"), 'INVALID_ARGUMENT'); const records = decodePaths((await this.run(repo, ['ls-files', '--stage', '-z', '--', name])).stdout).split('\0'); for (const record of records) { const tab = record.indexOf('\t'); const meta = record.slice(0, tab).split(' '); if (record.slice(tab + 1) === name && Number(meta[2]) === stage) object = meta[1]; } }
     return object ? (await this.run(repo, ['cat-file', 'blob', object], false, maxBytes)).stdout : Buffer.alloc(0);
+  }
+  /** Compare immutable copies, retaining only hunk headers rather than a large patch. */
+  async textDiffHunks(repo: Repository, left: string, right: string): Promise<TextDiffHunk[]> {
+    if (left === right) return [];
+    const directory = await mkdtemp(path.join(tmpdir(), 'alwaygit-diff-'));
+    const before = path.join(directory, 'before'), after = path.join(directory, 'after');
+    const hunks: TextDiffHunk[] = [];
+    let prefix = '';
+    const line = () => {
+      const match = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/.exec(prefix);
+      if (match) {
+        if (hunks.length >= 250000) throw new GitError(localizeMessage('documents.textComparisonResourceLimit'), 'OUTPUT_LIMIT');
+        hunks.push({ beforeStart: Number(match[1]), beforeCount: Number(match[2] ?? 1), afterStart: Number(match[3]), afterCount: Number(match[4] ?? 1) });
+      }
+      prefix = '';
+    };
+    try {
+      this.throwIfReadCancelled();
+      await Promise.all([writeFile(before, left, { mode: 0o600 }), writeFile(after, right, { mode: 0o600 })]);
+      const result = await this.run(repo, ['diff', '--no-index', '--no-ext-diff', '--no-textconv', '--text', '--no-color', '--no-renames', '--diff-algorithm=myers', '--no-indent-heuristic', '--inter-hunk-context=0', '--unified=0', '--', before, after], true, 0, {
+        silent: true,
+        onStdout: chunk => {
+          const value = chunk.toString('utf8'); let start = 0;
+          for (;;) {
+            const end = value.indexOf('\n', start);
+            prefix += value.slice(start, end < 0 ? undefined : end).slice(0, Math.max(0, 256 - prefix.length));
+            if (end < 0) break;
+            line(); start = end + 1;
+          }
+        },
+      });
+      if (prefix) line();
+      if (result.code !== 0 && result.code !== 1) throw new GitError(result.stderr.toString('utf8').trim(), 'GIT_FAILED');
+      this.throwIfReadCancelled();
+      return hunks;
+    } finally {
+      // This exact, freshly created directory is the only recursive cleanup target.
+      if (path.dirname(directory) !== tmpdir() || !path.basename(directory).startsWith('alwaygit-diff-')) throw new GitError(localizeMessage('documents.unsafeDiffCleanup'), 'INVALID_PATH');
+      await rm(directory, { recursive: true, force: true, maxRetries: 5 });
+    }
   }
   /** Freeze the selected target before a native confirmation can outlive its snapshot. */
   private discardChanges(status: Awaited<ReturnType<GitService['status']>>, request: DiscardRequest): Change[] {
