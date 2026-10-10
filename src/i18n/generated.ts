@@ -996,6 +996,18 @@ export const catalog = {
     "en": "The selected working directories will be removed. Branch references are retained.",
     "zh-CN": "将移除所选工作目录，分支引用保留。"
   },
+  "actions.rememberDeletionDefault": {
+    "en": "Remember this selection as the default",
+    "zh-CN": "将此选项记为默认"
+  },
+  "actions.rememberDeletionUserScope": {
+    "en": "Saved to user defaults after at least one target is removed.",
+    "zh-CN": "至少一项删除成功后保存到用户默认。"
+  },
+  "actions.rememberDeletionWorkspaceScope": {
+    "en": "Saved to this VS Code workspace after at least one target is removed.",
+    "zh-CN": "至少一项删除成功后保存到当前 VS Code 工作区。"
+  },
   "arguments.gitCommandArgumentsAreTooLongSelectFewerItems": {
     "en": "Git command arguments are too long. Select fewer items or shorten the description and retry.",
     "zh-CN": "Git 命令参数过长。请选择更少的项目或缩短说明后重试。"
@@ -2237,6 +2249,14 @@ export const catalog = {
     "en": "Removed targets",
     "zh-CN": "已移除的对象"
   },
+  "feedback.deletionDefaultSaveFailed": {
+    "en": "Deletion completed, but the default could not be saved: {{message}}",
+    "zh-CN": "删除已完成，但默认值未保存：{{message}}"
+  },
+  "feedback.deletionNotAttempted": {
+    "en": "Not attempted after the batch stopped",
+    "zh-CN": "批次停止后未执行的对象"
+  },
   "graphRow.parents": {
     "en": "{{value}}parents {{value2}}",
     "zh-CN": "{{value}} 个父提交 {{value2}}"
@@ -2871,6 +2891,14 @@ export const catalog = {
   "manifest.auxiliaryWorkbench": {
     "en": "Workbench (Secondary Sidebar)",
     "zh-CN": "工作台（第二侧边栏）"
+  },
+  "manifest.contributes.configuration.properties.alwaygit.forceDeleteUnmergedBranches.description": {
+    "en": "Initially select force deletion in local branch deletion dialogs. Final confirmation is still required.",
+    "zh-CN": "本地分支删除弹窗初始勾选强制删除未合并分支。仍需最终确认。"
+  },
+  "manifest.contributes.configuration.properties.alwaygit.forceRemoveDirtyWorktrees.description": {
+    "en": "Initially select forced removal in Worktree removal dialogs. Uncommitted files may be discarded; final confirmation is still required.",
+    "zh-CN": "工作树移除弹窗初始勾选强制移除。可能丢弃未提交文件，仍需最终确认。"
   },
   "menus.discardAllUnstaged": {
     "en": "Discard All Unstaged Changes…",
@@ -5271,6 +5299,18 @@ export const catalog = {
     "en": "This workspace has overrides. Saving user defaults will not replace those overrides.",
     "zh-CN": "当前工作区存在覆盖值；保存用户默认值不会替换这些覆盖值。"
   },
+  "settings.forceDeleteUnmergedBranches": {
+    "en": "Select force deletion of unmerged branches by default",
+    "zh-CN": "删除分支时默认勾选强制删除未合并分支"
+  },
+  "settings.forceRemoveDirtyWorktrees": {
+    "en": "Select forced removal of Worktrees with uncommitted changes by default",
+    "zh-CN": "移除工作树时默认勾选强制移除未提交更改"
+  },
+  "settings.forceDeletionDefaultsEffect": {
+    "en": "These independent defaults initialize single and batch dialogs. You can override them for one operation. Target review and final confirmation are still required.",
+    "zh-CN": "两个默认值独立控制单项与批量操作的初始选择，可单次覆盖。仍需核对目标并完成最终确认。"
+  },
   "sidebar.refreshRepositoryListAndStatusBadges": {
     "en": "Refresh repository list and status badges",
     "zh-CN": "刷新仓库列表和状态角标"
@@ -6393,6 +6433,9 @@ export interface MessageParameters {
   "actions.rememberResetModeAsDefault": {  };
   "actions.removeWorktrees": { count: number };
   "actions.worktreeRemovalEffect": {  };
+  "actions.rememberDeletionDefault": {  };
+  "actions.rememberDeletionUserScope": {  };
+  "actions.rememberDeletionWorkspaceScope": {  };
   "arguments.gitCommandArgumentsAreTooLongSelectFewerItems": {  };
   "arguments.messagesCannotContainNULCharacters": {  };
   "catalogStore.theSharedRepositoryCatalogIsDamagedOrUsesAn": {  };
@@ -6698,6 +6741,8 @@ export interface MessageParameters {
   "feedback.viewRemoteRequest": {  };
   "feedback.deletionSummary": { count: number; failed: ParameterValue };
   "feedback.deletedTargets": {  };
+  "feedback.deletionDefaultSaveFailed": { message: ParameterValue };
+  "feedback.deletionNotAttempted": {  };
   "graphRow.parents": { value: ParameterValue; value2: ParameterValue };
   "graphRow.mergeCommit": {  };
   "graphRow.rootCommitNoParents": {  };
@@ -6856,6 +6901,8 @@ export interface MessageParameters {
   "manifest.copyToEditor": {  };
   "manifest.openInAuxiliary": {  };
   "manifest.auxiliaryWorkbench": {  };
+  "manifest.contributes.configuration.properties.alwaygit.forceDeleteUnmergedBranches.description": {  };
+  "manifest.contributes.configuration.properties.alwaygit.forceRemoveDirtyWorktrees.description": {  };
   "menus.discardAllUnstaged": {  };
   "menus.discardAllChanges": {  };
   "menus.createLocalTrackingBranches": {  };
@@ -7452,6 +7499,9 @@ export interface MessageParameters {
   "settings.userScopeDescription": {  };
   "settings.workspaceScopeDescription": {  };
   "settings.workspaceOverrideActive": {  };
+  "settings.forceDeleteUnmergedBranches": {  };
+  "settings.forceRemoveDirtyWorktrees": {  };
+  "settings.forceDeletionDefaultsEffect": {  };
   "sidebar.refreshRepositoryListAndStatusBadges": {  };
   "sidebar.collapse": {  };
   "sidebar.expand": {  };

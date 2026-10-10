@@ -123,7 +123,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
   const [page, setPage] = useState<SettingsPage>('theme');
   const [recordingShortcut, setRecordingShortcut] = useState(false);
   const [colorTheme, setColorTheme] = useState<ColorTheme>(isLightTheme(theme) ? 'light' : 'dark');
-  const [allowDetachedHead, setAllowDetachedHead] = useState(state.operationSettings.allowDetachedHead),[pushFollowTags,setPushFollowTags]=useState(state.operationSettings.pushFollowTags),[pushTagAfterCreate,setPushTagAfterCreate]=useState(state.operationSettings.pushTagAfterCreate),[defaultResetMode,setDefaultResetMode]=useState(state.operationSettings.defaultResetMode), [advancedDirty, setAdvancedDirty] = useState(false), [saving, setSaving] = useState(false), [saveError, setSaveError] = useState<string>();
+  const [allowDetachedHead, setAllowDetachedHead] = useState(state.operationSettings.allowDetachedHead),[pushFollowTags,setPushFollowTags]=useState(state.operationSettings.pushFollowTags),[pushTagAfterCreate,setPushTagAfterCreate]=useState(state.operationSettings.pushTagAfterCreate),[defaultResetMode,setDefaultResetMode]=useState(state.operationSettings.defaultResetMode), [forceDeleteUnmergedBranches,setForceDeleteUnmergedBranches]=useState(state.operationSettings.forceDeleteUnmergedBranches),[forceRemoveDirtyWorktrees,setForceRemoveDirtyWorktrees]=useState(state.operationSettings.forceRemoveDirtyWorktrees), [advancedDirty, setAdvancedDirty] = useState(false), [saving, setSaving] = useState(false), [saveError, setSaveError] = useState<string>();
   const [operationScope, setOperationScope] = useState<OperationSettings['scope']>('user');
   const [scopeSettings, setScopeSettings] = useState<OperationSettings>(), [scopeLoading, setScopeLoading] = useState(true);
   useEffect(() => {
@@ -132,7 +132,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
     void rpc<OperationSettings>('operationSettings', undefined, { scope: operationScope }).then(settings => {
       if (cancelled) return;
       setScopeSettings(settings); setAllowDetachedHead(settings.allowDetachedHead); setPushFollowTags(settings.pushFollowTags);
-      setPushTagAfterCreate(settings.pushTagAfterCreate); setDefaultResetMode(settings.defaultResetMode); setSaveError(undefined);
+      setPushTagAfterCreate(settings.pushTagAfterCreate); setDefaultResetMode(settings.defaultResetMode); setForceDeleteUnmergedBranches(settings.forceDeleteUnmergedBranches ?? false); setForceRemoveDirtyWorktrees(settings.forceRemoveDirtyWorktrees ?? false); setSaveError(undefined);
     }).catch(error => { if (!cancelled) setSaveError(error instanceof Error ? error.message : String(error)); })
       .finally(() => { if (!cancelled) setScopeLoading(false); });
     return () => { cancelled = true; };
@@ -141,7 +141,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
   const apply = async () => {
     if (recordingShortcut) return;
     setSaving(true); setSaveError(undefined);
-    try { if (advancedDirty) await state.saveOperationSettings({allowDetachedHead,pushFollowTags,pushTagAfterCreate,defaultResetMode}, operationScope); await state.finishSettings(true); }
+    try { if (advancedDirty) await state.saveOperationSettings({allowDetachedHead,pushFollowTags,pushTagAfterCreate,defaultResetMode,forceDeleteUnmergedBranches,forceRemoveDirtyWorktrees}, operationScope); await state.finishSettings(true); }
     catch (error) { setSaveError(error instanceof Error ? error.message : String(error)); }
     finally { setSaving(false); }
   };
@@ -231,6 +231,9 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
           <p className="settings-page-copy">{t("settings.branchPushUsesFollowTagsWhenEnabled")}</p>
           <label className="form-checkbox"><input type="checkbox" aria-label={t("settings.pushNewTagsAfterCreationByDefault")} checked={pushTagAfterCreate} disabled={saving || scopeLoading || !scopeSettings} onChange={event=>{setAdvancedDirty(true);setPushTagAfterCreate(event.target.checked);}}/>{t("settings.pushNewTagsAfterCreationByDefault")}</label>
           <p className="settings-page-copy">{t("settings.tagCreationOffersTheSelectedRemoteAndKeepsThe")}</p>
+          <label className="form-checkbox"><input type="checkbox" aria-label={t('settings.forceDeleteUnmergedBranches')} checked={forceDeleteUnmergedBranches} disabled={saving||scopeLoading||!scopeSettings} onChange={event=>{setAdvancedDirty(true);setForceDeleteUnmergedBranches(event.target.checked);}}/>{t('settings.forceDeleteUnmergedBranches')}</label>
+          <label className="form-checkbox"><input type="checkbox" aria-label={t('settings.forceRemoveDirtyWorktrees')} checked={forceRemoveDirtyWorktrees} disabled={saving||scopeLoading||!scopeSettings} onChange={event=>{setAdvancedDirty(true);setForceRemoveDirtyWorktrees(event.target.checked);}}/>{t('settings.forceRemoveDirtyWorktrees')}</label>
+          <p className="settings-page-copy">{t('settings.forceDeletionDefaultsEffect')}</p>
           <label className="settings-control">{t("settings.defaultResetMode")}<select aria-label={t("settings.defaultResetMode")} value={defaultResetMode} disabled={saving || scopeLoading || !scopeSettings} onChange={event=>{setAdvancedDirty(true);setDefaultResetMode(event.target.value as typeof defaultResetMode);}}><option value="soft">{uiText("actions.soft")}</option><option value="mixed">{uiText("actions.mixed")}</option><option value="hard">{uiText("actions.hard")}</option></select></label>
           <p className="settings-page-copy">{t("settings.resetDialogStartsWithThisModeHardStillRequires")}</p>
         </section>}

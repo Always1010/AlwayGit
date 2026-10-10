@@ -1198,5 +1198,23 @@
     "zh-CN": "当前工作区存在覆盖值；保存用户默认值不会替换这些覆盖值。",
     "review": "translated",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.forceDeleteUnmergedBranches": {
+    "en": "Select force deletion of unmerged branches by default",
+    "zh-CN": "删除分支时默认勾选强制删除未合并分支",
+    "review": "translated",
+    "context": "Deletion operation preferences"
+  },
+  "settings.forceRemoveDirtyWorktrees": {
+    "en": "Select forced removal of Worktrees with uncommitted changes by default",
+    "zh-CN": "移除工作树时默认勾选强制移除未提交更改",
+    "review": "translated",
+    "context": "Deletion operation preferences"
+  },
+  "settings.forceDeletionDefaultsEffect": {
+    "en": "These independent defaults initialize single and batch dialogs. You can override them for one operation. Target review and final confirmation are still required.",
+    "zh-CN": "两个默认值独立控制单项与批量操作的初始选择，可单次覆盖。仍需核对目标并完成最终确认。",
+    "review": "translated",
+    "context": "Deletion operation preferences"
   }
 }

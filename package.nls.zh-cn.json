@@ -33,5 +33,7 @@
   "manifest.openInPanel": "在面板打开工作台",
   "manifest.copyToEditor": "携带当前状态新建标签页",
   "manifest.openInAuxiliary": "在第二侧边栏打开工作台",
-  "manifest.auxiliaryWorkbench": "工作台（第二侧边栏）"
+  "manifest.auxiliaryWorkbench": "工作台（第二侧边栏）",
+  "manifest.contributes.configuration.properties.alwaygit.forceDeleteUnmergedBranches.description": "本地分支删除弹窗初始勾选强制删除未合并分支。仍需最终确认。",
+  "manifest.contributes.configuration.properties.alwaygit.forceRemoveDirtyWorktrees.description": "工作树移除弹窗初始勾选强制移除。可能丢弃未提交文件，仍需最终确认。"
 }

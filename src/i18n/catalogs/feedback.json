@@ -381,5 +381,17 @@
     "zh-CN": "已移除的对象",
     "review": "translated",
     "context": "Worktree batch removal"
+  },
+  "feedback.deletionDefaultSaveFailed": {
+    "en": "Deletion completed, but the default could not be saved: {{message}}",
+    "zh-CN": "删除已完成，但默认值未保存：{{message}}",
+    "review": "translated",
+    "context": "Deletion operation preferences"
+  },
+  "feedback.deletionNotAttempted": {
+    "en": "Not attempted after the batch stopped",
+    "zh-CN": "批次停止后未执行的对象",
+    "review": "translated",
+    "context": "Deletion results after interrupted operations"
   }
 }

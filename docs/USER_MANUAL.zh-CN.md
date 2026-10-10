@@ -434,7 +434,7 @@ Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区�
 **前提：** 确定分支已不再需要；重要提交有其他分支或备份引用承接。
 
 1. 右键非当前本地分支，选择 Delete Branch…。
-2. 核对分支名和警告；不确定是否含独有提交时先取消并检查历史。
+2. 核对分支名和警告；不确定是否含独有提交时先取消并检查历史。“强制删除未合并分支”的初始值可在设置 → 高级 → Git 操作中调整，本次可覆盖。需要保存本次选择时勾选“将此选项记为默认”，开启或关闭都可记住；弹窗说明保存到用户或工作区，至少一项删除成功后才保存。取消或全部失败不保存，默认值保存失败另行提示。
 3. 确认后检查分支列表与当前分支。
 
 **结果：** 目标本地分支引用被移除，当前分支保持明确。
@@ -956,7 +956,7 @@ Tags 列表合并显示本地标签和仅存在于所选远端的标签，标题
 
 1. 先切换到其他工作目录。
 2. 右键目标 工作树，选择 Remove 工作树…。批量清理时使用 Ctrl/Cmd 多选或 Shift 连选，再选择“移除 N 个工作树…”。选择包含主目录、当前目录或锁定工作树时，移除入口禁用并说明原因。
-3. 核对目录、锁定原因与确认信息。不要为绕过未提交内容保护而随意勾选 Remove even with uncommitted changes。
+3. 核对全部目录、锁定原因与确认信息。强制选项读取独立的工作树移除默认值，可在设置 → 高级 → Git 操作中调整，也可单次覆盖。勾选“将此选项记为默认”可在至少一项移除成功后保存开启或关闭；取消、全部失败不保存，保存失败另行提示。强制移除可能丢失未提交文件，默认开启仍需最终确认。
 4. 点击 Remove 工作树；若出现原生 Proceed 确认，再次检查目录后继续。
 5. 确认后检查 工作树 列表与磁盘结果。批量移除会汇总成功与失败项；未提交更改导致普通移除失败时，不会自动强制删除。目标保护状态变化或 Git 终止未确认时停止后续执行。
 
@@ -1066,6 +1066,8 @@ Git 在仓库所在的 VS Code 扩展宿主中执行。产品架构面向本地�
 | alwaygit.pushFollowTags | false | 普通 Push 默认是否附带相关注解 Tag |
 | alwaygit.pushTagAfterCreate | false | 新建 Tag 后默认是否推送到所选 Remote |
 | alwaygit.defaultResetMode | mixed | Reset 对话框默认选中的 Soft、Mixed 或 Hard 模式 |
+| alwaygit.forceDeleteUnmergedBranches | false | 单项与批量本地分支删除默认勾选 Force，仍需最终确认 |
+| alwaygit.forceRemoveDirtyWorktrees | false | 单项与批量工作树移除默认勾选 Force，仍需最终确认 |
 | alwaygit.language | en / zh-CN / auto；用户级 | 界面语言；应用后的用户设置跨工作台同步 |
 | alwaygit.interfaceSettings | 对象；用户级 | 外观、字号、密度、文件列表、快捷键和 Diff 阅读偏好 |
 | alwaygit.workbenchLocations | 默认仅 editor；用户级 | enabled 启用位置列表；default 必须是已启用位置 |

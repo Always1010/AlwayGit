@@ -38,7 +38,7 @@ it('preserves upstream merge checks, removes branch config and reflog, and repor
   await git(root, 'update-ref', 'refs/remotes/origin/topic', topic);
   await git(root, 'config', 'branch.topic.remote', 'origin');
   await git(root, 'config', 'branch.topic.merge', 'refs/heads/topic');
-  await expect(service.execute(repo, { type: 'branch.delete', names: ['topic', 'unmerged'], expectedOids: { topic, unmerged: topic } })).rejects.toMatchObject({ code: 'PARTIAL_FAILURE', message: expect.stringContaining('1 branch(es) deleted; 1 failed') });
+  await expect(service.execute(repo, { type: 'branch.delete', names: ['topic', 'unmerged'], expectedOids: { topic, unmerged: topic } })).rejects.toMatchObject({ code: 'PARTIAL_FAILURE', message: expect.stringContaining('1 branch(es) deleted; 1 failed'), deletionResult: { target: 'branch', succeeded: ['topic'], failures: [{ target: 'unmerged' }] } });
   await expect(git(root, 'show-ref', '--verify', 'refs/heads/topic')).rejects.toThrow();
   await expect(git(root, 'config', '--get', 'branch.topic.remote')).rejects.toThrow();
   await expect(access(path.join(root, '.git', 'logs', 'refs', 'heads', 'topic'))).rejects.toThrow();
