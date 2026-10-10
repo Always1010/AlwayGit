@@ -1,6 +1,10 @@
 import { it, expect } from 'vitest';
 import { redactSecrets, requestErrorText, serializeRequestError, SecretRedactor } from '../src/application/logging';
 import { parsePushResult } from '../src/git/push-result';
+it('serializes exact deletion outcomes and redacts credentials in nested diagnostics', () => {
+  const response = serializeRequestError(Object.assign(new Error('partial deletion'), { deletionResult: { kind: 'deletion', target: 'worktree', succeeded: ['/one'], failures: [{ target: '/two', message: 'https://user:secret@example.test failed' }] } }));
+  expect(response.deletionResult).toEqual({ kind: 'deletion', target: 'worktree', succeeded: ['/one'], failures: [{ target: '/two', message: 'https://***@example.test failed' }] });
+});
 it('redacts both token-only and password URLs plus authorization headers', () => {
   expect(redactSecrets("fatal: https://user:secret@example.test/repo.git failed\nhttps://token@example.test/x Authorization: Bearer abcdef"))
     .toBe('fatal: https://***@example.test/repo.git failed\nhttps://***@example.test/x Authorization: Bearer ***');

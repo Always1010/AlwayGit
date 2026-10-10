@@ -369,5 +369,17 @@
     "zh-CN": "在网页查看 PR/MR",
     "review": "translated",
     "context": "Existing provider-supplied request URL"
+  },
+  "feedback.deletionSummary": {
+    "en": "Removed {{count}}; {{failed}} failed",
+    "zh-CN": "成功移除 {{count}} 项；{{failed}} 项失败",
+    "review": "translated",
+    "context": "Worktree batch removal"
+  },
+  "feedback.deletedTargets": {
+    "en": "Removed targets",
+    "zh-CN": "已移除的对象",
+    "review": "translated",
+    "context": "Worktree batch removal"
   }
 }

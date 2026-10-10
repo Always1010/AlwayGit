@@ -31,7 +31,7 @@ export const actionSchema = z.union([
   z.object({ type: z.literal('stash.apply'), selector: text, pop: z.boolean().optional(), expectedOid: text.optional() }),
   z.object({ type: z.literal('stash.drop'), selector: text, expectedOid: text.optional() }),
   z.object({ type: z.literal('worktree.add'), path: text, branch: text.optional(), newBranch: text.optional(), start: text.optional(), detach: z.boolean().optional() }),
-  z.object({ type: z.literal('worktree.remove'), path: text, force: z.boolean().optional() }),
+  z.union([z.object({ type: z.literal('worktree.remove'), path: text, force: z.boolean().optional() }).strict(), z.object({ type: z.literal('worktree.remove'), paths: z.array(text).min(1).max(1000), force: z.boolean().optional() }).strict()]),
   z.object({ type: z.enum(['merge', 'rebase']), target: text, ...actionContext }),
   z.object({ type: z.enum(['cherry-pick', 'revert']), commits: z.array(text).min(1).max(1000), mainline: z.number().int().min(1).max(100).optional(), expectedHead: text.optional(), expectedBranch: text.optional(), allowIncluded: z.boolean().optional() }),
   z.object({ type: z.literal('reset'), target: text, mode: z.enum(['soft', 'mixed', 'hard']), ...actionContext }),

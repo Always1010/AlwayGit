@@ -23,13 +23,14 @@ export function ActionFeedbackBar({ showLog, openAction }: { showLog(): void; op
   const stash = feedback?.result?.kind === 'stash' ? feedback.result : undefined;
   const branch = feedback?.result?.kind === 'branch' ? feedback.result : undefined;
   const pushed = feedback?.result?.kind === 'push' ? feedback.result : undefined;
+  const deleted = feedback?.result?.kind === 'deletion' ? feedback.result : undefined;
   const checkedOut = feedback?.result?.kind === 'checkout' ? feedback.result : undefined;
   const fetched = feedback?.result?.kind === 'fetch' ? feedback.result : undefined;
   const worktree = feedback?.result?.kind === 'worktree' ? feedback.result : undefined;
   const updated = feedback?.result?.kind === 'update' ? feedback.result : undefined;
   const tag = feedback?.result?.kind === 'tag' ? feedback.result : undefined;
   const name = feedback ? actionName(feedback.action) : activity || 'Git';
-  const title = pushed?.outcome === 'partial' ? t('feedback.pushPartiallyCompleted') : pushed && feedback?.action.type === 'tag.create' && status === 'error' ? t('feedback.tagCreatedPushFailed') : branch&&status==='success' ? branch.checkedOut?t("feedback.createdAndSwitchedTo", { name: (branch.name) }):t("feedback.createdStillOn", { name: (branch.name), currentBranch: (branch.currentBranch) })
+  const title = deleted ? t('feedback.deletionSummary',{count:deleted.succeeded.length,failed:deleted.failures.length}) : pushed?.outcome === 'partial' ? t('feedback.pushPartiallyCompleted') : pushed && feedback?.action.type === 'tag.create' && status === 'error' ? t('feedback.tagCreatedPushFailed') : branch&&status==='success' ? branch.checkedOut?t("feedback.createdAndSwitchedTo", { name: (branch.name) }):t("feedback.createdStillOn", { name: (branch.name), currentBranch: (branch.currentBranch) })
     : commit && status === 'success' ? (commit.amended ? t("feedback.commitAmended", { value: (commit.oid.slice(0,8)) }) : t("feedback.commitCreated", { value: (commit.oid.slice(0,8)) }))
     : feedback?.action.type === 'resolve-and-stage' && status === 'success' ? t("feedback.markedAndStagedInspectTheResultBeforeContinuing") : status === 'running' ? t("feedback.inProgress", { name: (name) })
     : status === 'success' ? t("feedback.completed", { name: (name) }) : t("feedback.failed", { name: (name) });
@@ -63,6 +64,7 @@ export function ActionFeedbackBar({ showLog, openAction }: { showLog(): void; op
       {resultSummary && <span className="feedback-target">{resultSummary}</span>}
       {feedback?.error && <><strong>{t('feedback.errorDetails')}</strong><pre>{feedback.error}</pre></>}
       {feedback?.refreshWarning && <><strong>{t('feedback.refreshFailed')}</strong><pre>{feedback.refreshWarning}</pre></>}
+      {deleted&&<><strong>{t('feedback.deletedTargets')}</strong><pre>{deleted.succeeded.join('\n')||'—'}</pre>{deleted.failures.length>0&&<><strong>{t('feedback.errorDetails')}</strong><pre>{deleted.failures.map(item=>item.target+': '+item.message).join('\n')}</pre></>}</>}
       {pushed && feedback && <PushFeedback result={pushed} repoId={feedback.repoId}/>}
       {demoMode && <span className="muted">{t('feedback.demoSampleDataOnly')}</span>}
     </div>}

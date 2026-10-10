@@ -46,6 +46,11 @@ describe('Workbench protocol validation', () => {
     const action={type:'tag.create' as const,name:'v1',target:'HEAD',message:'release',pushRemote:'origin'};
     expect(actionSchema.parse(action)).toEqual(action);
   });
+  it('requires an exact nonempty single or batch Worktree removal target', () => {
+    expect(actionSchema.parse({ type: 'worktree.remove', path: '/linked' })).toEqual({ type: 'worktree.remove', path: '/linked' });
+    expect(actionSchema.parse({ type: 'worktree.remove', paths: ['/one', '/two'], force: true })).toMatchObject({ paths: ['/one', '/two'], force: true });
+    for (const payload of [{}, { paths: [] }, { path: '/one', paths: ['/two'] }]) expect(actionSchema.safeParse({ type: 'worktree.remove', ...payload }).success).toBe(false);
+  });
   it('requires a valid persisted Reset default', () => {
     const settings={allowDetachedHead:false,pushFollowTags:false,pushTagAfterCreate:false,defaultResetMode:'hard' as const};
     expect(operationSettingsSchema.parse(settings)).toEqual(settings);

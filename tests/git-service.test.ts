@@ -293,6 +293,33 @@ describe('Git service integration', () => {
     await expect(service.execute(repo, { type: 'worktree.remove', path: root, force: true })).rejects.toThrow('Only registered'); await expect(service.execute(repo, { type: 'worktree.remove', path: os.tmpdir(), force: true })).rejects.toThrow('Only registered');
     await service.execute(repo, { type: 'worktree.remove', path: linked }); expect((await service.snapshot(repo)).worktrees).toHaveLength(1);
   });
+  it('removes only selected Worktrees, reports dirty failures, and preserves their branches', async () => {
+    const { root, service, repo } = await setup(); await commit(root, 'a.txt', 'base');
+    const clean = path.join(root, 'clean'), dirty = path.join(root, 'dirty'), untouched = path.join(root, 'untouched');
+    for (const [directory, branch] of [[clean, 'clean'], [dirty, 'dirty'], [untouched, 'untouched']]) await service.execute(repo, { type: 'worktree.add', path: directory, newBranch: branch });
+    await writeFile(path.join(dirty, 'a.txt'), 'uncommitted');
+    await writeFile(path.join(dirty, 'new.txt'), 'untracked');
+    const registered = (await service.snapshot(repo)).worktrees;
+    const cleanPath = registered.find(tree => tree.branch === 'clean')!.path, dirtyPath = registered.find(tree => tree.branch === 'dirty')!.path, untouchedPath = registered.find(tree => tree.branch === 'untouched')!.path;
+    await expect(service.execute(repo, { type: 'worktree.remove', paths: [dirty, clean, clean] })).rejects.toMatchObject({ code: 'PARTIAL_FAILURE', deletionResult: { succeeded: [cleanPath], failures: [{ target: dirtyPath }] } });
+    expect(await readFile(path.join(dirty, 'a.txt'), 'utf8')).toBe('uncommitted');
+    expect(await readFile(path.join(dirty, 'new.txt'), 'utf8')).toBe('untracked');
+    expect((await service.snapshot(repo)).worktrees.map(tree => tree.path)).toEqual(expect.arrayContaining([dirtyPath, untouchedPath]));
+    await expect(service.execute(repo, { type: 'worktree.remove', paths: [dirty], force: true })).resolves.toMatchObject({ kind: 'deletion', succeeded: [dirtyPath], failures: [] });
+    expect((await service.snapshot(repo)).refs.filter(ref => ref.kind === 'local').map(ref => ref.name)).toEqual(expect.arrayContaining(['clean', 'dirty', 'untouched']));
+    expect(await readFile(path.join(untouched, 'a.txt'), 'utf8')).toBe('base');
+  });
+  it('rejects a whole Worktree batch containing a protected or unregistered target before deleting anything', async () => {
+    const { root, service, repo } = await setup(); await commit(root, 'a.txt', 'base');
+    const linked = path.join(root, 'linked'); await service.execute(repo, { type: 'worktree.add', path: linked, newBranch: 'linked' });
+    for (const target of [root, path.join(root, 'unregistered')]) {
+      await expect(service.execute(repo, { type: 'worktree.remove', paths: [linked, target], force: true })).rejects.toMatchObject({ code: 'INVALID_WORKTREE' });
+      expect(await readFile(path.join(linked, 'a.txt'), 'utf8')).toBe('base');
+    }
+    await git(root, 'worktree', 'lock', '--reason', 'keep', linked);
+    await expect(service.execute(repo, { type: 'worktree.remove', paths: [linked], force: true })).rejects.toMatchObject({ code: 'WORKTREE_LOCKED' });
+    expect(await readFile(path.join(linked, 'a.txt'), 'utf8')).toBe('base');
+  });
   it.each([
     { label: 'default remote', remote: undefined, prefix: 'origin' },
     { label: 'selected remote', remote: 'origin', prefix: 'origin' },

@@ -488,7 +488,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       // Accept legacy snapshots from demo fixtures and an older host during reload.
       const envelope = response && !('repository' in response) ? response : undefined;
       const result = response && 'repository' in response ? response : envelope?.snapshot;
-      const published = envelope?.result;
+      const published = envelope?.result?.kind === 'push' ? envelope.result : undefined;
       const commitResult: ActionFeedback['result'] = action.type === 'commit' && result?.repository.id === repoId && result.head ? { kind: 'commit', oid: result.head, files: committedFiles, remaining: result.changes.length, amended: !!action.amend } : undefined;
       if (action.type === 'commit' && submittedDraft !== undefined && submittedDraft.trim() === action.message && get().drafts[repoId] === submittedDraft) {
         set({ drafts: { ...get().drafts, [repoId]: '' } });
@@ -510,7 +510,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       const checkout = ['branch.checkout', 'commit.checkout', 'checkout.stash'].includes(action.type) || (action.type === 'branch.track' && action.checkout);
       const remoteNames = new Set([...(before?.refs ?? []), ...(snapshot?.refs ?? [])].filter(ref => ref.kind === 'remote').map(ref => ref.fullName));
       const fetched = action.type === 'fetch' && snapshot ? [...remoteNames].filter(name => before?.refs.find(ref => ref.fullName === name)?.oid !== snapshot.refs.find(ref => ref.fullName === name)?.oid) : [];
-      let finalResult: ActionFeedback['result'] = published ?? commitResult;
+      let finalResult: ActionFeedback['result'] = envelope?.result ?? commitResult;
       if (!finalResult) {
         if (stashed && snapshot && snapshot.stashes[0]?.oid !== stashed.previousOid) finalResult = {kind:'stash',files:stashed.files,untracked:stashed.untracked,clean:snapshot.changes.length===0};
         else if (action.type === 'branch.create' && snapshot) finalResult = {kind:'branch',name:action.name,checkedOut:!!action.checkout,currentBranch:snapshot.branch||uiText('notices.detachedHEAD')};
@@ -534,11 +534,11 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         // Failed Merge / Cherry-pick can leave a new operation and conflicts on disk.
         await get().refresh({ background: true });
         if (epoch === repositoryEpoch && ['fetch', 'pull', 'push', 'tag.push', 'tag.create', 'tag.delete'].includes(action.type)) void get().loadTagStatuses(true);
-        if (get().repoId !== repoId) { finish('error', message(error), (error as {pushResult?: ActionFeedback['result']})?.pushResult); return false; }
+        if (get().repoId !== repoId) { finish('error', message(error), (error as {deletionResult?: ActionFeedback['result']})?.deletionResult ?? (error as {pushResult?: ActionFeedback['result']})?.pushResult); return false; }
         const details=structured.details;
         set({ error: message(error), stashApplyFailure: details&&'kind' in details&&details.kind==='stash-apply'?details:undefined, checkoutFailure: details&&'target' in details ? { ...details, detached: action.type === 'commit.checkout' || action.type === 'checkout.stash' && action.detached } : undefined });
       }
-      finish('error', message(error), (error as {pushResult?: ActionFeedback['result']})?.pushResult);
+      finish('error', message(error), (error as {deletionResult?: ActionFeedback['result']})?.deletionResult ?? (error as {pushResult?: ActionFeedback['result']})?.pushResult);
       return false;
     } finally { executingRepositories.delete(repoId); if (get().repoId===repoId) set({ busy: hostBusyRepositories.has(repoId), activity: hostBusyRepositories.has(repoId)?get().activity:'' }); }
   },

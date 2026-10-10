@@ -21,6 +21,30 @@ beforeEach(async () => {
 });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 describe('repository UI consistency', () => {
+  it('offers exact batch Worktree removal and blocks selections containing protected targets', async () => {
+    await store.getState().selectRepository('a');
+    const main = { path: '/a', head: 'abc', branch: 'main', bare: false, detached: false };
+    const one = { ...main, path: '/one', branch: 'one' }, two = { ...main, path: '/two', branch: 'two' };
+    store.setState({ snapshot: { ...snapshot(a), worktrees: [main, one, two] } });
+    const { menuFor } = await import('../webview/menus');
+    const noop = vi.fn(), open = vi.fn(), api = { startCommit: noop, open, checkout: noop, openDiff: noop, editFile: noop, host: vi.fn(), addRepository: vi.fn(), removeRepositories: noop, fetchRepositories: noop };
+    const removal = menuFor({ kind: 'worktree', worktree: one, worktrees: [one, two] }, api).items.find(item => item.icon === 'trash')!;
+    expect(removal.disabled).toBe(false); removal.run();
+    expect(open).toHaveBeenCalledWith({ type: 'worktree.remove', paths: ['/one', '/two'] });
+    for (const protectedTree of [main, { ...two, locked: 'keep' }]) {
+      const blocked = menuFor({ kind: 'worktree', worktree: one, worktrees: [one, protectedTree] }, api).items.find(item => item.icon === 'trash')!;
+      expect(blocked.disabled).toBe(true); expect(blocked.reason).toContain(protectedTree.path);
+    }
+  });
+  it('keeps structured partial Worktree deletion results in feedback after refresh', async () => {
+    await store.getState().selectRepository('a');
+    const result = { kind: 'deletion' as const, target: 'worktree' as const, succeeded: ['/one'], failures: [{ target: '/two', message: 'uncommitted changes' }] };
+    const fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, ...args) => method === 'action' ? Promise.reject(Object.assign(new Error('1 removed; 1 failed'), { deletionResult: result })) : fallback(method, ...args));
+    expect(await store.getState().execute({ type: 'worktree.remove', paths: ['/one', '/two'] })).toBe(false);
+    expect(store.getState().actionFeedback).toMatchObject({ status: 'error', result });
+    expect(store.getState().busy).toBe(false);
+  });
   it('restores a transferred comparison and its selected file after repository loading', async () => {
     vi.stubGlobal('window', { __ALWAYGIT_TRANSFER__: { session: { repoId: 'a' }, selectedOids: ['left', 'right'], comparison: { left: 'left', right: 'right' }, diffTarget: { kind: 'comparison', left: 'left', right: 'right', path: 'same.txt' } } });
     vi.resetModules();

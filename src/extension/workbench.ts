@@ -12,7 +12,7 @@ import { randomBytes } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { AddRepositoriesResult, GitAction, GitServiceContract, HostMessage, RepositoryChanges, RepositoryCollection, RepositoryDiscoveryPreview, RepositoryStatus, RpcRequest, Snapshot, OperationSettings, PushResult } from '../protocol/types';
+import type { AddRepositoriesResult, GitAction, GitServiceContract, HostMessage, RepositoryChanges, RepositoryCollection, RepositoryDiscoveryPreview, RepositoryStatus, RpcRequest, Snapshot, OperationSettings, PushResult, DeletionResult } from '../protocol/types';
 
 import type { RepositoryManager } from '../repositories/manager';
 import type { DiscoveryResult } from '../repositories/discovery';
@@ -674,7 +674,7 @@ export class Workbench implements vscode.Disposable {
         const operationKey=this.repositoryKey(repo.commonDir);this.busy.add(operationKey);
         for (const member of this.repositories.list().filter(member => member.commonDir === repo.commonDir)) this.snapshots.invalidate(member.id);
         for (const r of this.repositories.list().filter(r => r.commonDir === repo.commonDir)) this.post({ type: 'activity', repoId: r.id, busy: true, label: action.type });
-        let result: PushResult | void;
+        let result: PushResult | DeletionResult | void;
         try { result = await this.projects.runRepositoryOperation(repo.commonDir,action.type,()=>this.git.execute(repo, action, progress => this.post({ type: 'fileOperationProgress', repoId: repo.id, progress }))); }
         catch(error){
           if((error as {terminationUnconfirmed?:unknown})?.terminationUnconfirmed===true)this.externalBusy.set(operationKey,{label:action.type});

@@ -1177,5 +1177,17 @@
     "zh-CN": "将此重置模式记为默认",
     "review": "translated",
     "context": "webview/ActionDialog.tsx"
+  },
+  "actions.removeWorktrees": {
+    "en": "Remove {{count}} Worktrees",
+    "zh-CN": "移除 {{count}} 个工作树",
+    "review": "translated",
+    "context": "Worktree batch removal"
+  },
+  "actions.worktreeRemovalEffect": {
+    "en": "The selected working directories will be removed. Branch references are retained.",
+    "zh-CN": "将移除所选工作目录，分支引用保留。",
+    "review": "translated",
+    "context": "Worktree batch removal"
   }
 }

@@ -34,7 +34,8 @@ export interface PushResult {
   destinations: { label: string; repository?: HostingRepository; refs: PublishedRef[]; unconfirmed?: boolean }[];
   error?: string; output: string;
 }
-export interface ActionResponse { snapshot?: Snapshot; result?: PushResult; refreshWarning?: string }
+export interface DeletionResult { kind: 'deletion'; target: 'worktree' | 'branch'; succeeded: string[]; failures: { target: string; message: string }[] }
+export interface ActionResponse { snapshot?: Snapshot; result?: PushResult | DeletionResult; refreshWarning?: string }
 export interface Snapshot { repository: Repository; branch: string; head?: string; upstream?: string; defaultBranch?: string; pushTarget?: PushTarget; pullTarget?: PullTarget; ahead: number; behind: number; unpushed?: number; changes: Change[]; refs: GitRef[]; remotes?: string[]; remoteDestinations?: Record<string, string>; remoteReadDestinations?: Record<string, string>; stashes: Stash[]; worktrees: Worktree[]; operation: OperationState; version: number }
 export interface Commit { oid: string; parents: string[]; author: string; email: string; timestamp: number; subject: string; pushed?: boolean }
 export interface HistoryQuery { offset?: number; limit?: number; tips?: string[]; ref?: string; search?: string; head?: string }
@@ -67,7 +68,7 @@ export type GitAction =
   | { type: 'stash.apply'; selector: string; pop?: boolean; expectedOid?: string }
   | { type: 'stash.drop'; selector: string; expectedOid?: string }
   | { type: 'worktree.add'; path: string; branch?: string; newBranch?: string; start?: string; detach?: boolean }
-  | { type: 'worktree.remove'; path: string; force?: boolean }
+  | ({ type: 'worktree.remove'; force?: boolean } & ({ path: string; paths?: never } | { paths: string[]; path?: never }))
   | { type: 'merge' | 'rebase'; target: string; expectedHead?: string; expectedBranch?: string }
   | { type: 'cherry-pick' | 'revert'; commits: string[]; mainline?: number; expectedHead?: string; expectedBranch?: string; allowIncluded?: boolean }
   | { type: 'reset'; target: string; mode: 'soft' | 'mixed' | 'hard'; expectedHead?: string; expectedBranch?: string }
@@ -89,7 +90,7 @@ export interface OperationSettings { allowDetachedHead: boolean; pushFollowTags:
 export interface RpcRequest { id: string; method: 'terminalCreate' | 'terminalList' | 'terminalSync' | 'terminalClipboard' | 'terminalAck' | 'terminalInput' | 'terminalResize' | 'terminalClose' | 'terminalStop' | 'terminalRestart' | 'terminalRename' | 'repositories' | 'repositoryCollections' | 'repositoryOrder' | 'reorderRepository' | 'repositoryStatuses' | 'pickRepositoryDirectory' | 'discoverRepositories' | 'cancelRepositoryDiscovery' | 'addRepository' | 'removeRepositories' | 'createRepositoryCollection' | 'renameRepositoryCollection' | 'deleteRepositoryCollection' | 'moveRepositories' | 'snapshot' | 'operationReview' | 'prepareDiscard' | 'history' | 'details' | 'stashDetails' | 'compare' | 'cherryPickCheck' | 'cancelQuery' | 'action' | 'diff' | 'diffPreview' | 'diffPage' | 'diffRelease' | 'copyText' | 'openExternal' | 'remoteLinks' | 'remoteTags' | 'openWorkbench' | 'openRepository' | 'openProject' | 'openFile' | 'openWorktree' | 'pickWorktree' | 'openKeyboardShortcuts' | 'showLog' | 'workbenchReady' | 'captureWorkbench' | 'workbenchLocationsReady' | 'workbenchLocationsClosed' | 'saveWorkbenchLocations' | 'workbenchOpenModeSettings' | 'saveSession' | 'interfaceSettings' | 'saveInterfaceSettings' | 'operationSettings' | 'saveOperationSettings'; repoId?: string; payload?: unknown }
 /** Missing paths means the source cannot limit which working files changed. */
 export interface RepositoryChanges { paths?: string[]; index?: boolean }
-export type HostMessage = { type: 'showWorkbenchLocations'; locations: import('./workbench-host').WorkbenchLocations; language: import('../i18n').Language } | { type: 'captureWorkbench'; token: string } | TerminalEvent | { type: 'interfaceSettingsChanged'; settings: import('./interface-settings').InterfacePreferences } | { type: 'operationSettingsChanged'; settings: OperationSettings } | { type: 'response'; id: string; result?: unknown; error?: { message: string; code?: string; details?: ActionBlocker; localizedMessage?: MessageDescriptor; pushResult?: PushResult } } | { type: 'changed'; repoId: string; changes?: RepositoryChanges; snapshot?: Snapshot } | { type: 'activity'; repoId: string; busy: boolean; label: string } | { type: 'fileOperationProgress'; repoId: string; progress: FileOperationProgress } | { type: 'repositoriesChanged' } | { type: 'selectRepository'; repoId: string } | { type: 'repositoryDiscoveryProgress'; scanId: string; scanned: number; found: number };
+export type HostMessage = { type: 'showWorkbenchLocations'; locations: import('./workbench-host').WorkbenchLocations; language: import('../i18n').Language } | { type: 'captureWorkbench'; token: string } | TerminalEvent | { type: 'interfaceSettingsChanged'; settings: import('./interface-settings').InterfacePreferences } | { type: 'operationSettingsChanged'; settings: OperationSettings } | { type: 'response'; id: string; result?: unknown; error?: { message: string; code?: string; details?: ActionBlocker; localizedMessage?: MessageDescriptor; pushResult?: PushResult; deletionResult?: DeletionResult } } | { type: 'changed'; repoId: string; changes?: RepositoryChanges; snapshot?: Snapshot } | { type: 'activity'; repoId: string; busy: boolean; label: string } | { type: 'fileOperationProgress'; repoId: string; progress: FileOperationProgress } | { type: 'repositoriesChanged' } | { type: 'selectRepository'; repoId: string } | { type: 'repositoryDiscoveryProgress'; scanId: string; scanned: number; found: number };
 export interface GitServiceContract {
   withReadSignal?<T>(signal: AbortSignal, task: () => Promise<T>): Promise<T>;
   discover(root: string): Promise<Repository>;
@@ -109,5 +110,5 @@ export interface GitServiceContract {
   prepareDiscard(repo: Repository, request: DiscardRequest): Promise<DiscardPlan>;
   remoteLinks?(repo: Repository, remote?: string, branch?: string): Promise<RemoteLinks>;
   remoteTags?(repo: Repository, remote: string, expectedDestination: string): Promise<RemoteTags>;
-  execute(repo: Repository, action: GitAction, onProgress?: (progress: FileOperationProgress) => void): Promise<void | PushResult>;
+  execute(repo: Repository, action: GitAction, onProgress?: (progress: FileOperationProgress) => void): Promise<void | PushResult | DeletionResult>;
 }
