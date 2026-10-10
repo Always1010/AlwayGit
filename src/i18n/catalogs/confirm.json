@@ -95,12 +95,6 @@
     "review": "translated",
     "context": "src/application/confirm.ts / confirmAction"
   },
-  "confirm.removeWorktree": {
-    "en": "Remove worktree {{path}}?{{effect}}",
-    "zh-CN": "Remove 工作树 {{path}}？{{effect}}",
-    "review": "translated",
-    "context": "src/application/confirm.ts / confirmAction"
-  },
   "confirm.forceRemoveWorktree": {
     "en": " Forced removal may delete uncommitted files.",
     "zh-CN": "强制移除可能删除未提交的文件。",
@@ -178,5 +172,11 @@
     "zh-CN": "{{count}} 个文件在编辑器中有未保存修改。所选未暂存文件使用最新已保存的磁盘内容；所选已暂存文件使用暂存内容。",
     "review": "translated",
     "context": "src/application/confirm.ts"
+  },
+  "confirm.removeWorktrees": {
+    "en": "Remove {{count}} worktree(s) and their working directories?\n{{paths}}\nBranch references are retained.{{effect}}",
+    "zh-CN": "移除 {{count}} 个工作树及其工作目录？\n{{paths}}\n分支引用保留。{{effect}}",
+    "review": "translated",
+    "context": "Worktree batch removal"
   }
 }

@@ -955,10 +955,10 @@ Worktree lets a single repository have multiple working directories so you can w
 **Prerequisite:** The target is neither the main Worktree nor the current Worktree, and its changes have been saved.
 
 1. Switch to another working directory first.
-2. Right-click the target Worktree and choose Remove Worktree….
+2. Right-click the target Worktree and choose Remove Worktree…. For a batch, use Ctrl/Cmd-click or Shift-click, then choose Remove N Worktrees…. Removal is disabled when the selection contains the main, current, or a locked Worktree, with the blocking reason shown.
 3. Verify the directory, any reason for locking, and the confirmation message. Do not casually select Remove even with uncommitted changes to bypass protection for uncommitted content.
 4. Click Remove Worktree. If a native Proceed confirmation appears, check the directory again before continuing.
-5. After confirming, check the Worktrees list and the result on disk.
+5. After confirming, check the Worktrees list and the result on disk. Batch results list successful and failed targets. Ordinary removal never automatically switches to force when uncommitted changes block it. A changed protection state or unconfirmed Git termination stops subsequent removals.
 
 **Result:** The target Worktree's directory has been removed. The branch reference may remain and must be managed separately.
 

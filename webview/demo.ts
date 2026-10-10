@@ -238,7 +238,7 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
       if(action.type==='stash.drop'||action.pop)demoSnapshot.stashes=demoSnapshot.stashes.filter(s=>s.oid!==stash.oid);
     }
     else if (action.type === 'worktree.add') { if ((action.detach || !action.branch && !action.newBranch && action.start) && !demoOperationSettings.allowDetachedHead) throw new RpcError('Detached Worktrees are disabled. Choose a branch.', 'DETACHED_HEAD_DISABLED'); demoSnapshot.worktrees.push({ path: action.path, head: commits[0].oid, branch: action.branch || action.newBranch, bare: false, detached: !!action.detach || !action.branch && !action.newBranch && !!action.start }); }
-    else if (action.type === 'worktree.remove') demoSnapshot.worktrees = demoSnapshot.worktrees.filter(w => w.path !== action.path);
+    else if (action.type === 'worktree.remove') demoSnapshot.worktrees = demoSnapshot.worktrees.filter(w => !(action.paths ?? [action.path]).includes(w.path));
     else if (action.type === 'push') { demoSnapshot.ahead = 0; commits.forEach(commit => { commit.pushed = true; }); }
     else if (action.type === 'pull') demoSnapshot.behind = 0;
     demoSnapshot.stashes.forEach((stash,index)=>stash.selector=`stash@{${index}}`);

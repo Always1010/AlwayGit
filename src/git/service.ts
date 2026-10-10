@@ -10,7 +10,7 @@ import { branchNameConflict, branchNameConflictMessage, branchNameProblem, branc
 import { remoteNameProblem, remoteUrlProblem } from '../protocol/remote';
 import { combinePushResults, parsePushResult } from './push-result';
 import { hostingRepository } from '../protocol/hosting';
-import type { PushResult, RemoteLinks } from '../protocol/types';
+import type { PushResult, RemoteLinks, DeletionResult } from '../protocol/types';
 import type { RemoteTags } from '../protocol/types';
 import type { DiscardRequest, DiscardPlan, FileOperationProgress } from '../protocol/types';
 import { inferDefaultBranch } from './default-branch';
@@ -580,7 +580,7 @@ export class GitService implements GitServiceContract {
       throw new GitError(localizeMessage("service.theTargetBranchOrHEADChangedBeforeTheOperation"), 'OPERATION_CHANGED');
     }
   }
-  async execute(repo: Repository, action: GitAction, onProgress?: (progress: FileOperationProgress) => void): Promise<void | PushResult> {
+  async execute(repo: Repository, action: GitAction, onProgress?: (progress: FileOperationProgress) => void): Promise<void | PushResult | DeletionResult> {
     if (this.readSignal.getStore()) throw new GitError(localizeMessage('service.aReadOnlyRequestCannotRunGitMutations'), 'WRITE_IN_READ_SCOPE');
     const key = normalized(repo.commonDir); const prior = queues.get(key) ?? Promise.resolve();
     const operation = prior.catch(() => {}).then(async () => { const unsafe = unsafeTerminations.get(key); if (unsafe) throw unsafe; await this.verify(repo); return this.executeNow(repo, action, onProgress); });
@@ -830,7 +830,7 @@ export class GitService implements GitServiceContract {
       throw new GitError(localizeMessage('service.discardIncomplete', { completed, total, value: error instanceof Error ? error.message : String(error) }), completed || indexCleared ? 'PARTIAL_FAILURE' : 'DISCARD_FAILED');
     }
   }
-  private async executeNow(repo: Repository, action: GitAction, onProgress?: (progress: FileOperationProgress) => void): Promise<void | PushResult> {
+  private async executeNow(repo: Repository, action: GitAction, onProgress?: (progress: FileOperationProgress) => void): Promise<void | PushResult | DeletionResult> {
     if (action.type !== 'commit' && action.type !== 'operation.continue') this.reviews.delete(repo.id);
     let args: string[], pushedRemote: string | undefined, boundRemote: BoundRemote | undefined; const remote = (value?: string) => value ? [token(value, 'remote')] : [];
     switch (action.type) {
@@ -1145,7 +1145,38 @@ export class GitService implements GitServiceContract {
         args = ['worktree', 'add', ...(action.detach ? ['--detach'] : []), ...(action.newBranch ? ['-b', await this.refName(repo, action.newBranch)] : []), '--', target];
         if (action.branch) { await this.refName(repo, action.branch); args.push(await this.oid(repo, `refs/heads/${action.branch}`)); if (!action.detach) args[args.length - 1] = action.branch; } else if (action.start) args.push(await this.oid(repo, action.start)); break;
       }
-      case 'worktree.remove': { token(action.path, 'worktree path'); const target = await canonicalPath(path.resolve(repo.root, action.path)); const trees = await this.worktrees(repo); const canonical = await Promise.all(trees.map(tree => canonicalPath(tree.path))); const selected = trees.find((_, index) => normalized(canonical[index]) === normalized(target)); if (!selected || normalized(target) === normalized(canonical[0]) || normalized(target) === normalized(repo.root)) throw new GitError(localizeMessage("service.onlyRegisteredLinkedWorktreesOtherThanTheCurrentWorktree"), 'INVALID_WORKTREE'); if (selected.locked) throw new GitError(localizeMessage("service.thisWorktreeIsLockedUnlockItBeforeRemoval", { locked: (selected.locked) }), 'WORKTREE_LOCKED'); args = ['worktree', 'remove', ...(action.force ? ['--force'] : []), '--', selected.path]; break; }
+      case 'worktree.remove': {
+        const paths = [...new Set((action.paths ?? [action.path]).map(value => path.resolve(repo.root, token(value, 'worktree path'))))];
+        const check = async (targetPath: string) => {
+          const target = await canonicalPath(targetPath), trees = await this.worktrees(repo);
+          const canonical = await Promise.all(trees.map(tree => canonicalPath(tree.path)));
+          const selected = trees.find((_, index) => normalized(canonical[index]) === normalized(target));
+          if (!selected || selected.bare || normalized(target) === normalized(canonical[0]) || normalized(target) === normalized(await canonicalPath(repo.root))) throw new GitError(localizeMessage('service.onlyRegisteredLinkedWorktreesOtherThanTheCurrentWorktree'), 'INVALID_WORKTREE');
+          if (selected.locked) throw new GitError(localizeMessage('service.thisWorktreeIsLockedUnlockItBeforeRemoval', { locked: selected.locked }), 'WORKTREE_LOCKED');
+          return selected.path;
+        };
+        // Validate the whole selection before the first mutation; then recheck each target.
+        const selected = [...new Set(await Promise.all(paths.map(check)))];
+        const result: DeletionResult = { kind: 'deletion', target: 'worktree', succeeded: [], failures: [] };
+        for (const selectedPath of selected) {
+          try {
+            const currentPath = await check(selectedPath);
+            await this.run(repo, ['worktree', 'remove', ...(action.force ? ['--force'] : []), '--', currentPath]);
+            result.succeeded.push(selectedPath);
+          } catch (error) {
+            result.failures.push({ target: selectedPath, message: error instanceof Error ? error.message : String(error) });
+            if (error instanceof GitTerminationError || error instanceof GitError && ['INVALID_WORKTREE', 'WORKTREE_LOCKED', 'OPERATION_CHANGED'].includes(error.code)) {
+              if (error instanceof GitError) error.deletionResult = result;
+              throw error;
+            }
+          }
+        }
+        if (result.failures.length) {
+          const error = new GitError(localizeMessage('service.worktreeRemovalPartial', { count: result.succeeded.length, failed: result.failures.length, details: result.failures.map(item => item.target + ': ' + item.message).join('\n') }), 'PARTIAL_FAILURE');
+          error.deletionResult = result; throw error;
+        }
+        return result;
+      }
       case 'merge': case 'rebase': this.requireActionContext(action, await this.status(repo)); args = [action.type, await this.oid(repo, action.target)]; break;
       case 'cherry-pick': case 'revert': {
         if (!action.commits.length) throw new GitError(localizeMessage("service.selectCommits"), 'INVALID_ARGUMENT');

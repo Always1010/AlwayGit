@@ -15,7 +15,7 @@ export async function confirmAction(repo: Repository, action: GitAction, languag
   if (action.type === 'remote.delete') warning = warningText('confirm.deleteRemoteBranches', { count: action.branches.length, remote: action.remote, names: action.branches.join('\n') });
   if (action.type === 'tag.delete') warning = action.remote ? warningText(action.expectedOid ? 'confirm.deleteLocalAndRemoteTag' : 'confirm.deleteRemoteTag', { name: action.name, remote: action.remote }) : warningText('confirm.deleteTag', { name: action.name });
   if (action.type === 'stash.drop') warning = warningText('confirm.dropStash', { selector: action.selector });
-  if (action.type === 'worktree.remove') warning = warningText('confirm.removeWorktree', { path: action.path, effect: action.force ? warningText('confirm.forceRemoveWorktree') : '' });
+  if (action.type === 'worktree.remove') warning = warningText('confirm.removeWorktrees', { count: (action.paths ?? [action.path]).length, paths: (action.paths ?? [action.path]).join('\n'), effect: action.force ? warningText('confirm.forceRemoveWorktree') : '' });
   if (action.type === 'operation.abort') warning = warningText('confirm.abort', { kind: action.kind });
   if (action.type === 'commit.checkout') warning = text('confirm.detachedCheckout', { target: action.target });
   if (action.type === 'checkout.stash' && action.detached) warning = text('confirm.stashDetachedCheckout', { target: action.target });

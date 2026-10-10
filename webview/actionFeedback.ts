@@ -1,5 +1,5 @@
 import { uiText } from './text';
-import type { GitAction, Snapshot, PushResult, FileOperationProgress } from '../src/protocol/types';
+import type { GitAction, Snapshot, PushResult, FileOperationProgress, DeletionResult } from '../src/protocol/types';
 
 export interface ActionFeedback {
   id: number;
@@ -13,7 +13,7 @@ export interface ActionFeedback {
   stashOid?: string;
   target?: string;
   error?: string;
-  result?: PushResult | { kind: 'update'; head?: string; previousHead?: string } | { kind: 'checkout'; branch: string; head?: string } | { kind: 'fetch'; refs: string[] } | { kind: 'worktree'; path: string } | { kind: 'tag'; name: string } | { kind: 'commit'; oid: string; files?: number; remaining: number; amended: boolean } | {kind:'stash';files:number;untracked:number;clean:boolean} | {kind:'branch';name:string;checkedOut:boolean;currentBranch:string};
+  result?: PushResult | DeletionResult | { kind: 'update'; head?: string; previousHead?: string } | { kind: 'checkout'; branch: string; head?: string } | { kind: 'fetch'; refs: string[] } | { kind: 'worktree'; path: string } | { kind: 'tag'; name: string } | { kind: 'commit'; oid: string; files?: number; remaining: number; amended: boolean } | {kind:'stash';files:number;untracked:number;clean:boolean} | {kind:'branch';name:string;checkedOut:boolean;currentBranch:string};
 }
 
 /** Actions that replace files or the current checkout need an inert workbench. */
@@ -50,6 +50,7 @@ export function actionTarget(action: GitAction, snapshot?: Snapshot): string | u
     const remoteBranch = action.remoteBranch ?? snapshot?.pushTarget?.remoteBranch ?? branch;
     return branch && remote ? `${branch} → ${remote}/${remoteBranch}` : branch;
   }
+  if(action.type==='worktree.remove')return (action.paths??[action.path]).join(', ');
   if(action.type==='branch.delete')return action.names.join(', ');
   if(action.type==='branch.track')return action.branches.map(branch=>`${branch.source.replace(/^refs\/remotes\//,'')} → ${branch.name}`).join(', ');
   if(action.type==='remote.delete')return `${action.remote}: ${action.branches.join(', ')}`;

@@ -988,6 +988,14 @@ export const catalog = {
     "en": "Remember this Reset mode as default",
     "zh-CN": "将此重置模式记为默认"
   },
+  "actions.removeWorktrees": {
+    "en": "Remove {{count}} Worktrees",
+    "zh-CN": "移除 {{count}} 个工作树"
+  },
+  "actions.worktreeRemovalEffect": {
+    "en": "The selected working directories will be removed. Branch references are retained.",
+    "zh-CN": "将移除所选工作目录，分支引用保留。"
+  },
   "arguments.gitCommandArgumentsAreTooLongSelectFewerItems": {
     "en": "Git command arguments are too long. Select fewer items or shorten the description and retry.",
     "zh-CN": "Git 命令参数过长。请选择更少的项目或缩短说明后重试。"
@@ -1214,10 +1222,6 @@ export const catalog = {
     "en": "Drop {{selector}}? Its saved uncommitted changes may become unreachable.",
     "zh-CN": "Drop {{selector}}？保存的未提交修改可能无法再恢复。"
   },
-  "confirm.removeWorktree": {
-    "en": "Remove worktree {{path}}?{{effect}}",
-    "zh-CN": "Remove 工作树 {{path}}？{{effect}}"
-  },
   "confirm.forceRemoveWorktree": {
     "en": " Forced removal may delete uncommitted files.",
     "zh-CN": "强制移除可能删除未提交的文件。"
@@ -1269,6 +1273,10 @@ export const catalog = {
   "confirm.unsavedSelectedFiles": {
     "en": "{{count}} file(s) have unsaved editor changes. Selected unstaged files use their latest saved disk content; selected staged files use Index content.",
     "zh-CN": "{{count}} 个文件在编辑器中有未保存修改。所选未暂存文件使用最新已保存的磁盘内容；所选已暂存文件使用暂存内容。"
+  },
+  "confirm.removeWorktrees": {
+    "en": "Remove {{count}} worktree(s) and their working directories?\n{{paths}}\nBranch references are retained.{{effect}}",
+    "zh-CN": "移除 {{count}} 个工作树及其工作目录？\n{{paths}}\n分支引用保留。{{effect}}"
   },
   "credentials.cannotStartGitCredentialPrompt": {
     "en": "Cannot start Git credential prompt.",
@@ -2220,6 +2228,14 @@ export const catalog = {
   "feedback.viewRemoteRequest": {
     "en": "Open PR/MR on website",
     "zh-CN": "在网页查看 PR/MR"
+  },
+  "feedback.deletionSummary": {
+    "en": "Removed {{count}}; {{failed}} failed",
+    "zh-CN": "成功移除 {{count}} 项；{{failed}} 项失败"
+  },
+  "feedback.deletedTargets": {
+    "en": "Removed targets",
+    "zh-CN": "已移除的对象"
   },
   "graphRow.parents": {
     "en": "{{value}}parents {{value2}}",
@@ -3355,6 +3371,10 @@ export const catalog = {
     "en": "Locate Branch Tip in Graph",
     "zh-CN": "在图表中定位分支顶端提交"
   },
+  "menus.removeWorktrees": {
+    "en": "Remove {{count}} Worktrees…",
+    "zh-CN": "移除 {{count}} 个工作树…"
+  },
   "notices.theRepositoryWasRemovedFromAlwayGit": {
     "en": "The repository was removed from AlwayGit.",
     "zh-CN": "该仓库已从 AlwayGit 移除。"
@@ -4434,6 +4454,10 @@ export const catalog = {
   "service.tagWasCreatedLocallyButCouldNotBePushed": {
     "en": "Tag {{name}} was created locally but could not be pushed to {{destination}}. The local Tag was retained.\n{{value}}",
     "zh-CN": "标签 {{name}} 已在本地创建，但无法推送到 {{destination}}。本地标签已保留。\n{{value}}"
+  },
+  "service.worktreeRemovalPartial": {
+    "en": "{{count}} worktree(s) removed; {{failed}} failed:\n{{details}}",
+    "zh-CN": "成功移除 {{count}} 个工作树；{{failed}} 个失败：\n{{details}}"
   },
   "session.lightAndDarkGraphPalettesMustHaveTheSame": {
     "en": "Light and dark graph palettes must have the same size",
@@ -6367,6 +6391,8 @@ export interface MessageParameters {
   "actions.theTagRemainsLocalIfTheRemotePushFails": {  };
   "actions.selectARemoteForTheNewTag": {  };
   "actions.rememberResetModeAsDefault": {  };
+  "actions.removeWorktrees": { count: number };
+  "actions.worktreeRemovalEffect": {  };
   "arguments.gitCommandArgumentsAreTooLongSelectFewerItems": {  };
   "arguments.messagesCannotContainNULCharacters": {  };
   "catalogStore.theSharedRepositoryCatalogIsDamagedOrUsesAn": {  };
@@ -6422,7 +6448,6 @@ export interface MessageParameters {
   "confirm.deleteRemoteTag": { name: ParameterValue; remote: ParameterValue };
   "confirm.deleteLocalAndRemoteTag": { name: ParameterValue; remote: ParameterValue };
   "confirm.dropStash": { selector: ParameterValue };
-  "confirm.removeWorktree": { path: ParameterValue; effect: ParameterValue };
   "confirm.forceRemoveWorktree": {  };
   "confirm.abort": { kind: ParameterValue };
   "confirm.detachedCheckout": { target: ParameterValue };
@@ -6436,6 +6461,7 @@ export interface MessageParameters {
   "confirm.unsavedFiles": { count: number };
   "confirm.useDiskContent": {  };
   "confirm.unsavedSelectedFiles": { count: number };
+  "confirm.removeWorktrees": { count: number; paths: ParameterValue; effect: ParameterValue };
   "credentials.cannotStartGitCredentialPrompt": {  };
   "details.ctrlCmdClickTogglesShiftClickSelectsRangeEsc": {  };
   "details.clickSelectsCtrlASelectsVisibleFiles": {  };
@@ -6670,6 +6696,8 @@ export interface MessageParameters {
   "feedback.headUnchanged": {  };
   "feedback.viewTag": {  };
   "feedback.viewRemoteRequest": {  };
+  "feedback.deletionSummary": { count: number; failed: ParameterValue };
+  "feedback.deletedTargets": {  };
   "graphRow.parents": { value: ParameterValue; value2: ParameterValue };
   "graphRow.mergeCommit": {  };
   "graphRow.rootCommitNoParents": {  };
@@ -6949,6 +6977,7 @@ export interface MessageParameters {
   "menus.refreshToCaptureTagsBeforePush": {  };
   "menus.locateTagCommit": {  };
   "menus.locateBranchTip": {  };
+  "menus.removeWorktrees": { count: number };
   "notices.theRepositoryWasRemovedFromAlwayGit": {  };
   "notices.couldNotLocateThisCommitInTheFullHistory": {  };
   "notices.automaticLocateReachedItsReadLimitHistoryAndCommit": {  };
@@ -7219,6 +7248,7 @@ export interface MessageParameters {
   "service.theTagChangedRefreshAndReopenThePushDialog": { name: ParameterValue };
   "service.tagEsPushedFailed": { pushed: ParameterValue; count: number; value: ParameterValue };
   "service.tagWasCreatedLocallyButCouldNotBePushed": { name: ParameterValue; destination: ParameterValue; value: ParameterValue };
+  "service.worktreeRemovalPartial": { count: number; failed: ParameterValue; details: ParameterValue };
   "session.lightAndDarkGraphPalettesMustHaveTheSame": {  };
   "session.zhCN": {  };
   "session.sessionExceedsTheStorageLimit": {  };

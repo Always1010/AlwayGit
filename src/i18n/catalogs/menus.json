@@ -729,5 +729,11 @@
     "zh-CN": "在图表中定位分支顶端提交",
     "review": "translated",
     "context": "webview/menus.ts"
+  },
+  "menus.removeWorktrees": {
+    "en": "Remove {{count}} Worktrees…",
+    "zh-CN": "移除 {{count}} 个工作树…",
+    "review": "translated",
+    "context": "Worktree batch removal"
   }
 }
