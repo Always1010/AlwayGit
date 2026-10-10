@@ -82,15 +82,15 @@ export function remapChange(rowsBefore: readonly DiffRow[], rowsAfter: readonly 
 }
 export interface ChangedParts { prefix: string; before: string; after: string; suffix: string }
 export function changedParts(before: string, after: string): ChangedParts {
-  const beforePoints=Array.from(before),afterPoints=Array.from(after);
-  let start=0,endBefore=beforePoints.length,endAfter=afterPoints.length;
-  while(start<endBefore&&start<endAfter&&beforePoints[start]===afterPoints[start])start++;
-  while(endBefore>start&&endAfter>start&&beforePoints[endBefore-1]===afterPoints[endAfter-1]){endBefore--;endAfter--;}
+  let start=0,endBefore=before.length,endAfter=after.length;
+  while(start<endBefore&&start<endAfter&&before.codePointAt(start)===after.codePointAt(start))start+=before.codePointAt(start)!>0xffff?2:1;
+  const previous=(text:string,end:number)=>end>1&&text.charCodeAt(end-1)>=0xdc00&&text.charCodeAt(end-1)<=0xdfff&&text.charCodeAt(end-2)>=0xd800&&text.charCodeAt(end-2)<=0xdbff?end-2:end-1;
+  while(endBefore>start&&endAfter>start){const a=previous(before,endBefore),b=previous(after,endAfter);if(before.codePointAt(a)!==after.codePointAt(b))break;endBefore=a;endAfter=b;}
   return {
-    prefix:beforePoints.slice(0,start).join(''),
-    before:beforePoints.slice(start,endBefore).join(''),
-    after:afterPoints.slice(start,endAfter).join(''),
-    suffix:beforePoints.slice(endBefore).join(''),
+    prefix:before.slice(0,start),
+    before:before.slice(start,endBefore),
+    after:after.slice(start,endAfter),
+    suffix:before.slice(endBefore),
   };
 }
 // A bounded look-ahead aligns context without an unbounded quadratic matrix.

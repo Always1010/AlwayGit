@@ -8,6 +8,8 @@ export async function verifyDiffNavigation(browser, url) {
     await addDiffFixture(page, 'file');
     await page.goto(url);
     await page.getByRole('option', { name: 'Diff fixture' }).dblclick();
+    await page.getByTestId('diff-preview').getByTestId('diff-change-count').getByText('1/3',{exact:true}).waitFor();
+    await page.getByTestId('history').locator('[data-oid]').first().click();
     const diff = page.getByTestId('diff-preview'), count = diff.getByTestId('diff-change-count'), summary = diff.getByTestId('diff-change-summary'), viewport = diff.locator('.diff-viewport');
     const assertRevealed = async () => {
       await page.waitForFunction(() => {
@@ -125,10 +127,33 @@ export async function verifyDiffNavigation(browser, url) {
     await page.evaluate(() => { const fixture = window.__diffFixture, left = fixture.left.split('\n'), right = fixture.right.split('\n'); for (const i of [26, 27, 28]) right[i] = left[i]; fixture.right = right.join('\n'); fixture.emit(); });
     await count.getByText('2/2', { exact: true }).waitFor();
     assert.ok(Math.abs(await viewport.evaluate(element => element.scrollTop) - scroll) < 2, 'Same-file refresh retains scroll');
-    await page.evaluate(() => { window.__diffFixture.truncated = true; window.__diffFixture.emit(); });
-    await count.getByText('2/2 (preview)', { exact: true }).waitFor();
+    await page.evaluate(()=>{const f=window.__diffFixture;f.left=Array.from({length:100001},(_,i)=>'context '+i).join('\n');f.right=f.left.slice(0,f.left.lastIndexOf('\n')+1)+'tail changed';f.emit();});
+    await count.getByText('1/1',{exact:true}).waitFor();
+    await diff.getByRole('button',{name:'Next change'}).click();
+    await diff.locator('.active-change-start .line-number').first().getByText('100001',{exact:true}).waitFor();
+    await diff.locator('mark').getByText('tail changed',{exact:true}).waitFor();
+    assert.ok(await diff.locator('.diff-line').count()<100,'Only viewport rows render for a complete 100,001-line file');
+    await viewport.evaluate(e=>{e.scrollTop=0;e.dispatchEvent(new Event('scroll'));});
+    await diff.locator('.line-number').getByText('1',{exact:true}).first().waitFor();
+    assert.ok(await page.evaluate(()=>window.__diffFixture.pageRequests.some(p=>p.start>=99900)),'Tail content is loaded by range');
+    await page.evaluate(()=>{const f=window.__diffFixture;f.synthetic={rowCount:5000000,change:4999998};f.emit();});
+    await page.waitForFunction(()=>parseFloat(document.querySelector('.diff-content').style.height)===8000000);
+    await diff.getByRole('button',{name:'Next change'}).click();
+    await diff.locator('.active-change-start .line-number').first().getByText('4999999',{exact:true}).waitFor();
+    await diff.locator('mark').getByText('tail changed',{exact:true}).waitFor();
+    await viewport.evaluate(e=>{e.scrollTop=e.scrollHeight;e.dispatchEvent(new Event('scroll'));});
+    await diff.locator('.line-number').getByText('5000000',{exact:true}).first().waitFor();
+    assert.ok(await diff.locator('.diff-line').count()<100,'Scaled scrolling reaches all rows without a browser height limit');
+    await page.evaluate(()=>{const f=window.__diffFixture;f.holdPath='diff.txt';f.emit();});
+    await count.getByText('Loading Diff…',{exact:true}).waitFor();
+    assert.equal(await summary.locator('.diff-change-modified').innerText(),'~…','A pending complete comparison must not report zero changes');
+    await page.evaluate(()=>{const f=window.__diffFixture;f.holdPath=null;f.held.splice(0).forEach(reply=>reply());});
+    await count.getByText('1/1',{exact:true}).waitFor();
+    await page.evaluate(()=>{const f=window.__diffFixture;f.failPath='diff.txt';f.emit();});
+    await diff.getByRole('alert').getByText('Read failed',{exact:true}).waitFor();
+    assert.equal(await count.innerText(),'—','A failed complete comparison must not report zero changes');
     assert.deepEqual(errors, []);
-    console.log('ALWAYGIT_DIFF_UI_TESTS_PASSED: initial reveal, cyclic/single-change navigation, tall blocks, collapse/restore, type summary, scrolling, refresh remap and truncation');
+    console.log('ALWAYGIT_DIFF_UI_TESTS_PASSED: initial reveal, cyclic/single-change navigation, tall blocks, collapse/restore, type summary, scrolling, refresh remap, complete tail changes, paging and scaled scrolling');
   } finally { await page.close(); }
   await verifyCommitNavigation(browser, url);
   await verifyImagePreview(browser, url);
@@ -195,7 +220,7 @@ async function addDiffFixture(page, diffNavigationScope) {
       lines[26] = 'emoji 😀 stays';
       lines[81] = 'left long ' + '0123456789'.repeat(120);
       const right = lines.map((line, i) => [26, 27, 28, 40, 41, 42, 80, 81, 82].includes(i) ? i === 26 ? 'emoji 😁 stays' : i === 81 ? 'right long ' + 'abcdefghij'.repeat(120) : `changed line ${i}` : line);
-      const fixture = window.__diffFixture = { commit, calls: [], previews: [], failPath: null, holdPath: null, held: [], emptyFiles: false, left: lines.join('\n'), right: right.join('\n'), truncated: false, preferences,
+      const fixture = window.__diffFixture = { commit, calls: [], previews: [], failPath: null, holdPath: null, held: [], emptyFiles: false, left: lines.join('\n'), right: right.join('\n'), truncated: false, preferences, snapshots:new Map(), pageRequests:[], synthetic:null,
         snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 0, behind: 0, changes: [{ path: 'diff.txt', indexStatus: ' ', worktreeStatus: 'M', conflict: false, untracked: false }], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
         emit() { window.postMessage({ type: 'changed', repoId: repo.id, changes: { paths: ['diff.txt'] } }, '*'); },
       };
@@ -209,12 +234,26 @@ async function addDiffFixture(page, diffNavigationScope) {
         if (request.method === 'snapshot') result = structuredClone({ ...fixture.snapshot, version: ++fixture.snapshot.version });
         if (request.method === 'history') result = { commits: [commit], tips: [commit.oid], nextOffset: 1, hasMore: false };
         if (request.method === 'details') result = { commit, parent: request.payload.parent ?? commit.parents[0], body: '', files: ['diff.txt', 'same.txt', 'binary.bin', 'single.txt', 'large.txt', 'tail.txt'].map(path => ({ path, status: path === 'single.txt' ? 'R' : 'M', previousPath: path === 'single.txt' ? 'old-single.txt' : undefined })) };
+        if(request.method==='diffPage') {
+          fixture.pageRequests.push(request.payload);
+          const {token,start,count}=request.payload,snapshot=fixture.snapshots.get(token);
+          result={token,start,rows:snapshot.synthetic?Array.from({length:Math.min(count,snapshot.rowCount-start)},(_,i)=>({beforeLine:start+i+1,afterLine:start+i+1,before:'context '+(start+i),after:start+i===snapshot.change?'tail changed':'context '+(start+i),changed:start+i===snapshot.change})):snapshot.rows.slice(start,start+count)};
+        }
+        if(request.method==='diffRelease'){fixture.snapshots.delete(request.payload.token);result=null;}
         if (request.method === 'diffPreview') {
           const path = request.payload.path;
           fixture.previews.push(structuredClone(request.payload));
           if (fixture.failPath === path) { setTimeout(() => window.postMessage({ type: 'response', id: request.id, error: { message: 'Read failed' } }, '*'), 10); return; }
           const right = fixture.emptyFiles || path === 'same.txt' ? fixture.left : path === 'tail.txt' ? fixture.left.split('\n').map((line, i) => [30, 95].includes(i) ? `tail changed ${i}` : line).join('\n') : path === 'single.txt' || path === 'large.txt' ? fixture.left.split('\n').map((line, i) => i === 80 || path === 'large.txt' && i > 80 && i <= 125 ? `changed line ${i}` : line).join('\n') : fixture.right;
           result = path === 'binary.bin' ? { kind: 'binary', reason: 'unsupported', path, leftLabel: 'Before', rightLabel: 'After' } : { kind: 'text', path, leftLabel: 'Before', rightLabel: 'After', left: fixture.left, right, truncated: fixture.truncated };
+          if(result.kind==='text'&&request.payload.paged){
+            const afterLines=right.split('\n');const rows=fixture.left.split('\n').map((before,i)=>({before,after:afterLines[i],beforeLine:i+1,afterLine:i+1,changed:before!==afterLines[i]}));
+            const changes=[];for(let i=0;i<rows.length;i++){if(!rows[i].changed)continue;const start=i;while(i+1<rows.length&&rows[i+1].changed)i++;changes.push({start,end:i});}
+            const token=request.payload.summaryOnly?'':crypto.randomUUID();
+            const index=fixture.synthetic?{token,rowCount:fixture.synthetic.rowCount,changes:[{start:fixture.synthetic.change,end:fixture.synthetic.change}],summary:{added:0,modified:1,removed:0},columns:20}:{token,rowCount:rows.length,changes,summary:{added:0,modified:changes.length,removed:0},columns:rows.reduce((max,row)=>Math.max(max,row.before.length,row.after.length),0)};
+            if(token)fixture.snapshots.set(token,fixture.synthetic?{...fixture.synthetic,synthetic:true}:{rows});
+            result={...result,left:'',right:'',index};
+          }
           if (fixture.holdPath === path) { fixture.held.push(() => window.postMessage({ type: 'response', id: request.id, result }, '*')); return; }
         }
         setTimeout(() => window.postMessage({ type: 'response', id: request.id, result }, '*'), 10);
@@ -222,13 +261,15 @@ async function addDiffFixture(page, diffNavigationScope) {
     }, diffNavigationScope);
 }
 
-async function verifyCommitNavigation(browser, url) {
+export async function verifyCommitNavigation(browser, url) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } }), errors = [];
   page.on('pageerror', error => errors.push(error.message));
   try {
     await addDiffFixture(page);
     await page.goto(url);
     await page.getByRole('option', { name: 'Diff fixture' }).dblclick();
+    await page.getByTestId('diff-preview').getByTestId('diff-change-count').getByText('1/3',{exact:true}).waitFor();
+    await page.getByTestId('history').locator('[data-oid]').first().click();
     const diff = page.getByTestId('diff-preview'), count = diff.getByTestId('diff-change-count'), details = page.getByTestId('details');
     const expectCount = async text => { await count.getByText(text, { exact: true }).waitFor(); };
     const step = async (direction, text) => { await diff.getByRole('button', { name: direction === -1 ? 'Previous change' : 'Next change' }).click(); await expectCount(text); };
