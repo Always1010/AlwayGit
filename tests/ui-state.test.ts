@@ -21,6 +21,34 @@ beforeEach(async () => {
 });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 describe('repository UI consistency', () => {
+  it.each(['branch.delete', 'worktree.remove'] as const)('remembers only %s after partial success and keeps save failures separate', async type => {
+    await store.getState().selectRepository('a');
+    const { captureActionContext } = await import('../webview/store');
+    const context = captureActionContext(), action = type === 'branch.delete' ? { type, names: ['one', 'two'], force: false } : { type, paths: ['/one', '/two'], force: false };
+    const deletion = { kind: 'deletion' as const, target: type === 'branch.delete' ? 'branch' as const : 'worktree' as const, succeeded: ['one'], failures: [{ target: 'two', message: 'blocked' }] };
+    const fallback = bridge.rpc.getMockImplementation()!, settings = { ...store.getState().operationSettings, forceDeleteUnmergedBranches: true, forceRemoveDirtyWorktrees: true };
+    bridge.rpc.mockImplementation((method, _repo, payload) => method === 'action' ? Promise.reject(Object.assign(new Error('partial'), { deletionResult: deletion })) : method === 'saveOperationSettings' ? Promise.resolve({ ...settings, ...(payload as object) }) : method === 'operationSettings' ? Promise.resolve(settings) : fallback(method, _repo, payload));
+    expect(await store.getState().execute(action, context)).toBe(false);
+    await store.getState().rememberDeletionDefault(action, 'workspace', context);
+    const key = type === 'branch.delete' ? 'forceDeleteUnmergedBranches' : 'forceRemoveDirtyWorktrees';
+    expect(bridge.rpc).toHaveBeenCalledWith('saveOperationSettings', undefined, { [key]: false, scope: 'workspace' });
+    bridge.rpc.mockImplementation((method, ...args) => method === 'saveOperationSettings' ? Promise.reject(new Error('write failed')) : fallback(method, ...args));
+    await store.getState().rememberDeletionDefault(action, 'user', context);
+    expect(store.getState().actionFeedback).toMatchObject({ status: 'error', result: deletion, preferenceWarning: expect.stringContaining('write failed') });
+  });
+  it('does not remember deletion when cancelled, wholly failed, or from a stale repository context', async () => {
+    await store.getState().selectRepository('a');
+    const { captureActionContext } = await import('../webview/store');
+    const context = captureActionContext(), action = { type: 'branch.delete' as const, names: ['topic'], force: true }, fallback = bridge.rpc.getMockImplementation()!;
+    for (const error of [new Error('cancelled'), Object.assign(new Error('failed'), { deletionResult: { kind: 'deletion', target: 'branch', succeeded: [], failures: [{ target: 'topic', message: 'failed' }] } })]) {
+      bridge.rpc.mockImplementation((method, ...args) => method === 'action' ? Promise.reject(error) : fallback(method, ...args));
+      await store.getState().execute(action, context);
+      await store.getState().rememberDeletionDefault(action, 'user', context);
+    }
+    await store.getState().selectRepository('b');
+    await store.getState().rememberDeletionDefault(action, 'user', context);
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'saveOperationSettings')).toHaveLength(0);
+  });
   it('offers exact batch Worktree removal and blocks selections containing protected targets', async () => {
     await store.getState().selectRepository('a');
     const main = { path: '/a', head: 'abc', branch: 'main', bare: false, detached: false };
@@ -294,13 +322,13 @@ describe('repository UI consistency', () => {
     }
     store.setState({language:'en'});
     expect(menuFor({kind:'ref',ref:tag},api).items.map(item=>item.label)).toEqual(['Show Only This Tag History','Locate Tag Commit in Graph','Check remote Tag status','Push Tag…','Delete Tag…','Copy Tag Name','Copy Commit ID']);
-    store.setState({language:'en',operationSettings:{allowDetachedHead:true,pushFollowTags:false,pushTagAfterCreate:false,defaultResetMode:'mixed',scope:'workspace'}});
+    store.setState({language:'en',operationSettings:{allowDetachedHead:true,pushFollowTags:false,pushTagAfterCreate:false,forceDeleteUnmergedBranches:false,forceRemoveDirtyWorktrees:false,defaultResetMode:'mixed',scope:'workspace'}});
     const enabled=menuFor(target,api).items;
     expect(enabled.filter(item=>item.label.includes('Detached HEAD'))).toHaveLength(1);
     expect(enabled[0].disabled).toBe(false);enabled[0].run();
     expect(open).toHaveBeenLastCalledWith({type:'commit.checkout',target:'old'});
     expect(checkout).not.toHaveBeenCalled();
-    store.setState({operationSettings:{allowDetachedHead:false,pushFollowTags:false,pushTagAfterCreate:false,defaultResetMode:'mixed',scope:'workspace'},snapshot:{...snapshot(a),refs:[{name:'topic',fullName:'refs/heads/topic',kind:'local',oid:'old'}]}});
+    store.setState({operationSettings:{allowDetachedHead:false,pushFollowTags:false,pushTagAfterCreate:false,forceDeleteUnmergedBranches:false,forceRemoveDirtyWorktrees:false,defaultResetMode:'mixed',scope:'workspace'},snapshot:{...snapshot(a),refs:[{name:'topic',fullName:'refs/heads/topic',kind:'local',oid:'old'}]}});
     const branch=menuFor(target,api).items[0];expect(branch).toMatchObject({label:'Switch to Branch "topic"…',disabled:false});branch.run();expect(checkout).toHaveBeenCalledWith('old');
     store.setState({snapshot:{...store.getState().snapshot!,branch:'topic'}});
     expect(menuFor(target,api).items[0]).toMatchObject({disabled:true,reason:'This is the current branch.'});
@@ -501,17 +529,17 @@ describe('repository UI consistency', () => {
   it('uses host operation settings and keeps failed saves from enabling Detached Checkout', async () => {
     expect(store.getState().operationSettings.allowDetachedHead).toBe(false);
     bridge.rpc.mockImplementation(async (method: string) => {
-      if (method === 'operationSettings') return { allowDetachedHead: true, pushFollowTags: true, pushTagAfterCreate: true, defaultResetMode: 'soft', scope: 'workspace' };
+      if (method === 'operationSettings') return { allowDetachedHead: true, pushFollowTags: true, pushTagAfterCreate: true, forceDeleteUnmergedBranches:false,forceRemoveDirtyWorktrees:false,defaultResetMode:'soft', scope: 'workspace' };
       throw new Error('Settings write failed');
     });
     await store.getState().loadOperationSettings();
     expect(store.getState().operationSettings.allowDetachedHead).toBe(true);
     expect(store.getState().operationSettings.defaultResetMode).toBe('soft');
-    bridge.event?.({ type: 'operationSettingsChanged', settings: { allowDetachedHead: false, pushFollowTags: false, pushTagAfterCreate: false, defaultResetMode: 'mixed', scope: 'workspace' } });
-    await expect(store.getState().saveOperationSettings({allowDetachedHead:true,pushFollowTags:true,pushTagAfterCreate:true,defaultResetMode:'hard'})).rejects.toThrow('Settings write failed');
+    bridge.event?.({ type: 'operationSettingsChanged', settings: { allowDetachedHead: false, pushFollowTags: false, pushTagAfterCreate: false, forceDeleteUnmergedBranches:false,forceRemoveDirtyWorktrees:false,defaultResetMode:'mixed', scope: 'workspace' } });
+    await expect(store.getState().saveOperationSettings({allowDetachedHead:true,pushFollowTags:true,pushTagAfterCreate:true,forceDeleteUnmergedBranches:false,forceRemoveDirtyWorktrees:false,defaultResetMode:'hard'})).rejects.toThrow('Settings write failed');
     expect(store.getState().operationSettings.allowDetachedHead).toBe(false);
-    bridge.rpc.mockResolvedValue({ allowDetachedHead: true, pushFollowTags: true, pushTagAfterCreate: true, defaultResetMode: 'hard', scope: 'workspace' });
-    await store.getState().saveOperationSettings({allowDetachedHead:true,pushFollowTags:true,pushTagAfterCreate:true,defaultResetMode:'hard'});
+    bridge.rpc.mockResolvedValue({ allowDetachedHead: true, pushFollowTags: true, pushTagAfterCreate: true, forceDeleteUnmergedBranches:false,forceRemoveDirtyWorktrees:false,defaultResetMode:'hard', scope: 'workspace' });
+    await store.getState().saveOperationSettings({allowDetachedHead:true,pushFollowTags:true,pushTagAfterCreate:true,forceDeleteUnmergedBranches:false,forceRemoveDirtyWorktrees:false,defaultResetMode:'hard'});
     expect(store.getState().operationSettings.allowDetachedHead).toBe(true);
     expect(store.getState().operationSettings.defaultResetMode).toBe('hard');
     expect(bridge.save.mock.calls.at(-1)?.[0]).not.toHaveProperty('allowDetachedHead');
@@ -538,13 +566,13 @@ describe('repository UI consistency', () => {
     expect(store.getState()).toMatchObject({ singleKeyShortcuts: true, diffNavigationScope: 'commit', language: original.language, layout: original.layout, appearance: original.appearance, drafts: { a: 'keep my draft' }, diffTarget: target });
   });
   it('saves user Git defaults without replacing workspace-effective operation guards', async () => {
-    const defaults = { allowDetachedHead: true, pushFollowTags: true, pushTagAfterCreate: false, defaultResetMode: 'hard' as const };
+    const defaults = { allowDetachedHead: true, pushFollowTags: true, pushTagAfterCreate: false, forceDeleteUnmergedBranches:false,forceRemoveDirtyWorktrees:false,defaultResetMode:'hard' as const };
     bridge.rpc.mockImplementation(async method => method === 'saveOperationSettings'
       ? { ...defaults, scope: 'user' }
-      : { allowDetachedHead: false, pushFollowTags: false, pushTagAfterCreate: false, defaultResetMode: 'mixed', scope: 'workspace' });
+      : { allowDetachedHead: false, pushFollowTags: false, pushTagAfterCreate: false, forceDeleteUnmergedBranches:false,forceRemoveDirtyWorktrees:false,defaultResetMode:'mixed', scope: 'workspace' });
     await store.getState().saveOperationSettings(defaults, 'user');
     expect(bridge.rpc).toHaveBeenCalledWith('saveOperationSettings', undefined, { ...defaults, scope: 'user' });
-    expect(store.getState().operationSettings).toMatchObject({ allowDetachedHead: false, defaultResetMode: 'mixed', scope: 'workspace' });
+    expect(store.getState().operationSettings).toMatchObject({ allowDetachedHead: false, forceDeleteUnmergedBranches:false,forceRemoveDirtyWorktrees:false,defaultResetMode:'mixed', scope: 'workspace' });
   });
   it('applies settings through host session validation and restores only panel geometry', async () => {
     const { sessionSchema } = await import('../src/protocol/validation');

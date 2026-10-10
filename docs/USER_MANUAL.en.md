@@ -434,7 +434,7 @@ A branch is a movable reference to a version. Creating a branch, switching branc
 **Prerequisite:** Confirm that the branch is no longer needed and that any important commits are retained by another branch or backup reference.
 
 1. Right-click a local branch other than the current branch and choose Delete Branch….
-2. Check the branch name and warning. If you are unsure whether it contains unique commits, cancel and inspect the history first.
+2. Check the branch name and warning. If you are unsure whether it contains unique commits, cancel and inspect the history first. Configure the initial force choice in Settings → Advanced → Git Operations, or override it for this operation. Select Remember this selection as the default to save either on or off after at least one deletion succeeds. The dialog shows the user or workspace scope; cancellation or total failure does not save, and a preference write failure is reported separately.
 3. After confirming, check the branch list and the current branch.
 
 **Result:** The target local branch reference has been removed, and the current branch remains clearly identified.
@@ -956,7 +956,7 @@ Worktree lets a single repository have multiple working directories so you can w
 
 1. Switch to another working directory first.
 2. Right-click the target Worktree and choose Remove Worktree…. For a batch, use Ctrl/Cmd-click or Shift-click, then choose Remove N Worktrees…. Removal is disabled when the selection contains the main, current, or a locked Worktree, with the blocking reason shown.
-3. Verify the directory, any reason for locking, and the confirmation message. Do not casually select Remove even with uncommitted changes to bypass protection for uncommitted content.
+3. Verify every directory, any reason for locking, and the confirmation message. The force choice reads the independent Worktree removal default in Settings → Advanced → Git Operations and can be overridden once. Remember this selection as the default saves on or off after at least one removal succeeds, never on cancellation or total failure. A preference save failure is reported separately. Force can discard uncommitted files and still requires final confirmation when enabled by default.
 4. Click Remove Worktree. If a native Proceed confirmation appears, check the directory again before continuing.
 5. After confirming, check the Worktrees list and the result on disk. Batch results list successful and failed targets. Ordinary removal never automatically switches to force when uncommitted changes block it. A changed protection state or unconfirmed Git termination stops subsequent removals.
 
@@ -1066,6 +1066,8 @@ Current scope: whole-file staging, standard Rebase, remote branch management, ex
 | alwaygit.pushFollowTags | false | Whether normal Push includes related annotated Tags by default |
 | alwaygit.pushTagAfterCreate | false | Whether a new Tag is pushed to the selected Remote by default |
 | alwaygit.defaultResetMode | mixed | Soft, Mixed, or Hard initially selected in the Reset dialog |
+| alwaygit.forceDeleteUnmergedBranches | false | Initially select Force for single and batch local branch deletion; final confirmation remains |
+| alwaygit.forceRemoveDirtyWorktrees | false | Initially select Force for single and batch Worktree removal; final confirmation remains |
 | alwaygit.language | en / zh-CN / auto; user scope | Display language; applied user settings synchronize across Workbenches |
 | alwaygit.interfaceSettings | Object; user scope | Appearance, font, density, file lists, shortcuts, and Diff reading preferences |
 | alwaygit.workbenchLocations | editor only by default; user scope | enabled locations and a default belonging to that list |

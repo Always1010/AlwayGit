@@ -9,6 +9,7 @@ export interface ActionFeedback {
   startedAt?: number;
   phase?: 'executing' | 'refreshing';
   refreshWarning?: string;
+  preferenceWarning?: string;
   progress?: FileOperationProgress;
   stashOid?: string;
   target?: string;

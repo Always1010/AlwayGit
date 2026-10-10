@@ -54,7 +54,7 @@ afterEach(() => { for (const workbench of workbenches.splice(0)) workbench.dispo
 
 function workbenchFixture(output = { appendLine: vi.fn() }, events?: { changes: vscode.EventEmitter<{ repoId: string; changes?: RepositoryChanges }>; catalog: vscode.EventEmitter<void> }, overrides: Partial<Pick<RepositoryManager, 'scan' | 'list' | 'collections' | 'order'>> = {}) {
   const repositories = { scan: vi.fn(async () => {}), list: () => [], onDidChange: events?.changes.event ?? (() => ({ dispose() {} })), onDidChangeRepositories: events?.catalog.event ?? (() => ({ dispose() {} })), ...overrides };
-  const workbench = new Workbench({ extensionUri: {}, workspaceState: { get: (_key: string, fallback: unknown) => fallback, update: async () => {} } } as unknown as vscode.ExtensionContext, {} as never, repositories as never, {} as never, output as never, {} as never);
+  const workbench = new Workbench({ extensionUri: {}, workspaceState: { get: (_key: string, fallback: unknown) => fallback, update: async () => {} } } as unknown as vscode.ExtensionContext, {} as never, repositories as never, { releaseDiffOwner: vi.fn() } as never, output as never, {} as never);
   vi.spyOn(workbench as unknown as { html(): Promise<string> }, 'html').mockResolvedValue('<html></html>');
   workbenches.push(workbench);
   return workbench;
@@ -410,11 +410,11 @@ describe('Workbench entry presentation', () => {
       inspect: (key: string) => ({ globalValue: user.get(key), workspaceValue: workspace.get(key), defaultValue: key === 'defaultResetMode' ? 'mixed' : false }), update,
     } as unknown as vscode.WorkspaceConfiguration);
     const workbench = workbenchFixture();
-    expect(await workbench.handle({ id: 'user', method: 'operationSettings', payload: { scope: 'user' } })).toMatchObject({ allowDetachedHead: false, defaultResetMode: 'mixed', overridden: true });
-    const settings = { allowDetachedHead: false, pushFollowTags: true, pushTagAfterCreate: true, defaultResetMode: 'hard' };
+    expect(await workbench.handle({ id: 'user', method: 'operationSettings', payload: { scope: 'user' } })).toMatchObject({ allowDetachedHead: false, forceDeleteUnmergedBranches:false,forceRemoveDirtyWorktrees:false,defaultResetMode:'mixed', overridden: true });
+    const settings = { allowDetachedHead: false, pushFollowTags: true, pushTagAfterCreate: true, forceDeleteUnmergedBranches:false,forceRemoveDirtyWorktrees:false,defaultResetMode:'hard' };
     expect(await workbench.handle({ id: 'save-user', method: 'saveOperationSettings', payload: { ...settings, scope: 'user' } })).toMatchObject({ ...settings, scope: 'user' });
     expect(update.mock.calls.every(([, , target]) => target === vscode.ConfigurationTarget.Global)).toBe(true);
-    expect(await workbench.handle({ id: 'effective', method: 'operationSettings' })).toMatchObject({ allowDetachedHead: true, defaultResetMode: 'soft' });
+    expect(await workbench.handle({ id: 'effective', method: 'operationSettings' })).toMatchObject({ allowDetachedHead: true, forceDeleteUnmergedBranches:false,forceRemoveDirtyWorktrees:false,defaultResetMode:'soft' });
     update.mockClear();
     await workbench.handle({ id: 'save-workspace', method: 'saveOperationSettings', payload: { ...settings, scope: 'workspace' } });
     expect(update.mock.calls.every(([, , target]) => target === vscode.ConfigurationTarget.Workspace)).toBe(true);
@@ -423,7 +423,21 @@ describe('Workbench entry presentation', () => {
   it('rejects explicit workspace settings in an empty window before writing configuration', async () => {
     const workbench = workbenchFixture();
     await expect(workbench.handle({ id: 'empty', method: 'operationSettings', payload: { scope: 'workspace' } })).rejects.toThrow();
-    await expect(workbench.handle({ id: 'empty-save', method: 'saveOperationSettings', payload: { scope: 'workspace', allowDetachedHead: false, pushFollowTags: false, pushTagAfterCreate: false, defaultResetMode: 'mixed' } })).rejects.toThrow();
+    await expect(workbench.handle({ id: 'empty-save', method: 'saveOperationSettings', payload: { scope: 'workspace', allowDetachedHead: false, pushFollowTags: false, pushTagAfterCreate: false, forceDeleteUnmergedBranches:false,forceRemoveDirtyWorktrees:false,defaultResetMode:'mixed' } })).rejects.toThrow();
+  });
+  it('keeps deletion defaults independent and saves only the selected setting at its own scope', async () => {
+    vi.spyOn(vscode.workspace, 'workspaceFolders', 'get').mockReturnValue([{ name: 'project', index: 0, uri: {} as vscode.Uri }]);
+    const user = new Map<string, unknown>([['forceDeleteUnmergedBranches', true]]), workspace = new Map<string, unknown>([['forceRemoveDirtyWorktrees', true]]);
+    const update = vi.fn(async (key: string, value: unknown, target: vscode.ConfigurationTarget) => { (target === vscode.ConfigurationTarget.Global ? user : workspace).set(key, value); });
+    vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({ get: (key: string, fallback: unknown) => workspace.get(key) ?? user.get(key) ?? fallback, inspect: (key: string) => ({ globalValue: user.get(key), workspaceValue: workspace.get(key), defaultValue: key === 'defaultResetMode' ? 'mixed' : false }), update } as unknown as vscode.WorkspaceConfiguration);
+    const workbench = workbenchFixture();
+    expect(await workbench.handle({ id: 'read', method: 'operationSettings' })).toMatchObject({ forceDeleteUnmergedBranches: true, forceRemoveDirtyWorktrees: true, deletionDefaultScopes: { branch: 'user', worktree: 'workspace' } });
+    await workbench.handle({ id: 'save', method: 'saveOperationSettings', payload: { forceDeleteUnmergedBranches: false, scope: 'user' } });
+    expect(update.mock.calls).toEqual([['forceDeleteUnmergedBranches', false, vscode.ConfigurationTarget.Global]]);
+    expect(await workbench.handle({ id: 'read2', method: 'operationSettings' })).toMatchObject({ forceDeleteUnmergedBranches: false, forceRemoveDirtyWorktrees: true });
+    update.mockClear();
+    await workbench.handle({ id: 'save2', method: 'saveOperationSettings', payload: { forceRemoveDirtyWorktrees: false, scope: 'workspace' } });
+    expect(update.mock.calls).toEqual([['forceRemoveDirtyWorktrees', false, vscode.ConfigurationTarget.Workspace]]);
   });
   it('migrates legacy preferences once and broadcasts user updates without letting old session saves overwrite them', async () => {
     const values = new Map<string, unknown>();

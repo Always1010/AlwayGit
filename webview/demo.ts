@@ -46,11 +46,15 @@ if(noRemoteDemo)for(const store of Object.values(demoStores)){store.snapshot.rem
 const demoCollections:RepositoryCollection[]=[];
 let demoOrder:RepositoryOrder|undefined;
 const storedResetMode=localStorage.getItem('alwaygit.demo-defaultResetMode');
-let demoOperationSettings: OperationSettings = { allowDetachedHead: localStorage.getItem('alwaygit.demo-allowDetachedHead') === 'true', pushFollowTags: localStorage.getItem('alwaygit.demo-pushFollowTags') === 'true', pushTagAfterCreate: localStorage.getItem('alwaygit.demo-pushTagAfterCreate') === 'true', defaultResetMode: storedResetMode==='soft'||storedResetMode==='hard'?storedResetMode:'mixed', scope: 'workspace' };
-let demoWorkspaceOverrides = ['allowDetachedHead', 'pushFollowTags', 'pushTagAfterCreate', 'defaultResetMode'].some(key => localStorage.getItem(`alwaygit.demo-${key}`) !== null);
-let demoUserOperationSettings: OperationSettings = { allowDetachedHead: false, pushFollowTags: false, pushTagAfterCreate: false, defaultResetMode: 'mixed', scope: 'user' };
+let demoOperationSettings: OperationSettings = { allowDetachedHead: localStorage.getItem('alwaygit.demo-allowDetachedHead') === 'true', pushFollowTags: localStorage.getItem('alwaygit.demo-pushFollowTags') === 'true', pushTagAfterCreate: localStorage.getItem('alwaygit.demo-pushTagAfterCreate') === 'true', forceDeleteUnmergedBranches: localStorage.getItem('alwaygit.demo-forceDeleteUnmergedBranches')==='true', forceRemoveDirtyWorktrees: localStorage.getItem('alwaygit.demo-forceRemoveDirtyWorktrees')==='true', defaultResetMode: storedResetMode==='soft'||storedResetMode==='hard'?storedResetMode:'mixed', scope: 'workspace' };
+const operationSettingKeys = ['allowDetachedHead', 'pushFollowTags', 'pushTagAfterCreate', 'defaultResetMode', 'forceDeleteUnmergedBranches', 'forceRemoveDirtyWorktrees'] as const;
+let demoWorkspaceOverrides = operationSettingKeys.some(key => localStorage.getItem(`alwaygit.demo-${key}`) !== null);
+let demoUserOperationSettings: OperationSettings = { allowDetachedHead: false, pushFollowTags: false, pushTagAfterCreate: false, forceDeleteUnmergedBranches:false,forceRemoveDirtyWorktrees:false,defaultResetMode: 'mixed', scope: 'user' };
 try { demoUserOperationSettings = { ...demoUserOperationSettings, ...JSON.parse(localStorage.getItem('alwaygit.demo-userOperationSettings') ?? '{}'), scope: 'user' }; } catch { /* Use defaults. */ }
-const effectiveDemoOperationSettings = (): OperationSettings => ({ ...(demoWorkspaceOverrides ? demoOperationSettings : demoUserOperationSettings), scope: 'workspace', workspaceAvailable: true });
+const effectiveDemoOperationSettings = (): OperationSettings => ({ ...demoUserOperationSettings, ...Object.fromEntries(operationSettingKeys.filter(key => localStorage.getItem(`alwaygit.demo-${key}`)!==null).map(key => [key,demoOperationSettings[key]])),
+  forceDeleteUnmergedBranches: localStorage.getItem('alwaygit.demo-forceDeleteUnmergedBranches')!==null?demoOperationSettings.forceDeleteUnmergedBranches:demoUserOperationSettings.forceDeleteUnmergedBranches,
+  forceRemoveDirtyWorktrees: localStorage.getItem('alwaygit.demo-forceRemoveDirtyWorktrees')!==null?demoOperationSettings.forceRemoveDirtyWorktrees:demoUserOperationSettings.forceRemoveDirtyWorktrees,
+  deletionDefaultScopes:{branch:localStorage.getItem('alwaygit.demo-forceDeleteUnmergedBranches')!==null?'workspace':'user',worktree:localStorage.getItem('alwaygit.demo-forceRemoveDirtyWorktrees')!==null?'workspace':'user'}, scope: 'workspace', workspaceAvailable: true });
 async function demoRequest(method: RpcRequest['method'], payload: unknown, repoId?:string): Promise<unknown> {
   await new Promise(resolve => setTimeout(resolve, 110));
   const data=demoStores[repoId??repo.id]??demoStores[repo.id],demoSnapshot=data.snapshot,commits=data.commits;
@@ -109,10 +113,10 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
   if (method === 'operationSettings') return (payload as { scope?: string } | undefined)?.scope === 'user' ? { ...demoUserOperationSettings, workspaceAvailable: true, overridden: demoWorkspaceOverrides } : effectiveDemoOperationSettings();
   if (method === 'saveOperationSettings') {
     const update = payload as OperationSettings;
-    if (update.scope === 'user') { demoUserOperationSettings = { ...update, scope: 'user' }; localStorage.setItem('alwaygit.demo-userOperationSettings', JSON.stringify(demoUserOperationSettings)); }
+    if (update.scope === 'user') { demoUserOperationSettings = { ...demoUserOperationSettings, ...update, scope: 'user' }; localStorage.setItem('alwaygit.demo-userOperationSettings', JSON.stringify(demoUserOperationSettings)); }
     else {
-      demoWorkspaceOverrides = true; demoOperationSettings = { ...update, scope: 'workspace' };
-      for (const key of ['allowDetachedHead', 'pushFollowTags', 'pushTagAfterCreate', 'defaultResetMode'] as const) localStorage.setItem(`alwaygit.demo-${key}`, String(demoOperationSettings[key]));
+      demoWorkspaceOverrides = true; demoOperationSettings = { ...demoOperationSettings, ...update, scope: 'workspace' };
+      for (const key of operationSettingKeys) if(update[key]!==undefined)localStorage.setItem(`alwaygit.demo-${key}`, String(demoOperationSettings[key]));
     }
     emit({ type: 'operationSettingsChanged', settings: effectiveDemoOperationSettings() });
     return update.scope === 'user' ? { ...demoUserOperationSettings, workspaceAvailable: true, overridden: demoWorkspaceOverrides } : effectiveDemoOperationSettings();

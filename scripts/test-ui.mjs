@@ -18,7 +18,7 @@ import { verifyHelp } from './test-help-ui.mjs';
 import { verifyShortcuts } from './test-shortcuts-ui.mjs';
 import { verifyTerminalDock } from './test-terminal-ui.mjs';
 import { verifyTagStatus } from './test-tag-status-ui.mjs';
-import { verifyActionSafety } from './test-action-safety-ui.mjs';
+import { verifyActionSafety, verifyDeletionDefaults } from './test-action-safety-ui.mjs';
 import { verifyTransfer } from './test-transfer-ui.mjs';
 import { verifyProjectOpen } from './test-project-ui.mjs';
 import { verifyDockedWorkbench, verifyWorkbenchLocations } from './test-workbench-host-ui.mjs';
@@ -30,6 +30,7 @@ const suites = new Map([
   ['docking', verifyDockedWorkbench],
   ['project', verifyProjectOpen],
   ['action-safety', verifyActionSafety],
+  ['deletion', verifyDeletionDefaults],
   ['tag-status', verifyTagStatus],
   ['terminal', verifyTerminalDock],
   ['workbench', verifyWorkbench],

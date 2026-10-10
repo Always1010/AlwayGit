@@ -208,5 +208,17 @@
     "zh-CN": "工作台（第二侧边栏）",
     "review": "translated",
     "context": "Workbench locations and default routing"
+  },
+  "manifest.contributes.configuration.properties.alwaygit.forceDeleteUnmergedBranches.description": {
+    "en": "Initially select force deletion in local branch deletion dialogs. Final confirmation is still required.",
+    "zh-CN": "本地分支删除弹窗初始勾选强制删除未合并分支。仍需最终确认。",
+    "review": "translated",
+    "context": "Deletion operation preferences"
+  },
+  "manifest.contributes.configuration.properties.alwaygit.forceRemoveDirtyWorktrees.description": {
+    "en": "Initially select forced removal in Worktree removal dialogs. Uncommitted files may be discarded; final confirmation is still required.",
+    "zh-CN": "工作树移除弹窗初始勾选强制移除。可能丢弃未提交文件，仍需最终确认。",
+    "review": "translated",
+    "context": "Deletion operation preferences"
   }
 }

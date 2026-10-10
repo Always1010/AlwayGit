@@ -41,7 +41,7 @@ export function ActionFeedbackBar({ showLog, openAction }: { showLog(): void; op
     checkedOut && t('feedback.switchedTo', { branch: checkedOut.branch }),
     fetched && t('feedback.remoteRefsUpdated', { count: fetched.refs.length }), worktree?.path,
     updated && (updated.head === updated.previousHead ? t('feedback.headUnchanged') : `${updated.previousHead?.slice(0,8) ?? '—'} → ${updated.head?.slice(0,8) ?? '—'}`), tag?.name].filter(Boolean).join(' · ');
-  const summary = [errorSummary || resultSummary, feedback?.refreshWarning && t('feedback.refreshFailed')].filter(Boolean).join(' · ');
+  const summary = [errorSummary || resultSummary, feedback?.refreshWarning && t('feedback.refreshFailed'), feedback?.preferenceWarning].filter(Boolean).join(' · ');
   const hasDetails = !!(summary || pushed || feedback?.error || feedback?.refreshWarning || demoMode);
   return <div className={`action-feedback feedback-${marked?'marked':status}`} data-testid="action-feedback" role={status === 'error' ? 'alert' : 'status'} aria-live={status === 'error' ? 'assertive' : 'polite'}>
     <div className="feedback-row">
@@ -63,8 +63,9 @@ export function ActionFeedbackBar({ showLog, openAction }: { showLog(): void; op
     {expanded && hasDetails && <div id="action-feedback-details" className="feedback-expanded feedback-details">
       {resultSummary && <span className="feedback-target">{resultSummary}</span>}
       {feedback?.error && <><strong>{t('feedback.errorDetails')}</strong><pre>{feedback.error}</pre></>}
+      {feedback?.preferenceWarning&&<p className="warning-text">{feedback.preferenceWarning}</p>}
       {feedback?.refreshWarning && <><strong>{t('feedback.refreshFailed')}</strong><pre>{feedback.refreshWarning}</pre></>}
-      {deleted&&<><strong>{t('feedback.deletedTargets')}</strong><pre>{deleted.succeeded.join('\n')||'—'}</pre>{deleted.failures.length>0&&<><strong>{t('feedback.errorDetails')}</strong><pre>{deleted.failures.map(item=>item.target+': '+item.message).join('\n')}</pre></>}</>}
+      {deleted&&<><strong>{t('feedback.deletedTargets')}</strong><pre>{deleted.succeeded.join('\n')||'—'}</pre>{deleted.notAttempted?.length?<><strong>{t('feedback.deletionNotAttempted')}</strong><pre>{deleted.notAttempted.join('\n')}</pre></>:null}{deleted.failures.length>0&&<><strong>{t('feedback.errorDetails')}</strong><pre>{deleted.failures.map(item=>item.target+': '+item.message).join('\n')}</pre></>}</>}
       {pushed && feedback && <PushFeedback result={pushed} repoId={feedback.repoId}/>}
       {demoMode && <span className="muted">{t('feedback.demoSampleDataOnly')}</span>}
     </div>}

@@ -52,7 +52,7 @@ describe('Workbench protocol validation', () => {
     for (const payload of [{}, { paths: [] }, { path: '/one', paths: ['/two'] }]) expect(actionSchema.safeParse({ type: 'worktree.remove', ...payload }).success).toBe(false);
   });
   it('requires a valid persisted Reset default', () => {
-    const settings={allowDetachedHead:false,pushFollowTags:false,pushTagAfterCreate:false,defaultResetMode:'hard' as const};
+    const settings={allowDetachedHead:false,pushFollowTags:false,pushTagAfterCreate:false,forceDeleteUnmergedBranches:false,forceRemoveDirtyWorktrees:false,defaultResetMode:'hard' as const};
     expect(operationSettingsSchema.parse(settings)).toEqual(settings);
     expect(operationSettingsSchema.safeParse({...settings,defaultResetMode:'keep'}).success).toBe(false);
   });

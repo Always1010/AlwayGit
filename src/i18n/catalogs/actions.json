@@ -1189,5 +1189,23 @@
     "zh-CN": "将移除所选工作目录，分支引用保留。",
     "review": "translated",
     "context": "Worktree batch removal"
+  },
+  "actions.rememberDeletionDefault": {
+    "en": "Remember this selection as the default",
+    "zh-CN": "将此选项记为默认",
+    "review": "translated",
+    "context": "Deletion operation preferences"
+  },
+  "actions.rememberDeletionUserScope": {
+    "en": "Saved to user defaults after at least one target is removed.",
+    "zh-CN": "至少一项删除成功后保存到用户默认。",
+    "review": "translated",
+    "context": "Deletion operation preferences"
+  },
+  "actions.rememberDeletionWorkspaceScope": {
+    "en": "Saved to this VS Code workspace after at least one target is removed.",
+    "zh-CN": "至少一项删除成功后保存到当前 VS Code 工作区。",
+    "review": "translated",
+    "context": "Deletion operation preferences"
   }
 }

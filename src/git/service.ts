@@ -945,6 +945,7 @@ export class GitService implements GitServiceContract {
           expectedOids.set(name, oid);
         }
         const failures:string[]=[];let deleted=0;
+        const deletion: DeletionResult = { kind: 'deletion', target: 'branch', succeeded: [], failures: [] };
         for (const name of names) {
           try {
             const expected = expectedOids.get(name)!;
@@ -964,7 +965,7 @@ export class GitService implements GitServiceContract {
               }
             } });
             if (result.code) throw new GitError(localizeMessage('service.branchChangedBeforeDeletion', { name }), 'OPERATION_CHANGED', result.stdout.toString('utf8'), result.stderr.toString('utf8'));
-            deleted++;
+            deleted++; deletion.succeeded.push(name);
             // A newly recreated branch owns its own configuration.
             const recreated = await this.run(repo, ['show-ref', '--verify', '--quiet', '--', `refs/heads/${name}`], true);
             if (!recreated.code) continue;
@@ -978,12 +979,13 @@ export class GitService implements GitServiceContract {
               if (remaining.code !== 1) throw new GitError(config.stderr.toString('utf8').trim(), 'GIT_FAILED');
             }
           } catch (error) {
-            if (error instanceof GitTerminationError) throw error;
             failures.push(`${name}: ${error instanceof Error ? error.message : String(error)}`);
+            deletion.failures.push({ target: name, message: error instanceof Error ? error.message : String(error) });
+            if (error instanceof GitTerminationError) { deletion.notAttempted = names.slice(names.indexOf(name) + 1); error.deletionResult = deletion; throw error; }
           }
         }
-        if(failures.length)throw new GitError(localizeMessage("service.branchEsDeletedFailed", { deleted: (deleted), count: (failures.length), value: (failures.join('\n')) }),'PARTIAL_FAILURE');
-        return;
+        if(failures.length){const error=new GitError(localizeMessage("service.branchEsDeletedFailed", { deleted, count: failures.length, value: failures.join('\n') }),'PARTIAL_FAILURE');error.deletionResult=deletion;throw error;}
+        return deletion;
       }
       case 'remote.delete': {
         const destination=token(action.remote,'remote'),configured=(await this.text(repo,['remote'])).split('\n').filter(Boolean);
@@ -1147,16 +1149,18 @@ export class GitService implements GitServiceContract {
       }
       case 'worktree.remove': {
         const paths = [...new Set((action.paths ?? [action.path]).map(value => path.resolve(repo.root, token(value, 'worktree path'))))];
-        const check = async (targetPath: string) => {
-          const target = await canonicalPath(targetPath), trees = await this.worktrees(repo);
-          const canonical = await Promise.all(trees.map(tree => canonicalPath(tree.path)));
+        const currentRoot = await canonicalPath(repo.root), initialTrees = await this.worktrees(repo);
+        const initial = { trees: initialTrees, canonical: await Promise.all(initialTrees.map(tree => canonicalPath(tree.path))) };
+        const check = async (targetPath: string, inventory?: typeof initial) => {
+          const target = await canonicalPath(targetPath), trees = inventory?.trees ?? await this.worktrees(repo);
+          const canonical = inventory?.canonical ?? await Promise.all(trees.map(tree => canonicalPath(tree.path)));
           const selected = trees.find((_, index) => normalized(canonical[index]) === normalized(target));
-          if (!selected || selected.bare || normalized(target) === normalized(canonical[0]) || normalized(target) === normalized(await canonicalPath(repo.root))) throw new GitError(localizeMessage('service.onlyRegisteredLinkedWorktreesOtherThanTheCurrentWorktree'), 'INVALID_WORKTREE');
+          if (!selected || selected.bare || normalized(target) === normalized(canonical[0]) || normalized(target) === normalized(currentRoot)) throw new GitError(localizeMessage('service.onlyRegisteredLinkedWorktreesOtherThanTheCurrentWorktree'), 'INVALID_WORKTREE');
           if (selected.locked) throw new GitError(localizeMessage('service.thisWorktreeIsLockedUnlockItBeforeRemoval', { locked: selected.locked }), 'WORKTREE_LOCKED');
           return selected.path;
         };
         // Validate the whole selection before the first mutation; then recheck each target.
-        const selected = [...new Set(await Promise.all(paths.map(check)))];
+        const selected = [...new Set(await mapGitQueries(paths, target => check(target, initial)))];
         const result: DeletionResult = { kind: 'deletion', target: 'worktree', succeeded: [], failures: [] };
         for (const selectedPath of selected) {
           try {
@@ -1166,6 +1170,7 @@ export class GitService implements GitServiceContract {
           } catch (error) {
             result.failures.push({ target: selectedPath, message: error instanceof Error ? error.message : String(error) });
             if (error instanceof GitTerminationError || error instanceof GitError && ['INVALID_WORKTREE', 'WORKTREE_LOCKED', 'OPERATION_CHANGED'].includes(error.code)) {
+              result.notAttempted = selected.slice(selected.indexOf(selectedPath) + 1);
               if (error instanceof GitError) error.deletionResult = result;
               throw error;
             }

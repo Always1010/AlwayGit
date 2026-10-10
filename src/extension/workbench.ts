@@ -100,13 +100,15 @@ export class Workbench implements vscode.Disposable {
   private operationSettings(scope?: OperationSettings['scope']): OperationSettings {
     const configuration = vscode.workspace.getConfiguration('alwaygit');
     const workspaceAvailable = !!(vscode.workspace.workspaceFile || vscode.workspace.workspaceFolders?.length);
-    const keys = ['allowDetachedHead', 'pushFollowTags', 'pushTagAfterCreate', 'defaultResetMode'];
+    const keys = ['allowDetachedHead', 'pushFollowTags', 'pushTagAfterCreate', 'defaultResetMode', 'forceDeleteUnmergedBranches', 'forceRemoveDirtyWorktrees'];
     const read = <T>(key: string, fallback: T): T => scope === 'user'
       ? configuration.inspect<T>(key)?.globalValue ?? configuration.inspect<T>(key)?.defaultValue ?? fallback
       : configuration.get<T>(key, fallback);
     const reset = read<string>('defaultResetMode', 'mixed');
     return { allowDetachedHead: read<boolean>('allowDetachedHead', false) === true, pushFollowTags: read<boolean>('pushFollowTags', false) === true,
       pushTagAfterCreate: read<boolean>('pushTagAfterCreate', false) === true, defaultResetMode: ['soft', 'mixed', 'hard'].includes(reset) ? reset as OperationSettings['defaultResetMode'] : 'mixed',
+      forceDeleteUnmergedBranches: read<boolean>('forceDeleteUnmergedBranches', false) === true, forceRemoveDirtyWorktrees: read<boolean>('forceRemoveDirtyWorktrees', false) === true,
+      deletionDefaultScopes: { branch: workspaceAvailable && configuration.inspect('forceDeleteUnmergedBranches')?.workspaceValue !== undefined ? 'workspace' : 'user', worktree: workspaceAvailable && configuration.inspect('forceRemoveDirtyWorktrees')?.workspaceValue !== undefined ? 'workspace' : 'user' },
       scope: scope ?? (workspaceAvailable ? 'workspace' : 'user'), workspaceAvailable,
       overridden: scope === 'user' && keys.some(key => configuration.inspect(key)?.workspaceValue !== undefined) };
   }
@@ -121,7 +123,7 @@ export class Workbench implements vscode.Disposable {
       for (const entry of this.panels.values()) this.updatePanelTitle(entry);
       this.post({ type: 'repositoriesChanged' });
     }));
-    this.disposables.push(vscode.workspace.onDidChangeConfiguration(event => { if (['allowDetachedHead','pushFollowTags','pushTagAfterCreate','defaultResetMode'].some(name=>event.affectsConfiguration(`alwaygit.${name}`))) this.post({ type: 'operationSettingsChanged', settings: this.operationSettings() }); }));
+    this.disposables.push(vscode.workspace.onDidChangeConfiguration(event => { if (['allowDetachedHead','pushFollowTags','pushTagAfterCreate','defaultResetMode','forceDeleteUnmergedBranches','forceRemoveDirtyWorktrees'].some(name=>event.affectsConfiguration(`alwaygit.${name}`))) this.post({ type: 'operationSettingsChanged', settings: this.operationSettings() }); }));
     this.disposables.push(vscode.workspace.onDidChangeConfiguration(event => {
       if (event.affectsConfiguration('alwaygit.workbenchLocations') || event.affectsConfiguration('alwaygit.openMode')) {
         this.refreshLaunchers();
@@ -546,10 +548,9 @@ export class Workbench implements vscode.Disposable {
       const scope = settings.scope ?? this.operationSettings().scope;
       if (scope === 'workspace' && !this.operationSettings().workspaceAvailable) throw new Error(this.text('settings.workspaceRequired'));
       const target=scope === 'workspace' ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global,configuration=vscode.workspace.getConfiguration('alwaygit');
-      await configuration.update('allowDetachedHead', settings.allowDetachedHead, target);
-      await configuration.update('pushFollowTags', settings.pushFollowTags, target);
-      await configuration.update('pushTagAfterCreate', settings.pushTagAfterCreate, target);
-      await configuration.update('defaultResetMode', settings.defaultResetMode, target);
+      for (const key of ['allowDetachedHead', 'pushFollowTags', 'pushTagAfterCreate', 'defaultResetMode', 'forceDeleteUnmergedBranches', 'forceRemoveDirtyWorktrees'] as const) {
+        if (settings[key] !== undefined) await configuration.update(key, settings[key], target);
+      }
       const saved = this.operationSettings(scope); this.post({ type: 'operationSettingsChanged', settings: this.operationSettings() }); return saved;
     }
     if (request.method === 'openKeyboardShortcuts') { await vscode.commands.executeCommand('workbench.action.openGlobalKeybindings', '@ext:alwaygit-dev.alwaygit'); return null; }
