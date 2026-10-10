@@ -293,6 +293,60 @@ describe('Git service integration', () => {
     await expect(service.execute(repo, { type: 'worktree.remove', path: root, force: true })).rejects.toThrow('Only registered'); await expect(service.execute(repo, { type: 'worktree.remove', path: os.tmpdir(), force: true })).rejects.toThrow('Only registered');
     await service.execute(repo, { type: 'worktree.remove', path: linked }); expect((await service.snapshot(repo)).worktrees).toHaveLength(1);
   });
+  it.each([
+    { label: 'default remote', remote: undefined, prefix: 'origin' },
+    { label: 'selected remote', remote: 'origin', prefix: 'origin' },
+    { label: 'custom tracking mapping', remote: 'origin', prefix: 'origin/alias' },
+  ])('prunes deleted branches on Fetch while preserving local work and other remotes ($label)', async ({ remote, prefix }) => {
+    const { root, service, repo } = await setup();
+    const base = await commit(root, 'base.txt', 'base');
+    const bare = path.join(root, 'remote.git'); await mkdir(bare); await git(bare, 'init', '--bare');
+    await git(root, 'remote', 'add', 'origin', bare);
+    if (prefix !== 'origin') await git(root, 'config', 'remote.origin.fetch', `+refs/heads/*:refs/remotes/${prefix}/*`);
+    await git(root, 'checkout', '-b', 'topic');
+    const published = await commit(root, 'topic.txt', 'published');
+    await git(root, 'tag', 'published-tag');
+    await git(root, 'push', 'origin', 'main', 'topic', 'refs/tags/published-tag');
+    const localTip = await commit(root, 'local.txt', 'not pushed');
+    await git(root, 'checkout', 'main');
+    await git(root, 'config', 'branch.main.remote', 'origin');
+    await git(root, 'config', 'branch.main.merge', 'refs/heads/main');
+    await git(root, 'fetch', 'origin');
+    await git(root, 'remote', 'add', 'backup', bare); await git(root, 'fetch', 'backup');
+    await git(root, 'tag', 'local-only');
+    const staleRef = `refs/remotes/${prefix}/topic`;
+    expect((await service.snapshot(repo)).refs).toEqual(expect.arrayContaining([expect.objectContaining({ fullName: staleRef, oid: published })]));
+    // Simulate deletion outside this clone, so its tracking refs remain stale.
+    await git(bare, 'update-ref', '-d', 'refs/heads/topic');
+    await git(bare, 'update-ref', '-d', 'refs/tags/published-tag');
+    await git(root, 'config', 'fetch.prune', 'false');
+    await git(root, 'config', 'remote.origin.prune', 'false');
+    await git(root, 'config', 'fetch.pruneTags', 'true');
+    await git(root, 'config', 'remote.origin.pruneTags', 'true');
+    await writeFile(path.join(root, 'base.txt'), 'staged'); await git(root, 'add', 'base.txt');
+    await writeFile(path.join(root, 'base.txt'), 'unstaged');
+    await writeFile(path.join(root, 'scratch.txt'), 'untracked');
+    const status = await git(root, 'status', '--porcelain=v1');
+    await service.execute(repo, { type: 'fetch', remote });
+    const snapshot = await service.snapshot(repo);
+    expect(snapshot.refs.some(ref => ref.fullName === staleRef)).toBe(false);
+    expect(snapshot.refs).toEqual(expect.arrayContaining([
+      expect.objectContaining({ fullName: `refs/remotes/${prefix}/main`, oid: base }),
+      expect.objectContaining({ fullName: 'refs/remotes/backup/topic', oid: published }),
+      expect.objectContaining({ fullName: 'refs/heads/topic', oid: localTip }),
+      expect.objectContaining({ fullName: 'refs/tags/published-tag', oid: published }),
+      expect.objectContaining({ fullName: 'refs/tags/local-only', oid: base }),
+    ]));
+    expect(await git(root, 'status', '--porcelain=v1')).toBe(status);
+    expect(await git(root, 'show', ':base.txt')).toBe('staged');
+    expect(await readFile(path.join(root, 'base.txt'), 'utf8')).toBe('unstaged');
+    expect(await readFile(path.join(root, 'scratch.txt'), 'utf8')).toBe('untracked');
+    expect(snapshot).toMatchObject({ branch: 'main', head: base, upstream: `${prefix}/main` });
+    expect((await service.history(repo, { tips: ['refs/heads/topic'] })).commits.find(item => item.oid === published)?.pushed).toBe(true);
+    await service.execute(repo, { type: 'fetch', remote: 'backup' });
+    expect((await service.snapshot(repo)).refs.some(ref => ref.fullName === 'refs/remotes/backup/topic')).toBe(false);
+    expect((await service.history(repo, { tips: ['refs/heads/topic'] })).commits.find(item => item.oid === published)?.pushed).toBe(false);
+  });
   it('fetches, pushes and pulls from a local bare remote with upstream tracking', async () => {
     const { root, service, repo } = await setup(); await commit(root, 'a.txt', 'a'); const bare = path.join(root, 'remote.git'); await mkdir(bare); await git(bare, 'init', '--bare'); await git(root, 'remote', 'add', 'origin', bare);
     const published = await service.execute(repo, { type: 'push', branch: 'main' });
