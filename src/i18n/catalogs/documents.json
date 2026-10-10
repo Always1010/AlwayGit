@@ -5,12 +5,6 @@
     "review": "translated",
     "context": "src/editor/documents.ts / provideTextDocumentContent"
   },
-  "documents.alwayGitFileExceedsThe8MBTextPreviewLimit": {
-    "en": "[AlwayGit: file exceeds the 8 MB text preview limit.]",
-    "zh-CN": "[AlwayGit：文件超过 8 MB 文本预览限制。]",
-    "review": "translated",
-    "context": "src/editor/documents.ts / provideTextDocumentContent"
-  },
   "documents.alwayGitBinaryFileTextComparisonIsUnavailable": {
     "en": "[AlwayGit: binary file. Text comparison is unavailable.]",
     "zh-CN": "[AlwayGit：二进制文件，无法进行文本比较。]",
@@ -124,5 +118,23 @@
     "zh-CN": "图片和二进制文件只能在 AlwayGit Diff 预览中查看。",
     "review": "translated",
     "context": "src/editor/documents.ts / openFile / diff"
+  },
+  "documents.textComparisonResourceLimit": {
+    "en": "The complete text comparison reached a resource limit (32 MiB per side; 128 MiB for text and index caches). No partial comparison is displayed.",
+    "zh-CN": "完整文本比较达到资源保护上限（每侧文本 32 MiB，文本与索引缓存合计 128 MiB），未显示不完整的比较结果。",
+    "review": "translated",
+    "context": "src/editor/documents.ts / complete text comparison"
+  },
+  "documents.invalidDiffIndex": {
+    "en": "Git returned an inconsistent text comparison. Refresh and try again.",
+    "zh-CN": "Git 返回的文本比较位置不一致，请刷新后重试。",
+    "review": "translated",
+    "context": "src/editor/text-diff.ts / Git hunk validation"
+  },
+  "documents.unsafeDiffCleanup": {
+    "en": "The temporary comparison directory could not be safely removed.",
+    "zh-CN": "临时比较目录无法安全清理。",
+    "review": "translated",
+    "context": "src/git/service.ts / temporary comparison cleanup"
   }
 }

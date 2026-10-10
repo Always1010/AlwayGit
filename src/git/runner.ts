@@ -11,6 +11,7 @@ export interface GitRunOptions {
   maxOutputBytes?: number;
   captureBytes?: number;
   onStderr?: (chunk: Buffer) => void;
+  onStdout?: (chunk: Buffer) => void;
   onStop?: () => void;
   signal?: AbortSignal;
   readOnly?: boolean;
@@ -94,6 +95,10 @@ export function runGitProcess(options: GitRunOptions): Promise<GitResult> {
       // Keep draining after cancellation; destroying pipes can manufacture close
       // before descendants have finished using the inherited pipe handles.
       if (failure) return;
+      if (bucket === out && options.onStdout) {
+        try { options.onStdout(chunk); }
+        catch (error) { stop(error instanceof GitError ? error : new GitError((error as Error).message, 'PARSE_ERROR')); return; }
+      }
       if (bucket === out && options.captureBytes !== undefined) {
         const remaining = options.captureBytes - captured;
         if (remaining > 0) { const piece = chunk.subarray(0, remaining); bucket.push(piece); captured += piece.length; }

@@ -13,6 +13,17 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('host request timeouts', () => {
+  it('keeps page reads independent from the complete index request and cancels stale pages', async () => {
+    const { rpc } = await import('../webview/rpc');
+    const page = rpc('diffPage', 'repo', { token: 'old', start: 0, count: 128 });
+    const rejected = expect(page).rejects.toMatchObject({ code: 'ABORTED' });
+    const preview = rpc('diffPreview', 'repo', { path: 'next' }), previewId = postMessage.mock.calls.at(-1)![0].id;
+    const nextPage = rpc('diffPage', 'repo', { token: 'new', start: 100000, count: 128 }), pageId = postMessage.mock.calls.at(-1)![0].id;
+    await rejected;
+    receive({ data: { type: 'response', id: previewId, result: 'complete' } });
+    receive({ data: { type: 'response', id: pageId, result: 'tail' } });
+    await expect(preview).resolves.toBe('complete'); await expect(nextPage).resolves.toBe('tail');
+  });
   it('reports an unacknowledged panel save without implying a Git operation failed', async () => {
     const { rpc } = await import('../webview/rpc');
     const failed = expect(rpc('saveSession', undefined, { drafts: { repo: 'keep' } })).rejects.toMatchObject({

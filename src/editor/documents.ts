@@ -1,13 +1,15 @@
 import { message as localizeMessage, MessageError, translate } from '../i18n/index';
 import * as vscode from 'vscode';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { open, lstat, readlink } from 'node:fs/promises';
 import type { ContentSource, DiffImage, DiffPreview, DiffTarget, GitServiceContract, Repository } from '../protocol/types';
 import { safeWorkingPath } from './paths';
+import { IndexedTextDiff } from './text-diff';
+import type { DiffPage } from '../protocol/diff';
 
-const MAX_DOCUMENT = 8 * 1024 * 1024;
+const MAX_DOCUMENT = 32 * 1024 * 1024;
 const MAX_PREVIEW_BYTES = 256 * 1024;
-const MAX_PREVIEW_LINES = 4000;
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 const MAX_IMAGE_PIXELS = 24_000_000;
 const MAX_IMAGE_DIMENSION = 16_384;
@@ -50,13 +52,14 @@ function isBinary(bytes: Buffer, truncated: boolean): boolean {
 export class GitDocuments implements vscode.TextDocumentContentProvider {
   private readonly entries = new Map<string, { repo: Repository; source: ContentSource } | { text: string }>();
   private sequence = 0;
+  private readonly snapshots = new Map<string, { repoId: string; diff: IndexedTextDiff; owner: object }>();
   constructor(private readonly git: GitServiceContract) {}
   async provideTextDocumentContent(uri: vscode.Uri): Promise<string> {
     const entry = this.entries.get(uri.toString());
     if (!entry) throw new MessageError(localizeMessage("documents.thisComparisonHasExpiredOpenItAgainFromAlwayGit"));
     if ('text' in entry) return entry.text;
-    const data = await this.git.content(entry.repo, entry.source, MAX_DOCUMENT + 1);
-    if (data.length > MAX_DOCUMENT) return translate('en', "documents.alwayGitFileExceedsThe8MBTextPreviewLimit");
+    const data = await this.git.content(entry.repo, entry.source);
+    if (data.length > MAX_DOCUMENT) throw new MessageError(localizeMessage("documents.textComparisonResourceLimit"));
     if (data.includes(0)) return translate('en', "documents.alwayGitBinaryFileTextComparisonIsUnavailable");
     return data.toString('utf8');
   }
@@ -83,9 +86,44 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
     const comparison = await this.comparison(repo, target);
     return this.previewComparison(repo, comparison);
   }
+  async indexedPreview(repo: Repository, target: DiffTarget, retain = true, owner: object = this): Promise<DiffPreview> {
+    const preview = await this.preview(repo, target);
+    if (preview.kind !== 'text') return preview;
+    const hunks = await this.git.textDiffHunks(repo, preview.left, preview.right);
+    const diff = await IndexedTextDiff.create(preview.left, preview.right, hunks, () => this.git.throwIfReadCancelled?.());
+    const token = retain ? randomUUID() : '';
+    if (retain) {
+      const own = [...this.snapshots].filter(([, value]) => value.owner === owner);
+      // Retain the last snapshot for refresh handoff; abandoned responses cannot accumulate.
+      for (const [key] of own.slice(0, -1)) this.snapshots.delete(key);
+      if ([...this.snapshots.values()].reduce((sum, value) => sum + value.diff.bytes, diff.bytes) > 128 * 1024 * 1024) for (const [key] of own) this.snapshots.delete(key);
+      if ([...this.snapshots.values()].reduce((sum, value) => sum + value.diff.bytes, diff.bytes) > 128 * 1024 * 1024) throw new MessageError(localizeMessage('documents.textComparisonResourceLimit'));
+      this.snapshots.set(token, { repoId: repo.id, diff, owner });
+    }
+    return { ...preview, left: '', right: '', index: { token, rowCount: diff.rowCount, changes: diff.changes, summary: diff.summary, columns: diff.columns } };
+  }
+  diffPage(repo: Repository, token: string, start: number, count: number): DiffPage {
+    const entry = this.snapshots.get(token);
+    if (!entry || entry.repoId !== repo.id) throw new MessageError(localizeMessage('documents.thisComparisonHasExpiredOpenItAgainFromAlwayGit'));
+    return { token, start, rows: entry.diff.page(start, count) };
+  }
+  releaseDiff(repo: Repository, token: string): void {
+    if (this.snapshots.get(token)?.repoId === repo.id) this.snapshots.delete(token);
+  }
+  releaseDiffOwner(owner: object): void {
+    for (const [key, entry] of this.snapshots) if (entry.owner === owner) this.snapshots.delete(key);
+  }
   private async readWorking(filename: string, maxBytes: number): Promise<Buffer> {
     const file = await open(filename, 'r');
-    try { const buffer = Buffer.alloc(maxBytes); let total = 0; while (total < buffer.length) { const { bytesRead } = await file.read(buffer, total, buffer.length - total, total); if (!bytesRead) break; total += bytesRead; } return buffer.subarray(0, total); }
+    try {
+      const before = await file.stat();
+      const buffer = Buffer.alloc(Math.min(maxBytes, before.size + 1)); let total = 0;
+      while (total < buffer.length) { this.git.throwIfReadCancelled?.(); const { bytesRead } = await file.read(buffer, total, Math.min(262144, buffer.length - total), total); if (!bytesRead) break; total += bytesRead; }
+      const after = await file.stat();
+      if (before.size !== after.size || before.mtimeMs !== after.mtimeMs || before.ctimeMs !== after.ctimeMs) throw new MessageError(localizeMessage('documents.theFileStatusChangedRefreshAndOpenItsComparison'));
+      this.git.throwIfReadCancelled?.();
+      return buffer.subarray(0, total);
+    }
     finally { await file.close(); }
   }
   private async readSide(repo: Repository, side: Side, maxBytes: number): Promise<Buffer> {
@@ -113,18 +151,16 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
       return { kind: 'image', path: comparison.path, leftLabel: comparison.left.label, rightLabel: comparison.right.label, left: leftImage, right: rightImage };
     }
     const binary = isBinary(left.subarray(0, MAX_PREVIEW_BYTES), left.length > MAX_PREVIEW_BYTES) || isBinary(right.subarray(0, MAX_PREVIEW_BYTES), right.length > MAX_PREVIEW_BYTES);
-    let truncated = left.length > MAX_PREVIEW_BYTES || right.length > MAX_PREVIEW_BYTES;
-    const text = (bytes: Buffer) => {
-      const decoder = new TextDecoder('utf-8');
-      // Streaming decode omits an incomplete UTF-8 character at the byte boundary.
-      const value = decoder.decode(bytes.subarray(0, MAX_PREVIEW_BYTES), { stream: bytes.length > MAX_PREVIEW_BYTES });
-      const lines = value.split('\n'); if (lines.length > MAX_PREVIEW_LINES) truncated = true;
-      return lines.slice(0, MAX_PREVIEW_LINES).join('\n');
-    };
     if (binary) return { kind: 'binary', reason: 'unsupported', path: comparison.path, leftLabel: comparison.left.label, rightLabel: comparison.right.label };
-    const result: DiffPreview = { kind: 'text', path: comparison.path, leftLabel: comparison.left.label, rightLabel: comparison.right.label, left: text(left), right: text(right) };
-    if (truncated) result.truncated = true;
-    return result;
+    // Prefixes classify content only. Never compare incomplete text.
+    const complete = async (side: Side, prefix: Buffer) => {
+      const bytes = prefix.length > MAX_PREVIEW_BYTES ? ('source' in side ? await this.git.content(repo, side.source) : await read(side, MAX_DOCUMENT + 1)) : prefix;
+      if (bytes.length > MAX_DOCUMENT) throw new MessageError(localizeMessage("documents.textComparisonResourceLimit"));
+      return bytes;
+    };
+    const [fullLeft, fullRight] = await Promise.all([complete(comparison.left, left), complete(comparison.right, right)]);
+    if (isBinary(fullLeft, false) || isBinary(fullRight, false)) return { kind: 'binary', reason: 'unsupported', path: comparison.path, leftLabel: comparison.left.label, rightLabel: comparison.right.label };
+    return { kind: 'text', path: comparison.path, leftLabel: comparison.left.label, rightLabel: comparison.right.label, left: fullLeft.toString('utf8'), right: fullRight.toString('utf8') };
   }
   private async workingSide(repo: Repository, filename: string): Promise<Side> {
     // Validate the parent without following the leaf: Git stores a link's target text.

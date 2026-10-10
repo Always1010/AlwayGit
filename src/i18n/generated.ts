@@ -1860,10 +1860,6 @@ export const catalog = {
     "en": "This comparison has expired. Open it again from AlwayGit.",
     "zh-CN": "此比较已过期，请从 AlwayGit 重新打开。"
   },
-  "documents.alwayGitFileExceedsThe8MBTextPreviewLimit": {
-    "en": "[AlwayGit: file exceeds the 8 MB text preview limit.]",
-    "zh-CN": "[AlwayGit：文件超过 8 MB 文本预览限制。]"
-  },
   "documents.alwayGitBinaryFileTextComparisonIsUnavailable": {
     "en": "[AlwayGit: binary file. Text comparison is unavailable.]",
     "zh-CN": "[AlwayGit：二进制文件，无法进行文本比较。]"
@@ -1939,6 +1935,18 @@ export const catalog = {
   "documents.imagesAndBinaryFilesCanOnlyBeViewedInTheAlwayGitDiffPreview": {
     "en": "Images and binary files can only be viewed in the AlwayGit Diff preview.",
     "zh-CN": "图片和二进制文件只能在 AlwayGit Diff 预览中查看。"
+  },
+  "documents.textComparisonResourceLimit": {
+    "en": "The complete text comparison reached a resource limit (32 MiB per side; 128 MiB for text and index caches). No partial comparison is displayed.",
+    "zh-CN": "完整文本比较达到资源保护上限（每侧文本 32 MiB，文本与索引缓存合计 128 MiB），未显示不完整的比较结果。"
+  },
+  "documents.invalidDiffIndex": {
+    "en": "Git returned an inconsistent text comparison. Refresh and try again.",
+    "zh-CN": "Git 返回的文本比较位置不一致，请刷新后重试。"
+  },
+  "documents.unsafeDiffCleanup": {
+    "en": "The temporary comparison directory could not be safely removed.",
+    "zh-CN": "临时比较目录无法安全清理。"
   },
   "extension.alwayGitGitAuthentication": {
     "en": "AlwayGit · Git Authentication",
@@ -4640,8 +4648,8 @@ export const catalog = {
     "zh-CN": "整个提交按更改文件顺序导航。下一处跨文件定位第一处更改，上一处跨文件定位最后一处更改，提交的首尾循环衔接。"
   },
   "settings.navigatesAllFilesInTheCurrentCommitAndSelected": {
-    "en": "Navigates all files in the current Commit and selected Parent, including files hidden by the path filter. Binary files and files without text change blocks are skipped; truncated files only include previewed changes. Working Tree, Stash and comparisons continue to cycle within the current file.",
-    "zh-CN": "范围为当前提交和所选父提交的全部文件，包括路径筛选隐藏的文件。跳过二进制文件及没有文本更改块的文件；截断文件仅导航预览中的更改。工作区、Stash 和提交比较仍在当前文件内循环。"
+    "en": "Navigates all files in the current Commit and selected Parent, including files hidden by the path filter. Binary files and files without text change blocks are skipped; text changes are calculated from complete file contents. Working Tree, Stash and comparisons continue to cycle within the current file.",
+    "zh-CN": "范围为当前提交和所选父提交的全部文件，包括路径筛选隐藏的文件。跳过二进制文件及没有文本更改块的文件；文本修改按完整文件计算。工作区、Stash 和提交比较仍在当前文件内循环。"
   },
   "settings.allowDirectDetachedHEADCheckout": {
     "en": "Allow direct Detached HEAD Checkout",
@@ -6574,7 +6582,6 @@ export interface MessageParameters {
   "dock.profileArgs": {  };
   "dock.invalidAcknowledgement": {  };
   "documents.thisComparisonHasExpiredOpenItAgainFromAlwayGit": {  };
-  "documents.alwayGitFileExceedsThe8MBTextPreviewLimit": {  };
   "documents.alwayGitBinaryFileTextComparisonIsUnavailable": {  };
   "documents.workingTreeSymbolicLink": {  };
   "documents.thisPathIsADirectoryOrSubmoduleNotA": {  };
@@ -6594,6 +6601,9 @@ export interface MessageParameters {
   "documents.thisFileHasNoUnstagedChangesRefreshItsComparison": {  };
   "documents.indexWorkingTree": { value: ParameterValue };
   "documents.imagesAndBinaryFilesCanOnlyBeViewedInTheAlwayGitDiffPreview": {  };
+  "documents.textComparisonResourceLimit": {  };
+  "documents.invalidDiffIndex": {  };
+  "documents.unsafeDiffCleanup": {  };
   "extension.alwayGitGitAuthentication": {  };
   "extension.gitMergeAlwayGit": {  };
   "extension.reloadTheVSCodeWindowToApplyAlwayGitRuntime": {  };
