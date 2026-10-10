@@ -832,7 +832,7 @@ export class GitService implements GitServiceContract {
         await this.requireReview(repo, snapshot, action.reviewToken);
         args = ['commit', ...(action.amend ? ['--amend'] : []), '-m', action.message]; break;
       }
-      case 'fetch': args = ['fetch', ...remote(action.remote)]; break;
+      case 'fetch': args = ['fetch', '--prune', '--no-prune-tags', ...remote(action.remote)]; break;
       case 'pull': {
         if (!['ff-only', 'merge', 'rebase'].includes(action.strategy)) throw new GitError(localizeMessage("service.invalidPullStrategy"), 'INVALID_ARGUMENT');
         if (action.expectedHead !== undefined || action.expectedBranch !== undefined) this.requireActionContext(action, await this.status(repo));

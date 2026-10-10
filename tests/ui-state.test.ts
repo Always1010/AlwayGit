@@ -420,6 +420,31 @@ describe('repository UI consistency', () => {
     bridge.event!({ type: 'activity', repoId: 'a', busy: false, label: '' });
     expect(store.getState()).toMatchObject({ busy: false, activity: '' });
   });
+  it.each(['success', 'failure'])('refreshes branch selections from actual refs after Fetch (%s)', async outcome => {
+    const main = { kind: 'local' as const, name: 'main', fullName: 'refs/heads/main', oid: commit.oid };
+    const topic = { kind: 'remote' as const, name: 'origin/topic', fullName: 'refs/remotes/origin/topic', oid: 'topic-tip' };
+    let current: Snapshot = { ...snapshot(a), refs: [main, topic] };
+    const fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation(async (method, ...args) => {
+      if (method === 'snapshot') return current;
+      if (method === 'action') {
+        if (outcome === 'failure') throw new Error('Fetch unavailable');
+        current = { ...current, refs: [main], version: 2 };
+        return { snapshot: current };
+      }
+      return fallback(method, ...args);
+    });
+    await store.getState().selectRepository('a');
+    store.setState({ checkedRefs: [main.fullName, topic.fullName], selectedRefs: [topic.fullName], refSelectionAnchor: topic.fullName });
+    bridge.rpc.mockClear();
+    expect(await store.getState().execute({ type: 'fetch', remote: 'origin' })).toBe(outcome === 'success');
+    if (outcome === 'success') {
+      expect(store.getState()).toMatchObject({ snapshot: { refs: [main] }, checkedRefs: [main.fullName], selectedRefs: [], refSelectionAnchor: undefined, actionFeedback: { status: 'success' } });
+      expect(bridge.rpc.mock.calls.filter(([method]) => method === 'history').at(-1)?.[2]).toMatchObject({ tips: [main.fullName] });
+    } else {
+      expect(store.getState()).toMatchObject({ snapshot: { refs: [main, topic] }, checkedRefs: [main.fullName, topic.fullName], selectedRefs: [topic.fullName], refSelectionAnchor: topic.fullName, error: 'Fetch unavailable', actionFeedback: { status: 'error' } });
+    }
+  });
   it('passes a selected ref union and preserves an explicitly empty selection', async () => {
     await store.getState().selectRepository('a');
     store.getState().setCheckedRefs(['refs/heads/main','refs/heads/topic','refs/heads/main']);

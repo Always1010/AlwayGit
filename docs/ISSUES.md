@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-119：Fetch 后仍显示远端已删除的分支
+
+- 日期：2026-10-11
+- 状态：已解决
+- 现象：在服务器删除远程分支后，AlwayGit 执行 Fetch 仍在 Remote 列表和 Graph 中显示该分支，引用选择和提交远端状态也可能继续基于失效引用。
+- 原因：Fetch 使用 Git 默认命令，未启用 prune；Remote 列表和 Graph 读取本机 `refs/remotes/*`，普通 Fetch 不清理远端已删除的跟踪引用。
+- 解决方案：统一 Fetch 增加 `--prune --no-prune-tags`，按现有远端选择和 refspec 清理失效跟踪引用，抑制 `pruneTags` 自动清理；复用已有刷新流程移除失效引用的勾选、选中项和选择锚点。本地分支与提交、工作区及暂存区保留，显式 Tag 映射和镜像配置仍遵循 Git 映射规则。
+- 验证方式：类型检查和 1517 条双语资源检查通过；7 项定向回归通过，覆盖默认与指定远端、自定义分支映射、其他远端隔离、本地分支与未推送提交、暂存/未暂存/未跟踪内容及 Tag 保留、Graph 推送状态、失效引用选择清理和失败反馈，包含既有 Fetch/Push/Pull 与引用筛选回归。4 份修改文档的 93 个本地链接和图片引用有效，版本清单一致为 1.0.1；未启动可见桌面测试。
+- 相关文件：`src/git/service.ts`、`tests/git-service.test.ts`、`tests/ui-state.test.ts`、`docs/WORKBENCH_SPEC.md`、`docs/USER_MANUAL.zh-CN.md`、`docs/USER_MANUAL.en.md`、`package.json`、`package-lock.json`。
+
 ## BUG-118：工作台重载后错误进入 Working Tree
 
 - 日期：2026-10-06
