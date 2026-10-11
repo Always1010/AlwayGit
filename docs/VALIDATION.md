@@ -133,17 +133,50 @@ node scripts/verify-package.mjs artifacts/alwaygit.vsix
 
 这项检查必须在包所对应的平台运行。`scripts/test-terminal-host.mjs` 可单独验证当前构建的终端辅助进程，也可接受已解包的 `terminal-host.cjs` 路径。构建及检查不安装或重载 VS Code 扩展。
 
-扩展修改通过相应检查后，按已授权流程安装到实际使用的 VS Code：
+统一安装入口是 `scripts/install.mjs`，Windows、Linux 共用。需要已有 Node.js；源码构建采用 Node.js 24，并先在目标机器的项目目录准备 `npm ci` 所安装的依赖及原生编译工具。脚本不自动安装依赖、Node.js 或工具链。安装已有 VSIX 的模式只需要 Node.js 和可用的 VS Code CLI，无需项目 node_modules、Python 或编译器。
+
+交互终端中不传操作参数时，显示平台和操作菜单：
+
+```bash
+node scripts/install.mjs
+# Linux 便捷入口，行为相同：
+bash scripts/install.sh
+```
+
+平台菜单推荐自动识别，提供 Windows x64/ARM64、Linux x64/ARM64 和 macOS x64/ARM64；Rock 5B 使用 `linux-arm64`。操作菜单必须明确选择构建并安装、安装已有包或只打包。非交互终端必须传入操作参数；明确指定操作时跳过菜单，未指定平台则自动识别。当前 CI 发布范围仍为 Windows x64、Linux x64、Linux ARM64。
+
+在已连接 Rock 5B 的 VS Code Remote SSH 终端中，按需求择一运行：
+
+```bash
+# 构建、打包并安装；构建前须已准备项目依赖和编译工具：
+bash scripts/install.sh --target linux-arm64 --build-install
+# 安装已有的固定包，不构建：
+bash scripts/install.sh --target linux-arm64 --install-only
+# 安装指定路径的包，身份及版本必须与当前项目一致：
+bash scripts/install.sh --target linux-arm64 --install-only --vsix /path/to/alwaygit-1.3.0-linux-arm64.vsix
+# 只打包，不调用 VS Code：
+bash scripts/install.sh --target linux-arm64 --package-only
+```
+
+选择平台不会连接远端或交叉编译，目标必须与执行脚本的机器一致。Windows 连接 Rock 5B 时，在板子的远程终端执行脚本；本地 Windows 终端安装的是本地扩展。脚本会打印包路径、平台、CLI、环境和 Profile。Shell 与 PowerShell 入口根据自身路径寻找统一脚本；传入 `--vsix` 的相对路径则相对于调用时的目录解析。
+
+扩展修改通过相应检查后，也可继续使用原有 Windows 入口：
 
 ```powershell
 scripts/update-local.ps1
 # 若已成功生成当前版本包，跳过重复构建：
 scripts/update-local.ps1 -InstallOnly
+# 指定目标平台或只打包：
+scripts/update-local.ps1 -Target win32-x64 -PackageOnly
 ```
 
-两条命令按情况择一。脚本沿用 `artifacts/local-install.json` 中记录的 CLI 和 Profile；首次默认使用 PATH 中的 `code` 和默认 Profile。可用 `-CodePath` / `-Profile` 或 `ALWAYGIT_CODE_CLI` / `ALWAYGIT_VSCODE_PROFILE` 显式指定目标。
+PowerShell 入口保持不传参数即构建并安装的旧行为，支持原有 `-CodePath`、`-Profile`、`-InstallOnly`，另支持 `-Target`、`-Vsix`、`-PackageOnly`；`-Vsix` 需要搭配 `-InstallOnly`。
 
-脚本检查包身份和版本，调用官方 CLI `--install-extension <VSIX> --force`，再核对已安装扩展 `alwaygit-dev.alwaygit` 的版本。只有安装及校验成功后，才可告知用户方便时重启 VS Code；脚本不自动关闭或重启用户窗口。仅替换 VSIX 不代表已安装扩展更新成功。
+首次默认使用 PATH 中的 `code` 与默认/当前窗口的 Profile；后续沿用 `artifacts/local-install.json` 中按平台、主机名和本地/远程环境记录的目标。远程环境优先使用当前 PATH 中的 CLI，适应 VS Code Server 路径变化。旧 Windows 记录仅在 Windows 本地环境兼容读取。统一入口可用 `--code-path` / `--profile`，或 `ALWAYGIT_CODE_CLI` / `ALWAYGIT_VSCODE_PROFILE` 显式指定目标；优先级为参数、环境变量、当前环境的安装记录、默认值。Remote CLI 不支持 `--profile` 时，指定非空 Profile 会停止；使用 `--profile ""` 或 `--profile=` 清除旧 Profile 并使用当前窗口，PowerShell 对应 `-Profile ''`。
+
+安装前使用 Node.js 内置功能读取包的 JSON/XML 元数据，核对当前项目的扩展身份、版本、目标平台与 workspace 宿主；拒绝重复、损坏、过大的元数据及不支持的 ZIP64/多卷格式。这个静态检查不代替打包时的原生终端生命周期验证。脚本调用官方 CLI `--install-extension <VSIX> --force`，再核对已安装扩展 `alwaygit-dev.alwaygit` 的版本和包哈希。安装及校验均成功才写入记录；失败时保留原安装记录，不宣称已安装，也不自动卸载或回滚扩展。成功后可方便时重新加载 VS Code 窗口，脚本不自动关闭或重启用户窗口。仅替换 VSIX 不代表已安装扩展更新成功。
+
+统一入口的定向检查覆盖交互选择、平台和包身份拒绝、模拟 CLI 安装与版本核对、失败时记录保留、Profile 能力检查、环境记录隔离、构建失败停止及 Windows CMD 参数引用；Linux 入口检查语法、从其他目录调用和错误返回。当前 Linux ARM64 主机已完成一次真实构建、包内原生终端生命周期验证与远程 CLI 安装版本核对；Windows PowerShell 入口，以及 Windows → Rock 5B 的界面、认证和多窗口行为仍需对应设备验收。
 
 扩展身份保持不变，功能版本正常递增，不通过卸载或删除用户数据更新。全部安装包、本机安装记录、构建输出、截图、报告、trace、缓存和日志均不提交。文档整理无需触发扩展重新打包安装。
 
