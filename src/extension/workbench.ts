@@ -676,7 +676,7 @@ export class Workbench implements vscode.Disposable {
         for (const member of this.repositories.list().filter(member => member.commonDir === repo.commonDir)) this.snapshots.invalidate(member.id);
         for (const r of this.repositories.list().filter(r => r.commonDir === repo.commonDir)) this.post({ type: 'activity', repoId: r.id, busy: true, label: action.type });
         let result: PushResult | DeletionResult | void;
-        try { result = await this.projects.runRepositoryOperation(repo.commonDir,action.type,()=>this.git.execute(repo, action, progress => this.post({ type: 'fileOperationProgress', repoId: repo.id, progress }))); }
+        try { result = await this.projects.runRepositoryOperation(repo.commonDir,action.type,()=>this.git.execute(repo, action, progress => this.post({ type: 'fileOperationProgress', repoId: repo.id, progress }), progress => this.post({ type: 'networkOperationProgress', repoId: repo.id, requestId: request.id, progress }, source))); }
         catch(error){
           if((error as {terminationUnconfirmed?:unknown})?.terminationUnconfirmed===true)this.externalBusy.set(operationKey,{label:action.type});
           if(error instanceof RepositoryOperationRecoveryRequiredError){
@@ -690,6 +690,10 @@ export class Workbench implements vscode.Disposable {
         finally {
           this.busy.delete(operationKey);
           for (const r of this.repositories.list().filter(r => r.commonDir === repo.commonDir)) { this.snapshots.invalidate(r.id); this.post({ type: 'activity', repoId: r.id, busy: this.isBusy(repo.commonDir), label: action.type }); this.post({ type: 'changed', repoId: r.id }); }
+        }
+        if (['push', 'fetch', 'pull', 'tag.push'].includes(action.type) || action.type === 'tag.create' && action.pushRemote || action.type === 'tag.delete' && action.remote || action.type === 'remote.delete') {
+          const command = action.type === 'fetch' || action.type === 'pull' ? action.type : 'push';
+          this.post({ type: 'networkOperationProgress', repoId: repo.id, requestId: request.id, progress: { command, phase: 'refreshing', startedAt: Date.now() } }, source);
         }
         try {
           const snapshot = await this.snapshots.read(repo.id, () => this.git.snapshot(repo)); this.recordFingerprint(snapshot); return { snapshot, result };

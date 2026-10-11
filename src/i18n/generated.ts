@@ -2257,6 +2257,74 @@ export const catalog = {
     "en": "Not attempted after the batch stopped",
     "zh-CN": "批次停止后未执行的对象"
   },
+  "feedback.network.connecting": {
+    "en": "Connecting or waiting for Git output…",
+    "zh-CN": "正在连接或等待 Git 输出…"
+  },
+  "feedback.network.counting": {
+    "en": "Counting objects",
+    "zh-CN": "正在统计对象"
+  },
+  "feedback.network.compressing": {
+    "en": "Compressing objects",
+    "zh-CN": "正在压缩对象"
+  },
+  "feedback.network.sending": {
+    "en": "Sending objects",
+    "zh-CN": "正在发送对象"
+  },
+  "feedback.network.receiving": {
+    "en": "Receiving objects",
+    "zh-CN": "正在接收对象"
+  },
+  "feedback.network.resolving": {
+    "en": "Resolving deltas",
+    "zh-CN": "正在解析增量"
+  },
+  "feedback.network.waiting": {
+    "en": "Waiting for remote confirmation…",
+    "zh-CN": "正在等待远端确认…"
+  },
+  "feedback.network.updating": {
+    "en": "Updating remote references…",
+    "zh-CN": "正在更新远端引用…"
+  },
+  "feedback.network.integrating": {
+    "en": "Merging or rebasing…",
+    "zh-CN": "正在合并或变基…"
+  },
+  "feedback.network.refreshing": {
+    "en": "Updating the workbench…",
+    "zh-CN": "正在更新工作台…"
+  },
+  "feedback.network.remote": {
+    "en": "Remote",
+    "zh-CN": "远端"
+  },
+  "feedback.network.objects": {
+    "en": "Objects: {{completed}} / {{total}}",
+    "zh-CN": "对象：{{completed}} / {{total}}"
+  },
+  "feedback.network.transferred": {
+    "en": "Transferred: {{value}}",
+    "zh-CN": "已传输：{{value}}"
+  },
+  "feedback.network.speed": {
+    "en": "Speed: {{value}}",
+    "zh-CN": "速度：{{value}}"
+  },
+  "feedback.network.lastOutput": {
+    "en": "Last Git output: {{seconds}}s ago",
+    "zh-CN": "距上次 Git 输出：{{seconds}} 秒"
+  },
+  "feedback.network.quiet": {
+    "en": "No new Git output for {{seconds}} seconds. The operation has not finished.",
+    "zh-CN": "Git 已有 {{seconds}} 秒未返回新进度，操作尚未结束。"
+  },
+  "feedback.network.minimize": {
+    "en": "Minimize progress",
+    "zh-CN": "收起进度"
+  },
   "graphRow.parents": {
     "en": "{{value}}parents {{value2}}",
     "zh-CN": "{{value}} 个父提交 {{value2}}"
@@ -6751,6 +6819,23 @@ export interface MessageParameters {
   "feedback.deletedTargets": {  };
   "feedback.deletionDefaultSaveFailed": { message: ParameterValue };
   "feedback.deletionNotAttempted": {  };
+  "feedback.network.connecting": {  };
+  "feedback.network.counting": {  };
+  "feedback.network.compressing": {  };
+  "feedback.network.sending": {  };
+  "feedback.network.receiving": {  };
+  "feedback.network.resolving": {  };
+  "feedback.network.waiting": {  };
+  "feedback.network.updating": {  };
+  "feedback.network.integrating": {  };
+  "feedback.network.refreshing": {  };
+  "feedback.network.remote": {  };
+  "feedback.network.objects": { completed: ParameterValue; total: ParameterValue };
+  "feedback.network.transferred": { value: ParameterValue };
+  "feedback.network.speed": { value: ParameterValue };
+  "feedback.network.lastOutput": { seconds: ParameterValue };
+  "feedback.network.quiet": { seconds: ParameterValue };
+  "feedback.network.minimize": {  };
   "graphRow.parents": { value: ParameterValue; value2: ParameterValue };
   "graphRow.mergeCommit": {  };
   "graphRow.rootCommitNoParents": {  };

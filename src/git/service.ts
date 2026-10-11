@@ -12,7 +12,7 @@ import { combinePushResults, parsePushResult } from './push-result';
 import { hostingRepository } from '../protocol/hosting';
 import type { PushResult, RemoteLinks, DeletionResult } from '../protocol/types';
 import type { RemoteTags } from '../protocol/types';
-import type { DiscardRequest, DiscardPlan, FileOperationProgress } from '../protocol/types';
+import type { DiscardRequest, DiscardPlan, FileOperationProgress, NetworkOperationProgress } from '../protocol/types';
 import { inferDefaultBranch } from './default-branch';
 import { GitError, GitReadTerminationError, GitTerminationError } from './error';
 import { isReadOnlyGitCommand } from './command-kind';
@@ -26,6 +26,7 @@ import { commitSelected } from './selected-commit';
 import { safeWorkingPath } from '../editor/paths';
 import { requireExactFileScope } from './file-scope';
 import { dropStash } from './stash-drop';
+import { NetworkProgressParser } from './network-progress';
 import { redactSecrets, SecretRedactor } from '../application/logging';
 
 export interface GitServiceOptions {
@@ -86,6 +87,7 @@ export class GitService implements GitServiceContract {
   private readonly reviews = new Map<string, { token: string; fingerprint: string }>();
   private readonly discards = new Map<string, { root: string; expires: number; plan: DiscardPlan; fingerprint: string; request: DiscardRequest }>();
   private readonly readSignal = new AsyncLocalStorage<{ controller: AbortController; pending: Set<Promise<void>> }>();
+  private readonly networkProgress = new AsyncLocalStorage<(progress: NetworkOperationProgress) => void>();
   constructor(private readonly options: GitServiceOptions = {}) {}
   private gitPath(): Promise<string> {
     return this.executable ??= Promise.resolve().then(() => this.options.gitPath || this.options.resolveGitPath?.()).then(value => value || 'git');
@@ -128,7 +130,8 @@ export class GitService implements GitServiceContract {
       }
       return { stdout: Buffer.concat(results.map(result => result.stdout)), stderr: Buffer.concat(results.map(result => result.stderr)), code: results.at(-1)?.code ?? 0 };
     }
-    const prepared = prepareGitArguments(args, execution.input);
+    const networkCommand = ['fetch', 'pull', 'push'].includes(args[0]) ? args[0] as NetworkOperationProgress['command'] : undefined;
+    const prepared = prepareGitArguments(networkCommand ? [args[0], '--progress', ...args.slice(1)] : args, execution.input);
     assertGitArgumentBudget(executable, [...prefix, ...prepared.args]);
     const adapter = this.options.environment;
     const supplied = execution.isolated ? undefined : typeof adapter === 'function' ? await adapter(repo, args) : adapter;
@@ -138,7 +141,9 @@ export class GitService implements GitServiceContract {
     if (execution.isolated) for (const key of Object.keys(commandEnv)) if (/^GIT_/i.test(key)) delete commandEnv[key];
     let preserveEnvironment = false;
     let bindingConfig: string | undefined;
+    let progress: NetworkProgressParser | undefined;
     const log = new SecretRedactor(text => this.options.onOutput?.(repo, text));
+    const stdoutLog = new SecretRedactor(text => this.options.onOutput?.(repo, text));
     try {
       if (execution.boundRemote) {
         // An exact, first rewrite rule wins even if another client later adds
@@ -157,6 +162,8 @@ export class GitService implements GitServiceContract {
         finally { await configFile.close(); }
       }
       await execution.beforeSpawn?.();
+      const report = this.networkProgress.getStore();
+      if (networkCommand && report) progress = new NetworkProgressParser(networkCommand, report);
       // Stash cleanup uses Git pathspec matching; all other commands use literal paths.
       const gitProcess = runGitProcess({
         executable,
@@ -166,8 +173,8 @@ export class GitService implements GitServiceContract {
         env: { ...commandEnv, GIT_TERMINAL_PROMPT: '0', ...(!['fetch', 'pull', 'push'].includes(args[0]) ? { GCM_INTERACTIVE: 'never' } : {}), GIT_EDITOR: 'true', GIT_SEQUENCE_EDITOR: 'true', ...(['status', 'log', 'show', 'ls-tree', 'ls-files', 'for-each-ref'].includes(args[0]) ? { GIT_OPTIONAL_LOCKS: '0' } : {}), ...execution.env, ...(bindingConfig ? { GIT_CONFIG_SYSTEM: bindingConfig, GIT_CONFIG_NOSYSTEM: '0' } : {}) },
         input: prepared.input, signal: execution.signal && scopeSignal ? AbortSignal.any([execution.signal,scopeSignal]) : execution.signal ?? scopeSignal, readOnly, captureBytes,
         timeoutMs: this.options.timeoutMs ?? (args[0] === 'ls-remote' ? 30_000 : ['fetch', 'pull', 'push'].includes(args[0]) ? this.options.networkTimeoutMs ?? 600_000 : undefined), onStop: wrapped?.cancelPrompts, maxOutputBytes: this.options.maxOutputBytes,
-        onStderr: execution.silent ? undefined : chunk => log.write(chunk),
-        onStdout: execution.onStdout,
+        onStderr: chunk => { if (!execution.silent) log.write(chunk); progress?.write(chunk); },
+        onStdout: chunk => { execution.onStdout?.(chunk); if (networkCommand && !execution.silent) stdoutLog.write(chunk); progress?.write(chunk, 'stdout'); },
       });
       if(scope){
         const completion=gitProcess.then(()=>{},error=>(error as {completion?:Promise<void>}|undefined)?.completion?.catch(()=>{}));
@@ -175,7 +182,7 @@ export class GitService implements GitServiceContract {
       }
       const result = await gitProcess;
       log.end();
-      if (!execution.silent && result.stdout.length && ['add', 'restore', 'rm', 'clean', 'commit', 'fetch', 'pull', 'push', 'branch', 'switch', 'tag', 'stash', 'worktree', 'merge', 'rebase', 'cherry-pick', 'revert', 'reset'].includes(args[0]) && !(args[0] === 'stash' && args[1] === 'list') && !(args[0] === 'worktree' && args[1] === 'list')) this.options.onOutput?.(repo, redactSecrets(result.stdout.toString('utf8')));
+      if (!networkCommand && !execution.silent && result.stdout.length && ['add', 'restore', 'rm', 'clean', 'commit', 'fetch', 'pull', 'push', 'branch', 'switch', 'tag', 'stash', 'worktree', 'merge', 'rebase', 'cherry-pick', 'revert', 'reset'].includes(args[0]) && !(args[0] === 'stash' && args[1] === 'list') && !(args[0] === 'worktree' && args[1] === 'list')) this.options.onOutput?.(repo, redactSecrets(result.stdout.toString('utf8')));
       if (result.code && !allowFailure && !execution.allowFailure) {
         const stdout = result.stdout.toString('utf8'); const stderr = result.stderr.toString('utf8');
         const hint = /authentication|could not read Username|terminal prompts disabled|permission denied|credential/i.test(stderr) ? translate('en', "service.configureGitCredentialsOrSignInThenRetry") : /index.lock|another git process/i.test(stderr) ? translate('en', "service.anotherGitProcessIsUsingThisRepositoryFinishIt") : '';
@@ -193,6 +200,7 @@ export class GitService implements GitServiceContract {
       }
       throw error;
     } finally {
+      progress?.end(); stdoutLog.end();
       if (!preserveEnvironment) {
         log.end();
         try { await wrapped?.dispose?.(); }
@@ -582,10 +590,10 @@ export class GitService implements GitServiceContract {
       throw new GitError(localizeMessage("service.theTargetBranchOrHEADChangedBeforeTheOperation"), 'OPERATION_CHANGED');
     }
   }
-  async execute(repo: Repository, action: GitAction, onProgress?: (progress: FileOperationProgress) => void): Promise<void | PushResult | DeletionResult> {
+  async execute(repo: Repository, action: GitAction, onProgress?: (progress: FileOperationProgress) => void, onNetworkProgress?: (progress: NetworkOperationProgress) => void): Promise<void | PushResult | DeletionResult> {
     if (this.readSignal.getStore()) throw new GitError(localizeMessage('service.aReadOnlyRequestCannotRunGitMutations'), 'WRITE_IN_READ_SCOPE');
     const key = normalized(repo.commonDir); const prior = queues.get(key) ?? Promise.resolve();
-    const operation = prior.catch(() => {}).then(async () => { const unsafe = unsafeTerminations.get(key); if (unsafe) throw unsafe; await this.verify(repo); return this.executeNow(repo, action, onProgress); });
+    const operation = prior.catch(() => {}).then(async () => { const unsafe = unsafeTerminations.get(key); if (unsafe) throw unsafe; await this.verify(repo); return onNetworkProgress ? this.networkProgress.run(onNetworkProgress, () => this.executeNow(repo, action, onProgress)) : this.executeNow(repo, action, onProgress); });
     queues.set(key, operation);
     try { const result = await operation; const unsafe = unsafeTerminations.get(key); if (unsafe) throw unsafe; return result; }
     catch (error) { if (error instanceof GitTerminationError) unsafeTerminations.set(key, error); throw unsafeTerminations.get(key) ?? error; }

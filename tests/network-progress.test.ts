@@ -1,0 +1,72 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { NetworkProgressParser } from '../src/git/network-progress';
+import type { NetworkOperationProgress } from '../src/protocol/types';
+import { git, commitFile, gitFixtures } from './support/git-fixture';
+import { mkdir } from 'node:fs/promises';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+const fixtures = gitFixtures('alwaygit-network-progress-');
+afterEach(async () => { vi.useRealTimers(); await fixtures.cleanup(); });
+describe('network operation progress', () => {
+  it('streams split CR lines, throttles updates, and waits for confirmation after sending', async () => {
+    vi.useFakeTimers(); const emit = vi.fn(), parser = new NetworkProgressParser('push', emit);
+    parser.write(Buffer.from('Counting objects: 25% (1/4)\rCompressing objects: 50% (2/4)\rWriting obj'));
+    parser.write(Buffer.from('ects: 68% (204/300), 42.6 MiB | 1.8 MiB/s\r'));
+    expect(emit).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(150);
+    expect(emit.mock.lastCall?.[0]).toMatchObject({ phase: 'sending', percent: 68, completed: 204, total: 300, transferred: '42.6 MiB', speed: '1.8 MiB/s' });
+    parser.write(Buffer.from('Writing objects: 100% (300/300), 60.0 MiB | 1.0 MiB/s\r'));
+    await vi.advanceTimersByTimeAsync(150);
+    expect(emit.mock.lastCall?.[0]).toMatchObject({ phase: 'sending', percent: 100 });
+    parser.write(Buffer.from('Writing objects: 100% (300/300), 60.0 MiB | 1.0 MiB/s, done.\n'));
+    parser.end();
+    expect(emit.mock.lastCall?.[0]).toMatchObject({ phase: 'waiting', transferred: '60.0 MiB' });
+    expect(emit.mock.lastCall?.[0].percent).toBeUndefined();
+    const count = emit.mock.calls.length; parser.write(Buffer.from('remote: Counting objects: 50% (1/2)\r'));
+    await vi.advanceTimersByTimeAsync(1000); expect(emit).toHaveBeenCalledTimes(count);
+  });
+  it('keeps stdout/stderr independent, handles UTF-8 and unknown output without exposing it', async () => {
+    vi.useFakeTimers(); const emit = vi.fn(), parser = new NetworkProgressParser('pull', emit);
+    parser.write(Buffer.from('Receiving objects: 80% (8/10), 10.0 MiB | 2.0 MiB/s\r'));
+    await vi.advanceTimersByTimeAsync(150);
+    parser.write(Buffer.from('Resolving deltas: 50% (2/4)\r'));
+    await vi.advanceTimersByTimeAsync(150);
+    expect(emit.mock.lastCall?.[0]).toMatchObject({ phase: 'resolving', transferred: '10.0 MiB', percent: 50 });
+    const utf8 = Buffer.from('remote: 验证 https://user:private@example.test/r?token=secret\n');
+    parser.write(utf8.subarray(0, 9)); parser.write(utf8.subarray(9));
+    parser.write(Buffer.from('Updating abc..def\n'), 'stdout');
+    parser.write(Buffer.from('x'.repeat(66000) + '\n'));
+    parser.end();
+    expect(emit.mock.lastCall?.[0]).toMatchObject({ phase: 'integrating' });
+    expect(JSON.stringify(emit.mock.calls)).not.toMatch(/private|secret|example.test|验证/);
+  });
+  it('separates remote statistics and gracefully handles an operation with no progress output', () => {
+    const emit = vi.fn(), parser = new NetworkProgressParser('fetch', emit);
+    parser.write(Buffer.from('remote: Counting objects: 100% (4/4), done.\r\n')); parser.end();
+    expect(emit.mock.lastCall?.[0]).toMatchObject({ remote: true, phase: 'counting', percent: 100 });
+    const noOutput = vi.fn(); new NetworkProgressParser('push', noOutput).end();
+    expect(noOutput.mock.lastCall?.[0]).toMatchObject({ phase: 'connecting' });
+    expect(noOutput.mock.lastCall?.[0].percent).toBeUndefined();
+  });
+  it('preserves real Git push results and fetch/pull behavior while reporting pipe progress', async () => {
+    const writer = await fixtures.setup(), reader = await fixtures.setup();
+    const bare = path.join(writer.root, 'remote.git'); await mkdir(bare); await git(bare, 'init', '--bare');
+    await git(writer.root, 'remote', 'add', 'origin', bare);
+    await commitFile(writer.root, 'base.txt', 'base');
+    const pushes: NetworkOperationProgress[] = [];
+    const result = await writer.service.execute(writer.repo, { type: 'push', remote: 'origin', branch: 'main' }, undefined, progress => pushes.push(progress));
+    expect(result).toMatchObject({ kind: 'push', outcome: 'success' });
+    expect(pushes.some(progress => progress.phase === 'waiting')).toBe(true);
+    await git(reader.root, 'remote', 'add', 'origin', pathToFileURL(bare).href);
+    const fetched: NetworkOperationProgress[] = [];
+    await reader.service.execute(reader.repo, { type: 'fetch', remote: 'origin' }, undefined, progress => fetched.push(progress));
+    expect(fetched.some(progress => progress.command === 'fetch' && progress.lastOutputAt)).toBe(true);
+    await reader.service.execute(reader.repo, { type: 'pull', strategy: 'ff-only', remote: 'origin', remoteBranch: 'main' });
+    await commitFile(writer.root, 'next.txt', 'next'); await writer.service.execute(writer.repo, { type: 'push', remote: 'origin', branch: 'main' });
+    const pulled: NetworkOperationProgress[] = [];
+    await reader.service.execute(reader.repo, { type: 'pull', strategy: 'ff-only', remote: 'origin', remoteBranch: 'main' }, undefined, progress => pulled.push(progress));
+    expect(pulled.some(progress => progress.phase === 'integrating')).toBe(true);
+    expect(await git(reader.root, 'rev-parse', 'HEAD')).toBe(await git(writer.root, 'rev-parse', 'HEAD'));
+  });
+});

@@ -21,6 +21,27 @@ beforeEach(async () => {
 });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 describe('repository UI consistency', () => {
+  it('binds network progress to its request and retains it across repository switches', async () => {
+    await store.getState().selectRepository('a');
+    const pending = deferred<Snapshot>(), fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, repoId, payload, options) => {
+      if (method === 'action') { options.onRequestId('push-one'); return pending.promise; }
+      return fallback(method, repoId, payload);
+    });
+    const operation = store.getState().execute({ type: 'push', remote: 'origin', branch: 'main' });
+    const progress = { command: 'push' as const, phase: 'sending' as const, startedAt: Date.now(), lastOutputAt: Date.now(), percent: 68, completed: 204, total: 300 };
+    bridge.event?.({ type: 'networkOperationProgress', repoId: 'a', requestId: 'old-push', progress });
+    expect(store.getState().actionFeedback?.networkProgress?.phase).toBe('connecting');
+    await store.getState().selectRepository('b');
+    bridge.event?.({ type: 'networkOperationProgress', repoId: 'a', requestId: 'push-one', progress });
+    expect(store.getState().actionFeedback).toBeUndefined();
+    await store.getState().selectRepository('a');
+    expect(store.getState().actionFeedback?.networkProgress).toMatchObject({ phase: 'sending', percent: 68 });
+    pending.resolve(snapshot(a)); expect(await operation).toBe(true);
+    bridge.event?.({ type: 'networkOperationProgress', repoId: 'a', requestId: 'push-one', progress: { ...progress, percent: 99 } });
+    expect(store.getState().actionFeedback).toMatchObject({ status: 'success', networkProgress: { percent: 68 } });
+  });
+
   it.each(['branch.delete', 'worktree.remove'] as const)('remembers only %s after partial success and keeps save failures separate', async type => {
     await store.getState().selectRepository('a');
     const { captureActionContext } = await import('../webview/store');
@@ -164,7 +185,7 @@ describe('repository UI consistency', () => {
     const { captureActionContext } = await import('../webview/store');
     await store.getState().selectRepository('a');
     expect(await store.getState().execute({ type: 'fetch' }, captureActionContext())).toBe(true);
-    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'action')).toEqual([['action', 'a', { type: 'fetch' }]]);
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'action')).toEqual([['action', 'a', { type: 'fetch' }, { onRequestId: expect.any(Function) }]]);
   });
   it('refreshes working Diff without stealing a terminal tab, but explicit file selection activates Diff', async () => {
     const { useDock } = await import('../webview/dock-store');

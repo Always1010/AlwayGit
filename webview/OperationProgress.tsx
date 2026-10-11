@@ -3,6 +3,7 @@ import { actionName } from './actionFeedback';
 import type { ActionFeedback } from './actionFeedback';
 import { useTranslation } from './i18n';
 import { Icon } from './ui';
+import { NetworkProgress } from './NetworkProgress';
 
 /** Separate from confirmation dialogs: no close control and no background interaction. */
 export function OperationProgress({ feedback }: { feedback?: ActionFeedback }) {
@@ -24,6 +25,11 @@ export function OperationProgress({ feedback }: { feedback?: ActionFeedback }) {
     if (root) observer.observe(root, { childList: true });
     panel.current?.focus({ preventScroll: true });
     const key = (event: KeyboardEvent) => {
+      if (feedback?.networkProgress && panel.current) {
+        const button = panel.current.querySelector<HTMLButtonElement>('button');
+        if (event.key === 'Tab') { event.preventDefault(); event.stopImmediatePropagation(); button?.focus(); return; }
+        if ((event.key === 'Enter' || event.key === ' ') && event.target === button) return;
+      }
       event.preventDefault(); event.stopImmediatePropagation();
       panel.current?.focus({ preventScroll: true });
     };
@@ -40,10 +46,10 @@ export function OperationProgress({ feedback }: { feedback?: ActionFeedback }) {
       <Icon name="loading" className="feedback-spinner"/>
       <h2 id="operation-progress-title">{t('feedback.inProgress', { name: feedback ? actionName(feedback.action) : t('feedback.gitOperation') })}</h2>
       <p id="operation-progress-target">{feedback?.target}</p>
-      <p role="status" aria-live="polite">{feedback?.phase === 'refreshing' ? t('feedback.updatingWorkbench') : t('feedback.waitForOperation')}</p>
+      {feedback?.networkProgress ? <NetworkProgress feedback={feedback}/> : <p role="status" aria-live="polite">{feedback?.phase === 'refreshing' ? t('feedback.updatingWorkbench') : t('feedback.waitForOperation')}</p>}
       {feedback?.progress && feedback.phase !== 'refreshing' && <><p role="status">{t(feedback.progress.phase === 'cleaning' ? 'feedback.cleaningFiles' : 'feedback.restoringFiles', { completed: feedback.progress.completed, total: feedback.progress.total })}</p><progress value={feedback.progress.completed} max={Math.max(1, feedback.progress.total)}/></>}
-      <span className="muted">{t('feedback.elapsed', { seconds })}</span>
-      {seconds >= 15 && <p className="muted">{t('feedback.stillRunning')}</p>}
+      {!feedback?.networkProgress && <><span className="muted">{t('feedback.elapsed', { seconds })}</span>
+      {seconds >= 15 && <p className="muted">{t('feedback.stillRunning')}</p>}</>}
     </div>
   </div>;
 }

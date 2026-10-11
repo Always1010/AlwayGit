@@ -13,7 +13,7 @@ import { defaultLayout, interfaceSettingsSchema, overlayInterfaceSettings, type 
 import type { Language } from './i18n';
 import { folderKeys } from './refTree';
 import { affectsWorkingDiff, diffKey, historyKey, mergeChanges, shareSnapshot, shareValue, workingTarget } from './refresh';
-import { actionTarget } from './actionFeedback';
+import { networkCommand, actionTarget } from './actionFeedback';
 import type { ActionFeedback } from './actionFeedback';
 import { normalizeAppearance, type Appearance, type InterfaceSettings, type InterfaceSettingsUpdate } from './appearance';
 import { groupRepositories } from '../src/protocol/repositories';
@@ -493,7 +493,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     const before=get().snapshot,committedFiles = action.type === 'commit' && !action.amend ? action.files ? new Set(action.files.map(file => file.path)).size : before?.changes.filter(change => !change.conflict && change.indexStatus !== ' ' && change.indexStatus !== '?' && !!change.indexStatus).length : undefined;
     const stashChanges=action.type==='stash.create'?before?.changes.filter(change=>(!action.paths||action.paths.includes(change.path))&&(!change.untracked||!!action.paths||!!action.includeUntracked))??[]:[];
     const stashed=action.type==='stash.create'?{files:new Set(stashChanges.map(change=>change.path)).size,untracked:new Set(stashChanges.filter(change=>change.untracked).map(change=>change.path)).size,previousOid:before?.stashes[0]?.oid}:undefined;
-    const feedback: ActionFeedback = { id: ++actionSequence, repoId, action, status: 'running', startedAt: Date.now(), phase: 'executing', target: actionTarget(action, get().snapshot) };
+    const feedback: ActionFeedback = { id: ++actionSequence, repoId, action, status: 'running', startedAt: Date.now(), phase: 'executing', target: actionTarget(action, get().snapshot), ...(networkCommand(action) ? { networkProgress: { command: networkCommand(action)!, phase: 'connecting', startedAt: Date.now() } } : {}) };
     const finish = (status: 'success' | 'error', error?: string, result?: ActionFeedback['result']) => {
       if (actionFeedbacks.get(repoId)?.id !== feedback.id) return;
       const completed = { ...feedback, status, error, result, refreshWarning: status === 'success' && get().repoId === repoId ? get().error : undefined };
@@ -503,7 +503,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     actionFeedbacks.set(repoId, feedback);
     executingRepositories.add(repoId); set({ busy: true, activity: action.type, actionFeedback: feedback, error: undefined, notice: undefined, checkoutFailure: undefined, stashApplyFailure: undefined });
     try {
-      const response = await rpc<ActionResponse | Snapshot | undefined>('action', repoId, action);
+      const response = await rpc<ActionResponse | Snapshot | undefined>('action', repoId, action, { onRequestId: id => { feedback.requestId = id; } });
       // Accept legacy snapshots from demo fixtures and an older host during reload.
       const envelope = response && !('repository' in response) ? response : undefined;
       const result = response && 'repository' in response ? response : envelope?.snapshot;
@@ -616,6 +616,13 @@ subscribe(event => {
   if (event.type === 'interfaceSettingsChanged') { ++preferencesEpoch; synchronizeInterfaceSettings(event.settings); }
   const state = useWorkbench.getState(); if (event.type === 'operationSettingsChanged') useWorkbench.setState({ operationSettings: event.settings });
   if (event.type === 'fileOperationProgress' && event.repoId === state.repoId && state.actionFeedback?.status === 'running') useWorkbench.setState({ actionFeedback: { ...state.actionFeedback, progress: event.progress } });
+  if (event.type === 'networkOperationProgress') {
+    const feedback = actionFeedbacks.get(event.repoId);
+    if (feedback?.status === 'running' && feedback.requestId === event.requestId && feedback.phase !== 'refreshing') {
+      feedback.networkProgress = { ...event.progress, lastOutputAt: event.progress.lastOutputAt ?? feedback.networkProgress?.lastOutputAt, startedAt: feedback.startedAt ?? event.progress.startedAt };
+      if (state.repoId === event.repoId && state.actionFeedback?.id === feedback.id) useWorkbench.setState({ actionFeedback: { ...feedback } });
+    }
+  }
   if (event.type === 'repositoriesChanged') void state.initialize();
   if (event.type === 'changed' && event.repoId === state.repoId) {
     clearTimeout(changedTimer);
