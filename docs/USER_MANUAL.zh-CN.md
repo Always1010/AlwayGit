@@ -67,6 +67,22 @@ AlwayGit 把 Git 的仓库导航、提交历史、文件状态与只读差异放
 
 **排错：** 若 Git 不可用，检查安装和 VS Code 的 Git 路径；若工作区处于受限模式，仅在确认项目可信后再更改信任设置。
 
+<a id="remote-install"></a>
+
+### 通过 Remote SSH 在 Rock 5B 上使用
+
+Windows 上安装 VS Code 和 Remote - SSH，Rock 5B 使用 64 位 glibc Linux 系统并启用 SSH。发布包的 Linux 兼容基线是 Ubuntu 22.04+ / Debian 12+；其他系统需要单独验证。基础 Git 要求仍适用，建议远端使用 Git 2.46+ 以使用完整高级操作。
+
+1. 在 Windows 的 VS Code 中执行 **Remote-SSH: Connect to Host…**，连接 Rock 5B，打开板子上的项目目录。状态栏应显示当前 SSH 主机。
+2. 从可信 Release 取得 `alwaygit-<版本>-linux-arm64.vsix`。本地 Windows 仓库使用 `win32-x64` 包，Linux x64 远端使用 `linux-x64` 包；按仓库所在宿主选择。
+3. 在已连接 Rock 5B 的窗口中执行 **Install from VSIX…**，选择 ARM64 包。核对 AlwayGit 出现在 **SSH: <主机名>** 的已安装扩展分组，而不是只有本地分组；按提示重新加载窗口。
+4. 点击 AlwayGit 图标，添加 Rock 5B 上的仓库路径，例如 `/home/你的用户名/projects/demo`。Git 操作和内嵌终端在板子上执行，界面显示在 Windows。
+5. 在远端终端检查 `git --version`、Git 用户身份和远端仓库认证。需要指定 Git 路径时，在远程设置填写 `alwaygit.gitPath`，例如 `/usr/bin/git`；不填写 Windows 的 Git 路径。
+
+使用完整安装包无需在板子上另外安装 Node.js、npm、Python 或编译器；VS Code 自动管理 Server 与扩展运行时。从源码构建才需要这些工具，见[构建与包校验](VALIDATION.md#打包与本地更新)。窗口中的 **Developer: Show Running Extensions** 可用于核对 AlwayGit 是否在远端运行；新空白工作台窗口继承当前 SSH 连接。
+
+Windows → Rock 5B 的真实终端、认证及多窗口仍需实机验收；构建和模拟远程单测的证据边界见[验证说明](VALIDATION.md)。SSH 连接正常但内嵌终端加载失败时，先核对包为 `linux-arm64`，不要用 Windows 或 Linux x64 包替换。
+
 <a id="workbench-locations"></a>
 
 ### 选择显示位置和默认入口

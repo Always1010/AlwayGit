@@ -67,6 +67,22 @@ Use VS Code 1.106 or later. Basic features require Git 2.40 or later; saving a S
 
 **Troubleshooting:** If Git is unavailable, check its installation and the Git path configured in VS Code. If the workspace is in Restricted Mode, change its trust settings only after confirming that the project is trustworthy.
 
+<a id="remote-install"></a>
+
+### Use Rock 5B through Remote SSH
+
+Install VS Code and Remote - SSH on Windows, and enable SSH on a Rock 5B running 64-bit glibc Linux. Linux release packages use Ubuntu 22.04+ / Debian 12+ as their compatibility baseline; other systems need separate validation. The basic Git requirements still apply; Git 2.46+ on the host is recommended for all advanced operations.
+
+1. Run **Remote-SSH: Connect to Host…** in Windows VS Code, connect to Rock 5B, and open a project folder on the board. Check the SSH host in the status bar.
+2. Obtain `alwaygit-<version>-linux-arm64.vsix` from a trusted Release. Use `win32-x64` for local Windows repositories and `linux-x64` for Linux x64 hosts; choose the package for the host containing the repository.
+3. In the window connected to Rock 5B, run **Install from VSIX…** and select the ARM64 package. Confirm that AlwayGit appears under **SSH: <hostname>**, rather than only under local extensions, and reload when prompted.
+4. Open AlwayGit and add a repository on the board, such as `/home/your-user/projects/demo`. Git operations and embedded terminals run on the board; the interface appears on Windows.
+5. In the remote terminal, check `git --version`, your Git identity, and repository authentication. If a Git path is needed, set `alwaygit.gitPath` in Remote settings to a path such as `/usr/bin/git`, rather than a Windows Git path.
+
+A complete package needs no separate Node.js, npm, Python, or compiler installation on the board; VS Code manages its Server and extension runtime. Those tools are needed when building from source; see [build and package verification](VALIDATION.md#打包与本地更新). Use **Developer: Show Running Extensions** to confirm that AlwayGit runs remotely. New blank workbench windows inherit the current SSH connection.
+
+Actual Windows → Rock 5B terminals, authentication, and multiple windows still require device validation; see [validation boundaries](VALIDATION.md). If SSH works but the embedded terminal fails to load, confirm that the package is `linux-arm64`, rather than a Windows or Linux x64 package.
+
 <a id="workbench-locations"></a>
 
 ### Choose display locations and the default entry
