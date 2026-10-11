@@ -121,7 +121,17 @@
 node scripts/package.mjs
 ```
 
-打包由 VSCE 触发 `vscode:prepublish` 完成构建；无需在紧接着打包前重复构建。成功后才替换固定包 `artifacts/alwaygit.vsix`，保留上一份 `artifacts/alwaygit-previous.vsix` 和带版本号的包；失败时保留原固定包。
+打包自动识别当前平台，向 VSCE 传递 `--target`，并由 `vscode:prepublish` 完成构建；无需在紧接着打包前重复构建。也可显式执行 `node scripts/package.mjs --target linux-arm64`，但目标必须与构建机器一致；该参数不会交叉编译 node-pty。Linux 必须使用 glibc 系统并准备 Python、make 与 C++ 编译器，源码构建采用 Node.js 24。
+
+构建先清理旧 PTY 目录并过滤其他平台的预编译文件。打包后、替换固定包前，`verify-package.mjs` 解包核对扩展身份、版本、目标平台、工作区宿主和 askpass 执行权限，并在不依赖源码 node_modules 的临时目录运行真实终端生命周期检查。成功后才替换 `artifacts/alwaygit.vsix`，保留上一份 `artifacts/alwaygit-previous.vsix` 和 `artifacts/alwaygit-<版本>-<平台>.vsix`；失败时保留原固定包。校验临时目录在结束时删除。
+
+已经生成的包可单独检查，不重复构建：
+
+```bash
+node scripts/verify-package.mjs artifacts/alwaygit.vsix
+```
+
+这项检查必须在包所对应的平台运行。`scripts/test-terminal-host.mjs` 可单独验证当前构建的终端辅助进程，也可接受已解包的 `terminal-host.cjs` 路径。构建及检查不安装或重载 VS Code 扩展。
 
 扩展修改通过相应检查后，按已授权流程安装到实际使用的 VS Code：
 
@@ -141,7 +151,9 @@ scripts/update-local.ps1 -InstallOnly
 
 推送格式为 `vMAJOR.MINOR.PATCH` 的稳定版本 Tag 后，GitHub Actions 工作流 `.github/workflows/release.yml` 会自动验证并发布可安装的 VSIX。Tag 去掉 `v` 后必须与 `package.json`、`package-lock.json` 及其根包记录中的版本完全一致，且 Tag 指向的 Commit 必须已经包含在远程 `main` 中；任一条件不满足时停止，不创建 Release。
 
-发布工作流使用 Node.js 24 执行 `npm ci`、类型与翻译检查、全量 Vitest，并通过 `node scripts/package.mjs` 完成正式构建和打包。打包成功后继续核对 VSIX 内的扩展身份 `alwaygit-dev.alwaygit` 和版本，生成 SHA-256 校验文件。构建 Job 只有仓库只读权限；全部检查通过后，独立发布 Job 才使用 `contents: write` 创建同名 GitHub Release，并上传 `alwaygit-<版本>.vsix` 与 `alwaygit-<版本>.vsix.sha256`。已有同名 Release 时拒绝覆盖。
+发布工作流使用 Node.js 24，在公共验证 Job 中执行 `npm ci`、类型与翻译检查、一次全量 Vitest，并保留原有统计摘要。通过后，Windows x64、Ubuntu x64 和 Ubuntu ARM64 三个 Job 并行安装对应平台的原生依赖、构建、打包和验证解包后的终端；Linux 使用 Ubuntu 22.04 / 22.04 ARM64 作为构建基线，不使用会自动升级的 latest 镜像。
+
+三个平台全部通过后，独立发布 Job 才使用 `contents: write` 创建同名 GitHub Release，上传 `alwaygit-<版本>-win32-x64.vsix`、`alwaygit-<版本>-linux-x64.vsix`、`alwaygit-<版本>-linux-arm64.vsix` 及各自的 `.sha256` 文件。发布前重新核对六份文件完整性及校验和；已有同名 Release 时拒绝覆盖。校验在 CI 的系统 Node.js 中执行，不代替 VS Code Server 内置 Node.js 和 Rock 5B 的实机验收。Linux 发布包的支持基线为 64 位 glibc 系统，Ubuntu 22.04+ / Debian 12+；更旧系统需要在对应环境专项构建与验证。
 
 发布前先按 Conventional Commits 提交版本文件，再创建附注 Tag；不要使用 `npm version` 自动生成不符合项目提交格式的提交。以下版本号仅为示例：
 
