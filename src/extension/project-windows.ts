@@ -172,7 +172,8 @@ export class ProjectWindows implements vscode.Disposable {
   }
   private async openBlankAndWait(): Promise<WindowRecord> {
     const previous = new Set((await this.bridge.windows()).map(candidate => candidate.id));
-    await vscode.commands.executeCommand('workbench.action.newWindow');
+    // Unlike workbench.action.newWindow, this inherits the current remote authority.
+    await vscode.commands.executeCommand('vscode.newWindow');
     const deadline = Date.now() + 20000;
     while (Date.now() < deadline) {
       for (const candidate of await this.bridge.windows()) {

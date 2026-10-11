@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-122：远程工作台的新空白窗口落到本地
+
+- 日期：2026-10-11
+- 状态：已解决
+- 现象：远程宿主调用普通新窗口命令时创建本地窗口，远端窗口桥无法收到新窗口登记，空白工作台打开等待会超时。
+- 原因：`workbench.action.newWindow` 在 VS Code 中显式指定本地窗口。已核对项目最低版本 VS Code 1.106 的 `vscode.newWindow` 会继承当前远程连接。
+- 解决方案：空白工作台改用 `vscode.newWindow`；继续使用原有窗口桥与隔离范围，仓库和文件 URI 保留 VS Code 的远程转换。
+- 验证方式：本地与模拟 SSH 入口的空白窗口请求交付、真实回环窗口登记与不同存储范围隔离、既有项目窗口及窗口桥定向检查通过；类型检查通过。未启动可见窗口，Rock 5B 的真实 SSH 新窗口仍需实机确认。
+- 相关文件：`src/extension/project-windows.ts`、`tests/project-windows.test.ts`、`docs/ARCHITECTURE.md`。
+
 ## BUG-121：未标明平台的安装包无法完整用于其他架构
 
 - 日期：2026-10-11
