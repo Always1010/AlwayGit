@@ -121,7 +121,7 @@
 node scripts/package.mjs
 ```
 
-打包自动识别当前平台，向 VSCE 传递 `--target`，并由 `vscode:prepublish` 完成构建；无需在紧接着打包前重复构建。也可显式执行 `node scripts/package.mjs --target linux-arm64`，但目标必须与构建机器一致；该参数不会交叉编译 node-pty。Linux 必须使用 glibc 系统并准备 Python、make 与 C++ 编译器，源码构建采用 Node.js 24。
+打包自动识别当前平台，向 VSCE 传递 `--target`，并由 `vscode:prepublish` 完成构建；无需在紧接着打包前重复构建。脚本传递 `--allow-star-activation`，明确接受现有的 `*` 启动激活方式，省掉每次打包的人工确认；此参数不优化启动性能或改变扩展激活时机。也可显式执行 `node scripts/package.mjs --target linux-arm64`，但目标必须与构建机器一致；该参数不会交叉编译 node-pty。Linux 必须使用 glibc 系统并准备 Python、make 与 C++ 编译器，源码构建采用 Node.js 24。
 
 构建先清理旧 PTY 目录并过滤其他平台的预编译文件。打包后、替换固定包前，`verify-package.mjs` 解包核对扩展身份、版本、目标平台、工作区宿主和 askpass 执行权限，并在不依赖源码 node_modules 的临时目录运行真实终端生命周期检查。成功后才替换 `artifacts/alwaygit.vsix`，保留上一份 `artifacts/alwaygit-previous.vsix` 和 `artifacts/alwaygit-<版本>-<平台>.vsix`；失败时保留原固定包。校验临时目录在结束时删除。
 
