@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-130：内嵌终端未接入 VS Code GitHub 登录，重复询问用户名
+
+- 日期：2026-10-11
+- 状态：已解决
+- 现象：同一仓库在 VS Code 自带终端执行 `git push` 可直接完成，AlwayGit 内嵌终端却显示 `Username for 'https://github.com':`；此前网络按钮的认证修复未覆盖内嵌终端。
+- 原因：内嵌终端由独立 PTY 启动，仅继承扩展宿主与终端配置环境，未获得 VS Code 原生终端注入的 Git AskPass 变量；既有认证适配器只用于 GitService 的 Fetch/Pull/Push。
+- 解决方案：网络按钮与终端共用扩展宿主认证入口，新建及重启终端注入独立 AskPass 桥接。终端每次询问获取当前 GitHub 会话，保留系统凭据助手、SSH Agent、关闭集成认证与终端环境覆盖配置；终端退出/停止/销毁及创建失败释放桥接，转移面板保留桥接。不持久化账户凭据，版本递增至 1.4.2。
+- 验证方式：类型检查、1555 条双语资源检查及认证、扩展入口、终端会话、工作台入口 4 文件 / 81 项定向回归通过；真实 Git 在模拟终端启动环境中查询凭据，验证复用登录、切换账户及刷新令牌、停止后拒绝认证、关闭终端集成认证。扩展宿主构建与真实 PTY 输入输出、自然退出、强制停止、启动失败及辅助进程清理检查通过；会话生命周期覆盖退出、停止、关闭、销毁与面板转移。未执行真实账户推送、浏览器登录或 VSIX 打包安装。
+- 相关文件：`src/extension/git-authentication.ts`、`src/extension/extension.ts`、`src/extension/workbench.ts`、`src/extension/terminal-runtime.ts`、`src/application/credentials.ts`、`src/application/terminal-sessions.ts`、`tests/extension-startup.test.ts`、`tests/terminal-sessions.test.ts`、版本清单及 `docs/ARCHITECTURE.md`。
+
 ## BUG-129：网络操作横条重复提示运行状态，Push 缺少统一转圈动画
 
 - 日期：2026-10-11

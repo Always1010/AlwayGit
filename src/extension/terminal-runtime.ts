@@ -13,9 +13,12 @@ function executable(name: string): string {
   }
   return name;
 }
-export function terminalShell(shell: TerminalShell): ShellLaunch {
+export function terminalShell(shell: TerminalShell, authentication: NodeJS.ProcessEnv = {}): ShellLaunch {
   const programFiles = process.env.ProgramFiles ?? String.raw`C:\Program Files`;
-  const env = Object.fromEntries(Object.entries(process.env).filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
+  // AskPass's launcher sets Electron's Node mode itself; do not impose it on
+  // every application the user starts from this interactive shell.
+  const { ELECTRON_RUN_AS_NODE: _nodeMode, ...terminalAuthentication } = authentication;
+  const env = Object.fromEntries(Object.entries({ ...process.env, ...terminalAuthentication }).filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
   const windows = process.platform === 'win32';
   const platform = windows ? 'windows' : process.platform === 'darwin' ? 'osx' : 'linux';
   const config = vscode.workspace.getConfiguration('terminal.integrated');

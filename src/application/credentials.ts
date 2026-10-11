@@ -6,7 +6,7 @@ type CredentialPrompt = (message: string, password: boolean, signal: AbortSignal
 interface GitHubSession { account: { id: string }; accessToken: string }
 
 /** Command-local GitHub session; other hosts and SSH continue through AskPass. */
-export function withGitHubAuthentication(prompt: CredentialPrompt, getSession: () => Promise<GitHubSession | undefined>): CredentialPrompt {
+export function withGitHubAuthentication(prompt: CredentialPrompt, getSession: () => Promise<GitHubSession | undefined>, options: { cacheSession?: boolean } = {}): CredentialPrompt {
   let session: Promise<GitHubSession | undefined> | undefined;
   return async (message, password, signal) => {
     if (signal.aborted) return undefined;
@@ -21,7 +21,9 @@ export function withGitHubAuthentication(prompt: CredentialPrompt, getSession: (
     if (github) {
       // The public authentication API cannot cancel browser UI. Stop waiting on
       // command cancellation and never return a late token to a stopped Git.
-      const pending = session ??= getSession();
+      // Long-lived terminals query the provider again so account changes and
+      // refreshed tokens take effect without restarting the shell.
+      const pending = options.cacheSession === false ? getSession() : session ??= getSession();
       let cancel!: () => void;
       const cancelled = new Promise<undefined>(resolve => { cancel = () => resolve(undefined); signal.addEventListener('abort', cancel, { once: true }); });
       if (signal.aborted) cancel();
