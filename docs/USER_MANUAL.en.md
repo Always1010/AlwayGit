@@ -4,9 +4,9 @@
 
 This manual explains how to inspect changes, save revisions, and collaborate with AlwayGit. Instructions and support boundaries describe the current version. Product behavior is specified in the [Workbench specification](WORKBENCH_SPEC.md).
 
-Select the question-mark icon in the upper-right corner of the Workbench to open the offline Help & Guide. It includes quick start instructions, common tasks, common questions, and the full chapters of this manual. Its language follows the workbench setting.
+Select More actions → Help & Guide, with its question-mark icon, in the upper-right corner of the Workbench to open the offline help. It includes quick start instructions, common tasks, common questions, and the full chapters of this manual. Its language follows the workbench setting.
 
-**About the screenshots:** All 40 shared figures were recaptured on 2026-10-06 from the 0.52.0 source build with an English interface and sample repositories, using the default theme's white appearance on a light host; the language page previews Chinese. The narrow sidebar figure demonstrates region navigation at that viewport size. Images do not include native VS Code chrome. Names, paths, and Commit IDs may differ in your project.
+**About the screenshots:** All 40 shared figures were recaptured on 2026-10-06 from the 0.52.0 source build with an English interface and sample repositories, using the default theme's white appearance on a light host; the language page previews Chinese. The narrow sidebar figure demonstrates region navigation at that viewport size. Images do not include native VS Code chrome. The current toolbar combines the two rows and moves less-used actions into More; follow the text for current entry points. The figures retain the original task examples. Names, paths, and Commit IDs may differ in your project.
 
 ## Read by task
 
@@ -87,7 +87,7 @@ Actual Windows → Rock 5B terminals, authentication, and multiple windows still
 
 ### Choose display locations and the default entry
 
-1. Use Configure display locations and default… on the launch page, the layout location icon in the Workbench header, or the gear in an AlwayGit view title.
+1. Use Configure display locations and default… on the launch page, More actions → Workbench Locations at the top of the Workbench, or the gear in an AlwayGit view title.
 2. Enable one or more of Editor Tab, Primary Sidebar, Secondary Sidebar, and Panel. Keep at least one enabled.
 3. Choose the default from enabled locations; disabling the default selects a remaining location.
 4. Apply and Open saves and enters the default location. Cancel, Close, and Esc discard the draft.
@@ -147,7 +147,7 @@ Working Tree means the working files on disk; Index is the staging area for the 
 
 ### Find offline help and the full manual
 
-Use the question-mark icon to open Help & Guide, or Quick start in an empty Workbench. Its four categories are Quick start, Common tasks, Common questions, and Full manual. Search filters topic titles and body text in the current category only; clear the query or switch to Full manual if needed. Internal chapter links open the full chapter and locate the requested subsection.
+Use More actions → Help & Guide with its question-mark icon, or Quick start in an empty Workbench. Its four categories are Quick start, Common tasks, Common questions, and Full manual. Search filters topic titles and body text in the current category only; clear the query or switch to Full manual if needed. Internal chapter links open the full chapter and locate the requested subsection.
 
 Help follows the Workbench language. Both manuals and their images are included with the extension and work offline. Esc, Close, or the backdrop closes Help and returns focus to its entry. Reading Help does not execute Git, open projects, or change the repository, drafts, layout, or Diff.
 
@@ -921,7 +921,7 @@ First select the item you intend to operate on, then identify the current workin
 **Prerequisite:** Confirm which repository or Worktree you want to open.
 
 1. To view projects side by side, right-click a repository and choose Open in New AlwayGit Tab.
-2. To edit the project, use Open Repository in New Project Window or Open in VS Code at the top.
+2. To edit the project, use Open Repository in New Project Window or More actions → Open Repository Folder at the top.
 3. To open a blank, separate workbench window, use Open Workbench in New Window in the launch sidebar, then select a repository in the new window.
 
 **Result:** The new tab retains its own viewing position, and the project window is used for native file editing.
@@ -1044,7 +1044,7 @@ Git operation settings default to User. Select Current workspace before editing 
 1. Drag the panel dividers to resize the left, right, and bottom areas.
 2. Drag the visible boundaries of the Graph, author, and date columns to adjust their widths for easier reading.
 3. Use the icons in the Diff title bar to collapse or restore the lower panel.
-4. If the layout is unsuitable, click Restore Layout.
+4. If the layout is unsuitable, select More actions → Restore Layout.
 
 **Result:** The reading area suits the current task. Restore Layout restores the dimensions and the Diff expansion state.
 

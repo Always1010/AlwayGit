@@ -102,6 +102,7 @@ export async function verifyLocateHead(browser, url) {
     await page.getByRole('option', { name: 'Locate fixture', exact: true }).dblclick();
     const history = page.getByTestId('history'), viewport = history.locator('.history-viewport');
     await history.locator('[data-oid]').first().waitFor();
+    await history.locator('[data-oid]').first().click();
     await page.getByTestId('details').getByText('Commit 0', { exact: true }).first().waitFor();
     await page.evaluate(() => {
       window.__locateFixture.calls.length = 0;
@@ -113,7 +114,8 @@ export async function verifyLocateHead(browser, url) {
     for (let attempt = 0; attempt < 2; attempt++) {
       await viewport.evaluate(element => { element.scrollTop = element.scrollHeight; });
       await page.waitForFunction(() => document.querySelector('.history-viewport').scrollTop > 2000);
-      await page.getByRole('button', { name: 'Locate HEAD', exact: true }).click();
+      await page.getByTestId('toolbar-more').click();
+      await page.getByRole('menuitem', { name: 'Locate HEAD', exact: true }).click();
       await page.waitForFunction(() => {
         const head = document.querySelector('[data-head-commit="true"][aria-selected="true"]');
         const viewport = document.querySelector('.history-viewport');

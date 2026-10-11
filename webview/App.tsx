@@ -6,7 +6,7 @@ import { SettingsDialog } from './SettingsDialog';
 import { WorkbenchLocationsDialog } from './WorkbenchLocationsDialog';
 import type { WorkbenchLocations } from '../src/protocol/workbench-host';
 import { ActionDialog } from './ActionDialog';
-import { ContextMenu } from './ContextMenu';
+import { ContextMenu, type MenuItem } from './ContextMenu';
 import { RepositoryDialog } from './RepositoryDialog';
 import { RepositoryRemoveDialog } from './RepositoryRemoveDialog';
 import { Sidebar } from './Sidebar';
@@ -64,8 +64,15 @@ export function App() {
     return () => observer.disconnect();
   }, [docked]);
   const [locationSettings, setLocationSettings] = useState<WorkbenchLocations>();
+  const [toolbarMenu, setToolbarMenu] = useState<{ x: number; y: number; anchor: HTMLElement }>();
+  const closeToolbarMenu = useCallback(() => setToolbarMenu(undefined), []);
+  const toggleToolbarMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const anchor = event.currentTarget, rect = anchor.getBoundingClientRect();
+    setContext(undefined);
+    setToolbarMenu(current => current ? undefined : { x: rect.right - 240, y: rect.bottom + 4, anchor });
+  };
   useEffect(() => subscribe(event => {
-    if (event.type === 'showWorkbenchLocations') { setContext(undefined); setLocationSettings(current => current ?? event.locations); }
+    if (event.type === 'showWorkbenchLocations') { setContext(undefined); setToolbarMenu(undefined); setLocationSettings(current => current ?? event.locations); }
   }), []);
   const [helpOpen,setHelpOpen]=useState(false);
   const [projectNotice,setProjectNotice]=useState<Extract<OpenProjectResult,{kind:'current-window'}>>();
@@ -83,7 +90,7 @@ export function App() {
   const paletteColors=lightTheme?state.appearance.colors.light:state.appearance.colors.dark;
   useLayoutEffect(()=>{document.documentElement.lang=state.language;},[state.language]);
   useEffect(()=>{if(connected){if(!demoMode)void rpc('workbenchReady').catch(useWorkbench.getState().report);void useWorkbench.getState().initialize();}},[]);
-  useEffect(()=>{setDialog(undefined);setContext(undefined);},[state.repoId,state.language]);
+  useEffect(()=>{setDialog(undefined);setContext(undefined);setToolbarMenu(undefined);},[state.repoId,state.language]);
   useEffect(()=>{setCommitRepoId(undefined);},[state.repoId]);
   const closeMenu=useCallback(()=>setContext(undefined),[]);
   const host=useCallback(async(method:RpcRequest['method'],payload?:unknown,repoId?:string)=>{
@@ -93,6 +100,7 @@ export function App() {
   const open=useCallback((request:DialogRequest)=>{setContext(undefined);useWorkbench.setState({error:undefined,checkoutFailure:undefined,stashApplyFailure:undefined});setDialog(request);},[]);
   const showContext:ContextHandler=useCallback((event,target)=>{
     event.preventDefault();event.stopPropagation();const rect=event.currentTarget.getBoundingClientRect();
+    setToolbarMenu(undefined);
     const point='clientX' in event&&event.clientX!==0?{x:event.clientX,y:event.clientY}:{x:rect.left+Math.min(40,rect.width/2),y:rect.bottom};
     setContext({...point,target,anchor:event.currentTarget as HTMLElement});
   },[]);
@@ -122,7 +130,7 @@ export function App() {
       if(request===projectRequest.current&&useWorkbench.getState().repoId===repoId)current.report(error);
     });
   },[]);
-  useWorkbenchKeyboard(blockInteraction || !!(locationSettings||state.remoteRequest||commitRepoId||dialog||repositoryDialog||repositoryRemoval||repositoryFetch||context||helpOpen||state.settingsBaseline||state.checkoutFailure||state.operationReview));
+  useWorkbenchKeyboard(blockInteraction || !!(locationSettings||state.remoteRequest||commitRepoId||dialog||repositoryDialog||repositoryRemoval||repositoryFetch||context||toolbarMenu||helpOpen||state.settingsBaseline||state.checkoutFailure||state.operationReview));
   useLayoutEffect(()=>{const element=mainPanel.current;if(!element)return;const measure=()=>setMainPanelHeight(element.clientHeight);measure();const observer=new ResizeObserver(measure);observer.observe(element);return()=>observer.disconnect();},[]);
   const snapshot=state.snapshot,layout=state.layout,unpushed=snapshot?.unpushed??snapshot?.ahead??0,repositoryState=repositoryViewState(snapshot,!!state.repoId,state.loading),hasRepositories=state.repositories.length>0;
   const canOperate=!!snapshot&&!state.busy,canPush=canOperate&&!!snapshot?.branch,canStash=canOperate&&!!snapshot?.changes.length&&!snapshot?.operation.kind;
@@ -150,16 +158,30 @@ export function App() {
   const sidebarActions=useCallback((target:MenuTarget)=>menuFor(target,menuApi).items,[menuApi]);
   const cherryPickCheck=useCherryPickCheck(state.repoId,state.snapshot?.head,state.snapshot?.branch,context?.target);
   const menu=context?menuFor(context.target,menuApi,cherryPickCheck):undefined;
+  const toolbarMenuItems: MenuItem[] = [
+    { label: t('workbench.locateHEAD'), icon: 'location', shortcut: 'head', disabled: !snapshot?.head, reason: t('workbench.locateTheCurrentCommitHEAD'), run: state.locateHead },
+    { label: t('workbench.openRepositoryFolder'), iconContent: <OpenRepositoryFolderIcon/>, shortcut: 'repository', testId: 'open-project', disabled: !snapshot, reason: snapshot ? `${t('workbench.openRepositoryFolder')}\n${t('workbench.switchesToItsVSCodeWindowWhenAlreadyOpen')}\n${snapshot.repository.root}` : t('workbench.selectARepositoryFirst'), run: openRepository },
+    { label: t('workbench.newWorkbenchTab'), icon: 'split-horizontal', separatorBefore: true, run: () => host('openWorkbench', { newTab: true }) },
+    { label: t('workbench.openWorkbenchInNewWindow'), icon: 'window', run: () => host('openWorkbench', { newWindow: true }) },
+    { label: t('workbenchEntry.openModeSettings'), icon: 'layout-sidebar-right', run: () => host('workbenchOpenModeSettings') },
+    { label: t('workbench.restoreLayout'), icon: 'layout', separatorBefore: true, run: state.restoreLayout },
+    { label: t('workbench.helpGuide'), icon: 'question', shortcut: 'help', run: showHelp },
+  ];
   if(!connected)return <div className="connection-screen"><Icon name="git-branch"/><h1>{uiText("workbench.alwayGit")}</h1><p>{t("workbench.yourGitWorkbenchInsideVSCode")}</p><a className="button primary" href="?demo=1">{t("workbench.exploreDemo")}</a></div>;
   return <div ref={root} className="workbench layout-workbench" data-host={docked ? 'docked' : 'editor'} data-compact={compact} data-region={region} data-testid="workbench" data-theme={theme} tabIndex={-1} onContextMenu={event=>{if(event.defaultPrevented)return;const target=event.target as HTMLElement,editable=!!target.closest('input:not([type=checkbox]),textarea,[contenteditable]:not([contenteditable="false"])'),selection=window.getSelection();if(!editable&&(!selection||selection.isCollapsed))event.preventDefault();}} style={{'--sidebar-width':`${layout.sidebar}px`,'--details-width':`${layout.details}px`,'--diff-height':`${layout.diff}px`,'--workbench-font':`${layout.font}px`,'--row-height':`${effectiveRowHeight(layout)}px`,'--file-row-height':`${fileRowHeight(layout.font,state.appearance.fileSpacing)}px`,'--file-row-padding':`${state.appearance.fileSpacing}px`,'--control-height':uiText("workbench.px", { value: (Math.max(24,Math.round(layout.font*1.35)+6)) }),'--diff-font':`${state.appearance.codeFont}px`,'--diff-row-height':`${diffRowHeight(state.appearance.codeFont,state.appearance.codeRowHeight)}px`,'--notification-badge':state.appearance.badgeColor,'--notification-badge-fg':textColorForBackground(state.appearance.badgeColor),'--graph-main':lightTheme?state.appearance.mainColors.light:state.appearance.mainColors.dark,...Object.fromEntries(paletteColors.map((color,index)=>[`--graph-lane-${index}`,color]))} as React.CSSProperties}>
-    <header className="app-chrome"><strong className="brand"><Icon name="git-branch"/>{uiText("workbench.alwayGit")}</strong><span className="workbench-tab">{t("workbench.gitWorkbench")}</span>{demoMode&&<span className="muted">{t("workbench.demoRepository")}</span>}<div className="toolbar-spacer"/><Button className="icon-only" icon="split-horizontal" title={t("workbench.newWorkbenchTab")} aria-label={t("workbench.newWorkbenchTab")} onClick={()=>void host('openWorkbench',{newTab:true})}/><Button className="icon-only" icon="window" title={t("workbench.openWorkbenchInNewWindow")} aria-label={t("workbench.openWorkbenchInNewWindow")} onClick={()=>void host('openWorkbench',{newWindow:true})}/><Button className="icon-only" icon="layout-sidebar-right" title={t("workbenchEntry.openModeSettings")} aria-label={t("workbenchEntry.openModeSettings")} onClick={()=>void host('workbenchOpenModeSettings')}/><Button className="icon-only" icon="layout" title={t("workbench.restoreLayout")} aria-label={t("workbench.restoreLayout")} onClick={state.restoreLayout}/><Button className="icon-only help-trigger" icon="question" shortcut="help" title={t("workbench.helpGuide")} aria-label={t("workbench.helpGuide")} onClick={showHelp}/><Button className="icon-only settings-trigger" icon="settings-gear" shortcut="settings" title={t("common.settings")} aria-label={t("common.settings")} onClick={showSettings}/></header>
     <div className="toolbar">
+      <div className="toolbar-primary">
       <span className="branch-identity toolbar-branch" title={branchTitle}><Icon name="git-branch"/><strong data-testid="current-branch">{branchLabel}</strong></span><span className="toolbar-divider"/>
       <Button icon="cloud-download" shortcut="fetch" disabled={!canOperate} onClick={()=>void state.execute({type:'fetch'})}>{uiText("workbench.fetch")}</Button><Button icon="arrow-down" shortcut="pull" aria-label={snapshot?.behind?t("workbench.pullIncomingCommits", { behind: snapshot.behind }):uiText("workbench.pull")} disabled={!canOperate} onClick={()=>open({type:'pull'})}>{uiText("workbench.pull")}{snapshot?.behind?<span className="notification-badge" aria-hidden="true">{snapshot.behind>99?'99+':snapshot.behind}</span>:null}</Button><Button icon="arrow-up" shortcut="push" disabled={!canPush} aria-label={unpushed?t("workbench.pushUnpushedCommits", { unpushed: (unpushed) }):uiText("workbench.push")} title={!snapshot?.branch?t("workbench.pushRequiresALocalBranch"):snapshot&&!(snapshot.remotes?.length)?t("workbench.addARemoteBeforePush"):undefined} onClick={()=>open({type:'push'})}>{uiText("workbench.push")}{unpushed?<span className="notification-badge" aria-hidden="true">{unpushed>99?'99+':unpushed}</span>:null}</Button><span className="toolbar-divider"/>
       {state.changeListMode==='unified'&&<><Button icon="stage-inbox" shortcut="stageAll" title={t('changes.stageAllScope')} disabled={!canOperate||!snapshot!.changes.some(isUnstaged)} onClick={()=>open({type:'stage',paths:snapshot!.changes.filter(isUnstaged).map(file=>file.path)})}>{uiText('details.stageAll')}</Button><Button icon="discard" shortcut="unstageAll" title={t('changes.unstageAllScope')} disabled={!canOperate||!snapshot!.changes.some(isStaged)} onClick={()=>open({type:'unstage',paths:snapshot!.changes.filter(isStaged).map(file=>file.path)})}>{uiText('details.unstageAll')}</Button><Button icon="trash" title={t('changes.discardAllScope')} disabled={!canOperate||!snapshot!.changes.some(isUnstaged)} onClick={()=>open({type:'discard',discardScope:'unstaged'})}>{uiText('details.discardAll')}</Button><span className="toolbar-divider"/></>}
       <Button className="commit-trigger" icon="git-commit" shortcut="commit" disabled={!canOperate} onClick={()=>startCommit()}>{uiText("workbench.commit")}</Button><span className="toolbar-divider"/>
       <Button icon="archive" shortcut="stash" disabled={!canStash} onClick={()=>open({type:'stash.create'})}>{uiText("workbench.stashAllChanges")}</Button>
-      <div className="toolbar-spacer"/><Button icon="refresh" shortcut="refresh" title={t("workbench.refreshCurrentRepositoryStatusAndHistory")} aria-label={t("workbench.refreshCurrentRepositoryStatusAndHistory")} disabled={!canOperate} onClick={()=>void state.refresh()}/><div className="toolbar-repository-actions"><Button className="icon-only toolbar-special" icon="location" shortcut="head" title={t("workbench.locateTheCurrentCommitHEAD")} aria-label={t("workbench.locateHEAD")} disabled={!snapshot?.head} onClick={state.locateHead}/><Button className="icon-only toolbar-special open-repository" shortcut="repository" data-testid="open-project" title={snapshot?`${t("workbench.openRepositoryFolder")}\n${t("workbench.switchesToItsVSCodeWindowWhenAlreadyOpen")}\n${snapshot.repository.root}`:t("workbench.selectARepositoryFirst")} aria-label={t("workbench.openRepositoryFolder")} disabled={!snapshot} onClick={openRepository}><OpenRepositoryFolderIcon/></Button></div>
+      </div>
+      <div className="toolbar-utilities">
+        <Button className="icon-only" icon="refresh" shortcut="refresh" title={t("workbench.refreshCurrentRepositoryStatusAndHistory")} aria-label={t("workbench.refreshCurrentRepositoryStatusAndHistory")} disabled={!canOperate} onClick={()=>void state.refresh()}/>
+        <Button className="icon-only settings-trigger" icon="settings-gear" shortcut="settings" title={t("common.settings")} aria-label={t("common.settings")} onClick={showSettings}/>
+        <Button className="icon-only toolbar-more-trigger" icon="ellipsis" data-testid="toolbar-more" title={t("workbench.moreActions")} aria-label={t("workbench.moreActions")} aria-haspopup="menu" aria-expanded={!!toolbarMenu} aria-controls={toolbarMenu?'toolbar-more-menu':undefined} onClick={toggleToolbarMenu}/>
+      </div>
     </div>
     {projectNotice&&<div className="project-open-notice" role="status" aria-live="polite" aria-atomic="true"><Icon name="info"/><div><span>{projectNotice.exactRoot?t("workbench.currentRepositoryExplorerShown"):t("workbench.workspaceRepositoryExplorerShown")}</span><div className="project-open-notice-path">{projectNotice.root}</div></div></div>}
     <OperationNotice abort={()=>open({type:'operation.abort'})}/>
@@ -180,6 +202,7 @@ export function App() {
     {repositoryRemoval&&<RepositoryRemoveDialog groups={repositoryRemoval} onClose={()=>setRepositoryRemoval(undefined)}/>}
     {commitRepoId===state.repoId&&commitRepoId&&snapshot&&!state.operationReview&&<CommitDialog key={commitRepoId} repoId={commitRepoId} files={commitFiles} onClose={()=>closeCommit(commitRepoId)}/>}
     {state.operationReview&&snapshot&&<OperationReviewDialog key={state.operationReview.review.token} edit={path=>void edit({kind:'change',path,area:'staged'})}/>}
+    {toolbarMenu&&<ContextMenu {...toolbarMenu} id="toolbar-more-menu" caption={t('workbench.moreActions')} items={toolbarMenuItems} close={closeToolbarMenu} className="toolbar-more-menu" hideCaption/>}
     {context&&menu&&<ContextMenu x={context.x} y={context.y} caption={menu.caption} items={menu.items} anchor={context.anchor} close={closeMenu}/>}
     {repositoryFetch&&<RepositoryFetchDialog repositories={repositoryFetch} onClose={()=>setRepositoryFetch(undefined)}/>}
     {state.checkoutFailure&&snapshot&&<CheckoutFailureDialog onClose={()=>{setDialog(undefined);useWorkbench.setState({checkoutFailure:undefined,error:undefined});}} host={host}/>}

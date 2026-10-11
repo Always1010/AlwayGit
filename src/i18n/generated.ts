@@ -5783,6 +5783,10 @@ export const catalog = {
     "en": "The project window rejected the request.",
     "zh-CN": "项目窗口拒绝了请求。"
   },
+  "workbench.moreActions": {
+    "en": "More actions",
+    "zh-CN": "更多操作"
+  },
   "workbench.opening": {
     "en": "Opening…",
     "zh-CN": "正在打开…"
@@ -5818,14 +5822,6 @@ export const catalog = {
   "workbench.exploreDemo": {
     "en": "Explore Demo",
     "zh-CN": "查看示例"
-  },
-  "workbench.gitWorkbench": {
-    "en": "Git Workbench",
-    "zh-CN": "Git 工作台"
-  },
-  "workbench.demoRepository": {
-    "en": "Demo Repository",
-    "zh-CN": "模拟仓库"
   },
   "workbench.newWorkbenchTab": {
     "en": "New Workbench Tab",
@@ -7632,6 +7628,7 @@ export interface MessageParameters {
   "windowBridge.theProjectWindowClosedBeforeResponding": {  };
   "windowBridge.invalidProjectWindowResponse": {  };
   "windowBridge.theProjectWindowRejectedTheRequest": {  };
+  "workbench.moreActions": {  };
   "workbench.opening": {  };
   "workbench.unavailable": {  };
   "workbench.currentBranch": { branch: ParameterValue };
@@ -7641,8 +7638,6 @@ export interface MessageParameters {
   "workbench.upstream": { upstream: ParameterValue };
   "workbench.yourGitWorkbenchInsideVSCode": {  };
   "workbench.exploreDemo": {  };
-  "workbench.gitWorkbench": {  };
-  "workbench.demoRepository": {  };
   "workbench.newWorkbenchTab": {  };
   "workbench.openWorkbenchInNewWindow": {  };
   "workbench.restoreLayout": {  };

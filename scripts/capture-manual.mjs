@@ -90,7 +90,7 @@ async function commit(page, message, amend = false) {
   await dialog(page).getByRole('textbox', { name: 'Commit message', exact: true }).fill(message);
 }
 const scenes = [
-  ['01', {}, async p => { await button(p, 'Workbench Locations').click(); await dialog(p).waitFor(); const checkboxes = await dialog(p).getByRole('checkbox').all(); assert.equal(checkboxes.length, 4); for (const checkbox of checkboxes) await checkbox.check(); }],
+  ['01', {}, async p => { await p.getByTestId('toolbar-more').click(); await p.getByRole('menuitem', { name: 'Workbench Locations', exact: true }).click(); await dialog(p).waitFor(); const checkboxes = await dialog(p).getByRole('checkbox').all(); assert.equal(checkboxes.length, 4); for (const checkbox of checkboxes) await checkbox.check(); }],
   ['02', {}, async p => { await settings(p, 'Language'); await dialog(p).getByRole('combobox', { name: 'Language', exact: true }).selectOption('zh-CN'); }],
   ['03', {}, async p => { await file(p); }],
   ['04', {}, async p => { await commit(p, 'Add quick start documentation'); await button(dialog(p), 'Commit').click(); await dialog(p).waitFor({ state: 'hidden' }); await rows(p).first().click(); await file(p); }],

@@ -133,18 +133,19 @@ async function verifyWorkbench(browser, url) {
     assert.ok(await history.locator('svg[role="img"]').count() > 0, 'History must expose accessible Graph rows');
     await history.locator('[data-head-commit="true"]').first().waitFor();
     assert.match(await page.getByTestId('current-branch').innerText(), /main/);
+    await page.getByTestId('toolbar-more').click();
     const projectButton = page.getByTestId('open-project');
     assert.equal(await projectButton.isEnabled(), true);
     assert.match(await projectButton.getAttribute('title'), /AlwayGit/);
-    assert.equal((await projectButton.innerText()).trim(), '', 'Repository folder command stays icon-only');
+    assert.equal((await projectButton.innerText()).trim(), 'Open Repository Folder', 'Repository folder command has a label in More');
     assert.equal(await projectButton.locator('.codicon-folder').count(), 0, 'Repository folder command removes the old double-folder glyphs');
     assert.equal(await projectButton.locator('svg.repository-folder-outline').count(), 1, 'Repository folder command uses the selected hollow folder outline');
     assert.equal(await projectButton.locator('.repository-folder-fold').count(), 1, 'Repository folder outline keeps the folded shoulder detail');
     assert.equal(await projectButton.locator('.codicon-vscode').count(), 1, 'Repository folder command keeps the blue VS Code mark at the lower right');
     assert.equal(await page.locator('.branch-bar').count(), 0, 'Branch state is merged into the action toolbar');
     assert.equal(await page.locator('.statusbar').count(), 0, 'The redundant persistent status bar is removed');
-    const toolbarBox = await page.locator('.toolbar').boundingBox(), projectBox = await projectButton.boundingBox();
-    assert.ok(toolbarBox && projectBox && toolbarBox.x + toolbarBox.width - projectBox.x - projectBox.width < 16, 'Project button belongs at the far right of the action toolbar');
+    assert.equal(await page.locator('.app-chrome').count(), 0, 'The extra header row is removed');
+    assert.equal(await page.locator('.toolbar-utilities > button').count(), 3, 'Refresh, Settings and More remain visible');
     await projectButton.click();
     const notice = page.locator('.banner.notice');
     await notice.getByText('Demo: native VS Code command preview.', { exact: true }).waitFor();
@@ -153,7 +154,8 @@ async function verifyWorkbench(browser, url) {
     const historyViewport = history.locator('.history-viewport');
     await historyViewport.evaluate(element => { element.scrollTop = 500; });
     assert.ok(await historyViewport.evaluate(element => element.scrollTop) > 0, 'Fixture must scroll away from HEAD before Locate HEAD');
-    await page.getByRole('button', { name: 'Locate HEAD', exact: true }).click();
+    await page.getByTestId('toolbar-more').click();
+    await page.getByRole('menuitem', { name: 'Locate HEAD', exact: true }).click();
     await page.waitForFunction(() => (document.querySelector('.history-viewport')?.scrollTop ?? 1) === 0);
 
     await page.getByRole('button', { name: /^Push/ }).click();
@@ -416,7 +418,8 @@ async function verifyWorkbench(browser, url) {
     const sidebarBox = await sidebar.boundingBox();
     const actionBoxes = await sidebar.locator('.sidebar-actions').evaluateAll(groups => groups.flatMap(group => [...group.querySelectorAll('button')].map(button => { const box = button.getBoundingClientRect(); return { left: box.left, right: box.right }; })));
     assert.ok(sidebarBox && actionBoxes.every(box => box.left >= sidebarBox.x - .5 && box.right <= sidebarBox.x + sidebarBox.width + .5), 'Direct sidebar actions must stay visible at the minimum width');
-    await page.getByRole('button', { name: 'Restore Layout', exact: true }).click();
+    await page.getByTestId('toolbar-more').click();
+    await page.getByRole('menuitem', { name: 'Restore Layout', exact: true }).click();
     assert.equal(Number(await sidebarSeparator.getAttribute('aria-valuenow')), 210);
 
     const showAllBranches=graphPresets.getByRole('button',{name:'Show All Local Branches in Graph',exact:true}),showCurrentBranch=graphPresets.getByRole('button',{name:'Show Current Branch Only in Graph',exact:true});
@@ -492,7 +495,7 @@ async function verifyWorkbench(browser, url) {
     await page.screenshot({ path: 'artifacts/workbench-compact.png', fullPage: true });
     await page.evaluate(() => document.body.classList.add('vscode-light'));
     await page.waitForTimeout(150);
-    assert.ok(['rgb(255, 255, 255)','rgba(0, 0, 0, 0)'].includes(await projectButton.evaluate(button => getComputedStyle(button).backgroundColor)), 'Light buttons must use the light surface or inherit it transparently');
+    assert.ok(['rgb(255, 255, 255)','rgba(0, 0, 0, 0)'].includes(await page.getByTestId('toolbar-more').evaluate(button => getComputedStyle(button).backgroundColor)), 'Light buttons must use the light surface or inherit it transparently');
     await page.screenshot({ path: 'artifacts/workbench-light.png', fullPage: true });
     await page.evaluate(() => { document.body.classList.remove('vscode-light'); document.body.classList.add('vscode-high-contrast'); });
     await page.waitForTimeout(150);
