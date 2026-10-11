@@ -8,7 +8,7 @@ AlwayGit 是可在 VS Code 编辑器标签页、主侧边栏、第二侧边栏�
 
 ## 安装与启动
 
-运行环境为 VS Code 1.106 或更新版本、Git 2.40 或更新版本。源码构建使用 Node.js 24 和 npm。
+运行环境为 VS Code 1.106 或更新版本；基础功能要求 Git 2.40+，完整高级操作推荐 Git 2.46+，具体版本要求见[用户手册](docs/USER_MANUAL.zh-CN.md#section-01-01)。源码构建使用 Node.js 24 和 npm。
 
 ```powershell
 npm ci
@@ -18,6 +18,8 @@ npm run build
 在 VS Code 中打开项目，按 F5 启动 Extension Development Host，然后点击活动栏的 AlwayGit 图标，在侧栏点击 **Show Git Workbench**：按设置打开或聚焦默认位置。侧栏的 **Open Workbench in New Window** 创建一个尚未选择仓库的独立窗口。AlwayGit 视图标题栏齿轮可多选标签页、主侧边栏、第二侧边栏和底部面板，并单独设置默认入口。四个位置可同时使用，状态独立；状态栏图标和 **AlwayGit: Show Workbench** 命令只打开或聚焦默认位置。两侧位置跟随 VS Code 的主侧边栏布局设置；点击应用后打开默认位置。仓库添加、分组、选择和移除都在 Workbench 内完成。
 
 安装包使用固定路径 `artifacts/alwaygit.vsix`。首次手动安装可在扩展视图菜单选择 **Install from VSIX…**；构建、后续本地更新、安装校验与 Tag 触发的 GitHub Release 见 [验证与本地更新](docs/VALIDATION.md#打包与本地更新)。
+
+发布包按 `win32-x64`、`linux-x64`、`linux-arm64` 区分。Windows 通过 Remote SSH 连接 Rock 5B 时，应将 Linux ARM64 包安装到远端扩展宿主；操作步骤见[远程安装](docs/USER_MANUAL.zh-CN.md#remote-install)。
 
 ## 主要功能
 
