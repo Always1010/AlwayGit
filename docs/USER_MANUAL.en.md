@@ -728,7 +728,7 @@ Use the operations in this chapter only after you understand the relationships i
 
 1. Right-click the target Commit or branch and choose Create Tag…, or use the entry point in the Tags heading. A Commit-row action is fixed to the row you right-clicked; the Tags heading action does not reuse HEAD or the Graph selection.
 2. Enter a name, such as v1.1.0, in Tag Name. From the Tags heading, Target Commit starts empty: enter a Commit ID and verify the resolved Commit Message. From a Commit row, Target Commit is read-only and shows that Commit's ID and Message. Fill in Annotation if needed. To publish immediately, enable “Push this Tag after creation” and select a Remote; use it once or remember it as the default.
-3. Check the new tag under Tags and use Locate Tag Commit in Graph to locate it, or Show Only This Tag History to inspect its history.
+3. Check the new tag under Tags. Clicking its name selects the action target without changing the current Commit, Diff, or history scope. Double-click or focus the name and press Enter to locate its commit; Space only selects. You can also use Locate Tag Commit in Graph or Show Only This Tag History. If the target is outside the current Graph, locating shows that Tag's history; history Back restores the previous view. Locating does not Checkout.
 4. To publish tags, right-click one or more Tags, choose Push Tag… or Push N Tags…, then verify the complete Tag list and Remote.
 5. To delete a local tag, right-click the target Tag and choose Delete Tag…. It deletes only the local Tag by default. To delete the matching Tag from the selected Remote too, enable “Also delete from a remote,” then verify the Remote, warning, and confirmation list.
 6. For a remote-only Tag marked with a cloud icon, right-click it and choose Delete Remote Tag…. This deletes the confirmed remote object without creating or deleting a local Tag.
@@ -744,6 +744,8 @@ Use the operations in this chapter only after you understand the relationships i
 <a id="tag-status"></a>
 
 ### Check local and remote Tag status
+
+For local Tag names, Ctrl/Cmd-click toggles one item, Shift-click selects a range, and Ctrl/Cmd+Shift-click adds a range. Ctrl/Cmd+A selects all local Tags in the list; Escape clears Tag selection. Right-clicking a selected Tag preserves the selection; right-clicking an unselected Tag selects it alone. Remote-only Tags support single selection and individual context actions, and are excluded from local Tag batch menus. Changing the comparison remote clears remote-only selection. Local Tags pointing to non-Commit objects can be selected and opened with a context menu, but cannot locate commits; clicking their names does not open a menu.
 
 Tags combines local Tags with Tags that exist only on the selected remote. The remote name in its header identifies the comparison target; choose another remote when available, with the selection remembered per repository. Each row shows only a status icon: a green check means Synced, a desktop means Local only, a cloud means Remote only, a warning means the same name identifies different objects, and a question mark means no query has succeeded yet. Hover, focus or click for the full meaning. A remote-only object is not yet a local ref and cannot be located in local history. Results do not expire with time and change only after another successful query; a failed query preserves the previous successful result. With no configured remote, Tags show Local. Local Tag labels in the commit graph use the same status icons; the commit node's Pushed indicator still describes availability on known remote branches.
 
@@ -830,7 +832,7 @@ Hover or focus the status for details and the last successful check time, or cli
 
 ## Repositories and Project Groups
 
-First select the item you intend to operate on, then identify the current working repository. A blue selected row identifies the target of an action. The highlighted repository icon marks the current repository; a solid triangle marks the current Worktree or local branch. The current item and action selection can differ. Repositories, Local Branches, one Remote, and Worktrees retain only one blue action-selection scope at a time. Moving to another object type clears the previous blue selection without changing the current repository, current branch, or Graph checkboxes.
+First select the item you intend to operate on, then identify the current working repository. A blue selected row identifies the target of an action. The highlighted repository icon marks the current repository; a solid triangle marks the current Worktree or local branch. The current item and action selection can differ. Repositories, Local Branches, one Remote, Tags, and Worktrees retain only one blue action-selection scope at a time. Moving to another object type clears the previous blue selection without changing the current repository, current branch, or Graph checkboxes.
 
 <a id="section-02-01"></a>
 

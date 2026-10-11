@@ -206,6 +206,7 @@ h1,h2,p {margin:0;}
 .ref-badge:has(.tag-status) {display:inline-flex;align-items:center;gap:3px;}
 .ref-badge-name {overflow:hidden;text-overflow:ellipsis;}
 .tag-row {display:flex;align-items:center;min-width:0;}
+.tag-row.action-selected {background:color-mix(in srgb,var(--accent) 18%,var(--panel));outline:1px solid color-mix(in srgb,var(--accent) 52%,transparent);outline-offset:-1px;}
 .tag-row .tag-name {flex:1;min-width:0;width:auto;}
 .tag-row .tag-name .truncate {flex:1;}
 .tag-status {display:inline-flex;align-items:center;justify-content:center;flex:none;white-space:nowrap;font-size:11px;min-width:24px;padding:2px 4px;}

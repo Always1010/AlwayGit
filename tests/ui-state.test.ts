@@ -507,12 +507,20 @@ describe('repository UI consistency', () => {
     expect(bridge.rpc.mock.calls.filter(([method])=>method==='history').at(-1)?.[2]).toMatchObject({tips:[]});
   });
   it('keeps only one non-empty sidebar action-selection scope', () => {
+    store.getState().setRemoteTagSelection({remote:'origin',fullName:'refs/tags/remote-only'});
+    expect(store.getState()).toMatchObject({selectedRemoteTag:{remote:'origin',fullName:'refs/tags/remote-only'},selectedRepositoryKeys:[],selectedRefs:[],selectedWorktreePaths:[]});
     store.getState().setRepositorySelection(['repository-a'],'repository-a');
-    expect(store.getState()).toMatchObject({selectedRepositoryKeys:['repository-a'],repositorySelectionAnchor:'repository-a',selectedRefs:[],selectedWorktreePaths:[]});
+    expect(store.getState()).toMatchObject({selectedRepositoryKeys:['repository-a'],repositorySelectionAnchor:'repository-a',selectedRefs:[],selectedWorktreePaths:[],selectedRemoteTag:undefined});
     store.getState().setRefSelection(['refs/heads/main'],'refs/heads/main');
     expect(store.getState()).toMatchObject({selectedRepositoryKeys:[],selectedRefs:['refs/heads/main'],refSelectionAnchor:'refs/heads/main',selectedWorktreePaths:[]});
     store.getState().setWorktreeSelection(['/a-worktree'],'/a-worktree');
     expect(store.getState()).toMatchObject({selectedRepositoryKeys:[],selectedRefs:[],selectedWorktreePaths:['/a-worktree'],worktreeSelectionAnchor:'/a-worktree'});
+    store.getState().setRemoteTagSelection({remote:'origin',fullName:'refs/tags/remote-only'});
+    store.getState().setRefSelection(['refs/tags/local'],'refs/tags/local');
+    expect(store.getState()).toMatchObject({selectedRefs:['refs/tags/local'],selectedRemoteTag:undefined,selectedWorktreePaths:[]});
+    store.getState().setRemoteTagSelection({remote:'origin',fullName:'refs/tags/remote-only'});
+    store.getState().setRefSelection([]);
+    expect(store.getState().selectedRemoteTag).toBeUndefined();
     store.getState().setRepositorySelection(['repository-b'],'repository-b');
     store.getState().setRefSelection([]);
     store.getState().setWorktreeSelection([]);
