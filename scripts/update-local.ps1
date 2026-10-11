@@ -4,7 +4,9 @@ param(
   [switch]$InstallOnly,
   [string]$Target = 'auto',
   [string]$Vsix,
-  [switch]$PackageOnly
+  [switch]$PackageOnly,
+  [ValidateSet('desktop', 'server')]
+  [string]$InstallTo = 'desktop'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -13,7 +15,7 @@ if ($Vsix -and -not $InstallOnly) { throw '-Vsix requires -InstallOnly.' }
 
 # Preserve the previous Windows default: no arguments means build and install.
 # For the interactive platform/operation menu, run node scripts/install.mjs.
-$installerArguments = @((Join-Path $PSScriptRoot 'install.mjs'), '--target', $Target)
+$installerArguments = @((Join-Path $PSScriptRoot 'install.mjs'), '--target', $Target, '--install-to', $InstallTo)
 if ($InstallOnly) { $installerArguments += '--install-only' }
 elseif ($PackageOnly) { $installerArguments += '--package-only' }
 else { $installerArguments += '--build-install' }

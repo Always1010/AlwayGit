@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-127：安装脚本按 SSH 环境推断位置，无法可靠区分 Desktop 与 Server
+
+- 日期：2026-10-11
+- 状态：已解决
+- 现象：用户希望更新 Remote SSH 使用的 AlwayGit，但脚本选中 `/usr/bin/code`，尝试安装到板子上的桌面版；平台选择 `linux-arm64` 无法区分同一机器上的两种宿主。
+- 原因：安装器依赖 PATH 第一个 `code` 和 SSH 环境变量推断位置；普通 SSH 也被归类为远程，记录标签不能证明实际目标，且缺少明确的 Desktop/Server 选择与相应管理入口定位。
+- 解决方案：新增一次性的安装位置菜单与 `--install-to desktop|server`，默认 Desktop。桌面目标跳过远程入口并移除远程转发变量；Server 自动定位官方管理入口，优先当前会话，普通 SSH 选择最新可用兼容版本。使用相同数据目录和扩展目录安装、核对，按真实目标保存 schema 3 记录；缺失或失败不切换位置，不再要求用户确认路径或版本。
+- 验证方式：安装器与目标定位定向回归覆盖菜单默认、Server 自动安装及核对目录一致、PATH 隔离、SSH 与当前会话、多版本与兼容性、旧目录、自定义数据根目录、错误覆盖及记录迁移。Rock 5B 只读验证自动发现 Desktop 1.98.2 和 Server 1.141.0，包与安装记录未变；PowerShell 入口验证参数转发。未打包、安装扩展或升级编辑器，未启动可见窗口。
+- 相关文件：`scripts/install.mjs`、`scripts/install-target.mjs`、`scripts/update-local.ps1`、`tests/install.test.ts`、`tests/install-target.test.ts`、`docs/VALIDATION.md`、两版用户手册及 `AGENTS.md`。
+
 ## BUG-126：安装脚本未提前检查 VS Code 兼容性
 
 - 日期：2026-10-11

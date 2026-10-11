@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
-const { parseInstallArgs, chooseInstallOptions, install, commandInvocation, assertCodeCompatibility } = await import(new URL('../scripts/install.mjs', import.meta.url).href);
+const { parseInstallArgs, chooseInstallOptions, install, commandInvocation, assertCodeCompatibility, runCommand } = await import(new URL('../scripts/install.mjs', import.meta.url).href);
 const { inspectInstallPackage } = await import(new URL('../scripts/install-package.mjs', import.meta.url).href);
 const require = createRequire(import.meta.url);
 const vsceRequire = createRequire(require.resolve('@vscode/vsce/package.json'));
@@ -40,16 +40,29 @@ async function fixture() {
   const codePath = path.join(root, process.platform === 'win32' ? 'code mock.cmd' : 'code mock');
   const source = `#!${process.execPath}
 const args = process.argv.slice(2);
-if (args.includes('--help')) console.log('--install-extension --list-extensions --show-versions' + (process.env.MOCK_NO_PROFILE ? '' : ' --profile <name>'));
-else if (args.includes('--version')) console.log(process.env.MOCK_CODE_VERSION || '1.106.0\\ncommit\\narm64');
+if (args.includes('--help')) console.log('--install-extension --list-extensions --show-versions --server-data-dir --extensions-dir' + (process.env.MOCK_NO_PROFILE ? '' : ' --profile <name>'));
+else if (args.includes('--version')) console.log(process.env.MOCK_CODE_VERSION || '1.106.0\\ncommit\\nx64');
 else if (args.includes('--install-extension')) { if (process.env.MOCK_FAIL_INSTALL) process.exit(3); }
 else if (args.includes('--list-extensions')) console.log('alwaygit-dev.alwaygit@' + (process.env.MOCK_VERSION || '1.3.0'));
 else process.exit(4);
 `;
   await writeFile(cliScript, source);
   await writeFile(codePath, process.platform === 'win32' ? `@"${process.execPath}" "${cliScript}" %*\r\n` : source, { mode: 0o755 });
-  const env = { ...process.env, PATH: '', ALWAYGIT_CODE_CLI: '', ALWAYGIT_VSCODE_PROFILE: '', SSH_CONNECTION: '', VSCODE_AGENT_FOLDER: '', MOCK_CODE_VERSION: '' };
-  return { root, vsix, codePath, env, record: path.join(root, 'artifacts/local-install.json') };
+  const env = { ...process.env, PATH: '', ALWAYGIT_CODE_CLI: '', ALWAYGIT_VSCODE_PROFILE: '', SSH_CONNECTION: '', VSCODE_AGENT_FOLDER: '', VSCODE_IPC_HOOK_CLI: '', VSCODE_CLIENT_COMMAND: '', MOCK_CODE_VERSION: '' };
+  return { root, vsix, codePath, env, home: path.join(root, 'home'), record: path.join(root, 'artifacts/local-install.json') };
+}
+
+async function serverFixture(f: Awaited<ReturnType<typeof fixture>>) {
+  const dataDir = path.join(f.home, '.vscode-server');
+  const serverRoot = path.join(dataDir, 'cli/servers/Stable-test/server');
+  await mkdir(path.join(serverRoot, 'bin'), { recursive: true });
+  await mkdir(path.join(serverRoot, 'out'));
+  await writeFile(path.join(serverRoot, 'product.json'), JSON.stringify({ serverApplicationName: 'code-server', serverDataFolderName: '.vscode-server' }));
+  await writeFile(path.join(serverRoot, 'package.json'), JSON.stringify({ version: '1.106.0' }));
+  await writeFile(path.join(serverRoot, 'out/server-main.js'), '');
+  const serverCli = path.join(serverRoot, 'bin', process.platform === 'win32' ? 'code-server.cmd' : 'code-server');
+  await writeFile(serverCli, await readFile(f.codePath), { mode: 0o755 });
+  return { serverCli, dataDir, extensionsDir: path.join(dataDir, 'extensions') };
 }
 
 describe('Unified installer', () => {
@@ -57,6 +70,8 @@ describe('Unified installer', () => {
     expect(parseInstallArgs(['--target', 'linux-arm64', '--build-install'])).toEqual({ target: 'linux-arm64', mode: 'build-install' });
     expect(parseInstallArgs(['--install-only', '--profile', '']).profile).toBe('');
     expect(parseInstallArgs(['--install-only', '--profile=']).profile).toBe('');
+    expect(parseInstallArgs(['--install-only', '--install-to', 'server']).installTo).toBe('server');
+    expect(() => parseInstallArgs(['--install-to', 'remote'])).toThrow(/安装位置/);
     expect(() => parseInstallArgs(['--install-only', '--build-install'])).toThrow(/一种操作/);
     expect(() => parseInstallArgs(['--target'])).toThrow(/缺少/);
     expect(() => parseInstallArgs(['--package-only', '--vsix', 'example.vsix'])).toThrow(/install-only/);
@@ -69,11 +84,60 @@ describe('Unified installer', () => {
       const text = chunk.toString();
       if (text.includes('请选择平台')) queueMicrotask(() => input.write('\n'));
       if (text.includes('请选择操作')) queueMicrotask(() => input.write('2\n'));
+      if (text.includes('请选择安装位置')) queueMicrotask(() => input.write('\n'));
       callback();
     } });
     try {
-      expect(await chooseInstallOptions({ target: 'auto' }, 'linux-arm64', { input, output })).toEqual({ target: 'linux-arm64', mode: 'install-only' });
+      expect(await chooseInstallOptions({ target: 'auto' }, 'linux-arm64', { input, output })).toEqual({ target: 'linux-arm64', mode: 'install-only', installTo: 'desktop' });
     } finally { input.destroy(); output.destroy(); }
+  });
+
+  it.each(['server', 'package-only'])('asks only for the necessary choices when selecting %s', async choice => {
+    const input = Object.assign(new PassThrough(), { isTTY: true });
+    const prompts: string[] = [];
+    const output = new Writable({ write(chunk, _encoding, callback) {
+      const text = chunk.toString();
+      if (text.includes('请选择操作')) queueMicrotask(() => input.write(choice === 'server' ? '2\n' : '3\n'));
+      if (text.includes('请选择安装位置')) { prompts.push(text); queueMicrotask(() => input.write('2\n')); }
+      callback();
+    } });
+    try {
+      const result = await chooseInstallOptions({ target: 'linux-arm64' }, 'linux-arm64', { input, output });
+      expect(result).toEqual(choice === 'server' ? { target: 'linux-arm64', mode: 'install-only', installTo: 'server' } : { target: 'linux-arm64', mode: 'package-only' });
+      expect(prompts).toHaveLength(choice === 'server' ? 1 : 0);
+    } finally { input.destroy(); output.destroy(); }
+  });
+
+  it('automatically installs to Server in ordinary SSH, verifies using the same directories and keeps desktop records separate', async () => {
+    const f = await fixture();
+    const s = await serverFixture(f);
+    await install({ mode: 'install-only', codePath: f.codePath, profile: 'Desktop Profile' }, { ...f, host: 'linux-x64', machine: 'same', log: () => {} });
+    const calls: { command: string; args: string[] }[] = [];
+    const run = async (command: string, args: string[], options: object) => { calls.push({ command, args }); return runCommand(command, args, options); };
+    await install({ mode: 'install-only', installTo: 'server' }, { ...f, host: 'linux-x64', machine: 'same', env: { ...f.env, SSH_CONNECTION: 'ordinary SSH' }, run, log: () => {} });
+    expect(calls.every(call => call.command === s.serverCli)).toBe(true);
+    const mutations = calls.filter(call => call.args.includes('--install-extension') || call.args.includes('--list-extensions'));
+    expect(mutations).toHaveLength(2);
+    for (const call of mutations) {
+      expect(call.args.slice(-4)).toEqual(['--server-data-dir', s.dataDir, '--extensions-dir', s.extensionsDir]);
+      expect(call.args).not.toContain('--profile');
+    }
+    const record = JSON.parse(await readFile(f.record, 'utf8'));
+    expect(record).toMatchObject({ schemaVersion: 3, installTo: 'server', extensionsDir: s.extensionsDir, profile: '' });
+    expect(record.contexts[JSON.stringify(['linux-x64', 'same', 'desktop'])].profile).toBe('Desktop Profile');
+    expect(record.contexts[JSON.stringify(['linux-x64', 'same', 'server', s.dataDir])].codePath).toBe(s.serverCli);
+  });
+
+  it('ignores ambiguous legacy remote records when defaulting to desktop in SSH', async () => {
+    const f = await fixture();
+    const legacy = JSON.stringify(['linux-x64', 'same', 'remote']);
+    await writeFile(f.record, JSON.stringify({ schemaVersion: 2, contexts: { [legacy]: { codePath: f.codePath, profile: 'Old Remote Profile' } } }));
+    const env: Record<string, string | undefined> = { ...f.env, PATH: path.dirname(f.codePath), SSH_CONNECTION: 'SSH' };
+    delete env.ALWAYGIT_VSCODE_PROFILE;
+    await install({ mode: 'install-only', codePath: f.codePath }, { ...f, host: 'linux-x64', machine: 'same', env, log: () => {} });
+    const record = JSON.parse(await readFile(f.record, 'utf8'));
+    expect(record).toMatchObject({ installTo: 'desktop', profile: '' });
+    expect(record.contexts[legacy].profile).toBe('Old Remote Profile');
   });
 
   it('checks real VSCE XML identity in stored and deflated metadata without runtime dependencies', async () => {
@@ -95,9 +159,9 @@ describe('Unified installer', () => {
     const messages: string[] = [];
     await install({ target: 'auto', mode: 'install-only', codePath: f.codePath, profile: '工作 Profile' }, { ...f, host: 'linux-x64', machine: 'rock-test', log: (message: string) => messages.push(message) });
     const record = JSON.parse(await readFile(f.record, 'utf8'));
-    expect(record).toMatchObject({ schemaVersion: 2, codePath: f.codePath, target: 'linux-x64', version: '1.3.0', profile: '工作 Profile' });
+    expect(record).toMatchObject({ schemaVersion: 3, installTo: 'desktop', codePath: f.codePath, target: 'linux-x64', version: '1.3.0', profile: '工作 Profile' });
     expect(record.sha256).toMatch(/^[a-f0-9]{64}$/);
-    expect(record.contexts[JSON.stringify(['linux-x64', 'rock-test', 'local'])]).toMatchObject({ codePath: f.codePath });
+    expect(record.contexts[JSON.stringify(['linux-x64', 'rock-test', 'desktop'])]).toMatchObject({ codePath: f.codePath });
     expect(messages.at(-1)).toMatch(/已安装并核对/);
     await expect(access(path.join(f.root, 'node_modules'))).rejects.toThrow();
   });
@@ -123,9 +187,9 @@ describe('Unified installer', () => {
     await expect(access(f.record)).rejects.toThrow();
   });
 
-  it('refuses unsupported remote Profiles and allows explicitly clearing a saved Profile', async () => {
+  it('refuses unsupported Profiles and allows explicitly clearing a saved desktop Profile in SSH', async () => {
     const f = await fixture();
-    const context = JSON.stringify(['linux-x64', 'rock-test', 'remote']);
+    const context = JSON.stringify(['linux-x64', 'rock-test', 'desktop']);
     await writeFile(f.record, JSON.stringify({ schemaVersion: 2, contexts: { [context]: { codePath: f.codePath, profile: 'desktop' } } }));
     const env = { ...f.env, SSH_CONNECTION: 'test', MOCK_NO_PROFILE: '1' };
     delete (env as Record<string, string | undefined>).ALWAYGIT_VSCODE_PROFILE;
