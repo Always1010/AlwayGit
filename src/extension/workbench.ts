@@ -2,6 +2,8 @@ import { message, MessageError } from '../i18n';
 import { translate, type MessageKey, type MessageArgs } from '../i18n/index';
 import { TerminalSessions } from '../application/terminal-sessions';
 import { spawnTerminal, terminalShell } from './terminal-runtime';
+import { createGitCredentialEnvironment } from './git-authentication';
+import type { TerminalShell } from '../protocol/terminal';
 import { terminalAckSchema, terminalCreateSchema, terminalIdSchema, terminalInputSchema, terminalResizeSchema, terminalRenameSchema } from '../protocol/terminal';
 import { SnapshotCoordinator } from '../application/snapshot-coordinator';
 import { QueryCoordinator } from '../application/query-coordinator';
@@ -56,6 +58,18 @@ export class Workbench implements vscode.Disposable {
   private readonly captures = new Map<string, { source: WorkbenchPanel; resolve(value: WorkbenchTransfer): void; reject(error: Error): void; timer: ReturnType<typeof setTimeout> }>();
   private lastPanel?: WorkbenchPanel;
   private readonly terminals = new TerminalSessions(spawnTerminal, (owner, event) => this.post(event, owner as WorkbenchPanel));
+  private async createTerminal(source: WorkbenchPanel, repoId: string, cwd: string, shell: TerminalShell, cols: number, rows: number, replaceId?: string) {
+    const config = vscode.workspace.getConfiguration('git');
+    const authentication = config.get<boolean>('useIntegratedAskPass', true) && config.get<boolean>('terminalAuthentication', true)
+      ? await createGitCredentialEnvironment(vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'askpass.cjs').fsPath, false) : undefined;
+    try {
+      return this.terminals.create(source, repoId, cwd, shell, terminalShell(shell, authentication?.env), cols, rows, replaceId, authentication);
+    } catch (error) {
+      // The panel may have closed or reached its session limit while awaiting IPC.
+      authentication?.dispose();
+      throw error;
+    }
+  }
   private activeRepository?: string;
   private readonly snapshots = new SnapshotCoordinator();
   private readonly queries = new QueryCoordinator();
@@ -597,7 +611,7 @@ export class Workbench implements vscode.Disposable {
       if (request.method === 'terminalCreate') {
         const data = terminalCreateSchema.parse(request.payload);
         const repository = this.repositories.get(request.repoId);
-        return this.terminals.create(source, repository.id, repository.root, data.shell, terminalShell(data.shell), data.cols, data.rows);
+        return this.createTerminal(source, repository.id, repository.root, data.shell, data.cols, data.rows);
       }
       const { sessionId } = terminalIdSchema.parse({ sessionId: (request.payload as { sessionId?: unknown } | undefined)?.sessionId });
       switch (request.method) {
@@ -614,7 +628,7 @@ export class Workbench implements vscode.Disposable {
           const previous = this.terminals.snapshot(source, sessionId);
           if (previous.status !== 'exited') throw new MessageError(message('dock.stopBeforeRestart'));
           const repository = this.repositories.get(previous.repoId);
-          return this.terminals.create(source, repository.id, previous.cwd, previous.shell, terminalShell(previous.shell), 80, 24, sessionId);
+          return this.createTerminal(source, repository.id, previous.cwd, previous.shell, 80, 24, sessionId);
         }
       }
       return null;

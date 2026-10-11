@@ -13,7 +13,7 @@ export type PtyFactory = (shell: ShellLaunch, cwd: string, cols: number, rows: n
 interface Entry {
   owner: object; session: TerminalSession; process: PtyProcess; output: string[]; outputLength: number;
   pending: string; sequence: number; inflight: Map<number, number>; unacknowledged: number; paused: boolean;
-  timer?: ReturnType<typeof setTimeout>; subscriptions: { dispose(): void }[];
+  timer?: ReturnType<typeof setTimeout>; subscriptions: { dispose(): void }[]; releaseResources(): void;
 }
 const replayLimit = 1024 * 1024;
 
@@ -22,14 +22,17 @@ export class TerminalSessions {
   private readonly entries = new Map<string, Entry>();
   private readonly closedOwners = new WeakSet<object>();
   constructor(private readonly spawn: PtyFactory, private readonly emit: (owner: object, event: TerminalEvent) => void) {}
-  create(owner: object, repoId: string, cwd: string, shell: TerminalShell, launch: ShellLaunch, cols: number, rows: number, replaceId?: string): TerminalSession {
+  create(owner: object, repoId: string, cwd: string, shell: TerminalShell, launch: ShellLaunch, cols: number, rows: number, replaceId?: string, resources?: { dispose(): void }): TerminalSession {
     if (this.closedOwners.has(owner)) throw new MessageError(message('dock.closed'));
     const replacement = replaceId ? this.get(owner, replaceId) : undefined;
     if (replacement && replacement.session.status !== 'exited') throw new MessageError(message('dock.stopBeforeRestart'));
     if (this.list(owner).length >= 24 && !replacement) throw new MessageError(message('dock.limit'));
     const process = this.spawn(launch, cwd, cols, rows);
     const session: TerminalSession = { id: randomUUID(), repoId, cwd, shell, title: `${launch.name} ${this.list(owner).length + 1}`, status: 'running' };
-    const entry: Entry = { owner, session, process, output: [], outputLength: 0, pending: '', sequence: 0, inflight: new Map(), unacknowledged: 0, paused: false, subscriptions: [] };
+    let released = false;
+    const entry: Entry = { owner, session, process, output: [], outputLength: 0, pending: '', sequence: 0, inflight: new Map(), unacknowledged: 0, paused: false, subscriptions: [],
+      releaseResources() { if (!released) { released = true; resources?.dispose(); } },
+    };
     this.entries.set(session.id, entry);
     entry.subscriptions.push(process.onData(data => {
       // Chunking bounds both IPC payloads and the replay buffer even for very large writes.
@@ -39,6 +42,7 @@ export class TerminalSessions {
       }
       entry.timer ??= setTimeout(() => this.flush(entry), 16);
     }), process.onExit(({ exitCode }) => {
+      entry.releaseResources();
       this.flush(entry); entry.session = { ...entry.session, status: 'exited', exitCode };
       this.emit(entry.owner, { type: 'terminalUpdated', session: { ...entry.session } });
     }));
@@ -59,9 +63,10 @@ export class TerminalSessions {
   }
   resize(owner: object, id: string, cols: number, rows: number): void { const entry = this.get(owner, id); if (entry.session.status === 'running') entry.process.resize(cols, rows); }
   rename(owner: object, id: string, title: string): void { const entry = this.get(owner, id); entry.session = { ...entry.session, title }; this.emit(owner, { type: 'terminalUpdated', session: { ...entry.session } }); }
-  stop(owner: object, id: string): void { const entry = this.get(owner, id); if (entry.session.status === 'running') entry.process.kill(); }
+  stop(owner: object, id: string): void { const entry = this.get(owner, id); if (entry.session.status === 'running') { entry.releaseResources(); entry.process.kill(); } }
   close(owner: object, id: string): void {
     const entry = this.get(owner, id); this.entries.delete(id); clearTimeout(entry.timer);
+    entry.releaseResources();
     for (const subscription of entry.subscriptions) subscription.dispose();
     if (entry.session.status === 'running') entry.process.kill();
     this.emit(owner, { type: 'terminalClosed', sessionId: id });

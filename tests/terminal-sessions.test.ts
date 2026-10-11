@@ -18,6 +18,19 @@ function fixture() {
 }
 afterEach(() => vi.useRealTimers());
 describe('embedded terminal boundary and lifecycle', () => {
+  it.each(['exit', 'stop', 'close', 'dispose'] as const)('releases authentication once on %s and keeps it alive across host transfers', action => {
+    const { manager, processes } = fixture(), source = {}, target = {}, resources = { dispose: vi.fn() };
+    const terminal = manager.create(source, 'repo', '/repo', 'default', launch, 80, 24, undefined, resources);
+    manager.transferOwner(source, target); manager.disposeOwner(source);
+    expect(resources.dispose).not.toHaveBeenCalled();
+    if (action === 'exit') processes[0].exit(0);
+    if (action === 'stop') manager.stop(target, terminal.id);
+    if (action === 'close') manager.close(target, terminal.id);
+    if (action === 'dispose') manager.dispose();
+    expect(resources.dispose).toHaveBeenCalledOnce();
+    manager.dispose();
+    expect(resources.dispose).toHaveBeenCalledOnce();
+  });
   it('moves a live shell and replay buffer to a new host without affecting other workbenches', () => {
     vi.useFakeTimers(); const { manager, processes, events } = fixture(), source = {}, target = {}, other = {};
     const terminal = manager.create(source, 'repo', '/repo', 'default', launch, 80, 24);

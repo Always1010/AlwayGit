@@ -5,7 +5,7 @@ import { GitService } from '../git/service';
 import { RepositoryManager } from '../repositories/manager';
 import { GitDocuments } from '../editor/documents';
 import { Workbench } from './workbench';
-import { credentialEnvironment, withGitHubAuthentication } from '../application/credentials';
+import { createGitCredentialEnvironment } from './git-authentication';
 import { redactSecrets } from '../application/logging';
 import { ProjectWindows } from './project-windows';
 import { statusBarPresentation } from './workbench-entry';
@@ -33,25 +33,7 @@ export async function activate(context: vscode.ExtensionContext) {
     onOutput: (repo, text) => output.append(redactSecrets(`[${repo.name}] ${text}`)),
     environment: async (_repo, args) => {
       if (!['fetch', 'pull', 'push'].includes(args[0])) return {};
-      return credentialEnvironment(vscode.Uri.joinPath(context.extensionUri, 'dist', 'askpass.cjs').fsPath,
-        withGitHubAuthentication(async (message, password, signal) => {
-          const cancellation = new vscode.CancellationTokenSource(), cancel = () => cancellation.cancel();
-          signal.addEventListener('abort', cancel, { once: true });
-          if (signal.aborted) cancel();
-          try { return await vscode.window.showInputBox({ title: hostText(preferredLanguage(), "extension.alwayGitGitAuthentication"), prompt: message, password, ignoreFocusOut: true }, cancellation.token); }
-          finally { signal.removeEventListener('abort', cancel); cancellation.dispose(); }
-        }, async () => {
-          if (!vscode.workspace.getConfiguration('github').get<boolean>('gitAuthentication', true)
-            || !vscode.workspace.getConfiguration('git').get<boolean>('useIntegratedAskPass', true)) return undefined;
-          try {
-            // Match VS Code's GitHub Git credential provider so existing login
-            // sessions can be reused locally and through Remote SSH.
-            return await vscode.authentication.getSession('github', ['repo', 'workflow', 'user:email', 'read:user'], { createIfNone: true });
-          } catch (error) {
-            if (error instanceof Error && /^No authentication provider\b/i.test(error.message)) return undefined;
-            throw error; // Denied/cancelled login must not trigger another prompt.
-          }
-        }));
+      return createGitCredentialEnvironment(vscode.Uri.joinPath(context.extensionUri, 'dist', 'askpass.cjs').fsPath);
     },
   });
   const manager = new RepositoryManager(git, context, output);

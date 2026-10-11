@@ -4,6 +4,11 @@ import { activate } from '../src/extension/extension';
 import type { GitServiceOptions } from '../src/git/service';
 import { createConnection } from 'node:net';
 import type { Repository } from '../src/protocol/types';
+import { spawn } from 'node:child_process';
+import path from 'node:path';
+import * as terminalRuntime from '../src/extension/terminal-runtime';
+import type { ShellLaunch, TerminalSessions } from '../src/application/terminal-sessions';
+import type { TerminalSession, TerminalShell } from '../src/protocol/terminal';
 
 const startup = vi.hoisted(() => ({ scan: vi.fn(), builtin: vi.fn(), bridge: vi.fn(), session: vi.fn(), input: vi.fn(), githubAuth: true, networkMinutes: undefined as unknown, options: undefined as GitServiceOptions | undefined }));
 vi.mock('../src/git/service', () => ({ GitService: class { constructor(options: GitServiceOptions) { startup.options = options; } } }));
@@ -110,6 +115,53 @@ it.each([true, false])('routes network AskPass through VS Code authentication wh
     }
   } finally {
     adapter.dispose?.();
+    for (const disposable of context.subscriptions) disposable.dispose();
+  }
+});
+
+it('gives embedded shells real Git authentication with fresh sessions and releases rejected launches', async () => {
+  startup.scan.mockResolvedValue(undefined);
+  startup.session.mockResolvedValue({ account: { id: '123456' }, accessToken: 'first-token' });
+  vi.spyOn(vscode.Uri, 'joinPath').mockReturnValue({ fsPath: path.resolve('src/extension/askpass.cjs') } as vscode.Uri);
+  const launches: ShellLaunch[] = [];
+  vi.spyOn(terminalRuntime, 'spawnTerminal').mockImplementation(shell => {
+    launches.push(shell);
+    return { write() {}, resize() {}, kill() {}, pause() {}, resume() {}, onData: () => ({ dispose() {} }), onExit: () => ({ dispose() {} }) };
+  });
+  const context = { subscriptions: [], extensionUri: {}, workspaceState: { get: (_key: string, fallback: unknown) => fallback, update: async () => {} } } as unknown as vscode.ExtensionContext;
+  const { workbench } = await activate(context);
+  const host = workbench as unknown as { terminals: TerminalSessions; createTerminal(owner: object, repoId: string, cwd: string, shell: TerminalShell, cols: number, rows: number): Promise<TerminalSession> };
+  const owner = { panel: { webview: { postMessage: async () => true } }, ready: true };
+  const fill = (env: NodeJS.ProcessEnv) => new Promise<string>((resolve, reject) => {
+    const child = spawn('git', ['-c', 'credential.helper=', 'credential', 'fill'], { env, windowsHide: true });
+    let output = '', error = '';
+    child.stdout.on('data', chunk => { output += chunk; }); child.stderr.on('data', chunk => { error += chunk; });
+    child.once('error', reject); child.once('close', code => code === 0 ? resolve(output) : reject(new Error(error)));
+    child.stdin.end('protocol=https\nhost=github.com\n\n');
+  });
+  try {
+    const terminal = await host.createTerminal(owner, 'repo', process.cwd(), 'default', 80, 24);
+    expect(await fill(launches[0].env)).toContain('password=first-token');
+    startup.session.mockResolvedValue({ account: { id: '654321' }, accessToken: 'refreshed-token' });
+    expect(await fill(launches[0].env)).toContain('password=refreshed-token');
+    expect(startup.session).toHaveBeenCalledTimes(4);
+    expect(startup.input).not.toHaveBeenCalled();
+    expect(JSON.stringify(terminal)).not.toContain('ASKPASS');
+    expect(JSON.stringify(launches[0].env)).not.toContain('first-token');
+    host.terminals.stop(owner, terminal.id);
+    await expect(fill(launches[0].env)).rejects.toThrow();
+    host.terminals.disposeOwner(owner);
+    await expect(host.createTerminal(owner, 'repo', process.cwd(), 'default', 80, 24)).rejects.toThrow();
+    expect(launches).toHaveLength(1);
+    // Respect the same opt-out as the native VS Code terminal.
+    const configuration = vscode.workspace.getConfiguration;
+    vi.spyOn(vscode.workspace, 'getConfiguration').mockImplementation((...args: Parameters<typeof configuration>) => {
+      const config = configuration(...args);
+      return args[0] === 'git' ? { ...config, get: (key: string, fallback: unknown) => key === 'terminalAuthentication' ? false : config.get(key, fallback) } as vscode.WorkspaceConfiguration : config;
+    });
+    await host.createTerminal({}, 'repo', process.cwd(), 'default', 80, 24);
+    expect(launches[1].env.ALWAYGIT_ASKPASS_PORT).toBeUndefined();
+  } finally {
     for (const disposable of context.subscriptions) disposable.dispose();
   }
 });

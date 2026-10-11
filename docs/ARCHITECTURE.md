@@ -105,7 +105,7 @@ App、History、Sidebar、Details 和 Diff 按各自使用的状态字段订阅�
 
 `BottomDock.tsx` 组合固定 Diff 标签与多个终端标签，`dock-store.ts` 保存本工作台运行期的标签与活动对象。旧会话的 `layout.diff` 和 `layout.diffCollapsed` 直接复用为整个底部面板的高度与收起状态，因此不迁移或丢弃已有尺寸、视图及草稿。Diff 控件仅在 Diff 标签活动时注册可执行快捷键；终端输入区域由全局键盘保护识别。`TerminalView.tsx` 延迟加载 xterm.js 与 FitAddon，按主题更新颜色并将可见区域的列数/行数发送给宿主。
 
-`src/protocol/terminal.ts` 定义终端专用校验和事件。宿主要求受信任工作区与真实来源面板；新建只接受已注册仓库 ID、有限 Shell 选项和尺寸，不接受任意路径或命令启动参数。`TerminalSessions` 以来源面板隔离会话，校验输入、关闭、尺寸、重命名、快照与输出确认的所属关系，退出后保留描述信息，面板销毁时释放其全部会话。终端是明确开放的 Shell 输入通道，不使用 Git RPC 的动作白名单、确认或写租约，也不向其他工作台广播终端输出。
+`src/protocol/terminal.ts` 定义终端专用校验和事件。宿主要求受信任工作区与真实来源面板；新建只接受已注册仓库 ID、有限 Shell 选项和尺寸，不接受任意路径或命令启动参数。`TerminalSessions` 以来源面板隔离会话，校验输入、关闭、尺寸、重命名、快照与输出确认的所属关系，退出后保留描述信息，面板销毁时释放其全部会话。终端是明确开放的 Shell 输入通道，不使用 Git RPC 的动作白名单、确认或写租约，也不向其他工作台广播终端输出。 新建和重启 Shell 在扩展宿主创建独立 AskPass 桥接，通过共享的 `git-authentication.ts` 复用 VS Code GitHub 登录；每次询问重新获取会话，避免长期终端保留过期令牌。尊重 `git.useIntegratedAskPass` 与 `git.terminalAuthentication`，配置的终端环境覆盖仍最后应用；系统凭据助手与 SSH Agent 保持可用。桥接随终端退出、停止或面板销毁释放并取消待处理输入，面板转移不重建桥接；异步创建期间面板已关闭、超出数量限制或 Shell 启动失败也释放资源。令牌不写入终端会话描述或 Webview，AskPass 的 Electron Node 模式不额外注入交互 Shell。
 
 `terminal-runtime.ts` 为每个会话启动无窗口辅助进程 `terminal-host.cjs`，由辅助进程延迟加载 node-pty 并管理 PTY。Shell 自然退出后，辅助进程先交付剩余输出与退出码，再退出并释放原生输出线程；关闭/终止请求结束 Shell，辅助进程另有 5 秒终止兜底。Webview 保留隐藏上下文，输出按 16 ms / 32 KiB 分批；宿主只保留约 1 MiB 的内存重连缓冲，xterm 保留 5000 行。输出序号避免快照重放和实时输出重复，128 KiB 未确认输出暂停读取，渲染确认后恢复，防止慢前端无界积压。输出及命令不进入会话持久化或日志。
 
