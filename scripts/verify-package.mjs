@@ -7,7 +7,7 @@ import { promisify } from 'node:util';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { packageTarget } from './platform-runtime.mjs';
+import { packageTarget, verifyPackageIdentity } from './platform-runtime.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const archive = process.argv[2];
@@ -51,15 +51,8 @@ try {
   });
   const expected = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
   const manifest = JSON.parse(await readFile(path.join(directory, 'extension/package.json'), 'utf8'));
-  for (const field of ['publisher', 'name', 'version']) {
-    if (manifest[field] !== expected[field]) throw new Error(`Packaged ${field} differs from the project.`);
-  }
   const xml = await parseStringPromise(await readFile(path.join(directory, 'extension.vsixmanifest'), 'utf8'));
-  const properties = xml.PackageManifest.Metadata[0].Properties[0].Property;
-  if (!properties.some(property => property.$.Id === 'Microsoft.VisualStudio.Code.TargetPlatform' && property.$.Value === target)) {
-    throw new Error(`VSIX target does not match ${target}.`);
-  }
-  if (manifest.extensionKind?.length !== 1 || manifest.extensionKind[0] !== 'workspace') throw new Error('VSIX must run in the workspace extension host.');
+  verifyPackageIdentity(manifest, xml.PackageManifest?.Metadata?.[0]?.Identity?.[0]?.$, expected, target);
   const dist = path.join(directory, 'extension/dist');
   if (process.platform !== 'win32') {
     const { constants } = await import('node:fs');
