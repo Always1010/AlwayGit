@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
-const { parseInstallArgs, chooseInstallOptions, install, commandInvocation } = await import(new URL('../scripts/install.mjs', import.meta.url).href);
+const { parseInstallArgs, chooseInstallOptions, install, commandInvocation, assertCodeCompatibility } = await import(new URL('../scripts/install.mjs', import.meta.url).href);
 const { inspectInstallPackage } = await import(new URL('../scripts/install-package.mjs', import.meta.url).href);
 const require = createRequire(import.meta.url);
 const vsceRequire = createRequire(require.resolve('@vscode/vsce/package.json'));
@@ -17,8 +17,8 @@ const manifest = { name: 'alwaygit', publisher: 'alwaygit-dev', version: '1.3.0'
 const directories: string[] = [];
 afterEach(async () => { await Promise.all(directories.splice(0).map(directory => rm(directory, { recursive: true, force: true }))); });
 
-async function archive(filename: string, target = 'linux-x64', options: { version?: string; compress?: boolean; duplicate?: boolean } = {}) {
-  const packaged = { ...manifest, version: options.version ?? manifest.version };
+async function archive(filename: string, target = 'linux-x64', options: { version?: string; compress?: boolean; duplicate?: boolean; engine?: string } = {}) {
+  const packaged = { ...manifest, version: options.version ?? manifest.version, engines: { vscode: options.engine ?? manifest.engines.vscode } };
   const xml = await toVsixManifest({ ...new ManifestProcessor(packaged, { target }).vsix, assets: [] });
   const zip = new ZipFile();
   zip.addBuffer(Buffer.from(JSON.stringify(packaged)), 'extension/package.json', { compress: options.compress ?? true });
@@ -41,13 +41,14 @@ async function fixture() {
   const source = `#!${process.execPath}
 const args = process.argv.slice(2);
 if (args.includes('--help')) console.log('--install-extension --list-extensions --show-versions' + (process.env.MOCK_NO_PROFILE ? '' : ' --profile <name>'));
+else if (args.includes('--version')) console.log(process.env.MOCK_CODE_VERSION || '1.106.0\\ncommit\\narm64');
 else if (args.includes('--install-extension')) { if (process.env.MOCK_FAIL_INSTALL) process.exit(3); }
 else if (args.includes('--list-extensions')) console.log('alwaygit-dev.alwaygit@' + (process.env.MOCK_VERSION || '1.3.0'));
 else process.exit(4);
 `;
   await writeFile(cliScript, source);
   await writeFile(codePath, process.platform === 'win32' ? `@"${process.execPath}" "${cliScript}" %*\r\n` : source, { mode: 0o755 });
-  const env = { ...process.env, PATH: '', ALWAYGIT_CODE_CLI: '', ALWAYGIT_VSCODE_PROFILE: '', SSH_CONNECTION: '', VSCODE_AGENT_FOLDER: '' };
+  const env = { ...process.env, PATH: '', ALWAYGIT_CODE_CLI: '', ALWAYGIT_VSCODE_PROFILE: '', SSH_CONNECTION: '', VSCODE_AGENT_FOLDER: '', MOCK_CODE_VERSION: '' };
   return { root, vsix, codePath, env, record: path.join(root, 'artifacts/local-install.json') };
 }
 
@@ -113,12 +114,12 @@ describe('Unified installer', () => {
   it('refuses a foreign host or package before installation', async () => {
     const f = await fixture();
     const calls: string[][] = [];
-    const run = async (_command: string, args: string[]) => { calls.push(args); return '--install-extension --list-extensions --show-versions'; };
+    const run = async (_command: string, args: string[]) => { calls.push(args); return args.includes('--version') ? '1.106.0' : '--install-extension --list-extensions --show-versions'; };
     await expect(install({ target: 'linux-arm64', mode: 'build-install' }, { ...f, host: 'linux-x64', run, log: () => {} })).rejects.toThrow(/does not cross-compile/);
     expect(calls).toEqual([]);
     await archive(f.vsix, 'linux-arm64');
     await expect(install({ target: 'auto', mode: 'install-only', codePath: f.codePath }, { ...f, host: 'linux-x64', run, log: () => {} })).rejects.toThrow(/target/);
-    expect(calls).toEqual([['--help']]);
+    expect(calls).toEqual([['--help'], ['--version']]);
     await expect(access(f.record)).rejects.toThrow();
   });
 
@@ -153,7 +154,7 @@ describe('Unified installer', () => {
     const run = async (_command: string, args: string[]) => {
       calls.push(args);
       if (args[0].endsWith('package.mjs')) throw new Error('mock build failed');
-      return '--install-extension --list-extensions --show-versions';
+      return args.includes('--version') ? '1.106.0' : '--install-extension --list-extensions --show-versions';
     };
     await expect(install({ mode: 'package-only' }, { ...f, host: 'linux-x64', run, log: () => {} })).rejects.toThrow(/npm ci/);
     expect(calls).toEqual([]);
@@ -162,11 +163,47 @@ describe('Unified installer', () => {
     await writeFile(path.join(f.root, 'node_modules/@vscode/vsce/vsce'), '');
     await writeFile(path.join(f.root, 'node_modules/node-pty/package.json'), '{}');
     await expect(install({ mode: 'build-install', codePath: f.codePath }, { ...f, host: 'linux-x64', run, log: () => {} })).rejects.toThrow(/mock build failed/);
-    expect(calls).toEqual([['--help'], [path.join(f.root, 'scripts/package.mjs'), '--target', 'linux-x64']]);
+    expect(calls).toEqual([['--help'], ['--version'], [path.join(f.root, 'scripts/package.mjs'), '--target', 'linux-x64']]);
     await expect(access(f.record)).rejects.toThrow();
     calls.length = 0;
     await install({ mode: 'package-only' }, { ...f, host: 'linux-x64', run: async (_command: string, args: string[]) => { calls.push(args); }, log: () => {} });
     expect(calls).toEqual([[path.join(f.root, 'scripts/package.mjs'), '--target', 'linux-x64']]);
+  });
+
+  it.each(['1.106.0', '1.106.1', '1.140.0', '1.106.0-insider'])('accepts compatible VS Code %s CLI output', version => {
+    expect(assertCodeCompatibility(`warning\n${version}\ncommit\narm64\n`, '^1.106.0', 'code')).toBe(version);
+  });
+
+  it.each(['1.98.2', '1.105.9', '2.0.0'])('rejects incompatible VS Code %s', version => {
+    expect(() => assertCodeCompatibility(version, '^1.106.0', '/usr/bin/code')).toThrow(/不兼容.*CLI：\/usr\/bin\/code/);
+  });
+
+  it('refuses unknown CLI versions and unsupported or missing engine ranges', () => {
+    expect(() => assertCodeCompatibility('commit\narm64', '^1.106.0', 'code')).toThrow(/无法读取/);
+    expect(() => assertCodeCompatibility('1.106.0', undefined, 'code')).toThrow(/无法校验/);
+    expect(() => assertCodeCompatibility('1.106.0', '*', 'code')).toThrow(/无法校验/);
+  });
+
+  it.each(['build-install', 'install-only'])('stops %s on old VS Code before building or installing and preserves artifacts', async mode => {
+    const f = await fixture();
+    const before = await readFile(f.vsix);
+    await writeFile(f.record, '{}');
+    const calls: string[][] = [];
+    const run = async (_command: string, args: string[]) => {
+      calls.push(args);
+      return args.includes('--version') ? '1.98.2\ncommit\narm64' : '--install-extension --list-extensions --show-versions';
+    };
+    await expect(install({ mode, codePath: f.codePath }, { ...f, host: 'linux-x64', run, log: () => {} })).rejects.toThrow(/1\.98\.2.*\^1\.106\.0/);
+    expect(calls).toEqual([['--help'], ['--version']]);
+    expect(await readFile(f.vsix)).toEqual(before);
+    expect(await readFile(f.record, 'utf8')).toBe('{}');
+  });
+
+  it('checks the existing VSIX engine as well as the source manifest before installation', async () => {
+    const f = await fixture();
+    await archive(f.vsix, 'linux-x64', { engine: '^1.107.0' });
+    await expect(install({ mode: 'install-only', codePath: f.codePath }, { ...f, host: 'linux-x64', log: () => {} })).rejects.toThrow(/1\.106\.0.*\^1\.107\.0/);
+    await expect(access(f.record)).rejects.toThrow();
   });
 
   it('quotes Windows batch paths and arguments without exposing shell expansions', () => {

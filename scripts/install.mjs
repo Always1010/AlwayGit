@@ -129,6 +129,22 @@ export async function runCommand(command, args, { cwd = projectRoot, env = proce
   });
 }
 
+// Install-only has no project dependencies. Support the project's stable caret
+// range explicitly and reject unknown formats rather than guessing compatibility.
+export function assertCodeCompatibility(output, requirement, cli) {
+  const actual = output.split(/\r?\n/).map(line => line.trim()).find(line => /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(line));
+  const range = /^\^(\d+)\.(\d+)\.(\d+)$/.exec(requirement ?? '');
+  if (!actual) throw new Error(`无法读取 VS Code 版本：${cli}。请确认 --code-path 指向正确的 VS Code CLI。`);
+  if (!range) throw new Error(`无法校验 VS Code 版本要求：${requirement ?? '缺失'}。安装已停止。`);
+  const version = actual.split(/[.-]/).slice(0, 3).map(Number), minimum = range.slice(1).map(Number);
+  const upper = minimum[0] > 0 ? [minimum[0] + 1, 0, 0] : minimum[1] > 0 ? [0, minimum[1] + 1, 0] : [0, 0, minimum[2] + 1];
+  const compare = (left, right) => left[0] - right[0] || left[1] - right[1] || left[2] - right[2];
+  if (compare(version, minimum) < 0 || compare(version, upper) >= 0) {
+    throw new Error(`VS Code ${actual} 与扩展要求 ${requirement} 不兼容（CLI：${cli}）。请先更新该 VS Code；Remote SSH 请在已连接的 VS Code 终端运行脚本，或用 --code-path 指定兼容的 CLI。脚本不会自动升级 VS Code。`);
+  }
+  return actual;
+}
+
 async function readRecord(filename) {
   try { return JSON.parse((await readFile(filename, 'utf8')).replace(/^\uFEFF/, '')); }
   catch (error) {
@@ -152,7 +168,7 @@ export async function install(options, { root = projectRoot, host = nativeTarget
   const recordPath = path.join(artifacts, 'local-install.json');
   const expected = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
   log(`平台：${target}；操作：${options.mode}；安装包：${archive}`);
-  let cli, profile, context, records;
+  let cli, profile, context, records, codeVersion;
   if (options.mode !== 'package-only') {
     records = await readRecord(recordPath);
     let defaultCli;
@@ -174,7 +190,9 @@ export async function install(options, { root = projectRoot, host = nativeTarget
     const cliHelp = await run(cli, ['--help'], { cwd: root, env, capture: true });
     if (!cliHelp.includes('--install-extension') || !cliHelp.includes('--list-extensions') || !cliHelp.includes('--show-versions')) throw new Error('选定的 CLI 不支持扩展安装及版本核对。');
     if (profile && !/(?:^|\s)--profile(?:\s|=|$)/m.test(cliHelp)) throw new Error('当前 VS Code CLI 不支持 --profile；Remote SSH 请使用当前窗口的 Profile，移除该参数或传入 --profile ""。');
-    log(`VS Code CLI：${cli}；环境：${remote ? '远程' : '本地'}；Profile：${profile || '默认/当前窗口'}`);
+    const versionOutput = await run(cli, ['--version'], { cwd: root, env, capture: true });
+    codeVersion = assertCodeCompatibility(versionOutput, expected.engines?.vscode, cli);
+    log(`VS Code CLI：${cli}；版本：${codeVersion}；环境：${remote ? '远程' : '本地'}；Profile：${profile || '默认/当前窗口'}`);
   }
   if (options.mode !== 'install-only') {
     try {
@@ -187,6 +205,7 @@ export async function install(options, { root = projectRoot, host = nativeTarget
   }
   if (options.mode === 'package-only') { log(`打包完成：${archive}。`); return; }
   const manifest = await inspectInstallPackage(archive, expected, target);
+  assertCodeCompatibility(codeVersion, manifest.engines?.vscode, cli);
   const extensionId = `${manifest.publisher}.${manifest.name}`, version = manifest.version;
   const sha256 = await packageHash(archive);
   const profileArgs = profile ? ['--profile', profile] : [];

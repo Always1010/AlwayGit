@@ -135,6 +135,9 @@ node scripts/verify-package.mjs artifacts/alwaygit.vsix
 
 统一安装入口是 `scripts/install.mjs`，Windows、Linux 共用。需要已有 Node.js；源码构建采用 Node.js 24，并先在目标机器的项目目录准备 `npm ci` 所安装的依赖及原生编译工具。脚本不自动安装依赖、Node.js 或工具链。安装已有 VSIX 的模式只需要 Node.js 和可用的 VS Code CLI，无需项目 node_modules、Python 或编译器。
 
+安装操作先调用所选 CLI 的 `--version`，按项目的 `engines.vscode` 要求检查兼容性；不兼容或无法读取版本时，在构建、替换固定包和安装之前停止。安装已有 VSIX 还会校验包内的版本要求；只打包无需 VS Code。当前最低版本为 VS Code 1.106，第二侧边栏容器贡献项依赖该版本，不能仅降低清单要求来兼容 1.98。Rock 5B 若选中的是 `/usr/bin/code` 1.98.2，应先更新板子上的桌面 VS Code，或在兼容客户端已连接的 Remote SSH 终端使用该窗口的远程 CLI；脚本不会自动升级编辑器。可通过 `--code-path` 显式指定目标，诊断显示实际 CLI 路径与版本。
+
+
 交互终端中不传操作参数时，显示平台和操作菜单：
 
 ```bash
