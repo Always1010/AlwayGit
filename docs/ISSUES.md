@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-125：远程 HTTPS 推送未使用 VS Code 的 GitHub 登录会话
+
+- 日期：2026-10-11
+- 状态：已解决
+- 现象：Remote SSH 终端中 `git push` 可直接推送，AlwayGit 1.3.1 在同一远程环境仍询问 GitHub 用户名。
+- 原因：实机终端具有 VS Code 自带的 Git AskPass 与 IPC 环境，而远程扩展宿主没有这些变量，Git 未配置凭据助手；AlwayGit 的 AskPass 只调用输入框，没有接入 VS Code GitHub 登录。放开 GCM 交互不能替代缺失的登录会话接入。
+- 解决方案：GitHub HTTPS AskPass 通过公开认证 API 获取与内置 GitHub Git 认证相同权限范围的登录会话；支持用户名已预填、按命令复用、取消和迟到结果丢弃。严格限制 HTTPS、精确主机与标准端口，其他主机及 SSH 沿用输入框；关闭集成认证或提供程序不可用时保留后备输入，拒绝登录不再弹出第二个输入框。
+- 验证方式：类型检查、1538 条双语资源检查与认证、执行层、扩展入口及脱敏 4 文件 / 40 项定向回归通过。真实 Git 验证会话凭据优先及预填用户名；模拟扩展宿主验证认证 API、同一会话复用和关闭设置；覆盖其他主机隔离、拒绝登录、取消及迟到结果。补齐启动测试桩的现有文档清理接口。未触发真实浏览器登录、账号推送或 VSIX 打包安装。
+- 相关文件：`src/application/credentials.ts`、`src/extension/extension.ts`、`tests/credentials.test.ts`、`tests/extension-startup.test.ts`、版本清单及 `docs/ARCHITECTURE.md`。
+
 ## BUG-124：网络操作禁止系统凭据助手交互登录
 
 - 日期：2026-10-11

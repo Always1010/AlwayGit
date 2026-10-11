@@ -2,8 +2,41 @@ import { message as localizeMessage, MessageError } from '../i18n/index';
 import { createServer, type Socket } from 'node:net';
 import { randomBytes } from 'node:crypto';
 
+type CredentialPrompt = (message: string, password: boolean, signal: AbortSignal) => Promise<string | undefined>;
+interface GitHubSession { account: { id: string }; accessToken: string }
+
+/** Command-local GitHub session; other hosts and SSH continue through AskPass. */
+export function withGitHubAuthentication(prompt: CredentialPrompt, getSession: () => Promise<GitHubSession | undefined>): CredentialPrompt {
+  let session: Promise<GitHubSession | undefined> | undefined;
+  return async (message, password, signal) => {
+    if (signal.aborted) return undefined;
+    const request = /^(Username|Password) for '([^'\r\n]+)':\s*$/i.exec(message);
+    let github = false;
+    if (request) {
+      try {
+        const url = new URL(request[2]);
+        github = url.protocol === 'https:' && url.hostname === 'github.com' && (!url.port || url.port === '443');
+      } catch { /* Non-URL requests use the normal input prompt. */ }
+    }
+    if (github) {
+      // The public authentication API cannot cancel browser UI. Stop waiting on
+      // command cancellation and never return a late token to a stopped Git.
+      const pending = session ??= getSession();
+      let cancel!: () => void;
+      const cancelled = new Promise<undefined>(resolve => { cancel = () => resolve(undefined); signal.addEventListener('abort', cancel, { once: true }); });
+      if (signal.aborted) cancel();
+      try {
+        const authenticated = await Promise.race([pending, cancelled]);
+        if (signal.aborted) return undefined;
+        if (authenticated) return /^password$/i.test(request![1]) ? authenticated.accessToken : authenticated.account.id;
+      } finally { signal.removeEventListener('abort', cancel); }
+    }
+    return prompt(message, password, signal);
+  };
+}
+
 /** A per-command loopback bridge. Credentials only live in the request response. */
-export async function credentialEnvironment(helper: string, prompt: (message: string, password: boolean, signal: AbortSignal) => Promise<string | undefined>): Promise<{ env: NodeJS.ProcessEnv; cancelPrompts(): void; dispose(): void }> {
+export async function credentialEnvironment(helper: string, prompt: CredentialPrompt): Promise<{ env: NodeJS.ProcessEnv; cancelPrompts(): void; dispose(): void }> {
   const token = randomBytes(32).toString('hex');
   const sockets = new Set<Socket>();
   const lifetime = new AbortController();

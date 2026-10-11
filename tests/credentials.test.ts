@@ -1,8 +1,77 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { chmod } from 'node:fs/promises';
-import { credentialEnvironment } from '../src/application/credentials';
+import { credentialEnvironment, withGitHubAuthentication } from '../src/application/credentials';
+
+describe('VS Code GitHub authentication', () => {
+  it.each([false, true])('answers actual Git credentials from one command-local session (existing username: %s)', async existingUsername => {
+    if (process.platform !== 'win32') await chmod(path.resolve('src/extension/askpass.sh'), 0o755);
+    const fallback = vi.fn(async () => undefined);
+    const getSession = vi.fn(async () => ({ account: { id: '123456' }, accessToken: 'test-github-token' }));
+    const adapter = await credentialEnvironment(path.resolve('src/extension/askpass.cjs'), withGitHubAuthentication(fallback, getSession));
+    try {
+      const output = await new Promise<string>((resolve, reject) => {
+        const child = spawn('git', ['-c', 'credential.helper=', 'credential', 'fill'], { env: { ...process.env, ...adapter.env }, windowsHide: true });
+        let stdout = ''; let stderr = '';
+        child.stdout.on('data', chunk => { stdout += chunk; }); child.stderr.on('data', chunk => { stderr += chunk; }); child.once('error', reject);
+        child.once('close', code => code === 0 ? resolve(stdout) : reject(new Error(stderr)));
+        child.stdin.end(`protocol=https\nhost=github.com\n${existingUsername ? 'username=123456\n' : ''}\n`);
+      });
+      expect(output).toContain('username=123456'); expect(output).toContain('password=test-github-token');
+      expect(getSession).toHaveBeenCalledOnce(); expect(fallback).not.toHaveBeenCalled();
+      expect(JSON.stringify(adapter.env)).not.toContain('test-github-token');
+    } finally { adapter.dispose(); }
+  });
+
+  it.each([
+    "Password for 'https://github.com.evil.test': ",
+    "Password for 'https://github.com@evil.test': ",
+    "Password for 'http://github.com': ",
+    "Password for 'https://github.com:8443': ",
+    "Password for 'https://gitlab.com': ",
+    "Enter passphrase for key '/home/user/.ssh/id_ed25519': ",
+  ])('keeps GitHub tokens away from other hosts and SSH (%s)', async message => {
+    const fallback = vi.fn(async () => 'manual-answer'), getSession = vi.fn(async () => ({ account: { id: '123456' }, accessToken: 'test-token' }));
+    const prompt = withGitHubAuthentication(fallback, getSession), signal = new AbortController().signal;
+    expect(await prompt(message, true, signal)).toBe('manual-answer');
+    expect(getSession).not.toHaveBeenCalled(); expect(fallback).toHaveBeenCalledWith(message, true, signal);
+  });
+
+  it('uses the input fallback when GitHub authentication is unavailable', async () => {
+    const fallback = vi.fn(async () => 'manual-user');
+    const prompt = withGitHubAuthentication(fallback, async () => undefined);
+    expect(await prompt("Username for 'https://github.com': ", false, new AbortController().signal)).toBe('manual-user');
+    expect(fallback).toHaveBeenCalledOnce();
+  });
+
+  it('uses the requested field even when a repository name contains password or token', async () => {
+    const fallback = vi.fn(async () => undefined);
+    const prompt = withGitHubAuthentication(fallback, async () => ({ account: { id: '123456' }, accessToken: 'test-token' }));
+    expect(await prompt("Username for 'https://github.com/org/password-token-repo': ", true, new AbortController().signal)).toBe('123456');
+    expect(fallback).not.toHaveBeenCalled();
+  });
+
+  it('stops after login refusal without opening another input prompt', async () => {
+    const fallback = vi.fn(async () => 'manual-user');
+    const prompt = withGitHubAuthentication(fallback, async () => { throw new Error('User did not consent'); });
+    await expect(prompt("Username for 'https://github.com': ", false, new AbortController().signal)).rejects.toThrow('User did not consent');
+    expect(fallback).not.toHaveBeenCalled();
+  });
+
+  it('stops waiting on cancellation and discards late authentication results', async () => {
+    let finish!: (session: { account: { id: string }; accessToken: string }) => void;
+    const session = new Promise<{ account: { id: string }; accessToken: string }>(resolve => { finish = resolve; });
+    const getSession = vi.fn(() => session), fallback = vi.fn(async () => 'manual-user'), controller = new AbortController();
+    const prompt = withGitHubAuthentication(fallback, getSession);
+    const answer = prompt("Password for 'https://github.com': ", true, controller.signal);
+    controller.abort();
+    expect(await answer).toBeUndefined();
+    finish({ account: { id: '123456' }, accessToken: 'late-token' });
+    expect(await prompt("Password for 'https://github.com': ", true, controller.signal)).toBeUndefined();
+    expect(getSession).toHaveBeenCalledOnce(); expect(fallback).not.toHaveBeenCalled();
+  });
+});
 
 describe('Git AskPass bridge', () => {
   it.each(['cancelPrompts', 'dispose'] as const)('closes pending input when the command calls %s', async stop => {
