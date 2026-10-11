@@ -7,7 +7,7 @@
 - 扩展身份 `alwaygit-dev.alwaygit` 保持不变。功能版本正常递增；仅重新打包同一份扩展时可保留版本号。不得通过卸载扩展或删除用户数据完成更新。
 - 默认不因代码修改或测试通过而自动构建 VSIX、替换固定包或安装扩展。仅当用户在当前请求中明确要求打包时才执行打包；仅当用户明确要求更新或安装到本机 VS Code 时，才运行 `scripts/update-local.ps1`，若已经生成包则使用 `-InstallOnly` 避免重复构建。
 - 自动安装使用官方 CLI 的 `--install-extension <VSIX> --force`，随后核对扩展 ID 和版本。成功后告知用户重启 VS Code 即可，不要求再次手动执行 Install from VSIX。
-- 首次使用确认本机 VS Code 路径和 Profile；默认使用 PATH 中的 `code` 与默认 Profile，后续沿用本机 `artifacts/local-install.json` 中记录的目标。可通过脚本参数 `-CodePath` / `-Profile` 或环境变量 `ALWAYGIT_CODE_CLI` / `ALWAYGIT_VSCODE_PROFILE` 显式选择目标。此记录和全部安装产物不得提交。
+- 默认安装到执行脚本机器的桌面 VS Code（Desktop），可通过菜单或 `--install-to server` / `-InstallTo server` 选择该机器的官方 VS Code Server。安装位置只选一次，后续自动定位与检查 CLI，不要求用户另行确认路径或 Server 版本；失败不得自动切换安装位置。默认 Profile，Desktop/Server 与 Server 数据根目录的记录分别保存到 `artifacts/local-install.json`；上次的 Server 记录不得改变下次 Desktop 默认值。可通过脚本参数 `-CodePath` / `-Profile` 或环境变量 `ALWAYGIT_CODE_CLI` / `ALWAYGIT_VSCODE_PROFILE` 覆盖，但 CLI 必须符合所选位置。此记录和全部安装产物不得提交。
 - 只替换 VSIX 不会更新已安装扩展。未实际安装或安装校验失败时，必须如实说明，不得宣称重启就能使用新版本。
 - 不自动关闭、重启 VS Code，不打断用户编辑。保留扩展设置、仓库选择、布局和草稿；涉及会话结构变更时使用兼容迁移。
 - 本机更新流程由单 Agent 完成打包、安装与验证；仅在任务另有需要时拆分协作。
