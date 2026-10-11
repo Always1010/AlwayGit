@@ -393,5 +393,107 @@
     "zh-CN": "批次停止后未执行的对象",
     "review": "translated",
     "context": "Deletion results after interrupted operations"
+  },
+  "feedback.network.connecting": {
+    "en": "Connecting or waiting for Git output…",
+    "zh-CN": "正在连接或等待 Git 输出…",
+    "review": "translated",
+    "context": "webview/NetworkProgress.tsx"
+  },
+  "feedback.network.counting": {
+    "en": "Counting objects",
+    "zh-CN": "正在统计对象",
+    "review": "translated",
+    "context": "webview/NetworkProgress.tsx"
+  },
+  "feedback.network.compressing": {
+    "en": "Compressing objects",
+    "zh-CN": "正在压缩对象",
+    "review": "translated",
+    "context": "webview/NetworkProgress.tsx"
+  },
+  "feedback.network.sending": {
+    "en": "Sending objects",
+    "zh-CN": "正在发送对象",
+    "review": "translated",
+    "context": "webview/NetworkProgress.tsx"
+  },
+  "feedback.network.receiving": {
+    "en": "Receiving objects",
+    "zh-CN": "正在接收对象",
+    "review": "translated",
+    "context": "webview/NetworkProgress.tsx"
+  },
+  "feedback.network.resolving": {
+    "en": "Resolving deltas",
+    "zh-CN": "正在解析增量",
+    "review": "translated",
+    "context": "webview/NetworkProgress.tsx"
+  },
+  "feedback.network.waiting": {
+    "en": "Waiting for remote confirmation…",
+    "zh-CN": "正在等待远端确认…",
+    "review": "translated",
+    "context": "webview/NetworkProgress.tsx"
+  },
+  "feedback.network.updating": {
+    "en": "Updating remote references…",
+    "zh-CN": "正在更新远端引用…",
+    "review": "translated",
+    "context": "webview/NetworkProgress.tsx"
+  },
+  "feedback.network.integrating": {
+    "en": "Merging or rebasing…",
+    "zh-CN": "正在合并或变基…",
+    "review": "translated",
+    "context": "webview/NetworkProgress.tsx"
+  },
+  "feedback.network.refreshing": {
+    "en": "Updating the workbench…",
+    "zh-CN": "正在更新工作台…",
+    "review": "translated",
+    "context": "webview/NetworkProgress.tsx"
+  },
+  "feedback.network.remote": {
+    "en": "Remote",
+    "zh-CN": "远端",
+    "review": "translated",
+    "context": "webview/NetworkProgress.tsx"
+  },
+  "feedback.network.objects": {
+    "en": "Objects: {{completed}} / {{total}}",
+    "zh-CN": "对象：{{completed}} / {{total}}",
+    "review": "translated",
+    "context": "webview/NetworkProgress.tsx"
+  },
+  "feedback.network.transferred": {
+    "en": "Transferred: {{value}}",
+    "zh-CN": "已传输：{{value}}",
+    "review": "translated",
+    "context": "webview/NetworkProgress.tsx"
+  },
+  "feedback.network.speed": {
+    "en": "Speed: {{value}}",
+    "zh-CN": "速度：{{value}}",
+    "review": "translated",
+    "context": "webview/NetworkProgress.tsx"
+  },
+  "feedback.network.lastOutput": {
+    "en": "Last Git output: {{seconds}}s ago",
+    "zh-CN": "距上次 Git 输出：{{seconds}} 秒",
+    "review": "translated",
+    "context": "webview/NetworkProgress.tsx"
+  },
+  "feedback.network.quiet": {
+    "en": "No new Git output for {{seconds}} seconds. The operation has not finished.",
+    "zh-CN": "Git 已有 {{seconds}} 秒未返回新进度，操作尚未结束。",
+    "review": "translated",
+    "context": "webview/NetworkProgress.tsx"
+  },
+  "feedback.network.minimize": {
+    "en": "Minimize progress",
+    "zh-CN": "收起进度",
+    "review": "translated",
+    "context": "webview/NetworkProgress.tsx"
   }
 }

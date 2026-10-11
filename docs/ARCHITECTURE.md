@@ -95,7 +95,7 @@ version 2 会话通过可选 `appearance` 与 `diffNavigationScope` 字段兼容
 
 Git 操作反馈以仓库 ID 保存在前端内存中，操作序号用于避免旧结果替换新操作；仓库切换只展示对应仓库的反馈。错误和结果不写入会话。影响当前工作区的写操作由前端进度遮罩隔离工作台所有背景区域与已有浮窗，并阻止键盘事件；遮罩依赖本地执行集合与宿主忙碌状态的并集，保留到界面同步完成。文件批量选择属于当前文件区域的临时状态，与 Diff 预览目标分离；区域切换或文件消失时重新核对选择。
 
-`action` 响应以可选 `snapshot`、结构化 Push `result` 和 `refreshWarning` 包装，Webview 兼容旧 Snapshot 响应。Push/Tag Push 在写队列中通过 `--porcelain` 记录真实目的地和引用状态；失败仍抛 GitError，并经错误协议传递脱敏的 `pushResult`，不将部分成功转换成全部成功。宿主执行已完成后的快照失败不会反转 Git 结果。`hosting.ts` 负责平台地址解析、分支编码、Fork 比较与远端链接验证；生成网页地址和用户凭据分离。`remoteLinks` 只读本地已解析的 Push URL 与远端 HEAD，`openExternal` 严格校验 HTTPS 和无凭据 URL。结果与链接只保存在当前内存反馈中。
+`action` 响应以可选 `snapshot`、结构化 Push `result` 和 `refreshWarning` 包装，Webview 兼容旧 Snapshot 响应。网络命令使用 `--progress` 强制管道进度，`network-progress.ts` 独立解码 stdout/stderr 的 UTF-8 与 CR/LF 更新，解析已知阶段并每 150 毫秒合并发布；每条命令的解析器在结束或失败时清理定时器。实时消息绑定来源面板、仓库和 RPC request ID；前端按请求匹配并在仓库切换期间保留当前进度，结束后忽略迟到消息。未知输出只更新活动时间，完整行脱敏后交付 Output；原始凭据不发送至进度界面。Push/Tag Push 在写队列中通过 `--porcelain` 记录真实目的地和引用状态；失败仍抛 GitError，并经错误协议传递脱敏的 `pushResult`，不将部分成功转换成全部成功。宿主执行已完成后的快照失败不会反转 Git 结果。`hosting.ts` 负责平台地址解析、分支编码、Fork 比较与远端链接验证；生成网页地址和用户凭据分离。`remoteLinks` 只读本地已解析的 Push URL 与远端 HEAD，`openExternal` 严格校验 HTTPS 和无凭据 URL。结果与链接只保存在当前内存反馈中。
 
 App、History、Sidebar、Details 和 Diff 按各自使用的状态字段订阅；主要面板使用 memo 和稳定的回调，快照中未变化的字段、选择列表和仓库摘要复用引用。内容刷新不重新执行 Working Tree 的主动选择逻辑。Diff 的局部加载、草稿输入与操作反馈不会通过整份 Store 订阅让无关面板重新计算；主题、字号、布局以及实际共享数据变化仍更新相关区域。
 

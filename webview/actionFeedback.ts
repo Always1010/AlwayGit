@@ -1,5 +1,5 @@
 import { uiText } from './text';
-import type { GitAction, Snapshot, PushResult, FileOperationProgress, DeletionResult } from '../src/protocol/types';
+import type { GitAction, Snapshot, PushResult, FileOperationProgress, NetworkOperationProgress, DeletionResult } from '../src/protocol/types';
 
 export interface ActionFeedback {
   id: number;
@@ -11,10 +11,17 @@ export interface ActionFeedback {
   refreshWarning?: string;
   preferenceWarning?: string;
   progress?: FileOperationProgress;
+  networkProgress?: NetworkOperationProgress;
+  requestId?: string;
   stashOid?: string;
   target?: string;
   error?: string;
   result?: PushResult | DeletionResult | { kind: 'update'; head?: string; previousHead?: string } | { kind: 'checkout'; branch: string; head?: string } | { kind: 'fetch'; refs: string[] } | { kind: 'worktree'; path: string } | { kind: 'tag'; name: string } | { kind: 'commit'; oid: string; files?: number; remaining: number; amended: boolean } | {kind:'stash';files:number;untracked:number;clean:boolean} | {kind:'branch';name:string;checkedOut:boolean;currentBranch:string};
+}
+
+export function networkCommand(action: GitAction): NetworkOperationProgress['command'] | undefined {
+  if (action.type === 'push' || action.type === 'fetch' || action.type === 'pull') return action.type;
+  if (action.type === 'tag.push' || action.type === 'remote.delete' || action.type === 'tag.create' && action.pushRemote || action.type === 'tag.delete' && action.remote) return 'push';
 }
 
 /** Actions that replace files or the current checkout need an inert workbench. */

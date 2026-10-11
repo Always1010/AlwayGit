@@ -14,6 +14,8 @@ import { samePath } from './pathIdentity';
 
 import { captureRemoteLease, updateRemoteLease } from './remoteLease';
 import { DiscardDialog } from './DiscardDialog';
+import { blocksWorkbench, networkCommand } from './actionFeedback';
+import { NetworkProgress } from './NetworkProgress';
 import { selectedTagRemote, tagQueryKey } from './tagStatus';
 import { captureTagDeleteLease, completeTagDeleteLease, tagDeleteLeaseProblem, updateTagDeleteLease } from './tagDeleteLease';
 
@@ -185,6 +187,11 @@ function StandardActionDialog({ dialog, onClose: closeDialog, openAbort, replace
     } finally { pending.current = false; if(mounted.current && request === submission.current)setSubmitting(false); }
   }
   const submit=(event:React.FormEvent)=>{event.preventDefault();void executeAction(type==='branch.create'?true:undefined);};
+  if (submitting && state.actionFeedback?.status === 'running' && state.actionFeedback.action.type === type && networkCommand(state.actionFeedback.action) && !blocksWorkbench(state.actionFeedback.action)) {
+    return <Modal title={title} onClose={onClose} className="network-operation-dialog" footer={<Button icon="chevron-down" title={t('feedback.network.minimize')} aria-label={t('feedback.network.minimize')} onClick={onClose}/>}>
+      <p className="muted">{state.actionFeedback.target}</p><NetworkProgress feedback={state.actionFeedback}/>
+    </Modal>;
+  }
   const destructive = ['discard','branch.delete','remote.delete','tag.delete','stash.drop','worktree.remove','operation.abort'].includes(type) || type==='reset' && values.mode==='hard';
   const submitLabel=type==='tag.delete'?!deleteLocal?t('actions.deleteRemoteTag'):checks.deleteRemote?t('actions.deleteLocalAndRemoteTag'):t('actions.deleteLocalTag'):title;
   if (snapshot.operation.kind && ['merge','rebase','cherry-pick','revert','pull'].includes(type)) {

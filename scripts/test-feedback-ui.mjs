@@ -11,8 +11,9 @@ export async function verifyFeedback(browser, url) {
       const commit = { oid: 'a'.repeat(40), parents: [], author: 'Fixture', email: 'test@example.com', timestamp: 0, subject: 'Test operations' };
       const fixture = window.__feedbackFixture = {
         pending: undefined, calls: [], cleanReview: false, holdRemoteLinks: false, pendingRemoteLinks: [],
-        snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 1, behind: 2, pushTarget: { localBranch: 'main', remote: 'origin', remoteBranch: 'release', configured: true }, remotes: ['origin'], changes: [], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
+        snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 1, behind: 2, pullTarget: { localBranch: 'main', remote: 'origin', remoteBranch: 'main' }, pushTarget: { localBranch: 'main', remote: 'origin', remoteBranch: 'release', configured: true }, remotes: ['origin'], changes: [], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
         complete(error, publication) { window.postMessage({ type: 'response', id: this.pending.id, result: error ? undefined : publication ? {snapshot:structuredClone({...this.snapshot,version:++this.snapshot.version}),result:publication} : structuredClone({ ...this.snapshot, version: ++this.snapshot.version }), error: error ? { message: error } : undefined }, '*'); this.pending = undefined; },
+        progress(progress, requestId = this.pending.id) { window.postMessage({ type: 'networkOperationProgress', repoId: repo.id, requestId, progress: { command: this.pending.payload.type, startedAt: Date.now(), lastOutputAt: Date.now(), ...progress } }, '*'); },
         completeRemoteLinks(index, result, error) { const request=this.pendingRemoteLinks[index]; window.postMessage({type:'response',id:request.id,result,error:error?{message:error}:undefined},'*'); },
       };
       window.acquireVsCodeApi = () => ({ getState: () => ({}), setState: () => {}, postMessage(request) {
@@ -112,6 +113,25 @@ export async function verifyFeedback(browser, url) {
     }
     await push();
     assert.equal(await bar.getByRole('button', { name: 'Dismiss notification' }).count(), 0);
+    const pushProgress = page.getByRole('dialog', { name: 'Push', exact: true }).getByTestId('network-progress');
+    await pushProgress.getByText('Connecting or waiting for Git output…', { exact: true }).waitFor();
+    await page.evaluate(() => window.__feedbackFixture.progress({ phase: 'sending', percent: 68, completed: 204, total: 300, transferred: '42.6 MiB', speed: '1.8 MiB/s' }));
+    await pushProgress.getByText('Objects: 204 / 300', { exact: true }).waitFor();
+    await pushProgress.getByText('Speed: 1.8 MiB/s', { exact: true }).waitFor();
+    assert.equal(await pushProgress.getByRole('progressbar').getAttribute('value'), '68');
+    await page.evaluate(() => window.__feedbackFixture.progress({ phase: 'sending', percent: 99 }, 'old-request'));
+    assert.equal(await pushProgress.getByRole('progressbar').getAttribute('value'), '68', 'A late request must not replace current progress');
+    await page.evaluate(() => window.__feedbackFixture.progress({ phase: 'waiting', transferred: '60.0 MiB', lastOutputAt: Date.now() - 45000 }));
+    await pushProgress.getByText('Waiting for remote confirmation…', { exact: true }).waitFor();
+    assert.equal(await pushProgress.getByRole('progressbar').getAttribute('value'), null, 'Sending finished is not operation success');
+    await pushProgress.getByText(/No new Git output for/).waitFor();
+    await pushProgress.getByRole('button', { name: 'Show Log', exact: true }).click();
+    await page.waitForFunction(() => window.__feedbackFixture.calls.some(call => call.method === 'showLog'));
+    await page.getByRole('button', { name: 'Minimize progress', exact: true }).click();
+    await page.getByRole('dialog').waitFor({ state: 'hidden' });
+    await bar.getByText('Waiting for remote confirmation…', { exact: true }).waitFor();
+    assert.equal(await page.locator('.workspace').evaluate(node => node.inert), false);
+    await page.screenshot({ path: 'artifacts/network-progress-preview.png' });
     await page.evaluate(() => window.__feedbackFixture.complete());
     await bar.getByText('Push completed', { exact: true }).waitFor();
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
@@ -119,6 +139,22 @@ export async function verifyFeedback(browser, url) {
     await bar.getByText('Push completed', { exact: true }).waitFor();
     await bar.getByRole('button', { name: 'Dismiss notification' }).click();
     await bar.waitFor({ state: 'hidden' });
+    await pull.click();
+    await page.getByRole('dialog', { name: 'Pull', exact: true }).getByRole('button', { name: 'Pull', exact: true }).click();
+    const pullProgress = page.getByTestId('operation-progress'); await pullProgress.waitFor();
+    await page.evaluate(() => window.__feedbackFixture.progress({ phase: 'receiving', percent: 80, completed: 8, total: 10, transferred: '10.0 MiB', speed: '2.0 MiB/s' }));
+    await pullProgress.getByText('Receiving objects · 80%', { exact: true }).waitFor();
+    assert.equal(await page.locator('.workspace').evaluate(node => node.inert), true);
+    await page.keyboard.press('Tab'); await page.keyboard.press('Enter');
+    assert.equal(await pullProgress.isVisible(), true, 'Log access must not unlock Pull');
+    await page.evaluate(() => window.__feedbackFixture.progress({ phase: 'integrating' }));
+    await pullProgress.getByText('Merging or rebasing…', { exact: true }).waitFor();
+    await page.evaluate(() => window.__feedbackFixture.progress({ phase: 'refreshing' }));
+    await pullProgress.getByText('Updating the workbench…', { exact: true }).waitFor();
+    await page.evaluate(() => window.__feedbackFixture.complete());
+    await pullProgress.waitFor({ state: 'hidden' });
+    await bar.getByText('Pull completed', { exact: true }).waitFor();
+    await bar.getByRole('button', { name: 'Dismiss notification' }).click();
     await push();
     assert.equal(await page.getByTestId('operation-progress').count(),0,'Push must remain nonblocking');
     await page.evaluate(()=>window.__feedbackFixture.complete(undefined,{kind:'push',outcome:'success',remote:'origin',localBranch:'main',output:'To github\nnew branch release',destinations:[{label:'github.com/acme/repo',repository:{url:'https://github.com/acme/repo',label:'github.com/acme/repo',provider:'github'},refs:[{kind:'branch',name:'release',status:'published',url:'https://github.com/acme/repo/tree/release'}]}]}));

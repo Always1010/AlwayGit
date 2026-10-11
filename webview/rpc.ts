@@ -51,7 +51,7 @@ window.addEventListener('message', event => {
   } else listeners.forEach(listener => listener(message));
 });
 export function subscribe(listener: (event: HostMessage) => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }
-export async function rpc<T>(method: RpcRequest['method'], repoId?: string, payload?: unknown, options?:{signal?:AbortSignal}): Promise<T> {
+export async function rpc<T>(method: RpcRequest['method'], repoId?: string, payload?: unknown, options?:{signal?:AbortSignal; onRequestId?(id:string):void}): Promise<T> {
   const category=readQueryCategory(method),signal=category?options?.signal:undefined;
   if(signal?.aborted)throw new RpcError(message("rpc.theReadRequestWasCancelled"),'ABORTED');
   if (demoMode) {demoRequest ??= createDemoRequest(event=>listeners.forEach(listener=>listener(event)));const result=await demoRequest(method,payload,repoId);if(signal?.aborted)throw new RpcError(message("rpc.theReadRequestWasCancelled"),'ABORTED');return result as T;}
@@ -70,6 +70,7 @@ export async function rpc<T>(method: RpcRequest['method'], repoId?: string, payl
     const abort=()=>cancelRead(id);
     pending.set(id, { resolve: value => resolve(value as T), reject, timer, category, repoId, cleanup:signal?()=>signal.removeEventListener('abort',abort):undefined });
     signal?.addEventListener('abort',abort,{once:true});
+    options?.onRequestId?.(id);
     vscode.postMessage({ id, method, repoId, payload } satisfies RpcRequest);
   });
 }

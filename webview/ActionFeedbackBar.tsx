@@ -8,6 +8,7 @@ import { useWorkbench } from './store';
 import { PushFeedback } from './PushFeedback';
 import type { DialogRequest } from './ActionDialog';
 import { rpc } from './rpc';
+import { NetworkProgress } from './NetworkProgress';
 
 
 export function ActionFeedbackBar({ showLog, openAction }: { showLog(): void; openAction?(action: DialogRequest): void }) {
@@ -60,6 +61,7 @@ export function ActionFeedbackBar({ showLog, openAction }: { showLog(): void; op
     {hasDetails && <Button icon={expanded ? 'chevron-up' : 'chevron-down'} title={t('feedback.operationDetails')} aria-label={t('feedback.operationDetails')} aria-expanded={expanded} aria-controls="action-feedback-details" onClick={()=>setExpandedFor(expanded ? undefined : feedbackKey)}/>}
     {status !== 'running' && <Button icon="close" title={t('feedback.dismissNotification')} aria-label={t("feedback.dismissNotification")} onClick={dismissFeedback}/>}
     </div></div>
+    {status === 'running' && feedback?.networkProgress && <NetworkProgress feedback={feedback}/>}
     {expanded && hasDetails && <div id="action-feedback-details" className="feedback-expanded feedback-details">
       {resultSummary && <span className="feedback-target">{resultSummary}</span>}
       {feedback?.error && <><strong>{t('feedback.errorDetails')}</strong><pre>{feedback.error}</pre></>}
