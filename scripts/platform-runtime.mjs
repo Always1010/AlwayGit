@@ -22,6 +22,17 @@ export function packageTarget(args, host = nativeTarget()) {
   return target;
 }
 
+export function verifyPackageIdentity(manifest, identity, expected, target) {
+  for (const field of ['publisher', 'name', 'version']) {
+    if (manifest[field] !== expected[field]) throw new Error(`Packaged ${field} differs from the project.`);
+  }
+  if (identity?.TargetPlatform !== target) throw new Error(`VSIX target does not match ${target}.`);
+  if (identity.Id !== expected.name || identity.Publisher !== expected.publisher || identity.Version !== expected.version) {
+    throw new Error('VSIX XML identity differs from the project.');
+  }
+  if (manifest.extensionKind?.length !== 1 || manifest.extensionKind[0] !== 'workspace') throw new Error('VSIX must run in the workspace extension host.');
+}
+
 /** Replace the runtime entirely: an earlier native build must never survive a copy. */
 export async function copyTerminalRuntime(source, destination, target = nativeTarget()) {
   await rm(destination, { recursive: true, force: true });

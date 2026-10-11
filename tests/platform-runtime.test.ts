@@ -1,11 +1,27 @@
 import { mkdtemp, mkdir, rm, writeFile, readdir } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 import { describe, expect, it } from 'vitest';
 
-const { nativeTarget, packageTarget, copyTerminalRuntime } = await import(new URL('../scripts/platform-runtime.mjs', import.meta.url).href);
+const { nativeTarget, packageTarget, copyTerminalRuntime, verifyPackageIdentity } = await import(new URL('../scripts/platform-runtime.mjs', import.meta.url).href);
 
 describe('Native extension packaging', () => {
+  it('accepts VSCE-generated platform metadata and refuses mislabeled, stale or UI-only packages', async () => {
+    const require = createRequire(import.meta.url);
+    const vsceRequire = createRequire(require.resolve('@vscode/vsce/package.json'));
+    const { ManifestProcessor, toVsixManifest } = vsceRequire('./out/package.js');
+    const { parseStringPromise } = vsceRequire('xml2js');
+    const manifest = { name: 'alwaygit', publisher: 'alwaygit-dev', version: '1.3.0', main: './dist/extension.cjs', engines: { vscode: '^1.106.0' }, extensionKind: ['workspace'] };
+    const xml = await parseStringPromise(await toVsixManifest({ ...new ManifestProcessor(manifest, { target: 'linux-arm64' }).vsix, assets: [] }));
+    const identity = xml.PackageManifest.Metadata[0].Identity[0].$;
+    expect(() => verifyPackageIdentity(manifest, identity, manifest, 'linux-arm64')).not.toThrow();
+    expect(() => verifyPackageIdentity(manifest, identity, manifest, 'linux-x64')).toThrow(/target/);
+    expect(() => verifyPackageIdentity(manifest, { ...identity, Version: '1.2.0' }, manifest, 'linux-arm64')).toThrow(/XML identity/);
+    expect(() => verifyPackageIdentity({ ...manifest, version: '1.2.0' }, identity, manifest, 'linux-arm64')).toThrow(/version/);
+    expect(() => verifyPackageIdentity({ ...manifest, extensionKind: ['ui'] }, identity, manifest, 'linux-arm64')).toThrow(/workspace/);
+  });
+
   it('rejects cross-platform labels and unsupported hosts before packaging', () => {
     expect(packageTarget([], 'linux-arm64')).toBe('linux-arm64');
     expect(() => packageTarget(['--target', 'linux-arm64'], 'win32-x64')).toThrow(/does not cross-compile/);
