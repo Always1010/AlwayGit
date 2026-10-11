@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import { fork } from 'node:child_process';
 import path from 'node:path';
 
+// An extracted VSIX can be tested without access to the project's node_modules.
+const helper = path.resolve(process.argv[2] ?? 'dist/terminal-host.cjs');
 async function runShell(file, args, input, stop = false) {
-  const child = fork(path.resolve('dist/terminal-host.cjs'), [], { windowsHide: true, execArgv: [],
+  const child = fork(helper, [], { windowsHide: true, execArgv: [],
     env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, stdio: ['ignore', 'ignore', 'pipe', 'ipc'] });
   let output = '', shellExit, errors = '';
   child.stderr.on('data', data => { errors += data; });
@@ -23,7 +25,8 @@ async function runShell(file, args, input, stop = false) {
   });
 }
 const windows = process.platform === 'win32', shell = windows ? process.env.ComSpec : '/bin/sh';
-const successful = await runShell(shell, windows ? ['/d', '/q'] : [], 'echo ALWAYGIT_TERMINAL_OK\r\nexit\r\n');
+const successful = await runShell(shell, windows ? ['/d', '/q'] : [], windows
+  ? 'echo ALWAYGIT_TERMINAL_OK\r\nexit\r\n' : "printf 'ALWAYGIT_%s\\n' TERMINAL_OK\nexit\n");
 assert.equal(successful.shellExit, 0); assert.match(successful.output, /ALWAYGIT_TERMINAL_OK/); assert.equal(successful.errors, '');
 const stopped = await runShell(shell, windows ? ['/d', '/q'] : ['-i'], '', true);
 assert.equal(typeof stopped.shellExit, 'number');

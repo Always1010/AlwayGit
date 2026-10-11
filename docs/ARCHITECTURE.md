@@ -103,7 +103,7 @@ App、History、Sidebar、Details 和 Diff 按各自使用的状态字段订阅�
 
 `terminal-runtime.ts` 为每个会话启动无窗口辅助进程 `terminal-host.cjs`，由辅助进程延迟加载 node-pty 并管理 PTY。Shell 自然退出后，辅助进程先交付剩余输出与退出码，再退出并释放原生输出线程；关闭/终止请求结束 Shell，辅助进程另有 5 秒终止兜底。Webview 保留隐藏上下文，输出按 16 ms / 32 KiB 分批；宿主只保留约 1 MiB 的内存重连缓冲，xterm 保留 5000 行。输出序号避免快照重放和实时输出重复，128 KiB 未确认输出暂停读取，渲染确认后恢复，防止慢前端无界积压。输出及命令不进入会话持久化或日志。
 
-构建脚本将 node-pty 运行目录复制到 `dist/terminal-runtime/node-pty`，独立打包辅助进程，原生模块不进入 JS Bundle。node-pty 提供的 Windows/macOS 预编译产物随运行目录复制；Linux 需要在其构建环境准备 PTY 原生模块，Windows 本地构建不生成 Linux 模块。Demo 仅回显输入并标明不会执行命令。
+构建脚本先清理 `dist/terminal-runtime/node-pty`，再复制当前平台的 node-pty 运行目录并验证加载，独立打包辅助进程，原生模块不进入 JS Bundle。仅保留当前平台的预编译产物；Linux 原生模块由对应架构的 glibc 构建环境准备。打包目标必须与构建机器一致，`--target` 不负责交叉编译。VSIX 在替换固定包前解包到临时目录，核对身份、版本、平台、工作区宿主与 askpass 执行权限，并通过独立终端辅助进程验证输入输出、退出、终止和启动失败；解包后的运行文件无需项目 node_modules。Demo 仅回显输入并标明不会执行命令。
 
 ## Diff 与原生编辑器
 

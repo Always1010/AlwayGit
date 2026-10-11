@@ -2,13 +2,16 @@ import { copyFile, mkdir, readFile, rename, rm, stat } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { packageTarget } from './platform-runtime.mjs';
 
+// Reject a mislabeled native package before touching any existing artifact.
+const target = packageTarget(process.argv.slice(2));
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const artifacts = join(root, 'artifacts');
 await mkdir(artifacts, { recursive: true });
 const { version } = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
 const fixed = join(artifacts, 'alwaygit.vsix');
-const versioned = join(artifacts, `alwaygit-${version}.vsix`);
+const versioned = join(artifacts, `alwaygit-${version}-${target}.vsix`);
 const temporary = join(artifacts, `.alwaygit-${process.pid}.vsix`);
 
 async function exists(path) {
@@ -18,15 +21,20 @@ async function exists(path) {
 
 try {
   await new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [join(root, 'node_modules/@vscode/vsce/vsce'), 'package', '--allow-missing-repository', '--skip-license', '--no-dependencies', '--no-rewrite-relative-links', '--out', temporary], { cwd: root, stdio: 'inherit', windowsHide: true });
+    const child = spawn(process.execPath, [join(root, 'node_modules/@vscode/vsce/vsce'), 'package', '--target', target, '--allow-missing-repository', '--skip-license', '--no-dependencies', '--no-rewrite-relative-links', '--out', temporary], { cwd: root, stdio: 'inherit', windowsHide: true });
     child.once('error', reject);
     child.once('close', code => code === 0 ? resolve() : reject(new Error(`VSIX packaging failed (${code ?? 'terminated'}).`)));
+  });
+  await new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [join(root, 'scripts/verify-package.mjs'), temporary, target], { cwd: root, stdio: 'inherit', windowsHide: true });
+    child.once('error', reject);
+    child.once('close', code => code === 0 ? resolve() : reject(new Error(`VSIX verification failed (${code ?? 'terminated'}).`)));
   });
   const prior = await exists(fixed) ? fixed : await exists(versioned) ? versioned : undefined;
   if (prior) await copyFile(prior, join(artifacts, 'alwaygit-previous.vsix'));
   await copyFile(temporary, versioned);
   await rename(temporary, fixed);
-  console.log(`Ready: ${fixed} (version ${version})`);
+  console.log(`Ready: ${fixed} (version ${version}, target ${target})`);
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;
