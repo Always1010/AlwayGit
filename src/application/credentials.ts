@@ -38,7 +38,9 @@ export async function credentialEnvironment(helper: string, prompt: (message: st
   const helperPath = process.platform === 'win32' ? helper.replace(/\\/g, '/') : helper;
   const command = helperPath.replace(/\.cjs$/, '.sh');
   return {
-    env: { ELECTRON_RUN_AS_NODE: '1', GIT_ASKPASS: command, SSH_ASKPASS: command, SSH_ASKPASS_REQUIRE: 'prefer', DISPLAY: process.env.DISPLAY ?? ':0', ALWAYGIT_NODE: executable, ALWAYGIT_ASKPASS_HELPER: helperPath, ALWAYGIT_ASKPASS_PORT: String(address.port), ALWAYGIT_ASKPASS_TOKEN: token, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never' },
+    // Git consults credential helpers before AskPass. Leave their interaction
+    // settings intact so browser login can complete before this fallback runs.
+    env: { ELECTRON_RUN_AS_NODE: '1', GIT_ASKPASS: command, SSH_ASKPASS: command, SSH_ASKPASS_REQUIRE: 'prefer', DISPLAY: process.env.DISPLAY ?? ':0', ALWAYGIT_NODE: executable, ALWAYGIT_ASKPASS_HELPER: helperPath, ALWAYGIT_ASKPASS_PORT: String(address.port), ALWAYGIT_ASKPASS_TOKEN: token, GIT_TERMINAL_PROMPT: '0' },
     cancelPrompts() { lifetime.abort(); },
     dispose() { lifetime.abort(); for (const socket of sockets) socket.destroy(); server.close(); },
   };

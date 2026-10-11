@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-124：网络操作禁止系统凭据助手交互登录
+
+- 日期：2026-10-11
+- 状态：已解决
+- 现象：终端 `git push` 可打开浏览器登录，同一环境中 AlwayGit 的 Push 却显示密码输入框，无法沿用系统凭据助手的交互认证流程。
+- 原因：AskPass 适配器与 Git 执行层均强制设置 `GCM_INTERACTIVE=never`，使 GCM 在需要交互认证时失败，Git 随后进入 AlwayGit 输入框。
+- 解决方案：Fetch、Pull、Push 保留系统与用户的凭据助手交互设置，允许按配置登录浏览器；AskPass 输入框继续作为 Git 凭据询问的后备方式。普通查询与 `ls-remote` 探测保留禁止 GCM 交互，终端输入禁用、超时、取消及脱敏机制沿用。
+- 验证方式：类型检查、1538 条双语资源检查及认证桥与 Git 执行层 2 文件 / 19 项定向回归通过；覆盖实际 Git 优先使用凭据助手、输入框后备与取消、网络操作不覆盖交互设置、显式禁用配置保留以及探测禁止交互。未执行真实浏览器登录或账号推送。
+- 相关文件：`src/application/credentials.ts`、`src/git/service.ts`、`tests/credentials.test.ts`、`tests/git-runner.test.ts`、版本清单及 `docs/ARCHITECTURE.md`。
+
 ## BUG-123：脚本打包时反复要求确认启动激活方式
 
 - 日期：2026-10-11

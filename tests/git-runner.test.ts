@@ -4,6 +4,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runGitProcess } from '../src/git/runner';
 import { GitService } from '../src/git/service';
+import { credentialEnvironment } from '../src/application/credentials';
 
 vi.mock('node:child_process', () => ({ spawn: vi.fn() }));
 
@@ -23,7 +24,7 @@ beforeEach(() => {
   Object.defineProperty(process, 'platform', { ...platform, value: 'win32' });
   vi.mocked(spawn).mockReset();
 });
-afterEach(() => { Object.defineProperty(process, 'platform', platform); vi.useRealTimers(); vi.restoreAllMocks(); });
+afterEach(() => { Object.defineProperty(process, 'platform', platform); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllEnvs(); });
 
 function start(options: Partial<Parameters<typeof runGitProcess>[0]> = {}) {
   const git = processFixture(42), killer = processFixture(43);
@@ -36,6 +37,22 @@ function start(options: Partial<Parameters<typeof runGitProcess>[0]> = {}) {
 }
 
 describe('Git process termination', () => {
+  it.each([undefined, 'never'])('preserves credential helper interaction for network operations and keeps probes silent (%s)', async inherited => {
+    vi.stubEnv('GCM_INTERACTIVE', inherited);
+    vi.mocked(spawn).mockImplementation(() => completedProcess());
+    const service = new GitService({ environment: async (_repo, args) => ['fetch', 'pull', 'push'].includes(args[0])
+      ? credentialEnvironment('/extension/askpass.cjs', async () => undefined) : {} });
+    const runtime = service as unknown as { run(repo: { id: string; root: string; commonDir: string; name: string }, args: string[]): Promise<unknown> };
+    const repo = { id: 'auth', root: process.cwd(), commonDir: process.cwd(), name: 'auth' };
+    for (const command of ['fetch', 'pull', 'push', 'status', 'ls-remote']) {
+      await runtime.run(repo, [command]);
+      const env = vi.mocked(spawn).mock.lastCall![2]!.env!;
+      const network = ['fetch', 'pull', 'push'].includes(command);
+      expect(env.GCM_INTERACTIVE).toBe(network ? inherited : 'never');
+      expect(env.GIT_TERMINAL_PROMPT).toBe('0');
+      if (network) expect(env.GIT_ASKPASS).toBe('/extension/askpass.sh');
+    }
+  });
   it('sanitizes streamed Git stderr before invoking the output callback', async () => {
     const child = processFixture(41), output: string[] = [];
     vi.mocked(spawn).mockReturnValueOnce(child as unknown as ChildProcess);
