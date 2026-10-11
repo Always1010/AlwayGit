@@ -90,7 +90,7 @@ export function runGitProcess(options: GitRunOptions): Promise<GitResult> {
       }
     };
     const abort = () => stop(new GitError(localizeMessage("runner.gitOperationWasCancelled"), 'ABORTED'));
-    const timer = setTimeout(() => stop(new GitError(localizeMessage("runner.gitTimedOutCheckCredentialsHooksOrAnotherGit"), 'TIMEOUT')), options.timeoutMs ?? 60000);
+    const timer = options.timeoutMs === 0 ? undefined : setTimeout(() => stop(new GitError(localizeMessage("runner.gitTimedOutCheckCredentialsHooksOrAnotherGit"), 'TIMEOUT')), options.timeoutMs ?? 60000);
     const collect = (bucket: Buffer[], chunk: Buffer) => {
       // Keep draining after cancellation; destroying pipes can manufacture close
       // before descendants have finished using the inherited pipe handles.

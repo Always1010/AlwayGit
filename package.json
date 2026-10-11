@@ -188,6 +188,14 @@
           "scope": "machine",
           "description": "%manifest.contributes.configuration.properties.alwaygit.gitPath.description%"
         },
+        "alwaygit.networkTimeoutMinutes": {
+          "type": "integer",
+          "default": 10,
+          "minimum": 0,
+          "maximum": 1440,
+          "scope": "window",
+          "description": "%manifest.networkTimeoutMinutes%"
+        },
         "alwaygit.historyPageSize": {
           "type": "number",
           "default": 300,

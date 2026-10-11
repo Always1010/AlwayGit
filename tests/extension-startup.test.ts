@@ -5,7 +5,7 @@ import type { GitServiceOptions } from '../src/git/service';
 import { createConnection } from 'node:net';
 import type { Repository } from '../src/protocol/types';
 
-const startup = vi.hoisted(() => ({ scan: vi.fn(), builtin: vi.fn(), bridge: vi.fn(), session: vi.fn(), input: vi.fn(), githubAuth: true, options: undefined as GitServiceOptions | undefined }));
+const startup = vi.hoisted(() => ({ scan: vi.fn(), builtin: vi.fn(), bridge: vi.fn(), session: vi.fn(), input: vi.fn(), githubAuth: true, networkMinutes: undefined as unknown, options: undefined as GitServiceOptions | undefined }));
 vi.mock('../src/git/service', () => ({ GitService: class { constructor(options: GitServiceOptions) { startup.options = options; } } }));
 vi.mock('../src/repositories/manager', () => ({ RepositoryManager: class {
   scan = startup.scan;
@@ -23,7 +23,7 @@ vi.mock('vscode', () => ({
   authentication: { getSession: startup.session },
   CancellationTokenSource: class { token = {}; cancel() {} dispose() {} },
   workspace: {
-    isTrusted: true, getConfiguration: () => ({ get: (key: string, fallback: unknown) => key === 'gitAuthentication' ? startup.githubAuth : fallback }),
+    isTrusted: true, getConfiguration: () => ({ get: (key: string, fallback: unknown) => key === 'gitAuthentication' ? startup.githubAuth : key === 'networkTimeoutMinutes' ? startup.networkMinutes ?? fallback : fallback }),
     registerTextDocumentContentProvider: () => ({ dispose() {} }),
     onDidCloseTextDocument: () => ({ dispose() {} }),
     onDidChangeWorkspaceFolders: () => ({ dispose() {} }), onDidGrantWorkspaceTrust: () => ({ dispose() {} }), onDidChangeConfiguration: () => ({ dispose() {} }),
@@ -38,7 +38,7 @@ vi.mock('vscode', () => ({
   extensions: { getExtension: () => ({ activate: startup.builtin }) },
 }));
 
-beforeEach(() => { vi.clearAllMocks(); startup.bridge.mockResolvedValue(undefined); startup.githubAuth = true; });
+beforeEach(() => { vi.clearAllMocks(); startup.bridge.mockResolvedValue(undefined); startup.githubAuth = true; startup.networkMinutes = undefined; });
 afterEach(() => { vi.restoreAllMocks(); });
 
 it('registers commands and window routing without awaiting slow Git activation or repository restoration', async () => {
@@ -112,4 +112,18 @@ it.each([true, false])('routes network AskPass through VS Code authentication wh
     adapter.dispose?.();
     for (const disposable of context.subscriptions) disposable.dispose();
   }
+});
+
+it('applies validated network deadline settings to subsequent commands without restarting the extension', async () => {
+  startup.scan.mockResolvedValue(undefined);
+  const context = { subscriptions: [], extensionUri: {}, workspaceState: { get: (_key: string, fallback: unknown) => fallback, update: async () => {} } } as unknown as vscode.ExtensionContext;
+  await activate(context);
+  try {
+    const read = startup.options!.networkTimeoutMs;
+    if (typeof read !== 'function') throw new Error('Missing live deadline reader');
+    expect(read()).toBe(600_000);
+    startup.networkMinutes = 60; expect(read()).toBe(3_600_000);
+    startup.networkMinutes = 0; expect(read()).toBe(0);
+    for (const invalid of [-1, 1441, 0.5, '0', NaN]) { startup.networkMinutes = invalid; expect(read()).toBe(600_000); }
+  } finally { for (const disposable of context.subscriptions) disposable.dispose(); }
 });

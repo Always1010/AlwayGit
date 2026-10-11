@@ -2968,6 +2968,10 @@ export const catalog = {
     "en": "Initially select forced removal in Worktree removal dialogs. Uncommitted files may be discarded; final confirmation is still required.",
     "zh-CN": "工作树移除弹窗初始勾选强制移除。可能丢弃未提交文件，仍需最终确认。"
   },
+  "manifest.networkTimeoutMinutes": {
+    "en": "Total time limit for each Push, Fetch or Pull command, in minutes (0 disables the limit). Changes apply to the next command. No-output reminders do not stop Git.",
+    "zh-CN": "每条 Push、Fetch 或 Pull 命令的总耗时限制，单位为分钟（0 表示关闭限制）。修改从下一条命令生效；无输出提醒不会停止 Git。"
+  },
   "menus.discardAllUnstaged": {
     "en": "Discard All Unstaged Changes…",
     "zh-CN": "丢弃全部未暂存更改…"
@@ -6996,6 +7000,7 @@ export interface MessageParameters {
   "manifest.auxiliaryWorkbench": {  };
   "manifest.contributes.configuration.properties.alwaygit.forceDeleteUnmergedBranches.description": {  };
   "manifest.contributes.configuration.properties.alwaygit.forceRemoveDirtyWorktrees.description": {  };
+  "manifest.networkTimeoutMinutes": {  };
   "menus.discardAllUnstaged": {  };
   "menus.discardAllChanges": {  };
   "menus.createLocalTrackingBranches": {  };

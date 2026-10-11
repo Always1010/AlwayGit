@@ -16,6 +16,10 @@ export async function activate(context: vscode.ExtensionContext) {
   const gitPath = vscode.workspace.getConfiguration('alwaygit').get<string>('gitPath') || undefined;
   const git = new GitService({
     gitPath,
+    networkTimeoutMs: () => {
+      const minutes = vscode.workspace.getConfiguration('alwaygit').get<number>('networkTimeoutMinutes', 10);
+      return Number.isInteger(minutes) && minutes >= 0 && minutes <= 1440 ? minutes * 60_000 : 600_000;
+    },
     resolveGitPath: async () => {
       if (vscode.workspace.isTrusted) {
         try {
