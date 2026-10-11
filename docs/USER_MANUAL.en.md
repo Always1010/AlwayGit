@@ -479,6 +479,8 @@ A branch is a movable reference to a version. Creating a branch, switching branc
 
 Fetch updates your local knowledge of the remote state. Pull integrates remote changes into the current branch. Push sends local commits to the target remote. Distinguish these three actions first, then check the source and destination.
 
+For large transfers that need more time, search VS Code settings for `alwaygit.networkTimeoutMinutes` to adjust the network command deadline. See the [workbench specification](WORKBENCH_SPEC.md) for values and scope.
+
 <a id="section-08-01"></a>
 
 ### Add a remote

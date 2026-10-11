@@ -220,5 +220,6 @@
     "zh-CN": "工作树移除弹窗初始勾选强制移除。可能丢弃未提交文件，仍需最终确认。",
     "review": "translated",
     "context": "Deletion operation preferences"
-  }
+  },
+  "manifest.networkTimeoutMinutes": { "en": "Total time limit for each Push, Fetch or Pull command, in minutes (0 disables the limit). Changes apply to the next command. No-output reminders do not stop Git.", "zh-CN": "每条 Push、Fetch 或 Pull 命令的总耗时限制，单位为分钟（0 表示关闭限制）。修改从下一条命令生效；无输出提醒不会停止 Git。", "review": "translated", "context": "package.json" }
 }

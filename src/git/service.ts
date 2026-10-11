@@ -35,7 +35,7 @@ export interface GitServiceOptions {
   resolveGitPath?: () => Promise<string | undefined>;
   onOutput?: (repo: Repository, text: string) => void;
   timeoutMs?: number;
-  networkTimeoutMs?: number;
+  networkTimeoutMs?: number | (() => number);
   maxOutputBytes?: number;
   environment?: NodeJS.ProcessEnv | ((repo: Repository, args: readonly string[]) => Promise<NodeJS.ProcessEnv | { env: NodeJS.ProcessEnv; cancelPrompts?: () => void; dispose?: () => void | Promise<void> }>);
 }
@@ -172,7 +172,7 @@ export class GitService implements GitServiceContract {
         // other commands (including remote probes) remain non-interactive.
         env: { ...commandEnv, GIT_TERMINAL_PROMPT: '0', ...(!['fetch', 'pull', 'push'].includes(args[0]) ? { GCM_INTERACTIVE: 'never' } : {}), GIT_EDITOR: 'true', GIT_SEQUENCE_EDITOR: 'true', ...(['status', 'log', 'show', 'ls-tree', 'ls-files', 'for-each-ref'].includes(args[0]) ? { GIT_OPTIONAL_LOCKS: '0' } : {}), ...execution.env, ...(bindingConfig ? { GIT_CONFIG_SYSTEM: bindingConfig, GIT_CONFIG_NOSYSTEM: '0' } : {}) },
         input: prepared.input, signal: execution.signal && scopeSignal ? AbortSignal.any([execution.signal,scopeSignal]) : execution.signal ?? scopeSignal, readOnly, captureBytes,
-        timeoutMs: this.options.timeoutMs ?? (args[0] === 'ls-remote' ? 30_000 : ['fetch', 'pull', 'push'].includes(args[0]) ? this.options.networkTimeoutMs ?? 600_000 : undefined), onStop: wrapped?.cancelPrompts, maxOutputBytes: this.options.maxOutputBytes,
+        timeoutMs: this.options.timeoutMs ?? (args[0] === 'ls-remote' ? 30_000 : networkCommand ? (typeof this.options.networkTimeoutMs === 'function' ? this.options.networkTimeoutMs() : this.options.networkTimeoutMs) ?? 600_000 : undefined), onStop: wrapped?.cancelPrompts, maxOutputBytes: this.options.maxOutputBytes,
         onStderr: chunk => { if (!execution.silent) log.write(chunk); progress?.write(chunk); },
         onStdout: chunk => { execution.onStdout?.(chunk); if (networkCommand && !execution.silent) stdoutLog.write(chunk); progress?.write(chunk, 'stdout'); },
       });

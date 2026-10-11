@@ -479,6 +479,8 @@ Working Tree 是磁盘上的工作文件；Index 是下一次提交的准备区�
 
 Fetch 更新本机知道的远端状态；Pull 把远端改动整合进当前分支；Push 把本地提交发送到目标远端。先区分这三个动作，再检查来源和目标。
 
+大文件传输需要更长等待时，可在 VS Code 设置中搜索 `alwaygit.networkTimeoutMinutes` 调整网络命令超时；取值与生效范围见 [工作台规格](WORKBENCH_SPEC.md)。
+
 <a id="section-08-01"></a>
 
 ### 添加远端

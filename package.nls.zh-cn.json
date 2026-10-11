@@ -35,5 +35,6 @@
   "manifest.openInAuxiliary": "在第二侧边栏打开工作台",
   "manifest.auxiliaryWorkbench": "工作台（第二侧边栏）",
   "manifest.contributes.configuration.properties.alwaygit.forceDeleteUnmergedBranches.description": "本地分支删除弹窗初始勾选强制删除未合并分支。仍需最终确认。",
-  "manifest.contributes.configuration.properties.alwaygit.forceRemoveDirtyWorktrees.description": "工作树移除弹窗初始勾选强制移除。可能丢弃未提交文件，仍需最终确认。"
+  "manifest.contributes.configuration.properties.alwaygit.forceRemoveDirtyWorktrees.description": "工作树移除弹窗初始勾选强制移除。可能丢弃未提交文件，仍需最终确认。",
+  "manifest.networkTimeoutMinutes": "每条 Push、Fetch 或 Pull 命令的总耗时限制，单位为分钟（0 表示关闭限制）。修改从下一条命令生效；无输出提醒不会停止 Git。"
 }

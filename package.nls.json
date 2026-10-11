@@ -35,5 +35,6 @@
   "manifest.openInAuxiliary": "Open Workbench in Secondary Sidebar",
   "manifest.auxiliaryWorkbench": "Workbench (Secondary Sidebar)",
   "manifest.contributes.configuration.properties.alwaygit.forceDeleteUnmergedBranches.description": "Initially select force deletion in local branch deletion dialogs. Final confirmation is still required.",
-  "manifest.contributes.configuration.properties.alwaygit.forceRemoveDirtyWorktrees.description": "Initially select forced removal in Worktree removal dialogs. Uncommitted files may be discarded; final confirmation is still required."
+  "manifest.contributes.configuration.properties.alwaygit.forceRemoveDirtyWorktrees.description": "Initially select forced removal in Worktree removal dialogs. Uncommitted files may be discarded; final confirmation is still required.",
+  "manifest.networkTimeoutMinutes": "Total time limit for each Push, Fetch or Pull command, in minutes (0 disables the limit). Changes apply to the next command. No-output reminders do not stop Git."
 }

@@ -37,6 +37,36 @@ function start(options: Partial<Parameters<typeof runGitProcess>[0]> = {}) {
 }
 
 describe('Git process termination', () => {
+  it('supports an explicit unlimited deadline while preserving process-tree cancellation', async () => {
+    const controller = new AbortController(), { git, killer, settled, result } = start({ timeoutMs: 0, signal: controller.signal });
+    await vi.advanceTimersByTimeAsync(86_400_000);
+    expect(settled).not.toHaveBeenCalled(); expect(spawn).toHaveBeenCalledTimes(1);
+    controller.abort(); git.emit('close', 1);
+    await Promise.resolve(); expect(settled).not.toHaveBeenCalled();
+    killer.emit('close', 0); expect((await result).error).toMatchObject({ code: 'ABORTED' });
+  });
+  it('reads the network deadline for each command without extending ordinary query deadlines', async () => {
+    const repo = { id: 'dynamic-budget', root: process.cwd(), commonDir: process.cwd(), name: 'dynamic' };
+    let budget = 1_200_000;
+    const service = new GitService({ networkTimeoutMs: () => budget });
+    const runtime = service as unknown as { run(repository: typeof repo, args: string[]): Promise<unknown> };
+    for (const minutes of [20, 0]) {
+      budget = minutes * 60_000;
+      const child = processFixture(61); vi.mocked(spawn).mockReturnValueOnce(child as unknown as ChildProcess);
+      const result = runtime.run(repo, ['fetch']);
+      await vi.advanceTimersByTimeAsync(660_000);
+      expect(child.kill).not.toHaveBeenCalled();
+      expect(vi.mocked(spawn).mock.lastCall?.[0]).toBe('git');
+      child.emit('close', 0); await result;
+    }
+    const child = processFixture(62), killer = processFixture(63);
+    vi.mocked(spawn).mockReturnValueOnce(child as unknown as ChildProcess).mockReturnValueOnce(killer as unknown as ChildProcess);
+    const result = runtime.run(repo, ['status']).catch(error => error);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(vi.mocked(spawn).mock.lastCall?.[0]).toBe('taskkill');
+    child.emit('close', 1); killer.emit('close', 0);
+    expect(await result).toMatchObject({ code: 'TIMEOUT' });
+  });
   it.each([undefined, 'never'])('preserves credential helper interaction for network operations and keeps probes silent (%s)', async inherited => {
     vi.stubEnv('GCM_INTERACTIVE', inherited);
     vi.mocked(spawn).mockImplementation(() => completedProcess());
