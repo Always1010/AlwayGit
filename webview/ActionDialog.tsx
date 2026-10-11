@@ -1,4 +1,4 @@
-import { Button, Modal } from './ui';
+import { Button, Icon, Modal } from './ui';
 
 import { RemoteTrackingDialog } from './RemoteTrackingDialog';
 import { uiText } from './text';
@@ -189,6 +189,7 @@ function StandardActionDialog({ dialog, onClose: closeDialog, openAbort, replace
   const submit=(event:React.FormEvent)=>{event.preventDefault();void executeAction(type==='branch.create'?true:undefined);};
   if (submitting && state.actionFeedback?.status === 'running' && state.actionFeedback.action.type === type && networkCommand(state.actionFeedback.action) && !blocksWorkbench(state.actionFeedback.action)) {
     return <Modal title={title} onClose={onClose} className="network-operation-dialog" footer={<Button icon="chevron-down" title={t('feedback.network.minimize')} aria-label={t('feedback.network.minimize')} onClick={onClose}/>}>
+      <Icon name="loading" className="feedback-spinner"/>
       <p className="muted">{state.actionFeedback.target}</p><NetworkProgress feedback={state.actionFeedback}/>
     </Modal>;
   }

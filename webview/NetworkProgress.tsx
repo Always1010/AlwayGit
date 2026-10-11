@@ -27,7 +27,6 @@ export function NetworkProgress({ feedback }: { feedback: ActionFeedback }) {
     <div className="network-progress-heading"><p role="status" aria-live="polite">{label}{determinate ? ` · ${progress.percent}%` : ''}</p>
       <Button icon="output" title={t('feedback.showLog')} aria-label={t('feedback.showLog')} onClick={() => void rpc('showLog').catch(error => useWorkbench.getState().report(error))}/>
     </div>
-    <progress aria-label={label} value={determinate ? progress.percent : undefined} max={100}/>
     {phase !== 'refreshing' && <div className="network-progress-metrics">
       {determinate && progress.completed !== undefined && progress.total !== undefined && <span>{t('feedback.network.objects', { completed: progress.completed, total: progress.total })}</span>}
       {progress.transferred && <span>{t('feedback.network.transferred', { value: progress.transferred })}</span>}
