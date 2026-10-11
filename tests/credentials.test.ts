@@ -38,6 +38,24 @@ describe('Git AskPass bridge', () => {
       expect(JSON.stringify(adapter.env)).not.toContain('test-secret');
     } finally { adapter.dispose(); }
   });
+  it('lets a credential helper authenticate before falling back to AskPass', async () => {
+    const prompts: string[] = [];
+    const adapter = await credentialEnvironment(path.resolve('src/extension/askpass.cjs'), async message => { prompts.push(message); return undefined; });
+    // Simulate an interactive helper without opening a browser or contacting a host.
+    const helper = "!f() { if test \"$GCM_INTERACTIVE\" = never; then exit 1; fi; printf 'username=helper-user\\npassword=helper-secret\\n'; }; f";
+    try {
+      const output = await new Promise<string>((resolve, reject) => {
+        const child = spawn('git', ['-c', 'credential.helper=', '-c', `credential.helper=${helper}`, 'credential', 'fill'], { env: { ...process.env, GCM_INTERACTIVE: undefined, ...adapter.env }, windowsHide: true });
+        let stdout = ''; let stderr = '';
+        child.stdout.on('data', chunk => { stdout += chunk; }); child.stderr.on('data', chunk => { stderr += chunk; }); child.on('error', reject);
+        child.on('close', code => code === 0 ? resolve(stdout) : reject(new Error(stderr)));
+        child.stdin.end('protocol=https\nhost=alwaygit.example.test\n\n');
+      });
+      expect(output).toContain('username=helper-user'); expect(output).toContain('password=helper-secret');
+      expect(prompts).toEqual([]);
+      expect(JSON.stringify(adapter.env)).not.toContain('helper-secret');
+    } finally { adapter.dispose(); }
+  });
   it('propagates user cancellation instead of producing an empty credential', async () => {
     const adapter = await credentialEnvironment(path.resolve('src/extension/askpass.cjs'), async () => undefined);
     try {
