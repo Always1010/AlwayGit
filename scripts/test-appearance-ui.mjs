@@ -70,12 +70,14 @@ export async function verifyAppearance(browser, url) {
     await assertCurrentIndicator(currentIndicator, 'rgb(0, 0, 0)', 'Light theme current marker');
     assert.equal(await page.getByLabel('Layout', { exact: true }).count(), 0, 'Removed Layout control must not remain in the workbench');
     assert.equal(await page.getByLabel('Language').count(), 0, 'Language control belongs only in Interface Settings');
-    const top = page.locator('.app-chrome, .toolbar');
+    const top = page.locator('.toolbar');
     assert.equal(await top.getByRole('button', { name: /^(Stage|Unstage|Discard)/ }).count(), 0, 'Stage and Discard actions must not return to the top bars');
 
-    const restore = page.getByRole('button', { name: 'Restore Layout', exact: true });
-    assert.equal((await restore.innerText()).trim(), '', 'Restore Layout remains an icon-only command');
-    assert.equal(await restore.locator('.codicon').count(), 1, 'Restore Layout exposes its icon');
+    await page.getByTestId('toolbar-more').click();
+    const restore = page.getByRole('menuitem', { name: 'Restore Layout', exact: true });
+    assert.equal((await restore.innerText()).trim(), 'Restore Layout', 'Restore Layout has a label in More');
+    assert.equal(await restore.locator('.codicon').count(), 1, 'Restore Layout keeps its icon');
+    await page.keyboard.press('Escape');
     const separators = {
       sidebar: page.getByRole('separator', { name: 'Resize repository sidebar' }),
       details: page.getByRole('separator', { name: 'Resize details panel' }),
@@ -250,6 +252,7 @@ export async function verifyAppearance(browser, url) {
     assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--file-row-padding').trim()), '4px', 'Custom file spacing survives reload');
     assert.equal(await details.getByRole('textbox', { name: 'Commit message' }).count(), 0, 'Reload restores the saved history view');
 
+    await page.getByTestId('toolbar-more').click();
     await restore.click();
     assert.equal(Number(await separators.sidebar.getAttribute('aria-valuenow')), 210);
     assert.equal(Number(await separators.details.getAttribute('aria-valuenow')), 300);
@@ -306,7 +309,8 @@ export async function verifyAppearance(browser, url) {
     await tagDialog.getByRole('button',{name:'取消',exact:true}).click();
     await page.locator('.toolbar button:has(.codicon-arrow-down)').click();
     const pullDialog=page.getByRole('dialog',{name:'拉取',exact:true});await pullDialog.waitFor();
-    assert.equal(await pullDialog.getByLabel('远端（可选）',{exact:true}).count(),1,'Shared action fields use the current language for their accessible names');
+    await pullDialog.getByRole('button',{name:'更改拉取来源',exact:true}).click();
+    assert.equal(await pullDialog.getByLabel('远端',{exact:true}).count(),1,'Pull source fields use the current language for their accessible names');
     await pullDialog.getByRole('button',{name:'取消',exact:true}).click();
     await page.reload();await workbench.waitFor();
     assert.equal(await page.locator('html').getAttribute('lang'),'zh-CN','A saved Chinese session initializes the document language before use');

@@ -49,8 +49,9 @@ export async function verifyHelp(browser, url) {
       } else await page.getByText('No repositories added', { exact: true }).waitFor();
       const baseline = await page.evaluate(() => structuredClone(window.__helpFixture.session));
       const label = language === 'en' ? 'Help & Guide' : '帮助与指南';
-      const trigger = active ? page.getByRole('button', { name: label, exact: true }) : page.getByRole('button', { name: 'Quick start', exact: true });
+      const trigger = active ? page.getByTestId('toolbar-more') : page.getByRole('button', { name: 'Quick start', exact: true });
       await trigger.click();
+      if (active) await page.getByRole('menuitem', { name: label, exact: true }).click();
       const dialog = page.getByRole('dialog', { name: label, exact: true });
       await dialog.getByRole('heading', { name: language === 'en' ? 'Quick start: make your first commit' : '快速开始：完成第一次提交', exact: true }).waitFor({ timeout: 10000 });
       const image = dialog.locator('img').first();
@@ -70,6 +71,7 @@ export async function verifyHelp(browser, url) {
         for (let index = 0; index < await images.count(); index++) {
           const figure = images.nth(index);
           await figure.scrollIntoViewIfNeeded();
+          await page.waitForFunction(source => [...document.querySelectorAll('.help-content img')].some(image => image.getAttribute('src') === source && image.complete && image.naturalWidth > 0), await figure.getAttribute('src'));
           const source = await figure.evaluate(async element => {
             await element.decode();
             if (!element.naturalWidth) throw new Error('Empty manual image');

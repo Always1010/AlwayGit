@@ -1,23 +1,26 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon } from './ui';
+import { useWorkbenchFields } from './subscriptions';
+import { shortcutAria, shortcutTitle, type WorkbenchShortcut } from './shortcutKeys';
 
-export interface MenuItem { label: string; icon?: string; disabled?: boolean; reason?: string; pressed?: boolean; run(): void | Promise<void> }
-export function ContextMenu({ x, y, caption, items, anchor, close, className = '', placement = 'auto' }: { x: number; y: number; caption: string; items: MenuItem[]; anchor: HTMLElement; close(): void; className?: string; placement?: 'auto' | 'above' }) {
+export interface MenuItem { label: string; icon?: string; iconContent?: ReactNode; separatorBefore?: boolean; shortcut?: WorkbenchShortcut; testId?: string; disabled?: boolean; reason?: string; pressed?: boolean; run(): void | Promise<void> }
+export function ContextMenu({ x, y, caption, items, anchor, close, className = '', placement = 'auto', id, hideCaption = false }: { x: number; y: number; caption: string; items: MenuItem[]; anchor: HTMLElement; close(): void; className?: string; placement?: 'auto' | 'above'; id?: string; hideCaption?: boolean }) {
   const menu = useRef<HTMLDivElement>(null), [position, setPosition] = useState({ x: Math.max(6, x), y: Math.max(6, y) });
+  const { singleKeyShortcuts, shortcutOverrides } = useWorkbenchFields('singleKeyShortcuts', 'shortcutOverrides');
   useLayoutEffect(() => {
     const previous = document.activeElement as HTMLElement, element = menu.current!;
     const rect = element.getBoundingClientRect();
     setPosition({ x: Math.max(6, Math.min(x, innerWidth - rect.width - 6)), y: Math.max(6, Math.min(placement === 'above' || y + rect.height > innerHeight - 6 ? y - rect.height : y, innerHeight - rect.height - 6)) });
     // Opening a menu does not choose an action. Navigation starts on explicit input.
     element.focus({ preventScroll: true });
-    const outside = (event: PointerEvent) => { if (!element.contains(event.target as Node)) close(); };
+    const outside = (event: PointerEvent) => { if (!element.contains(event.target as Node) && !(id && anchor.contains(event.target as Node))) close(); };
     const resize = () => close();
     // Diff positioning and other panels' scrolling do not move this menu's source.
     const scroll = (event: Event) => { if (event.target === document || event.target === window || event.target instanceof Element && event.target.contains(anchor)) close(); };
     window.addEventListener('pointerdown', outside); window.addEventListener('resize', resize); window.addEventListener('scroll', scroll, true);
     return () => { window.removeEventListener('pointerdown', outside); window.removeEventListener('resize', resize); window.removeEventListener('scroll', scroll, true); if ((element.contains(document.activeElement)||document.activeElement===document.body) && previous?.isConnected) previous.focus({ preventScroll: true }); };
-  }, [x, y, anchor, close, placement]);
-  return <div ref={menu} data-testid="context-menu" className={`context-menu ${className}`.trim()} role="menu" tabIndex={-1} aria-label={caption} style={{ left: position.x, top: position.y }} onContextMenu={event => event.preventDefault()} onPointerMove={event => {
+  }, [x, y, anchor, close, placement, id]);
+  return <div ref={menu} id={id} data-testid="context-menu" className={`context-menu ${className}`.trim()} role="menu" tabIndex={-1} aria-label={caption} style={{ left: position.x, top: position.y }} onContextMenu={event => event.preventDefault()} onPointerMove={event => {
     const button = (event.target as Element).closest<HTMLButtonElement>('button');
     (button && !button.disabled ? button : event.currentTarget).focus({ preventScroll: true });
   }} onPointerLeave={event => event.currentTarget.focus({ preventScroll: true })} onKeyDown={event => {
@@ -27,5 +30,5 @@ export function ContextMenu({ x, y, caption, items, anchor, close, className = '
     event.preventDefault(); event.stopPropagation();
     const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : index < 0 ? (event.key === 'ArrowDown' ? 0 : buttons.length - 1) : (index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
     buttons[next].focus({ preventScroll: true }); buttons[next].scrollIntoView({ block: 'nearest' });
-  }}><div className="menu-caption">{caption}</div>{items.map(item => <button type="button" role="menuitem" tabIndex={-1} key={item.label} disabled={item.disabled} title={item.reason} onClick={() => { close(); void item.run(); }}><Icon name={item.icon ?? 'circle-small'} /><span>{item.label}</span></button>)}</div>;
+  }}>{!hideCaption&&<div className="menu-caption">{caption}</div>}{items.map(item => <Fragment key={item.label}>{item.separatorBefore&&<div className="menu-separator" role="separator"/>}<button type="button" role="menuitem" tabIndex={-1} data-testid={item.testId} disabled={item.disabled} title={item.shortcut?shortcutTitle(item.reason??item.label,item.shortcut,singleKeyShortcuts,shortcutOverrides):item.reason} aria-keyshortcuts={item.shortcut?shortcutAria(item.shortcut,singleKeyShortcuts,shortcutOverrides):undefined} onClick={() => { close(); void item.run(); }}>{item.iconContent??<Icon name={item.icon ?? 'circle-small'} />}<span>{item.label}</span></button></Fragment>)}</div>;
 }

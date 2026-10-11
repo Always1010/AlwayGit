@@ -34,6 +34,8 @@ export async function verifyProjectOpen(browser, url) {
       }, language);
       await page.goto(url);
       const button = page.getByTestId('open-project'), notice = page.locator('.project-open-notice');
+      const openProject = async () => { await page.getByTestId('toolbar-more').click(); await button.click(); };
+      await page.getByTestId('toolbar-more').click();
       await button.waitFor(); await page.waitForFunction(() => !document.querySelector('[data-testid="open-project"]').disabled);
       await page.clock.install();
       await button.click(); await notice.waitFor();
@@ -41,7 +43,7 @@ export async function verifyProjectOpen(browser, url) {
       assert.match(await notice.innerText(), /D:\\Projects\\Current repository/);
       assert.equal(await notice.getAttribute('role'), 'status');
       await page.clock.fastForward(2000);
-      await button.click(); await notice.waitFor();
+      await openProject(); await notice.waitFor();
       await page.clock.fastForward(1500);
       assert.equal(await notice.count(), 1, 'Repeated clicks refresh a single notice timer');
       await page.clock.fastForward(1600); await notice.waitFor({ state: 'hidden' });
@@ -54,18 +56,21 @@ export async function verifyProjectOpen(browser, url) {
       await page.setViewportSize({ width: 1000, height: 800 });
 
       await page.evaluate(() => { window.__projectFixture.result = { kind: 'other-window' }; });
-      await button.click(); await notice.waitFor({ state: 'hidden' });
+      await openProject(); await notice.waitFor({ state: 'hidden' });
       await page.evaluate(() => { window.__projectFixture.error = 'Explorer unavailable'; });
-      await button.click(); await page.getByRole('alert').getByText('Explorer unavailable', { exact: true }).waitFor();
+      await openProject(); await page.getByRole('alert').getByText('Explorer unavailable', { exact: true }).waitFor();
       assert.equal(await notice.count(), 0, 'Errors do not produce a success notice');
       await page.evaluate(() => {
         const fixture = window.__projectFixture; fixture.error = undefined; fixture.hold = true;
         fixture.result = { kind: 'current-window', root: 'D:\\Projects\\Current repository', exactRoot: true };
       });
-      await button.click();
+      await openProject();
       await page.waitForFunction(() => window.__projectFixture.pending.length === 1);
       await page.getByRole('option', { name: 'Other repository', exact: true }).dblclick();
-      await page.waitForFunction(() => document.querySelector('[data-testid="open-project"]').title.includes('D:\\Projects\\Other repository'));
+      await page.waitForFunction(() => document.querySelector('.toolbar-branch')?.title.includes('Other repository'));
+      await page.getByTestId('toolbar-more').click();
+      await page.waitForFunction(() => document.querySelector('[data-testid="open-project"]')?.title.includes('D:\\Projects\\Other repository'));
+      await page.keyboard.press('Escape');
       await page.evaluate(() => { const fixture = window.__projectFixture; fixture.reply(fixture.pending.shift()); });
       await page.clock.fastForward(100);
       assert.equal(await notice.count(), 0, 'Late responses cannot show the previous repository notice');

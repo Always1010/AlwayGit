@@ -1,4 +1,10 @@
 {
+  "workbench.moreActions": {
+    "en": "More actions",
+    "zh-CN": "更多操作",
+    "review": "translated",
+    "context": "webview/App.tsx / merged toolbar menu"
+  },
   "workbench.opening": {
     "en": "Opening…",
     "zh-CN": "正在打开…",
@@ -50,18 +56,6 @@
   "workbench.exploreDemo": {
     "en": "Explore Demo",
     "zh-CN": "查看示例",
-    "review": "translated",
-    "context": "webview/App.tsx / App"
-  },
-  "workbench.gitWorkbench": {
-    "en": "Git Workbench",
-    "zh-CN": "Git 工作台",
-    "review": "translated",
-    "context": "webview/App.tsx / App"
-  },
-  "workbench.demoRepository": {
-    "en": "Demo Repository",
-    "zh-CN": "模拟仓库",
     "review": "translated",
     "context": "webview/App.tsx / App"
   },
