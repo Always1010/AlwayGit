@@ -11,13 +11,14 @@ vi.mock('vscode', () => ({
   window: { state: { focused: true }, onDidChangeWindowState: () => ({ dispose() {} }) },
   commands: { getCommands: async () => ['workbench.action.focusWindow'], executeCommand: vi.fn(async () => {}) },
   Uri: { file: (root: string) => ({ scheme: 'file', fsPath: root }) },
-  env: { appRoot: 'project-window-test' },
+  env: { appRoot: 'project-window-test', remoteName: undefined },
 }));
 
 const directories: string[] = [], projects: ProjectWindows[] = [], targets: WindowBridge[] = [];
 beforeEach(() => {
   vi.mocked(vscode.commands.executeCommand).mockReset().mockResolvedValue(undefined);
   Object.assign(vscode.workspace, { isTrusted: true });
+  Object.assign(vscode.env, { remoteName: undefined });
 });
 afterEach(async () => {
   await Promise.all(targets.splice(0).map(bridge => bridge.close()));
@@ -44,6 +45,38 @@ async function setup(mode: 'exact' | 'parent' | 'multi' | 'other' = 'exact') {
 }
 
 describe('Open Repository Folder', () => {
+  it.each([undefined, 'ssh-remote'])('opens a blank workbench with the current connection and delivers its request (remote: %s)', async remoteName => {
+    Object.assign(vscode.env, { remoteName });
+    const { project } = await setup(), received: unknown[] = [];
+    vi.mocked(vscode.commands.executeCommand).mockImplementation(async command => {
+      if (command !== 'vscode.newWindow') throw new Error('A local-only window cannot register with the remote bridge.');
+      const target = new WindowBridge(project.bridge.directory, async request => { received.push(request); });
+      targets.push(target); await target.start([], false);
+    });
+    await expect(project.openBlankWorkbenchInNewWindow()).resolves.toBeUndefined();
+    expect(received).toEqual([{ action: 'show-workbench' }]);
+    expect(vscode.commands.executeCommand).toHaveBeenCalledExactlyOnceWith('vscode.newWindow');
+  });
+
+  it('shares window discovery within a remote profile and separates another profile', async () => {
+    Object.assign(vscode.env, { remoteName: 'ssh-remote' });
+    const { project, root } = await setup();
+    const create = (storage: string) => {
+      const instance = new ProjectWindows({ globalStorageUri: { toString: () => storage } } as unknown as vscode.ExtensionContext,
+        { appendLine() {} } as never, {} as never, {} as never, async () => {});
+      projects.push(instance); return instance;
+    };
+    // Use real registries rather than setup's overridden fixture registry.
+    const storage = path.dirname(project.bridge.directory);
+    const first = create(storage), second = create(storage), other = create(storage + '-other-profile');
+    await first.bridge.start([root], false);
+    await second.bridge.start([], false);
+    await other.bridge.start([], false);
+    expect((await second.bridge.candidates(root)).map(record => record.id)).toEqual([first.bridge.record.id]);
+    await expect(WindowBridge.send(first.bridge.record)).resolves.toBeUndefined();
+    expect(await other.bridge.candidates(root)).toEqual([]);
+  });
+
   it.each(['exact', 'parent', 'multi'] as const)('shows Explorer for the current %s workspace without reopening editors or the project', async mode => {
     const { project, root, repositories, showWorkbench } = await setup(mode);
     for (let click = 0; click < 2; click++) {
