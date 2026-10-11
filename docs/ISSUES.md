@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-121：未标明平台的安装包无法完整用于其他架构
+
+- 日期：2026-10-11
+- 状态：已解决
+- 现象：Windows 构建的 VSIX 没有 Linux PTY 模块，Linux x64 构建的模块无法用于 Rock 5B 的 ARM64；安装包没有声明目标平台，安装后内嵌终端才暴露错误。
+- 原因：打包未传目标平台，直接复制安装依赖的原生运行目录，且复制前未清理旧模块、未验证解包后的独立运行。
+- 解决方案：自动识别构建平台并向 VSCE 传递目标，拒绝跨平台标记；清理旧运行目录、过滤其他平台预编译模块并验证加载。固定包替换前解包核验身份、平台和执行权限，并运行真实终端生命周期检查。固定路径与上一份备份沿用。
+- 验证方式：当前 Linux x64 的类型与 1538 条双语资源检查、2 项平台打包定向测试、生产构建及真实 PTY 输入输出、退出、终止、启动失败和辅助进程释放检查通过；VSIX 校验脚本语法检查通过。未生成 VSIX，解包后的包校验、Windows/ARM64 和真实 SSH 场景交由对应平台及实机验证。
+- 相关文件：`scripts/platform-runtime.mjs`、`scripts/build.mjs`、`scripts/package.mjs`、`scripts/verify-package.mjs`、`scripts/test-terminal-host.mjs`、`tests/platform-runtime.test.ts`、版本清单及 `docs/ARCHITECTURE.md`。
+
 ## BUG-120：大文件末尾修改被 Diff 截断而显示零差异
 
 - 日期：2026-10-11
