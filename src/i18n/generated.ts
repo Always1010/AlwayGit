@@ -5631,6 +5631,18 @@ export const catalog = {
     "en": "Remote Tag queries are unavailable. Reload the workbench after updating the extension.",
     "zh-CN": "远端标签查询不可用，请更新扩展后重新加载工作台。"
   },
+  "tags.selectAndLocate": {
+    "en": "Click to select; double-click or press Enter to locate the commit",
+    "zh-CN": "单击选择，双击或按 Enter 定位提交"
+  },
+  "tags.nonCommitSelection": {
+    "en": "Click to select; this Tag does not point to a commit",
+    "zh-CN": "单击选择；此标签未指向提交，无法定位提交历史"
+  },
+  "tags.remoteSelection": {
+    "en": "Click to select; this remote-only Tag cannot locate local history",
+    "zh-CN": "单击选择；此标签仅存在于远端，无法定位本地历史"
+  },
   "tracking.enterALocalBranchName": {
     "en": "Enter a local branch name.",
     "zh-CN": "请输入本地分支名称。"
@@ -7582,6 +7594,9 @@ export interface MessageParameters {
   "tags.commitLegend": {  };
   "tags.remoteChanged": {  };
   "tags.unavailable": {  };
+  "tags.selectAndLocate": {  };
+  "tags.nonCommitSelection": {  };
+  "tags.remoteSelection": {  };
   "tracking.enterALocalBranchName": {  };
   "tracking.duplicateLocalName": {  };
   "tracking.nameAlreadyExistsWithADifferentUpstream": {  };
