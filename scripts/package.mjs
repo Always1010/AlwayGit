@@ -21,7 +21,8 @@ async function exists(path) {
 
 try {
   await new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [join(root, 'node_modules/@vscode/vsce/vsce'), 'package', '--target', target, '--allow-missing-repository', '--skip-license', '--no-dependencies', '--no-rewrite-relative-links', '--out', temporary], { cwd: root, stdio: 'inherit', windowsHide: true });
+    // Accept startup activation explicitly so interactive updates do not ask again.
+    const child = spawn(process.execPath, [join(root, 'node_modules/@vscode/vsce/vsce'), 'package', '--target', target, '--allow-star-activation', '--allow-missing-repository', '--skip-license', '--no-dependencies', '--no-rewrite-relative-links', '--out', temporary], { cwd: root, stdio: 'inherit', windowsHide: true });
     child.once('error', reject);
     child.once('close', code => code === 0 ? resolve() : reject(new Error(`VSIX packaging failed (${code ?? 'terminated'}).`)));
   });
