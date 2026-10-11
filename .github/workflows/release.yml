@@ -10,17 +10,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
-    name: Validate and package
-    runs-on: ubuntu-latest
+  validate:
+    name: Validate release
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     permissions:
       contents: read
     outputs:
       version: ${{ steps.release.outputs.version }}
-      artifact_name: ${{ steps.release.outputs.artifact_name }}
-      asset_name: ${{ steps.release.outputs.asset_name }}
-      checksum_name: ${{ steps.release.outputs.checksum_name }}
     steps:
       - name: Check out tagged commit
         uses: actions/checkout@v7
@@ -74,12 +71,7 @@ jobs:
             exit 1
           fi
 
-          asset_name="alwaygit-${version}.vsix"
-          checksum_name="${asset_name}.sha256"
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "artifact_name=alwaygit-release-${version}" >> "$GITHUB_OUTPUT"
-          echo "asset_name=$asset_name" >> "$GITHUB_OUTPUT"
-          echo "checksum_name=$checksum_name" >> "$GITHUB_OUTPUT"
 
       - name: Install dependencies
         run: npm ci
@@ -111,67 +103,103 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-      - name: Package VSIX
-        run: node scripts/package.mjs
+  package:
+    name: Package ${{ matrix.target }}
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: win32-x64
+            runner: windows-2022
+          - target: linux-x64
+            runner: ubuntu-22.04
+          - target: linux-arm64
+            runner: ubuntu-22.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.validate.outputs.version }}
+      TARGET: ${{ matrix.target }}
+    steps:
+      - name: Check out tagged commit
+        uses: actions/checkout@v7
 
-      - name: Verify packaged extension
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install native dependencies on the target platform
+        run: npm ci
+
+      - name: Package and verify the extracted VSIX
+        run: node scripts/package.mjs --target ${{ matrix.target }}
+
+      - name: Generate package checksum
         shell: bash
-        env:
-          VERSION: ${{ steps.release.outputs.version }}
-          ASSET_NAME: ${{ steps.release.outputs.asset_name }}
         run: |
           set -euo pipefail
-
-          asset_path="artifacts/$ASSET_NAME"
-          test -f "$asset_path"
-          unzip -p "$asset_path" extension/package.json > "$RUNNER_TEMP/alwaygit-package.json"
-          node <<'NODE'
-          const fs = require('node:fs');
-
-          const manifest = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/alwaygit-package.json', 'utf8'));
-          const expected = {
-            publisher: 'alwaygit-dev',
-            name: 'alwaygit',
-            version: process.env.VERSION,
-          };
-
-          for (const [field, value] of Object.entries(expected)) {
-            if (manifest[field] !== value) {
-              console.error(`Packaged ${field} ${manifest[field] ?? '<missing>'} does not match ${value}.`);
-              process.exit(1);
-            }
-          }
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          const name = `alwaygit-${process.env.VERSION}-${process.env.TARGET}.vsix`;
+          const hash = createHash('sha256').update(readFileSync(`artifacts/${name}`)).digest('hex');
+          writeFileSync(`artifacts/${name}.sha256`, `${hash}  ${name}\n`);
           NODE
 
-          (
-            cd artifacts
-            sha256sum "$ASSET_NAME" > "${ASSET_NAME}.sha256"
-          )
-
-      - name: Upload release files for publishing
+      - name: Upload verified platform package
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ steps.release.outputs.artifact_name }}
+          name: alwaygit-release-${{ matrix.target }}
           path: |
-            artifacts/${{ steps.release.outputs.asset_name }}
-            artifacts/${{ steps.release.outputs.checksum_name }}
+            artifacts/alwaygit-${{ env.VERSION }}-${{ matrix.target }}.vsix
+            artifacts/alwaygit-${{ env.VERSION }}-${{ matrix.target }}.vsix.sha256
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
 
   publish:
     name: Publish GitHub Release
-    needs: build
-    runs-on: ubuntu-latest
+    needs: [validate, package]
+    runs-on: ubuntu-22.04
     timeout-minutes: 10
     permissions:
       contents: write
+    env:
+      VERSION: ${{ needs.validate.outputs.version }}
     steps:
-      - name: Download verified release files
+      - name: Download all verified platform packages
         uses: actions/download-artifact@v8
         with:
-          name: ${{ needs.build.outputs.artifact_name }}
+          pattern: alwaygit-release-*
+          merge-multiple: true
           path: release
+
+      - name: Verify the complete set of release checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { readFileSync, readdirSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          const expected = [];
+          for (const target of ['win32-x64', 'linux-x64', 'linux-arm64']) {
+            const name = `alwaygit-${process.env.VERSION}-${target}.vsix`;
+            const hash = createHash('sha256').update(readFileSync(`release/${name}`)).digest('hex');
+            if (readFileSync(`release/${name}.sha256`, 'utf8') !== `${hash}  ${name}\n`) {
+              throw new Error(`Checksum mismatch: ${name}`);
+            }
+            expected.push(name, `${name}.sha256`);
+          }
+          if (JSON.stringify(readdirSync('release').sort()) !== JSON.stringify(expected.sort())) {
+            throw new Error('Release assets are missing or unexpected.');
+          }
+          NODE
 
       - name: Ensure the release does not already exist
         shell: bash
@@ -187,13 +215,9 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ needs.build.outputs.version }}
-          ASSET_NAME: ${{ needs.build.outputs.asset_name }}
-          CHECKSUM_NAME: ${{ needs.build.outputs.checksum_name }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
-            "release/$ASSET_NAME" \
-            "release/$CHECKSUM_NAME" \
+            release/*.vsix release/*.vsix.sha256 \
             --repo "$GITHUB_REPOSITORY" \
             --verify-tag \
             --generate-notes \
