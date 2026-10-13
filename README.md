@@ -6,7 +6,7 @@ AlwayGit 是可在 VS Code 编辑器标签页、主侧边栏、第二侧边栏�
 
 [![发布版本代码分析：语言占比、文件类型与数量、Vitest 测试用例](https://always1010.github.io/AlwayGit/repository-stats.svg)](https://always1010.github.io/AlwayGit/)
 
-图卡标明对应的发布 Tag，仅在稳定版本 Release 成功后更新；首次 Pages 部署前图片暂不可用。[统计口径、Pages 设置与恢复方式](docs/VALIDATION.md#发布版本代码分析)。
+图卡标明对应的发布 Tag，仅在稳定版本 Release 成功后更新。[统计口径、Pages 设置与恢复方式](docs/VALIDATION.md#发布版本代码分析)。
 
 ## 安装与启动
 
