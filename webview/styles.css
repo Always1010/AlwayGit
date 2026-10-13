@@ -26,7 +26,7 @@ h1,h2,p {margin:0;}
 .button.primary:hover {background:var(--vscode-button-hoverBackground,var(--button));filter:brightness(1.12);}
 .button.danger {background:var(--vscode-inputValidation-errorBackground,#512d30);color:var(--error);border:1px solid var(--error);}
 .toolbar-spacer {flex:1;}
-.commit-row.selected:not(.working-tree-row),.working-row.selected,.sidebar-item.selected,.file-item.selected,.change-file.selected {background:var(--selected)!important;color:var(--selected-fg);}
+.commit-row.selected:not(.working-tree-row),.working-row.selected,.sidebar-item.selected {background:var(--selected)!important;color:var(--selected-fg);}
 .workbench {height:100%;display:flex;flex-direction:column;min-width:0;overflow:hidden;font-size:var(--workbench-font,13px);line-height:1.4;color:var(--fg);background:var(--bg);}
 .toolbar {display:flex;align-items:center;gap:6px;padding:3px 7px;border-bottom:1px solid var(--section-border);flex:none;min-width:0;min-height:34px;user-select:none;background:var(--surface-toolbar);}
 .toolbar-primary {display:flex;align-items:center;gap:3px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:thin;}
@@ -239,7 +239,7 @@ h1,h2,p {margin:0;}
 .file-status {position:relative;display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;flex:none;text-align:center;}
 .file-status>.codicon {font-size:18px;color:var(--muted);}
 .file-status-badge {position:absolute;right:-1px;bottom:-1px;display:flex;align-items:center;justify-content:center;min-width:14px;height:14px;padding:0 2px;border-radius:3px;background:color-mix(in srgb,currentColor 17%,var(--bg));box-shadow:0 0 0 1px var(--bg);font-size:11px;font-weight:500;line-height:1;}
-.selected .file-status-badge {box-shadow:0 0 0 1px var(--selected);}
+.preview-current .file-status::before {content:'';position:absolute;left:-3px;top:9px;width:4px;height:4px;border-radius:50%;background:var(--accent);pointer-events:none;}
 .status-M {color:var(--yellow);}
 .status-R,.status-C {color:var(--vscode-gitDecoration-renamedResourceForeground,color-mix(in srgb,var(--accent) 65%,var(--error)));}
 .status-A {color:var(--green);}
@@ -291,14 +291,13 @@ h1,h2,p {margin:0;}
 .file-selection-hint>span {min-width:0;}
 .file-selection-hint strong {white-space:nowrap;font-weight:500;font-variant-numeric:tabular-nums;}
 .file-item,.change-file {min-height:var(--file-row-height,32px);padding:var(--file-row-padding,1px) 5px;user-select:none;border-radius:3px;}
-.file-item:hover,.change-file:hover {background:var(--hover);}
+.file-item:hover:not(.batch-selected),.change-file:hover:not(.batch-selected) {background:var(--hover);}
 .file-item .file-name,.change-file .file-name {display:flex;min-width:0;padding:0;}
 .file-name:hover {background:transparent!important;}
 .file-label {display:flex;flex:1;flex-direction:column;min-width:0;line-height:1.2;}
 .file-basename {font-size:var(--workbench-font,13px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .file-parent-path {font-size:11px;color:var(--muted);overflow-wrap:anywhere;}
-.batch-selected {background:color-mix(in srgb,var(--accent) 10%,var(--bg));}
-.selected .file-parent-path {color:inherit;opacity:.82;}
+.file-item.batch-selected,.change-file.batch-selected {background:color-mix(in srgb,var(--accent) 18%,var(--bg));}
 .change-empty {color:var(--muted);font-size:11px;padding:3px 8px;line-height:18px;}
 .change-area-label {flex:none;white-space:nowrap;font-size:11px;padding:1px 5px;border-radius:3px;background:var(--panel);color:var(--muted);}
 .change-area-label.area-staged {color:var(--green);background:color-mix(in srgb,var(--green) 10%,var(--bg));}

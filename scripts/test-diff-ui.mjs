@@ -297,7 +297,7 @@ export async function verifyCommitNavigation(browser, url) {
     assert.equal(renamed.previousPath, 'old-single.txt');
     assert.equal(renamed.parent, 'b'.repeat(40));
     await filter.fill('');
-    assert.ok(await details.locator('.file-item.selected').getByRole('button', { name: 'single.txt', exact: true }).count());
+    assert.ok(await details.locator('.file-item[aria-current="true"]').getByRole('button', { name: 'single.txt', exact: true }).count());
     await step(-1, 'File 1/6 · Change 3/3');
     await step(1, 'File 4/6 · Change 1/1');
     await step(1, 'File 5/6 · Change 1/1');
@@ -338,7 +338,7 @@ export async function verifyCommitNavigation(browser, url) {
     await page.reload();
     await expectCount('1/1');
     await step(1, '1/1');
-    assert.ok(await details.locator('.file-item.selected').getByRole('button', { name: 'large.txt', exact: true }).count());
+    assert.ok(await details.locator('.file-item[aria-current="true"]').getByRole('button', { name: 'large.txt', exact: true }).count());
     dialog = await settings();
     assert.equal(await dialog.getByLabel('Diff navigation scope').inputValue(), 'file');
     await dialog.getByLabel('Diff navigation scope').selectOption('commit');

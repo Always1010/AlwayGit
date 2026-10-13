@@ -1,5 +1,65 @@
 import assert from 'node:assert/strict';
 
+// Shared by Working Tree, Commit Details, and Commit comparison regressions.
+async function verifyFileSelectionPreview(page, list, screenshotPath) {
+  const rows = list.locator('.file-item,.change-file'), first = rows.nth(0), second = rows.nth(1), third = rows.nth(2);
+  const click = (row, modifiers = []) => row.locator('.file-name').click({ modifiers });
+  const selectedCount = () => list.locator('[role="option"][aria-selected="true"]').count();
+  const heading = page.getByTestId('diff-preview').locator('.pane-heading > .truncate');
+  await click(first);
+  await page.getByTestId('diff-preview').locator('.diff-content').waitFor();
+  assert.equal(await selectedCount(), 1);
+  assert.equal(await first.getAttribute('aria-current'), 'true');
+  const previewTitle = await heading.innerText();
+  const previewReads = () => page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'diffPreview').length);
+  const reads = await previewReads();
+  const selectedBackground = await first.evaluate(row => getComputedStyle(row).backgroundColor);
+  const unchanged = async () => {
+    assert.equal(await heading.innerText(), previewTitle, 'Batch selection must keep the current Diff');
+    assert.equal(await first.getAttribute('aria-current'), 'true', 'The preview marker stays on the viewed file');
+    assert.equal(await previewReads(), reads, 'Batch selection must not fetch another Diff');
+  };
+  await click(second, ['Control']);
+  assert.equal(await selectedCount(), 2);
+  assert.equal(await second.getAttribute('aria-current'), null);
+  assert.equal(await first.evaluate(row => getComputedStyle(row).backgroundColor), selectedBackground, 'Hover must not change selection colors');
+  await unchanged();
+  await click(first, ['Control']);
+  assert.equal(await first.getAttribute('aria-selected'), 'false');
+  assert.equal(await selectedCount(), 1);
+  await unchanged();
+  const clearedBackground = await first.evaluate(row => getComputedStyle(row).backgroundColor);
+  assert.notEqual(clearedBackground, selectedBackground, 'Deselecting the viewed file must remove its selection background');
+  const marker = await first.locator('.file-status').evaluate(icon => ({ width: getComputedStyle(icon, '::before').width, color: getComputedStyle(icon, '::before').backgroundColor }));
+  assert.equal(marker.width, '4px', 'The current Diff uses a small icon marker');
+  assert.notEqual(marker.color, 'rgba(0, 0, 0, 0)');
+  if (screenshotPath) await page.screenshot({ path: screenshotPath });
+  await third.locator('.file-name').hover();
+  assert.equal(await third.evaluate(row => getComputedStyle(row).backgroundColor), clearedBackground, 'Viewed and other unselected rows have the same hover background');
+  await click(second, ['Meta']);
+  assert.equal(await selectedCount(), 0, 'Cmd toggles selection on macOS');
+  await unchanged();
+  await click(first);
+  await click(third, ['Shift']);
+  assert.equal(await selectedCount(), 3, 'Shift selects a contiguous range');
+  await unchanged();
+  await click(first);
+  await click(third, ['Control']);
+  await click(second, ['Control', 'Shift']);
+  assert.equal(await selectedCount(), 3, 'Ctrl+Shift adds a contiguous range');
+  await unchanged();
+  await page.keyboard.press('Control+a');
+  assert.equal(await selectedCount(), await rows.count());
+  await unchanged();
+  await page.keyboard.press('Escape');
+  assert.equal(await selectedCount(), 0);
+  await unchanged();
+  await click(second);
+  assert.equal(await selectedCount(), 1);
+  assert.equal(await second.getAttribute('aria-current'), 'true', 'An ordinary click switches the preview');
+  assert.notEqual(await heading.innerText(), previewTitle);
+}
+
 export async function verifyFiles(browser, url) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
@@ -7,7 +67,8 @@ export async function verifyFiles(browser, url) {
   try {
     await page.addInitScript(() => {
       const repo = { id: 'files', root: '/files', commonDir: '/files/.git', name: 'File fixture' };
-      const commit = { oid: 'a'.repeat(40), parents: [], author: 'Fixture', email: 'test@example.com', timestamp: 0, subject: 'File selection' };
+      const parent = { oid: 'c'.repeat(40), parents: [], author: 'Fixture', email: 'test@example.com', timestamp: 0, subject: 'Parent fixture' };
+      const commit = { ...parent, oid: 'a'.repeat(40), parents: [parent.oid], subject: 'File selection' };
       const paths = ['src/features/auth/login.ts', 'src/services/auth/login.ts', 'README.md'];
       const fixture = window.__filesFixture = { calls: [], paths,
         holdDetails: false, heldDetails: [], snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 0, behind: 0, changes: paths.map((path, i) => ({ path, indexStatus: i === 2 ? '?' : 'M', worktreeStatus: i === 2 ? '?' : 'M', conflict: false, untracked: i === 2 })), refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
@@ -19,6 +80,11 @@ export async function verifyFiles(browser, url) {
           setTimeout(() => window.postMessage({ type: 'response', id: request.id, error: { message: 'hook rejected' } }, '*'), 10); return;
         }
         let result;
+        if (request.method === 'interfaceSettings' || request.method === 'saveInterfaceSettings') {
+          const preferences = JSON.parse(localStorage.getItem('files-preferences') || '{}');
+          result = request.method === 'saveInterfaceSettings' ? { ...preferences, ...request.payload } : preferences;
+          if (request.method === 'saveInterfaceSettings') localStorage.setItem('files-preferences', JSON.stringify(result));
+        }
         if (request.method === 'action' && request.payload.type === 'commit') {
           fixture.snapshot.head = 'b'.repeat(40);
           fixture.snapshot.changes = fixture.snapshot.changes.flatMap(file => {
@@ -37,8 +103,9 @@ export async function verifyFiles(browser, url) {
           fixture.discardPlan = { token: 'files-discard-plan', scope: request.payload.scope === 'all' ? 'all' : 'unstaged', paths: changes.map(file => file.path), tracked: changes.filter(file => !file.untracked).length, untracked: changes.filter(file => file.untracked).length, staged: changes.filter(file => !file.untracked && file.indexStatus !== ' ').length, branch: 'main', head: fixture.snapshot.head };
           result = fixture.discardPlan;
         }
-        if (request.method === 'history') result = { commits: [commit], tips: [commit.oid], nextOffset: 1, hasMore: false };
-        if (request.method === 'details') result = { commit, body: '', files: paths.map(path => ({ path, status: 'M' })) };
+        if (request.method === 'history') result = { commits: [commit, parent], tips: [commit.oid], nextOffset: 2, hasMore: false };
+        if (request.method === 'details') result = { commit: request.payload.oid === parent.oid ? parent : commit, body: '', files: paths.map(path => ({ path, status: 'M' })) };
+        if (request.method === 'compare') result = { left: parent, right: commit, files: paths.map(path => ({ path, status: 'M' })) };
         if (request.method === 'diffPreview') result = { kind: 'text', path: request.payload.path, leftLabel: 'Before', rightLabel: 'After', left: 'before', right: 'after' };
         if (request.method === 'details' && fixture.holdDetails) { fixture.heldDetails.push({ type: 'response', id: request.id, result }); return; }
         setTimeout(() => window.postMessage({ type: 'response', id: request.id, result }, '*'), 10);
@@ -46,6 +113,8 @@ export async function verifyFiles(browser, url) {
     });
     await page.goto(url);
     await page.getByRole('option', { name: 'File fixture' }).dblclick();
+    const historyCommits = page.getByTestId('history').locator('[data-oid]');
+    await historyCommits.first().click();
     const details = page.getByTestId('details'), panel = details.locator('.file-selection-panel');
     await panel.getByText('./src/features/auth', { exact: true }).waitFor();
     await panel.getByText('./src/services/auth', { exact: true }).waitFor();
@@ -55,6 +124,12 @@ export async function verifyFiles(browser, url) {
     assert.equal(await panel.locator('.file-item > .codicon').count(), 0, 'Each row uses one file icon with a status badge');
     const compactRow = await panel.locator('.file-item').first().boundingBox();
     assert.ok(compactRow && compactRow.height <= 34, 'Default two-line file rows stay compact');
+    await verifyFileSelectionPreview(page, panel.locator('.detail-files'));
+    await historyCommits.nth(1).click({ modifiers: ['Control'] });
+    await details.locator('.comparison-summary').waitFor();
+    await verifyFileSelectionPreview(page, panel.locator('.detail-files'));
+    await historyCommits.first().click();
+    await details.locator('.commit-metadata').waitFor();
     const filter = panel.getByRole('searchbox', { name: 'Filter changed file paths', exact: true });
     await filter.fill(' FEATURES/AUTH ');
     assert.equal(await panel.locator('.file-item').count(), 1, 'Directory fragments must filter the complete relative path case-insensitively');
@@ -109,6 +184,7 @@ export async function verifyFiles(browser, url) {
     const groups = details.locator('.change-groups'), unstaged = groups.locator('.change-group:has(.change-heading-unstaged)'), staged = groups.locator('.change-group:has(.change-heading-staged)');
     const stageAll = unstaged.getByRole('button', { name: 'Stage All', exact: true });
     await stageAll.waitFor();
+    await verifyFileSelectionPreview(page, groups, 'artifacts/file-selection-preview.png');
     await unstaged.getByRole('button', { name: 'Collapse Unstaged', exact: true }).click();
     assert.equal(await unstaged.locator('.change-file').first().isVisible(), false);
     await groups.focus(); await page.keyboard.press('Control+a');
@@ -369,8 +445,11 @@ export async function verifyFiles(browser, url) {
     await discardDialog.getByRole('button',{name:'Cancel',exact:true}).click();
     await details.getByRole('button',{name:'Clear file filter',exact:true}).click();
     const featureRows = groups.getByRole('button',{name:'src/features/auth/login.ts',exact:true});
+    await verifyFileSelectionPreview(page, groups);
     await featureRows.first().click();
     await featureRows.last().click({modifiers:['Control']});
+    assert.equal(await featureRows.first().locator('..').getAttribute('aria-current'), 'true', 'Selecting the staged version keeps the unstaged Diff');
+    assert.equal(await featureRows.last().locator('..').getAttribute('aria-current'), null, 'Only the previewed Git area has the current marker');
     await featureRows.first().click({button:'right'});
     const beforeSelected = await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action').length);
     await menu.getByRole('menuitem',{name:'Commit Selected…',exact:true}).click();
@@ -451,6 +530,6 @@ export async function verifyFiles(browser, url) {
     assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'prepareDiscard').at(-1).payload), { scope: 'unstaged' }, 'Global Discard sends scope rather than a giant path array');
     await discardDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     assert.deepEqual(errors, []);
-    console.log('ALWAYGIT_FILES_UI_TESTS_PASSED: working path filtering and action scope, narrow Staged Commit entry, cancel/reload draft recovery, failures, hidden conflicts, Commit/Amend and native text editing');
+    console.log('ALWAYGIT_FILES_UI_TESTS_PASSED: independent selection/preview in Commit, comparison and split/unified Working Tree, deselection/hover colors, Git-area markers, working path filtering and action scope, narrow Staged Commit entry, cancel/reload draft recovery, failures, hidden conflicts, Commit/Amend and native text editing');
   } finally { await page.close(); }
 }
