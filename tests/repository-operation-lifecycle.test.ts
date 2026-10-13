@@ -38,7 +38,7 @@ function workbench(projects: object) {
   const repo = { id: 'repo', root: path.resolve('repo'), commonDir: path.resolve('repo/.git'), name: 'repo' };
   const repositories = { list: () => [repo], get: () => repo, onDidChange: () => ({ dispose() {} }), onDidChangeRepositories: () => ({ dispose() {} }) };
   const git = { execute: vi.fn(async () => {}), snapshot: vi.fn(async () => ({ repository: repo })) };
-  const value = new Workbench(context(), git as never, repositories as never, {} as never, output() as never, projects as never); workbenches.push(value);
+  const value = new Workbench(context(), git as never, repositories as never, { releaseDiffOwner: vi.fn() } as never, output() as never, projects as never); workbenches.push(value);
   return { value, repo, git };
 }
 const action = { id: 'action', method: 'action', repoId: 'repo', payload: { type: 'fetch' } } as const;

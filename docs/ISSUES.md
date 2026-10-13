@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-131：Release 单元测试因文档清理接口替身缺失而失败
+
+- 日期：2026-10-13
+- 状态：已解决
+- 现象：远程 Release 的仓库管理与操作生命周期测试共 10 项失败，均在 `afterEach` 调用 `Workbench.dispose()` 时抛出 `this.documents.releaseDiffOwner is not a function`，阻断发布。
+- 原因：Workbench 销毁时需要释放所属 Diff 快照，但这两个测试文件仍传入空对象作为 GitDocuments 替身；强制类型断言隐藏了缺失方法，实际 GitDocuments 已实现该接口。
+- 解决方案：为两个测试夹具补齐 `releaseDiffOwner` 替身，沿用工作台入口测试的清理接口约定，保留实际 Diff 资源释放行为与原有业务断言。
+- 验证方式：仓库管理、操作生命周期、工作台入口及文档快照 4 文件 / 102 项定向回归通过，覆盖 Release 报错的全部 10 项；类型检查及 1555 条双语资源检查通过。未运行全量测试或重跑远程 Release，未打包、安装或远程推送。
+- 相关文件：`tests/repository-manager.test.ts`、`tests/repository-operation-lifecycle.test.ts`、`src/extension/workbench.ts`、`src/editor/documents.ts`、`docs/ISSUES.md`。
+
 ## BUG-130：内嵌终端未接入 VS Code GitHub 登录，重复询问用户名
 
 - 日期：2026-10-11
