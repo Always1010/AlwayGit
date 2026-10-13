@@ -357,7 +357,7 @@ describe('Add Repository host entry', () => {
   function workbench() {
     const { manager, context, git, output } = setup();
     const projects={notifyCatalogChanged:vi.fn(async()=>{}),runRepositoryOperation:vi.fn(async(_commonDir:string,_label:string,task:()=>Promise<unknown>)=>task())};
-    const value = new Workbench(context, git, manager, {} as never, output, projects as never); workbenches.push(value); return { value, manager, output, projects };
+    const value = new Workbench(context, git, manager, { releaseDiffOwner: vi.fn() } as never, output, projects as never); workbenches.push(value); return { value, manager, output, projects };
   }
   it('discovers candidates without registration and adds only the confirmed keys', async () => {
     const root = await fixture(), { value, manager, projects } = workbench();
