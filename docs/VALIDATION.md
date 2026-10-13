@@ -240,7 +240,7 @@ README 的图卡和 [完整统计页](https://always1010.github.io/AlwayGit/) �
 2. 在 **Settings → Environments → github-pages** 核对部署规则。使用 **Selected branches and tags** 时，分别允许发布 Tag `v*` 和默认分支 `main`；后者用于从默认分支手动恢复。核对仓库允许工作流运行所用的官方 Actions。
 3. 先将本功能合入主干，再推送新的发布 Tag。已有 Pages 站点应先合并部署内容，本工作流上传的是完整统计站点，不能与其他工作流各自覆盖同一 Pages 站点。
 
-`scripts/repository-stats.mjs` 从同一份 Tag 快照与原始测试汇总生成中文 `repository-stats.svg` / `index.html` 和英文 `repository-stats.en.svg` / `index.en.html`，两版页面均列出全部文件类型并可互相切换，共用 `repository-stats.json`；数据与统计口径不因语言而变化。现有中文地址保持不变，英文资源在包含该生成器的新稳定版本发布并成功部署 Pages 后可用。部署前英文 README 只提供现有统计页的文字入口与语言说明，避免失效图卡；部署后可接入英文图卡与页面。图卡只显示前八种文件类型并汇总其余类型。生成文件位于忽略目录 `artifacts/`，通过 `upload-pages-artifact` / `deploy-pages` 部署，不执行 Git commit 或 push，不使用 `gh-pages` 分支。首次配置所需的脚本、工作流和 README 引用是正常项目提交，后续生成结果不进入 Git。
+`scripts/repository-stats.mjs` 从同一份 Tag 快照与原始测试汇总生成中文 `repository-stats.svg` / `index.html` 和英文 `repository-stats.en.svg` / `index.en.html`，两版页面均列出全部文件类型并可互相切换，共用 `repository-stats.json`；数据与统计口径不因语言而变化。中文 README 引用中文图卡与页面，英文 README 引用英文图卡与页面，两个入口均已随 `v1.5.3` 发布部署。图卡只显示前八种文件类型并汇总其余类型。生成文件位于忽略目录 `artifacts/`，通过 `upload-pages-artifact` / `deploy-pages` 部署，不执行 Git commit 或 push，不使用 `gh-pages` 分支。首次配置所需的脚本、工作流和 README 引用是正常项目提交，后续生成结果不进入 Git。
 
 统计部署使用仓库/Actions 只读及 Pages/OIDC 发布权限，不使用代码写入权限。部署任务统一串行，发布前检查原始 Release run 的工作流、提交及报告身份，再检查已发布稳定版本与 Pages 当前版本；低版本不会覆盖高版本。图卡统计或 Pages 失败不撤回已创建的 Release，上一版已部署图卡继续可用；Actions 中可查看失败原因。Pages 发布及 GitHub 图片缓存会带来显示延迟，图卡版本是统计对象的依据。
 
@@ -256,6 +256,7 @@ Release 会把已通过的测试计数、Tag、Commit、仓库和 run ID 保存�
 
 | 证据范围 | 日期 / 版本 | 已记录结果与限制 |
 | --- | --- | --- |
+| 双语统计正式发布与 README 图卡接入 | 2026-10-14 / 1.5.3 | 推送 main 与附注 Tag v1.5.3；Release 类型/翻译检查、719 项单元测试和三个平台的 VSIX 验证通过，Release 与 Pages 部署成功。中文/英文 HTML、两张 SVG 与共用 JSON 均返回 HTTP 200，Tag 和 Commit 与发布快照一致；英文 README 已接入英文图卡与页面，本地文档链接检查通过。未更新本机扩展 |
 | 英文 README 与首页入口 | 2026-10-13 / 源码 1.5.2 | 默认中文 README、新英文入口、核心文档与手册的首页/语言导航完成；12 份 Markdown 的 215 处本地链接、图片和锚点检查通过，README 两版章节/功能项对应，中文内部材料显式标注语言。导航修改前后的帮助解析内容完全一致，最终 Webview 资源构建通过，沿用第一阶段帮助验收；40 张维护截图未变。英文 README 暂用已发布中文统计页的文字入口；未全量测试、打包、安装、部署或推送 |
 | 发布统计双语展示 | 2026-10-13 / 源码 1.5.2 | 统计脚本语法检查与 6 项统计专项测试通过；两种 SVG、两种 HTML、共用 JSON 和页面链接一致，计数口径不变。用示例测试数完成无头桌面/390px 页面、语言导航、图片解码和 SVG 文本边界检查并查看预览；直接打开 SVG 的首轮截图超时，改用内嵌 SVG 和本地 HTTP 页面后通过。远端中文页为 200，英文图卡/页面尚为 404；未部署、全量测试、打包、安装或推送 |
 | 核心文档英文版与双语导航 | 2026-10-13 / 源码 1.5.2 | 新增规格、架构、验证英文版，技术文档共用稳定锚点，英文手册关联链接进入英文文档；11 份 Markdown 的 193 处本地链接、图片和锚点检查通过，3 项帮助内容测试、生产构建和无头 `--help-only` 通过。83 个手册锚点与 40 张共享 PNG 保持不变；未重拍截图、运行全量测试、启动可见窗口、打包、安装或远程推送 |

@@ -4,7 +4,9 @@
 
 AlwayGit is a graphical Git workbench for VS Code editor tabs, the Primary Sidebar, Secondary Sidebar, and Panel. It brings repository and reference navigation, commit history, commit details, working-directory status, and read-only diffs into one interface. Text files can open in VS Code's native editor; images and other binary files are previewed inside the Workbench.
 
-[Release statistics (currently published in Chinese)](https://always1010.github.io/AlwayGit/) show the latest successfully released stable Tag. English cards and pages become available after the first stable release containing the bilingual generator successfully deploys Pages. Until then, this README uses a text link rather than an unavailable English image. See [counting rules, Pages setup, and recovery](docs/VALIDATION.en.md#release-code-analysis).
+[![Release code analysis: language shares, file types and counts, and Vitest test cases](https://always1010.github.io/AlwayGit/repository-stats.en.svg)](https://always1010.github.io/AlwayGit/index.en.html)
+
+The card identifies its release Tag and updates only after a stable Release succeeds. See [counting rules, Pages setup, and recovery](docs/VALIDATION.en.md#release-code-analysis).
 
 ## Installation and launch
 
