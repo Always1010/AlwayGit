@@ -135,7 +135,7 @@ node scripts/verify-package.mjs artifacts/alwaygit.vsix
 
 统一安装入口是 `scripts/install.mjs`，Windows、Linux 共用。需要已有 Node.js；源码构建采用 Node.js 24，并先在目标机器的项目目录准备 `npm ci` 所安装的依赖及原生编译工具。脚本不自动安装依赖、Node.js 或工具链。安装已有 VSIX 的模式只需要 Node.js 和可用的 VS Code CLI，无需项目 node_modules、Python 或编译器。
 
-安装操作先调用所选 CLI 的 `--version`，按项目的 `engines.vscode` 要求检查兼容性；不兼容或无法读取版本时，在构建、替换固定包和安装之前停止。安装已有 VSIX 还会校验包内的版本要求；只打包无需 VS Code。当前最低版本为 VS Code 1.106，第二侧边栏容器贡献项依赖该版本，不能仅降低清单要求来兼容 1.98。Rock 5B 的桌面版若为 `/usr/bin/code` 1.98.2，更新桌面目标需要先更新编辑器；用于 Remote SSH 的 AlwayGit 应选择 Server 目标。脚本不会自动升级编辑器或更换安装位置。
+安装操作先调用所选 CLI 的 `--version`，按项目的 `engines.vscode` 要求检查兼容性；不兼容或无法读取版本时，在构建、替换固定包和安装之前停止。安装已有 VSIX 还会校验包内的版本要求；只打包无需 VS Code。当前最低版本为 VS Code 1.106，第二侧边栏容器贡献项依赖该版本，不能仅降低清单要求来兼容 1.98。若所选桌面 VS Code 低于项目要求，更新桌面目标需要先更新编辑器；用于 Remote SSH 的 AlwayGit 应选择 Server 目标。脚本不会自动升级编辑器或更换安装位置。
 
 
 交互终端中不传操作参数时，显示平台、操作和安装位置菜单：
@@ -146,24 +146,24 @@ node scripts/install.mjs
 bash scripts/install.sh
 ```
 
-平台菜单推荐自动识别，提供 Windows x64/ARM64、Linux x64/ARM64 和 macOS x64/ARM64；Rock 5B 使用 `linux-arm64`。操作菜单必须明确选择构建并安装、安装已有包或只打包。安装位置只选择一次：`desktop`（默认）更新执行脚本机器上的桌面 VS Code，`server` 更新该机器上的官方 VS Code Server；路径与可用管理入口自动定位，不要求用户另选 CLI 或 Server 版本。只打包不询问安装位置。非交互终端必须传入操作参数；明确指定操作时跳过菜单，未指定平台则自动识别，未指定 `--install-to` 则使用桌面目标。当前 CI 发布范围仍为 Windows x64、Linux x64、Linux ARM64。
+平台菜单推荐自动识别，提供 Windows x64/ARM64、Linux x64/ARM64 和 macOS x64/ARM64；按执行脚本的电脑所用的操作系统与 CPU 架构选择平台。操作菜单必须明确选择构建并安装、安装已有包或只打包。安装位置只选择一次：`desktop`（默认）更新执行脚本机器上的桌面 VS Code，`server` 更新该机器上的官方 VS Code Server；路径与可用管理入口自动定位，不要求用户另选 CLI 或 Server 版本。只打包不询问安装位置。非交互终端必须传入操作参数；明确指定操作时跳过菜单，未指定平台则自动识别，未指定 `--install-to` 则使用桌面目标。当前 CI 发布范围仍为 Windows x64、Linux x64、Linux ARM64。
 
-在 Rock 5B 上的普通 SSH 或 VS Code 终端中，按需求择一运行：
+在 Linux 远程电脑上的普通 SSH 或 VS Code 终端中，按需求择一运行。以下命令默认自动识别平台；需要显式指定时，可使用 `--target linux-x64` 或 `--target linux-arm64`，目标必须与远程电脑一致：
 
 ```bash
-# 安装已有固定包到板子的桌面 VS Code（默认），不构建：
-bash scripts/install.sh --target linux-arm64 --install-only
-# 安装已有固定包到板子的 VS Code Server，供 Remote SSH 使用：
-bash scripts/install.sh --target linux-arm64 --install-only --install-to server
+# 安装已有固定包到远程电脑的桌面 VS Code（默认），不构建：
+bash scripts/install.sh --install-only
+# 安装已有固定包到远程电脑的 VS Code Server，供 Remote SSH 使用：
+bash scripts/install.sh --install-only --install-to server
 # 构建、打包并安装到 Server；须已准备项目依赖和编译工具：
-bash scripts/install.sh --target linux-arm64 --build-install --install-to server
+bash scripts/install.sh --build-install --install-to server
 # 安装指定路径的包，身份及版本必须与当前项目一致：
-bash scripts/install.sh --target linux-arm64 --install-only --install-to server --vsix '/path/to/alwaygit-<版本>-linux-arm64.vsix'
+bash scripts/install.sh --install-only --install-to server --vsix '/path/to/匹配当前平台的安装包.vsix'
 # 只打包，不调用 VS Code：
-bash scripts/install.sh --target linux-arm64 --package-only
+bash scripts/install.sh --package-only
 ```
 
-选择平台或 Server 不会自动连接另一台机器，也不会交叉编译，目标必须与执行脚本的机器一致。Windows 连接 Rock 5B 时，脚本在板子上执行，Desktop 指板子的桌面版，Server 指板子的远程扩展宿主；本地 Windows 终端的 Desktop 指 Windows 桌面版。脚本打印包路径、平台、安装位置、实际 CLI、版本和 Profile，Server 额外显示扩展目录。Shell 与 PowerShell 入口根据自身路径寻找统一脚本；传入 `--vsix` 的相对路径则相对于调用时的目录解析。
+选择平台或 Server 不会自动连接另一台机器，也不会交叉编译，目标必须与执行脚本的机器一致。本地电脑连接远程电脑时，脚本在远程电脑上执行，Desktop 指远程电脑的桌面版，Server 指远程电脑的 VS Code Server；脚本在本地电脑的终端执行时，Desktop 指本地电脑的桌面版。脚本打印包路径、平台、安装位置、实际 CLI、版本和 Profile，Server 额外显示扩展目录。Shell 与 PowerShell 入口根据自身路径寻找统一脚本；传入 `--vsix` 的相对路径则相对于调用时的目录解析。
 
 桌面检测跳过 PATH 与历史记录里的 Server/remote-cli，并移除 CLI 的远程转发环境变量。Server 优先定位当前 VS Code 会话对应的实例；会话实例不可用或不兼容时停止，避免用另一版本掩盖当前窗口的限制。普通 SSH 中扫描当前用户的官方安装目录，包括 `bin/<commit>` 与 `cli/servers/<实例>/server`，使用该数据根目录下最新可用且兼容的管理入口；标准 Stable 存储优先于 Insiders，支持 `VSCODE_AGENT_FOLDER` 自定义数据根目录。调用官方 `bin/code-server` 管理扩展，在安装与核对时明确指定同一数据目录及扩展目录，无需 Remote CLI 的窗口 IPC。找不到所选目标时停止，不自动切换 Desktop/Server，也不自动准备 Server。
 
@@ -183,7 +183,7 @@ PowerShell 入口保持不传参数即构建并安装到 Desktop 的行为，支
 
 安装前使用 Node.js 内置功能读取包的 JSON/XML 元数据，核对当前项目的扩展身份、版本、目标平台与 workspace 宿主；拒绝重复、损坏、过大的元数据及不支持的 ZIP64/多卷格式。这个静态检查不代替打包时的原生终端生命周期验证。脚本调用官方 CLI `--install-extension <VSIX> --force`，再核对已安装扩展 `alwaygit-dev.alwaygit` 的版本和包哈希。安装及校验均成功才写入记录；失败时保留原安装记录，不宣称已安装，也不自动卸载或回滚扩展。成功后可方便时重新加载 VS Code 窗口，脚本不自动关闭或重启用户窗口。仅替换 VSIX 不代表已安装扩展更新成功。
 
-统一入口的定向检查覆盖交互选择、平台和包身份拒绝、模拟 CLI 安装与版本核对、失败时记录保留、Profile 能力检查、目标与记录隔离、构建失败停止及 Windows CMD 参数引用。目标定位检查覆盖 Remote CLI 优先的 PATH、普通 SSH、当前会话实例、多个版本、旧目录布局、自定义数据根目录、符号链接和所选目标缺失；Linux 入口检查语法。2026-10-11，Rock 5B 只读验证自动找到 Desktop 1.98.2 与 Server 1.141.0，固定包和安装记录哈希未变；本次未打包或安装扩展。PowerShell 参数转发采用拦截 Node 调用的无安装检查；Windows 原生安装、Windows → Rock 5B 的界面、认证、多窗口以及自定义 Profile 仍需对应设备验收。
+统一入口的定向检查覆盖交互选择、平台和包身份拒绝、模拟 CLI 安装与版本核对、失败时记录保留、Profile 能力检查、目标与记录隔离、构建失败停止及 Windows CMD 参数引用。目标定位检查覆盖 Remote CLI 优先的 PATH、普通 SSH、当前会话实例、多个版本、旧目录布局、自定义数据根目录、符号链接和所选目标缺失；Linux 入口检查语法。2026-10-11，Linux ARM64 远程电脑上的只读验证自动找到 Desktop 1.98.2 与 Server 1.141.0，固定包和安装记录哈希未变；本次未打包或安装扩展。PowerShell 参数转发采用拦截 Node 调用的无安装检查；Windows 原生安装、本地 Windows → Linux ARM64 远程电脑的界面、认证、多窗口以及自定义 Profile 仍需对应设备验收。
 
 扩展身份保持不变，功能版本正常递增，不通过卸载或删除用户数据更新。全部安装包、本机安装记录、构建输出、截图、报告、trace、缓存和日志均不提交。文档整理无需触发扩展重新打包安装。
 
@@ -193,7 +193,7 @@ PowerShell 入口保持不传参数即构建并安装到 Desktop 的行为，支
 
 发布工作流使用 Node.js 24，在公共验证 Job 中执行 `npm ci`、类型与翻译检查、一次全量 Vitest，并保留原有统计摘要。通过后，Windows x64、Ubuntu x64 和 Ubuntu ARM64 三个 Job 并行安装对应平台的原生依赖、构建、打包和验证解包后的终端；Linux 使用 Ubuntu 22.04 / 22.04 ARM64 作为构建基线，不使用会自动升级的 latest 镜像。
 
-三个平台全部通过后，独立发布 Job 才使用 `contents: write` 创建同名 GitHub Release，上传 `alwaygit-<版本>-win32-x64.vsix`、`alwaygit-<版本>-linux-x64.vsix`、`alwaygit-<版本>-linux-arm64.vsix` 及各自的 `.sha256` 文件。发布前重新核对六份文件完整性及校验和；已有同名 Release 时拒绝覆盖。校验在 CI 的系统 Node.js 中执行，不代替 VS Code Server 内置 Node.js 和 Rock 5B 的实机验收。Linux 发布包的支持基线为 64 位 glibc 系统，Ubuntu 22.04+ / Debian 12+；更旧系统需要在对应环境专项构建与验证。
+三个平台全部通过后，独立发布 Job 才使用 `contents: write` 创建同名 GitHub Release，上传 `alwaygit-<版本>-win32-x64.vsix`、`alwaygit-<版本>-linux-x64.vsix`、`alwaygit-<版本>-linux-arm64.vsix` 及各自的 `.sha256` 文件。发布前重新核对六份文件完整性及校验和；已有同名 Release 时拒绝覆盖。校验在 CI 的系统 Node.js 中执行，不代替 VS Code Server 内置 Node.js 和 Linux ARM64 远程电脑的实机验收。Linux 发布包的支持基线为 64 位 glibc 系统，Ubuntu 22.04+ / Debian 12+；更旧系统需要在对应环境专项构建与验证。
 
 发布前先按 Conventional Commits 提交版本文件，再创建附注 Tag；不要使用 `npm version` 自动生成不符合项目提交格式的提交。以下版本号仅为示例：
 

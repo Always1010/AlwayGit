@@ -69,19 +69,19 @@ AlwayGit 把 Git 的仓库导航、提交历史、文件状态与只读差异放
 
 <a id="remote-install"></a>
 
-### 通过 Remote SSH 在 Rock 5B 上使用
+### 通过 Remote SSH 在远程电脑上使用
 
-Windows 上安装 VS Code 和 Remote - SSH，Rock 5B 使用 64 位 glibc Linux 系统并启用 SSH。发布包的 Linux 兼容基线是 Ubuntu 22.04+ / Debian 12+；其他系统需要单独验证。基础 Git 要求仍适用，建议远端使用 Git 2.46+ 以使用完整高级操作。
+本地电脑安装 VS Code 和 Remote - SSH，远程电脑启用 SSH。以下步骤以连接 Linux 远程电脑为例；Linux 发布包要求 64 位 glibc 系统，兼容基线是 Ubuntu 22.04+ / Debian 12+，其他系统需要单独验证。基础 Git 要求仍适用，建议远程电脑使用 Git 2.46+ 以使用完整高级操作。
 
-1. 在 Windows 的 VS Code 中执行 **Remote-SSH: Connect to Host…**，连接 Rock 5B，打开板子上的项目目录。状态栏应显示当前 SSH 主机。
-2. 从可信 Release 取得 `alwaygit-<版本>-linux-arm64.vsix`。本地 Windows 仓库使用 `win32-x64` 包，Linux x64 远端使用 `linux-x64` 包；按仓库所在宿主选择。
-3. 在已连接 Rock 5B 的窗口中执行 **Install from VSIX…**，选择 ARM64 包。核对 AlwayGit 出现在 **SSH: <主机名>** 的已安装扩展分组，而不是只有本地分组；按提示重新加载窗口。
-4. 点击 AlwayGit 图标，添加 Rock 5B 上的仓库路径，例如 `/home/你的用户名/projects/demo`。Git 操作和内嵌终端在板子上执行，界面显示在 Windows。
-5. 在远端终端检查 `git --version`、Git 用户身份和远端仓库认证。需要指定 Git 路径时，在远程设置填写 `alwaygit.gitPath`，例如 `/usr/bin/git`；不填写 Windows 的 Git 路径。
+1. 在本地电脑的 VS Code 中执行 **Remote-SSH: Connect to Host…**，连接远程电脑，打开远程电脑上的项目目录。状态栏应显示当前 SSH 主机。
+2. 从可信 Release 取得与远程电脑匹配的安装包：Linux x64 使用 `alwaygit-<版本>-linux-x64.vsix`，Linux ARM64 使用 `alwaygit-<版本>-linux-arm64.vsix`。包的选择取决于仓库所在的远程电脑，与本地电脑的平台无关；本地 Windows x64 仓库使用 `win32-x64` 包。
+3. 在已连接远程电脑的窗口中执行 **Install from VSIX…**，选择对应平台的包。核对 AlwayGit 出现在 **SSH: <主机名>** 的已安装扩展分组，而不是只有本地分组；按提示重新加载窗口。
+4. 点击 AlwayGit 图标，添加远程电脑上的仓库路径，例如 `/home/你的用户名/projects/demo`。Git 操作和内嵌终端在远程电脑上执行，界面显示在本地电脑。
+5. 在远端终端检查 `git --version`、Git 用户身份和远端仓库认证。需要指定 Git 路径时，在远程设置填写远程电脑上的 `alwaygit.gitPath`，例如 `/usr/bin/git`。
 
-通过 VS Code 的 Install from VSIX 安装完整包，无需在板子上另外安装 Node.js、npm、Python 或编译器；VS Code 自动管理 Server 与扩展运行时。如果使用仓库中的统一安装脚本，需要已有 Node.js，并在板子上运行；普通 SSH 或 VS Code 终端均可。在安装位置菜单选择 **VS Code Server**，或传入 `--install-to server`，脚本自动定位管理入口，无需手动选择路径或 Server 版本。默认 **Desktop** 更新的是板子的桌面 VS Code。安装已有包不需要项目依赖或编译工具，源码构建则需要。菜单及命令参数见[构建与包校验](VALIDATION.md#打包与本地更新)。窗口中的 **Developer: Show Running Extensions** 可用于核对 AlwayGit 是否在远端运行；新空白工作台窗口继承当前 SSH 连接。
+通过 VS Code 的 Install from VSIX 安装完整包，无需在远程电脑上另外安装 Node.js、npm、Python 或编译器；VS Code 自动管理 Server 与扩展运行时。如果使用仓库中的统一安装脚本，需要已有 Node.js，并在远程电脑上运行；普通 SSH 或 VS Code 终端均可。在安装位置菜单选择 **VS Code Server**，或传入 `--install-to server`，脚本自动定位管理入口，无需手动选择路径或 Server 版本。默认 **Desktop** 更新的是执行脚本的远程电脑上的桌面 VS Code。安装已有包不需要项目依赖或编译工具，源码构建则需要。菜单及命令参数见[构建与包校验](VALIDATION.md#打包与本地更新)。窗口中的 **Developer: Show Running Extensions** 可用于核对 AlwayGit 是否在远端运行；新空白工作台窗口继承当前 SSH 连接。
 
-Windows → Rock 5B 的真实终端、认证及多窗口仍需实机验收；构建和模拟远程单测的证据边界见[验证说明](VALIDATION.md)。SSH 连接正常但内嵌终端加载失败时，先核对包为 `linux-arm64`，不要用 Windows 或 Linux x64 包替换。
+本地 Windows → Linux ARM64 远程电脑的真实终端、认证及多窗口仍需实机验收；构建和模拟远程单测的证据边界见[验证说明](VALIDATION.md)。SSH 连接正常但内嵌终端加载失败时，先核对安装包的操作系统与 CPU 架构是否与远程电脑一致。
 
 <a id="workbench-locations"></a>
 

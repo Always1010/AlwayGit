@@ -19,7 +19,7 @@ npm run build
 
 安装包使用固定路径 `artifacts/alwaygit.vsix`。首次手动安装可在扩展视图菜单选择 **Install from VSIX…**；Windows、Linux 通用的安装菜单使用 `node scripts/install.mjs`，Linux 也可使用 `bash scripts/install.sh`。依赖准备、打包、安装校验与 Tag 触发的 GitHub Release 见 [验证与本地更新](docs/VALIDATION.md#打包与本地更新)。
 
-发布包按 `win32-x64`、`linux-x64`、`linux-arm64` 区分。Windows 通过 Remote SSH 连接 Rock 5B 时，应将 Linux ARM64 包安装到远端扩展宿主；操作步骤见[远程安装](docs/USER_MANUAL.zh-CN.md#remote-install)。
+发布包按 `win32-x64`、`linux-x64`、`linux-arm64` 区分。通过 Remote SSH 连接远程电脑时，应根据远程电脑的操作系统与 CPU 架构选择安装包，并安装到远端扩展宿主；操作步骤见[远程安装](docs/USER_MANUAL.zh-CN.md#remote-install)。
 
 ## 主要功能
 

@@ -78,7 +78,7 @@ describe('Unified installer', () => {
     await expect(chooseInstallOptions({ target: 'auto' }, 'linux-x64', { input: { isTTY: false } })).rejects.toThrow(/非交互/);
   });
 
-  it('lets interactive users accept the detected Rock 5B platform and choose install-only', async () => {
+  it('lets interactive users accept the detected Linux ARM64 platform and choose install-only', async () => {
     const input = Object.assign(new PassThrough(), { isTTY: true });
     const output = new Writable({ write(chunk, _encoding, callback) {
       const text = chunk.toString();
@@ -157,11 +157,11 @@ describe('Unified installer', () => {
   it('installs with a CLI path containing spaces, verifies the version and writes a context record without building', async () => {
     const f = await fixture();
     const messages: string[] = [];
-    await install({ target: 'auto', mode: 'install-only', codePath: f.codePath, profile: '工作 Profile' }, { ...f, host: 'linux-x64', machine: 'rock-test', log: (message: string) => messages.push(message) });
+    await install({ target: 'auto', mode: 'install-only', codePath: f.codePath, profile: '工作 Profile' }, { ...f, host: 'linux-x64', machine: 'test-host', log: (message: string) => messages.push(message) });
     const record = JSON.parse(await readFile(f.record, 'utf8'));
     expect(record).toMatchObject({ schemaVersion: 3, installTo: 'desktop', codePath: f.codePath, target: 'linux-x64', version: '1.3.0', profile: '工作 Profile' });
     expect(record.sha256).toMatch(/^[a-f0-9]{64}$/);
-    expect(record.contexts[JSON.stringify(['linux-x64', 'rock-test', 'desktop'])]).toMatchObject({ codePath: f.codePath });
+    expect(record.contexts[JSON.stringify(['linux-x64', 'test-host', 'desktop'])]).toMatchObject({ codePath: f.codePath });
     expect(messages.at(-1)).toMatch(/已安装并核对/);
     await expect(access(path.join(f.root, 'node_modules'))).rejects.toThrow();
   });
@@ -189,12 +189,12 @@ describe('Unified installer', () => {
 
   it('refuses unsupported Profiles and allows explicitly clearing a saved desktop Profile in SSH', async () => {
     const f = await fixture();
-    const context = JSON.stringify(['linux-x64', 'rock-test', 'desktop']);
+    const context = JSON.stringify(['linux-x64', 'test-host', 'desktop']);
     await writeFile(f.record, JSON.stringify({ schemaVersion: 2, contexts: { [context]: { codePath: f.codePath, profile: 'desktop' } } }));
     const env = { ...f.env, SSH_CONNECTION: 'test', MOCK_NO_PROFILE: '1' };
     delete (env as Record<string, string | undefined>).ALWAYGIT_VSCODE_PROFILE;
-    await expect(install({ mode: 'install-only', codePath: f.codePath }, { ...f, env, host: 'linux-x64', machine: 'rock-test', log: () => {} })).rejects.toThrow(/不支持 --profile/);
-    await install({ mode: 'install-only', codePath: f.codePath, profile: '' }, { ...f, env, host: 'linux-x64', machine: 'rock-test', log: () => {} });
+    await expect(install({ mode: 'install-only', codePath: f.codePath }, { ...f, env, host: 'linux-x64', machine: 'test-host', log: () => {} })).rejects.toThrow(/不支持 --profile/);
+    await install({ mode: 'install-only', codePath: f.codePath, profile: '' }, { ...f, env, host: 'linux-x64', machine: 'test-host', log: () => {} });
     const record = JSON.parse(await readFile(f.record, 'utf8'));
     expect(record.contexts[context].profile).toBe('');
   });
