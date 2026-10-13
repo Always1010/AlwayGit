@@ -1,6 +1,6 @@
 # 工作台规格
 
-[English](WORKBENCH_SPEC.en.md)
+[English](WORKBENCH_SPEC.en.md) | [返回项目首页](../README.md)
 
 本文记录已确认的 AlwayGit 工作台行为，作为实现、测试和以后聊天继续开发时的稳定依据。
 

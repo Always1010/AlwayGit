@@ -1,6 +1,6 @@
 # Architecture and Development Conventions
 
-[简体中文](ARCHITECTURE.md)
+[简体中文](ARCHITECTURE.md) | [Project home](../README.en.md)
 
 This document maintains AlwayGit's runtime structure, code entry points, conventions across layers, and development workflow. Product behavior is defined by the [Workbench Specification](WORKBENCH_SPEC.en.md). Check methods and validation evidence are maintained in [Validation and Local Updates](VALIDATION.en.md). Collaboration requirements are defined in the [Project Rules (Chinese)](../AGENTS.md).
 

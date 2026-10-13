@@ -1,6 +1,6 @@
 # Validation and Local Updates
 
-[简体中文](VALIDATION.md)
+[简体中文](VALIDATION.md) | [Project home](../README.en.md)
 
 This document maintains check entry points, acceptance scope, validation evidence, and local update procedures. Acceptance matrices describe the behavior that should be covered; recorded execution results apply only to the stated version and scope. `package.json` is the authority for the current source version.
 
@@ -252,6 +252,7 @@ The table retains checks actually performed for different versions. Old results 
 
 | Evidence scope | Date / version | Recorded results and limitations |
 | --- | --- | --- |
+| English README and project-home navigation | 2026-10-13 / source 1.5.2 | Chinese-default README, English entrance, and core-document/manual home/language navigation completed. Checked 215 local links/images/anchors across 12 Markdown files, corresponding README sections/features, and explicit labels for Chinese-only internal documents. Parsed help content is identical before/after navigation edits; final Webview resources built successfully, retaining first-stage help acceptance. All 40 maintained screenshots are unchanged. English README temporarily uses a text link to the published Chinese statistics page. No full suite, packaging, installation, deployment, or push |
 | Bilingual release statistics | 2026-10-13 / source 1.5.2 | Script syntax and six focused statistics tests passed; two SVGs, two HTML pages, shared JSON, and page links agree without changing counting rules. Headless desktop/390px pages, language navigation, image decoding, and SVG text bounds passed using sample test counts; previews inspected. Initial direct-SVG screenshot timed out; embedded SVG and local HTTP pages passed. Published Chinese page returned 200; English card/page still returned 404. No deployment, full suite, packaging, installation, or push |
 | Core English documentation and bilingual navigation | 2026-10-13 / source 1.5.2 | Added English specification, architecture, and validation editions with shared stable anchors; English manual references enter English documents. Checked 193 local links/images/anchors across 11 Markdown files; three help-content tests, production build, and headless `--help-only` passed. The 83 manual anchors and 40 shared PNGs remain unchanged. No recapture, full suite, visible windows, packaging, installation, or remote push |
 | Unified network running spinner | 2026-10-11 / source 1.4.1 | Types, 1555 bilingual resources, production build, and headless Feedback passed. Push/Pull circles matched with continuous uniform rotation; all three network operations had no horizontal bar; actual metrics/logs, late-message isolation, nonblocking collapsed feedback, Fetch refresh, and stopping on completion were retained. Push/Pull/Fetch previews inspected. No full suite, real desktop acceptance, packaging, installation, or remote push |
