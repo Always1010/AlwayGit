@@ -117,22 +117,36 @@ it.each((['remote.delete', 'push', 'tag.delete'] as const).flatMap(type => (['pu
   }
 });
 
-it('rejects unsupported pushurl resetting before sending any push', async () => {
+it.each((['push', 'remote.delete', 'tag.delete'] as const).flatMap(type =>
+  (['unset', 'configured'] as const).map(pushurl => ({ type, pushurl }))))('rejects unsupported pushurl resetting before $type sends with $pushurl pushurl', async ({ type, pushurl }) => {
   const { root, service, repo } = await fixtures.setup();
   const head = await commitFile(root, 'base.txt', 'base'), bare = path.join(root, 'remote.git');
   await mkdir(bare); await git(bare, 'init', '--bare'); await git(root, 'remote', 'add', 'origin', bare);
   await git(root, 'push', 'origin', 'main');
+  await git(root, 'tag', '-a', '-m', 'release', 'release');
+  await git(root, 'push', 'origin', 'refs/tags/release');
+  const tagOid = await git(root, 'rev-parse', 'refs/tags/release');
+  if (pushurl === 'configured') await git(root, 'config', 'remote.origin.pushurl', bare);
   const snapshot = await service.snapshot(repo);
   const internal = service as unknown as { run: (repo: Repository, args: string[], allowFailure?: boolean, captureBytes?: number, execution?: { configOverrides?: [string, string][] }) => Promise<GitResult> };
   const original = internal.run.bind(service);
   const run = vi.spyOn(internal, 'run').mockImplementation(async (repository, args, allowFailure, captureBytes, execution) => {
     // Older Git appends the empty value and captured URL instead of clearing previous values.
-    if (args[0] === 'remote' && args[1] === 'get-url' && execution?.configOverrides) return { stdout: Buffer.from(`${bare}\n\n${bare}\n`), stderr: Buffer.alloc(0), code: 0 };
+    // With no explicit pushurl, trim() used to hide the leading empty destination.
+    if (args[0] === 'remote' && args[1] === 'get-url' && execution?.configOverrides) return { stdout: Buffer.from(`${pushurl === 'configured' ? `${bare}\n` : ''}\n${bare}\n`), stderr: Buffer.alloc(0), code: 0 };
     return original(repository, args, allowFailure, captureBytes, execution);
   });
-  await expect(service.execute(repo, { type: 'push', remote: 'origin', branch: 'main', remoteBranch: 'main', forceWithLease: true, expectedOid: head, expectedDestination: snapshot.remoteDestinations!.origin })).rejects.toMatchObject({ code: 'REMOTE_BINDING_UNSUPPORTED' });
+  const action = type === 'tag.delete'
+    ? { type, name: 'release', expectedOid: tagOid, expectedRemoteOid: tagOid }
+    : type === 'remote.delete'
+      ? { type, branches: ['main'], expectedOids: { main: head } }
+      : { type, branch: 'main', remoteBranch: 'main', forceWithLease: true, expectedOid: head };
+  await expect(service.execute(repo, { ...action, remote: 'origin', expectedDestination: snapshot.remoteDestinations!.origin })).rejects.toMatchObject({ code: 'REMOTE_BINDING_UNSUPPORTED', message: expect.stringContaining('Git 2.46') });
   expect(run.mock.calls.some(([, args]) => args[0] === 'push')).toBe(false);
   expect(await git(bare, 'rev-parse', 'refs/heads/main')).toBe(head);
+  expect(await git(bare, 'rev-parse', 'refs/tags/release')).toBe(tagOid);
+  expect(await git(root, 'rev-parse', 'refs/tags/release')).toBe(tagOid);
+  expect(await git(root, 'remote', 'get-url', '--push', '--all', 'origin')).toBe(bare);
 });
 
 it('preserves supplied system configuration while pinning a force Push destination', async () => {
