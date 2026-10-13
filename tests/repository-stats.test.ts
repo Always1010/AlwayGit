@@ -1,12 +1,12 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const statisticsModule = new URL('../scripts/repository-stats.mjs', import.meta.url).href;
 const deploymentModule = new URL('../scripts/repository-stats-deploy.mjs', import.meta.url).href;
-const { analyzeFiles, compareTags, readSnapshot, renderHtml, renderSvg, summarizeTests, verifySummary } = await import(statisticsModule);
+const { analyzeFiles, compareTags, readSnapshot, renderHtml, renderSvg, summarizeTests, verifySummary, writeSite } = await import(statisticsModule);
 const { checkDeployment } = await import(deploymentModule);
 
 const identity = { tag: 'v1.2.3', commit: 'a'.repeat(40), repository: 'owner/repo', runId: '123' };
@@ -86,16 +86,51 @@ describe('Release repository statistics', () => {
     expect(() => compareTags('v1.2.3-beta', 'v1.2.3')).toThrow();
   });
 
-  it('renders deterministic escaped assets and includes all types in the details page', () => {
-    const stats = { ...identity, ...analyzeFiles([{ path: 'src/main.ts', mode: '100644', bytes: 100 }]), tests: summarizeTests(report) };
+  it('writes complete bilingual sites from one immutable snapshot, with escaped output and matching links', async () => {
+    const stats = { ...identity, ...analyzeFiles([
+      { path: 'src/main.ts', mode: '100644', bytes: 100 },
+      { path: 'LICENSE', mode: '100644', bytes: 10 },
+      ...Array.from({ length: 9 }, (_, index) => ({ path: `data/type.${index}`, mode: '100644', bytes: 1 })),
+    ]), tests: summarizeTests(report) };
+    const before = structuredClone(stats);
     expect(renderSvg(stats)).toBe(renderSvg(stats));
     expect(renderSvg(stats)).toContain('v1.2.3');
     expect(renderSvg(stats)).toContain('Vitest 测试用例');
     const escaped = { ...stats, fileTypes: [{ name: '<script>&"', files: 1 }] };
-    expect(renderSvg(escaped)).toContain('&lt;script&gt;&amp;&quot;');
-    expect(renderHtml(escaped)).not.toContain('<script>');
-    expect(renderHtml(stats)).toContain('/releases/tag/v1.2.3');
+    for (const language of ['zh-CN', 'en']) {
+      expect(renderSvg(escaped, language)).toContain('&lt;script&gt;&amp;&quot;');
+      expect(renderHtml(escaped, language)).not.toContain('<script>');
+      expect(renderHtml(stats, language)).toContain('/releases/tag/v1.2.3');
+      expect(renderHtml(stats, language)).toContain(identity.commit);
+      expect(renderHtml(stats, language)).toContain(`<html lang="${language}">`);
+      expect(renderSvg(stats, language)).toContain(`xml:lang="${language}"`);
+    }
     expect(renderHtml(stats)).toContain('全部文件类型');
+    expect(renderSvg(stats)).toContain('其他');
+    expect(renderSvg(stats, 'en')).toContain('Other');
+    expect(renderHtml(stats, 'en')).toContain('No extension');
+    expect(renderHtml(stats, 'en')).not.toContain('无后缀');
+    expect(renderHtml(stats, 'en')).toContain('href="index.html"');
+    expect(renderHtml(stats)).toContain('href="index.en.html"');
+    expect(renderSvg({ ...stats, languages: [] }, 'en')).toContain('No source files qualify');
+
+    const output = await mkdtemp(path.join(os.tmpdir(), 'alwaygit-bilingual-statistics-'));
+    try {
+      await writeSite(stats, output);
+      expect((await readdir(output)).sort()).toEqual(['.nojekyll', 'index.en.html', 'index.html', 'repository-stats.en.svg', 'repository-stats.json', 'repository-stats.svg']);
+      expect(JSON.parse(await readFile(path.join(output, 'repository-stats.json'), 'utf8'))).toEqual(before);
+      for (const [suffix, language] of [['', 'zh-CN'], ['.en', 'en']]) {
+        const html = await readFile(path.join(output, `index${suffix}.html`), 'utf8');
+        const svg = await readFile(path.join(output, `repository-stats${suffix}.svg`), 'utf8');
+        expect(html).toBe(renderHtml(stats, language));
+        expect(svg).toBe(renderSvg(stats, language));
+        expect(html).toContain(`src="repository-stats${suffix}.svg"`);
+      }
+      expect(stats).toEqual(before);
+    } finally {
+      if (path.dirname(output) !== path.resolve(os.tmpdir()) || !path.basename(output).startsWith('alwaygit-bilingual-statistics-')) throw new Error('Unsafe statistics cleanup path');
+      await rm(output, { recursive: true, force: true });
+    }
   });
 
   it('checks provenance and all release pages, refuses version rollback, and fails closed on Pages errors', async () => {
