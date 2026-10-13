@@ -31,9 +31,9 @@ const help = `AlwayGit 统一安装脚本（需要已有 Node.js；不会自动�
   --profile <名称>     VS Code Profile；空字符串恢复默认，CLI 必须支持此参数
   --help               显示帮助
 
-Rock 5B：脚本在板子上执行，Desktop 指板子的桌面版，Server 供 Remote SSH 使用。
+远程电脑：脚本在远程电脑上执行，Desktop 指该电脑的桌面版，Server 供 Remote SSH 使用。
 可在普通 SSH 或 VS Code 终端选择 Server，无需手动查找路径。
-选择 linux-arm64 不会自动连接远端，也不会交叉编译。
+选择目标平台不会自动连接远端，也不会交叉编译。
 `;
 
 export function parseInstallArgs(args) {
@@ -67,7 +67,7 @@ export async function chooseInstallOptions(options, host, { input = process.stdi
   const prompt = createInterface({ input, output });
   try {
     if (options.target === 'auto') {
-      output.write(`当前平台：${host}\n目标平台：\n  1. 自动识别（${host}，推荐）\n${targets.map((target, index) => `  ${index + 2}. ${target}${target === 'linux-arm64' ? '（Rock 5B）' : ''}`).join('\n')}\n`);
+      output.write(`当前平台：${host}\n目标平台：\n  1. 自动识别（${host}，推荐）\n${targets.map((target, index) => `  ${index + 2}. ${target}`).join('\n')}\n`);
       const selected = (await prompt.question('请选择平台 [1]：')).trim() || '1';
       if (!/^[1-7]$/.test(selected)) throw new Error('平台选择无效。');
       options.target = selected === '1' ? host : targets[Number(selected) - 2];
