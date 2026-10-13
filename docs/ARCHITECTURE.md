@@ -1,6 +1,10 @@
 # 架构与开发约定
 
+[English](ARCHITECTURE.en.md)
+
 本文维护 AlwayGit 的运行结构、代码入口、跨层约定和开发流程。产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准，检查方法和验证证据见 [验证与本地更新](VALIDATION.md)，协作要求见 [项目规则](../AGENTS.md)。
+
+<a id="runtime-structure"></a>
 
 ## 运行结构
 
@@ -13,6 +17,8 @@ AlwayGit 是 Workspace 类型的 VS Code 扩展。React 工作台共用一套消
 扩展在启动阶段提前注册命令、面板恢复与窗口通信，激活完成不等待内置 Git 或仓库扫描。Git 可执行路径在首次 Git 请求时解析并共用一个初始化任务，优先使用显式配置，其次使用内置 Git 路径，失败时回退 PATH。启动仓库扫描在后台进行；工作台面板先创建并加载脚本，仓库列表、分组和排序请求共用首次扫描的完成结果，目录相关的选择器、发现与修改请求也等待该任务。保存路径最多四个并行验证，结果按原始顺序收集，全部完成且目录版本仍有效时一次发布；不逐项暴露未完成的目录。前端目录状态独立于仓库快照 loading，后台目录刷新保留已加载内容。首次扫描失败时保留界面并允许后续目录请求重试；后续打开或显示面板不重复扫描，工作区变化、目录同步和显式刷新仍触发既有扫描流程。启动不自动新建编辑器工作台标签；已启用的侧栏或面板在其视图恢复时加载工作台内容。
 
 `src/protocol` 是 Webview 和宿主的共享边界。请求以 `id` 关联响应，Zod 在宿主入口验证方法与参数；宿主主动发布仓库变更、操作活动和仓库选择事件。宿主只接受已经注册的仓库及预定义方法，Git RPC 不接受任意命令；明确创建的内嵌终端提供受面板归属隔离的 Shell 输入通道。Demo 适配器独立维护示例模型，仅在显式 Demo 模式的首次请求时初始化数据；生产桥接不初始化示例状态或读取 Demo 存储。
+
+<a id="module-boundaries"></a>
 
 ## 模块边界
 
@@ -38,6 +44,8 @@ AlwayGit 是 Workspace 类型的 VS Code 扩展。React 工作台共用一套消
 
 帮助正文使用双语用户手册的固定章节 ID，Markdown 按手册所用的标题、段落、列表、表格、图片及行内格式提取为结构化内容，由 React 渲染为文本，不注入原始 HTML。HelpDialog 独立延迟加载；Vite 将手册文本及图片 URL 纳入 Webview 构建，图片资源位于现有 `dist/webview` 允许范围内。宿主页通过 `csp-nonce` 元标记将脚本 nonce 传给 Vite 的资源预加载逻辑，保持原有 CSP，不增加外部资源或 Git RPC。
 
+<a id="repositories-refs-and-history"></a>
+
 ## 仓库、引用和历史
 
 Repository 标识工作目录，`commonDir` 标识共享 Git 存储，`gitDir` 标识该工作目录的私有 Git 元数据。同一存储的多个 工作树 共用写操作队列，但保持独立的 HEAD、Index 和工作区状态。写操作在执行前重新验证仓库、引用和 工作树 状态。
@@ -62,13 +70,19 @@ History、Details（含 Stash 和比较）、Diff 预览按面板与类别替换
 
 工作台标签仅在从隐藏变为可见时后台检查当前仓库，保持已有画面、选择、草稿及滚动位置；持续可见时的焦点变化不触发检查。无文件失效通知时，补偿轮询除比较新快照外，还定向重验可见 Working Tree 的已选 dirty 文件，使状态标记未变的再次编辑也能刷新；历史和纯 Staged 比较不参与该补偿。隐藏期间的仓库目录变化与当前仓库文件失效范围由宿主合并保存，恢复可见后一次补发；未知范围继续按完整失效处理。仓库列表仅在目录确有变化时重读，已加载列表和仓库的后台读取不进入首次加载状态。
 
+<a id="project-windows-and-remote-hosts"></a>
+
 ## 项目窗口与远程宿主
 
 扩展维持 `extensionKind: ["workspace"]`，Git、文件系统与 PTY 在仓库所在宿主执行。远程扩展宿主的本机文件 URI 由 VS Code 转换到客户端，仓库和文件入口继续使用 VS Code API；不拼接 SSH 地址或假设 Windows 路径。空白工作台使用 `vscode.newWindow` 继承当前远程连接，带仓库的新窗口使用 `vscode.openFolder`。
 
 窗口桥在宿主机器的临时目录维护登记，以扩展存储 URI、VS Code 应用目录、远程种类及既有 IPC 范围隔离；同一范围内通过回环通信复用项目窗口。此次不改变隔离算法或写操作租约目录。模拟 SSH 的单测验证请求和范围隔离，不等于真实 SSH 多窗口、Profile 和客户端组合已经验收。
 
+<a id="workbench-state"></a>
+
 ## 工作台状态
+
+<a id="bilingual-ui-resources"></a>
 
 ### 中英文资源维护
 
@@ -101,6 +115,8 @@ App、History、Sidebar、Details 和 Diff 按各自使用的状态字段订阅�
 
 右键菜单保存目标对象的稳定身份及来源元素。打开操作对话框后，Git 写操作仍在宿主重新解析和验证引用、Stash 或 工作树；切换仓库会关闭旧菜单和旧对话框。菜单以标准 `menu` / `menuitem` 语义呈现，支持焦点移动、Enter、Space、Escape 和点击外部关闭。仅来源元素或其祖先滚动、窗口缩放及主动关闭操作会收起菜单；Diff 自动定位或其他面板滚动不关闭菜单。
 
+<a id="embedded-terminals"></a>
+
 ## 内嵌终端
 
 `BottomDock.tsx` 组合固定 Diff 标签与多个终端标签，`dock-store.ts` 保存本工作台运行期的标签与活动对象。旧会话的 `layout.diff` 和 `layout.diffCollapsed` 直接复用为整个底部面板的高度与收起状态，因此不迁移或丢弃已有尺寸、视图及草稿。Diff 控件仅在 Diff 标签活动时注册可执行快捷键；终端输入区域由全局键盘保护识别。`TerminalView.tsx` 延迟加载 xterm.js 与 FitAddon，按主题更新颜色并将可见区域的列数/行数发送给宿主。
@@ -110,6 +126,8 @@ App、History、Sidebar、Details 和 Diff 按各自使用的状态字段订阅�
 `terminal-runtime.ts` 为每个会话启动无窗口辅助进程 `terminal-host.cjs`，由辅助进程延迟加载 node-pty 并管理 PTY。Shell 自然退出后，辅助进程先交付剩余输出与退出码，再退出并释放原生输出线程；关闭/终止请求结束 Shell，辅助进程另有 5 秒终止兜底。Webview 保留隐藏上下文，输出按 16 ms / 32 KiB 分批；宿主只保留约 1 MiB 的内存重连缓冲，xterm 保留 5000 行。输出序号避免快照重放和实时输出重复，128 KiB 未确认输出暂停读取，渲染确认后恢复，防止慢前端无界积压。输出及命令不进入会话持久化或日志。
 
 构建脚本先清理 `dist/terminal-runtime/node-pty`，再复制当前平台的 node-pty 运行目录并验证加载，独立打包辅助进程，原生模块不进入 JS Bundle。仅保留当前平台的预编译产物；Linux 原生模块由对应架构的 glibc 构建环境准备。打包目标必须与构建机器一致，`--target` 不负责交叉编译。VSIX 在替换固定包前解包到临时目录，核对身份、版本、平台、工作区宿主与 askpass 执行权限，并通过独立终端辅助进程验证输入输出、退出、终止和启动失败；解包后的运行文件无需项目 node_modules。Demo 仅回显输入并标明不会执行命令。
+
+<a id="diff-and-native-editors"></a>
 
 ## Diff 与原生编辑器
 
@@ -129,11 +147,15 @@ Diff 的加载依赖比较目标的语义身份。历史比较不依赖 Snapshot
 
 原生 Diff 和文件编辑请求先经项目窗口路由，再在接收方调用 `GitDocuments`；虚拟内容登记只存在于接收宿主。编辑器使用当前组与 `preview: false`，保留既有标签和工作台，避免新增侧边编辑器组。
 
+<a id="project-window-routing"></a>
+
 ## 项目窗口路由
 
 `ProjectWindows` 通过 `WindowBridge` 登记每个扩展宿主的真实工作区目录和最近活动时间。登记位于系统临时目录，按 VS Code 数据/Profile、应用和宿主隔离；每个实例独立写入登记并定期续期，不写入仓库或工作台会话。Windows 路径规范化大小写并解析真实目录，工作树 按工作目录区分。
 
 窗口间使用带随机令牌的回环 IPC，只接受预定义请求并重新核对工作区归属和信任状态。匹配优先级为精确目录、包含项目的最长工作区目录、最近活动窗口。接收方调用原生 `workbench.action.focusWindow` 激活自己；旧版通过工作区身份复用已打开窗口，并核对焦点结果。发送方等待执行回执。没有可用目标时以 `vscode.openFolder` 打开项目新窗口并等待扩展登记，超时报告失败。Repository 或 工作树 的项目窗口命令始终创建独立项目窗口，待新宿主登记后发送受限的 `workbench` 请求，由目标窗口注册仓库并显示对应工作台。独立的“在新窗口打开 Workbench”使用 VS Code 空窗口，按新出现的宿主登记定位目标，只发送不带路径的 `show-workbench` 请求，因此不会在入口处隐式选择仓库。目录刷新与活动广播是同一隔离域内的窗口级请求，不要求两个窗口打开同一项目；它们不携带任意命令或 Git 参数。
+
+<a id="git-operations-concurrency-and-errors"></a>
 
 ## Git 操作、并发和错误
 
@@ -141,9 +163,13 @@ Git 使用参数数组与 `shell: false`，引用和路径额外校验，文件�
 
 同一个 `commonDir` 同时只执行一个写操作。单宿主仍使用内存忙碌状态；跨宿主使用隔离临时目录登记与 OS 管理的回环端口存活租约，按规范化共享 Git 目录散列。目录级短时端口互斥串行化登记、恢复与释放；存活持有者不因时间戳陈旧失锁，未知监听器、超时及互斥门不可用时保守拒绝。写入前原子记录运行标记，无法确认终止则持久保留保护。宿主死亡遗留的运行记录需原生确认且锁身份与已知进程检查通过才可解除，本次请求不会重放，用户需重新执行；旧格式登记仅按原超时规则兼容迁移。活动开始与结束通过窗口桥同步给其他宿主，并映射到该 Git 存储下所有已注册 工作树；广播失败只记录，清理始终执行；行动前与轮询核对实际租约，丢失结束通知可恢复。广播只负责界面反馈，租约才是执行互斥边界，外部 Git 仍由 Git 自身锁保护。GitService 在写队列内动态读取宿主提供的 Detached HEAD 策略，显式 Commit/Tag Checkout、Detached Stash 重试及显式或隐式 Detached 工作树 默认拒绝；Stash 创建和实际切换前再次校验，避免配置在预检期间变化。Rebase 内部操作保持原有流程。Checkout 在宿主检查当前分支、未提交修改、未解决冲突和 工作树 占用。远程分支本地化使用完整 `refs/remotes/*` 来源和预期 OID；批量创建在任何写入前验证全部本地名称、upstream、符号引用与层级冲突，批量创建与单项创建并切换均先按固定源 OID 创建引用，再设置 upstream；upstream 失败时准确报告已保留分支，只有单项创建并切换继续执行普通 Checkout；引用或 upstream 失败不进入 Stash 或文件切换，Checkout 受阻保留分支并支持原跟踪动作重试。`Stash Changes & Checkout` 的 Stash 与 Checkout 分别报告结果；若远程分支 Checkout 受阻，重试保留原来源、名称和 OID；若 Stash 成功但 Checkout 失败，保留 Stash，不隐式恢复或删除。Stash 保存与恢复由 `stash.ts` 提供隔离状态支持，恢复的结构化阻塞结果交由 Webview 展示；具体流程见下节。
 
+<a id="selected-file-commits"></a>
+
 ### 所选文件提交
 
 `selected-commit.ts` 从当前 HEAD 构造独立 Index，按所选来源合入 Index 或磁盘版本；真实 Index 持锁，成功后只回写所选路径，未选暂存内容保留。`selected-commit-hooks.ts` 为该次提交使用临时 Hooks 目录，委托原有 Hook（包含自定义 `core.hooksPath`）执行；`reference-transaction` 在 prepared 阶段比较实际候选提交 Tree 与仅覆盖所选路径的投影，范围外更改拒绝更新 HEAD。所选文件的 Hook 格式化允许保留，消息 Hook、签名及提交后 Hook 继续由原生 Commit 执行；命令级配置不覆盖已有环境配置。Git 进程树尚未确认停止时，延迟清理临时文件。Hook 的磁盘副作用不保证回滚。
+
+<a id="stash-save-and-isolated-restore"></a>
 
 ### Stash 保存与隔离恢复
 
@@ -173,17 +199,23 @@ Reset、Merge 和 Rebase 在确认前将目标解析为固定 Commit OID，并�
 
 高风险操作由宿主执行明确确认。提交遇到未保存编辑器内容时说明 Git 提交的是 Index。Git hooks、签名、认证和网络错误反馈真实失败，不尝试绕过。
 
+<a id="security-boundaries"></a>
+
 ## 安全边界
 
 未受信任工作区不执行 Git。Webview 使用 CSP、脚本 nonce 和受限资源目录。工作区文件打开会校验目录边界和符号链接祖先；只有已注册的非 Bare 工作树 可通过工作台打开。剪贴板和新窗口操作由宿主处理，Webview 只提交经过协议约束的数据。
+
+<a id="development-and-documentation"></a>
 
 ## 开发流程与文档维护
 
 提交、验证与本机更新规则统一见 [项目协作规则](../AGENTS.md)，检查命令与覆盖边界见 [验证与本地更新](VALIDATION.md)。Demo 验证呈现与请求，真实临时仓库验证 Git，宿主集成验证 VS Code 原生能力。
 
-README 只维护启动、主要功能和导航；交互与配置归工作台规格；模块与跨层设计归本文；检查方法和证据归验证文档；已确认问题归问题日志。实现状态以当前代码与规格为依据，验证结论必须注明对应版本和范围，不根据旧记录推定新版本已通过。
+`README.md` 保持默认中文入口，`README.en.md` 为英文入口；两版只维护启动、主要功能和导航。中文为内容基准，规格、架构、验证与用户手册的英文版是相同职责的对应语言版本，行为变化须在同一次修改中同步更新两版，使用稳定且共用的章节锚点；中文与英文链路分别默认链接对应语言。问题日志与项目协作规则保留中文，英文导航明确标注语言。交互与配置归工作台规格；模块与跨层设计归本文；检查方法和证据归验证文档；已确认问题归问题日志。实现状态以当前代码与规格为依据，验证结论必须注明对应版本和范围，不根据旧记录推定新版本已通过。
 
 应用内帮助直接导入双语用户手册，章节 ID 由两版共用，主题入口集中在 `webview/help-content.ts`；正文与截图不在应用中维护第二份副本。新增独立任务需要同时补齐双语锚点和对应分类入口。截图场景集中在 `scripts/capture-manual.mjs`，采集、检查和替换流程见 [截图维护](VALIDATION.md#用户手册截图维护)。
+
+<a id="current-maintenance-boundaries"></a>
 
 ## 当前维护边界
 
