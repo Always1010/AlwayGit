@@ -6,7 +6,7 @@ This manual explains how to inspect changes, save revisions, and collaborate wit
 
 Select More actions → Help & Guide, with its question-mark icon, in the upper-right corner of the Workbench to open the offline help. It includes quick start instructions, common tasks, common questions, and the full chapters of this manual. Its language follows the workbench setting.
 
-**About the screenshots:** All 40 shared figures were recaptured on 2026-10-06 from the 0.52.0 source build with an English interface and sample repositories, using the default theme's white appearance on a light host; the language page previews Chinese. The narrow sidebar figure demonstrates region navigation at that viewport size. Images do not include native VS Code chrome. The current toolbar combines the two rows and moves less-used actions into More; follow the text for current entry points. The figures retain the original task examples. Names, paths, and Commit IDs may differ in your project.
+**About the screenshots:** All 40 shared figures were recaptured on 2026-10-06 from the 0.52.0 source build with an English interface and sample repositories, using the default theme's white appearance on a light host; the language page previews Chinese. The narrow sidebar figure demonstrates region navigation at that viewport size. Images do not include native VS Code chrome. The current toolbar combines the two rows and moves less-used actions into More; follow the text for current entry points. The figures retain the original task examples. The old file preview highlight is now a small dot beside the icon; row backgrounds indicate only the current operation selection. Names, paths, and Commit IDs may differ in your project.
 
 ## Read by task
 
@@ -1142,6 +1142,8 @@ D, E, [, ], and \ are available only while the Diff tab is active. Terminal inpu
 | Select exactly two Commits in History | Automatically Compare Commits | Working Tree is not included in Commit multiple selection |
 
 Select all in the sidebar makes the focused scope the sole action-selection scope. Escape clears that scope without activating another. Branch action selection is independent of Graph ref checkboxes, so these keys do not change history filters.
+
+In file lists, an ordinary click selects only that entry and switches the bottom Diff. Ctrl/Cmd-click, Shift-click, and Ctrl/Cmd+Shift-click only change the selection; Ctrl/Cmd+A and Escape also keep the current Diff. Row backgrounds indicate operation selection and clear immediately when deselected. A small dot beside the file icon marks the version currently being previewed; keyboard focus uses a thin outline.
 
 <a id="shortcut-settings"></a>
 

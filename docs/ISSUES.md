@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-133：文件多选切换 Diff，预览高亮遮盖取消选择
+
+- 日期：2026-10-13
+- 状态：已解决
+- 现象：在 Working Tree 文件列表使用 Ctrl/Cmd 单击增减选择时，底部 Diff 跟随点击切换；取消选中当前预览文件后，它仍显示蓝色高亮，无法清楚辨认是否已取消。Commit Details 和 Commit 比较复用相同点击和样式逻辑，也受影响。
+- 原因：点击处理更新批量选择后无条件调用 `selectFile`；当前预览条目使用带 `!important` 的整行选中背景，覆盖真实批量选择底色，悬停也会覆盖批量选择反馈。
+- 解决方案：普通单击才切换预览，Ctrl/Cmd、Shift 及组合修饰键只调整选择；全选和清空保持 Diff。整行底色仅表达操作选择，悬停不覆盖；当前预览改用图标旁小圆点与 `aria-current`，保留键盘焦点轮廓。统一列表按 Git 区域区分同路径版本，修饰键双击不误触发编辑。版本递增至 1.5.2。
+- 验证方式：类型检查、1555 条双语资源检查、文件选择单元测试 1 文件 / 12 项、生产构建及无头 `--files-only`、`--diff-only` 通过。受控 Files 夹具覆盖 Commit Details、Commit 比较、Working Tree 分组与统一列表的普通单击、Ctrl/Cmd 增减、Shift 范围、Ctrl+Shift 追加、全选与清空；确认批量选择不读取新 Diff、取消当前预览文件的选择立即移除底色、悬停不覆盖选择、同路径两种 Git 区域只标记当前预览版本。已查看预览图，仅保存在忽略的 artifacts。补齐文件专项的显式提交导航及用户设置读写替身，保留原有范围、草稿与大列表断言。额外 History 专项在 Detached HEAD Checkout 弹窗未关闭处超时，未作为本修复通过依据；比较文件选择由 Files 夹具独立验证。未运行全量测试、桌面集成、VSIX 打包、本机安装或远程推送。
+- 相关文件：`webview/Details.tsx`、`webview/styles.css`、`scripts/test-files-ui.mjs`、`scripts/test-diff-ui.mjs`、版本清单、`docs/WORKBENCH_SPEC.md` 与双语用户手册。
+
 ## BUG-132：旧版 Git 的空推送地址漏过核验，删除远端 Tag 报缺少路径
 
 - 日期：2026-10-13
