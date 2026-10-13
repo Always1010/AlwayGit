@@ -240,13 +240,13 @@ README 的图卡和 [完整统计页](https://always1010.github.io/AlwayGit/) �
 2. 在 **Settings → Environments → github-pages** 核对部署规则。使用 **Selected branches and tags** 时，分别允许发布 Tag `v*` 和默认分支 `main`；后者用于从默认分支手动恢复。核对仓库允许工作流运行所用的官方 Actions。
 3. 先将本功能合入主干，再推送新的发布 Tag。已有 Pages 站点应先合并部署内容，本工作流上传的是完整统计站点，不能与其他工作流各自覆盖同一 Pages 站点。
 
-`scripts/repository-stats.mjs` 生成 `repository-stats.svg`、包含全部文件类型的 `index.html` 及汇总数据 `repository-stats.json`。图卡只显示前八种文件类型并汇总其余类型。生成文件位于忽略目录 `artifacts/`，通过 `upload-pages-artifact` / `deploy-pages` 部署，不执行 Git commit 或 push，不使用 `gh-pages` 分支。首次配置所需的脚本、工作流和 README 引用是正常项目提交，后续生成结果不进入 Git。
+`scripts/repository-stats.mjs` 从同一份 Tag 快照与原始测试汇总生成中文 `repository-stats.svg` / `index.html` 和英文 `repository-stats.en.svg` / `index.en.html`，两版页面均列出全部文件类型并可互相切换，共用 `repository-stats.json`；数据与统计口径不因语言而变化。现有中文地址保持不变，英文资源在包含该生成器的新稳定版本发布并成功部署 Pages 后可用。部署前英文 README 只提供现有统计页的文字入口与语言说明，避免失效图卡；部署后可接入英文图卡与页面。图卡只显示前八种文件类型并汇总其余类型。生成文件位于忽略目录 `artifacts/`，通过 `upload-pages-artifact` / `deploy-pages` 部署，不执行 Git commit 或 push，不使用 `gh-pages` 分支。首次配置所需的脚本、工作流和 README 引用是正常项目提交，后续生成结果不进入 Git。
 
 统计部署使用仓库/Actions 只读及 Pages/OIDC 发布权限，不使用代码写入权限。部署任务统一串行，发布前检查原始 Release run 的工作流、提交及报告身份，再检查已发布稳定版本与 Pages 当前版本；低版本不会覆盖高版本。图卡统计或 Pages 失败不撤回已创建的 Release，上一版已部署图卡继续可用；Actions 中可查看失败原因。Pages 发布及 GitHub 图片缓存会带来显示延迟，图卡版本是统计对象的依据。
 
 Release 会把已通过的测试计数、Tag、Commit、仓库和 run ID 保存为 `release-test-summary-<Tag>` Artifact，申请保留 90 天（以仓库允许的实际保留期为准）。统计恢复不重新运行测试或打包：在 **Actions → Release repository statistics → Run workflow** 中选择默认分支，填写 `tag` 和原始 **Release VSIX** 的 `release_run_id`（运行详情网址 `/actions/runs/<ID>` 中的数字）。恢复仅适用于包含本功能且已成功发布的稳定 Tag；必须仍能下载原始统计 Artifact，过期或被删除时明确失败，不用重跑结果冒充原始发布测试。失败的统计任务也可直接重跑；不要为图卡失败重跑整个 Release 创建流程。
 
-本功能定向检查：`npx vitest run tests/repository-stats.test.ts`。覆盖 Tag 快照隔离、语言/类型口径、运行用例计数、报告与版本身份绑定、输出转义，以及原始发布验证和低版本覆盖保护。生成数据与报告不得提交。
+本功能定向检查：`npx vitest run tests/repository-stats.test.ts`。覆盖 Tag 快照隔离、语言/类型口径、运行用例计数、报告与版本身份绑定、双语页面、图卡与全部部署文件的一致性、输出转义，以及原始发布验证和低版本覆盖保护。生成数据与报告不得提交。
 
 <a id="validation-evidence-and-boundaries"></a>
 
@@ -256,6 +256,7 @@ Release 会把已通过的测试计数、Tag、Commit、仓库和 run ID 保存�
 
 | 证据范围 | 日期 / 版本 | 已记录结果与限制 |
 | --- | --- | --- |
+| 发布统计双语展示 | 2026-10-13 / 源码 1.5.2 | 统计脚本语法检查与 6 项统计专项测试通过；两种 SVG、两种 HTML、共用 JSON 和页面链接一致，计数口径不变。用示例测试数完成无头桌面/390px 页面、语言导航、图片解码和 SVG 文本边界检查并查看预览；直接打开 SVG 的首轮截图超时，改用内嵌 SVG 和本地 HTTP 页面后通过。远端中文页为 200，英文图卡/页面尚为 404；未部署、全量测试、打包、安装或推送 |
 | 核心文档英文版与双语导航 | 2026-10-13 / 源码 1.5.2 | 新增规格、架构、验证英文版，技术文档共用稳定锚点，英文手册关联链接进入英文文档；11 份 Markdown 的 193 处本地链接、图片和锚点检查通过，3 项帮助内容测试、生产构建和无头 `--help-only` 通过。83 个手册锚点与 40 张共享 PNG 保持不变；未重拍截图、运行全量测试、启动可见窗口、打包、安装或远程推送 |
 | 网络运行状态统一转圈 | 2026-10-11 / 源码 1.4.1 | 类型与 1555 条双语资源检查、生产构建、无头 Feedback 专项通过；验证 Push/Pull 圆圈样式相同且匀速连续、三个网络操作均无横条、真实指标和日志保留、迟到消息隔离、收起后的非阻塞反馈、Fetch 刷新与完成停止。已查看 Push/Pull/Fetch 预览；未运行全量测试或真实 VS Code 桌面验收，未打包、安装或远程推送 |
 | 可配置网络命令超时 | 2026-10-11 / 源码 1.4.0 | 类型与 1555 条双语资源通过；Runner、扩展启动与 RPC 三文件 30 项通过，覆盖逐命令读取设置、延长/关闭上限、非法配置回退、普通查询保留原预算及关闭上限后进程树取消保护。扩展构建通过；前端未变化，不重复运行浏览器专项。未修改本机 VS Code 设置、打包或安装扩展 |

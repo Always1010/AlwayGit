@@ -16,6 +16,46 @@ const count = value => Number(value).toLocaleString('en-US');
 const percentage = value => value > 0 && value < 0.1 ? '<0.1%' : `${value.toFixed(1)}%`;
 const git = (args, cwd = root, encoding = 'utf8') => execFileSync('git', args, { cwd, encoding, maxBuffer: 32 * 1024 * 1024 });
 
+const displayText = {
+  'zh-CN': {
+    title: '发布版本代码分析', tracked: 'Git 跟踪文件总数', tests: 'Vitest 测试用例',
+    languageShare: '语言占比 · 按自有源码字节数', fileTypes: '文件类型 · 按文件数量',
+    languages: '语言分析', allTypes: '全部文件类型', other: '其他', extensionless: '无后缀',
+    languageColumns: ['语言', '源码文件数', '源码字节数', '占比'], typeColumns: ['类型', '文件数量'],
+    testColumns: ['总数', '通过', '跳过', '待实现', '测试文件'], navigation: '语言切换',
+    files: value => `${count(value)} 文件`,
+    source: stats => `自有源码 ${count(stats.sourceFiles)} 文件 · ${stats.languages.length} 种语言`,
+    results: tests => `通过 ${count(tests.passed)} · 跳过 ${count(tests.skipped)} · 待实现 ${count(tests.todo)}`,
+    empty: '该版本没有纳入语言统计的源码',
+    description: stats => `版本 ${stats.tag}，跟踪文件 ${stats.totalFiles}，Vitest 用例 ${stats.tests.total}。语言按自有源码字节数，文件类型按 Git 跟踪文件数统计。`,
+    alt: stats => `AlwayGit ${stats.tag} 语言、文件和测试统计`,
+    snapshotNote: '统计该 Tag 的 Git 快照；生成代码仅计入文件分析。',
+    testNote: '测试来自该次发布的 Vitest 运行；不包含桌面 / UI 测试。',
+    footer: '文件来自该 Tag 的 Git 快照，包括配置、文档、图片及生成代码，不包括依赖安装与构建产物。语言按自有源码字节数统计，包含源码、测试与维护脚本；排除声明文件、已识别的生成代码、第三方代码、数据与文档。JSON、Markdown、SVG 不归入编程语言；TypeScript 合并 .ts/.tsx，JavaScript 合并 .js/.jsx/.mjs/.cjs。测试复用该次发布的 Vitest 报告，参数化用例分别计数，分组不计数，不代表覆盖率或桌面/UI 验证。图卡显示主要类型，表格列出全部类型。',
+  },
+  en: {
+    title: 'Release code analysis', tracked: 'Git-tracked files', tests: 'Vitest test cases',
+    languageShare: 'Language share · authored source bytes', fileTypes: 'File types · file counts',
+    languages: 'Language analysis', allTypes: 'All file types', other: 'Other', extensionless: 'No extension',
+    languageColumns: ['Language', 'Source files', 'Source bytes', 'Share'], typeColumns: ['Type', 'Files'],
+    testColumns: ['Total', 'Passed', 'Skipped', 'Todo', 'Test files'], navigation: 'Language',
+    files: value => `${count(value)} files`,
+    source: stats => `Authored source: ${count(stats.sourceFiles)} files · ${stats.languages.length} languages`,
+    results: tests => `Passed ${count(tests.passed)} · Skipped ${count(tests.skipped)} · Todo ${count(tests.todo)}`,
+    empty: 'No source files qualify for language analysis in this release.',
+    description: stats => `Release ${stats.tag}, ${stats.totalFiles} tracked files, ${stats.tests.total} Vitest cases. Language shares use authored source bytes; file types use Git-tracked file counts.`,
+    alt: stats => `AlwayGit ${stats.tag} language, file, and test statistics`,
+    snapshotNote: 'Tag snapshot; generated code counts only in file analysis.',
+    testNote: 'Tests come from this release\'s Vitest run; desktop / UI tests are excluded.',
+    footer: 'Files come from this Tag\'s Git snapshot, including configuration, documentation, images, and generated code, excluding installed dependencies and build output. Language shares use authored source bytes across source, tests, and maintenance scripts; declarations, recognized generated and third-party code, data, and documentation are excluded. JSON, Markdown, and SVG are not programming-language categories; TypeScript combines .ts/.tsx, and JavaScript combines .js/.jsx/.mjs/.cjs. Test counts reuse this release\'s Vitest report: parameterized cases count individually, suites do not. These counts do not establish coverage or desktop/UI validation. The card shows leading types; the tables list all types.',
+  },
+};
+function textFor(language) {
+  if (!Object.hasOwn(displayText, language)) throw new Error(`Unsupported statistics language: ${language}.`);
+  return displayText[language];
+}
+const typeLabel = (name, labels) => name === '无后缀' ? labels.extensionless : name;
+
 export function validateTag(tag) {
   if (!stableTag.test(tag)) throw new Error(`Expected a stable version tag vMAJOR.MINOR.PATCH, received ${tag}.`);
   return tag.slice(1);
@@ -109,9 +149,10 @@ export function verifySummary(summary, { tag, commit, repository, runId }) {
   }
 }
 
-export function renderSvg(stats) {
+export function renderSvg(stats, language = 'zh-CN') {
+  const labels = textFor(language);
   const types = stats.fileTypes.slice(0, 8);
-  if (stats.fileTypes.length > 8) types.push({ name: '其他', files: stats.fileTypes.slice(8).reduce((sum, entry) => sum + entry.files, 0) });
+  if (stats.fileTypes.length > 8) types.push({ name: labels.other, files: stats.fileTypes.slice(8).reduce((sum, entry) => sum + entry.files, 0) });
   const languageRows = Math.max(1, Math.ceil(stats.languages.length / 2));
   const typesTop = 298 + languageRows * 30;
   const height = typesTop + types.length * 34 + 108;
@@ -127,50 +168,52 @@ export function renderSvg(stats) {
     const x = 32 + index % 2 * 368;
     const y = 283 + Math.floor(index / 2) * 30;
     return `<circle cx="${x + 5}" cy="${y - 5}" r="5" fill="${colors[index % colors.length]}"/>`
-      + text(x + 19, y, `${entry.name} ${percentage(entry.percent)} · ${count(entry.files)} 文件`);
-  }).join('') || text(32, 283, '该版本没有纳入语言统计的源码');
+      + text(x + 19, y, `${entry.name} ${percentage(entry.percent)} · ${labels.files(entry.files)}`);
+  }).join('') || text(32, 283, labels.empty);
   const largest = Math.max(1, ...types.map(entry => entry.files));
   const rows = types.map((entry, index) => {
     const y = typesTop + 39 + index * 34;
-    return text(32, y, entry.name, 'mono')
+    return text(32, y, typeLabel(entry.name, labels), 'mono')
       + `<rect x="168" y="${y - 15}" width="520" height="18" rx="4" class="track"/>`
       + `<rect x="168" y="${y - 15}" width="${entry.files / largest * 520}" height="18" rx="4" fill="#3178c6"/>`
       + text(716, y, count(entry.files), 'number');
   }).join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="${height}" viewBox="0 0 800 ${height}" role="img" aria-labelledby="title description">
-<title id="title">AlwayGit ${xml(stats.tag)} 发布版本代码分析</title>
-<desc id="description">${xml(`版本 ${stats.tag}，跟踪文件 ${stats.totalFiles}，Vitest 用例 ${stats.tests.total}。语言按自有源码字节数，文件类型按 Git 跟踪文件数统计。`)}</desc>
+  return `<svg xmlns="http://www.w3.org/2000/svg" xml:lang="${language}" width="800" height="${height}" viewBox="0 0 800 ${height}" role="img" aria-labelledby="title description">
+<title id="title">AlwayGit ${xml(stats.tag)} ${xml(labels.title)}</title>
+<desc id="description">${xml(labels.description(stats))}</desc>
 <style>
 text{font:15px "Segoe UI","Microsoft YaHei",sans-serif;fill:#26354a}.muted{fill:#56677c;font-size:13px}.heading{font-size:18px;font-weight:600}.value{font-size:32px;font-weight:700}.mono{font-family:Consolas,monospace}.number{text-anchor:end;font-weight:600}.panel{fill:#f2f5fa}.track{fill:#e7edf5}
 </style>
 <rect x="1" y="1" width="798" height="${height - 2}" rx="16" fill="#fff" stroke="#d7e0ec"/>
-${text(32, 40, 'AlwayGit · 发布版本代码分析', 'heading')}
+${text(32, 40, `AlwayGit · ${labels.title}`, 'heading')}
 ${text(32, 69, stats.tag, 'mono')}${text(450, 69, `Commit ${stats.commit.slice(0, 12)}`, 'muted mono')}
 <rect x="32" y="90" width="352" height="106" rx="10" class="panel"/>
 <rect x="400" y="90" width="368" height="106" rx="10" class="panel"/>
-${text(50, 116, 'Git 跟踪文件总数', 'muted')}${text(50, 157, count(stats.totalFiles), 'value')}
-${text(50, 180, `自有源码 ${count(stats.sourceFiles)} 文件 · ${stats.languages.length} 种语言`, 'muted')}
-${text(418, 116, 'Vitest 测试用例', 'muted')}${text(418, 157, count(stats.tests.total), 'value')}
-${text(418, 180, `通过 ${count(stats.tests.passed)} · 跳过 ${count(stats.tests.skipped)} · 待实现 ${count(stats.tests.todo)}`, 'muted')}
-${text(32, 226, '语言占比 · 按自有源码字节数', 'heading')}${segments}${legend}
-${text(32, typesTop, '文件类型 · 按文件数量', 'heading')}${rows}
-${text(32, height - 48, '统计该 Tag 的 Git 快照；生成代码仅计入文件分析。', 'muted')}
-${text(32, height - 25, '测试来自该次发布的 Vitest 运行；不包含桌面 / UI 测试。', 'muted')}
+${text(50, 116, labels.tracked, 'muted')}${text(50, 157, count(stats.totalFiles), 'value')}
+${text(50, 180, labels.source(stats), 'muted')}
+${text(418, 116, labels.tests, 'muted')}${text(418, 157, count(stats.tests.total), 'value')}
+${text(418, 180, labels.results(stats.tests), 'muted')}
+${text(32, 226, labels.languageShare, 'heading')}${segments}${legend}
+${text(32, typesTop, labels.fileTypes, 'heading')}${rows}
+${text(32, height - 48, labels.snapshotNote, 'muted')}
+${text(32, height - 25, labels.testNote, 'muted')}
 </svg>\n`;
 }
 
-export function renderHtml(stats) {
+export function renderHtml(stats, language = 'zh-CN') {
+  const labels = textFor(language);
   const table = (heading, columns, rows) => `<section><h2>${heading}</h2><div class="table"><table><thead><tr>${columns.map(value => `<th>${xml(value)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(value => `<td>${xml(value)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></section>`;
   const releaseUrl = `https://github.com/${stats.repository}/releases/tag/${encodeURIComponent(stats.tag)}`;
   return `<!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AlwayGit ${xml(stats.tag)} 代码分析</title>
+<html lang="${language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AlwayGit ${xml(stats.tag)} ${xml(labels.title)}</title>
 <style>body{max-width:900px;margin:40px auto;padding:0 20px;font:16px/1.6 system-ui,"Microsoft YaHei",sans-serif;color:#26354a;background:#fff}a{color:#2465a9}img{width:100%;height:auto}.table{overflow-x:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px 14px;border-bottom:1px solid #d7e0ec}th{background:#f2f5fa}code{overflow-wrap:anywhere}footer{margin:32px 0;color:#56677c}</style></head>
-<body><h1>AlwayGit · 发布版本代码分析</h1><p><a href="${xml(releaseUrl)}">${xml(stats.tag)} Release</a> · Commit <code>${xml(stats.commit)}</code></p>
-<img src="repository-stats.svg" alt="${xml(`AlwayGit ${stats.tag} 语言、文件和测试统计`)}">
-${table('语言分析', ['语言', '源码文件数', '源码字节数', '占比'], stats.languages.map(entry => [entry.name, count(entry.files), count(entry.bytes), percentage(entry.percent)]))}
-${table('全部文件类型', ['类型', '文件数量'], stats.fileTypes.map(entry => [entry.name, count(entry.files)]))}
-${table('Vitest 测试用例', ['总数', '通过', '跳过', '待实现', '测试文件'], [[stats.tests.total, stats.tests.passed, stats.tests.skipped, stats.tests.todo, stats.tests.files].map(count)])}
-<footer>文件来自该 Tag 的 Git 快照，包括配置、文档、图片及生成代码，不包括依赖安装与构建产物。语言按自有源码字节数统计，包含源码、测试与维护脚本；排除声明文件、已识别的生成代码、第三方代码、数据与文档。JSON、Markdown、SVG 不归入编程语言；TypeScript 合并 .ts/.tsx，JavaScript 合并 .js/.jsx/.mjs/.cjs。测试复用该次发布的 Vitest 报告，参数化用例分别计数，分组不计数，不代表覆盖率或桌面/UI 验证。图卡显示主要类型，表格列出全部类型。</footer>
+<body><nav aria-label="${labels.navigation}"><a href="index.html" lang="zh-CN" hreflang="zh-CN"${language === 'zh-CN' ? ' aria-current="page"' : ''}>简体中文</a> | <a href="index.en.html" lang="en" hreflang="en"${language === 'en' ? ' aria-current="page"' : ''}>English</a></nav>
+<h1>AlwayGit · ${xml(labels.title)}</h1><p><a href="${xml(releaseUrl)}">${xml(stats.tag)} Release</a> · Commit <code>${xml(stats.commit)}</code></p>
+<img src="repository-stats${language === 'en' ? '.en' : ''}.svg" alt="${xml(labels.alt(stats))}">
+${table(labels.languages, labels.languageColumns, stats.languages.map(entry => [entry.name, count(entry.files), count(entry.bytes), percentage(entry.percent)]))}
+${table(labels.allTypes, labels.typeColumns, stats.fileTypes.map(entry => [typeLabel(entry.name, labels), count(entry.files)]))}
+${table(labels.tests, labels.testColumns, [[stats.tests.total, stats.tests.passed, stats.tests.skipped, stats.tests.todo, stats.tests.files].map(count)])}
+<footer>${xml(labels.footer)}</footer>
 </body></html>\n`;
 }
 
@@ -181,6 +224,18 @@ function options(args) {
     result[args[index].slice(2)] = args[index + 1];
   }
   return result;
+}
+
+export async function writeSite(stats, output) {
+  // Both editions use the same snapshot and original test summary; JSON stays language-independent.
+  await mkdir(output, { recursive: true });
+  for (const language of ['zh-CN', 'en']) {
+    const suffix = language === 'en' ? '.en' : '';
+    await writeFile(path.join(output, `repository-stats${suffix}.svg`), renderSvg(stats, language));
+    await writeFile(path.join(output, `index${suffix}.html`), renderHtml(stats, language));
+  }
+  await writeFile(path.join(output, 'repository-stats.json'), JSON.stringify(stats, null, 2) + '\n');
+  await writeFile(path.join(output, '.nojekyll'), '');
 }
 
 export async function main(args = process.argv.slice(2)) {
@@ -203,11 +258,7 @@ export async function main(args = process.argv.slice(2)) {
   verifySummary(summary, identity);
   const { manifest: _manifest, ...analysis } = snapshot;
   const stats = { schemaVersion: 1, ...identity, ...analysis, tests: summary.tests };
-  await mkdir(opts.output, { recursive: true });
-  await writeFile(path.join(opts.output, 'repository-stats.svg'), renderSvg(stats));
-  await writeFile(path.join(opts.output, 'index.html'), renderHtml(stats));
-  await writeFile(path.join(opts.output, 'repository-stats.json'), JSON.stringify(stats, null, 2) + '\n');
-  await writeFile(path.join(opts.output, '.nojekyll'), '');
+  await writeSite(stats, opts.output);
   console.log(`${stats.tag}: ${stats.totalFiles} files, ${stats.languages.length} languages, ${stats.tests.total} Vitest test cases.`);
   return stats;
 }
