@@ -1,6 +1,6 @@
 # AlwayGit User Manual
 
-[简体中文](USER_MANUAL.zh-CN.md)
+[简体中文](USER_MANUAL.zh-CN.md) | [Project home](../README.en.md)
 
 This manual explains how to inspect changes, save revisions, and collaborate with AlwayGit. Instructions and support boundaries describe the current version. Product behavior is specified in the [Workbench specification](WORKBENCH_SPEC.en.md).
 

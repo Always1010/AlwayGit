@@ -1,6 +1,6 @@
 # 架构与开发约定
 
-[English](ARCHITECTURE.en.md)
+[English](ARCHITECTURE.en.md) | [返回项目首页](../README.md)
 
 本文维护 AlwayGit 的运行结构、代码入口、跨层约定和开发流程。产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准，检查方法和验证证据见 [验证与本地更新](VALIDATION.md)，协作要求见 [项目规则](../AGENTS.md)。
 

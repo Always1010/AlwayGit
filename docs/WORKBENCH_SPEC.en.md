@@ -1,6 +1,6 @@
 # Workbench Specification
 
-[简体中文](WORKBENCH_SPEC.md)
+[简体中文](WORKBENCH_SPEC.md) | [Project home](../README.en.md)
 
 This document records confirmed AlwayGit behavior as the reference for implementation, testing, and continued development.
 
