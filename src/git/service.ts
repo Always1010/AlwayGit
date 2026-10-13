@@ -253,7 +253,9 @@ export class GitService implements GitServiceContract {
     const configOverrides: [string, string][] = [[`remote.${remote}.pushurl`, ''], [`remote.${remote}.pushurl`, urls[0]]];
     const bound = { remote, url: urls[0], configOverrides };
     const resolved = await this.run(repo, ['remote', 'get-url', '--push', '--all', remote], false, undefined, { configOverrides, boundRemote: bound });
-    if (resolved.stdout.toString('utf8').trim() !== urls[0]) throw new GitError(localizeMessage('service.cannotBindRemoteDestination'), 'REMOTE_BINDING_UNSUPPORTED');
+    // Only remove Git's final line ending. On older Git, the empty pushurl
+    // remains a destination; trim() would hide it when no pushurl was set.
+    if (resolved.stdout.toString('utf8').replace(/\r?\n$/, '') !== urls[0]) throw new GitError(localizeMessage('service.cannotBindRemoteDestination'), 'REMOTE_BINDING_UNSUPPORTED');
     return bound;
   }
   private confirmedRemoteOid(value: string | undefined): string {
