@@ -40,9 +40,9 @@ npm run build
 | 文档 | 职责 |
 | --- | --- |
 | [用户手册（简体中文）](docs/USER_MANUAL.zh-CN.md) / [User Manual (English)](docs/USER_MANUAL.en.md) | 快速开始、日常操作、终端、快捷键、进阶任务与排错；两版与应用内帮助共用截图 |
-| [工作台规格](docs/WORKBENCH_SPEC.md) | 当前产品行为、交互、配置及功能边界 |
-| [架构与开发约定](docs/ARCHITECTURE.md) | 运行结构、代码入口、跨层约定、开发流程与当前维护边界 |
-| [验证与本地更新](docs/VALIDATION.md) | 按改动选择检查、验收范围、验证证据及打包安装流程 |
+| [工作台规格](docs/WORKBENCH_SPEC.md) / [Workbench Specification (English)](docs/WORKBENCH_SPEC.en.md) | 当前产品行为、交互、配置及功能边界 |
+| [架构与开发约定](docs/ARCHITECTURE.md) / [Architecture (English)](docs/ARCHITECTURE.en.md) | 运行结构、代码入口、跨层约定、开发流程与当前维护边界 |
+| [验证与本地更新](docs/VALIDATION.md) / [Validation (English)](docs/VALIDATION.en.md) | 按改动选择检查、验收范围、验证证据及打包安装流程 |
 | [问题日志](docs/ISSUES.md) | 已确认问题的原因、处理与验证记录 |
 | [项目协作规则](AGENTS.md) | 提交、文档治理、测试和本机更新的执行规则 |
 
