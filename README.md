@@ -1,51 +1,51 @@
 # AlwayGit
 
-简体中文 | [English](README.en.md)
+English | [简体中文](README.zh-CN.md)
 
-AlwayGit 是可在 VS Code 编辑器标签页、主侧边栏、第二侧边栏或面板中使用的 Git 图形化工作台。它把仓库与引用导航、提交图、提交详情、工作区状态和只读 Diff 放在同一界面中；文本文件可继续使用 VS Code 原生编辑器，图片和其他二进制文件仅在工作台中预览。
+AlwayGit is a graphical Git workbench for VS Code editor tabs, the Primary Sidebar, Secondary Sidebar, and Panel. It brings repository and reference navigation, commit history, commit details, working-directory status, and read-only diffs into one interface. Text files can open in VS Code's native editor; images and other binary files are previewed inside the Workbench.
 
-[![发布版本代码分析：语言占比、文件类型与数量、Vitest 测试用例](https://always1010.github.io/AlwayGit/repository-stats.svg)](https://always1010.github.io/AlwayGit/)
+[![Release code analysis: language shares, file types and counts, and Vitest test cases](https://always1010.github.io/AlwayGit/repository-stats.en.svg)](https://always1010.github.io/AlwayGit/index.en.html)
 
-图卡标明对应的发布 Tag，仅在稳定版本 Release 成功后更新。[统计口径、Pages 设置与恢复方式](docs/VALIDATION.md#发布版本代码分析)。
+The card identifies its release Tag and updates only after a stable Release succeeds. See [counting rules, Pages setup, and recovery](docs/VALIDATION.en.md#release-code-analysis).
 
-## 安装与启动
+## Installation and launch
 
-运行环境为 VS Code 1.106 或更新版本；基础功能要求 Git 2.40+，完整高级操作推荐 Git 2.46+，具体版本要求见[用户手册](docs/USER_MANUAL.zh-CN.md#section-01-01)。源码构建使用 Node.js 24 和 npm。
+Use VS Code 1.106 or later. Basic functionality requires Git 2.40+; Git 2.46+ is recommended for all advanced operations. See the [manual requirements](docs/USER_MANUAL.en.md#section-01-01) for operation-specific minimums. Building from source uses Node.js 24 and npm.
 
 ```powershell
 npm ci
 npm run build
 ```
 
-在 VS Code 中打开项目，按 F5 启动 Extension Development Host，然后点击活动栏的 AlwayGit 图标，在侧栏点击 **打开工作台（Open Workbench）**：按设置打开或聚焦默认位置。侧栏的 **Open Workbench in New Window** 创建一个尚未选择仓库的独立窗口。AlwayGit 视图标题栏齿轮可多选标签页、主侧边栏、第二侧边栏和底部面板，并单独设置默认入口。四个位置可同时使用，状态独立；状态栏图标和 **AlwayGit: Show Workbench** 命令只打开或聚焦默认位置。两侧位置跟随 VS Code 的主侧边栏布局设置；点击应用后打开默认位置。仓库添加、分组、选择和移除都在 Workbench 内完成。
+Open this project in VS Code and press F5 to launch the Extension Development Host. Click the AlwayGit Activity Bar icon, then **Open Workbench** in the launcher to open or focus the configured default location. **Open Workbench in New Window** creates an independent window without a repository selected. The AlwayGit view-title gear enables one or more of Editor Tab, Primary Sidebar, Secondary Sidebar, and Panel, and selects the default entry. All four locations can coexist with independent state. The status-bar icon and **AlwayGit: Show Workbench** command open or focus only the default. Sidebar directions follow VS Code's primary-sidebar placement. Applying location settings opens the default. Add, group, select, and remove repositories inside the Workbench.
 
-安装包使用固定路径 `artifacts/alwaygit.vsix`。首次手动安装可在扩展视图菜单选择 **Install from VSIX…**；Windows、Linux 通用的安装菜单使用 `node scripts/install.mjs`，Linux 也可使用 `bash scripts/install.sh`。依赖准备、打包、安装校验与 Tag 触发的 GitHub Release 见 [验证与本地更新](docs/VALIDATION.md#打包与本地更新)。
+The fixed installation package is `artifacts/alwaygit.vsix`. For an initial manual installation, choose **Install from VSIX…** from the Extensions view menu. The shared Windows/Linux installation menu is `node scripts/install.mjs`; Linux also supports `bash scripts/install.sh`. Dependency preparation, packaging, installation verification, and Tag-triggered GitHub Releases are described in [Validation and Local Updates](docs/VALIDATION.en.md#packaging-and-local-update).
 
-发布包按 `win32-x64`、`linux-x64`、`linux-arm64` 区分。通过 Remote SSH 连接远程电脑时，应根据远程电脑的操作系统与 CPU 架构选择安装包，并安装到远端扩展宿主；操作步骤见[远程安装](docs/USER_MANUAL.zh-CN.md#remote-install)。
+Release packages target `win32-x64`, `linux-x64`, and `linux-arm64`. With Remote SSH, choose the package matching the remote computer's operating system and CPU architecture and install it into the remote extension host. See [remote installation](docs/USER_MANUAL.en.md#remote-install).
 
-## 主要功能
+## Main features
 
-- 多仓库和工作树导航、确认式递归发现、仓库移除与自定义项目分组、同窗口多个独立工作台标签。
-- 多引用筛选、递归分支树、可分页的拓扑提交图、消息搜索及 HEAD 定位。
-- Commit 详情、Merge Parent 选择、双 Commit 自动比较、文件路径筛选及文本与图片只读 Diff。
-- 底部 Diff 与多终端共用标签面板，支持 Shell 选择、重命名、终止/重启、折叠及最大化。
-- Working Tree 的冲突、Unstaged 和 Staged 管理，整文件及批量操作、Commit、Amend 与每仓库草稿。
-- 分支、远程分支、Tag、Stash 和 工作树 管理，以及 Fetch、Pull、Push、Merge、Rebase、Cherry-pick、Reset、Revert 与进行中操作处理。
-- 四区 Workbench 布局、可调面板与列宽、明暗主题、Graph 配色、字号、密度、English / 简体中文和会话恢复。
-- 工作台内离线帮助与指南，包含快速开始、常见任务、排错和完整中英文手册，支持主题筛选与章节跳转。
-- 文本文件的 VS Code 原生编辑与 Diff、项目窗口复用及跨窗口打开。
+- Multiple repositories and Worktrees, confirmed recursive discovery, repository removal and custom groups, and independent Workbench tabs in one window.
+- Multiple-reference filters, recursive branch trees, paginated topological commit graphs, message search, and HEAD location.
+- Commit details, Merge Parent selection, automatic two-commit comparison, file-path filtering, and read-only text/image diffs.
+- Shared bottom Diff and terminal tabs with Shell selection, renaming, termination/restart, collapse, and maximization.
+- Working Tree conflict, Unstaged, and Staged management; whole-file and bulk actions; Commit, Amend, and per-repository drafts.
+- Branch, remote-branch, Tag, Stash, and Worktree management, plus Fetch, Pull, Push, Merge, Rebase, Cherry-pick, Reset, Revert, and active-operation handling.
+- Four-region layout, resizable panels/columns, light/dark themes, Graph palettes, font size/density, English/Simplified Chinese, and session restoration.
+- Offline Help & Guide with quick start, common tasks, troubleshooting, complete bilingual manuals, topic filtering, and section navigation.
+- Native VS Code text editing/Diff, existing project-window reuse, and opening across windows.
 
-完整交互、配置和功能边界见 [工作台规格](docs/WORKBENCH_SPEC.md)。
+For complete interactions, configuration, and feature boundaries, see the [Workbench Specification](docs/WORKBENCH_SPEC.en.md).
 
-## 文档导航
+## Documentation
 
-| 文档 | 职责 |
+| Document | Purpose |
 | --- | --- |
-| [用户手册（简体中文）](docs/USER_MANUAL.zh-CN.md) / [User Manual (English)](docs/USER_MANUAL.en.md) | 快速开始、日常操作、终端、快捷键、进阶任务与排错；两版与应用内帮助共用截图 |
-| [工作台规格](docs/WORKBENCH_SPEC.md) / [Workbench Specification (English)](docs/WORKBENCH_SPEC.en.md) | 当前产品行为、交互、配置及功能边界 |
-| [架构与开发约定](docs/ARCHITECTURE.md) / [Architecture (English)](docs/ARCHITECTURE.en.md) | 运行结构、代码入口、跨层约定、开发流程与当前维护边界 |
-| [验证与本地更新](docs/VALIDATION.md) / [Validation (English)](docs/VALIDATION.en.md) | 按改动选择检查、验收范围、验证证据及打包安装流程 |
-| [问题日志](docs/ISSUES.md) | 已确认问题的原因、处理与验证记录 |
-| [项目协作规则](AGENTS.md) | 提交、文档治理、测试和本机更新的执行规则 |
+| [User Manual (English)](docs/USER_MANUAL.en.md) / [用户手册（简体中文）](docs/USER_MANUAL.zh-CN.md) | Quick start, everyday operations, terminals, shortcuts, advanced tasks, and troubleshooting; both editions and in-application help share screenshots |
+| [Workbench Specification](docs/WORKBENCH_SPEC.en.md) | Current product behavior, interactions, configuration, and feature boundaries |
+| [Architecture and Development](docs/ARCHITECTURE.en.md) | Runtime structure, code entry points, conventions across layers, development workflow, and maintenance boundaries |
+| [Validation and Local Updates](docs/VALIDATION.en.md) | Checks appropriate to each change, acceptance scope, validation evidence, packaging, and installation |
+| [Issue Log (Chinese)](docs/ISSUES.md) | Causes, fixes, and validation records for confirmed problems |
+| [Project Collaboration Rules (Chinese)](AGENTS.md) | Rules for commits, documentation, testing, and local updates |
 
-本项目尚未指定开源许可证，也尚未发布到 Marketplace。
+The project has not specified an open-source license and has not been published to the VS Code Marketplace.
