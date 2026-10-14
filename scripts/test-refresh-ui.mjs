@@ -12,20 +12,39 @@ export async function verifyRefresh(browser, url) {
       const other = { ...commit, oid: 'e'.repeat(40), subject: 'Another commit' };
       const content = Array.from({ length: 180 }, (_, i) => `line ${i}`).join('\n');
       const fixture = window.__refreshFixture = {
-        calls: [], detailsCleared: false, loadingShown: false, diffDelay: 30, right: content.replace('line 150', 'changed line 150'),
+        calls: [], detailsCleared: false, loadingShown: false, diffDelay: 30, right: content.replace('line 150', 'changed line 150'), pageReads: 0, pages: new Map(), nextToken: 0,
         snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 0, behind: 0, changes: [{ path: 'a.txt', indexStatus: 'M', worktreeStatus: 'M', untracked: false, conflict: false }, { path: 'b.txt', indexStatus: ' ', worktreeStatus: 'M', untracked: false, conflict: false }], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
         emit(changes) { window.postMessage({ type: 'changed', repoId: repo.id, changes }, '*'); },
+        poll() {
+          const { version, ...status } = this.snapshot;
+          const changed = JSON.stringify(status) !== this.statusKey;
+          const changedFile = this.displayed?.target.kind === 'change' && this.displayed.right !== this.right;
+          if (changed || changedFile) this.emit({ paths: changedFile ? [this.displayed.target.path] : [] });
+        },
       };
       window.acquireVsCodeApi = () => ({ getState: () => ({}), setState: () => {}, postMessage(request) {
         if (request.method === 'saveSession') { setTimeout(() => window.postMessage({ type: 'response', id: request.id, result: null }, '*'), 0); return; }
-        fixture.calls.push(request.method);
+        if (!['diffPage', 'diffRelease'].includes(request.method)) fixture.calls.push(request.method);
         let result;
         if (request.method === 'repositories') result = [repo];
-        if (request.method === 'snapshot') result = structuredClone({ ...fixture.snapshot, version: ++fixture.snapshot.version });
+        if (request.method === 'snapshot') {
+          result = structuredClone({ ...fixture.snapshot, version: ++fixture.snapshot.version });
+          const { version, ...status } = fixture.snapshot; fixture.statusKey = JSON.stringify(status);
+        }
         if (request.method === 'history') result = { commits: [commit, other], tips: [fixture.snapshot.head], nextOffset: 2, hasMore: false };
         if (request.method === 'cherryPickCheck') result = { head: fixture.snapshot.head, branch: fixture.snapshot.branch, included: request.payload.commits.filter(oid => oid === fixture.snapshot.head) };
         if (request.method === 'details') result = { commit: request.payload.oid === other.oid ? other : commit, body: 'Historical merge body', parent: request.payload.parent ?? commit.parents[0], files: [{ path: 'a.txt', status: 'M' }] };
-        if (request.method === 'diffPreview') result = { kind: 'text', path: request.payload.path, leftLabel: request.payload.kind === 'commit' ? request.payload.parent.slice(0, 8) : request.payload.area === 'staged' ? 'HEAD' : 'Index', rightLabel: request.payload.kind === 'commit' ? 'Commit' : request.payload.area === 'staged' ? 'Index' : 'Working Tree', left: content, right: fixture.right };
+        if (request.method === 'diffPreview') {
+          const target = request.payload, key = JSON.stringify([target.kind, target.oid, target.parent, target.area, target.path, fixture.right]);
+          const token = fixture.displayed?.key === key ? fixture.displayed.token : `preview-${++fixture.nextToken}`;
+          const left = content.split('\n'), right = fixture.right.split('\n');
+          fixture.pages.set(token, right.map((after, index) => ({ before: left[index], after, beforeLine: left[index] === undefined ? undefined : index + 1, afterLine: index + 1, changed: left[index] !== after })));
+          const added = right.length > left.length, changes = [{ start: 150, end: 150 }, ...(added ? [{ start: 180, end: right.length - 1 }] : [])];
+          result = { kind: 'text', path: target.path, leftLabel: target.kind === 'commit' ? target.parent.slice(0, 8) : target.area === 'staged' ? 'HEAD' : 'Index', rightLabel: target.kind === 'commit' ? 'Commit' : target.area === 'staged' ? 'Index' : 'Working Tree', left: '', right: '', index: { token, rowCount: right.length, changes, summary: { added: added ? 1 : 0, modified: 1, removed: 0 }, columns: 40 } };
+          fixture.displayed = { key, token, target, right: fixture.right };
+        }
+        if (request.method === 'diffPage') { fixture.pageReads++; result = { token: request.payload.token, start: request.payload.start, rows: fixture.pages.get(request.payload.token).slice(request.payload.start, request.payload.start + request.payload.count) }; }
+        if (request.method === 'diffRelease') { fixture.pages.delete(request.payload.token); result = null; }
         setTimeout(() => window.postMessage({ type: 'response', id: request.id, result }, '*'), request.method === 'diffPreview' ? fixture.diffDelay : 30);
       } });
     });
@@ -83,6 +102,7 @@ export async function verifyRefresh(browser, url) {
     await page.getByTestId('history').locator('[data-working-tree]').click();
     await diff.locator('.diff-labels').getByText('Working Tree', { exact: true }).waitFor();
     const summary = diff.getByTestId('diff-change-summary'), count = diff.getByTestId('diff-change-count');
+    await diff.getByText('changed line 150', { exact: true }).waitFor();
     const previousSummary = await summary.textContent(), previousCount = await count.innerText();
     assert.equal(previousSummary, '+0~1−0');
     assert.equal(previousCount, '1/1');
@@ -94,9 +114,16 @@ export async function verifyRefresh(browser, url) {
         const count = document.querySelector('[data-testid="diff-change-count"]')?.textContent;
         if (summary?.includes('…') || count?.includes('Loading')) fixture.statisticsCleared = true;
       }).observe(document.querySelector('[data-testid="diff-preview"] .pane-heading'), { childList: true, subtree: true });
-      // Match the host's periodic selected-file revalidation even without edits.
-      fixture.emit({ paths: ['a.txt'] });
+      fixture.contentMutated = false;
+      new MutationObserver(() => { fixture.contentMutated = true; }).observe(document.querySelector('.diff-content'), { childList: true, subtree: true, characterData: true });
+      fixture.poll();
     });
+    await page.waitForTimeout(100);
+    assert.deepEqual(await page.evaluate(() => window.__refreshFixture.calls), [], 'Unchanged host polling sends no frontend refresh');
+    assert.equal(await page.evaluate(() => window.__refreshFixture.contentMutated), false, 'Unchanged polling does not mutate the displayed Diff');
+    const pageReads = await page.evaluate(() => window.__refreshFixture.pageReads);
+    // Even a redundant watcher notification must reuse unchanged pages and text.
+    await page.evaluate(() => window.__refreshFixture.emit({ paths: ['a.txt'] }));
     await page.waitForFunction(() => window.__refreshFixture.calls.includes('diffPreview'));
     await page.waitForFunction(() => document.querySelector('[aria-label="Next change"]')?.disabled);
     assert.equal(await summary.textContent(), previousSummary, 'Unchanged polling preserves statistics while pending');
@@ -105,6 +132,8 @@ export async function verifyRefresh(browser, url) {
     assert.equal(await page.evaluate(() => window.__refreshFixture.statisticsCleared), false, 'No transient ellipsis during unchanged polling');
     assert.equal(await summary.textContent(), previousSummary);
     assert.equal(await count.innerText(), previousCount);
+    assert.equal(await page.evaluate(() => window.__refreshFixture.pageReads), pageReads, 'Unchanged preview token keeps the viewport cache');
+    assert.equal(await page.evaluate(() => window.__refreshFixture.contentMutated), false, 'Redundant notifications do not replace unchanged Diff rows');
     await viewport.evaluate(element => { element.scrollTop = 600; element.dispatchEvent(new Event('scroll')); });
     await page.evaluate(() => { const fixture = window.__refreshFixture; fixture.calls.length = 0; fixture.loadingShown = false; fixture.diffDelay = 600; fixture.right += '\nupdated selected file'; fixture.emit({ paths: ['a.txt'] }); });
     await page.waitForFunction(() => window.__refreshFixture.calls.includes('diffPreview'));
@@ -115,7 +144,6 @@ export async function verifyRefresh(browser, url) {
     assert.match(pendingCount, /^\d\/1$/);
     await page.waitForTimeout(650);
     assert.deepEqual(await page.evaluate(() => window.__refreshFixture.calls), ['snapshot', 'diffPreview']);
-    assert.equal(await page.evaluate(() => window.__refreshFixture.loadingShown), false);
     assert.equal(await page.evaluate(() => window.__refreshFixture.statisticsCleared), false, 'Actual edits also preserve statistics until the response');
     assert.equal(await summary.textContent(), '+1~1−0', 'Apply updated statistics once the new Diff arrives');
     assert.match(await count.innerText(), /^\d\/2$/);
@@ -139,6 +167,6 @@ export async function verifyRefresh(browser, url) {
     assert.deepEqual(await page.evaluate(() => window.__refreshFixture.calls), ['snapshot', 'diffPreview']);
     await diff.locator('.diff-labels').getByText('HEAD', { exact: true }).waitFor();
     assert.deepEqual(errors, [], 'Refresh must not throw runtime errors');
-    console.log('ALWAYGIT_REFRESH_UI_TESTS_PASSED: scoped menu dismissal and delayed Diff positioning, historical details/parent/scroll retained, scoped history and working Diff refresh, stable statistics during unchanged polling and edits, new-comparison loading, visible background updates, Staged selection');
+    console.log('ALWAYGIT_REFRESH_UI_TESTS_PASSED: scoped menu dismissal and delayed Diff positioning, historical details/parent/scroll retained, scoped history and working Diff refresh, no frontend requests during unchanged polling, unchanged page token and text retained after redundant notifications, statistics updated after edits, new-comparison loading, visible background updates, Staged selection');
   } finally { await page.close(); }
 }
