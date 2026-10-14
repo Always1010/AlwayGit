@@ -135,7 +135,9 @@ node scripts/package.mjs
 
 打包自动识别当前平台，向 VSCE 传递 `--target`，并由 `vscode:prepublish` 完成构建；无需在紧接着打包前重复构建。脚本传递 `--allow-star-activation`，明确接受现有的 `*` 启动激活方式，省掉每次打包的人工确认；此参数不优化启动性能或改变扩展激活时机。也可显式执行 `node scripts/package.mjs --target linux-arm64`，但目标必须与构建机器一致；该参数不会交叉编译 node-pty。Linux 必须使用 glibc 系统并准备 Python、make 与 C++ 编译器，源码构建采用 Node.js 24。
 
-构建先清理旧 PTY 目录并过滤其他平台的预编译文件。打包后、替换固定包前，`verify-package.mjs` 解包核对扩展身份、版本、目标平台、工作区宿主和 askpass 执行权限，并在不依赖源码 node_modules 的临时目录运行真实终端生命周期检查。成功后才替换 `artifacts/alwaygit.vsix`，保留上一份 `artifacts/alwaygit-previous.vsix` 和 `artifacts/alwaygit-<版本>-<平台>.vsix`；失败时保留原固定包。校验临时目录在结束时删除。
+发布文件由 `.vscodeignore` 的允许清单限定为扩展清单与本地化、README、图标、运行程序和 Webview 资源。原始 `docs/`、仓库 CI 配置、Source Map、测试及调试符号不进入 VSIX；完整中英文离线手册与 40 张截图仍由 Webview 构建产物提供，避免重复携带原始文档图片。打包时生成临时 README，将相对文档与语言入口链接转换为 GitHub `main` 上的在线地址；VSCE 使用该副本并保留现有统计 SVG，结束时删除临时副本。仓库中的 README 保持相对链接。
+
+构建先清理旧 PTY 目录，仅复制 node-pty 的运行 JS、许可证和当前目标的一套完整原生文件；优先使用完整的 `build/Release`，否则使用目标平台的预编译目录，统一存放在 `prebuilds/<平台>`。Windows 保留 ConPTY 与 WinPTY 兼容分支、辅助进程和 Worker；Linux/macOS 保留 `pty.node` 与 `spawn-helper`。不复制 PDB、其他架构、测试、类型声明、构建脚本及重复的第三方二进制。打包后、替换固定包前，`verify-package.mjs` 拒绝非允许文件、重复条目和缺失的必需文件，再解包核对扩展身份、版本、目标平台、工作区宿主和 askpass 执行权限，并在不依赖源码 node_modules 的临时目录运行真实终端生命周期检查。成功后才替换 `artifacts/alwaygit.vsix`，保留上一份 `artifacts/alwaygit-previous.vsix` 和 `artifacts/alwaygit-<版本>-<平台>.vsix`；失败时保留原固定包。校验临时目录在结束时删除。
 
 已经生成的包可单独检查，不重复构建：
 

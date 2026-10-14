@@ -21,6 +21,7 @@ async function runShell(file, args, input, stop = false) {
     });
     child.on('exit', () => { clearTimeout(deadline); resolve({ output, shellExit, errors }); });
     child.send({ type: 'start', shell: { file, args, env: process.env }, cwd: process.cwd(), cols: 100, rows: 30 });
+    child.send({ type: 'resize', cols: 120, rows: 40 });
     if (input) child.send({ type: 'input', data: input });
   });
 }
@@ -37,4 +38,4 @@ if (windows) {
 }
 const unavailable = await runShell(path.resolve('artifacts/nonexistent-terminal-shell'), [], '');
 assert.equal(unavailable.shellExit, 1);
-console.log('ALWAYGIT_TERMINAL_HOST_PASSED: native input/output, natural exit, forced stop, failed launch and helper cleanup; Windows PowerShell when applicable');
+console.log('ALWAYGIT_TERMINAL_HOST_PASSED: native input/output, resize, natural exit, forced stop, failed launch and helper cleanup; Windows PowerShell when applicable');
