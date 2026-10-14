@@ -1,6 +1,6 @@
 # 验证与本地更新
 
-[English](VALIDATION.en.md) | [返回项目首页](../README.md)
+[English](VALIDATION.en.md) | [返回项目首页](../README.zh-CN.md)
 
 本文维护检查入口、验收范围、验证证据和本机更新流程。验收矩阵描述应覆盖的行为；已有执行结果只对注明的版本与范围有效。当前源码版本以 `package.json` 为准。
 

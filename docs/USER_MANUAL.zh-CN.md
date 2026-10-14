@@ -1,6 +1,6 @@
 # AlwayGit 用户手册
 
-[English](USER_MANUAL.en.md) | [返回项目首页](../README.md)
+[English](USER_MANUAL.en.md) | [返回项目首页](../README.zh-CN.md)
 
 本手册面向使用 AlwayGit 的用户，介绍如何检查修改、保存版本和协作。产品行为与功能边界按当前版本维护；开发约定见 [工作台规格](WORKBENCH_SPEC.md)。
 

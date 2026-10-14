@@ -1,6 +1,6 @@
 # Validation and Local Updates
 
-[简体中文](VALIDATION.md) | [Project home](../README.en.md)
+[简体中文](VALIDATION.md) | [Project home](../README.md)
 
 This document maintains check entry points, acceptance scope, validation evidence, and local update procedures. Acceptance matrices describe the behavior that should be covered; recorded execution results apply only to the stated version and scope. `package.json` is the authority for the current source version.
 
@@ -222,7 +222,7 @@ The Tag's Commit must include the release workflow before pushing the Tag. Histo
 
 ## Release Code Analysis
 
-The README card and [full statistics page](https://always1010.github.io/AlwayGit/) show the latest successfully released stable version, taking version/Commit directly from its Tag. Ordinary branch pushes, PRs, and local edits do not update the card. Only after a `vMAJOR.MINOR.PATCH` push and successful Release validation/publication does `.github/workflows/repository-stats.yml` analyze that Tag and deploy GitHub Pages. The README image is unavailable before the first deployment.
+The README card and [full statistics page](https://always1010.github.io/AlwayGit/index.en.html) show the latest successfully released stable version, taking version/Commit directly from its Tag. Ordinary branch pushes, PRs, and local edits do not update the card. Only after a `vMAJOR.MINOR.PATCH` push and successful Release validation/publication does `.github/workflows/repository-stats.yml` analyze that Tag and deploy GitHub Pages. The README image is unavailable before the first deployment.
 
 Counting rules:
 
