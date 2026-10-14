@@ -7,7 +7,7 @@ import { promisify } from 'node:util';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { packageTarget, verifyPackageIdentity } from './platform-runtime.mjs';
+import { packageTarget, verifyPackageIdentity, verifyPackageContents } from './platform-runtime.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const archive = process.argv[2];
@@ -19,6 +19,7 @@ const vsceRequire = createRequire(require.resolve('@vscode/vsce/package.json'));
 const yauzl = vsceRequire('yauzl');
 const { parseStringPromise } = vsceRequire('xml2js');
 const directory = await mkdtemp(path.join(os.tmpdir(), 'alwaygit-vsix-'));
+const entries = [];
 try {
   await new Promise((resolve, reject) => {
     yauzl.open(archive, { lazyEntries: true }, (error, zip) => {
@@ -27,6 +28,7 @@ try {
       zip.on('error', fail);
       zip.on('end', resolve);
       zip.on('entry', entry => {
+        if (!entry.fileName.endsWith('/')) entries.push(entry.fileName);
         if (!['extension.vsixmanifest', 'extension/package.json'].includes(entry.fileName)
           && !entry.fileName.startsWith('extension/dist/')) { zip.readEntry(); return; }
         const destination = path.resolve(directory, entry.fileName);
@@ -49,6 +51,7 @@ try {
       zip.readEntry();
     });
   });
+  verifyPackageContents(entries, target);
   const expected = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
   const manifest = JSON.parse(await readFile(path.join(directory, 'extension/package.json'), 'utf8'));
   const xml = await parseStringPromise(await readFile(path.join(directory, 'extension.vsixmanifest'), 'utf8'));
