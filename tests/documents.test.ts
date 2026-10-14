@@ -6,7 +6,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { GitService } from '../src/git/service';
 import { GitDocuments } from '../src/editor/documents';
-import type { DiffPreview } from '../src/protocol/types';
+import type { DiffPreview, DiffTarget } from '../src/protocol/types';
 
 // Preview is a host operation with no editor UI dependency. Native editor calls
 // are verified separately in tests/extension/runner.ts against real VS Code.
@@ -154,6 +154,56 @@ describe('Complete Git Diff previews', () => {
     expect(preview.index!.summary).toEqual({ added: 1, modified: 1, removed: 1 });
     documents.releaseDiffOwner(owner);
     expect(() => documents.diffPage(repo, preview.index!.token, 0, 1)).toThrow('expired');
+  });
+
+  it.each([false, true])('keeps unchanged displayed content and its page token across polls (untracked: %s)', async untracked => {
+    const { root, repo, service, documents } = await setup(), owner = {}, otherOwner = {};
+    const filename = path.join(root, 'selected.txt'), target: DiffTarget = { kind: 'change', path: 'selected.txt', area: 'unstaged' };
+    if (!untracked) { await writeFile(filename, 'original'); await commit(root, 'initial'); }
+    await writeFile(filename, 'changed one');
+    const hunks = vi.spyOn(service, 'textDiffHunks');
+    const initial = textPreview(await documents.indexedPreview(repo, target, true, owner));
+    const page = documents.diffPage(repo, initial.index!.token, 0, 128);
+    await writeFile(filename, 'changed one'); // Metadata changed, displayed bytes did not.
+    await writeFile(path.join(root, 'unrelated.txt'), 'other file');
+    await expect(documents.changedWorkingPreview(repo, owner, await service.snapshot(repo))).resolves.toBeUndefined();
+    expect(textPreview(await documents.indexedPreview(repo, target, true, owner)).index!.token).toBe(initial.index!.token);
+    expect(hunks).toHaveBeenCalledTimes(1);
+    expect(documents.diffPage(repo, initial.index!.token, 0, 128)).toEqual(page);
+    const isolated = textPreview(await documents.indexedPreview(repo, target, true, otherOwner));
+    expect(isolated.index!.token).not.toBe(initial.index!.token);
+    const oldStatus = (await service.snapshot(repo)).changes.find(change => change.path === target.path);
+    await writeFile(filename, 'changed two'); // Same size and Git status, different bytes.
+    const current = await service.snapshot(repo);
+    expect(current.changes.find(change => change.path === target.path)).toEqual(oldStatus);
+    await expect(documents.changedWorkingPreview(repo, owner, current)).resolves.toEqual(target);
+    await expect(documents.changedWorkingPreview(repo, owner, current, 'unrelated.txt')).resolves.toBeUndefined();
+    await documents.indexedPreview(repo, target, false, owner); // Summary navigation cannot replace the displayed baseline.
+    await expect(documents.changedWorkingPreview(repo, owner, current)).resolves.toEqual(target);
+    const updated = textPreview(await documents.indexedPreview(repo, target, true, owner));
+    expect(updated.index!.token).not.toBe(initial.index!.token);
+    await expect(documents.changedWorkingPreview(repo, owner, current)).resolves.toBeUndefined();
+    expect(documents.diffPage(repo, initial.index!.token, 0, 128)).toEqual(page);
+    documents.releaseDiffOwner(owner);
+    await expect(documents.changedWorkingPreview(repo, owner, current)).resolves.toBeUndefined();
+    expect(() => documents.diffPage(repo, updated.index!.token, 0, 1)).toThrow('expired');
+    expect(documents.diffPage(repo, isolated.index!.token, 0, 128)).toEqual({ ...page, token: isolated.index!.token });
+  });
+
+  it('rechecks the actual staged comparison independently of Working Tree edits', async () => {
+    const { root, repo, service, documents } = await setup(), owner = {};
+    const filename = path.join(root, 'a.txt'), target: DiffTarget = { kind: 'change', path: 'a.txt', area: 'staged' };
+    await writeFile(filename, 'committed'); await commit(root, 'initial');
+    await writeFile(filename, 'staged one'); await git(root, 'add', 'a.txt');
+    await documents.indexedPreview(repo, target, true, owner);
+    await writeFile(filename, 'staged two');
+    await expect(documents.changedWorkingPreview(repo, owner, await service.snapshot(repo))).resolves.toBeUndefined();
+    await git(root, 'add', 'a.txt');
+    await expect(documents.changedWorkingPreview(repo, owner, await service.snapshot(repo))).resolves.toEqual(target);
+    await documents.indexedPreview(repo, target, true, owner);
+    await expect(documents.changedWorkingPreview(repo, owner, await service.snapshot(repo))).resolves.toBeUndefined();
+    await git(root, 'restore', '--staged', 'a.txt');
+    await expect(documents.changedWorkingPreview(repo, owner, await service.snapshot(repo))).resolves.toEqual(target);
   });
 
   it('reports resource exhaustion instead of returning matching prefixes as a complete comparison', async () => {

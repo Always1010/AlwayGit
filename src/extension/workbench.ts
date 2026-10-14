@@ -651,7 +651,7 @@ export class Workbench implements vscode.Disposable {
       case 'stashDetails': { const data = detailsSchema.parse(request.payload); return this.git.stashDetails(repo, data.oid); }
       case 'compare': { const data=comparisonSchema.parse(request.payload); return this.git.compare(repo,data.left,data.right,data.preserveOrder); }
       case 'diff': await this.projects.openDiff(repo.root, diffSchema.parse(request.payload)); return null;
-      case 'diffPreview': { const target = diffPreviewSchema.parse(request.payload); return target.paged ? this.documents.indexedPreview(repo, target, !target.summaryOnly, source??this) : this.documents.preview(repo,target); }
+      case 'diffPreview': { const { paged, summaryOnly, ...target } = diffPreviewSchema.parse(request.payload); return paged ? this.documents.indexedPreview(repo, target, !summaryOnly, source??this) : this.documents.preview(repo,target,summaryOnly?undefined:source??this); }
       case 'diffPage': { const { token, start, count } = diffPageSchema.parse(request.payload); return this.documents.diffPage(repo, token, start, count); }
       case 'diffRelease': this.documents.releaseDiff(repo, diffReleaseSchema.parse(request.payload).token); return null;
       case 'openRepository': {
@@ -754,11 +754,18 @@ export class Workbench implements vscode.Disposable {
           for (const entry of this.panels.values()) {
             if (!entry.panel.visible || entry.activeRepository !== id) continue;
             const view = entry.session?.views?.[id];
-            const selected = view?.tab === 'changes' ? snapshot.changes.find(file => file.path === view.selectedFile) ?? snapshot.changes[0] : undefined;
-            // Status remains M or ?? across further edits. Revalidate only the displayed
-            // working file once per interval, without hashing the repository's contents.
-            const paths = selected && (selected.untracked || selected.worktreeStatus !== ' ' || selected.conflict) ? [selected.path] : [];
-            if (changed || paths.length) this.post({ type: 'changed', repoId: id, changes: { paths }, snapshot }, entry);
+            // Status alone misses edits that remain M/?? or changes within the Index.
+            // Compare the displayed content on the host; unchanged polls send nothing.
+            let diffChanges: RepositoryChanges | undefined;
+            if (view?.tab === 'changes') {
+              try {
+                const target = await this.documents.changedWorkingPreview(repo, entry, snapshot, view.selectedFile);
+                if (target) diffChanges = { paths: [target.path], ...(target.area === 'staged' ? { index: true } : {}) };
+              }
+              catch (error) { this.output.appendLine(redactSecrets(translate('en', 'host.refresh', { value: error instanceof Error ? error.message : String(error) }))); }
+            }
+            if (!entry.panel.visible || entry.activeRepository !== id || this.panels.get(entry.panel) !== entry) continue;
+            if (changed || diffChanges) this.post({ type: 'changed', repoId: id, changes: diffChanges ?? { paths: [] }, snapshot }, entry);
           }
         } catch (error) { this.output.appendLine(redactSecrets(translate('en', "host.refresh", { value: (error instanceof Error ? error.message : String(error)) }))); }
       }

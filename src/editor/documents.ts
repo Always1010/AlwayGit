@@ -1,9 +1,9 @@
 import { message as localizeMessage, MessageError, translate } from '../i18n/index';
 import * as vscode from 'vscode';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { open, lstat, readlink } from 'node:fs/promises';
-import type { ContentSource, DiffImage, DiffPreview, DiffTarget, GitServiceContract, Repository } from '../protocol/types';
+import type { ContentSource, DiffImage, DiffPreview, DiffTarget, GitServiceContract, Repository, Snapshot } from '../protocol/types';
 import { safeWorkingPath } from './paths';
 import { IndexedTextDiff } from './text-diff';
 import type { DiffPage } from '../protocol/diff';
@@ -15,6 +15,11 @@ const MAX_IMAGE_PIXELS = 24_000_000;
 const MAX_IMAGE_DIMENSION = 16_384;
 type Side = { source: ContentSource; label: string; path: string } | { workingPath: string; label: string; path: string } | { text: string; label: string; path: string };
 type Comparison = { left: Side; right: Side; label: string; path: string };
+interface PreviewBaseline { repoId: string; target: DiffTarget; fingerprint: string; token?: string }
+
+function previewFingerprint(preview: DiffPreview): string {
+  return createHash('sha256').update(JSON.stringify(preview)).digest('hex');
+}
 
 type ImageHeader = Pick<DiffImage, 'mimeType' | 'width' | 'height'>;
 function imageHeader(bytes: Buffer): ImageHeader | undefined {
@@ -53,6 +58,7 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
   private readonly entries = new Map<string, { repo: Repository; source: ContentSource } | { text: string }>();
   private sequence = 0;
   private readonly snapshots = new Map<string, { repoId: string; diff: IndexedTextDiff; owner: object }>();
+  private readonly previews = new Map<object, PreviewBaseline>();
   constructor(private readonly git: GitServiceContract) {}
   async provideTextDocumentContent(uri: vscode.Uri): Promise<string> {
     const entry = this.entries.get(uri.toString());
@@ -82,13 +88,35 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
     const uri = (side: Side) => 'workingPath' in side ? vscode.Uri.file(side.workingPath) : this.uri(repo, 'text' in side ? side.text : side.source, side.label, side.path);
     await vscode.commands.executeCommand('vscode.diff', uri(comparison.left), uri(comparison.right), comparison.label, { viewColumn: vscode.ViewColumn.Active, preview: false, preserveFocus: false });
   }
-  async preview(repo: Repository, target: DiffTarget): Promise<DiffPreview> {
+  async preview(repo: Repository, target: DiffTarget, owner?: object): Promise<DiffPreview> {
     const comparison = await this.comparison(repo, target);
-    return this.previewComparison(repo, comparison);
+    const preview = await this.previewComparison(repo, comparison);
+    if (owner) this.previews.set(owner, { repoId: repo.id, target, fingerprint: previewFingerprint(preview) });
+    return preview;
+  }
+  /** Recheck the exact displayed comparison without rebuilding its index or notifying the UI. */
+  async changedWorkingPreview(repo: Repository, owner: object, snapshot: Snapshot, selectedFile?: string): Promise<Extract<DiffTarget, { kind: 'change' }> | undefined> {
+    const baseline = this.previews.get(owner);
+    if (!baseline || baseline.repoId !== repo.id || baseline.target.kind !== 'change' || selectedFile && selectedFile !== baseline.target.path) return;
+    const target = baseline.target, file = snapshot.changes.find(change => change.path === target.path);
+    const valid = file && (target.area === 'conflict' ? file.conflict : !file.conflict && (target.area === 'staged'
+      ? !file.untracked && file.indexStatus !== ' ' && file.indexStatus !== '?'
+      : file.untracked || file.worktreeStatus !== ' '));
+    if (!valid) return target;
+    const preview = await this.previewComparison(repo, await this.comparison(repo, target, snapshot));
+    // A new preview may have completed while this background read was pending.
+    if (this.previews.get(owner) === baseline && previewFingerprint(preview) !== baseline.fingerprint) return target;
   }
   async indexedPreview(repo: Repository, target: DiffTarget, retain = true, owner: object = this): Promise<DiffPreview> {
     const preview = await this.preview(repo, target);
-    if (preview.kind !== 'text') return preview;
+    const fingerprint = previewFingerprint(preview), previous = this.previews.get(owner);
+    const cached = retain && previous?.repoId === repo.id && JSON.stringify(previous.target) === JSON.stringify(target) && previous.fingerprint === fingerprint && previous.token
+      ? this.snapshots.get(previous.token) : undefined;
+    if (cached && preview.kind === 'text') return { ...preview, left: '', right: '', index: { token: previous!.token!, rowCount: cached.diff.rowCount, changes: cached.diff.changes, summary: cached.diff.summary, columns: cached.diff.columns } };
+    if (preview.kind !== 'text') {
+      if (retain) this.previews.set(owner, { repoId: repo.id, target, fingerprint });
+      return preview;
+    }
     const hunks = await this.git.textDiffHunks(repo, preview.left, preview.right);
     const diff = await IndexedTextDiff.create(preview.left, preview.right, hunks, () => this.git.throwIfReadCancelled?.());
     const token = retain ? randomUUID() : '';
@@ -99,6 +127,7 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
       if ([...this.snapshots.values()].reduce((sum, value) => sum + value.diff.bytes, diff.bytes) > 128 * 1024 * 1024) for (const [key] of own) this.snapshots.delete(key);
       if ([...this.snapshots.values()].reduce((sum, value) => sum + value.diff.bytes, diff.bytes) > 128 * 1024 * 1024) throw new MessageError(localizeMessage('documents.textComparisonResourceLimit'));
       this.snapshots.set(token, { repoId: repo.id, diff, owner });
+      this.previews.set(owner, { repoId: repo.id, target, fingerprint, token });
     }
     return { ...preview, left: '', right: '', index: { token, rowCount: diff.rowCount, changes: diff.changes, summary: diff.summary, columns: diff.columns } };
   }
@@ -112,6 +141,7 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
   }
   releaseDiffOwner(owner: object): void {
     for (const [key, entry] of this.snapshots) if (entry.owner === owner) this.snapshots.delete(key);
+    this.previews.delete(owner);
   }
   private async readWorking(filename: string, maxBytes: number): Promise<Buffer> {
     const file = await open(filename, 'r');
@@ -170,7 +200,7 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
     if (!metadata.isFile()) throw new MessageError(localizeMessage("documents.thisPathIsADirectoryOrSubmoduleNotA"));
     return { workingPath: await safeWorkingPath(repo.root, filename), label: translate('en', "documents.workingTree"), path: filename };
   }
-  private async comparison(repo: Repository, target: DiffTarget): Promise<Comparison> {
+  private async comparison(repo: Repository, target: DiffTarget, currentSnapshot?: Snapshot): Promise<Comparison> {
     let left: Side;
     let right: Side;
     let label: string;
@@ -201,7 +231,7 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
       right={source:file.status==='D'?{kind:'empty'}:{kind:'revision',revision:comparison.right.oid,path:file.path},label:comparison.right.oid.slice(0,8),path:file.path};
       label=`${path.basename(file.path)} · ${comparison.left.oid.slice(0,8)} ↔ ${comparison.right.oid.slice(0,8)}`;
     } else {
-      const snapshot = await this.git.snapshot(repo);
+      const snapshot = currentSnapshot ?? await this.git.snapshot(repo);
       const change = snapshot.changes.find(c => c.path === target.path);
       if (!change) throw new MessageError(localizeMessage("documents.theFileStatusChangedRefreshAndOpenItsComparison"));
       const before = change.originalPath ?? change.path;

@@ -336,38 +336,54 @@ describe('Workbench entry presentation', () => {
     await expect(workbench.handle({ id: 'open', method: 'openProject', repoId: repo.id })).resolves.toEqual(result);
     expect(openProject).toHaveBeenCalledWith(repo.root);
   });
-  it.each([false, true])('revalidates visible Working Tree content with unchanged Git status while retaining historical and staged comparisons (untracked: %s)', async untracked => {
+  it.each([false, true])('only notifies regions with changed status or displayed content during polling (untracked: %s)', async untracked => {
     const repository = { id: 'fixture', root: '/fixture', commonDir: '/fixture/.git', name: 'Fixture' };
     const snapshot: Snapshot = { repository, branch: 'main', ahead: 0, behind: 0, version: 1, refs: [], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, changes: [
       { path: 'a.txt', indexStatus: untracked ? '?' : 'M', worktreeStatus: untracked ? '?' : 'M', untracked, conflict: false },
       { path: 'staged.txt', indexStatus: 'M', worktreeStatus: ' ', untracked: false, conflict: false },
-      { path: 'conflict.txt', indexStatus: 'U', worktreeStatus: 'U', untracked: false, conflict: true },
     ] };
     const workbench = workbenchFixture(undefined, undefined, { list: () => [repository] });
-    const internals = workbench as unknown as { git: GitServiceContract; repositories: { get(): typeof repository }; poll(): Promise<void> };
+    const internals = workbench as unknown as { git: GitServiceContract; repositories: { get(): typeof repository }; documents: { changedWorkingPreview: ReturnType<typeof vi.fn> }; poll(): Promise<void> };
     const read = vi.fn(async () => ({ ...snapshot, version: snapshot.version++ }));
+    let workingChanged = false, stagedChanged = false;
+    internals.documents.changedWorkingPreview = vi.fn(async (_repo, _owner, _snapshot, path) => path === 'a.txt' && workingChanged
+      ? { kind: 'change', path, area: 'unstaged' } : path === 'staged.txt' && stagedChanged ? { kind: 'change', path, area: 'staged' } : undefined);
     internals.git.snapshot = read; internals.repositories.get = () => repository;
     const working = panelFixture(), history = panelFixture(), staged = panelFixture(), hidden = panelFixture();
-    for (const fixture of [working, history, staged, hidden]) {
+    const fixtures = [working, history, staged, hidden];
+    for (const fixture of fixtures) {
       vi.mocked(vscode.window.createWebviewPanel).mockReturnValueOnce(fixture.panel as unknown as vscode.WebviewPanel);
       await workbench.open('fixture', undefined, true);
       const tab = fixture === history ? 'history' : 'changes', selectedFile = fixture === staged ? 'staged.txt' : 'a.txt';
       await fixture.receive({ id: selectedFile, method: 'saveSession', payload: { repoId: 'fixture', views: { fixture: { tab, search: '', selectedFile } } } });
     }
     hidden.panel.visible = false;
+    const clear = () => { for (const fixture of fixtures) fixture.panel.webview.postMessage.mockClear(); };
+    await internals.poll(); clear();
     await internals.poll();
-    for (const fixture of [working, history, staged, hidden]) fixture.panel.webview.postMessage.mockClear();
+    for (const fixture of fixtures) expect(fixture.panel.webview.postMessage).not.toHaveBeenCalled();
+    expect(internals.documents.changedWorkingPreview).toHaveBeenCalledTimes(4); // Only visible Working Tree comparisons.
+    workingChanged = true;
     await internals.poll();
-    expect(read).toHaveBeenCalledTimes(2);
     expect(working.panel.webview.postMessage).toHaveBeenCalledOnce();
     const event = working.panel.webview.postMessage.mock.calls[0][0] as { changes: RepositoryChanges };
     expect(event.changes).toEqual({ paths: ['a.txt'] });
-    expect(history.panel.webview.postMessage).not.toHaveBeenCalled();
-    expect(staged.panel.webview.postMessage).not.toHaveBeenCalled();
-    expect(hidden.panel.webview.postMessage).not.toHaveBeenCalled();
+    for (const fixture of [history, staged, hidden]) expect(fixture.panel.webview.postMessage).not.toHaveBeenCalled();
     expect(affectsWorkingDiff(snapshot, snapshot, { kind: 'change', area: 'unstaged', path: 'a.txt' }, event.changes)).toBe(true);
-    expect(affectsWorkingDiff(snapshot, snapshot, { kind: 'change', area: 'staged', path: 'a.txt' }, event.changes)).toBe(false);
-    expect(affectsWorkingDiff(snapshot, snapshot, { kind: 'change', area: 'conflict', path: 'conflict.txt' }, { paths: ['conflict.txt'] })).toBe(true);
+    workingChanged = false; clear(); snapshot.ahead++;
+    await internals.poll();
+    for (const fixture of [working, history, staged]) {
+      const status = fixture.panel.webview.postMessage.mock.calls[0][0] as { changes: RepositoryChanges };
+      expect(status.changes).toEqual({ paths: [] });
+      expect(affectsWorkingDiff(snapshot, snapshot, { kind: 'change', area: 'unstaged', path: 'a.txt' }, status.changes)).toBe(false);
+    }
+    expect(hidden.panel.webview.postMessage).not.toHaveBeenCalled();
+    clear(); stagedChanged = true;
+    await internals.poll();
+    expect(staged.panel.webview.postMessage).toHaveBeenCalledOnce();
+    expect(staged.panel.webview.postMessage.mock.calls[0][0]).toMatchObject({ changes: { paths: ['staged.txt'], index: true } });
+    for (const fixture of [working, history, hidden]) expect(fixture.panel.webview.postMessage).not.toHaveBeenCalled();
+    expect(read).toHaveBeenCalledTimes(5);
   });
   it.each([false, true])('uses the latest successful panel baseline when activation overlaps queued saves (failed first write: %s)', async failed => {
     const output = { appendLine: vi.fn() }, workbench = workbenchFixture(output);
