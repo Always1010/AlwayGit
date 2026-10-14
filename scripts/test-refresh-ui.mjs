@@ -32,6 +32,8 @@ export async function verifyRefresh(browser, url) {
     await page.goto(url);
     await page.getByRole('option', { name: 'Refresh fixture' }).dblclick();
     const details = page.getByTestId('details'), diff = page.getByTestId('diff-preview'), viewport = diff.locator('.diff-viewport');
+    // Repository entry opens Working Tree; explicitly select the historical fixture.
+    await page.getByTestId('history').locator('[data-oid="' + 'a'.repeat(40) + '"]').click();
     await details.getByText('Historical merge body', { exact: true }).waitFor();
     await diff.locator('.diff-line').first().waitFor();
     const history = page.getByTestId('history'), otherRow = history.locator('[data-oid="' + 'e'.repeat(40) + '"]'), menu = page.getByTestId('context-menu');
@@ -48,7 +50,7 @@ export async function verifyRefresh(browser, url) {
     await otherRow.click({ button: 'right' }); await menu.waitFor();
     await page.keyboard.press('Escape'); assert.equal(await menu.count(), 0);
     await otherRow.click({ button: 'right' }); await menu.waitFor();
-    await page.locator('.brand').click(); assert.equal(await menu.count(), 0, 'Outside clicks still close the menu');
+    await details.locator('.pane-heading').first().click(); assert.equal(await menu.count(), 0, 'Outside clicks still close the menu');
     await page.evaluate(() => { window.__refreshFixture.diffDelay = 30; });
     await history.locator('[data-oid="' + 'a'.repeat(40) + '"]').click();
     await details.locator('.commit-metadata').getByText('Historical merge', { exact: true }).waitFor();
@@ -80,20 +82,51 @@ export async function verifyRefresh(browser, url) {
 
     await page.getByTestId('history').locator('[data-working-tree]').click();
     await diff.locator('.diff-labels').getByText('Working Tree', { exact: true }).waitFor();
+    const summary = diff.getByTestId('diff-change-summary'), count = diff.getByTestId('diff-change-count');
+    const previousSummary = await summary.textContent(), previousCount = await count.innerText();
+    assert.equal(previousSummary, '+0~1−0');
+    assert.equal(previousCount, '1/1');
+    await page.evaluate(() => {
+      const fixture = window.__refreshFixture;
+      fixture.calls.length = 0; fixture.diffDelay = 600; fixture.statisticsCleared = false;
+      new MutationObserver(() => {
+        const summary = document.querySelector('[data-testid="diff-change-summary"]')?.textContent;
+        const count = document.querySelector('[data-testid="diff-change-count"]')?.textContent;
+        if (summary?.includes('…') || count?.includes('Loading')) fixture.statisticsCleared = true;
+      }).observe(document.querySelector('[data-testid="diff-preview"] .pane-heading'), { childList: true, subtree: true });
+      // Match the host's periodic selected-file revalidation even without edits.
+      fixture.emit({ paths: ['a.txt'] });
+    });
+    await page.waitForFunction(() => window.__refreshFixture.calls.includes('diffPreview'));
+    await page.waitForFunction(() => document.querySelector('[aria-label="Next change"]')?.disabled);
+    assert.equal(await summary.textContent(), previousSummary, 'Unchanged polling preserves statistics while pending');
+    assert.equal(await count.innerText(), previousCount, 'Unchanged polling preserves block position while pending');
+    await page.waitForTimeout(650);
+    assert.equal(await page.evaluate(() => window.__refreshFixture.statisticsCleared), false, 'No transient ellipsis during unchanged polling');
+    assert.equal(await summary.textContent(), previousSummary);
+    assert.equal(await count.innerText(), previousCount);
     await viewport.evaluate(element => { element.scrollTop = 600; element.dispatchEvent(new Event('scroll')); });
     await page.evaluate(() => { const fixture = window.__refreshFixture; fixture.calls.length = 0; fixture.loadingShown = false; fixture.diffDelay = 600; fixture.right += '\nupdated selected file'; fixture.emit({ paths: ['a.txt'] }); });
     await page.waitForFunction(() => window.__refreshFixture.calls.includes('diffPreview'));
     assert.ok(await diff.locator('.diff-line').count() > 0, 'Keep the previous Diff visible during a background request');
     assert.equal(await diff.getByText('Loading Diff…', { exact: true }).count(), 0);
+    assert.equal(await summary.textContent(), previousSummary, 'Keep the previous statistics during an actual edit');
+    const pendingCount = await count.innerText();
+    assert.match(pendingCount, /^\d\/1$/);
     await page.waitForTimeout(650);
     assert.deepEqual(await page.evaluate(() => window.__refreshFixture.calls), ['snapshot', 'diffPreview']);
     assert.equal(await page.evaluate(() => window.__refreshFixture.loadingShown), false);
+    assert.equal(await page.evaluate(() => window.__refreshFixture.statisticsCleared), false, 'Actual edits also preserve statistics until the response');
+    assert.equal(await summary.textContent(), '+1~1−0', 'Apply updated statistics once the new Diff arrives');
+    assert.match(await count.innerText(), /^\d\/2$/);
     assert.ok(await viewport.evaluate(element => element.scrollTop) >= 590, 'Updating the same working comparison preserves scroll');
     await viewport.evaluate(element => { element.scrollTop = element.scrollHeight; element.dispatchEvent(new Event('scroll')); });
     await diff.getByText('updated selected file', { exact: true }).waitFor();
 
-    const staged = details.locator('.change-group:has(.change-heading-staged)');
-    await staged.getByRole('button', { name: 'a.txt', exact: true }).click();
+    const stagedFile = details.getByRole('button', { name: 'a.txt', exact: true }).last();
+    await stagedFile.click();
+    await page.waitForFunction(() => document.querySelector('[data-testid="diff-change-summary"]')?.textContent === '+…~…−…');
+    assert.match(await count.innerText(), /Loading/, 'Changing comparison does not present the old statistics as current');
     await diff.locator('.diff-labels').getByText('HEAD', { exact: true }).waitFor();
     await page.evaluate(() => { const fixture = window.__refreshFixture; fixture.calls.length = 0; fixture.diffDelay = 30; fixture.emit({ paths: ['a.txt'] }); });
     await page.waitForFunction(() => window.__refreshFixture.calls.includes('snapshot'));
@@ -106,6 +139,6 @@ export async function verifyRefresh(browser, url) {
     assert.deepEqual(await page.evaluate(() => window.__refreshFixture.calls), ['snapshot', 'diffPreview']);
     await diff.locator('.diff-labels').getByText('HEAD', { exact: true }).waitFor();
     assert.deepEqual(errors, [], 'Refresh must not throw runtime errors');
-    console.log('ALWAYGIT_REFRESH_UI_TESTS_PASSED: scoped menu dismissal and delayed Diff positioning, historical details/parent/scroll retained, scoped history and working Diff refresh, unchanged dirty status, visible background updates, Staged selection');
+    console.log('ALWAYGIT_REFRESH_UI_TESTS_PASSED: scoped menu dismissal and delayed Diff positioning, historical details/parent/scroll retained, scoped history and working Diff refresh, stable statistics during unchanged polling and edits, new-comparison loading, visible background updates, Staged selection');
   } finally { await page.close(); }
 }
