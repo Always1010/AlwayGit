@@ -1,0 +1,128 @@
+{
+  "reflog.expired": {
+    "en": "This Reflog snapshot expired. Refresh to read it again.",
+    "zh-CN": "Reflog 快照已过期，请刷新后重试。",
+    "review": "translated",
+    "context": "Reflog and revision inspection"
+  },
+  "reflog.invalidRef": {
+    "en": "Select HEAD or a local branch Reflog.",
+    "zh-CN": "请选择 HEAD 或本地分支的 Reflog。",
+    "review": "translated",
+    "context": "Reflog and revision inspection"
+  },
+  "reflog.malformed": {
+    "en": "Git returned an invalid Reflog record.",
+    "zh-CN": "Git 返回了无效的 Reflog 记录。",
+    "review": "translated",
+    "context": "Reflog and revision inspection"
+  },
+  "reflog.unavailable": {
+    "en": "Reflog is unavailable in this host.",
+    "zh-CN": "当前宿主不支持 Reflog。",
+    "review": "translated",
+    "context": "Reflog and revision inspection"
+  },
+  "reflog.open": {
+    "en": "Open Reflog",
+    "zh-CN": "查看 Reflog",
+    "review": "translated",
+    "context": "Reflog and revision inspection"
+  },
+  "reflog.title": {
+    "en": "Reflog and recovery",
+    "zh-CN": "Reflog 与恢复",
+    "review": "translated",
+    "context": "Reflog and revision inspection"
+  },
+  "reflog.scope": {
+    "en": "Reference",
+    "zh-CN": "引用",
+    "review": "translated",
+    "context": "Reflog and revision inspection"
+  },
+  "reflog.hint": {
+    "en": "Records belong to this local repository. Reflog cannot recover discarded uncommitted files.",
+    "zh-CN": "记录来自本地仓库。Reflog 不能恢复已丢弃的未提交文件。",
+    "review": "translated",
+    "context": "Reflog and revision inspection"
+  },
+  "reflog.empty": {
+    "en": "No Reflog entries for this reference.",
+    "zh-CN": "此引用没有 Reflog 记录。",
+    "review": "translated",
+    "context": "Reflog and revision inspection"
+  },
+  "reflog.recover": {
+    "en": "Create recovery branch",
+    "zh-CN": "创建恢复分支",
+    "review": "translated",
+    "context": "Reflog and revision inspection"
+  },
+  "reflog.branchName": {
+    "en": "Recovery branch name",
+    "zh-CN": "恢复分支名称",
+    "review": "translated",
+    "context": "Reflog and revision inspection"
+  },
+  "reflog.checkout": {
+    "en": "Switch to the recovery branch after creating it",
+    "zh-CN": "创建后切换到恢复分支",
+    "review": "translated",
+    "context": "Reflog and revision inspection"
+  },
+  "reflog.recovered": {
+    "en": "Recovery branch created: {{name}}",
+    "zh-CN": "已创建恢复分支：{{name}}",
+    "review": "translated",
+    "context": "Reflog and revision inspection"
+  },
+  "reflog.backups": {
+    "en": "Rebase recovery points",
+    "zh-CN": "Rebase 恢复点",
+    "review": "translated",
+    "context": "Reflog and revision inspection"
+  },
+  "reflog.cap": {
+    "en": "Only the latest 5,000 records are shown.",
+    "zh-CN": "仅显示最近 5000 条记录。",
+    "review": "translated",
+    "context": "Reflog and revision inspection"
+  },
+  "reflog.changed": {
+    "en": "References changed. Refresh to load the latest Reflog.",
+    "zh-CN": "引用已变化，可刷新读取最新 Reflog。",
+    "review": "translated",
+    "context": "Reflog and revision inspection"
+  },
+  "reflog.inspect": {
+    "en": "Inspect commit",
+    "zh-CN": "查看提交",
+    "review": "translated",
+    "context": "Reflog and revision inspection"
+  },
+  "reflog.copy": {
+    "en": "Copy commit ID",
+    "zh-CN": "复制提交 ID",
+    "review": "translated",
+    "context": "Reflog and revision inspection"
+  },
+  "reflog.files": {
+    "en": "Changed files",
+    "zh-CN": "变更文件",
+    "review": "translated",
+    "context": "Reflog and revision inspection"
+  },
+  "reflog.missing": {
+    "en": "This commit is no longer available. It may have been pruned.",
+    "zh-CN": "此提交已不可用，可能已被清理。",
+    "review": "translated",
+    "context": "Reflog and revision inspection"
+  },
+  "reflog.parent": {
+    "en": "Comparison parent",
+    "zh-CN": "比较父提交",
+    "review": "translated",
+    "context": "Reflog and revision inspection"
+  }
+}

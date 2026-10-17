@@ -396,6 +396,14 @@ Git similarity detection identifies renames, traced independently along each mer
 
 <a id="chapter-05"></a>
 
+<a id="reflog-recovery"></a>
+
+### Recover a commit with Reflog
+
+Open More → Open Reflog to inspect the current worktree HEAD or a local branch. Select a record, inspect its commit and choose a file for an independent Diff. Closing the dialog preserves your original history, file selection and drafts. Refresh reads recent records; pagination stays within one snapshot.
+
+To recover a commit from before a Reset or Rebase, select its record, enter a recovery branch name and choose Create recovery branch. Your current branch and worktree remain selected unless you explicitly check the switch option. Expired records or pruned objects may be unavailable. Reflog does not save discarded uncommitted file contents.
+
 ## Branches and Historical Versions
 
 A branch is a movable reference to a version. Creating a branch, switching branches, and filtering branch history are three separate actions. Read the button label before acting and the completion feedback afterward.

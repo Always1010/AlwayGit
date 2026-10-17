@@ -1,3 +1,4 @@
+import { verifyReflog } from './test-revision-tools-ui.mjs';
 import { chromium } from 'playwright';
 import { createServer } from 'node:http';
 import { readFile, mkdir } from 'node:fs/promises';
@@ -25,6 +26,7 @@ import { verifyDockedWorkbench, verifyWorkbenchLocations } from './test-workbenc
 
 // Full and targeted runs share one registry, so a new suite cannot be omitted from full runs.
 const suites = new Map([
+  ['reflog', verifyReflog],
   ['transfer', verifyTransfer],
   ['locations', verifyWorkbenchLocations],
   ['docking', verifyDockedWorkbench],

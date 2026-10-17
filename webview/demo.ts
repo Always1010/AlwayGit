@@ -157,7 +157,8 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
     const visible=result.slice(offset,offset+limit),head=commits.find(commit=>commit.oid===demoSnapshot.head);
     return { commits: visible, nextOffset: offset + Math.min(limit,result.length-offset), hasMore: offset + limit < result.length, tips, ...(query.file?{filePaths:[query.file.path]}:head?{head}: {}) } satisfies HistoryPage;
   }
-  if (method === 'details') {
+  if (method === 'reflog') return {token:'11111111-1111-4111-8111-111111111111',ref:(payload as {ref?:string})?.ref??'HEAD',entries:commits.map((commit,index)=>({oid:commit.oid,selector:`HEAD@{${index}}`,description:`commit: ${commit.subject}`,actor:commit.author,email:commit.email,date:new Date(commit.timestamp*1000).toISOString()})),recoveries:[],nextOffset:commits.length,hasMore:false,truncated:false,checkedAt:Date.now()};
+  if (method === 'inspectDetails' || method === 'details') {
     const request = payload as { oid: string; parent?: string }; const commit = commits.find(c => c.oid === resolve(request.oid)) ?? commits[0];
     return { commit, body: `${commit.subject}\n\nImprove the repository experience with clear status feedback and consistent navigation.\n\nCloses #24`, parent: request.parent ?? commit.parents[0], files: [{ path: 'webview/App.tsx', status: 'M' }, { path: 'webview/styles.css', status: 'M' }, { path: 'src/git/service.ts', status: 'A' }] } satisfies CommitDetails;
   }
