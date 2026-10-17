@@ -12,5 +12,5 @@
 .revision-files { display:flex; flex-wrap:wrap; gap:3px; max-height:100px; overflow:auto; }
 .revision-files .button { white-space:normal; overflow-wrap:anywhere; }
 .revision-preview { height:300px; position:relative; min-width:0; }
-.revision-preview>.pane { height:100%; }
+.revision-preview>.diff-preview { height:100%; }
 @media(max-width:650px) { .revision-columns { grid-template-columns:1fr; }.reflog-list { max-height:180px; } }

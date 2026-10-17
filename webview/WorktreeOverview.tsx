@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Repository, WorktreeOverviewEntry } from '../src/protocol/types';
+import type { Repository, Worktree, WorktreeOverviewEntry } from '../src/protocol/types';
 import type { TerminalSession } from '../src/protocol/terminal';
 import { useTranslation } from './i18n';
 import { rpc, subscribe } from './rpc';
@@ -8,28 +8,39 @@ import { useDock } from './dock-store';
 import { useWorkbench } from './store';
 import './worktree-overview.css';
 
+function inventoryKey(trees: Worktree[]): string {
+  return JSON.stringify(trees.map(tree => [tree.path, tree.head, tree.branch, tree.bare, tree.detached, tree.locked, tree.prunable]).sort((left, right) => String(left[0]).localeCompare(String(right[0]))));
+}
+
 export function WorktreeOverview({ repository, close, terminalOpened }: { repository: Repository; close(): void; terminalOpened(): void }) {
   const t = useTranslation(), [entries, setEntries] = useState<WorktreeOverviewEntry[]>([]), [loading, setLoading] = useState(false), [error, setError] = useState('');
   const stateLabels = { ready: t('overview.ready'), pending: t('overview.pending'), missing: t('overview.missing'), error: t('overview.error'), bare: t('overview.bare') };
   const operationLabels = { merge: t('overview.merge'), rebase: t('overview.rebase'), 'cherry-pick': t('overview.cherryPick'), revert: t('overview.revert'), sequencer: t('overview.sequencer') };
   const actionLabels = { select: t('overview.select'), project: t('overview.project'), terminal: t('overview.terminal') };
-  const [revision, setRevision] = useState(0), pending = useRef(new Set<string>());
+  const [revision, setRevision] = useState(0), pending = useRef(new Map<string, number>());
+  const fullRefresh = useRef(true), generation = useRef(0), owner = useRef(repository.id);
   const entriesRef = useRef(entries); entriesRef.current = entries;
-  const refresh = useCallback(() => { pending.current.clear(); setRevision(value => value + 1); }, []);
+  const refresh = useCallback(() => { fullRefresh.current = true; generation.current++; setRevision(value => value + 1); }, []);
   useEffect(() => {
     const abort = new AbortController();
+    if (owner.current !== repository.id) { owner.current = repository.id; fullRefresh.current = true; pending.current.clear(); generation.current++; }
+    const requestGeneration = generation.current, requested = new Map(pending.current), readInventory = fullRefresh.current || !requested.size;
     setLoading(true); setError('');
     void (async () => {
-      const paths = [...pending.current]; pending.current.clear();
-      const inventory = paths.length ? undefined : await rpc<WorktreeOverviewEntry[]>('worktreeOverview', repository.id, {}, { signal: abort.signal });
+      const paths = [...requested.keys()];
+      const inventory = readInventory ? await rpc<WorktreeOverviewEntry[]>('worktreeOverview', repository.id, {}, { signal: abort.signal }) : undefined;
       if (abort.signal.aborted) return;
       if (inventory) setEntries(inventory);
-      const targets = paths.length ? paths : inventory!.filter(entry => !entry.bare).map(entry => entry.path);
+      const targets = inventory ? inventory.filter(entry => !entry.bare).map(entry => entry.path) : paths;
       for (let index = 0; index < targets.length; index += 3) {
         const result = await rpc<WorktreeOverviewEntry[]>('worktreeOverview', repository.id, { paths: targets.slice(index, index + 3) }, { signal: abort.signal });
         if (abort.signal.aborted) return;
         setEntries(previous => previous.map(entry => result.find(update => update.path === entry.path) ?? entry));
+        for (const path of targets.slice(index, index + 3)) if (pending.current.get(path) === requested.get(path)) pending.current.delete(path);
       }
+      if (readInventory && generation.current === requestGeneration) fullRefresh.current = false;
+      // Successful inventory reads also consume invalidations for removed worktrees.
+      if (inventory) for (const [path, version] of requested) if (pending.current.get(path) === version) pending.current.delete(path);
     })().catch(error => { if (!abort.signal.aborted) setError(error instanceof Error ? error.message : String(error)); }).finally(() => { if (!abort.signal.aborted) setLoading(false); });
     return () => abort.abort();
   }, [repository.id, revision]);
@@ -38,7 +49,11 @@ export function WorktreeOverview({ repository, close, terminalOpened }: { reposi
     const member = useWorkbench.getState().repositories.find(repo => repo.id === event.repoId);
     if (event.repoId !== repository.id && member?.commonDir !== repository.commonDir) return;
     // File/index events invalidate only the affected worktree; structural changes reread inventory.
-    if (event.changes && member && entriesRef.current.length && !entriesRef.current.some(entry => entry.state === 'pending')) pending.current.add(member.root); else pending.current.clear();
+    const localChange = !!(event.changes?.index || event.changes?.paths?.length);
+    const structuralChange = !!event.snapshot && inventoryKey(event.snapshot.worktrees) !== inventoryKey(entriesRef.current);
+    const version = ++generation.current;
+    if (localChange && !structuralChange && member && entriesRef.current.some(entry => entry.path === member.root)) pending.current.set(member.root, version);
+    else fullRefresh.current = true;
     setRevision(value => value + 1);
   }), [repository.id, repository.commonDir]);
   const action = async (entry: WorktreeOverviewEntry, kind: 'select' | 'project' | 'terminal') => {

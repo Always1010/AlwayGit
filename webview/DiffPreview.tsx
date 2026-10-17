@@ -226,7 +226,7 @@ function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():
     if(collapsed||navigationDisabled||!viewportWidth||!viewport.current?.clientHeight)return;
     pendingNavigation.current=undefined;void navigate(pending.direction);
   },[collapsed,targetKey,navigationDisabled,viewportWidth]);
-  useShortcuts({
+  useShortcuts(isolated ? {} : {
     diff:{enabled:active&&!!state.diffTarget&&!nativeUnavailable,run:native},edit:{enabled:active&&!!state.selectedFile&&!nativeUnavailable,run:edit},
     previousChange:{enabled:active&&!!preview&&displayedKey.current===targetKey&&!navigationDisabled,run:()=>moveChange(-1)},
     nextChange:{enabled:active&&!!preview&&displayedKey.current===targetKey&&!navigationDisabled,run:()=>moveChange(1)},
