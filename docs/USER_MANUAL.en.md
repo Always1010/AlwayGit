@@ -207,7 +207,9 @@ Split-mode heading actions use the current file filter; unified-mode toolbar bul
 
 **Result:** Staged contains only the changes needed for this commit. After Unstage, the changes remain in the Working Tree.
 
-**Caution:** This version operates on whole files. Search file names or relative paths below the Working Tree summary, ignoring case; use the clear icon to restore all files. In split mode, group actions apply to the entire group without a filter, or only matching paths with a filter. Tooltips and confirmations show the scope, independently of the current selection. Use a file’s context menu to act on selected items. Ctrl/Cmd+A selects only visible files. Filtering does not change the actual Index; Ordinary Commit selects all staged files by default; you may deselect files in the checklist.
+**Stage a hunk:** In an Unstaged text Diff, click + at the start of a Git patch hunk; in Staged Diff, click − to unstage that hunk. Hover or keyboard focus shows the `@@` range. Actions operate on complete Git hunks with three context lines, which may contain several nearby visual change blocks. Single-line selection is unavailable. Disk contents and other hunks stay unchanged. Recheck Staged and commit selected files using their staged source. Refresh expired previews before retrying; unsupported file types, conversion filters, renames, and active Git operations use whole-file actions.
+
+**Caution:** File menus and group actions still operate on whole files. Search file names or relative paths below the Working Tree summary, ignoring case; use the clear icon to restore all files. In split mode, group actions apply to the entire group without a filter, or only matching paths with a filter. Tooltips and confirmations show the scope, independently of the current selection. Use a file’s context menu to act on selected items. Ctrl/Cmd+A selects only visible files. Filtering does not change the actual Index; Ordinary Commit selects all staged files by default; you may deselect files in the checklist.
 
 <a id="section-03-03"></a>
 
@@ -1109,7 +1111,7 @@ Basic functionality requires VS Code 1.106+ and Git 2.40+. Saving selected files
 
 Git runs in the VS Code extension host where the repository resides. The product architecture is designed for local environments, WSL, Remote SSH, and Dev Containers; Git, paths, permissions, and authentication still need to be verified separately in each environment. Git is not executed in untrusted workspaces, and browser-only virtual workspaces are not supported.
 
-Current scope: whole-file staging, standard Rebase, remote branch management, explicit Tag Push, and lease-protected remote Tag deletion. Not currently provided: hunk staging, interactive Rebase, commit reordering, Squash, Fixup, Format Patch, remote Tag replacement, or freely floating panels.
+Current scope: whole-file and Git-hunk staging, standard Rebase, remote branch management, explicit Tag Push, and lease-protected remote Tag deletion. Not currently provided: interactive Rebase, commit reordering, Squash, Fixup, Format Patch, remote Tag replacement, or freely floating panels.
 
 | Setting | Default or range | Description |
 | --- | --- | --- |

@@ -11,3 +11,7 @@ export interface DiffIndex {
   columns: number;
 }
 export interface DiffPage { token: string; start: number; rows: DiffRow[] }
+
+/** Complete three-context-line Git patch hunks, distinct from visual change ranges. */
+export interface PatchHunk extends TextDiffHunk { id: string; header: string }
+export interface PatchHunks { token?: string; hunks: PatchHunk[]; unavailable?: 'unsupported' | 'changed' }

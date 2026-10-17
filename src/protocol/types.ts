@@ -59,6 +59,7 @@ export interface CommitComparison { left: Commit; right: Commit; files: CommitFi
 export interface CherryPickCheck { head: string; branch: string; included: string[] }
 export type GitAction =
   | { type: 'stage' | 'resolve-and-stage' | 'unstage'; paths: string[] }
+  | { type: 'stage-hunk' | 'unstage-hunk'; token: string; hunkId: string }
   | { type: 'discard'; paths: string[]; planToken?: string; mode?: 'all' }
   | { type: 'commit'; message: string; amend?: boolean; reviewToken?: string; files?: CommitSelection[]; expectedHead?: string; expectedBranch?: string }
   | { type: 'fetch'; remote?: string }
@@ -91,7 +92,7 @@ export type DiffTarget = { kind: 'change'; path: string; area: 'staged' | 'unsta
 export interface DiffImage { mimeType: 'image/png' | 'image/jpeg' | 'image/webp'; data: string; byteLength: number; width: number; height: number }
 interface DiffPreviewBase { path: string; leftLabel: string; rightLabel: string }
 export type DiffPreview =
-  | DiffPreviewBase & { kind: 'text'; left: string; right: string; truncated?: boolean; index?: import('./diff').DiffIndex }
+  | DiffPreviewBase & { kind: 'text'; left: string; right: string; truncated?: boolean; patchHunks?: import('./diff').PatchHunks; index?: import('./diff').DiffIndex }
   | DiffPreviewBase & { kind: 'image'; left?: DiffImage; right?: DiffImage }
   | DiffPreviewBase & { kind: 'binary'; reason: 'unsupported' | 'image-too-large' | 'image-dimensions-too-large' };
 export interface CheckoutBlocker { reason: 'local-changes' | 'conflicts' | 'operation-active' | 'worktree-occupied' | 'checkout-failed'; paths: string[]; target: string; worktreePath?: string; stashOid?: string; stashCreated?: boolean; branchCreated?: boolean; trackBranches?: { source: string; name: string; expectedOid?: string }[] }
@@ -127,6 +128,7 @@ export interface GitServiceContract {
   cherryPickCheck(repo: Repository, commits: string[], context?: { expectedHead: string; expectedBranch: string }): Promise<CherryPickCheck>;
   content(repo: Repository, source: ContentSource, maxBytes?: number): Promise<Buffer>;
   textDiffHunks(repo: Repository, left: string, right: string): Promise<import('./diff').TextDiffHunk[]>;
+  patchHunks?(repo: Repository, target: { path: string; area: 'staged' | 'unstaged' }): Promise<{ metadata: import('./diff').PatchHunks; left?: string; right?: string }>;
   throwIfReadCancelled?(): void;
   prepareAction(repo: Repository, action: GitAction): Promise<GitAction>;
   prepareDiscard(repo: Repository, request: DiscardRequest): Promise<DiscardPlan>;

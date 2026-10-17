@@ -25,6 +25,7 @@ import { createSelectedStash, preflightStash, StashStateError, type StashExecuti
 import { commitSelected } from './selected-commit';
 import { safeWorkingPath } from '../editor/paths';
 import { requireExactFileScope } from './file-scope';
+import { PatchHunkStore } from './patch-hunks';
 import { dropStash } from './stash-drop';
 import { NetworkProgressParser } from './network-progress';
 import { ReflogReader } from './reflog';
@@ -89,6 +90,11 @@ export class GitService implements GitServiceContract {
   private executable?: Promise<string>;
   private readonly fileHistories = new Map<string, FileHistoryIndex & { created: number; remoteKey?: string; localOnly?: Set<string> }>();
   private readonly reviews = new Map<string, { token: string; fingerprint: string }>();
+  private readonly hunks = new PatchHunkStore();
+  async patchHunks(repo: Repository, target: { path: string; area: 'staged' | 'unstaged' }) {
+    await this.verify(repo); validateFilePath(target.path);
+    return this.hunks.preview(repo, target, (args, execution) => this.run(repo, args, false, undefined, execution), () => this.status(repo));
+  }
   private readonly discards = new Map<string, { root: string; expires: number; plan: DiscardPlan; fingerprint: string; request: DiscardRequest }>();
   private readonly readSignal = new AsyncLocalStorage<{ controller: AbortController; pending: Set<Promise<void>> }>();
   private readonly networkProgress = new AsyncLocalStorage<(progress: NetworkOperationProgress) => void>();
@@ -112,7 +118,7 @@ export class GitService implements GitServiceContract {
     finally{signal.removeEventListener('abort',abort);}
   }
   throwIfReadCancelled(): void { this.readSignal.getStore()?.controller.signal.throwIfAborted(); }
-  private async run(repo: Repository, args: string[], allowFailure = false, captureBytes?: number, execution: StashExecution & { signal?: AbortSignal; configOverrides?: [string, string][]; beforeSpawn?: () => Promise<void>; boundRemote?: BoundRemote; onStdout?: (chunk: Buffer) => void } = {}): Promise<Result> {
+  private async run(repo: Repository, args: string[], allowFailure = false, captureBytes?: number, execution: StashExecution & { signal?: AbortSignal; maxOutputBytes?: number; configOverrides?: [string, string][]; beforeSpawn?: () => Promise<void>; boundRemote?: BoundRemote; onStdout?: (chunk: Buffer) => void } = {}): Promise<Result> {
     const readOnly = isReadOnlyGitCommand(args), scope = this.readSignal.getStore(), scopeSignal = scope?.controller.signal;
     if (!readOnly && scopeSignal) throw new GitError(localizeMessage("service.aReadOnlyRequestCannotRunGitMutations"), 'WRITE_IN_READ_SCOPE');
     const unsafe = unsafeTerminations.get(normalized(repo.commonDir));
@@ -176,7 +182,7 @@ export class GitService implements GitServiceContract {
         // other commands (including remote probes) remain non-interactive.
         env: { ...commandEnv, GIT_TERMINAL_PROMPT: '0', ...(!['fetch', 'pull', 'push'].includes(args[0]) ? { GCM_INTERACTIVE: 'never' } : {}), GIT_EDITOR: 'true', GIT_SEQUENCE_EDITOR: 'true', ...(['status', 'log', 'show', 'ls-tree', 'ls-files', 'for-each-ref'].includes(args[0]) ? { GIT_OPTIONAL_LOCKS: '0' } : {}), ...execution.env, ...(bindingConfig ? { GIT_CONFIG_SYSTEM: bindingConfig, GIT_CONFIG_NOSYSTEM: '0' } : {}) },
         input: prepared.input, signal: execution.signal && scopeSignal ? AbortSignal.any([execution.signal,scopeSignal]) : execution.signal ?? scopeSignal, readOnly, captureBytes,
-        timeoutMs: this.options.timeoutMs ?? (args[0] === 'ls-remote' ? 30_000 : networkCommand ? (typeof this.options.networkTimeoutMs === 'function' ? this.options.networkTimeoutMs() : this.options.networkTimeoutMs) ?? 600_000 : undefined), onStop: wrapped?.cancelPrompts, maxOutputBytes: this.options.maxOutputBytes,
+        timeoutMs: this.options.timeoutMs ?? (args[0] === 'ls-remote' ? 30_000 : networkCommand ? (typeof this.options.networkTimeoutMs === 'function' ? this.options.networkTimeoutMs() : this.options.networkTimeoutMs) ?? 600_000 : undefined), onStop: wrapped?.cancelPrompts, maxOutputBytes: execution.maxOutputBytes ?? this.options.maxOutputBytes,
         onStderr: chunk => { if (!execution.silent) log.write(chunk); progress?.write(chunk); },
         onStdout: chunk => { execution.onStdout?.(chunk); if (networkCommand && !execution.silent) stdoutLog.write(chunk); progress?.write(chunk, 'stdout'); },
       });
@@ -962,6 +968,7 @@ export class GitService implements GitServiceContract {
     if (action.type !== 'commit' && action.type !== 'operation.continue') this.reviews.delete(repo.id);
     let args: string[], pushedRemote: string | undefined, boundRemote: BoundRemote | undefined; const remote = (value?: string) => value ? [token(value, 'remote')] : [];
     switch (action.type) {
+      case 'stage-hunk': case 'unstage-hunk': return this.hunks.apply(repo, action, (args, execution) => this.run(repo, args, false, undefined, execution), () => this.status(repo));
       case 'discard': return this.discard(repo, action, onProgress);
       case 'stage': case 'resolve-and-stage': case 'unstage': {
         if (!action.paths.length) throw new GitError(localizeMessage("service.selectAtLeastOneFile"), 'INVALID_ARGUMENT'); const paths = action.paths.map(validateFilePath);
