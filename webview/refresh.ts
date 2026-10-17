@@ -1,5 +1,6 @@
 import { indexRefs } from './refIndex';
-import type { Change, DiffTarget, RepositoryChanges, Snapshot } from '../src/protocol/types';
+import type { Change, DiffTarget, FileHistoryFilter, RepositoryChanges, Snapshot } from '../src/protocol/types';
+import { fileHistoryKey } from '../src/protocol/history';
 
 export function diffKey(target?: DiffTarget): string {
   if (!target) return '';
@@ -14,10 +15,10 @@ export function mergeChanges(a?: RepositoryChanges, b?: RepositoryChanges): Repo
   return { paths: [...new Set([...a.paths, ...b.paths])], index: !!(a.index || b.index) };
 }
 
-export function historyKey(snapshot: Snapshot, refs: string[]): string {
+export function historyKey(snapshot: Snapshot, refs: string[], file?: FileHistoryFilter): string {
   // HEAD supplies the Working Tree node; all remote tips determine pushed markers.
   const index = indexRefs(snapshot.refs);
-  return JSON.stringify([snapshot.head, refs.map(name => [name, name === 'HEAD' ? snapshot.head : index.byName.get(name)?.oid]), index.remote.map(ref => [ref.fullName, ref.oid]).sort()]);
+  return JSON.stringify([snapshot.head, refs.map(name => [name, name === 'HEAD' ? snapshot.head : index.byName.get(name)?.oid]), index.remote.map(ref => [ref.fullName, ref.oid]).sort(), fileHistoryKey(file)]);
 }
 
 export function shareSnapshot(previous: Snapshot | undefined, incoming: Snapshot): Snapshot {
@@ -45,6 +46,14 @@ export function workingTarget(snapshot: Snapshot, current?: DiffTarget, selected
   const area = current?.kind === 'change' && current.path === change.path && hasArea(change, current.area)
     ? current.area : change.conflict ? 'conflict' : change.worktreeStatus !== ' ' || change.untracked ? 'unstaged' : 'staged';
   return { kind: 'change', path: change.path, area };
+}
+
+/** Match the tracked HEAD version, plus its uncommitted rename destination. */
+export function fileHistoryChanges(snapshot: Pick<Snapshot, 'changes'>, file?: FileHistoryFilter, paths?: string[]): Change[] {
+  if (!file) return snapshot.changes;
+  const names = new Set(paths ?? [file.anchorPath ?? file.path]);
+  if (file.anchorPath) names.add(file.path);
+  return snapshot.changes.filter(change => names.has(change.path) || !!change.originalPath && names.has(change.originalPath));
 }
 
 export function affectsWorkingDiff(before: Snapshot | undefined, after: Snapshot, target: DiffTarget, changes?: RepositoryChanges): boolean {

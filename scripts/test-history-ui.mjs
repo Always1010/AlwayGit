@@ -302,3 +302,67 @@ async function verifyDetachedHeadPolicy(page) {
   await page.waitForFunction(()=>document.querySelector('[data-testid="current-branch"]')?.textContent==='inspect-history');
   assert.equal(await page.getByText('Detached HEAD',{exact:true}).count(),0);
 }
+
+export async function verifyFileHistory(browser, url) {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  try {
+    await page.addInitScript(() => {
+      const repo = { id: 'file-history', root: '/fixture/files', commonDir: '/fixture/files/.git', name: 'File History Fixture' };
+      const commits = [3, 2, 1].map(value => ({ oid: String(value).repeat(40), parents: value > 1 ? [String(value - 1).repeat(40)] : [], author: 'Fixture', email: 'fixture@example.com', timestamp: 0, subject: value === 3 ? 'Unrelated latest commit' : `File change ${value}` }));
+      const refs = [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commits[0].oid }, { name: 'topic', fullName: 'refs/heads/topic', kind: 'local', oid: commits[1].oid }];
+      const fixture = window.__fileHistoryFixture = { calls: [] };
+      let saved = {};
+      window.acquireVsCodeApi = () => ({ getState: () => saved, setState: state => { saved = state; }, postMessage(request) {
+        fixture.calls.push(request);
+        let result;
+        if (request.method === 'repositories') result = [repo];
+        if (request.method === 'snapshot') result = { repository: repo, branch: 'main', head: commits[0].oid, ahead: 0, behind: 0,
+          changes: ['target.ts', 'other.ts'].map(path => ({ path, indexStatus: ' ', worktreeStatus: 'M', conflict: false, untracked: false })), refs, stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 1 };
+        if (request.method === 'history') {
+          const file = request.payload.file;
+          const rows = file ? commits.slice(1).map(commit => ({ ...commit, fileHistory: { paths: ['old.ts'], graphParents: commit.parents, parent: commit.parents[0] } })) : commits;
+          result = { commits: rows, tips: [commits[0].oid], nextOffset: rows.length, hasMore: false, ...(file ? { filePaths: ['target.ts'] } : { head: commits[0] }) };
+        }
+        if (request.method === 'details') {
+          const commit = commits.find(commit => commit.oid === request.payload.oid);
+          result = { commit, parent: request.payload.parent ?? commit.parents[0], body: commit.subject, files: [{ path: 'other.ts', status: 'M' }, { path: 'old.ts', status: 'M' }] };
+        }
+        if (request.method === 'diffPreview') result = { kind: 'text', path: request.payload.path, leftLabel: 'Before', rightLabel: 'After', left: 'old\n', right: 'new\n' };
+        setTimeout(() => window.postMessage({ type: 'response', id: request.id, result }, '*'), 10);
+      } });
+    });
+    await page.goto(url);
+    await page.getByRole('option', { name: 'File History Fixture', exact: true }).dblclick();
+    const history = page.getByTestId('history'), details = page.getByTestId('details');
+    await history.getByText('Unrelated latest commit', { exact: true }).waitFor();
+    await details.getByRole('button', { name: 'target.ts', exact: true }).click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Show File History', exact: true }).click();
+    const scope = history.getByRole('group', { name: 'File History', exact: true });
+    await scope.waitFor();
+    await details.locator('.file-item[aria-current="true"]').filter({ has: page.getByRole('button', { name: 'old.ts', exact: true }) }).waitFor();
+    assert.equal(await history.locator('[data-oid]').count(), 2);
+    assert.equal(await history.getByText('Unrelated latest commit', { exact: true }).count(), 0);
+    assert.ok(await history.locator('svg path[stroke-dasharray="4 3"]').count() > 0);
+    assert.equal(await page.evaluate(() => window.__fileHistoryFixture.calls.find(call => call.method === 'history' && call.payload.file).payload.file.path), 'target.ts');
+    await history.locator('[data-working-tree]').click();
+    await details.getByRole('button', { name: 'target.ts', exact: true }).waitFor();
+    assert.equal(await details.getByRole('button', { name: 'other.ts', exact: true }).count(), 0);
+    // No group action can silently widen this file's Working Tree to the repository.
+    assert.equal(await details.getByRole('button', { name: 'Discard All', exact: true }).count(), 0);
+    await scope.getByRole('button', { name: /across all local and remote-tracking branches/ }).click();
+    await page.waitForFunction(() => window.__fileHistoryFixture.calls.some(call => call.method === 'history' && call.payload.file && call.payload.tips.includes('refs/heads/topic')));
+    await scope.getByRole('button', { name: 'Exit file history', exact: true }).click();
+    await history.getByText('Unrelated latest commit', { exact: true }).waitFor();
+    await history.getByRole('button', { name: 'Back to previous history view', exact: true }).click();
+    await scope.waitFor();
+    assert.equal(await history.getByText('Unrelated latest commit', { exact: true }).count(), 0);
+    await history.getByText('File change 2', { exact: true }).click();
+    await history.getByRole('button', { name: 'Locate in full history', exact: true }).click();
+    await scope.waitFor({ state: 'hidden' });
+    await history.getByText('Unrelated latest commit', { exact: true }).waitFor();
+    assert.equal(await page.evaluate(() => window.__fileHistoryFixture.calls.some(call => call.method === 'action')), false);
+    assert.deepEqual(errors, []);
+  } finally { await page.close(); }
+}

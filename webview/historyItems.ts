@@ -11,11 +11,12 @@ export type HistoryItem =
  * When filters omit HEAD, keep only a standalone Working Tree node instead of
  * reintroducing a commit the user explicitly filtered out.
  */
-export function buildHistoryItems(commits: readonly Commit[], head?: Commit): HistoryItem[] {
+export function buildHistoryItems(commits: readonly Commit[], head?: Commit, showWorking = true): HistoryItem[] {
   const commitItems: HistoryItem[] = commits.map(commit => ({
-    kind: 'commit', key: commit.oid, oid: commit.oid, parents: commit.parents,
+    kind: 'commit', key: commit.oid, oid: commit.oid, parents: commit.fileHistory?.graphParents ?? commit.parents,
     commit,
   }));
+  if (!showWorking) return commitItems;
   const headIndex = head ? commits.findIndex(commit => commit.oid === head.oid) : -1;
   const working: HistoryItem = {
     kind: 'working', key: WORKING_TREE_OID, oid: WORKING_TREE_OID,

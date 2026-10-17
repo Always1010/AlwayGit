@@ -160,7 +160,7 @@ export async function verifyFiles(browser, url) {
     await panel.getByRole('button', { name: 'README.md', exact: true }).click({ button: 'right' });
     const menu = page.getByTestId('context-menu');
     await menu.waitFor();
-    assert.deepEqual((await menu.getByRole('menuitem').allTextContents()).map(value=>value.trim()), ['Open Diff in VS Code','Edit in VS Code','Copy Path']);
+    assert.deepEqual((await menu.getByRole('menuitem').allTextContents()).map(value=>value.trim()), ['Open Diff in VS Code','Edit in VS Code','Show File History','Copy Path']);
     await menu.getByRole('menuitem', { name: 'Copy Path', exact: true }).click();
     await page.waitForFunction(() => window.__filesFixture.calls.filter(call => call.method === 'copyText').length === 3);
     assert.equal(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'copyText').at(-1).payload.text), 'README.md');
@@ -300,7 +300,7 @@ export async function verifyFiles(browser, url) {
     assert.equal(await groups.locator('.change-file[aria-selected="true"]').count(), 1, 'Editing Ctrl+A must not change file selection');
     await unstaged.getByRole('button', { name: 'README.md', exact: true }).click({ button: 'right' });
     await menu.waitFor();
-    assert.deepEqual((await menu.getByRole('menuitem').allTextContents()).map(value=>value.trim()), ['Open Diff in VS Code','Edit in VS Code','Stage 1 File','Stash Selected Files…','Discard 1 File…','Copy Path']);
+    assert.deepEqual((await menu.getByRole('menuitem').allTextContents()).map(value=>value.trim()), ['Open Diff in VS Code','Edit in VS Code','Show File History','Stage 1 File','Stash Selected Files…','Discard 1 File…','Copy Path']);
     await page.keyboard.press('Escape');
     await commitTrigger.click(); await draft.click({ button: 'right' });
     assert.equal(await menu.isVisible(), false, 'Editable text keeps the native context menu');

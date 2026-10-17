@@ -2641,6 +2641,30 @@ export const catalog = {
     "en": "Included in displayed history",
     "zh-CN": "已加入当前显示的历史范围"
   },
+  "history.showFileHistory": {
+    "en": "Show File History",
+    "zh-CN": "查看文件历史"
+  },
+  "history.fileHistory": {
+    "en": "File History",
+    "zh-CN": "文件历史"
+  },
+  "history.exitFileHistory": {
+    "en": "Exit file history",
+    "zh-CN": "退出文件历史"
+  },
+  "history.allBranches": {
+    "en": "Show this file’s history across all local and remote-tracking branches",
+    "zh-CN": "查看此文件在所有本地和远端跟踪分支中的历史"
+  },
+  "history.fileGraphHint": {
+    "en": "Dashed edges skip hidden commits",
+    "zh-CN": "虚线表示中间提交已省略"
+  },
+  "history.noFileHistoryHint": {
+    "en": "No committed changes to this file in the selected references. Select other branches or exit file history.",
+    "zh-CN": "所选引用中没有此文件的提交记录。请选择其他分支，或退出文件历史。"
+  },
   "host.trustThisWorkspaceUsingVSCodeWorkspaceTrustThen": {
     "en": "Trust this workspace using VS Code Workspace Trust, then reopen AlwayGit.",
     "zh-CN": "请在 VS Code 中信任此工作区，然后重新打开 AlwayGit。"
@@ -4558,6 +4582,14 @@ export const catalog = {
   "service.worktreeRemovalPartial": {
     "en": "{{count}} worktree(s) removed; {{failed}} failed:\n{{details}}",
     "zh-CN": "成功移除 {{count}} 个工作树；{{failed}} 个失败：\n{{details}}"
+  },
+  "service.fileHistoryTooLarge": {
+    "en": "File history exceeds the read limit. Select fewer branches and retry.",
+    "zh-CN": "文件历史超出读取上限，请减少所选分支后重试。"
+  },
+  "service.fileHistoryRequiresFile": {
+    "en": "File history requires a file, not a directory.",
+    "zh-CN": "文件历史只支持文件，请勿选择目录。"
   },
   "session.lightAndDarkGraphPalettesMustHaveTheSame": {
     "en": "Light and dark graph palettes must have the same size",
@@ -6919,6 +6951,12 @@ export interface MessageParameters {
   "history.locationReset": {  };
   "history.locationResetHead": {  };
   "history.locationIncluded": {  };
+  "history.showFileHistory": {  };
+  "history.fileHistory": {  };
+  "history.exitFileHistory": {  };
+  "history.allBranches": {  };
+  "history.fileGraphHint": {  };
+  "history.noFileHistoryHint": {  };
   "host.trustThisWorkspaceUsingVSCodeWorkspaceTrustThen": {  };
   "host.selectARepositoryOrAFolderContainingRepositories": {  };
   "host.scanFolder": {  };
@@ -7394,6 +7432,8 @@ export interface MessageParameters {
   "service.tagEsPushedFailed": { pushed: ParameterValue; count: number; value: ParameterValue };
   "service.tagWasCreatedLocallyButCouldNotBePushed": { name: ParameterValue; destination: ParameterValue; value: ParameterValue };
   "service.worktreeRemovalPartial": { count: number; failed: ParameterValue; details: ParameterValue };
+  "service.fileHistoryTooLarge": {  };
+  "service.fileHistoryRequiresFile": {  };
   "session.lightAndDarkGraphPalettesMustHaveTheSame": {  };
   "session.zhCN": {  };
   "session.sessionExceedsTheStorageLimit": {  };

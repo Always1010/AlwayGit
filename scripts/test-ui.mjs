@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { verifyRefresh } from './test-refresh-ui.mjs';
 import { verifyFeedback } from './test-feedback-ui.mjs';
 import { verifyFiles } from './test-files-ui.mjs';
-import { verifyHistoryRows, verifyLocateHead, verifyHistoryNavigation } from './test-history-ui.mjs';
+import { verifyHistoryRows, verifyLocateHead, verifyHistoryNavigation, verifyFileHistory } from './test-history-ui.mjs';
 import { verifyDiffNavigation } from './test-diff-ui.mjs';
 import { verifyWorktrees } from './test-worktrees-ui.mjs';
 import { verifyAppearance } from './test-appearance-ui.mjs';
@@ -35,6 +35,7 @@ const suites = new Map([
   ['terminal', verifyTerminalDock],
   ['workbench', verifyWorkbench],
   ['history', verifyHistory],
+  ['file-history', verifyFileHistory],
   ['refresh', verifyRefresh],
   ['feedback', verifyFeedback],
   ['files', verifyFiles],
