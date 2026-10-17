@@ -1,3 +1,4 @@
+import type { RebasePlan } from '../src/protocol/interactive-rebase';
 import { legacyInterfaceSettings, mergeInterfaceSettings, type InterfacePreferences, type InterfacePreferencesUpdate } from '../src/protocol/interface-settings';
 import { groupRepositories } from '../src/protocol/repositories';
 import { branchNameConflict, branchNameConflictMessage } from '../src/protocol/ref-name';
@@ -11,6 +12,8 @@ import { readWorkbenchLocations, saveWorkbenchLocationsSchema } from '../src/pro
 export function createDemoRequest(emit: (event: HostMessage) => void) {
 let appliedLocation: string | undefined;
 const noRemoteDemo = new URLSearchParams(location.search).get('noRemote') === '1';
+const rebasePlans=new Map<string,RebasePlan>();
+const rebaseRecoveries:{ref:string;oid:string}[]=[];
 const discardPlans = new Map<string, DiscardPlan>();
 const terminals = new Map<string, TerminalSnapshot>();
 const repo: Repository = { id: 'demo-alwaygit', root: 'D:\\Projects\\AlwayGit', commonDir: 'D:\\Projects\\AlwayGit\\.git', name: 'AlwayGit' };
@@ -41,6 +44,7 @@ const demoStores:Record<string,{snapshot:Snapshot;commits:Commit[];saved:Map<str
   repository.id,
   {snapshot:{...structuredClone(demoSnapshot),repository,remotes:['origin'],worktrees:demoSnapshot.worktrees.map((tree,i)=>({...tree,path:i?repository.root+'-graph':repository.root}))},commits:structuredClone(commits),saved:new Map([[commits[9].oid,[{path:'notes.txt',indexStatus:'?',worktreeStatus:'?',conflict:false,untracked:true}] ]])},
 ]));
+if(new URLSearchParams(location.search).get('interactiveRebase')==='1')for(const store of Object.values(demoStores)){store.snapshot.changes=[];for(let i=0;i<6;i++)store.commits[i].parents=[store.commits[i+1].oid];const remote=store.snapshot.refs.find(ref=>ref.name==='origin/main');if(remote)remote.oid=store.commits[3].oid;store.commits.forEach((commit,index)=>commit.pushed=index>=3);}
 for (const { snapshot } of Object.values(demoStores)) publishedTags.set(`${snapshot.repository.id}:origin`, Object.fromEntries(snapshot.refs.filter(ref => ref.kind === 'tag').map(ref => [ref.fullName, ref.refOid ?? ref.oid])));
 if(noRemoteDemo)for(const store of Object.values(demoStores)){store.snapshot.remotes=[];store.snapshot.refs=store.snapshot.refs.filter(ref=>ref.kind!=='remote');delete store.snapshot.upstream;delete store.snapshot.pushTarget;}
 const demoCollections:RepositoryCollection[]=[];
@@ -165,7 +169,13 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
     const visible=result.slice(offset,offset+limit),head=commits.find(commit=>commit.oid===demoSnapshot.head);
     return { commits: visible, nextOffset: offset + Math.min(limit,result.length-offset), hasMore: offset + limit < result.length, tips, ...(query.file?{filePaths:[query.file.path]}:head?{head}: {}) } satisfies HistoryPage;
   }
-  if (method === 'reflog') return {token:'11111111-1111-4111-8111-111111111111',ref:(payload as {ref?:string})?.ref??'HEAD',entries:commits.map((commit,index)=>({oid:commit.oid,selector:`HEAD@{${index}}`,description:`commit: ${commit.subject}`,actor:commit.author,email:commit.email,date:new Date(commit.timestamp*1000).toISOString()})),recoveries:[],nextOffset:commits.length,hasMore:false,truncated:false,checkedAt:Date.now()};
+  if(method==='prepareInteractiveRebase') {
+    if(demoSnapshot.changes.length||demoSnapshot.operation.kind)throw new Error('Commit or stash changes before Rebase.');
+    const start=(payload as {start?:string})?.start,index=start?commits.findIndex(commit=>commit.oid===start):Math.min(19,commits.findIndex(commit=>commit.pushed)-1);
+    const scope=commits.slice(0,index+1);if(index<0||scope.some(commit=>commit.parents.length!==1))throw new Error('Choose a linear range excluding merge and root commits.');
+    const plan:RebasePlan={token:crypto.randomUUID(),branch:demoSnapshot.branch,head:demoSnapshot.head!,base:scope.at(-1)!.parents[0],expires:Date.now()+900000,commits:scope.slice().reverse().map(commit=>({oid:commit.oid,subject:commit.subject,message:commit.subject})),published:scope.filter(commit=>commit.pushed).map(commit=>commit.oid)};rebasePlans.set(plan.token,plan);return plan;
+  }
+  if (method === 'reflog') return {token:'11111111-1111-4111-8111-111111111111',ref:(payload as {ref?:string})?.ref??'HEAD',entries:commits.map((commit,index)=>({oid:commit.oid,selector:`HEAD@{${index}}`,description:`commit: ${commit.subject}`,actor:commit.author,email:commit.email,date:new Date(commit.timestamp*1000).toISOString()})),recoveries:rebaseRecoveries,nextOffset:commits.length,hasMore:false,truncated:false,checkedAt:Date.now()};
   if (method === 'inspectDetails' || method === 'details') {
     const request = payload as { oid: string; parent?: string }; const commit = commits.find(c => c.oid === resolve(request.oid)) ?? commits[0];
     return { commit, body: `${commit.subject}\n\nImprove the repository experience with clear status feedback and consistent navigation.\n\nCloses #24`, parent: request.parent ?? commit.parents[0], files: [{ path: 'webview/App.tsx', status: 'M' }, { path: 'webview/styles.css', status: 'M' }, { path: 'src/git/service.ts', status: 'A' }] } satisfies CommitDetails;
@@ -198,6 +208,7 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
   if(method==='copyText'){const {text}=payload as {text:string};if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(text);else throw new Error('Clipboard is unavailable in this browser.');return null;}
   if (method === 'action') {
     const action = payload as GitAction;
+    if(action.type==='rebase.interactive'){const plan=rebasePlans.get(action.token);if(!plan||plan.head!==demoSnapshot.head||plan.published.length&&!action.acknowledgePublished)throw new Error('Rebase plan changed or requires acknowledgement.');rebaseRecoveries.unshift({ref:'refs/alwaygit/rebase-backups/demo-'+Date.now(),oid:plan.head});rebasePlans.delete(action.token);}
     if (action.type === 'discard' && action.planToken) { const plan = discardPlans.get(action.planToken); if (!plan) throw new Error('Discard plan expired.'); action.paths = plan.paths; action.mode = plan.scope === 'all' ? 'all' : undefined; discardPlans.delete(action.planToken); }
     if (action.type === 'stage' || action.type === 'resolve-and-stage' || action.type === 'unstage' || action.type === 'discard') {
       demoSnapshot.changes = demoSnapshot.changes.flatMap(change => {

@@ -2920,6 +2920,162 @@ export const catalog = {
     "en": "Could not open the web link. Copy it and open it in your browser.",
     "zh-CN": "无法打开网页链接，请复制后在浏览器打开。"
   },
+  "interactiveRebase.title": {
+    "en": "Interactive Rebase",
+    "zh-CN": "交互式 Rebase"
+  },
+  "interactiveRebase.fromCommit": {
+    "en": "Interactive Rebase from this commit…",
+    "zh-CN": "从此提交开始交互式 Rebase…"
+  },
+  "interactiveRebase.hint": {
+    "en": "Rewrite a continuous linear segment of the current branch, oldest first. Root commits and merge commits are unsupported. Rebase never pushes automatically.",
+    "zh-CN": "按从旧到新的顺序改写当前分支的连续线性提交段。不支持根提交和合并提交。Rebase 不会自动推送。"
+  },
+  "interactiveRebase.start": {
+    "en": "First commit (inclusive, full ID)",
+    "zh-CN": "起始提交（包含该提交，填写完整 ID）"
+  },
+  "interactiveRebase.defaultScope": {
+    "en": "Recent unpublished commits",
+    "zh-CN": "最近未发布的提交"
+  },
+  "interactiveRebase.load": {
+    "en": "Load scope and reset plan",
+    "zh-CN": "加载范围并重置计划"
+  },
+  "interactiveRebase.base": {
+    "en": "Fixed base",
+    "zh-CN": "固定基点"
+  },
+  "interactiveRebase.order": {
+    "en": "Commit order, oldest first; Alt+Up/Down to reorder",
+    "zh-CN": "提交顺序（从旧到新）；Alt+上下方向键调整顺序"
+  },
+  "interactiveRebase.up": {
+    "en": "Move earlier (Alt+Up)",
+    "zh-CN": "提前（Alt+上方向键）"
+  },
+  "interactiveRebase.down": {
+    "en": "Move later (Alt+Down)",
+    "zh-CN": "延后（Alt+下方向键）"
+  },
+  "interactiveRebase.action": {
+    "en": "Rebase action",
+    "zh-CN": "Rebase 操作"
+  },
+  "interactiveRebase.pick": {
+    "en": "pick · Keep",
+    "zh-CN": "pick · 保留"
+  },
+  "interactiveRebase.reword": {
+    "en": "reword · Edit message",
+    "zh-CN": "reword · 修改提交说明"
+  },
+  "interactiveRebase.squash": {
+    "en": "squash · Combine and edit message",
+    "zh-CN": "squash · 合并并编辑说明"
+  },
+  "interactiveRebase.fixup": {
+    "en": "fixup · Combine, discard this message",
+    "zh-CN": "fixup · 合并并丢弃本条说明"
+  },
+  "interactiveRebase.drop": {
+    "en": "drop · Remove commit",
+    "zh-CN": "drop · 删除提交"
+  },
+  "interactiveRebase.message": {
+    "en": "New commit message",
+    "zh-CN": "新的提交说明"
+  },
+  "interactiveRebase.combinedMessage": {
+    "en": "Complete message for the combined commit",
+    "zh-CN": "合并后提交的完整说明"
+  },
+  "interactiveRebase.publishedLabel": {
+    "en": "Known to remote refs",
+    "zh-CN": "本地远程引用可达"
+  },
+  "interactiveRebase.acknowledge": {
+    "en": "I understand that this rewrites commits reachable from locally cached remote refs and can require coordination and a later force push. No Fetch has been performed.",
+    "zh-CN": "我理解此操作会改写本地缓存远程引用可达的提交，可能需要协作确认及后续强制推送。本次没有执行 Fetch。"
+  },
+  "interactiveRebase.recovery": {
+    "en": "Original HEAD is retained as a recovery point in Reflog",
+    "zh-CN": "原 HEAD 将保留为 Reflog 恢复点"
+  },
+  "interactiveRebase.execute": {
+    "en": "Execute reviewed Rebase plan",
+    "zh-CN": "执行已审阅的 Rebase 计划"
+  },
+  "interactiveRebase.completed": {
+    "en": "Rebase completed. The original history is available in Reflog recovery points.",
+    "zh-CN": "Rebase 已完成。可在 Reflog 恢复点中找到原历史。"
+  },
+  "interactiveRebase.invalid": {
+    "en": "Keep every original commit exactly once, using drop to remove it. Squash/fixup need an earlier retained commit; reword/squash need a nonempty message.",
+    "zh-CN": "每个原提交必须且只能出现一次，删除请使用 drop。squash/fixup 前须有保留的提交；reword/squash 须填写非空说明。"
+  },
+  "interactiveRebase.changed": {
+    "en": "The plan expired or HEAD/branch changed. Reload the scope before executing.",
+    "zh-CN": "计划已过期或 HEAD/分支已变化，请重新加载范围后执行。"
+  },
+  "interactiveRebase.scope": {
+    "en": "Select up to 500 continuous non-merge commits on the current local branch, excluding the root commit. An active Git operation must finish first.",
+    "zh-CN": "请选择当前本地分支上最多 500 条连续非合并提交，排除根提交。须先完成进行中的 Git 操作。"
+  },
+  "interactiveRebase.published": {
+    "en": "This range includes commits reachable from cached remote refs. Explicit acknowledgement is required.",
+    "zh-CN": "此范围包含本地缓存远程引用可达的提交，须明确确认风险。"
+  },
+  "interactiveRebase.dirty": {
+    "en": "Commit or stash all working tree, index, and untracked changes before Rebase.",
+    "zh-CN": "请先提交或暂存工作区、索引和未跟踪文件的全部改动。"
+  },
+  "interactiveRebase.unavailable": {
+    "en": "Interactive Rebase is unavailable in this host.",
+    "zh-CN": "当前宿主不支持交互式 Rebase。"
+  },
+  "interactiveRebase.emptyPause": {
+    "en": "The current commit has no remaining changes. Keep an empty commit or explicitly skip it.",
+    "zh-CN": "当前提交已没有剩余改动。可保留为空提交，或明确跳过。"
+  },
+  "interactiveRebase.keepEmpty": {
+    "en": "Keep empty commit and continue",
+    "zh-CN": "保留空提交并继续"
+  },
+  "interactiveRebase.skipTitle": {
+    "en": "Skip current Rebase commit?",
+    "zh-CN": "跳过当前 Rebase 提交？"
+  },
+  "interactiveRebase.skipConfirm": {
+    "en": "Skipping discards the current commit and its conflict-resolution changes. Continue cannot restore the skipped commit.",
+    "zh-CN": "跳过会丢弃当前提交及其冲突解决改动。之后点击继续不能恢复已跳过的提交。"
+  },
+  "interactiveRebase.head": {
+    "en": "HEAD",
+    "zh-CN": "HEAD"
+  },
+  "interactiveRebase.unavailableState": {
+    "en": "The saved plan or editor helper is missing, changed or does not match this Rebase. Restore the saved files before continuing, or abort.",
+    "zh-CN": "保存的计划或编辑器辅助文件缺失、变化或与当前 Rebase 不匹配。请先恢复这些文件再继续，或中止操作。"
+  },
+  "interactiveRebase.scopeDraft": {
+    "en": "The start commit was edited. Load the scope to review a new plan.",
+    "zh-CN": "起始提交已编辑。请加载范围并重新审阅计划。"
+  },
+  "interactiveRebase.reviewPaused": {
+    "en": "Review paused Rebase",
+    "zh-CN": "查看暂停的 Rebase"
+  },
+  "interactiveRebase.alreadyApplied": {
+    "en": "The commit was already replayed. Continue retries the reviewed message; Skip is unavailable. You can abort to restore the original history.",
+    "zh-CN": "提交已完成重放。继续会重试已审阅的说明，此时不能跳过。可中止以恢复原历史。"
+  },
+  "interactiveRebase.path": {
+    "en": "Interactive Rebase does not support newline characters in the Git directory or runtime path.",
+    "zh-CN": "交互式 Rebase 不支持 Git 目录或运行时路径中包含换行符。"
+  },
   "manager.theRepositoryOrGroupNoLongerExists": {
     "en": "The repository or group no longer exists.",
     "zh-CN": "仓库或分组已不存在。"
@@ -7352,6 +7508,45 @@ export interface MessageParameters {
   "host.sessionWritePending": {  };
   "host.webviewMessageNotDelivered": {  };
   "host.couldNotOpenWebLink": {  };
+  "interactiveRebase.title": {  };
+  "interactiveRebase.fromCommit": {  };
+  "interactiveRebase.hint": {  };
+  "interactiveRebase.start": {  };
+  "interactiveRebase.defaultScope": {  };
+  "interactiveRebase.load": {  };
+  "interactiveRebase.base": {  };
+  "interactiveRebase.order": {  };
+  "interactiveRebase.up": {  };
+  "interactiveRebase.down": {  };
+  "interactiveRebase.action": {  };
+  "interactiveRebase.pick": {  };
+  "interactiveRebase.reword": {  };
+  "interactiveRebase.squash": {  };
+  "interactiveRebase.fixup": {  };
+  "interactiveRebase.drop": {  };
+  "interactiveRebase.message": {  };
+  "interactiveRebase.combinedMessage": {  };
+  "interactiveRebase.publishedLabel": {  };
+  "interactiveRebase.acknowledge": {  };
+  "interactiveRebase.recovery": {  };
+  "interactiveRebase.execute": {  };
+  "interactiveRebase.completed": {  };
+  "interactiveRebase.invalid": {  };
+  "interactiveRebase.changed": {  };
+  "interactiveRebase.scope": {  };
+  "interactiveRebase.published": {  };
+  "interactiveRebase.dirty": {  };
+  "interactiveRebase.unavailable": {  };
+  "interactiveRebase.emptyPause": {  };
+  "interactiveRebase.keepEmpty": {  };
+  "interactiveRebase.skipTitle": {  };
+  "interactiveRebase.skipConfirm": {  };
+  "interactiveRebase.head": {  };
+  "interactiveRebase.unavailableState": {  };
+  "interactiveRebase.scopeDraft": {  };
+  "interactiveRebase.reviewPaused": {  };
+  "interactiveRebase.alreadyApplied": {  };
+  "interactiveRebase.path": {  };
   "manager.theRepositoryOrGroupNoLongerExists": {  };
   "manager.reorderItemsWithinTheSameLevel": {  };
   "manager.selectARegisteredRepositoryFirst": {  };

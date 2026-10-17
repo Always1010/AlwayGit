@@ -1,3 +1,4 @@
+import { InteractiveRebaseDialog } from './InteractiveRebaseDialog';
 import { Button, Icon, Modal } from './ui';
 
 import { RemoteTrackingDialog } from './RemoteTrackingDialog';
@@ -48,6 +49,7 @@ function branchStartLabel(snapshot:Snapshot,start:string,t:Translator):string {
   return uiText("actions.commit", { value: (start.slice(0,12)) });
 }
 export function ActionDialog({ dialog, onClose, openAbort, replaceDialog }: { dialog: DialogRequest; onClose(): void; openAbort(): void; replaceDialog(dialog:DialogRequest):void }) {
+  if(dialog.type==='rebase.interactive')return <InteractiveRebaseDialog start={dialog.target} onClose={onClose}/>;
   if(dialog.type==='discard')return <DiscardDialog dialog={dialog} onClose={onClose}/>;
   if(dialog.type==='branch.track')return <RemoteTrackingDialog dialog={dialog} onClose={onClose}/>;
   return <StandardActionDialog dialog={dialog} onClose={onClose} openAbort={openAbort} replaceDialog={replaceDialog}/>;

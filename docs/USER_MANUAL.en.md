@@ -862,7 +862,7 @@ Hover or focus the status for details and the last successful check time, or cli
 
 ### Perform a standard Rebase
 
-**Caution:** This version provides standard Rebase. It does not provide interactive reordering, Squash, or Fixup.
+Use this entry to replay the current branch onto another base. To organize commits on their existing base, use [Interactive Rebase](#interactive-rebase).
 
 **Prerequisite:** The current branch is the branch whose commits will be replayed. Others do not yet depend on those commits, or you have already agreed on the operation with your collaborators.
 
@@ -877,6 +877,22 @@ Hover or focus the status for details and the last successful check time, or cli
 **Troubleshooting:** You can Abort while the operation is in progress. To recover after completion, use the backup reference saved beforehand; avoid further history rewriting without first checking the state.
 
 ![Figure 32 Rebase current main onto feature/test after checking the new base and direction](images/user-manual/figure-32.png)
+
+<a id="interactive-rebase"></a>
+
+### Interactive Rebase: organize the current branch
+
+Commit or Stash working files, staged changes and untracked files first. Right-click the current local branch and choose Interactive Rebase to load up to 20 recent unpublished commits, or choose Interactive Rebase from this commit from a commit menu to include that commit and all following commits through HEAD. Root commits, merge-containing ranges and active Git operations are unsupported; explicit ranges allow up to 500 commits.
+
+1. Check the branch, original HEAD and fixed base. After editing the starting commit, use the refresh icon to load a new plan.
+2. Work from oldest to newest. Drag rows, use the arrow buttons, or press Alt+Up/Down. Choose pick (keep), reword (edit message), squash (combine and edit), fixup (combine and discard this message), or drop (remove). Squash/fixup require an earlier retained commit. A squash message is the complete message of the combined commit.
+3. Select a commit to inspect its files and independent Diff. A range reachable from cached remote refs requires explicit risk acknowledgement. This check does not Fetch, so actual remote state can be newer.
+4. Execute the reviewed plan. Plans expire after fifteen minutes; changed HEAD or branch requires reloading. Rebase never pushes automatically and does not update other local branch refs.
+5. If paused, choose Review paused Rebase. Resolve and stage conflicts, review the result, then continue. An emptied commit can explicitly be kept empty or skipped. Skip discards the current commit and its resolution changes and requires confirmation. Abort returns to the original position. Controls recover after window reload. Missing or changed saved helpers block continuation and permit abort, protecting reviewed messages.
+
+Skip is disabled when replay already created the commit but message editing failed; Continue retries the reviewed message, or Abort restores history. An internal checkpoint failure disables Continue and Skip; abort and prepare a new plan.
+
+The original HEAD remains under `refs/alwaygit/rebase-backups/…` after completion or abort. Inspect it through [Reflog](#reflog-recovery) and create a recovery branch. Existing hooks and signing configuration remain active; fix hook or signing failures before retrying, or abort.
 
 <a id="chapter-02"></a>
 
@@ -1111,7 +1127,7 @@ Basic functionality requires VS Code 1.106+ and Git 2.40+. Saving selected files
 
 Git runs in the VS Code extension host where the repository resides. The product architecture is designed for local environments, WSL, Remote SSH, and Dev Containers; Git, paths, permissions, and authentication still need to be verified separately in each environment. Git is not executed in untrusted workspaces, and browser-only virtual workspaces are not supported.
 
-Current scope: whole-file and Git-hunk staging, standard Rebase, remote branch management, explicit Tag Push, and lease-protected remote Tag deletion. Not currently provided: interactive Rebase, commit reordering, Squash, Fixup, Format Patch, remote Tag replacement, or freely floating panels.
+Current scope: whole-file and Git-hunk staging, standard and interactive Rebase, commit reordering, Squash/Fixup, remote branch management, explicit Tag Push, and lease-protected remote Tag deletion. Not currently provided: Format Patch, remote Tag replacement, or freely floating panels.
 
 | Setting | Default or range | Description |
 | --- | --- | --- |

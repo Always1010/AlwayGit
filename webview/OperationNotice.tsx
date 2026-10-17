@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { Modal } from './ui';
 import { Button, Icon } from './ui';
 
 import { uiText } from './text';
@@ -8,6 +10,7 @@ import { useWorkbench } from './store';
 
 
 export function OperationNotice({ abort }: { abort(): void }) {
+  const [confirmSkip,setConfirmSkip]=useState(false);
   const state = useWorkbench(), t = useTranslation(), operation = state.snapshot?.operation;
   const conflicts = state.snapshot?.changes.filter(file => file.conflict) ?? [];
   const count = Math.max(operation?.conflicts ?? 0, conflicts.length);
@@ -30,12 +33,13 @@ export function OperationNotice({ abort }: { abort(): void }) {
   function execute(type: 'operation.continue' | 'operation.skip', kind: OperationKind) { void state.execute({ type, kind }); }
   return <div className={`operation-notice ${ready ? 'operation-ready' : 'operation-conflict'}`} data-testid="operation-notice" role={count ? 'alert' : 'status'}>
     <Icon name={ready ? 'inspect' : 'warning'}/>
-    <div className="operation-copy"><div><strong>{kind ? t("operations.paused", { name: (name) }) : t("operations.unresolvedConflicts")}</strong><span className="operation-count">{count ? t("operations.conflicts", { count: (count) }) : t("operations.awaitingResultReview")}</span></div><span className="operation-reason">{reason}</span></div>
+    <div className="operation-copy"><div><strong>{kind ? t("operations.paused", { name: (name) }) : t("operations.unresolvedConflicts")}</strong><span className="operation-count">{count ? t("operations.conflicts", { count: (count) }) : t("operations.awaitingResultReview")}</span></div><span className="operation-reason">{reason}</span>{operation?.managedRebase&&<span>{operation.managedRebase.step}/{operation.managedRebase.total} · {t('interactiveRebase.recovery')}: {operation.managedRebase.backupRef}{operation.managedRebase.applied&&<span>{t('interactiveRebase.alreadyApplied')}</span>}{operation.managedRebase.pause==='unavailable'&&<strong>{t('interactiveRebase.unavailableState')}</strong>}{operation.managedRebase.pause==='empty'&&<strong>{t('interactiveRebase.emptyPause')}</strong>}</span>}</div>
     <div className="operation-actions">
       <Button className="primary" icon="files" onClick={viewConflicts}>{count > 0?t("operations.viewConflicts"):t("operations.reviewStagedResult")}</Button>
-      {kind && <><Button className={ready ? 'primary' : ''} disabled={!operation.canContinue || !!count || state.busy} title={state.busy ? t("operations.waitForTheRunningAction") : reason} onClick={() => execute('operation.continue', kind)}>{uiText("operations.continue")}</Button>
-        {operation.canSkip && <Button disabled={state.busy} title={t("operations.skipTheCurrentCommitInThisOperation")} onClick={() => execute('operation.skip', kind)}>{uiText("operations.skip")}</Button>}
+      {kind && <>{operation?.managedRebase?.pause==='empty'&&<Button disabled={state.busy} onClick={()=>void state.execute({type:'operation.continue',kind,keepEmpty:true})}>{t('interactiveRebase.keepEmpty')}</Button>}<Button className={ready ? 'primary' : ''} disabled={!operation.canContinue || !!count || state.busy || operation.managedRebase?.pause==='empty'} title={state.busy ? t("operations.waitForTheRunningAction") : reason} onClick={() => execute('operation.continue', kind)}>{uiText("operations.continue")}</Button>
+        {operation.canSkip && <Button disabled={state.busy} title={t("operations.skipTheCurrentCommitInThisOperation")} onClick={() => kind==='rebase'?setConfirmSkip(true):execute('operation.skip', kind)}>{uiText("operations.skip")}</Button>}
         <Button disabled={!operation.canAbort || state.busy} onClick={abort}>{t("operations.abort", { name: (name) })}</Button></>}
     </div>
+    {confirmSkip&&kind&&<Modal title={t('interactiveRebase.skipTitle')} onClose={()=>setConfirmSkip(false)}><p>{t('interactiveRebase.skipConfirm')}</p><Button onClick={()=>{setConfirmSkip(false);execute('operation.skip',kind);}}>{t('operations.skip')}</Button></Modal>}
   </div>;
 }

@@ -24,7 +24,7 @@ export interface RemoteTags { remote: string; destination: string; separatePush:
 export interface Stash { selector: string; oid: string; subject: string }
 export interface Worktree { path: string; head: string; branch?: string; bare: boolean; detached: boolean; locked?: string; prunable?: string }
 export type OperationKind = 'merge' | 'rebase' | 'cherry-pick' | 'revert';
-export interface OperationState { kind?: OperationKind; conflicts: number; canContinue: boolean; canAbort: boolean; canSkip: boolean; originalHead?: string }
+export interface OperationState { kind?: OperationKind; conflicts: number; canContinue: boolean; canAbort: boolean; canSkip: boolean; originalHead?: string; managedRebase?: import('./interactive-rebase').ManagedRebaseState }
 export interface OperationReview { kind: OperationKind; token: string; files: { path: string; lines: number[]; more?: boolean; skipped?: 'binary' | 'large' | 'encoding' | 'submodule' | 'limit' }[] }
 export interface PushTarget { localBranch: string; remote?: string; remoteBranch: string; configured: boolean }
 export interface PullTarget { localBranch: string; remote: string; remoteBranch: string }
@@ -58,6 +58,7 @@ export interface BranchComparison { baseRef: string; targetRef: string; baseOid:
 export interface CommitComparison { left: Commit; right: Commit; files: CommitFile[] }
 export interface CherryPickCheck { head: string; branch: string; included: string[] }
 export type GitAction =
+  | import('./interactive-rebase').InteractiveRebaseAction
   | { type: 'stage' | 'resolve-and-stage' | 'unstage'; paths: string[] }
   | { type: 'stage-hunk' | 'unstage-hunk'; token: string; hunkId: string }
   | { type: 'discard'; paths: string[]; planToken?: string; mode?: 'all' }
@@ -84,7 +85,7 @@ export type GitAction =
   | { type: 'merge' | 'rebase'; target: string; expectedHead?: string; expectedBranch?: string }
   | { type: 'cherry-pick' | 'revert'; commits: string[]; mainline?: number; expectedHead?: string; expectedBranch?: string; allowIncluded?: boolean }
   | { type: 'reset'; target: string; mode: 'soft' | 'mixed' | 'hard'; expectedHead?: string; expectedBranch?: string }
-  | { type: 'operation.continue'; kind: OperationKind; reviewToken?: string }
+  | { type: 'operation.continue'; kind: OperationKind; reviewToken?: string; keepEmpty?: boolean }
   | { type: 'operation.abort' | 'operation.skip'; kind: OperationKind };
 export type ContentSource = { kind: 'revision'; revision: string; path: string } | { kind: 'index'; path: string; stage?: 0 | 1 | 2 | 3 } | { kind: 'empty' };
 export interface CommitSelection { path: string; area: 'staged' | 'unstaged' }
@@ -107,7 +108,7 @@ export interface WorktreeOverviewEntry extends Worktree {
   upstream?: string; ahead?: number; behind?: number;
   operation?: 'merge' | 'rebase' | 'cherry-pick' | 'revert' | 'sequencer';
 }
-export interface RpcRequest { id: string; method: 'worktreeOverview' | 'terminalCreate' | 'terminalList' | 'terminalSync' | 'terminalClipboard' | 'terminalAck' | 'terminalInput' | 'terminalResize' | 'terminalClose' | 'terminalStop' | 'terminalRestart' | 'terminalRename' | 'repositories' | 'repositoryCollections' | 'repositoryOrder' | 'reorderRepository' | 'repositoryStatuses' | 'pickRepositoryDirectory' | 'discoverRepositories' | 'cancelRepositoryDiscovery' | 'addRepository' | 'removeRepositories' | 'createRepositoryCollection' | 'renameRepositoryCollection' | 'deleteRepositoryCollection' | 'moveRepositories' | 'snapshot' | 'operationReview' | 'prepareDiscard' | 'inspectDetails' | 'reflog' | 'history' | 'details' | 'stashDetails' | 'compare' | 'branchComparison' | 'cherryPickCheck' | 'cancelQuery' | 'action' | 'diff' | 'isolatedDiffPreview' | 'isolatedDiffPage' | 'diffPreview' | 'diffPage' | 'diffRelease' | 'copyText' | 'openExternal' | 'remoteLinks' | 'remoteTags' | 'openWorkbench' | 'openRepository' | 'openProject' | 'openFile' | 'openWorktree' | 'pickWorktree' | 'openKeyboardShortcuts' | 'showLog' | 'workbenchReady' | 'captureWorkbench' | 'workbenchLocationsReady' | 'workbenchLocationsClosed' | 'saveWorkbenchLocations' | 'workbenchOpenModeSettings' | 'saveSession' | 'interfaceSettings' | 'saveInterfaceSettings' | 'operationSettings' | 'saveOperationSettings'; repoId?: string; payload?: unknown }
+export interface RpcRequest { id: string; method: 'worktreeOverview' | 'terminalCreate' | 'terminalList' | 'terminalSync' | 'terminalClipboard' | 'terminalAck' | 'terminalInput' | 'terminalResize' | 'terminalClose' | 'terminalStop' | 'terminalRestart' | 'terminalRename' | 'repositories' | 'repositoryCollections' | 'repositoryOrder' | 'reorderRepository' | 'repositoryStatuses' | 'pickRepositoryDirectory' | 'discoverRepositories' | 'cancelRepositoryDiscovery' | 'addRepository' | 'removeRepositories' | 'createRepositoryCollection' | 'renameRepositoryCollection' | 'deleteRepositoryCollection' | 'moveRepositories' | 'snapshot' | 'operationReview' | 'prepareDiscard' | 'inspectDetails' | 'reflog' | 'prepareInteractiveRebase' | 'history' | 'details' | 'stashDetails' | 'compare' | 'branchComparison' | 'cherryPickCheck' | 'cancelQuery' | 'action' | 'diff' | 'isolatedDiffPreview' | 'isolatedDiffPage' | 'diffPreview' | 'diffPage' | 'diffRelease' | 'copyText' | 'openExternal' | 'remoteLinks' | 'remoteTags' | 'openWorkbench' | 'openRepository' | 'openProject' | 'openFile' | 'openWorktree' | 'pickWorktree' | 'openKeyboardShortcuts' | 'showLog' | 'workbenchReady' | 'captureWorkbench' | 'workbenchLocationsReady' | 'workbenchLocationsClosed' | 'saveWorkbenchLocations' | 'workbenchOpenModeSettings' | 'saveSession' | 'interfaceSettings' | 'saveInterfaceSettings' | 'operationSettings' | 'saveOperationSettings'; repoId?: string; payload?: unknown }
 /** Missing paths means the source cannot limit which working files changed. */
 export interface RepositoryChanges { paths?: string[]; index?: boolean }
 export type HostMessage = { type: 'showWorkbenchLocations'; locations: import('./workbench-host').WorkbenchLocations; language: import('../i18n').Language } | { type: 'captureWorkbench'; token: string } | TerminalEvent | { type: 'interfaceSettingsChanged'; settings: import('./interface-settings').InterfacePreferences } | { type: 'operationSettingsChanged'; settings: OperationSettings } | { type: 'response'; id: string; result?: unknown; error?: { message: string; code?: string; details?: ActionBlocker; localizedMessage?: MessageDescriptor; pushResult?: PushResult; deletionResult?: DeletionResult } } | { type: 'changed'; repoId: string; changes?: RepositoryChanges; snapshot?: Snapshot } | { type: 'activity'; repoId: string; busy: boolean; label: string } | { type: 'networkOperationProgress'; repoId: string; requestId: string; progress: NetworkOperationProgress } | { type: 'fileOperationProgress'; repoId: string; progress: FileOperationProgress } | { type: 'repositoriesChanged' } | { type: 'selectRepository'; repoId: string } | { type: 'repositoryDiscoveryProgress'; scanId: string; scanned: number; found: number };
@@ -119,6 +120,7 @@ export interface GitServiceContract {
   snapshot(repo: Repository): Promise<Snapshot>;
   trackedPaths?(repo: Repository, paths: string[]): Promise<string[]>;
   reviewOperation(repo: Repository): Promise<OperationReview>;
+  prepareInteractiveRebase?(repo: Repository, start?: string): Promise<import('./interactive-rebase').RebasePlan>;
   reflog?(repo: Repository, query?: import('./reflog').ReflogQuery): Promise<import('./reflog').ReflogPage>;
   history(repo: Repository, query?: HistoryQuery): Promise<HistoryPage>;
   details(repo: Repository, oid: string, parent?: string): Promise<CommitDetails>;
