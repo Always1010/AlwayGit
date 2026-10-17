@@ -18,7 +18,8 @@ type Comparison = { left: Side; right: Side; label: string; path: string };
 interface PreviewBaseline { repoId: string; target: DiffTarget; fingerprint: string; token?: string }
 
 function previewFingerprint(preview: DiffPreview): string {
-  return createHash('sha256').update(JSON.stringify(preview)).digest('hex');
+  const content = preview.kind === 'text' ? (({ patchHunks: _hunks, ...rest }) => rest)(preview) : preview;
+  return createHash('sha256').update(JSON.stringify(content)).digest('hex');
 }
 
 type ImageHeader = Pick<DiffImage, 'mimeType' | 'width' | 'height'>;
@@ -90,7 +91,12 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
   }
   async preview(repo: Repository, target: DiffTarget, owner?: object): Promise<DiffPreview> {
     const comparison = await this.comparison(repo, target);
-    const preview = await this.previewComparison(repo, comparison);
+    let preview = await this.previewComparison(repo, comparison);
+    if (preview.kind === 'text' && !preview.truncated && target.kind === 'change' && target.area !== 'conflict' && this.git.patchHunks) {
+      const patch = await this.git.patchHunks(repo, { path: target.path, area: target.area });
+      const matches = patch.left === preview.left && patch.right === preview.right;
+      preview = { ...preview, patchHunks: patch.metadata.unavailable ? patch.metadata : matches ? patch.metadata : { hunks: [], unavailable: 'changed' } };
+    }
     if (owner) this.previews.set(owner, { repoId: repo.id, target, fingerprint: previewFingerprint(preview) });
     return preview;
   }

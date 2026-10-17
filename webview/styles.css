@@ -614,3 +614,4 @@ h1,h2,p {margin:0;}
 .comparison-files button{width:100%;text-align:left;display:flex;gap:6px}
 .comparison-file-diff>.diff-preview{min-width:0;min-height:0;height:100%;overflow:hidden}
 @media(max-width:650px){.comparison-file-diff{grid-template-columns:1fr;grid-template-rows:100px minmax(160px,1fr)}.comparison-controls>select{width:100%}}
+.diff-hunk-action.icon-only {min-width:18px;width:18px;height:100%;padding:0;flex:none;border:0;border-radius:0;color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);}

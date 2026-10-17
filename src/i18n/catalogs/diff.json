@@ -214,5 +214,29 @@
     "zh-CN": "Diff · ",
     "review": "keep",
     "context": "webview/DiffPreview.tsx / DiffPreviewPanel"
+  },
+  "diff.stageHunk": {
+    "en": "Stage Git hunk",
+    "zh-CN": "暂存 Git 补丁块",
+    "review": "translated",
+    "context": "Git patch hunk actions"
+  },
+  "diff.unstageHunk": {
+    "en": "Unstage Git hunk",
+    "zh-CN": "取消暂存 Git 补丁块",
+    "review": "translated",
+    "context": "Git patch hunk actions"
+  },
+  "diff.hunkStale": {
+    "en": "The hunk preview changed or expired. Refresh the Diff and try again.",
+    "zh-CN": "补丁块预览已变化或过期，请刷新 Diff 后重试。",
+    "review": "translated",
+    "context": "Git patch hunk actions"
+  },
+  "diff.hunkUnavailable": {
+    "en": "Hunk actions are unavailable for this file or Git operation. Use whole-file Stage / Unstage.",
+    "zh-CN": "此文件或 Git 操作不支持补丁块操作，请使用整文件暂存或取消暂存。",
+    "review": "translated",
+    "context": "Git patch hunk actions"
   }
 }

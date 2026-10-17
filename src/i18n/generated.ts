@@ -1876,6 +1876,22 @@ export const catalog = {
     "en": "Diff · ",
     "zh-CN": "Diff · "
   },
+  "diff.stageHunk": {
+    "en": "Stage Git hunk",
+    "zh-CN": "暂存 Git 补丁块"
+  },
+  "diff.unstageHunk": {
+    "en": "Unstage Git hunk",
+    "zh-CN": "取消暂存 Git 补丁块"
+  },
+  "diff.hunkStale": {
+    "en": "The hunk preview changed or expired. Refresh the Diff and try again.",
+    "zh-CN": "补丁块预览已变化或过期，请刷新 Diff 后重试。"
+  },
+  "diff.hunkUnavailable": {
+    "en": "Hunk actions are unavailable for this file or Git operation. Use whole-file Stage / Unstage.",
+    "zh-CN": "此文件或 Git 操作不支持补丁块操作，请使用整文件暂存或取消暂存。"
+  },
   "dock.terminalLabel": {
     "en": "Terminal {{title}}",
     "zh-CN": "终端 {{title}}"
@@ -7078,6 +7094,10 @@ export interface MessageParameters {
   "diff.imagePreviewFor": { label: ParameterValue };
   "diff.selectAFileToPreviewItsDiff": {  };
   "diff.diff": {  };
+  "diff.stageHunk": {  };
+  "diff.unstageHunk": {  };
+  "diff.hunkStale": {  };
+  "diff.hunkUnavailable": {  };
   "dock.terminalLabel": { title: ParameterValue };
   "dock.panel": {  };
   "dock.tabs": {  };
