@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { actionSchema, createRepositoryCollectionSchema, reorderRepositorySchema, diffSchema, diffPageSchema, openRepositorySchema, openWorkbenchSchema, operationSettingsSchema, requestSchema, sessionSchema } from '../src/protocol/validation';
+import { actionSchema, historySchema, createRepositoryCollectionSchema, reorderRepositorySchema, diffSchema, diffPageSchema, openRepositorySchema, openWorkbenchSchema, operationSettingsSchema, requestSchema, sessionSchema } from '../src/protocol/validation';
 
 describe('Workbench protocol validation', () => {
+  it('preserves bounded file-history context in requests and legacy-compatible sessions', () => {
+    const file = { path: 'new.txt', anchorPath: 'old.txt', revision: 'a'.repeat(40) };
+    expect(historySchema.parse({ file })).toEqual({ file });
+    expect(sessionSchema.parse({ views: { repo: { search: '', tab: 'history', fileHistory: file } } }).views?.repo.fileHistory).toEqual(file);
+    for (const invalid of [{ path: '' }, { path: 'bad\0name' }, { ...file, other: true }]) expect(historySchema.safeParse({ file: invalid }).success).toBe(false);
+  });
+
   it('accepts bounded page requests and rejects arbitrary snapshot tokens and oversized ranges', () => {
     const page = { token: '27b25a96-9495-4619-94be-071fe44811d9', start: 100000, count: 128 };
     expect(requestSchema.parse({ id: 'page', method: 'diffPage', payload: page }).method).toBe('diffPage');

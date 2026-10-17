@@ -307,11 +307,11 @@ Ref checkboxes control which history you see; branch names and row selections co
 2. Use Show Only This Branch History or Show Only This Tag History to view only the target history. Use Locate Tag Commit in Graph to locate the Commit pointed to by a Tag.
 3. Use the presets below Local Branches to quickly show all local branches or only the current branch.
 4. When the scope changes, the existing History caption temporarily shows the scope being loaded. A failed read preserves the displayed graph and offers retry in the same row.
-5. Use the back arrow before the search field in the Graph heading to restore the previous history view. When a search is active or the Graph scope is not the current branch, a target icon appears beside it; use that icon to clear searches and tag scopes and locate HEAD on the current branch. Locate HEAD preserves the existing scope. Navigation records last for this workbench session; very deep or outdated history is reread from the first page.
+5. Use the back arrow before the search field in the Graph heading to restore the previous history view. When a search or file filter is active or the Graph scope is not the current branch, a target icon appears beside it; use that icon to clear searches and tag scopes and locate HEAD on the current branch. Locate HEAD preserves the existing scope. Navigation records last for this workbench session; very deep or outdated history is reread from the first page.
 
 **Result:** History displays a commit graph that matches your selected ref scope.
 
-**Caution:** Working Tree is a virtual node, not a historical Commit. After HEAD is filtered out, it may still appear on its own and is not counted as an actual history entry.
+**Caution:** Working Tree is a virtual node, not a historical Commit. In ordinary history it may appear independently after HEAD is filtered out; file history shows it only for uncommitted changes to the target file and is not counted as an actual history entry.
 
 <a id="section-04-02"></a>
 
@@ -380,6 +380,19 @@ Ref checkboxes control which history you see; branch names and row selections co
 **Caution:** Entire Commit includes files hidden by the path filter. The Diff title shows the actual path, and the file list identifies a hidden current file. Binary files and files without text change blocks are skipped but remain available for manual inspection. Read failures stop navigation and show an error. Text statistics and navigation cover the complete file, including changes after line 4000. Scroll to inspect all context. Resource limits produce an error rather than a partial comparison or a misleading zero-change count. Working Tree, Stash, and Commit comparisons still cycle within the current file.
 
 ![Figure 38 Diff settings with font, line height, code preview, and change navigation scope](images/user-manual/figure-38.png)
+
+<a id="file-history"></a>
+
+### View a file’s commit history
+
+1. Right-click one file in Working Tree, Commit Details, or a two-Commit comparison and choose Show File History. One file is supported at a time; staged and unstaged entries for the same pathname share the entry.
+2. History keeps the currently checked references and shows only commits related to that file. The path bar identifies the file and ref scope. Its branch icon expands the scope to all local and remote-tracking branches. Remote history uses locally known refs; Fetch first for new remote records.
+3. Select a Commit to retain its complete changed-file list and automatically open the target file’s Diff. Older commits use the pathname at that revision. Merges default to a real Parent that exposes the file change, and you can still select another Parent.
+4. Close the file filter with the path bar’s close icon, or use Back to restore the previous filters, selection, and reading position. Locate in full history exits the file filter and locates the selected Commit. Reopening the workbench restores the file filter per repository.
+
+Entering file history clears an existing commit-message search and saves it in the Back record. You can then search within the file history. Pagination queries matching records from Git history beyond the commits previously loaded. Dashed edges skip unrelated intermediate commits and do not imply direct parent relationships.
+
+Git similarity detection identifies renames, traced independently along each merge Parent. Deleted files remain inspectable; a same-name file recreated after deletion starts a separate history. Ordinary copies start a new file. Working Tree appears only when the target has uncommitted changes; its file list and split group actions use that file scope. Unified toolbar bulk actions and ordinary Commit retain their complete-repository scope. Missing records show an empty state; exceeded read limits produce an error, allowing a narrower branch scope and retry.
 
 <a id="chapter-05"></a>
 

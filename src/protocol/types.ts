@@ -43,9 +43,11 @@ export interface PushResult {
 export interface DeletionResult { kind: 'deletion'; target: 'worktree' | 'branch'; succeeded: string[]; failures: { target: string; message: string }[]; notAttempted?: string[] }
 export interface ActionResponse { snapshot?: Snapshot; result?: PushResult | DeletionResult; refreshWarning?: string }
 export interface Snapshot { repository: Repository; branch: string; head?: string; upstream?: string; defaultBranch?: string; pushTarget?: PushTarget; pullTarget?: PullTarget; ahead: number; behind: number; unpushed?: number; changes: Change[]; refs: GitRef[]; remotes?: string[]; remoteDestinations?: Record<string, string>; remoteReadDestinations?: Record<string, string>; stashes: Stash[]; worktrees: Worktree[]; operation: OperationState; version: number }
-export interface Commit { oid: string; parents: string[]; author: string; email: string; timestamp: number; subject: string; pushed?: boolean }
-export interface HistoryQuery { offset?: number; limit?: number; tips?: string[]; ref?: string; search?: string; head?: string }
-export interface HistoryPage { commits: Commit[]; nextOffset: number; hasMore: boolean; tips: string[]; head?: Commit }
+export interface Commit { oid: string; parents: string[]; author: string; email: string; timestamp: number; subject: string; pushed?: boolean; fileHistory?: { paths: string[]; parent?: string; graphParents: string[] } }
+/** The revision pins the file identity; anchorPath handles an uncommitted rename. */
+export interface FileHistoryFilter { path: string; revision?: string; anchorPath?: string }
+export interface HistoryQuery { offset?: number; limit?: number; tips?: string[]; ref?: string; search?: string; head?: string; file?: FileHistoryFilter }
+export interface HistoryPage { commits: Commit[]; nextOffset: number; hasMore: boolean; tips: string[]; head?: Commit; filePaths?: string[] }
 export interface CommitFile { path: string; previousPath?: string; status: string }
 export interface CommitDetails { commit: Commit; body: string; files: CommitFile[]; parent?: string }
 export type StashSection = 'working' | 'index' | 'untracked';

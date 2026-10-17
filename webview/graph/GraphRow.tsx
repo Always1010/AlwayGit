@@ -15,6 +15,8 @@ export interface GraphRowProps {
   pushed?: boolean;
   /** A mutable Working Tree node which is visually distinct from a Git commit. */
   working?: boolean;
+  /** Edges in a file history can skip commits hidden by the file filter. */
+  compressed?: boolean;
   mainTargets?: ReadonlySet<string>;
   paletteId?: GraphPaletteId;
   paletteSize?: number;
@@ -33,7 +35,7 @@ function pathFor(segment: GraphSegment, height: number, laneWidth: number): stri
 }
 
 /** A complete, independently renderable row for a fixed-height history table. */
-export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false, selected = false, main = false, pushed = true, working = false, mainTargets, paletteId = 'vivid', paletteSize, hoveredPath, onHoverPath }: GraphRowProps) {
+export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false, selected = false, main = false, pushed = true, working = false, compressed = false, mainTargets, paletteId = 'vivid', paletteSize, hoveredPath, onHoverPath }: GraphRowProps) {
   const titleId = useId();
   const palette = getGraphPalette(paletteId);
   const colorFor = (index: number) => {
@@ -77,6 +79,7 @@ export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false
           fill="none"
           stroke={working && segment.kind==='parent'?workingColor:mainSegment?'var(--graph-main, #f2f2f2)':colorFor(segment.color)}
           strokeWidth={highlighted?4:mainSegment?3:2.5}
+          strokeDasharray={compressed ? '4 3' : undefined}
           opacity={hoveredPath && !highlighted ? .35 : 1}
           data-path-id={segment.pathId}
           onMouseEnter={()=>onHoverPath?.(segment.pathId)}

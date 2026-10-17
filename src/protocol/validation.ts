@@ -1,5 +1,6 @@
 import { translate } from '../i18n/index';
 import { z } from 'zod';
+import { fileHistorySchema } from './history';
 const text = z.string().min(1).max(4096);
 const paths = z.array(text).min(1);
 export const discardRequestSchema = z.object({ paths: paths.optional(), scope: z.enum(['unstaged', 'all']).optional() }).refine(value => (value.paths !== undefined) !== (value.scope !== undefined));
@@ -55,7 +56,7 @@ export const addRepositoriesSchema = z.object({ scanId: repositoryScanId, keys: 
 export const openRepositorySchema = z.object({ newWindow: z.boolean().optional(), newTab: z.boolean().optional() }).refine(value=>!value.newWindow||!value.newTab,translate('en', "validation.chooseEitherANewTabOrANewWindow"));
 export const openWorkbenchSchema = z.object({ newTab: z.boolean().optional(), newWindow: z.boolean().optional() }).refine(value=>Number(!!value.newTab)+Number(!!value.newWindow)===1,translate('en', "validation.chooseOneWorkbenchDestination"));
 export const openWorktreeSchema = z.object({ path: text, newWindow: z.boolean().optional() });
-export const historySchema = z.object({ offset: z.number().int().min(0).max(10000000).optional(), limit: z.number().int().min(1).max(1000).optional(), tips: z.array(text).max(10000).optional(), ref: text.optional(), search: z.string().max(1000).optional(), head: text.optional() });
+export const historySchema = z.object({ offset: z.number().int().min(0).max(10000000).optional(), limit: z.number().int().min(1).max(1000).optional(), tips: z.array(text).max(10000).optional(), ref: text.optional(), search: z.string().max(1000).optional(), head: text.optional(), file: fileHistorySchema.optional() });
 export const detailsSchema = z.object({ oid: text, parent: text.optional() });
 export const comparisonSchema = z.object({ left: text, right: text, preserveOrder:z.boolean().optional() });
 export const cherryPickCheckSchema = z.object({ commits: z.array(text).min(1).max(1000), ...actionContext });

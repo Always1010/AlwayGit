@@ -334,5 +334,41 @@
     "zh-CN": "已加入当前显示的历史范围",
     "review": "translated",
     "context": "webview/Sidebar.tsx"
+  },
+  "history.showFileHistory": {
+    "en": "Show File History",
+    "zh-CN": "查看文件历史",
+    "review": "translated",
+    "context": "File history query and graph"
+  },
+  "history.fileHistory": {
+    "en": "File History",
+    "zh-CN": "文件历史",
+    "review": "translated",
+    "context": "File history query and graph"
+  },
+  "history.exitFileHistory": {
+    "en": "Exit file history",
+    "zh-CN": "退出文件历史",
+    "review": "translated",
+    "context": "File history query and graph"
+  },
+  "history.allBranches": {
+    "en": "Show this file’s history across all local and remote-tracking branches",
+    "zh-CN": "查看此文件在所有本地和远端跟踪分支中的历史",
+    "review": "translated",
+    "context": "File history query and graph"
+  },
+  "history.fileGraphHint": {
+    "en": "Dashed edges skip hidden commits",
+    "zh-CN": "虚线表示中间提交已省略",
+    "review": "translated",
+    "context": "File history query and graph"
+  },
+  "history.noFileHistoryHint": {
+    "en": "No committed changes to this file in the selected references. Select other branches or exit file history.",
+    "zh-CN": "所选引用中没有此文件的提交记录。请选择其他分支，或退出文件历史。",
+    "review": "translated",
+    "context": "File history query and graph"
   }
 }

@@ -151,10 +151,11 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
     const query = (payload ?? {}) as HistoryQuery;
     const tips=[...new Set(query.tips?.map(resolve)??(query.ref?[resolve(query.ref)]:demoSnapshot.refs.map(r=>r.oid)))],byId=new Map(commits.map(c=>[c.oid,c])),seen=new Set<string>(),pending=[...tips];
     while(pending.length){const id=pending.pop()!;if(seen.has(id))continue;seen.add(id);pending.push(...(byId.get(id)?.parents??[]));}
-    const result=commits.filter(c=>seen.has(c.oid)&&(!query.search||c.subject.toLowerCase().includes(query.search.toLowerCase())));
+    const filePaths = ['webview/App.tsx', 'webview/styles.css', 'src/git/service.ts'];
+    const result=commits.filter(c=>seen.has(c.oid)&&(!query.file||filePaths.includes(query.file.anchorPath??query.file.path))&&(!query.search||c.subject.toLowerCase().includes(query.search.toLowerCase()))).map(commit=>query.file?{...commit,fileHistory:{paths:[query.file.path],graphParents:commit.parents,parent:commit.parents[0]}}:commit);
     const offset = query.offset ?? 0, limit = query.limit ?? 100;
     const visible=result.slice(offset,offset+limit),head=commits.find(commit=>commit.oid===demoSnapshot.head);
-    return { commits: visible, nextOffset: offset + Math.min(limit,result.length-offset), hasMore: offset + limit < result.length, tips, ...(head?{head}: {}) } satisfies HistoryPage;
+    return { commits: visible, nextOffset: offset + Math.min(limit,result.length-offset), hasMore: offset + limit < result.length, tips, ...(query.file?{filePaths:[query.file.path]}:head?{head}: {}) } satisfies HistoryPage;
   }
   if (method === 'details') {
     const request = payload as { oid: string; parent?: string }; const commit = commits.find(c => c.oid === resolve(request.oid)) ?? commits[0];

@@ -27,6 +27,7 @@ import { safeWorkingPath } from '../editor/paths';
 import { requireExactFileScope } from './file-scope';
 import { dropStash } from './stash-drop';
 import { NetworkProgressParser } from './network-progress';
+import { fileHistoryIndex, type FileHistoryIndex } from './file-history';
 import { redactSecrets, SecretRedactor } from '../application/logging';
 
 export interface GitServiceOptions {
@@ -84,6 +85,7 @@ const commitFormat = '%H%x00%P%x00%an%x00%ae%x00%at%x00%s';
 export class GitService implements GitServiceContract {
   private version = 0;
   private executable?: Promise<string>;
+  private readonly fileHistories = new Map<string, FileHistoryIndex & { created: number; remoteKey?: string; localOnly?: Set<string> }>();
   private readonly reviews = new Map<string, { token: string; fingerprint: string }>();
   private readonly discards = new Map<string, { root: string; expires: number; plan: DiscardPlan; fingerprint: string; request: DiscardRequest }>();
   private readonly readSignal = new AsyncLocalStorage<{ controller: AbortController; pending: Set<Promise<void>> }>();
@@ -392,6 +394,62 @@ export class GitService implements GitServiceContract {
     tips = [...new Set(tips)];
     const searchArgs = query.search ? ['--fixed-strings', '--regexp-ignore-case', `--grep=${query.search}`] : [];
     if (query.search?.includes('\0')) throw new GitError(localizeMessage("service.invalidSearch"), 'INVALID_ARGUMENT');
+    if (query.file) {
+      const file = query.file, name = validateFilePath(file.path), anchorPath = validateFilePath(file.anchorPath ?? name);
+      if (!tips.length) return { commits: [], tips, nextOffset: offset, hasMore: false };
+      const revision = await this.oid(repo, file.revision ?? query.head ?? 'HEAD');
+      const currentHead = query.head ? await this.oid(repo, query.head) : undefined;
+      const run = async (args: string[], input?: Buffer) => (await this.run(repo, args, false, undefined, { input })).stdout;
+      // Commit identities pin pagination. Include shallow boundaries because a
+      // deepen can reveal more ancestors without changing any reference tip.
+      const shallowPath = (await run(['rev-parse', '--git-path', 'shallow'])).toString('utf8').trim();
+      let shallow = '';
+      try { shallow = await readFile(path.resolve(repo.root, shallowPath), 'utf8'); }
+      catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+      const key = JSON.stringify([repo.root, [...tips].sort(), revision, anchorPath, currentHead, shallow]);
+      let index = this.fileHistories.get(key);
+      if (!index || Date.now() - index.created > 60_000) {
+        const result = await fileHistoryIndex(run, tips, revision, anchorPath, currentHead, this.readSignal.getStore()?.controller.signal);
+        index = { ...result, created: Date.now() };
+      }
+      let matching = index.entries;
+      if (query.search && matching.length) {
+        const output = (await run(['log', '--format=%H', ...searchArgs, '--stdin', '--'], Buffer.from(tips.join('\n') + '\n'))).toString('utf8').trim();
+        const matches = new Set(output ? output.split('\n') : []);
+        matching = matching.filter(entry => matches.has(entry.oid));
+      }
+      const selected = matching.slice(offset, offset + limit);
+      // --stdin enables revision walking even with --no-walk on some Git
+      // versions. Bounded argv batches fetch exactly the selected identities.
+      const batches: string[][] = [];
+      for (let start = 0; start < selected.length; start += 128) batches.push(selected.slice(start, start + 128).map(entry => entry.oid));
+      const metadata = (await mapGitQueries(batches, batch => run(['log', '--no-walk=unsorted', '-z', `--format=${commitFormat}`, ...batch, '--']))).map(buffer => buffer.toString('utf8')).join('').split('\0');
+      const commits: Commit[] = [];
+      for (let i = 0; i + 5 < metadata.length; i += 6) commits.push(parseCommit(metadata.slice(i, i + 6)));
+      const visible = commits, entries = new Map(index.entries.map(entry => [entry.oid, entry.fileHistory]));
+      const headEntry = currentHead ? entries.get(currentHead) : undefined;
+      if (visible.length || headEntry) {
+        const remoteKey = (await run(['for-each-ref', '--format=%(refname) %(objectname)', 'refs/remotes'])).toString('utf8');
+        if (index.remoteKey !== remoteKey || !index.localOnly) {
+          const local = (await run(['rev-list', '--stdin', '--not', '--remotes', '--'], Buffer.from(tips.join('\n') + '\n'))).toString('utf8').trim();
+          index.localOnly = new Set(local ? local.split('\n').filter(oid => entries.has(oid)) : []); index.remoteKey = remoteKey;
+        }
+        for (const commit of visible) { commit.fileHistory = entries.get(commit.oid); commit.pushed = !index.localOnly.has(commit.oid); }
+      }
+      let head = currentHead ? visible.find(commit => commit.oid === currentHead) : undefined;
+      if (!head && headEntry && currentHead) {
+        const data = (await run(['show', '-s', `--format=${commitFormat}`, currentHead, '--'])).toString('utf8');
+        head = { ...parseCommit(data.replace(/\n$/, '').split('\0')), fileHistory: headEntry, pushed: !index.localOnly?.has(currentHead) };
+      }
+      this.readSignal.getStore()?.controller.signal.throwIfAborted();
+      // Publish only completed, bounded indexes; failed/cancelled pages never
+      // install a new cache entry. Refreshes with immutable inputs can reuse it.
+      if (index.entries.length <= 50_000) {
+        this.fileHistories.delete(key); this.fileHistories.set(key, index);
+        while (this.fileHistories.size > 4 || [...this.fileHistories.values()].reduce((total, item) => total + item.entries.length, 0) > 50_000) this.fileHistories.delete(this.fileHistories.keys().next().value!);
+      }
+      return { commits: visible, tips, filePaths: index.filePaths, ...(head ? { head } : {}), nextOffset: offset + visible.length, hasMore: offset + visible.length < matching.length };
+    }
     // Only resolved commit IDs enter stdin; raw revisions cannot inject flags or
     // negative tips. Keep --not/--remotes on argv to preserve remote exclusion.
     const tipInput = Buffer.from(`${tips.join('\n')}\n`, 'utf8');

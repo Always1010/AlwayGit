@@ -1289,3 +1289,74 @@ describe('Tag remote queries', () => {
     expect(Object.values(store.getState().tagQueries).some(query => query.result)).toBe(false);
   });
 });
+
+describe('file history navigation', () => {
+  it('opens the right-clicked file, binds its revision and auto-selects its historical Diff', async () => {
+    await store.getState().selectRepository('a');
+    const fallback = bridge.rpc.getMockImplementation()!, parent = 'actual-parent';
+    const matching = { ...commit, oid: 'file-edit', parents: [parent], fileHistory: { paths: ['old-name.txt'], graphParents: ['file-root'], parent } };
+    bridge.rpc.mockImplementation((method, repoId, payload) => method === 'history' ? { commits: [matching], filePaths: ['current.txt'], tips: ['fixed-tip'], nextOffset: 1, hasMore: false } : method === 'details' ? { commit: matching, parent, body: '', files: [{ path: 'unrelated.txt', status: 'M' }, { path: 'old-name.txt', status: 'M' }] } : fallback(method, repoId, payload));
+    store.getState().setHistoryScroll(420);
+    store.setState({ search: 'prior search', displayedHistory: { refs: ['HEAD'], search: 'prior search' } });
+    const { menuFor } = await import('../webview/menus');
+    const noop = vi.fn(), api = { startCommit: noop, open: noop, checkout: noop, openDiff: noop, editFile: noop, host: vi.fn(), addRepository: vi.fn(), removeRepositories: noop, fetchRepositories: noop };
+    const primary = { path: 'current.txt', target: { kind: 'commit' as const, oid: 'origin-commit', path: 'current.txt' } };
+    const entry = menuFor({ kind: 'files', primary, files: [primary] }, api).items.find(item => item.label === 'Show File History')!;
+    expect(entry).toBeDefined(); entry.run();
+    await vi.waitFor(() => expect(store.getState().diffTarget).toMatchObject({ oid: matching.oid, parent, path: 'old-name.txt' }));
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'history').at(-1)?.[2]).toMatchObject({ tips: ['HEAD'], file: { path: 'current.txt', revision: 'origin-commit' } });
+    expect(store.getState()).toMatchObject({ search: '', fileHistory: { path: 'current.txt', revision: 'origin-commit' }, historyFilePaths: ['current.txt'] });
+    store.getState().backHistory();
+    expect(store.getState()).toMatchObject({ fileHistory: undefined, search: 'prior search', historyRestoreTop: 420 });
+    expect(menuFor({ kind: 'files', primary, files: [primary, { path: 'other.txt', target: { ...primary.target, path: 'other.txt' } }] }, api).items.some(item => item.label === 'Show File History')).toBe(false);
+  });
+
+  it('cancels stale file reads, blocks cross-file pagination after failure and retains the successful displayed scope', async () => {
+    await store.getState().selectRepository('a');
+    const old = deferred<HistoryPage>(), next = deferred<HistoryPage>(), fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, repoId, payload) => method === 'history' ? payload.file?.path === 'old.txt' ? old.promise : next.promise : fallback(method, repoId, payload));
+    store.getState().showFileHistory({ kind: 'change', area: 'unstaged', path: 'old.txt' });
+    const signal = bridge.rpc.mock.calls.filter(([method]) => method === 'history').at(-1)![3].signal as AbortSignal;
+    store.getState().showFileHistory({ kind: 'change', area: 'unstaged', path: 'new.txt' });
+    expect(signal.aborted).toBe(true);
+    next.resolve({ commits: [commit], tips: ['pinned'], nextOffset: 1, hasMore: true, filePaths: ['new.txt'] });
+    await vi.waitFor(() => expect(store.getState().historyLoading).toBe(false));
+    old.resolve({ commits: [{ ...commit, oid: 'stale' }], tips: ['old-tip'], nextOffset: 1, hasMore: false }); await old.promise;
+    expect(store.getState()).toMatchObject({ commits: [commit], displayedHistory: { fileHistory: { path: 'new.txt' } } });
+    bridge.rpc.mockImplementation((method, ...args) => method === 'history' ? Promise.reject(new Error('read failed')) : fallback(method, ...args));
+    store.getState().showFileHistory({ kind: 'change', area: 'unstaged', path: 'broken.txt' });
+    await vi.waitFor(() => expect(store.getState().historyError).toBe('read failed'));
+    const reads = bridge.rpc.mock.calls.filter(([method]) => method === 'history').length;
+    await store.getState().loadHistory(true);
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'history')).toHaveLength(reads);
+    expect(store.getState().displayedHistory?.fileHistory?.path).toBe('new.txt');
+    expect(store.getState().commits).toEqual([commit]);
+  });
+
+  it('restores file scope across repositories and saved sessions, and leaves it when locating in full history', async () => {
+    vi.stubGlobal('window', { __ALWAYGIT_SESSION__: { version: 2, repoId: 'a', views: { a: { tab: 'history', search: '', fileHistory: { path: 'renamed.txt', anchorPath: 'old.txt', revision: 'saved-head' } } } } });
+    vi.resetModules(); store = (await import('../webview/store')).useWorkbench;
+    await store.getState().selectRepository('a', { restoreView: true });
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'history').at(-1)?.[2].file).toEqual({ path: 'renamed.txt', anchorPath: 'old.txt', revision: 'saved-head' });
+    await store.getState().selectRepository('b'); expect(store.getState().fileHistory).toBeUndefined();
+    await store.getState().selectRepository('a'); expect(store.getState().fileHistory?.path).toBe('renamed.txt');
+    expect(bridge.save.mock.calls.at(-1)?.[0].views.a.fileHistory?.path).toBe('renamed.txt');
+    await store.getState().locateCommit(commit.oid);
+    expect(store.getState().fileHistory).toBeUndefined();
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'history').at(-1)?.[2]).not.toHaveProperty('file');
+  });
+
+  it('selects only the tracked current pathname and its uncommitted rename in Working Tree', async () => {
+    const { fileHistoryChanges } = await import('../webview/refresh');
+    const changes = [
+      { path: 'renamed.txt', originalPath: 'current.txt', indexStatus: 'R', worktreeStatus: ' ', conflict: false, untracked: false },
+      { path: 'old.txt', indexStatus: 'M', worktreeStatus: ' ', conflict: false, untracked: false },
+    ];
+    expect(fileHistoryChanges({ changes }, { path: 'old.txt', revision: 'past' }, ['current.txt'])).toEqual([changes[0]]);
+    expect(fileHistoryChanges({ changes }, { path: 'old.txt', anchorPath: 'old.txt' }, [])).toEqual([changes[1]]);
+    await store.getState().selectRepository('a');
+    store.setState({ snapshot: { ...snapshot(a), changes }, fileHistory: { path: 'old.txt', revision: 'past' }, displayedHistory: { refs: ['HEAD'], search: '', fileHistory: { path: 'old.txt', revision: 'past' } }, historyFilePaths: ['current.txt'] });
+    store.getState().selectWorking();
+    expect(store.getState().diffTarget).toMatchObject({ path: 'renamed.txt', area: 'staged' });
+  });
+});

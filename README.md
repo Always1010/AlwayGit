@@ -26,7 +26,7 @@ Release packages target `win32-x64`, `linux-x64`, and `linux-arm64`. With Remote
 ## Main features
 
 - Multiple repositories and Worktrees, confirmed recursive discovery, repository removal and custom groups, and independent Workbench tabs in one window.
-- Multiple-reference filters, recursive branch trees, paginated topological commit graphs, message search, and HEAD location.
+- Multiple-reference filters, recursive branch trees, paginated topological commit graphs, file history, message search, and HEAD location.
 - Commit details, Merge Parent selection, automatic two-commit comparison, file-path filtering, and read-only text/image diffs.
 - Shared bottom Diff and terminal tabs with Shell selection, renaming, termination/restart, collapse, and maximization.
 - Working Tree conflict, Unstaged, and Staged management; whole-file and bulk actions; Commit, Amend, and per-repository drafts.

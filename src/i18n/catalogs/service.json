@@ -624,5 +624,17 @@
     "zh-CN": "成功移除 {{count}} 个工作树；{{failed}} 个失败：\n{{details}}",
     "review": "translated",
     "context": "Worktree batch removal"
+  },
+  "service.fileHistoryTooLarge": {
+    "en": "File history exceeds the read limit. Select fewer branches and retry.",
+    "zh-CN": "文件历史超出读取上限，请减少所选分支后重试。",
+    "review": "translated",
+    "context": "File history query and graph"
+  },
+  "service.fileHistoryRequiresFile": {
+    "en": "File history requires a file, not a directory.",
+    "zh-CN": "文件历史只支持文件，请勿选择目录。",
+    "review": "translated",
+    "context": "File history query and graph"
   }
 }

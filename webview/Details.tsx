@@ -14,6 +14,8 @@ import { rpc } from './rpc';
 import { filePathLabel, fileSelectionForClick, filterFilesByPath, reconcileFileSelection, type FileSelection } from './fileSelection';
 import { handleSelectionKeyboard } from './selectionKeyboard';
 import { useShortcuts } from './shortcuts';
+import { fileHistoryChanges } from './refresh';
+import { fileHistoryKey } from '../src/protocol/history';
 import { changeEntries, changeKey, isStaged, isUnstaged, compareChangedFiles, type ChangeEntry } from './changeEntries';
 import type { ContextHandler } from './Sidebar';
 
@@ -70,8 +72,8 @@ function CommitFiles({ files, scope, filter, onFilterChange, target, empty, empt
 }
 
 function DetailsPanel({ open, edit, context, startCommit }: { open(dialog:DialogRequest):void; edit():void; context:ContextHandler; startCommit():void }) {
-  const state=useWorkbenchFields('compareCommits', 'comparison', 'details', 'detailsLoading', 'language', 'repoId', 'selectCommit', 'selectStashSection', 'selectedStashOid', 'selectedStashSection', 'stashDetails', 'tab'),t=useTranslation(),detail=state.details,comparison=state.comparison,[fileFilter,setFileFilter]=useState('');
-  useEffect(()=>{setFileFilter('');},[state.repoId,state.tab,state.selectedStashSection]);
+  const state=useWorkbenchFields('compareCommits', 'comparison', 'details', 'detailsLoading', 'language', 'repoId', 'selectCommit', 'selectStashSection', 'selectedStashOid', 'selectedStashSection', 'stashDetails', 'tab', 'fileHistory'),t=useTranslation(),detail=state.details,comparison=state.comparison,[fileFilter,setFileFilter]=useState('');
+  useEffect(()=>{setFileFilter('');},[state.repoId,state.tab,state.selectedStashSection,fileHistoryKey(state.fileHistory)]);
   const stash=state.selectedStashOid?state.stashDetails:undefined,metadata=stash??detail,bodyLines=metadata?.body.split('\n')??[],body=(bodyLines[0]===metadata?.commit.subject?bodyLines.slice(1):bodyLines).join('\n').trim();
   const stashSections=stash?(Object.entries(stash.sections) as ['working'|'index'|'untracked',CommitDetails][]).filter((entry):entry is ['working'|'index'|'untracked',CommitDetails]=>!!entry[1]):[];
   const sectionLabel=(section:'working'|'index'|'untracked')=>section==='working'?uiText("details.workingTree"):section==='index'?uiText("details.index"):t("details.untrackedFiles");
@@ -94,12 +96,15 @@ function ComparisonDetails({filter,onFilterChange,edit,context}:{filter:string;o
 }
 
 function WorkingTree({ open, edit, context, startCommit }: { open(dialog:DialogRequest):void; edit():void; context:ContextHandler; startCommit():void }) {
-  const state={ ...useWorkbenchFields('busy', 'diffTarget', 'drafts', 'execute', 'repoId', 'selectFile', 'selectedFile', 'workingFilters', 'setWorkingFilter', 'changeListMode'), snapshot: useSnapshotFields('branch', 'changes') },snapshot=state.snapshot!,t=useTranslation(),[bulkAction,setBulkAction]=useState<{type:'stage'|'unstage';paths:string[];filtered?:boolean}>();
+  const state={ ...useWorkbenchFields('busy', 'diffTarget', 'drafts', 'execute', 'repoId', 'selectFile', 'selectedFile', 'workingFilters', 'setWorkingFilter', 'changeListMode', 'fileHistory', 'historyFilePaths', 'displayedHistory'), snapshot: useSnapshotFields('branch', 'changes') };
+  const scope=state.displayedHistory?state.displayedHistory.fileHistory:state.fileHistory;
+  const changes=useMemo(()=>fileHistoryChanges(state.snapshot!,scope,state.historyFilePaths),[state.snapshot!.changes,scope,state.historyFilePaths]);
+  const snapshot={...state.snapshot!,changes},t=useTranslation(),[bulkAction,setBulkAction]=useState<{type:'stage'|'unstage';paths:string[];filtered?:boolean}>();
   const [collapsed, setCollapsed] = useState({ conflict: false, unstaged: false, staged: false });
   useEffect(()=>{setBulkAction(undefined);setCollapsed({conflict:false,unstaged:false,staged:false});},[state.repoId]);
   const unified=state.changeListMode==='unified';
   const {staged,unstaged,conflicts}=useMemo(()=>({staged:snapshot.changes.filter(isStaged).sort(compareChangedFiles),unstaged:snapshot.changes.filter(isUnstaged).sort(compareChangedFiles),conflicts:snapshot.changes.filter(c=>c.conflict).sort(compareChangedFiles)}),[snapshot.changes]);
-  const filter=state.workingFilters[state.repoId!]??'',filtering=!!filter.trim(),visibleStaged=useMemo(()=>filterFilesByPath(staged,filter),[staged,filter]),visibleUnstaged=useMemo(()=>filterFilesByPath(unstaged,filter),[unstaged,filter]),visibleConflicts=useMemo(()=>filterFilesByPath(conflicts,filter),[conflicts,filter]),matchingFiles=useMemo(()=>filterFilesByPath(snapshot.changes,filter),[snapshot.changes,filter]),matchingCount=matchingFiles.length;
+  const filter=state.workingFilters[state.repoId!]??'',filtering=!!filter.trim()||!!scope,visibleStaged=useMemo(()=>filterFilesByPath(staged,filter),[staged,filter]),visibleUnstaged=useMemo(()=>filterFilesByPath(unstaged,filter),[unstaged,filter]),visibleConflicts=useMemo(()=>filterFilesByPath(conflicts,filter),[conflicts,filter]),matchingFiles=useMemo(()=>filterFilesByPath(snapshot.changes,filter),[snapshot.changes,filter]),matchingCount=matchingFiles.length;
   const stageAll=()=>setBulkAction({type:'stage',paths:visibleUnstaged.map(file=>file.path),filtered:filtering}),unstageAll=()=>setBulkAction({type:'unstage',paths:visibleStaged.map(file=>file.path),filtered:filtering});
   useShortcuts(unified ? {} : {stageAll:{enabled:!!visibleUnstaged.length&&!state.busy,run:stageAll},unstageAll:{enabled:!!visibleStaged.length&&!state.busy,run:unstageAll}});
   const fileKey=changeKey;
@@ -126,9 +131,9 @@ function WorkingTree({ open, edit, context, startCommit }: { open(dialog:DialogR
       </div>
     </div>;
   };
-  return <><div className="working-summary"><span>{snapshot.branch||uiText("details.detachedHEAD")}</span><span className="muted">{uiText("details.stagedVariant2")}{staged.length}{uiText("details.unstagedVariant2")}{unstaged.length}</span></div>
-    <div className="file-selection-toolbar working-file-toolbar"><label className="file-path-filter"><Icon name="search"/><input type="search" aria-label={t("details.filterWorkingTreeFilePaths")} placeholder={t("details.filterFilesOrPaths")} value={filter} onChange={event=>state.setWorkingFilter(event.target.value)}/></label>{filtering&&<><span className="file-filter-count" aria-live="polite">{matchingCount} / {snapshot.changes.length}</span><Button className="icon-only" icon="close" title={t("details.clearFileFilter")} aria-label={t("details.clearFileFilter")} onClick={()=>state.setWorkingFilter('')}/></>}</div>
-    {filtering&&conflicts.length>visibleConflicts.length&&<p className="working-filter-warning" role="status">{t("details.conflictsAreHiddenByTheFilterResolveAllConflicts", { count: (conflicts.length-visibleConflicts.length) })}</p>}
+  return <><div className="working-summary"><span>{snapshot.branch||uiText("details.detachedHEAD")}</span><span className="muted">{uiText("details.stagedVariant2")}{state.snapshot!.changes.filter(isStaged).length}{uiText("details.unstagedVariant2")}{state.snapshot!.changes.filter(isUnstaged).length}</span></div>
+    <div className="file-selection-toolbar working-file-toolbar"><label className="file-path-filter"><Icon name="search"/><input type="search" aria-label={t("details.filterWorkingTreeFilePaths")} placeholder={t("details.filterFilesOrPaths")} value={filter} onChange={event=>state.setWorkingFilter(event.target.value)}/></label>{filtering&&<span className="file-filter-count" aria-live="polite">{matchingCount} / {state.snapshot!.changes.length}</span>}{!!filter.trim()&&<Button className="icon-only" icon="close" title={t("details.clearFileFilter")} aria-label={t("details.clearFileFilter")} onClick={()=>state.setWorkingFilter('')}/>}</div>
+    {filtering&&state.snapshot!.changes.filter(file=>file.conflict).length>visibleConflicts.length&&<p className="working-filter-warning" role="status">{t("details.conflictsAreHiddenByTheFilterResolveAllConflicts", { count: (state.snapshot!.changes.filter(file=>file.conflict).length-visibleConflicts.length) })}</p>}
     {filtering&&state.diffTarget?.kind==='change'&&!matchingFiles.some(file=>file.path===state.selectedFile)&&state.selectedFile&&<div className="history-caption">{t("details.currentDiffIsOutsideThePathFilter")}{state.selectedFile}</div>}
     <div className="change-groups" tabIndex={0} role="listbox" aria-multiselectable="true" aria-label={t("details.workingTreeFiles")} onKeyDownCapture={batch.keyDown}><FileSelectionHint clickSelect filtered={filtering} count={new Set(batch.selection.paths.map(key=>(JSON.parse(key) as string[])[1])).size}/>{unified?<><div className="unified-change-heading">{t('changes.changedFiles')} <span className="change-count">{matchingCount}</span></div><VirtualFileRows items={entries} getKey={entry=>entry.key} scrollParent=".change-groups">{(entry,index)=>renderRow(entry,index,entries.length)}</VirtualFileRows>{!entries.length&&<div className="change-empty">{t('details.noChanges')}</div>}</>:<>{!!conflicts.length&&group('conflict',conflicts)}{group('unstaged',unstaged)}{group('staged',staged)}</>}</div>
     {bulkAction&&<Modal title={t("details.files", { value: (bulkAction.type==='stage'?uiText("details.stage"):uiText("details.unstage")), value2: (bulkAction.filtered ? t("details.text") : t("details.all")), count: (bulkAction.paths.length), value3: (bulkAction.filtered?'matching ':'') })} onClose={()=>setBulkAction(undefined)} footer={<><Button onClick={()=>setBulkAction(undefined)}>{t("common.cancel")}</Button><Button data-autofocus="true" className="primary" onClick={()=>{const {type,paths}=bulkAction;setBulkAction(undefined);void state.execute({type,paths});}}>{bulkAction.filtered?`${bulkAction.type==='stage'?uiText("details.stage"):uiText("details.unstage")} ${t("details.matching")}`:bulkAction.type==='stage'?uiText("details.stageAll"):uiText("details.unstageAll")}</Button></>}>{null}</Modal>}

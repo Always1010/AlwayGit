@@ -25,4 +25,11 @@ describe('history display items', () => {
   it('renders a standalone mutable root before the first commit exists', () => {
     expect(buildHistoryItems([],undefined)).toEqual([{kind:'working',key:WORKING_TREE_OID,oid:WORKING_TREE_OID,parents:[]}]);
   });
+
+  it('uses projected file-history edges without changing real parents and can omit Working Tree', () => {
+    const latest = { ...commit('latest', ['hidden']), fileHistory: { paths: ['file.txt'], graphParents: ['older'] } };
+    const items = buildHistoryItems([latest, commit('older')], undefined, false);
+    expect(items.map(item => item.oid)).toEqual(['latest', 'older']);
+    expect(items[0]).toMatchObject({ parents: ['older'], commit: { parents: ['hidden'] } });
+  });
 });
