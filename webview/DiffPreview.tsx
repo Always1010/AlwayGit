@@ -1,3 +1,4 @@
+import type { DiffTarget } from '../src/protocol/types';
 import { Button, Empty, hasOpenInteractionLayer } from './ui';
 
 import { uiText } from './text';
@@ -38,8 +39,12 @@ function content(value:string|undefined,other:string|undefined,changed:boolean,s
   const parts=changedParts(side==='before'?value:other,side==='before'?other:value),middle=side==='before'?parts.before:parts.after;
   return <code style={style}>{parts.prefix}{middle&&<mark className={side==='before'?'diff-word-removed':'diff-word-added'}>{middle}</mark>}{parts.suffix}</code>;
 }
-function DiffPreviewPanel({ native, edit, active = true }: { native():void; edit():void; active?:boolean }) {
-  const state=useWorkbenchFields('appearance', 'diffNavigationScope', 'details', 'selectedStashOid', 'tab', 'diffRevision', 'diffTarget', 'layout', 'repoId', 'selectedFile', 'selectFile', 'setLayout'),t=useTranslation(),[preview,setPreview]=useState<Preview>(),[error,setError]=useState<string>(),[loading,setLoading]=useState(false),[selection,setSelection]=useState<Selection>(),[horizontalScroll,setHorizontalScroll]=useState(0),[viewportWidth,setViewportWidth]=useState(0),viewport=useRef<HTMLDivElement>(null),displayedKey=useRef(''),lastScrollTop=useRef(0),navigationScroll=useRef<number|undefined>(undefined);
+export interface IsolatedDiffPreview { repoId: string; target?: DiffTarget }
+function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():void; edit():void; active?:boolean; isolated?: IsolatedDiffPreview }) {
+  const globalState=useWorkbenchFields('appearance', 'diffNavigationScope', 'details', 'selectedStashOid', 'tab', 'diffRevision', 'diffTarget', 'layout', 'repoId', 'selectedFile', 'selectFile', 'setLayout');
+  const [isolatedCollapsed, setIsolatedCollapsed] = useState(false);
+  const state = isolated ? { ...globalState, repoId: isolated.repoId, diffTarget: isolated.target, selectedFile: isolated.target?.path, diffRevision: 0, details: undefined, selectedStashOid: undefined, diffNavigationScope: 'file' as const, layout: { ...globalState.layout, diffCollapsed: isolatedCollapsed }, setLayout: (value: { diffCollapsed?: boolean }) => { if (value.diffCollapsed !== undefined) setIsolatedCollapsed(value.diffCollapsed); } } : globalState;
+  const t=useTranslation(),[preview,setPreview]=useState<Preview>(),[error,setError]=useState<string>(),[loading,setLoading]=useState(false),[selection,setSelection]=useState<Selection>(),[horizontalScroll,setHorizontalScroll]=useState(0),[viewportWidth,setViewportWidth]=useState(0),viewport=useRef<HTMLDivElement>(null),displayedKey=useRef(''),lastScrollTop=useRef(0),navigationScroll=useRef<number|undefined>(undefined);
   const [navigating,setNavigating]=useState(false),[navigationError,setNavigationError]=useState<string>(),[noNavigableFiles,setNoNavigableFiles]=useState(false),navigationRequest=useRef<AbortController|undefined>(undefined),preloaded=useRef<{key:string;preview:Preview}|undefined>(undefined),landing=useRef<{key:string;index:number}|undefined>(undefined);
   const [imageZoom,setImageZoom]=useState<ImageZoom>('fit'),[maximized,setMaximized]=useState(false),imageSides=[useRef<HTMLDivElement>(null),useRef<HTMLDivElement>(null)] as const,syncingImageScroll=useRef(false);
   const collapsed=state.layout.diffCollapsed;
@@ -71,7 +76,7 @@ function DiffPreviewPanel({ native, edit, active = true }: { native():void; edit
     const target=state.diffTarget;if(!target){setLoading(false);return;}
     if(preloaded.current?.key===targetKey){setPreview(preloaded.current.preview);preloaded.current=undefined;setLoading(false);return;}
     setLoading(true);
-    void rpc<Preview>('diffPreview',state.repoId,{...target,paged:true},{signal:controller.signal}).then(value=>{if(live)setPreview(previous=>JSON.stringify(previous)===JSON.stringify(value)?previous:value);}).catch(error=>{if(live)setError(error instanceof Error?error.message:String(error));}).finally(()=>{if(live)setLoading(false);});
+    void rpc<Preview>(isolated ? 'isolatedDiffPreview' : 'diffPreview',state.repoId,{...target,paged:true},{signal:controller.signal}).then(value=>{if(live)setPreview(previous=>JSON.stringify(previous)===JSON.stringify(value)?previous:value);}).catch(error=>{if(live)setError(error instanceof Error?error.message:String(error));}).finally(()=>{if(live)setLoading(false);});
     return()=>{live=false;controller.abort();};
   },[targetKey,revision]);
   useEffect(()=>{if(preview?.kind!=='image')setMaximized(false);},[preview?.kind]);
@@ -106,7 +111,7 @@ function DiffPreviewPanel({ native, edit, active = true }: { native():void; edit
   },[ROW_HEIGHT,totalHeight,rowCount,collapsed]);
   const changes=useMemo(()=>index?.changes??changedRanges(rows),[index,rows]);
   const virtualItems=virtual.getVirtualItems();
-  const pages=useDiffPages(state.repoId,index,virtualItems[0]?.index??0,virtualItems.at(-1)?.index??0,active&&!collapsed);
+  const pages=useDiffPages(state.repoId,index,virtualItems[0]?.index??0,virtualItems.at(-1)?.index??0,active&&!collapsed, !!isolated);
   const summary=useMemo(()=>preview?.kind==='image'?imageSummary(preview):(index?.summary??summarizeChanges(rows,changes)),[preview,index,rows,changes]);
   const changeCount=preview?.kind==='image'&&(preview.left||preview.right)?1:changes.length;
   const activeChange=preview?.kind==='image'?0:selection?.key===targetKey?selection.ranges===changes?Math.min(selection.index,changes.length-1):index?changeAtRow(changes,selection.ranges?.[selection.index]?.start??0):remapChange(selection.rows,rows,selection.index):changes.length?0:-1;
@@ -133,7 +138,7 @@ function DiffPreviewPanel({ native, edit, active = true }: { native():void; edit
     try{
       const adjacent=await adjacentDiffFile(commitFiles.length,fileIndex,direction,async index=>{
         if(index===fileIndex)return changeCount;
-        try{destination=await rpc<Preview>('diffPreview',state.repoId,{...targets[index],summaryOnly:true,paged:true},{signal:controller.signal});}
+        try{destination=await rpc<Preview>(isolated ? 'isolatedDiffPreview' : 'diffPreview',state.repoId,{...targets[index],summaryOnly:true,paged:true},{signal:controller.signal});}
         catch(error){throw new Error(`${targets[index].path}: ${error instanceof Error?error.message:String(error)}`);}
         return previewChangeCount(destination);
       },controller.signal);

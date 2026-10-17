@@ -35,11 +35,12 @@ import { captureWorkbenchSchema, readWorkbenchLocations, saveWorkbenchLocationsS
 import { workbenchContainerIds, workbenchLauncherHtml, workbenchLocationSettingsCommands, workbenchViewIds } from './workbench-launcher';
 
 type WorkbenchSurface = vscode.WebviewPanel | vscode.WebviewView;
-interface WorkbenchPanel { panel: WorkbenchSurface; kind: WorkbenchLocation; ready: boolean; subscriptions: vscode.Disposable[]; visible: boolean; activeRepository?: string; blank: boolean; session?: SessionState; savedSession?: SessionState; pendingTerminal?: boolean; pendingChanges?: { repoId: string; changes?: RepositoryChanges }; catalogDirty?: boolean }
+interface WorkbenchPanel { isolatedDiffOwner?: object; panel: WorkbenchSurface; kind: WorkbenchLocation; ready: boolean; subscriptions: vscode.Disposable[]; visible: boolean; activeRepository?: string; blank: boolean; session?: SessionState; savedSession?: SessionState; pendingTerminal?: boolean; pendingChanges?: { repoId: string; changes?: RepositoryChanges }; catalogDirty?: boolean }
 interface RepositoryDiscoverySession { source?: WorkbenchPanel; cancelled: boolean; root: string; discovery?: DiscoveryResult }
 export interface WorkbenchPresence { open: boolean; active: boolean }
 
 export class Workbench implements vscode.Disposable {
+  private readonly isolatedDiffOwner = {};
   private readonly panels = new Map<WorkbenchSurface, WorkbenchPanel>();
   private readonly dockedViews = new Map<DockedWorkbenchLocation, vscode.WebviewView>();
   private readonly dockedRestoredStates = new Map<DockedWorkbenchLocation, SessionState>();
@@ -441,6 +442,7 @@ export class Workbench implements vscode.Disposable {
     else this.terminals.disposeOwner(entry);
     this.queries.cancelOwner(entry);
     this.documents.releaseDiffOwner(entry);
+    if (entry.isolatedDiffOwner) this.documents.releaseDiffOwner(entry.isolatedDiffOwner);
     this.pendingLocationDialogs.delete(entry.panel); this.appliedLocationDefaults.delete(entry.panel);
     for (const [token, capture] of this.captures) if (capture.source === entry) { clearTimeout(capture.timer); this.captures.delete(token); capture.reject(new Error(this.text('workbenchEntry.captureFailed'))); }
     for (const [id, scan] of this.repositoryDiscoveries) if (scan.source === entry) { scan.cancelled = true; this.repositoryDiscoveries.delete(id); }
@@ -651,7 +653,9 @@ export class Workbench implements vscode.Disposable {
       case 'stashDetails': { const data = detailsSchema.parse(request.payload); return this.git.stashDetails(repo, data.oid); }
       case 'compare': { const data=comparisonSchema.parse(request.payload); return this.git.compare(repo,data.left,data.right,data.preserveOrder); }
       case 'diff': await this.projects.openDiff(repo.root, diffSchema.parse(request.payload)); return null;
+      case 'isolatedDiffPreview': { const { paged, summaryOnly, ...target } = diffPreviewSchema.parse(request.payload); const owner = source ? source.isolatedDiffOwner ?? (source.isolatedDiffOwner = {}) : this.isolatedDiffOwner; return paged ? this.documents.indexedPreview(repo, target, !summaryOnly, owner) : this.documents.preview(repo, target, summaryOnly ? undefined : owner); }
       case 'diffPreview': { const { paged, summaryOnly, ...target } = diffPreviewSchema.parse(request.payload); return paged ? this.documents.indexedPreview(repo, target, !summaryOnly, source??this) : this.documents.preview(repo,target,summaryOnly?undefined:source??this); }
+      case 'isolatedDiffPage':
       case 'diffPage': { const { token, start, count } = diffPageSchema.parse(request.payload); return this.documents.diffPage(repo, token, start, count); }
       case 'diffRelease': this.documents.releaseDiff(repo, diffReleaseSchema.parse(request.payload).token); return null;
       case 'openRepository': {
@@ -830,7 +834,7 @@ export class Workbench implements vscode.Disposable {
     this.captures.clear();
     const surfaces = [...this.panels.keys()];
     for (const entry of [...this.panels.values()]) this.release(entry);
-    this.appliedLocationDefaults.clear(); this.locationVisibilityHolds.clear(); this.dockedViews.clear(); this.dockedRestoredStates.clear(); this.dockedPanels.clear(); this.suspendedDockedPanels.clear(); this.terminals.dispose(); this.snapshots.dispose(); this.queries.dispose(); this.documents.releaseDiffOwner(this); clearInterval(this.interval);
+    this.appliedLocationDefaults.clear(); this.locationVisibilityHolds.clear(); this.dockedViews.clear(); this.dockedRestoredStates.clear(); this.dockedPanels.clear(); this.suspendedDockedPanels.clear(); this.terminals.dispose(); this.snapshots.dispose(); this.queries.dispose(); this.documents.releaseDiffOwner(this); this.documents.releaseDiffOwner(this.isolatedDiffOwner); clearInterval(this.interval);
     for (const scan of this.repositoryDiscoveries.values()) scan.cancelled = true;
     this.repositoryDiscoveries.clear(); this.lastPanel = undefined;
     for (const surface of surfaces) if ('dispose' in surface) surface.dispose();
