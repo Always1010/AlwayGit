@@ -27,10 +27,11 @@ Release packages target `win32-x64`, `linux-x64`, and `linux-arm64`. With Remote
 
 - Multiple repositories and Worktrees, confirmed recursive discovery, repository removal and custom groups, and independent Workbench tabs in one window.
 - Multiple-reference filters, recursive branch trees, paginated topological commit graphs, file history, message search, and HEAD location.
-- Commit details, Merge Parent selection, automatic two-commit comparison, file-path filtering, and read-only text/image diffs.
+- Commit details, Merge Parent selection, automatic two-commit and bidirectional branch comparison, file-path filtering, and read-only text/image diffs.
 - Shared bottom Diff and terminal tabs with Shell selection, renaming, termination/restart, collapse, and maximization.
-- Working Tree conflict, Unstaged, and Staged management; whole-file and bulk actions; Commit, Amend, and per-repository drafts.
-- Branch, remote-branch, Tag, Stash, and Worktree management, plus Fetch, Pull, Push, Merge, Rebase, Cherry-pick, Reset, Revert, and active-operation handling.
+- Working Tree conflict, Unstaged, and Staged management; whole-file, Git-hunk, and bulk staging actions; Commit, Amend, and per-repository drafts.
+- Branch, remote-branch, Tag, Stash, and Worktree management, plus Fetch, Pull, Push, Merge, ordinary and interactive Rebase, Cherry-pick, Reset, Revert, and active-operation handling.
+- Reflog browsing and recovery-branch creation, plus a Worktree status overview.
 - Four-region layout, resizable panels/columns, light/dark themes, Graph palettes, font size/density, English/Simplified Chinese, and session restoration.
 - Offline Help & Guide with quick start, common tasks, troubleshooting, complete bilingual manuals, topic filtering, and section navigation.
 - Native VS Code text editing/Diff, existing project-window reuse, and opening across windows.
