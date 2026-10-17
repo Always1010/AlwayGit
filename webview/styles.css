@@ -595,3 +595,22 @@ h1,h2,p {margin:0;}
 .action-feedback>.network-progress {padding:6px 0 4px 24px;}
 .network-operation-dialog>.modal-body {min-width:0;}
 .network-operation-dialog>.modal-body>.feedback-spinner {align-self:center;font-size:28px;color:var(--accent);}
+
+.branch-comparison-modal{width:min(1400px,96vw);max-width:96vw;height:90vh;max-height:90vh}
+.branch-comparison-modal .modal-body{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.comparison-controls{display:flex;align-items:end;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.comparison-controls label{display:flex;flex:1;flex-direction:column;gap:4px;min-width:120px}
+.comparison-controls select{max-width:100%;min-width:0}
+.comparison-content{display:flex;flex:1;flex-direction:column;min-height:0;gap:8px}
+.comparison-commits{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-height:24%;min-height:65px;overflow:auto}
+.comparison-commits section{min-width:0}
+.comparison-commit-list{max-height:100px;overflow:auto}
+.comparison-commit-list button{display:block;width:100%;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.comparison-file-heading{display:flex;align-items:center;gap:8px;min-width:0}
+.comparison-file-heading strong{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.comparison-message{max-height:70px;overflow:auto;white-space:pre-wrap;margin:0}
+.comparison-file-diff{display:grid;grid-template-columns:minmax(150px,25%) minmax(0,1fr);flex:1;min-height:160px;overflow:hidden;border:1px solid var(--border)}
+.comparison-files{overflow:auto;min-width:0}
+.comparison-files button{width:100%;text-align:left;display:flex;gap:6px}
+.comparison-file-diff>.diff-preview{min-width:0;min-height:0;height:100%;overflow:hidden}
+@media(max-width:650px){.comparison-file-diff{grid-template-columns:1fr;grid-template-rows:100px minmax(160px,1fr)}.comparison-controls>select{width:100%}}

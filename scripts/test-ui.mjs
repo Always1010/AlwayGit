@@ -14,6 +14,7 @@ import { verifyWorktrees } from './test-worktrees-ui.mjs';
 import { verifyAppearance } from './test-appearance-ui.mjs';
 import { verifyRemoteTracking } from './test-remote-tracking-ui.mjs';
 import { verifyStash } from './test-stash-ui.mjs';
+import { verifyBranchComparison } from './test-branch-comparison-ui.mjs';
 import { verifyBranchCreation } from './test-branch-ui.mjs';
 import { verifyCherryPick } from './test-cherry-pick-ui.mjs';
 import { verifyHelp } from './test-help-ui.mjs';
@@ -48,6 +49,7 @@ const suites = new Map([
   ['remote-tracking', verifyRemoteTracking],
   ['stash', verifyStash],
   ['branch', verifyBranchCreation],
+  ['branch-comparison', verifyBranchComparison],
   ['cherry-pick', verifyCherryPick],
   ['appearance', verifyAppearance],
   ['help', verifyHelp],

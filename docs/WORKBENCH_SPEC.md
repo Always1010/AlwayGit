@@ -182,6 +182,8 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 | 工作树（多选） | `Refresh`、`Copy N 工作树 Paths` |
 | Working Tree 文件（Staged / Unstaged） | Stage / Unstage、`Stash Selected Files…`、适用的 `Discard…`、路径复制；统一模式额外提供 Commit 与 Commit Selected；单文件额外提供 Diff、编辑与文件历史入口 |
 
+本地及远程分支菜单提供 `与当前分支比较`。独立浮窗选择基准和目标，不执行 Checkout。默认审查模式比较所选共同祖先至目标的变化；快照模式直接比较两端。反向操作交换固定的两端 OID。服务分别返回两侧独有提交数量及有界分页列表；提交检查、变更文件筛选和复用的 Diff 预览均保持在浮窗内，不覆盖文件历史、图谱范围、原有预览及草稿。读取和模式切换保持端点固定，引用变化提示更新，只有显式刷新才重新解析。无共同祖先时仅快照模式可用；多个合并基准要求用户明确选择。比较操作不 Fetch、不修改 Git 状态。
+
 <a id="sidebar-section-actions"></a>
 
 ## 左侧分组操作

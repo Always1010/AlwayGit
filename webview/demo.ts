@@ -2,7 +2,7 @@ import { legacyInterfaceSettings, mergeInterfaceSettings, type InterfacePreferen
 import { groupRepositories } from '../src/protocol/repositories';
 import { branchNameConflict, branchNameConflictMessage } from '../src/protocol/ref-name';
 import { reconcileRepositoryOrder } from '../src/protocol/repository-order';
-import type { RepositoryOrder, ReorderRepository, Commit, CommitComparison, CommitDetails, GitAction, HistoryPage, HistoryQuery, HostMessage, Repository, RepositoryCollection, RepositoryStatus, RpcRequest, Snapshot, OperationSettings, StashDetails, DiscardPlan, DiscardRequest } from '../src/protocol/types';
+import type { RepositoryOrder, ReorderRepository, BranchComparison, BranchComparisonQuery, Commit, CommitComparison, CommitDetails, GitAction, HistoryPage, HistoryQuery, HostMessage, Repository, RepositoryCollection, RepositoryStatus, RpcRequest, Snapshot, OperationSettings, StashDetails, DiscardPlan, DiscardRequest } from '../src/protocol/types';
 import { RpcError } from './rpc-error';
 import type { TerminalSnapshot, TerminalShell } from '../src/protocol/terminal';
 import { readWorkbenchLocations, saveWorkbenchLocationsSchema } from '../src/protocol/workbench-host';
@@ -177,6 +177,14 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
     const working=detail(stashCommit,indexCommit.oid,saved.filter(file=>!file.untracked&&file.worktreeStatus!==' ')),index=detail(indexCommit,base.oid,saved.filter(file=>!file.untracked&&file.indexStatus!==' '&&file.indexStatus!=='?')),untracked=saved.some(file=>file.untracked)?detail(untrackedCommit,undefined,saved.filter(file=>file.untracked)):undefined;
     return {commit:stashCommit,body:stashCommit.subject,sections:{working,index,...(untracked?{untracked}:{})},totalFiles:new Set(saved.map(file=>file.path)).size} satisfies StashDetails;
   }
+  if (method === 'branchComparison') {
+    const query = payload as BranchComparisonQuery, baseOid = query.baseOid ?? resolve(query.baseRef), targetOid = query.targetOid ?? resolve(query.targetRef);
+    const reachable = (oid: string) => { const seen = new Set<string>(), pending = [oid]; while (pending.length) { const id = pending.pop()!; if (seen.has(id)) continue; seen.add(id); pending.push(...(commits.find(commit => commit.oid === id)?.parents ?? [])); } return seen; };
+    const baseReachable = reachable(baseOid), targetReachable = reachable(targetOid), mergeBase = commits.find(commit => baseReachable.has(commit.oid) && targetReachable.has(commit.oid))?.oid;
+    const page = (tip: Set<string>, other: Set<string>, offset = 0) => { const all = commits.filter(commit => tip.has(commit.oid) && !other.has(commit.oid)), items = all.slice(offset, offset + (query.limit ?? 50)); return { commits: items, total: all.length, nextOffset: offset + items.length, hasMore: offset + items.length < all.length }; };
+    const mode = query.mode ?? 'review', diffBase = mode === 'snapshot' ? baseOid : mergeBase;
+    return { baseRef: query.baseRef, targetRef: query.targetRef, baseOid, targetOid, mode, mergeBases: mergeBase ? [mergeBase] : [], mergeBase, diffBase, base: page(baseReachable, targetReachable, query.baseOffset), target: page(targetReachable, baseReachable, query.targetOffset), files: diffBase === targetOid ? [] : [{path:'webview/App.tsx',status:'M'},{path:'webview/styles.css',status:'M'}] } satisfies BranchComparison;
+  }
   if(method==='compare'){const request=payload as {left:string;right:string},left=commits.find(commit=>commit.oid===resolve(request.left))??commits[1],right=commits.find(commit=>commit.oid===resolve(request.right))??commits[0];return {left,right,files:[{path:'webview/App.tsx',status:'M'},{path:'webview/styles.css',status:'M'},{path:'src/git/service.ts',status:'A'}]} satisfies CommitComparison;}
   if (method === 'cherryPickCheck') {
     const {commits:selected}=payload as {commits:string[]};
@@ -186,7 +194,7 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
   }
   if (method === 'operationReview') return { kind: demoSnapshot.operation.kind, token: `demo-${demoSnapshot.version}`, files: demoSnapshot.changes.filter(file=>file.indexStatus!==' '&&!file.untracked).map(file=>({path:file.path,lines:[]})) };
   if (method === 'pickWorktree') return 'D:\\Projects\\AlwayGit-new';
-  if(method==='diffPreview'){const target=payload as {path:string;kind:string;area?:string;oid?:string;parent?:string;left?:string;right?:string};return {kind:'text',path:target.path,leftLabel:target.kind==='comparison'?target.left?.slice(0,8):target.kind==='commit'?'Parent '+(target.parent??'').slice(0,8):target.area==='staged'?'HEAD':'Index',rightLabel:target.kind==='comparison'?target.right?.slice(0,8):target.kind==='commit'?target.oid?.slice(0,8):target.area==='staged'?'Index':'Working Tree',left:'export function Workbench() {\n  return <HistoryPanel />;\n}\n',right:'export function Workbench() {\n  return (\n    <WorkbenchLayout>\n      <HistoryPanel />\n      <CommitDetails />\n    </WorkbenchLayout>\n  );\n}\n'};}
+  if(method==='diffPreview'||method==='isolatedDiffPreview'){const target=payload as {path:string;kind:string;area?:string;oid?:string;parent?:string;left?:string;right?:string};return {kind:'text',path:target.path,leftLabel:target.kind==='comparison'?target.left?.slice(0,8):target.kind==='commit'?'Parent '+(target.parent??'').slice(0,8):target.area==='staged'?'HEAD':'Index',rightLabel:target.kind==='comparison'?target.right?.slice(0,8):target.kind==='commit'?target.oid?.slice(0,8):target.area==='staged'?'Index':'Working Tree',left:'export function Workbench() {\n  return <HistoryPanel />;\n}\n',right:'export function Workbench() {\n  return (\n    <WorkbenchLayout>\n      <HistoryPanel />\n      <CommitDetails />\n    </WorkbenchLayout>\n  );\n}\n'};}
   if(method==='copyText'){const {text}=payload as {text:string};if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(text);else throw new Error('Clipboard is unavailable in this browser.');return null;}
   if (method === 'action') {
     const action = payload as GitAction;
