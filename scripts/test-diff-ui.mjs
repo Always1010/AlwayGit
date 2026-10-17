@@ -145,9 +145,12 @@ export async function verifyDiffNavigation(browser, url) {
     await diff.locator('.line-number').getByText('5000000',{exact:true}).first().waitFor();
     assert.ok(await diff.locator('.diff-line').count()<100,'Scaled scrolling reaches all rows without a browser height limit');
     await page.evaluate(()=>{const f=window.__diffFixture;f.holdPath='diff.txt';f.emit();});
-    await count.getByText('Loading Diff…',{exact:true}).waitFor();
-    assert.equal(await summary.locator('.diff-change-modified').innerText(),'~…','A pending complete comparison must not report zero changes');
+    await page.waitForFunction(()=>window.__diffFixture.held.length>0);
+    assert.equal(await count.innerText(),'1/1','A same-file refresh retains the previous block position until its response');
+    assert.equal(await summary.locator('.diff-change-modified').innerText(),'~1','A same-file refresh retains the previous statistics without flicker');
+    assert.equal(await diff.getByRole('button',{name:'Next change'}).isDisabled(),true,'Pending refresh disables navigation over the old comparison');
     await page.evaluate(()=>{const f=window.__diffFixture;f.holdPath=null;f.held.splice(0).forEach(reply=>reply());});
+    await page.waitForFunction(()=>!document.querySelector('[data-testid="diff-preview"] [aria-label="Next change"]').disabled);
     await count.getByText('1/1',{exact:true}).waitFor();
     await page.evaluate(()=>{const f=window.__diffFixture;f.failPath='diff.txt';f.emit();});
     await diff.getByRole('alert').getByText('Read failed',{exact:true}).waitFor();
