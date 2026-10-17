@@ -14,6 +14,7 @@ import { Sidebar } from './Sidebar';
 import { RepositoryCatalogStatus } from './RepositoryCatalogStatus';
 import { History } from './History';
 import { Details } from './Details';
+import { BranchComparison } from './BranchComparison';
 import { BottomDock } from './BottomDock';
 import { ActionFeedbackBar } from './ActionFeedbackBar';
 import { blocksWorkbench } from './actionFeedback';
@@ -52,6 +53,7 @@ const HelpDialog = lazy(() => import('./HelpDialog'));
 
 export function App() {
   const state=useWorkbenchFields('repoId','language','changeListMode','operationSettings','appearance','layout','snapshot','loading','catalogState','catalogError','repositories','busy','activity','diffTarget','notice','error','actionFeedback','checkoutFailure','stashApplyFailure','remoteRequest','operationReview','settingsBaseline','locateHead','refresh','execute','selectWorking','restoreLayout','beginSettings','setLayout'),t=useTranslation(),[dialog,setDialog]=useState<DialogRequest>(),[repositoryDialog,setRepositoryDialog]=useState(false),[repositoryRemoval,setRepositoryRemoval]=useState<RepositoryGroup[]>(),[repositoryFetch,setRepositoryFetch]=useState<Repository[]>(),[context,setContext]=useState<{x:number;y:number;target:MenuTarget;anchor:HTMLElement}>();
+  const [branchComparison, setBranchComparison] = useState<{repoId: string; base: string; target: string}>();
   const progressFeedback = state.actionFeedback?.status === 'running' ? state.actionFeedback : undefined;
   const blockInteraction = state.busy && state.actionFeedback?.status !== 'error' && blocksWorkbench(progressFeedback?.action ?? state.activity);
   const mainPanel=useRef<HTMLElement>(null),[mainPanelHeight,setMainPanelHeight]=useState(0);
@@ -161,7 +163,7 @@ export function App() {
   const branchState=repositoryState==='branch'?t("workbench.currentBranch", { branch: (snapshot!.branch) }):repositoryState==='detached'?uiText("workbench.detachedHEAD"):repositoryState==='opening'?t("workbench.openingRepository"):repositoryState==='unavailable'?t("workbench.repositoryUnavailable"):t("workbench.noRepositorySelected");
   const branchTitle=snapshot?[snapshot.repository.name,branchState,snapshot.upstream?t("workbench.upstream", { upstream: (snapshot.upstream) }):undefined].filter(Boolean).join('\n'):branchState;
   const maxDiffHeight=Math.max(130,(mainPanelHeight||576)-126),diffHeight=Math.min(layout.diff,maxDiffHeight);
-  const menuApi=useMemo<MenuApi>(()=>({open,checkout,startCommit,openDiff:target=>void host('diff',target),editFile:target=>void edit(target),host,addRepository,removeRepositories:groups=>{setContext(undefined);setRepositoryRemoval(groups);},fetchRepositories:repositories=>setRepositoryFetch(repositories)}),[open,checkout,startCommit,host,edit,addRepository]);
+  const menuApi=useMemo<MenuApi>(()=>({open,checkout,startCommit,compareBranches:(base,target)=>{ const repoId=useWorkbench.getState().repoId; if(repoId){setContext(undefined);setBranchComparison({repoId,base,target});} },openDiff:target=>void host('diff',target),editFile:target=>void edit(target),host,addRepository,removeRepositories:groups=>{setContext(undefined);setRepositoryRemoval(groups);},fetchRepositories:repositories=>setRepositoryFetch(repositories)}),[open,checkout,startCommit,host,edit,addRepository]);
   const sidebarActions=useCallback((target:MenuTarget)=>menuFor(target,menuApi).items,[menuApi]);
   const cherryPickCheck=useCherryPickCheck(state.repoId,state.snapshot?.head,state.snapshot?.branch,context?.target);
   const menu=context?menuFor(context.target,menuApi,cherryPickCheck):undefined;
@@ -206,6 +208,7 @@ export function App() {
       </>}
       {!layout.diffCollapsed&&<ResizeHandle axis="y" label={uiText("workbench.resizeDiffPanel")} value={diffHeight} min={130} max={maxDiffHeight} reverse onChange={diff=>state.setLayout({diff})}/>}<BottomDock native={native} edit={editSelected}/>
     </main></div>
+    {branchComparison&&branchComparison.repoId===state.repoId&&<BranchComparison key={branchComparison.repoId} repoId={branchComparison.repoId} initialBase={branchComparison.base} initialTarget={branchComparison.target} onClose={()=>setBranchComparison(undefined)}/>}
     {dialog&&snapshot&&!state.checkoutFailure&&!state.operationReview&&<ActionDialog key={`${state.repoId}-${dialog.type}-${dialog.target}-${dialog.sources?.join('|')}-${dialog.names?.join('|')}-${dialog.remoteBranches?.join('|')}-${dialog.pop}`} dialog={dialog} onClose={()=>setDialog(undefined)} openAbort={()=>open({type:'operation.abort'})} replaceDialog={setDialog}/>}
     {repositoryDialog&&<RepositoryDialog onClose={()=>setRepositoryDialog(false)}/>}
     {repositoryRemoval&&<RepositoryRemoveDialog groups={repositoryRemoval} onClose={()=>setRepositoryRemoval(undefined)}/>}

@@ -364,6 +364,15 @@ Ref checkboxes control which history you see; branch names and row selections co
 
 ![Figure 14 Exactly two selected Commits automatically compared with endpoints and files on the right](images/user-manual/figure-14.png)
 
+### Compare branches without checkout
+
+1. Right-click a local or remote branch and choose **Compare with Current Branch**. Select the base and target branches in the dialog; neither selection checks out a branch.
+2. The default review mode shows the target's changes since the common ancestor. Choose **Endpoint snapshots** to compare the two branch tips directly. The reverse button swaps the pinned endpoints and recomputes the review direction.
+3. Both sides show their exclusive commit counts and paginated commit lists. Click a commit to inspect its files and Diff; use the back arrow to return to branch changes. Filter changed files by path and select a file to use the same text, image, and binary preview as the workbench.
+4. The endpoint object IDs stay fixed when reading files, changing mode, paging, or reversing direction. When a branch moves or disappears, the dialog shows an update indicator. Use its refresh button to resolve the selected references again; it does not Fetch.
+
+If no common ancestor exists, review mode explains why it cannot show files; endpoint snapshots remain available. If there are several common ancestors, select one explicitly or use endpoint snapshots. Closing the dialog preserves the graph, File History, working selection, and commit drafts. Comparison selections are local to the open dialog.
+
 <a id="section-04-05"></a>
 
 ### Read and navigate diffs

@@ -1168,6 +1168,102 @@ export const catalog = {
     "en": "Refresh",
     "zh-CN": "刷新"
   },
+  "comparison.title": {
+    "en": "Compare branches",
+    "zh-CN": "比较分支"
+  },
+  "comparison.base": {
+    "en": "Base branch",
+    "zh-CN": "基准分支"
+  },
+  "comparison.target": {
+    "en": "Target branch",
+    "zh-CN": "目标分支"
+  },
+  "comparison.reverse": {
+    "en": "Reverse comparison",
+    "zh-CN": "反向比较"
+  },
+  "comparison.mode": {
+    "en": "Comparison mode",
+    "zh-CN": "比较模式"
+  },
+  "comparison.review": {
+    "en": "Target changes since common ancestor",
+    "zh-CN": "目标自共同祖先以来的改动"
+  },
+  "comparison.snapshot": {
+    "en": "Endpoint snapshots",
+    "zh-CN": "两端快照"
+  },
+  "comparison.refresh": {
+    "en": "Refresh pinned revisions",
+    "zh-CN": "刷新固定版本"
+  },
+  "comparison.mergeBase": {
+    "en": "Common ancestor",
+    "zh-CN": "共同祖先"
+  },
+  "comparison.updated": {
+    "en": "Branch updated · refresh to compare latest",
+    "zh-CN": "分支已有更新 · 刷新以比较最新版本"
+  },
+  "comparison.loading": {
+    "en": "Loading comparison…",
+    "zh-CN": "正在加载比较…"
+  },
+  "comparison.baseOnly": {
+    "en": "Base only · {{count}} commits",
+    "zh-CN": "仅基准分支 · {{count}} 个提交"
+  },
+  "comparison.targetOnly": {
+    "en": "Target only · {{count}} commits",
+    "zh-CN": "仅目标分支 · {{count}} 个提交"
+  },
+  "comparison.more": {
+    "en": "Load more",
+    "zh-CN": "加载更多"
+  },
+  "comparison.multipleBases": {
+    "en": "Multiple common ancestors. Choose one explicitly or use endpoint snapshots.",
+    "zh-CN": "存在多个共同祖先，请明确选择一个，或使用两端快照模式。"
+  },
+  "comparison.noBase": {
+    "en": "No common ancestor. Use endpoint snapshots to compare unrelated histories.",
+    "zh-CN": "没有共同祖先，请使用两端快照模式比较独立历史。"
+  },
+  "comparison.chooseBase": {
+    "en": "Choose a common ancestor",
+    "zh-CN": "选择共同祖先"
+  },
+  "comparison.files": {
+    "en": "Changed files · {{count}}",
+    "zh-CN": "变更文件 · {{count}}"
+  },
+  "comparison.back": {
+    "en": "Return to branch changes",
+    "zh-CN": "返回分支改动"
+  },
+  "comparison.compareCurrent": {
+    "en": "Compare with Current Branch",
+    "zh-CN": "与当前分支比较"
+  },
+  "comparison.invalidQuery": {
+    "en": "Invalid branch comparison query.",
+    "zh-CN": "分支比较参数无效。"
+  },
+  "comparison.mergeBaseFailed": {
+    "en": "Unable to read common ancestors.",
+    "zh-CN": "无法读取共同祖先。"
+  },
+  "comparison.invalidMergeBase": {
+    "en": "The selected commit is not a common ancestor for this comparison.",
+    "zh-CN": "所选提交不是本次比较的共同祖先。"
+  },
+  "comparison.unavailable": {
+    "en": "Branch comparison is unavailable.",
+    "zh-CN": "分支比较不可用。"
+  },
   "confirm.discardAll": {
     "en": "Discard ALL staged and unstaged changes in {{count}} paths? Added and untracked files will be deleted; tracked content returns to the current commit (or an empty Index before the first commit).",
     "zh-CN": "丢弃 {{count}} 个路径中的全部暂存和未暂存更改？新增文件和未跟踪文件将删除；已跟踪内容恢复至当前提交，尚无提交时清空暂存区。"
@@ -6808,6 +6904,30 @@ export interface MessageParameters {
   "common.apply": {  };
   "common.languageVariant2": {  };
   "common.refresh": {  };
+  "comparison.title": {  };
+  "comparison.base": {  };
+  "comparison.target": {  };
+  "comparison.reverse": {  };
+  "comparison.mode": {  };
+  "comparison.review": {  };
+  "comparison.snapshot": {  };
+  "comparison.refresh": {  };
+  "comparison.mergeBase": {  };
+  "comparison.updated": {  };
+  "comparison.loading": {  };
+  "comparison.baseOnly": { count: number };
+  "comparison.targetOnly": { count: number };
+  "comparison.more": {  };
+  "comparison.multipleBases": {  };
+  "comparison.noBase": {  };
+  "comparison.chooseBase": {  };
+  "comparison.files": { count: number };
+  "comparison.back": {  };
+  "comparison.compareCurrent": {  };
+  "comparison.invalidQuery": {  };
+  "comparison.mergeBaseFailed": {  };
+  "comparison.invalidMergeBase": {  };
+  "comparison.unavailable": {  };
   "confirm.discardAll": { count: number };
   "confirm.detachedHead": {  };
   "confirm.discard": { count: number };

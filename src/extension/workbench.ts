@@ -9,7 +9,7 @@ import { SnapshotCoordinator } from '../application/snapshot-coordinator';
 import { QueryCoordinator } from '../application/query-coordinator';
 import { reflogQuerySchema } from '../protocol/reflog';
 import { readQueryCategory } from '../protocol/queries';
-import { worktreeOverviewSchema, externalUrlSchema, remoteLinksSchema, remoteTagsSchema, cancelQuerySchema, actionSchema, operationSettingsSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, cherryPickCheckSchema, diffSchema, diffPreviewSchema, diffPageSchema, diffReleaseSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema, repositoryDiscoverySchema, cancelRepositoryDiscoverySchema, addRepositoriesSchema, reorderRepositorySchema, createRepositoryCollectionSchema } from '../protocol/validation';
+import { worktreeOverviewSchema, externalUrlSchema, remoteLinksSchema, remoteTagsSchema, cancelQuerySchema, actionSchema, operationSettingsSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, branchComparisonSchema, cherryPickCheckSchema, diffSchema, diffPreviewSchema, diffPageSchema, diffReleaseSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema, repositoryDiscoverySchema, cancelRepositoryDiscoverySchema, addRepositoriesSchema, reorderRepositorySchema, createRepositoryCollectionSchema } from '../protocol/validation';
 import * as vscode from 'vscode';
 import { randomBytes } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -655,6 +655,7 @@ export class Workbench implements vscode.Disposable {
       case 'inspectDetails':
       case 'details': { const data = detailsSchema.parse(request.payload); return this.git.details(repo, data.oid, data.parent); }
       case 'stashDetails': { const data = detailsSchema.parse(request.payload); return this.git.stashDetails(repo, data.oid); }
+      case 'branchComparison': { const data=branchComparisonSchema.parse(request.payload); if (!this.git.branchComparison) throw new MessageError(message('comparison.unavailable')); return this.git.branchComparison(repo,data); }
       case 'compare': { const data=comparisonSchema.parse(request.payload); return this.git.compare(repo,data.left,data.right,data.preserveOrder); }
       case 'diff': await this.projects.openDiff(repo.root, diffSchema.parse(request.payload)); return null;
       case 'isolatedDiffPreview': { const { paged, summaryOnly, ...target } = diffPreviewSchema.parse(request.payload); const owner = source ? source.isolatedDiffOwner ?? (source.isolatedDiffOwner = {}) : this.isolatedDiffOwner; return paged ? this.documents.indexedPreview(repo, target, !summaryOnly, owner) : this.documents.preview(repo, target, summaryOnly ? undefined : owner); }

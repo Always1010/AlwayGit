@@ -157,8 +157,8 @@ The explicit catalog is shared across windows in the same Profile and local/remo
 | Repository, single | Switch to Repository; Open in New AlwayGit Tab; Open Repository in New Project Window; Fetch…; Refresh Status; Copy Repository Path; Move to Repository Group…; Remove from AlwayGit… |
 | Repositories, multiple | Fetch N Repositories…; Refresh Status for N Repositories; Copy N Repository Paths; Move to Repository Group…; Remove from AlwayGit… |
 | Repository Group | Rename Repository Group…; Delete Repository Group… |
-| Local Branch | Checkout…; Add to Graph Scope; Show Only This Branch History; Locate Branch Tip in Graph; Create Branch…; Create Tag…; Merge…; Rebase…; Push…; Delete Branch…; Copy Branch Name |
-| Remote Branch | Add to Graph Scope; Show Only This Branch History; Checkout as Local Branch…; Merge…; Rebase…; Delete Branch from remote…; Copy Branch Name |
+| Local Branch | Compare with Current Branch; Checkout…; Add to Graph Scope; Show Only This Branch History; Locate Branch Tip in Graph; Create Branch…; Create Tag…; Merge…; Rebase…; Push…; Delete Branch…; Copy Branch Name |
+| Remote Branch | Compare with Current Branch; Add to Graph Scope; Show Only This Branch History; Checkout as Local Branch…; Merge…; Rebase…; Delete Branch from remote…; Copy Branch Name |
 | Remote branch directory/multiple | Create Local Tracking Branches…; bulk Graph filters, remote deletion, and name copying |
 | Remote, e.g. origin | Fetch…; Create Local Tracking Branches…; Refresh |
 | Tag | Show Only This Tag History; Locate Tag Commit in Graph; Push Tag…; Delete Tag…; Copy Tag Name; Copy Commit ID |
@@ -166,6 +166,8 @@ The explicit catalog is shared across windows in the same Profile and local/remo
 | Worktree | Open Worktree; Open Worktree in New Project Window; Refresh; Remove Worktree…; Copy Worktree Path |
 | Worktrees, multiple | Refresh; Copy N Worktree Paths |
 | Staged/Unstaged files | Stage/Unstage; Stash Selected Files…; applicable Discard…; Copy Paths; unified mode also Commit/Commit Selected; single-file Diff/edit/history |
+
+Local and remote branch menus include `Compare with Current Branch`. The independent comparison dialog selects base and target without checkout. Review mode compares the selected common ancestor to the target by default; snapshot mode compares both tips. Reverse preserves and swaps pinned endpoint OIDs. The service returns separate exclusive-commit counts and bounded pages for each side. Commit inspection, changed-file filtering, and the shared Diff preview remain local to the dialog. File History, graph scope, original preview, and drafts are preserved. Endpoints remain pinned across reads and mode changes; reference updates show an indicator until explicit refresh. Unrelated histories allow snapshots only; multiple merge bases require explicit selection for review. No comparison action Fetches or changes Git state.
 
 <a id="sidebar-section-actions"></a>
 

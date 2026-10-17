@@ -5,7 +5,7 @@ import { access, lstat, mkdtemp, open, realpath, readFile, readlink, rm, writeFi
 import { tmpdir } from 'node:os';
 import { constants } from 'node:fs';
 import path from 'node:path';
-import type { Change, CheckoutBlocker, Commit, CommitComparison, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationReview, OperationState, Repository, RepositoryStatus, Snapshot, Stash, StashApplyBlocker, StashDetails, Worktree, WorktreeOverviewEntry } from '../protocol/types';
+import type { BranchComparison, BranchComparisonQuery, Change, CheckoutBlocker, Commit, CommitComparison, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationReview, OperationState, Repository, RepositoryStatus, Snapshot, Stash, StashApplyBlocker, StashDetails, Worktree, WorktreeOverviewEntry } from '../protocol/types';
 import { branchNameConflict, branchNameConflictMessage, branchNameProblem, branchNameProblemMessage } from '../protocol/ref-name';
 import { remoteNameProblem, remoteUrlProblem } from '../protocol/remote';
 import { combinePushResults, parsePushResult } from './push-result';
@@ -541,6 +541,28 @@ export class GitService implements GitServiceContract {
       }
     }
     return conflicts;
+  }
+  /** Resolve refs once, then use only immutable commit objects for all reads. */
+  async branchComparison(repo: Repository, query: BranchComparisonQuery): Promise<BranchComparison> {
+    await this.verify(repo);
+    const mode = query.mode ?? 'review', limit = query.limit ?? 50;
+    if (!['review', 'snapshot'].includes(mode) || [query.baseOid, query.targetOid].some(value => value !== undefined && !/^[0-9a-f]{40,64}$/.test(value)) || !Number.isInteger(limit) || limit < 1 || limit > 300 || !!query.baseOid !== !!query.targetOid || [query.baseOffset, query.targetOffset].some(value => value !== undefined && (!Number.isInteger(value) || value < 0 || value > 1000000))) throw new GitError(localizeMessage('comparison.invalidQuery'), 'INVALID_ARGUMENT');
+    const [baseOid, targetOid] = await Promise.all([this.oid(repo, query.baseOid ?? query.baseRef), this.oid(repo, query.targetOid ?? query.targetRef)]);
+    const bases = await this.run(repo, ['merge-base', '--all', baseOid, targetOid], true);
+    if (bases.code !== 0 && bases.code !== 1) throw new GitError(localizeMessage('comparison.mergeBaseFailed'), 'GIT_ERROR');
+    const mergeBases = bases.stdout.toString('utf8').trim().split(/\s+/).filter(Boolean);
+    if (query.mergeBase && !mergeBases.includes(query.mergeBase)) throw new GitError(localizeMessage('comparison.invalidMergeBase'), 'INVALID_ARGUMENT');
+    const mergeBase = query.mergeBase ?? (mergeBases.length === 1 ? mergeBases[0] : undefined);
+    const diffBase = mode === 'snapshot' ? baseOid : mergeBase;
+    const page = async (tip: string, other: string, offset = 0) => {
+      const [count, result] = await Promise.all([this.text(repo, ['rev-list', '--count', tip, `^${other}`, '--']), this.run(repo, ['log', '--topo-order', '-z', `--format=${commitFormat}`, `--skip=${offset}`, `--max-count=${limit}`, tip, `^${other}`, '--'])]);
+      const values = result.stdout.toString('utf8').split('\0'), commits: Commit[] = [];
+      for (let index = 0; index + 5 < values.length; index += 6) commits.push(parseCommit(values.slice(index, index + 6)));
+      const total = Number(count), nextOffset = offset + commits.length;
+      return { commits, total, nextOffset, hasMore: nextOffset < total };
+    };
+    const [base, target, diff] = await Promise.all([page(baseOid, targetOid, query.baseOffset), page(targetOid, baseOid, query.targetOffset), diffBase ? this.run(repo, ['diff', '--name-status', '-z', '-M', diffBase, targetOid, '--']) : undefined]);
+    return { baseRef: query.baseRef, targetRef: query.targetRef, baseOid, targetOid, mode, mergeBases, mergeBase, diffBase, files: diff ? parseCommitFiles(diff.stdout) : [], base, target };
   }
   async compare(repo:Repository,leftRevision:string,rightRevision:string,preserveOrder=false):Promise<CommitComparison>{
     await this.verify(repo);let left=await this.oid(repo,leftRevision),right=await this.oid(repo,rightRevision);
