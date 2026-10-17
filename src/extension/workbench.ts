@@ -9,7 +9,7 @@ import { SnapshotCoordinator } from '../application/snapshot-coordinator';
 import { QueryCoordinator } from '../application/query-coordinator';
 import { reflogQuerySchema } from '../protocol/reflog';
 import { readQueryCategory } from '../protocol/queries';
-import { externalUrlSchema, remoteLinksSchema, remoteTagsSchema, cancelQuerySchema, actionSchema, operationSettingsSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, cherryPickCheckSchema, diffSchema, diffPreviewSchema, diffPageSchema, diffReleaseSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema, repositoryDiscoverySchema, cancelRepositoryDiscoverySchema, addRepositoriesSchema, reorderRepositorySchema, createRepositoryCollectionSchema } from '../protocol/validation';
+import { worktreeOverviewSchema, externalUrlSchema, remoteLinksSchema, remoteTagsSchema, cancelQuerySchema, actionSchema, operationSettingsSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, cherryPickCheckSchema, diffSchema, diffPreviewSchema, diffPageSchema, diffReleaseSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema, repositoryDiscoverySchema, cancelRepositoryDiscoverySchema, addRepositoriesSchema, reorderRepositorySchema, createRepositoryCollectionSchema } from '../protocol/validation';
 import * as vscode from 'vscode';
 import { randomBytes } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -647,6 +647,7 @@ export class Workbench implements vscode.Disposable {
       case 'remoteTags': { const data = remoteTagsSchema.parse(request.payload); if (!this.git.remoteTags) throw new MessageError(message('tags.unavailable')); return this.git.remoteTags(repo, data.remote, data.expectedDestination); }
       case 'remoteLinks': { const data=remoteLinksSchema.parse(request.payload??{});return this.git.remoteLinks?.(repo,data.remote,data.branch)??{repositories:[]}; }
       case 'reflog': { if (!this.git.reflog) throw new MessageError(message('reflog.unavailable')); return this.git.reflog(repo, reflogQuerySchema.parse(request.payload ?? {})); }
+      case 'worktreeOverview': { const data = worktreeOverviewSchema.parse(request.payload ?? {}); if (!this.git.worktreeOverview) throw new MessageError(message('overview.unavailable')); return this.git.worktreeOverview(repo, data.paths); }
       case 'history': return this.git.history(repo, { limit: vscode.workspace.getConfiguration('alwaygit').get<number>('historyPageSize', 300), ...historySchema.parse(request.payload ?? {}) });
       case 'cherryPickCheck': { const data=cherryPickCheckSchema.parse(request.payload); return this.git.cherryPickCheck(repo,data.commits,data); }
       case 'operationReview': return this.git.reviewOperation(repo);
@@ -673,10 +674,14 @@ export class Workbench implements vscode.Disposable {
       case 'openProject': return this.projects.openProject(repo.root);
       case 'openWorktree': {
         const data = openWorktreeSchema.parse(request.payload);
-        const snapshot = await this.snapshots.read(repo.id, () => this.git.snapshot(repo));
+        const trees = this.git.worktreeOverview ? await this.git.worktreeOverview(repo) : (await this.snapshots.read(repo.id, () => this.git.snapshot(repo))).worktrees;
         const normalized = (value: string) => process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
-        const worktree = snapshot.worktrees.find(w => normalized(w.path) === normalized(data.path));
+        const worktree = trees.find(w => normalized(w.path) === normalized(data.path));
         if (!worktree || worktree.bare) throw new Error(this.text("host.selectARegisteredNonBareWorktree"));
+        const verifiedMember = await this.git.discover(worktree.path);
+        if (normalized(verifiedMember.commonDir) !== normalized(repo.commonDir) || normalized(verifiedMember.root) !== normalized(worktree.path)) throw new Error(this.text('host.selectARegisteredNonBareWorktree'));
+        if (data.action === 'project') return this.projects.openProject(verifiedMember.root);
+        if (data.action === 'terminal') { if (!source) throw new MessageError(message('overview.terminalRequiresWorkbench')); const member = await this.repositories.add(worktree.path); if (normalized(member.commonDir) !== normalized(repo.commonDir)) throw new Error(this.text('host.selectARegisteredNonBareWorktree')); await this.projects.notifyCatalogChanged(); return this.createTerminal(source, member.id, member.root, 'default', 80, 24); }
         if (normalized(worktree.path) === normalized(repo.root) && !data.newWindow) { if(source)this.selectPanelRepository(source,repo.id);else await this.open(repo.id); return null; }
         const registered = await this.repositories.add(worktree.path);
         await this.projects.notifyCatalogChanged();

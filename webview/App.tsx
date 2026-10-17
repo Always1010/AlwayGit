@@ -9,6 +9,7 @@ import { ActionDialog } from './ActionDialog';
 import { ContextMenu, type MenuItem } from './ContextMenu';
 import { RepositoryDialog } from './RepositoryDialog';
 import { RepositoryRemoveDialog } from './RepositoryRemoveDialog';
+import { WorktreeOverview } from './WorktreeOverview';
 import { Sidebar } from './Sidebar';
 import { RepositoryCatalogStatus } from './RepositoryCatalogStatus';
 import { History } from './History';
@@ -77,6 +78,10 @@ export function App() {
   }), []);
   const [reflogOpen,setReflogOpen]=useState(false);
   const [helpOpen,setHelpOpen]=useState(false);
+  const [overviewOpen,setOverviewOpen]=useState(false);
+  const previousOverviewRegion=useRef(region);
+  const closeOverview=()=>{setOverviewOpen(false);setRegion(previousOverviewRegion.current);};
+  useEffect(()=>setOverviewOpen(false),[state.repoId]);
   const [projectNotice,setProjectNotice]=useState<Extract<OpenProjectResult,{kind:'current-window'}>>();
   const projectRequest=useRef(0);
   useEffect(()=>{projectRequest.current++;setProjectNotice(undefined);return()=>{projectRequest.current++;};},[state.repoId]);
@@ -192,11 +197,12 @@ export function App() {
     {state.notice&&!state.busy&&!state.actionFeedback&&<div className="banner notice" role="status"><Icon name="info"/><span>{state.notice}</span><Button className="icon-only" icon="close" title={t("workbench.dismissNotification")} aria-label={t("workbench.dismissNotification")} onClick={()=>useWorkbench.setState({notice:undefined})}/></div>}
     {state.error&&state.error!==state.actionFeedback?.error&&!state.checkoutFailure&&!state.stashApplyFailure&&<div className="banner error" role="alert"><Icon name="error"/><span>{state.error}</span><Button onClick={()=>void host('showLog')}>{t("workbench.showLog")}</Button><Button icon="close" aria-label={uiText("workbench.dismissError")} onClick={()=>useWorkbench.setState({error:undefined})}/></div>}
     {compact && <nav className="compact-regions" aria-label={t('workbenchEntry.compactNavigation')}>
-      {([{ id: 'repositories', icon: 'repo', label: 'workbenchEntry.repositoriesTab' }, { id: 'history', icon: 'git-commit', label: 'workbenchEntry.historyTab' }, { id: 'details', icon: 'files', label: 'workbenchEntry.detailsTab' }, { id: 'diff', icon: 'terminal', label: 'workbenchEntry.diffTab' }] as const).map(item => <button type="button" key={item.id} aria-pressed={region === item.id} onClick={() => setRegion(item.id)}><Icon name={item.icon}/><span>{t(item.label)}</span></button>)}
+      {([{ id: 'repositories', icon: 'repo', label: 'workbenchEntry.repositoriesTab' }, { id: 'history', icon: 'git-commit', label: 'workbenchEntry.historyTab' }, { id: 'details', icon: 'files', label: 'workbenchEntry.detailsTab' }, { id: 'diff', icon: 'terminal', label: 'workbenchEntry.diffTab' }] as const).map(item => <button type="button" key={item.id} aria-pressed={region === item.id} onClick={() => {setOverviewOpen(false);setRegion(item.id);}}><Icon name={item.icon}/><span>{t(item.label)}</span></button>)}
     </nav>}
-    <div className="workspace"><Sidebar context={showContext} actions={sidebarActions} checkoutBranch={checkoutBranch} openWorktree={openWorktree}/><ResizeHandle axis="x" label={uiText("workbench.resizeRepositorySidebar")} value={layout.sidebar} min={160} max={360} onChange={sidebar=>state.setLayout({sidebar})}/><main ref={mainPanel} className={`main-panel${layout.diffCollapsed?' diff-collapsed':''}`} style={{'--diff-height':`${diffHeight}px`} as React.CSSProperties}>
+    <div className="workspace"><Sidebar context={showContext} actions={sidebarActions} checkoutBranch={checkoutBranch} openWorktree={openWorktree} openOverview={()=>{if(!overviewOpen)previousOverviewRegion.current=region;setOverviewOpen(true);setRegion('history');}}/><ResizeHandle axis="x" label={uiText("workbench.resizeRepositorySidebar")} value={layout.sidebar} min={160} max={360} onChange={sidebar=>state.setLayout({sidebar})}/><main ref={mainPanel} className={`main-panel${layout.diffCollapsed?' diff-collapsed':''}`} style={{'--diff-height':`${diffHeight}px`} as React.CSSProperties}>
       {!snapshot&&state.catalogState!=='ready'?<RepositoryCatalogStatus phase={state.catalogState} error={state.catalogError} retry={()=>void useWorkbench.getState().initialize()} showLog={()=>void host('showLog')}/>:!snapshot?<Empty title={repositoryState==='opening'?t("workbench.openingRepository"):repositoryState==='unavailable'?t("workbench.repositoryUnavailable"):hasRepositories?t("workbench.noRepositorySelected"):t("workbench.noRepositoriesAdded")}>{repositoryState!=='opening'&&<>{repositoryState==='unavailable'?<span>{t("workbench.theRepositoryFolderNoLongerExistsOrCannotBe")}</span>:hasRepositories?<span>{t("workbench.chooseARepositoryFromTheWorkbenchSidebarToBegin")}</span>:<span>{t("workbench.scanAFolderAndChooseWhichGitRepositoriesAlwayGit")}</span>}<Button className={!hasRepositories?'primary':''} icon="folder-opened" onClick={()=>void addRepository()}>{hasRepositories?t("workbench.addRepositories"):t("workbench.findAndAddRepositories")}</Button><Button icon="question" onClick={showHelp}>{t("workbench.quickStart")}</Button></>}</Empty>:<>
-        <div className="top-panels"><History context={showContext} checkout={checkout} checkoutBranch={checkoutBranch}/><ResizeHandle axis="x" label={uiText("workbench.resizeDetailsPanel")} value={layout.details} min={230} max={480} reverse onChange={details=>state.setLayout({details})}/><Details open={open} edit={editSelected} context={showContext} startCommit={()=>startCommit()}/></div>
+        <div className="top-panels" style={overviewOpen?{display:'none'}:undefined}><History context={showContext} checkout={checkout} checkoutBranch={checkoutBranch}/><ResizeHandle axis="x" label={uiText("workbench.resizeDetailsPanel")} value={layout.details} min={230} max={480} reverse onChange={details=>state.setLayout({details})}/><Details open={open} edit={editSelected} context={showContext} startCommit={()=>startCommit()}/></div>
+        {overviewOpen&&<WorktreeOverview repository={snapshot.repository} close={closeOverview} terminalOpened={()=>{if(compact){setOverviewOpen(false);setRegion('diff');}}}/>}
       </>}
       {!layout.diffCollapsed&&<ResizeHandle axis="y" label={uiText("workbench.resizeDiffPanel")} value={diffHeight} min={130} max={maxDiffHeight} reverse onChange={diff=>state.setLayout({diff})}/>}<BottomDock native={native} edit={editSelected}/>
     </main></div>

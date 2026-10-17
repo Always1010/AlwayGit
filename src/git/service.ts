@@ -5,7 +5,7 @@ import { access, lstat, mkdtemp, open, realpath, readFile, readlink, rm, writeFi
 import { tmpdir } from 'node:os';
 import { constants } from 'node:fs';
 import path from 'node:path';
-import type { Change, CheckoutBlocker, Commit, CommitComparison, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationReview, OperationState, Repository, RepositoryStatus, Snapshot, Stash, StashApplyBlocker, StashDetails, Worktree } from '../protocol/types';
+import type { Change, CheckoutBlocker, Commit, CommitComparison, CommitDetails, CommitFile, ContentSource, GitAction, GitRef, GitServiceContract, HistoryPage, HistoryQuery, OperationReview, OperationState, Repository, RepositoryStatus, Snapshot, Stash, StashApplyBlocker, StashDetails, Worktree, WorktreeOverviewEntry } from '../protocol/types';
 import { branchNameConflict, branchNameConflictMessage, branchNameProblem, branchNameProblemMessage } from '../protocol/ref-name';
 import { remoteNameProblem, remoteUrlProblem } from '../protocol/remote';
 import { combinePushResults, parsePushResult } from './push-result';
@@ -372,6 +372,35 @@ export class GitService implements GitServiceContract {
     const records = decodePaths((await this.run(repo, ['worktree', 'list', '--porcelain', '-z'])).stdout).split('\0'); const result: Worktree[] = []; let current: Worktree | undefined;
     for (const record of records) { if (record.startsWith('worktree ')) { current = { path: record.slice(9), head: '', bare: false, detached: false }; result.push(current); } else if (current) { if (record.startsWith('HEAD ')) current.head = record.slice(5); else if (record.startsWith('branch ')) current.branch = record.slice(7).replace(/^refs\/heads\//, ''); else if (record === 'bare') current.bare = true; else if (record === 'detached') current.detached = true; else if (record.startsWith('locked')) current.locked = record.slice(7) || translate('en', "service.locked"); else if (record.startsWith('prunable')) current.prunable = record.slice(9) || translate('en', "service.prunable"); } }
     return result;
+  }
+  /** Inventory first; callers request small batches for incremental, cancellable reads. */
+  async worktreeOverview(repo: Repository, paths?: string[]): Promise<WorktreeOverviewEntry[]> {
+    await this.verify(repo);
+    const trees = await this.worktrees(repo);
+    if (!paths) return trees.map(tree => ({ ...tree, state: tree.bare ? 'bare' : 'pending' }));
+    if (!paths.length || paths.length > 3) throw new GitError(localizeMessage('overview.invalidBatch'), 'INVALID_ARGUMENT');
+    return Promise.all([...new Set(paths)].map(async target => {
+      const tree = trees.find(tree => normalized(tree.path) === normalized(target));
+      if (!tree) throw new GitError(localizeMessage('service.worktreeAlreadyRegistered'), 'INVALID_WORKTREE');
+      if (tree.bare) return { ...tree, state: 'bare' as const, refreshedAt: Date.now() };
+      try {
+        if (!await exists(tree.path)) return { ...tree, state: 'missing' as const, refreshedAt: Date.now() };
+        // Discover validates the Git identity before reading a registered path that may have been replaced.
+        const member = await this.discover(tree.path);
+        if (normalized(member.commonDir) !== normalized(repo.commonDir) || normalized(member.root) !== normalized(await canonicalPath(tree.path))) throw new GitError(localizeMessage('service.repositoryChangedReopenItBeforeContinuing'), 'REPOSITORY_CHANGED');
+        const status = await this.status(member);
+        const markers = await Promise.all(['rebase-merge', 'rebase-apply', 'MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'sequencer'].map(name => exists(path.join(member.gitDir!, name))));
+        const operation: WorktreeOverviewEntry['operation'] = markers[0] || markers[1] ? 'rebase' : markers[2] ? 'merge' : markers[3] ? 'cherry-pick' : markers[4] ? 'revert' : markers[5] ? 'sequencer' : undefined;
+        return { ...tree, branch: status.branch || undefined, detached: !status.branch, head: status.head ?? '', state: 'ready' as const, refreshedAt: Date.now(),
+          staged: status.changes.filter(change => !change.untracked && !change.conflict && change.indexStatus !== ' ').length,
+          unstaged: status.changes.filter(change => !change.untracked && !change.conflict && change.worktreeStatus !== ' ').length,
+          untracked: status.changes.filter(change => change.untracked).length, conflicts: status.changes.filter(change => change.conflict).length,
+          upstream: status.upstream, ahead: status.upstream ? status.ahead : undefined, behind: status.upstream ? status.behind : undefined, operation };
+      } catch (error) {
+        if (this.readSignal.getStore()?.controller.signal.aborted) throw error;
+        return { ...tree, state: 'error' as const, error: redactSecrets(error instanceof Error ? error.message : String(error)), refreshedAt: Date.now() };
+      }
+    }));
   }
   async history(repo: Repository, query: HistoryQuery = {}): Promise<HistoryPage> {
     await this.verify(repo); const offset = query.offset ?? 0; const limit = query.limit ?? 100;
