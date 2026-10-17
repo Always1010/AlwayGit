@@ -1,0 +1,206 @@
+{
+  "overview.title": {
+    "en": "Worktree Overview",
+    "zh-CN": "Worktree 总览",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.refresh": {
+    "en": "Refresh worktree status",
+    "zh-CN": "刷新 Worktree 状态",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.close": {
+    "en": "Return to history",
+    "zh-CN": "返回历史视图",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.loading": {
+    "en": "Reading worktree status…",
+    "zh-CN": "正在读取 Worktree 状态…",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.note": {
+    "en": "File counts may overlap: a file can be staged and unstaged. Conflicts are counted separately. Ahead/behind uses locally cached upstream information; no fetch is performed.",
+    "zh-CN": "文件计数可重叠：同一文件可同时包含已暂存和未暂存修改；冲突单独统计。领先/落后基于本地已缓存的上游信息，不执行 Fetch。",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.worktree": {
+    "en": "Worktree / path",
+    "zh-CN": "Worktree / 路径",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.head": {
+    "en": "Branch / HEAD",
+    "zh-CN": "分支 / HEAD",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.changes": {
+    "en": "Changed files",
+    "zh-CN": "变更文件",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.upstream": {
+    "en": "Upstream (local cache)",
+    "zh-CN": "上游（本地缓存）",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.state": {
+    "en": "Git / read status",
+    "zh-CN": "Git / 读取状态",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.actions": {
+    "en": "Actions",
+    "zh-CN": "操作",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.staged": {
+    "en": "Staged",
+    "zh-CN": "已暂存",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.unstaged": {
+    "en": "Unstaged",
+    "zh-CN": "未暂存",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.untracked": {
+    "en": "Untracked",
+    "zh-CN": "未跟踪",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.conflicts": {
+    "en": "Conflicts",
+    "zh-CN": "冲突",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.ready": {
+    "en": "Ready",
+    "zh-CN": "已读取",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.pending": {
+    "en": "Pending",
+    "zh-CN": "等待读取",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.missing": {
+    "en": "Missing directory",
+    "zh-CN": "目录缺失",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.error": {
+    "en": "Read failed",
+    "zh-CN": "读取失败",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.bare": {
+    "en": "Bare repository",
+    "zh-CN": "裸仓库",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.locked": {
+    "en": "Locked",
+    "zh-CN": "已锁定",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.prunable": {
+    "en": "Prunable registration",
+    "zh-CN": "可清理注册",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.refreshed": {
+    "en": "Last refreshed",
+    "zh-CN": "上次刷新",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.select": {
+    "en": "Open worktree in AlwayGit",
+    "zh-CN": "在 AlwayGit 中打开 Worktree",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.project": {
+    "en": "Open worktree project window",
+    "zh-CN": "打开 Worktree 项目窗口",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.terminal": {
+    "en": "Open terminal in this worktree",
+    "zh-CN": "在此 Worktree 打开终端",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.merge": {
+    "en": "Merge in progress",
+    "zh-CN": "正在合并",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.rebase": {
+    "en": "Rebase in progress",
+    "zh-CN": "正在变基",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.cherryPick": {
+    "en": "Cherry-pick in progress",
+    "zh-CN": "正在拣选",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.revert": {
+    "en": "Revert in progress",
+    "zh-CN": "正在还原",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.sequencer": {
+    "en": "Git sequence in progress",
+    "zh-CN": "Git 序列操作进行中",
+    "review": "translated",
+    "context": "webview/WorktreeOverview.tsx"
+  },
+  "overview.unavailable": {
+    "en": "Worktree overview is unavailable",
+    "zh-CN": "Worktree 总览不可用",
+    "review": "translated",
+    "context": "Worktree Overview"
+  },
+  "overview.terminalRequiresWorkbench": {
+    "en": "Open a workbench to create a terminal",
+    "zh-CN": "请打开工作台以创建终端",
+    "review": "translated",
+    "context": "Worktree Overview"
+  },
+  "overview.invalidBatch": {
+    "en": "Invalid worktree status batch",
+    "zh-CN": "Worktree 状态批次无效",
+    "review": "translated",
+    "context": "Worktree Overview"
+  }
+}

@@ -58,6 +58,14 @@ const effectiveDemoOperationSettings = (): OperationSettings => ({ ...demoUserOp
 async function demoRequest(method: RpcRequest['method'], payload: unknown, repoId?:string): Promise<unknown> {
   await new Promise(resolve => setTimeout(resolve, 110));
   const data=demoStores[repoId??repo.id]??demoStores[repo.id],demoSnapshot=data.snapshot,commits=data.commits;
+  if (method === 'worktreeOverview') {
+    const paths = (payload as { paths?: string[] } | undefined)?.paths;
+    return demoSnapshot.worktrees.filter(tree => !paths || paths.includes(tree.path)).map(tree => {
+      const changes = tree.path === demoSnapshot.repository.root ? demoSnapshot.changes : [];
+      return { ...tree, branch: tree.branch?.replace(/^refs\/heads\//, ''), state: paths ? 'ready' : 'pending', ...(paths ? { refreshedAt: Date.now(), staged: changes.filter(change => !change.untracked && !change.conflict && change.indexStatus !== ' ').length, unstaged: changes.filter(change => !change.untracked && !change.conflict && change.worktreeStatus !== ' ').length, untracked: changes.filter(change => change.untracked).length, conflicts: changes.filter(change => change.conflict).length } : {}) };
+    });
+  }
+
   const resolve=(ref:string)=>ref==='HEAD'?demoSnapshot.head!:demoSnapshot.refs.find(r=>r.name===ref||r.fullName===ref)?.oid??ref;
   if (method === 'workbenchOpenModeSettings' || method === 'saveWorkbenchLocations') {
     if (method === 'saveWorkbenchLocations') {

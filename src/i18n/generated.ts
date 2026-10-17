@@ -3687,6 +3687,142 @@ export const catalog = {
     "en": "I reviewed these warnings and intend to keep this staged content, including any literal markers.",
     "zh-CN": "我已检查以上提示，确认保留当前暂存内容（包括需要保留的标记文本）。"
   },
+  "overview.title": {
+    "en": "Worktree Overview",
+    "zh-CN": "Worktree 总览"
+  },
+  "overview.refresh": {
+    "en": "Refresh worktree status",
+    "zh-CN": "刷新 Worktree 状态"
+  },
+  "overview.close": {
+    "en": "Return to history",
+    "zh-CN": "返回历史视图"
+  },
+  "overview.loading": {
+    "en": "Reading worktree status…",
+    "zh-CN": "正在读取 Worktree 状态…"
+  },
+  "overview.note": {
+    "en": "File counts may overlap: a file can be staged and unstaged. Conflicts are counted separately. Ahead/behind uses locally cached upstream information; no fetch is performed.",
+    "zh-CN": "文件计数可重叠：同一文件可同时包含已暂存和未暂存修改；冲突单独统计。领先/落后基于本地已缓存的上游信息，不执行 Fetch。"
+  },
+  "overview.worktree": {
+    "en": "Worktree / path",
+    "zh-CN": "Worktree / 路径"
+  },
+  "overview.head": {
+    "en": "Branch / HEAD",
+    "zh-CN": "分支 / HEAD"
+  },
+  "overview.changes": {
+    "en": "Changed files",
+    "zh-CN": "变更文件"
+  },
+  "overview.upstream": {
+    "en": "Upstream (local cache)",
+    "zh-CN": "上游（本地缓存）"
+  },
+  "overview.state": {
+    "en": "Git / read status",
+    "zh-CN": "Git / 读取状态"
+  },
+  "overview.actions": {
+    "en": "Actions",
+    "zh-CN": "操作"
+  },
+  "overview.staged": {
+    "en": "Staged",
+    "zh-CN": "已暂存"
+  },
+  "overview.unstaged": {
+    "en": "Unstaged",
+    "zh-CN": "未暂存"
+  },
+  "overview.untracked": {
+    "en": "Untracked",
+    "zh-CN": "未跟踪"
+  },
+  "overview.conflicts": {
+    "en": "Conflicts",
+    "zh-CN": "冲突"
+  },
+  "overview.ready": {
+    "en": "Ready",
+    "zh-CN": "已读取"
+  },
+  "overview.pending": {
+    "en": "Pending",
+    "zh-CN": "等待读取"
+  },
+  "overview.missing": {
+    "en": "Missing directory",
+    "zh-CN": "目录缺失"
+  },
+  "overview.error": {
+    "en": "Read failed",
+    "zh-CN": "读取失败"
+  },
+  "overview.bare": {
+    "en": "Bare repository",
+    "zh-CN": "裸仓库"
+  },
+  "overview.locked": {
+    "en": "Locked",
+    "zh-CN": "已锁定"
+  },
+  "overview.prunable": {
+    "en": "Prunable registration",
+    "zh-CN": "可清理注册"
+  },
+  "overview.refreshed": {
+    "en": "Last refreshed",
+    "zh-CN": "上次刷新"
+  },
+  "overview.select": {
+    "en": "Open worktree in AlwayGit",
+    "zh-CN": "在 AlwayGit 中打开 Worktree"
+  },
+  "overview.project": {
+    "en": "Open worktree project window",
+    "zh-CN": "打开 Worktree 项目窗口"
+  },
+  "overview.terminal": {
+    "en": "Open terminal in this worktree",
+    "zh-CN": "在此 Worktree 打开终端"
+  },
+  "overview.merge": {
+    "en": "Merge in progress",
+    "zh-CN": "正在合并"
+  },
+  "overview.rebase": {
+    "en": "Rebase in progress",
+    "zh-CN": "正在变基"
+  },
+  "overview.cherryPick": {
+    "en": "Cherry-pick in progress",
+    "zh-CN": "正在拣选"
+  },
+  "overview.revert": {
+    "en": "Revert in progress",
+    "zh-CN": "正在还原"
+  },
+  "overview.sequencer": {
+    "en": "Git sequence in progress",
+    "zh-CN": "Git 序列操作进行中"
+  },
+  "overview.unavailable": {
+    "en": "Worktree overview is unavailable",
+    "zh-CN": "Worktree 总览不可用"
+  },
+  "overview.terminalRequiresWorkbench": {
+    "en": "Open a workbench to create a terminal",
+    "zh-CN": "请打开工作台以创建终端"
+  },
+  "overview.invalidBatch": {
+    "en": "Invalid worktree status batch",
+    "zh-CN": "Worktree 状态批次无效"
+  },
   "palettes.vivid12Colors": {
     "en": "Vivid · 12 colors",
     "zh-CN": "鲜明 · 12 色"
@@ -7292,6 +7428,40 @@ export interface MessageParameters {
   "operationsReview.editInVSCodeThenSaveAndStage": {  };
   "operationsReview.editInVSCode": {  };
   "operationsReview.iReviewedTheseWarningsAndIntendToKeepThis": {  };
+  "overview.title": {  };
+  "overview.refresh": {  };
+  "overview.close": {  };
+  "overview.loading": {  };
+  "overview.note": {  };
+  "overview.worktree": {  };
+  "overview.head": {  };
+  "overview.changes": {  };
+  "overview.upstream": {  };
+  "overview.state": {  };
+  "overview.actions": {  };
+  "overview.staged": {  };
+  "overview.unstaged": {  };
+  "overview.untracked": {  };
+  "overview.conflicts": {  };
+  "overview.ready": {  };
+  "overview.pending": {  };
+  "overview.missing": {  };
+  "overview.error": {  };
+  "overview.bare": {  };
+  "overview.locked": {  };
+  "overview.prunable": {  };
+  "overview.refreshed": {  };
+  "overview.select": {  };
+  "overview.project": {  };
+  "overview.terminal": {  };
+  "overview.merge": {  };
+  "overview.rebase": {  };
+  "overview.cherryPick": {  };
+  "overview.revert": {  };
+  "overview.sequencer": {  };
+  "overview.unavailable": {  };
+  "overview.terminalRequiresWorkbench": {  };
+  "overview.invalidBatch": {  };
   "palettes.vivid12Colors": {  };
   "palettes.balancedColorsForEverydayBranchHistory": {  };
   "palettes.distinct8Colors": {  };

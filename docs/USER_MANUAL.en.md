@@ -873,6 +873,10 @@ Hover or focus the status for details and the last successful check time, or cli
 
 First select the item you intend to operate on, then identify the current working repository. A blue selected row identifies the target of an action. The highlighted repository icon marks the current repository; a solid triangle marks the current Worktree or local branch. The current item and action selection can differ. Repositories, Local Branches, one Remote, Tags, and Worktrees retain only one blue action-selection scope at a time. Moving to another object type clears the previous blue selection without changing the current repository, current branch, or Graph checkboxes.
 
+Click the overview icon beside **Worktrees** to inspect every Git-registered worktree for the current logical repository, including directories not yet added to repository navigation. The table becomes cards in narrow windows. Rows show branch or Detached HEAD, short HEAD, staged/unstaged/untracked/conflict file counts, upstream, locally cached ahead/behind, active Git operation, locked/missing/read-error state, and last refresh time. Staged and unstaged counts can include the same file; conflicts are separate. This view performs no Fetch and does not indicate live Agent activity.
+
+Results fill in batches and retain readable rows when another directory fails. File events refresh the affected worktree; the refresh icon rereads all directories. Row icons select that worktree in AlwayGit, open its project window, or create a terminal in its directory. These actions are disabled for missing, unreadable, and bare repositories. Closing returns to the existing Graph/File History with selection, layout, and drafts retained. Closing or changing repositories cancels unfinished reads.
+
 <a id="section-02-01"></a>
 
 ### Add one repository or discover several
