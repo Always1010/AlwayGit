@@ -322,18 +322,27 @@ Each tab restores its own Webview state. A saved workspace session initializes o
 
 Git path/refresh interval changes require VS Code window reload. Applied interface theme/palette/type/density/language takes effect immediately.
 
+## Reflog and recovery
+
+The top More menu opens a separate Reflog dialog for the current worktree HEAD or a local branch. Entries show Git's original description, event time, actor and full commit ID. Inspect commits, merge parents and file diffs independently of the main Graph, File History and drafts. Bounded snapshots expire after ten minutes and page through at most the latest 5,000 entries; new records do not shift loaded pages. Refresh captures a new snapshot. Git reads support linked worktrees; unavailable objects report an error.
+
+Recovery binds the full selected OID and creates a named branch without switching by default. Switching requires the explicit checkbox and uses existing branch validation and write queues. Rebase recovery references have their own list. Reflog does not recover discarded uncommitted files.
+
 <a id="feature-and-environment-boundaries"></a>
 
 ## Feature and environment boundaries
 
 Git runs on the repository's extension host; architecture targets local, WSL, Remote SSH, and Dev Containers. Actual evidence is in [validation boundaries](VALIDATION.en.md#validation-evidence-and-boundaries). Untrusted workspaces do not run Git; browser-only virtual workspaces are unsupported.
 
-Whole-file/Git-hunk staging and ordinary Rebase are supported. Interactive Rebase, commit reordering, Squash, Fixup, Format Patch, remote Tag replacement, and freely floating panels are outside scope. Single/same-Remote bulk branch deletion, explicit Tag Push, and lease-protected remote Tag deletion are supported; see [operation restrictions](#disabled-and-blocked-operations) for confirmation/partial failures.
+Whole-file/Git-hunk staging, ordinary and interactive Rebase, commit reordering and Squash/Fixup are supported. Format Patch, remote Tag replacement, and freely floating panels are outside scope. Single/same-Remote bulk branch deletion, explicit Tag Push, and lease-protected remote Tag deletion are supported; see [operation restrictions](#disabled-and-blocked-operations) for confirmation/partial failures.
 
 Diff compares complete text read-only without line truncation, failing at resource limits. Supported images preview; other binary explains its status. Images/binary provide neither native editing nor Diff. Read limits/sources are in [Diff and native editors](ARCHITECTURE.en.md#diff-and-native-editors).
 
-## Reflog and recovery
 
-The top More menu opens a separate Reflog dialog for the current worktree HEAD or a local branch. Entries show Git's original description, event time, actor and full commit ID. Inspect commits, merge parents and file diffs independently of the main Graph, File History and drafts. Bounded snapshots expire after ten minutes and page through at most the latest 5,000 entries; new records do not shift loaded pages. Refresh captures a new snapshot. Git reads support linked worktrees; unavailable objects report an error.
+## Interactive Rebase
 
-Recovery binds the full selected OID and creates a named branch without switching by default. Switching requires the explicit checkbox and uses existing branch validation and write queues. Rebase recovery references have their own list. Reflog does not recover discarded uncommitted files.
+Current local branch and commit menus open a linear plan on a fixed base. The branch entry defaults to up to 20 recent unpublished commits; the commit entry includes the selected commit. Ranges allow up to 500 commits and reject roots, merges, dirty worktrees and active operations. Edit pick/reword/squash/fixup/drop oldest first, reorder with drag, buttons or Alt+arrows, and inspect files independently. Every original commit appears exactly once; removal requires explicit drop. Squash/fixup need an earlier retained commit; reword/squash require a complete nonempty message.
+
+Plans bind the worktree, branch, HEAD, base and a fifteen-minute expiry. Execution rechecks identity and remote reachability. Locally cached remote-reachable commits need explicit risk acknowledgement; no automatic Fetch or Push occurs. Original HEAD is retained as a Reflog recovery ref. Pauses show progress, conflicts/empty/review state and recovery ref. Empty commits have explicit keep/skip controls; skip requires confirmation. Continue, skip and abort recover after reload. Invalid saved plans or helpers disable continue and skip.
+
+Skip is disabled when replay already created the commit but message editing failed; Continue retries the reviewed message, or Abort restores history. An internal checkpoint failure disables Continue and Skip; abort and prepare a new plan.

@@ -1,3 +1,4 @@
+import { prepareRebaseSchema } from '../protocol/interactive-rebase';
 import { message, MessageError } from '../i18n';
 import { translate, type MessageKey, type MessageArgs } from '../i18n/index';
 import { TerminalSessions } from '../application/terminal-sessions';
@@ -646,6 +647,7 @@ export class Workbench implements vscode.Disposable {
       }
       case 'remoteTags': { const data = remoteTagsSchema.parse(request.payload); if (!this.git.remoteTags) throw new MessageError(message('tags.unavailable')); return this.git.remoteTags(repo, data.remote, data.expectedDestination); }
       case 'remoteLinks': { const data=remoteLinksSchema.parse(request.payload??{});return this.git.remoteLinks?.(repo,data.remote,data.branch)??{repositories:[]}; }
+      case 'prepareInteractiveRebase': { if (!this.git.prepareInteractiveRebase) throw new MessageError(message('interactiveRebase.unavailable')); return this.git.prepareInteractiveRebase(repo, prepareRebaseSchema.parse(request.payload ?? {}).start); }
       case 'reflog': { if (!this.git.reflog) throw new MessageError(message('reflog.unavailable')); return this.git.reflog(repo, reflogQuerySchema.parse(request.payload ?? {})); }
       case 'worktreeOverview': { const data = worktreeOverviewSchema.parse(request.payload ?? {}); if (!this.git.worktreeOverview) throw new MessageError(message('overview.unavailable')); return this.git.worktreeOverview(repo, data.paths); }
       case 'history': return this.git.history(repo, { limit: vscode.workspace.getConfiguration('alwaygit').get<number>('historyPageSize', 300), ...historySchema.parse(request.payload ?? {}) });

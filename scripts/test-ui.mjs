@@ -1,4 +1,5 @@
 import { verifyPartialStaging } from './test-partial-staging-ui.mjs';
+import { verifyInteractiveRebase } from './test-interactive-rebase-ui.mjs';
 import { verifyReflog } from './test-revision-tools-ui.mjs';
 import { verifyOverview } from './test-overview-ui.mjs';
 import { chromium } from 'playwright';
@@ -30,6 +31,7 @@ import { verifyDockedWorkbench, verifyWorkbenchLocations } from './test-workbenc
 // Full and targeted runs share one registry, so a new suite cannot be omitted from full runs.
 const suites = new Map([
   ['partial-staging', verifyPartialStaging],
+  ['interactive-rebase', verifyInteractiveRebase],
   ['reflog', verifyReflog],
   ['overview', verifyOverview],
   ['transfer', verifyTransfer],

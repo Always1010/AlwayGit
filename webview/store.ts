@@ -565,7 +565,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         else if (action.type === 'fetch' && snapshot) finalResult = {kind:'fetch',refs:fetched};
         else if (action.type === 'worktree.add') finalResult = {kind:'worktree',path:action.path};
         else if (action.type === 'tag.create') finalResult = {kind:'tag',name:action.name};
-        else if (snapshot && ['pull','merge','rebase','reset','cherry-pick','revert','operation.continue','operation.abort','operation.skip'].includes(action.type)) finalResult = {kind:'update',head:snapshot.head,previousHead:before?.head};
+        else if (snapshot && ['pull','merge','rebase','rebase.interactive','reset','cherry-pick','revert','operation.continue','operation.abort','operation.skip'].includes(action.type)) finalResult = {kind:'update',head:snapshot.head,previousHead:before?.head};
       }
       const failed = published && published.outcome !== 'success';
       if (epoch === repositoryEpoch && ['fetch', 'pull', 'push', 'tag.push', 'tag.create', 'tag.delete'].includes(action.type)) {

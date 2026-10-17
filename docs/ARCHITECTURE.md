@@ -231,4 +231,10 @@ Reset、Merge 和 Rebase 在确认前将目标解析为固定 Commit OID，并�
 - GitService 仍组合查询、动作校验与执行，Workbench 保留路由与用例协调，Store 保留统一界面状态入口。已独立提取 runner、会话持久化、查询与快照协调和引用索引；后续按具体改动的独立职责拆分，避免仅按行数拆文件。
 - History 已虚拟化，Working Tree、Commit Details、Commit 比较和 Stash 文件列表共用 `VirtualFileRows`。后续性能优化继续测量可见行、筛选与选择成本及交互延迟，不仅以 DOM 数量推断整体性能；已有专项结果见验证文档。
 - Stash 隔离以准确复制现场为前提，当前保留完整捕获与大小限制。缩小复制范围需要证明不会遗漏属性、Index 和未选中修改，不能只为降低读取量放宽隔离保护。
-- 交互式 Rebase、Squash/Fixup 属于当前功能范围外的独立需求，本次结构治理不引入这些操作。
+- 分块暂存和交互式 Rebase 分别使用独立模块维护其范围校验与执行。
+
+## 交互式 Rebase 执行
+
+`protocol/interactive-rebase.ts` 约束计划与动作，`git/interactive-rebase.ts` 管理有界令牌缓存及工作树私有 Git 目录下的 manifest、受控编辑器和检查点。Git 原生 interactive merge backend 执行 reviewed todo；辅助程序先验证 Git 生成的候选 OID 列表，再写入显式计划。内部固定 exec 检查点记录每步执行前的 detached HEAD，以区分变空提交和已重放但 reword/hook 失败的提交；进度不计这些内部检查点。说明以 JSON/文件传递，不拼入 shell。运行当前扩展宿主的 `process.execPath`，仅编辑器命令设置 `ELECTRON_RUN_AS_NODE`，兼容 Git for Windows 的 POSIX shell 引号规则，无需安装 Node。
+
+每次启动与恢复设置 autosquash、autostash、updateRefs、rebaseMerges、rescheduleFailedExec 为 false，固定 commentChar、instructionFormat 和说明清理规则；保留空提交与等价补丁，使用 force-rebase 保证同基点动作实际执行，hooks/签名继续生效。序列及消息编辑器核对 orig-head/head-name；恢复还校验 manifest、工作树和编辑器文件。继续沿用暂存结果审阅令牌。恢复引用不删除；完成或中止清理辅助目录，进程终止未确认时延后到 completion 清理并保留原有写隔离。

@@ -1,3 +1,4 @@
+import { InteractiveRebase } from './interactive-rebase';
 import { message as localizeMessage, translate } from '../i18n/index';
 import { createHash, randomUUID } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -355,6 +356,9 @@ export class GitService implements GitServiceContract {
       const original = operation.kind === 'merge' ? status.head : await this.readOperationFile(gitDir, markers[0] ? 'rebase-merge/orig-head' : markers[1] ? 'rebase-apply/orig-head' : 'sequencer/head');
       if (original && /^[a-f0-9]{40,64}$/.test(original.trim())) operation.originalHead = original.trim();
     }
+    if (operation.kind === 'rebase') operation.managedRebase = await this.interactiveRebase.state((args, execution) => this.run(repo, args, false, undefined, execution), gitDir, operation.conflicts);
+    if (operation.managedRebase?.applied) operation.canSkip = false;
+    if (operation.managedRebase?.pause === 'unavailable') { operation.canContinue = false; operation.canSkip = false; }
     let pushTarget: Snapshot['pushTarget'], pullTarget: Snapshot['pullTarget'];
     if (status.branch) {
       const [branchPushRemote, defaultPushRemote, branchRemote, mergeRef] = await Promise.all([
@@ -692,6 +696,10 @@ export class GitService implements GitServiceContract {
     if (await this.discardFingerprint(repo, status, changes) !== entry.fingerprint) throw new GitError(localizeMessage('service.discardPlanChanged'), 'DISCARD_CHANGED');
     return { plan: entry.plan, status };
   }
+  private readonly interactiveRebase = new InteractiveRebase();
+  async prepareInteractiveRebase(repo: Repository, start?: string) {
+    return this.interactiveRebase.prepare(repo, await this.snapshot(repo), (args, execution) => this.run(repo, args, false, undefined, execution), start);
+  }
   private readonly reflogReader = new ReflogReader();
   async reflog(repo: Repository, query: ReflogQuery = {}) {
     await this.verify(repo);
@@ -969,6 +977,7 @@ export class GitService implements GitServiceContract {
     let args: string[], pushedRemote: string | undefined, boundRemote: BoundRemote | undefined; const remote = (value?: string) => value ? [token(value, 'remote')] : [];
     switch (action.type) {
       case 'stage-hunk': case 'unstage-hunk': return this.hunks.apply(repo, action, (args, execution) => this.run(repo, args, false, undefined, execution), () => this.status(repo));
+      case 'rebase.interactive': return this.interactiveRebase.start(repo, await this.snapshot(repo), (args, execution) => this.run(repo, args, false, undefined, execution), action);
       case 'discard': return this.discard(repo, action, onProgress);
       case 'stage': case 'resolve-and-stage': case 'unstage': {
         if (!action.paths.length) throw new GitError(localizeMessage("service.selectAtLeastOneFile"), 'INVALID_ARGUMENT'); const paths = action.paths.map(validateFilePath);
@@ -1340,6 +1349,7 @@ export class GitService implements GitServiceContract {
         const command = action.type.split('.')[1];
         if (command === 'skip' && !state.canSkip) throw new GitError(localizeMessage("service.thisOperationCannotBeSkipped"), 'INVALID_ARGUMENT');
         if (action.type === 'operation.continue') await this.requireReview(repo, snapshot, action.reviewToken);
+        if (action.kind === 'rebase' && state.managedRebase && await this.interactiveRebase.resume((args, execution) => this.run(repo, args, false, undefined, execution), command as 'continue'|'abort'|'skip', action.type === 'operation.continue' && action.keepEmpty)) return;
         args = [action.kind, `--${command}`]; break;
       }
       default: throw new GitError(localizeMessage("service.unsupportedGitAction"), 'INVALID_ARGUMENT');

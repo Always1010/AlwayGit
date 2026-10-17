@@ -14,3 +14,11 @@
 .revision-preview { height:300px; position:relative; min-width:0; }
 .revision-preview>.diff-preview { height:100%; }
 @media(max-width:650px) { .revision-columns { grid-template-columns:1fr; }.reflog-list { max-height:180px; } }
+
+.rebase-plan { overflow:auto; max-height:55vh; padding-left:24px; margin:0; }
+.rebase-plan li { padding:8px 4px; border-bottom:1px solid var(--border); }
+.rebase-row { display:flex; gap:4px; align-items:center; }
+.rebase-commit { white-space:normal; text-align:left; justify-content:flex-start; width:100%; }
+.rebase-plan textarea { width:100%; min-height:80px; box-sizing:border-box; }
+.rebase-drop .rebase-commit { text-decoration:line-through; opacity:.65; }
+.rebase-commit[aria-pressed=true] { outline:1px solid var(--accent); }
