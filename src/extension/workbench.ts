@@ -7,6 +7,7 @@ import type { TerminalShell } from '../protocol/terminal';
 import { terminalAckSchema, terminalCreateSchema, terminalIdSchema, terminalInputSchema, terminalResizeSchema, terminalRenameSchema } from '../protocol/terminal';
 import { SnapshotCoordinator } from '../application/snapshot-coordinator';
 import { QueryCoordinator } from '../application/query-coordinator';
+import { reflogQuerySchema } from '../protocol/reflog';
 import { readQueryCategory } from '../protocol/queries';
 import { externalUrlSchema, remoteLinksSchema, remoteTagsSchema, cancelQuerySchema, actionSchema, operationSettingsSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, cherryPickCheckSchema, diffSchema, diffPreviewSchema, diffPageSchema, diffReleaseSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema, repositoryDiscoverySchema, cancelRepositoryDiscoverySchema, addRepositoriesSchema, reorderRepositorySchema, createRepositoryCollectionSchema } from '../protocol/validation';
 import * as vscode from 'vscode';
@@ -645,10 +646,12 @@ export class Workbench implements vscode.Disposable {
       }
       case 'remoteTags': { const data = remoteTagsSchema.parse(request.payload); if (!this.git.remoteTags) throw new MessageError(message('tags.unavailable')); return this.git.remoteTags(repo, data.remote, data.expectedDestination); }
       case 'remoteLinks': { const data=remoteLinksSchema.parse(request.payload??{});return this.git.remoteLinks?.(repo,data.remote,data.branch)??{repositories:[]}; }
+      case 'reflog': { if (!this.git.reflog) throw new MessageError(message('reflog.unavailable')); return this.git.reflog(repo, reflogQuerySchema.parse(request.payload ?? {})); }
       case 'history': return this.git.history(repo, { limit: vscode.workspace.getConfiguration('alwaygit').get<number>('historyPageSize', 300), ...historySchema.parse(request.payload ?? {}) });
       case 'cherryPickCheck': { const data=cherryPickCheckSchema.parse(request.payload); return this.git.cherryPickCheck(repo,data.commits,data); }
       case 'operationReview': return this.git.reviewOperation(repo);
       case 'prepareDiscard': return this.git.prepareDiscard(repo, discardRequestSchema.parse(request.payload));
+      case 'inspectDetails':
       case 'details': { const data = detailsSchema.parse(request.payload); return this.git.details(repo, data.oid, data.parent); }
       case 'stashDetails': { const data = detailsSchema.parse(request.payload); return this.git.stashDetails(repo, data.oid); }
       case 'compare': { const data=comparisonSchema.parse(request.payload); return this.git.compare(repo,data.left,data.right,data.preserveOrder); }

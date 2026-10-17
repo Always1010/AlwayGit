@@ -20,6 +20,7 @@ import { OperationProgress } from './OperationProgress';
 import { RemoteRequestDialog } from './RemoteRequestDialog';
 import { OperationNotice } from './OperationNotice';
 import { OperationReviewDialog } from './OperationReviewDialog';
+import { ReflogDialog } from './ReflogDialog';
 import { CommitDialog } from './CommitDialog';
 import { Button, Empty, Icon, Modal, ResizeHandle } from './ui';
 
@@ -74,6 +75,7 @@ export function App() {
   useEffect(() => subscribe(event => {
     if (event.type === 'showWorkbenchLocations') { setContext(undefined); setToolbarMenu(undefined); setLocationSettings(current => current ?? event.locations); }
   }), []);
+  const [reflogOpen,setReflogOpen]=useState(false);
   const [helpOpen,setHelpOpen]=useState(false);
   const [projectNotice,setProjectNotice]=useState<Extract<OpenProjectResult,{kind:'current-window'}>>();
   const projectRequest=useRef(0);
@@ -91,7 +93,7 @@ export function App() {
   useLayoutEffect(()=>{document.documentElement.lang=state.language;},[state.language]);
   useEffect(()=>{if(connected){if(!demoMode)void rpc('workbenchReady').catch(useWorkbench.getState().report);void useWorkbench.getState().initialize();}},[]);
   useEffect(()=>{setDialog(undefined);setContext(undefined);setToolbarMenu(undefined);},[state.repoId,state.language]);
-  useEffect(()=>{setCommitRepoId(undefined);},[state.repoId]);
+  useEffect(()=>{setCommitRepoId(undefined);setReflogOpen(false);},[state.repoId]);
   const closeMenu=useCallback(()=>setContext(undefined),[]);
   const host=useCallback(async(method:RpcRequest['method'],payload?:unknown,repoId?:string)=>{
     const current=useWorkbench.getState();try{await rpc(method,repoId??current.repoId,payload);if(demoMode&&method!=='copyText')useWorkbench.setState({notice:translate(current.language, "workbench.demoNativeVSCodeCommandPreview")});}catch(error){current.report(error);}
@@ -130,7 +132,7 @@ export function App() {
       if(request===projectRequest.current&&useWorkbench.getState().repoId===repoId)current.report(error);
     });
   },[]);
-  useWorkbenchKeyboard(blockInteraction || !!(locationSettings||state.remoteRequest||commitRepoId||dialog||repositoryDialog||repositoryRemoval||repositoryFetch||context||toolbarMenu||helpOpen||state.settingsBaseline||state.checkoutFailure||state.operationReview));
+  useWorkbenchKeyboard(blockInteraction || !!(reflogOpen||locationSettings||state.remoteRequest||commitRepoId||dialog||repositoryDialog||repositoryRemoval||repositoryFetch||context||toolbarMenu||helpOpen||state.settingsBaseline||state.checkoutFailure||state.operationReview));
   useLayoutEffect(()=>{const element=mainPanel.current;if(!element)return;const measure=()=>setMainPanelHeight(element.clientHeight);measure();const observer=new ResizeObserver(measure);observer.observe(element);return()=>observer.disconnect();},[]);
   const snapshot=state.snapshot,layout=state.layout,unpushed=snapshot?.unpushed??snapshot?.ahead??0,repositoryState=repositoryViewState(snapshot,!!state.repoId,state.loading),hasRepositories=state.repositories.length>0;
   const canOperate=!!snapshot&&!state.busy,canPush=canOperate&&!!snapshot?.branch,canStash=canOperate&&!!snapshot?.changes.length&&!snapshot?.operation.kind;
@@ -159,6 +161,7 @@ export function App() {
   const cherryPickCheck=useCherryPickCheck(state.repoId,state.snapshot?.head,state.snapshot?.branch,context?.target);
   const menu=context?menuFor(context.target,menuApi,cherryPickCheck):undefined;
   const toolbarMenuItems: MenuItem[] = [
+    { label:t('reflog.open'),icon:'history',disabled:!snapshot,run:()=>setReflogOpen(true) },
     { label: t('workbench.locateHEAD'), icon: 'location', shortcut: 'head', disabled: !snapshot?.head, reason: t('workbench.locateTheCurrentCommitHEAD'), run: state.locateHead },
     { label: t('workbench.openRepositoryFolder'), iconContent: <OpenRepositoryFolderIcon/>, shortcut: 'repository', testId: 'open-project', disabled: !snapshot, reason: snapshot ? `${t('workbench.openRepositoryFolder')}\n${t('workbench.switchesToItsVSCodeWindowWhenAlreadyOpen')}\n${snapshot.repository.root}` : t('workbench.selectARepositoryFirst'), run: openRepository },
     { label: t('workbench.newWorkbenchTab'), icon: 'split-horizontal', separatorBefore: true, run: () => host('openWorkbench', { newTab: true }) },
@@ -207,6 +210,7 @@ export function App() {
     {repositoryFetch&&<RepositoryFetchDialog repositories={repositoryFetch} onClose={()=>setRepositoryFetch(undefined)}/>}
     {state.checkoutFailure&&snapshot&&<CheckoutFailureDialog onClose={()=>{setDialog(undefined);useWorkbench.setState({checkoutFailure:undefined,error:undefined});}} host={host}/>}
     {state.settingsBaseline&&<SettingsDialog theme={theme}/>}
+    {reflogOpen&&state.repoId&&snapshot&&<ReflogDialog repoId={state.repoId} snapshot={snapshot} onClose={()=>setReflogOpen(false)}/>}
     {helpOpen&&<Suspense fallback={null}><HelpDialog onClose={()=>setHelpOpen(false)}/></Suspense>}
     {state.remoteRequest&&<RemoteRequestDialog key={state.remoteRequest.identity}/>}
     {blockInteraction&&<OperationProgress key={`${state.repoId}-${progressFeedback?.id ?? 'host'}`} feedback={progressFeedback}/>}

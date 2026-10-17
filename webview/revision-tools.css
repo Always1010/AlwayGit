@@ -1,0 +1,16 @@
+.revision-dialog { width:min(1250px,96vw); max-width:96vw; }
+.revision-controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:8px 0; }
+.revision-controls label { display:flex; align-items:center; gap:6px; }
+.revision-columns { display:grid; grid-template-columns:minmax(220px,1fr) minmax(0,2fr); gap:12px; min-height:340px; }
+.reflog-list { overflow:auto; max-height:55vh; display:flex; flex-direction:column; align-items:stretch; gap:4px; }
+.reflog-list .button { justify-content:flex-start; white-space:normal; text-align:left; flex-shrink:0; }
+.reflog-entry { display:flex; flex-direction:column; align-items:flex-start; }
+.reflog-list [aria-pressed=true], .revision-files [aria-pressed=true] { background:var(--selection); outline:1px solid var(--accent); }
+.revision-inspector { display:flex; flex-direction:column; min-width:0; overflow:hidden; gap:5px; }
+.revision-inspector small { overflow-wrap:anywhere; }
+.revision-message { white-space:pre-wrap; max-height:80px; overflow:auto; margin:0; }
+.revision-files { display:flex; flex-wrap:wrap; gap:3px; max-height:100px; overflow:auto; }
+.revision-files .button { white-space:normal; overflow-wrap:anywhere; }
+.revision-preview { height:300px; position:relative; min-width:0; }
+.revision-preview>.pane { height:100%; }
+@media(max-width:650px) { .revision-columns { grid-template-columns:1fr; }.reflog-list { max-height:180px; } }

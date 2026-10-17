@@ -325,3 +325,9 @@ Git runs on the repository's extension host; architecture targets local, WSL, Re
 Whole-file staging and ordinary Rebase are supported. Hunk staging, interactive Rebase, commit reordering, Squash, Fixup, Format Patch, remote Tag replacement, and freely floating panels are outside scope. Single/same-Remote bulk branch deletion, explicit Tag Push, and lease-protected remote Tag deletion are supported; see [operation restrictions](#disabled-and-blocked-operations) for confirmation/partial failures.
 
 Diff compares complete text read-only without line truncation, failing at resource limits. Supported images preview; other binary explains its status. Images/binary provide neither native editing nor Diff. Read limits/sources are in [Diff and native editors](ARCHITECTURE.en.md#diff-and-native-editors).
+
+## Reflog and recovery
+
+The top More menu opens a separate Reflog dialog for the current worktree HEAD or a local branch. Entries show Git's original description, event time, actor and full commit ID. Inspect commits, merge parents and file diffs independently of the main Graph, File History and drafts. Bounded snapshots expire after ten minutes and page through at most the latest 5,000 entries; new records do not shift loaded pages. Refresh captures a new snapshot. Git reads support linked worktrees; unavailable objects report an error.
+
+Recovery binds the full selected OID and creates a named branch without switching by default. Switching requires the explicit checkbox and uses existing branch validation and write queues. Rebase recovery references have their own list. Reflog does not recover discarded uncommitted files.

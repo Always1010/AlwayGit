@@ -27,6 +27,8 @@ import { safeWorkingPath } from '../editor/paths';
 import { requireExactFileScope } from './file-scope';
 import { dropStash } from './stash-drop';
 import { NetworkProgressParser } from './network-progress';
+import { ReflogReader } from './reflog';
+import type { ReflogQuery } from '../protocol/reflog';
 import { fileHistoryIndex, type FileHistoryIndex } from './file-history';
 import { redactSecrets, SecretRedactor } from '../application/logging';
 
@@ -632,6 +634,11 @@ export class GitService implements GitServiceContract {
     if (entry.plan.scope === 'all') await this.requireDiscardAllAvailable(repo, status);
     if (await this.discardFingerprint(repo, status, changes) !== entry.fingerprint) throw new GitError(localizeMessage('service.discardPlanChanged'), 'DISCARD_CHANGED');
     return { plan: entry.plan, status };
+  }
+  private readonly reflogReader = new ReflogReader();
+  async reflog(repo: Repository, query: ReflogQuery = {}) {
+    await this.verify(repo);
+    return this.reflogReader.read(repo, query, (args, allowFailure) => this.run(repo, args, allowFailure));
   }
   async prepareAction(repo: Repository, action: GitAction): Promise<GitAction> {
     if (action.type === 'discard' && action.planToken) {

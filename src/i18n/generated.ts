@@ -3831,6 +3831,90 @@ export const catalog = {
     "en": "A branch name cannot be only @.",
     "zh-CN": "分支名称不能只有 @。"
   },
+  "reflog.expired": {
+    "en": "This Reflog snapshot expired. Refresh to read it again.",
+    "zh-CN": "Reflog 快照已过期，请刷新后重试。"
+  },
+  "reflog.invalidRef": {
+    "en": "Select HEAD or a local branch Reflog.",
+    "zh-CN": "请选择 HEAD 或本地分支的 Reflog。"
+  },
+  "reflog.malformed": {
+    "en": "Git returned an invalid Reflog record.",
+    "zh-CN": "Git 返回了无效的 Reflog 记录。"
+  },
+  "reflog.unavailable": {
+    "en": "Reflog is unavailable in this host.",
+    "zh-CN": "当前宿主不支持 Reflog。"
+  },
+  "reflog.open": {
+    "en": "Open Reflog",
+    "zh-CN": "查看 Reflog"
+  },
+  "reflog.title": {
+    "en": "Reflog and recovery",
+    "zh-CN": "Reflog 与恢复"
+  },
+  "reflog.scope": {
+    "en": "Reference",
+    "zh-CN": "引用"
+  },
+  "reflog.hint": {
+    "en": "Records belong to this local repository. Reflog cannot recover discarded uncommitted files.",
+    "zh-CN": "记录来自本地仓库。Reflog 不能恢复已丢弃的未提交文件。"
+  },
+  "reflog.empty": {
+    "en": "No Reflog entries for this reference.",
+    "zh-CN": "此引用没有 Reflog 记录。"
+  },
+  "reflog.recover": {
+    "en": "Create recovery branch",
+    "zh-CN": "创建恢复分支"
+  },
+  "reflog.branchName": {
+    "en": "Recovery branch name",
+    "zh-CN": "恢复分支名称"
+  },
+  "reflog.checkout": {
+    "en": "Switch to the recovery branch after creating it",
+    "zh-CN": "创建后切换到恢复分支"
+  },
+  "reflog.recovered": {
+    "en": "Recovery branch created: {{name}}",
+    "zh-CN": "已创建恢复分支：{{name}}"
+  },
+  "reflog.backups": {
+    "en": "Rebase recovery points",
+    "zh-CN": "Rebase 恢复点"
+  },
+  "reflog.cap": {
+    "en": "Only the latest 5,000 records are shown.",
+    "zh-CN": "仅显示最近 5000 条记录。"
+  },
+  "reflog.changed": {
+    "en": "References changed. Refresh to load the latest Reflog.",
+    "zh-CN": "引用已变化，可刷新读取最新 Reflog。"
+  },
+  "reflog.inspect": {
+    "en": "Inspect commit",
+    "zh-CN": "查看提交"
+  },
+  "reflog.copy": {
+    "en": "Copy commit ID",
+    "zh-CN": "复制提交 ID"
+  },
+  "reflog.files": {
+    "en": "Changed files",
+    "zh-CN": "变更文件"
+  },
+  "reflog.missing": {
+    "en": "This commit is no longer available. It may have been pruned.",
+    "zh-CN": "此提交已不可用，可能已被清理。"
+  },
+  "reflog.parent": {
+    "en": "Comparison parent",
+    "zh-CN": "比较父提交"
+  },
   "repositoriesDialog.enterAGroupName": {
     "en": "Enter a group name.",
     "zh-CN": "请输入分组名称。"
@@ -7244,6 +7328,27 @@ export interface MessageParameters {
   "refName.branchNameSegmentsCannotEndWithLock": {  };
   "refName.branchNamesCannotEndWithADot": {  };
   "refName.aBranchNameCannotBeOnly": {  };
+  "reflog.expired": {  };
+  "reflog.invalidRef": {  };
+  "reflog.malformed": {  };
+  "reflog.unavailable": {  };
+  "reflog.open": {  };
+  "reflog.title": {  };
+  "reflog.scope": {  };
+  "reflog.hint": {  };
+  "reflog.empty": {  };
+  "reflog.recover": {  };
+  "reflog.branchName": {  };
+  "reflog.checkout": {  };
+  "reflog.recovered": { name: ParameterValue };
+  "reflog.backups": {  };
+  "reflog.cap": {  };
+  "reflog.changed": {  };
+  "reflog.inspect": {  };
+  "reflog.copy": {  };
+  "reflog.files": {  };
+  "reflog.missing": {  };
+  "reflog.parent": {  };
   "repositoriesDialog.enterAGroupName": {  };
   "repositoriesDialog.useNoMoreThan80Characters": {  };
   "repositoriesDialog.aGroupWithThisNameAlreadyExists": {  };
