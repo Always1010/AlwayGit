@@ -1067,7 +1067,7 @@ Double-click a terminal tab to rename it. The toolbar clears the display and off
 
 1. Click the gear in the upper-right corner to open settings.
 2. Choose a page in the General, Interface, Commit Graph, or Advanced category.
-3. Interface → Text & density controls the interface font size and commit list density. Interface → File list controls split or unified display and file spacing. Interface → Diff groups the Diff font size, line height, row separators (off by default), and navigation scope with a code preview. Expand Detailed rules for navigation exceptions.
+3. Interface → Text & density controls the interface font size and commit list density. Interface → File list controls split or unified display and file spacing. Interface → Diff groups the Diff font size, line height, row separators (off by default), and navigation scope with a code preview. Expand Detailed rules for navigation exceptions. Commit Graph → Display independently controls commit row separators and alternating row backgrounds, both off by default; selection, hover, and Working Tree indicators remain visible.
 4. Click Apply to save. To discard unapplied changes, click Cancel, close settings, or press Esc.
 
 **Result:** Language, theme, colors, font sizes, density, shortcuts and reading preferences are saved in user settings and shared with other workbench windows in the same configuration environment. Cancel rolls back only this panel’s unapplied preview. Panel dimensions, browsing state and commit drafts are restored separately.

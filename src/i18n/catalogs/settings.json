@@ -1,4 +1,10 @@
 {
+  "settings.alternateRows": {
+    "en": "Use alternating row backgrounds",
+    "zh-CN": "使用交替行底色",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / commit graph display"
+  },
   "settings.showRowSeparators": {
     "en": "Show row separators",
     "zh-CN": "显示行分隔线",

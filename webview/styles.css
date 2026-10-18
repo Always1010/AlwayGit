@@ -175,8 +175,10 @@ h1,h2,p {margin:0;}
 .column-grip.column-grip-end.resize-x {right:0;left:auto;}
 .history-viewport {overflow:auto;flex:1;min-height:0;}
 .history-rows {position:relative;}
-.commit-row {display:grid;align-items:center;border-bottom:1px solid var(--row-border);font-size:inherit;user-select:none;cursor:pointer;}
-.commit-row.alternate {background:color-mix(in srgb,var(--panel) 30%,var(--bg));}
+.commit-row {display:grid;align-items:center;border-bottom:1px solid transparent;font-size:inherit;user-select:none;cursor:pointer;}
+.workbench[data-history-row-separators=true] .commit-row {border-bottom-color:var(--row-border);}
+.commit-row.alternate {background:var(--history-alternate-background,transparent);}
+.workbench[data-history-alternate-rows=true] {--history-alternate-background:color-mix(in srgb,var(--panel) 30%,var(--bg));}
 .commit-row-interactive:hover {background:var(--hover);}
 .commit-row:focus-visible {outline:1px solid var(--accent);outline-offset:-1px;z-index:1;}
 .commit-row.selected .history-author,.commit-row.selected .history-date {color:var(--selected-fg);opacity:.85;}
