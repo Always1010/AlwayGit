@@ -1386,6 +1386,122 @@ export const catalog = {
     "en": "Remove {{count}} worktree(s) and their working directories?\n{{paths}}\nBranch references are retained.{{effect}}",
     "zh-CN": "移除 {{count}} 个工作树及其工作目录？\n{{paths}}\n分支引用保留。{{effect}}"
   },
+  "conflicts.title": {
+    "en": "Resolve conflicts",
+    "zh-CN": "处理冲突"
+  },
+  "conflicts.steps": {
+    "en": "Compare → edit and save → mark and stage → review staged result → continue",
+    "zh-CN": "查看差异 → 编辑并保存 → 标记暂存 → 检查暂存结果 → 继续操作"
+  },
+  "conflicts.remaining": {
+    "en": "Remaining unmerged files: {{count}}",
+    "zh-CN": "剩余未合并文件：{{count}}"
+  },
+  "conflicts.file": {
+    "en": "Conflict file",
+    "zh-CN": "冲突文件"
+  },
+  "conflicts.previous": {
+    "en": "Previous conflict",
+    "zh-CN": "上一个冲突文件"
+  },
+  "conflicts.next": {
+    "en": "Next conflict",
+    "zh-CN": "下一个冲突文件"
+  },
+  "conflicts.compare": {
+    "en": "View comparison",
+    "zh-CN": "查看两侧差异"
+  },
+  "conflicts.ours": {
+    "en": "Index stage 2 (HEAD)",
+    "zh-CN": "Index 第 2 侧（HEAD）"
+  },
+  "conflicts.theirs": {
+    "en": "Index stage 3 (incoming)",
+    "zh-CN": "Index 第 3 侧（传入）"
+  },
+  "conflicts.deleted": {
+    "en": "Deleted on this side",
+    "zh-CN": "此侧已删除"
+  },
+  "conflicts.bothAdded": {
+    "en": "Both added",
+    "zh-CN": "双方新增"
+  },
+  "conflicts.bothDeleted": {
+    "en": "Both deleted",
+    "zh-CN": "双方删除"
+  },
+  "conflicts.modifyDelete": {
+    "en": "Modify/delete conflict",
+    "zh-CN": "修改与删除冲突"
+  },
+  "conflicts.contentConflict": {
+    "en": "Content or path conflict",
+    "zh-CN": "内容或路径冲突"
+  },
+  "conflicts.rebaseSides": {
+    "en": "During Rebase, stage 2 is the rebased target so far; stage 3 is the commit being replayed. Inspect the commit IDs before choosing a side.",
+    "zh-CN": "Rebase 时，第 2 侧是已重放的目标结果，第 3 侧是正在重放的提交；选择前请核对提交 ID。"
+  },
+  "conflicts.openMerge": {
+    "en": "Open merge editor",
+    "zh-CN": "打开合并编辑器"
+  },
+  "conflicts.editManually": {
+    "en": "Edit working file",
+    "zh-CN": "手动编辑工作文件"
+  },
+  "conflicts.stage": {
+    "en": "Saved: mark and stage",
+    "zh-CN": "已保存，标记并暂存"
+  },
+  "conflicts.saveFirst": {
+    "en": "Save the working file before staging. Choosing a complete side updates the working file; staging remains a separate step.",
+    "zh-CN": "编辑后先保存，再标记暂存。选择完整一侧只更新工作文件，仍需单独标记暂存。"
+  },
+  "conflicts.useSide": {
+    "en": "Use {{side}}",
+    "zh-CN": "使用{{side}}"
+  },
+  "conflicts.acceptSideDeletion": {
+    "en": "Accept deletion: {{side}}",
+    "zh-CN": "接受此侧删除：{{side}}"
+  },
+  "conflicts.overwrite": {
+    "en": "Replace the saved working file {{path}} with {{side}}, or delete it if that side is absent. Current manual resolution edits will be replaced. The Index remains unmerged until you stage.",
+    "zh-CN": "将磁盘文件 {{path}} 替换为{{side}}；此侧不存在时删除文件。当前手动处理结果将被替换，Index 仍需单独标记暂存。"
+  },
+  "conflicts.manualOnly": {
+    "en": "This path, file type or conversion requires manual resolution. Review both versions and stage the saved result.",
+    "zh-CN": "此路径、文件类型或转换配置需要手动处理；请检查两侧并暂存保存后的结果。"
+  },
+  "conflicts.fallback": {
+    "en": "The native merge editor is unavailable for this repository or host. Opened the working file for manual resolution.",
+    "zh-CN": "当前仓库或宿主无法打开原生合并编辑器，已打开工作文件供手动处理。"
+  },
+  "conflicts.reviewNext": {
+    "en": "Git has no unmerged entries. Inspect the staged result before continuing; this does not prove the resolution is correct.",
+    "zh-CN": "Git 已无未合并条目。请检查暂存结果后继续；这不代表内容已经正确解决。"
+  },
+  "conflicts.changed": {
+    "en": "The conflict or working file changed. Refresh the conflict details before choosing a side.",
+    "zh-CN": "冲突或工作文件已变化，请刷新冲突详情后重新选择。"
+  },
+  "conflicts.unavailable": {
+    "en": "Conflict details are unavailable in this host.",
+    "zh-CN": "当前宿主不支持冲突详情。"
+  },
+  "conflicts.unsaved": {
+    "en": "Save your unsaved repository files before replacing a conflict version.",
+    "zh-CN": "替换冲突版本前，请先保存仓库中未保存的文件。"
+  },
+  "conflicts.chooseVersion": {
+    "en": "Choose conflict version",
+    "zh-CN": "选择冲突版本"
+  },
   "credentials.cannotStartGitCredentialPrompt": {
     "en": "Cannot start Git credential prompt.",
     "zh-CN": "无法启动 Git 凭据提示。"
@@ -7181,6 +7297,35 @@ export interface MessageParameters {
   "confirm.useDiskContent": {  };
   "confirm.unsavedSelectedFiles": { count: number };
   "confirm.removeWorktrees": { count: number; paths: ParameterValue; effect: ParameterValue };
+  "conflicts.title": {  };
+  "conflicts.steps": {  };
+  "conflicts.remaining": { count: number };
+  "conflicts.file": {  };
+  "conflicts.previous": {  };
+  "conflicts.next": {  };
+  "conflicts.compare": {  };
+  "conflicts.ours": {  };
+  "conflicts.theirs": {  };
+  "conflicts.deleted": {  };
+  "conflicts.bothAdded": {  };
+  "conflicts.bothDeleted": {  };
+  "conflicts.modifyDelete": {  };
+  "conflicts.contentConflict": {  };
+  "conflicts.rebaseSides": {  };
+  "conflicts.openMerge": {  };
+  "conflicts.editManually": {  };
+  "conflicts.stage": {  };
+  "conflicts.saveFirst": {  };
+  "conflicts.useSide": { side: ParameterValue };
+  "conflicts.acceptSideDeletion": { side: ParameterValue };
+  "conflicts.overwrite": { path: ParameterValue; side: ParameterValue };
+  "conflicts.manualOnly": {  };
+  "conflicts.fallback": {  };
+  "conflicts.reviewNext": {  };
+  "conflicts.changed": {  };
+  "conflicts.unavailable": {  };
+  "conflicts.unsaved": {  };
+  "conflicts.chooseVersion": {  };
   "credentials.cannotStartGitCredentialPrompt": {  };
   "details.ctrlCmdClickTogglesShiftClickSelectsRangeEsc": {  };
   "details.clickSelectsCtrlASelectsVisibleFiles": {  };

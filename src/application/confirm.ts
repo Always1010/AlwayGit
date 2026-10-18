@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import path from 'node:path';
 import type { GitAction, OperationState, Repository } from '../protocol/types';
 import { hostText, type Language } from './language';
 import { translator, type MessageArgs, type MessageKey } from '../i18n';
@@ -20,6 +21,10 @@ export async function confirmAction(repo: Repository, action: GitAction, languag
   if (action.type === 'commit.checkout') warning = text('confirm.detachedCheckout', { target: action.target });
   if (action.type === 'checkout.stash' && action.detached) warning = text('confirm.stashDetachedCheckout', { target: action.target });
   const proceed = text('confirm.proceed');
+  if(action.type==='conflict.choose'||action.type==='resolve-and-stage'){
+    const normalize=(value:string)=>process.platform==='win32'?path.resolve(value).toLowerCase():path.resolve(value),root=normalize(repo.root);
+    if(vscode.workspace.textDocuments.some(document=>{if(!document.isDirty||document.uri.scheme!=='file')return false;const file=normalize(document.uri.fsPath),relative=path.relative(root,file);return !!relative&&!relative.startsWith('..'+path.sep)&&relative!=='..'&&!path.isAbsolute(relative)&&(action.type==='conflict.choose'||action.paths.some(name=>normalize(path.join(repo.root,name))===file));}))throw new Error(text('conflicts.unsaved'));
+  }
   if (action.type === 'reset') warning += text('confirm.currentHead', { branch: action.expectedBranch || text('confirm.detachedHead'), head: action.expectedHead || text('confirm.unborn') });
   if (action.type === 'operation.abort' && operation?.originalHead) warning += text('confirm.restoreOriginalHead', { head: operation.originalHead });
   if (warning) return (await vscode.window.showWarningMessage(warning, { modal: true, detail: text('confirm.repository', { root: repo.root }) }, proceed)) === proceed;

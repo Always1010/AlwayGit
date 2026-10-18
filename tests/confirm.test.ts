@@ -8,6 +8,12 @@ vi.mock('vscode',()=>({window:{showWarningMessage:host.warning},workspace:{get t
 const repo:Repository={id:'repo',root:path.resolve('test-repo'),commonDir:path.resolve('test-repo/.git'),name:'Test'};
 beforeEach(()=>{host.warning.mockReset();host.documents=[];});
 describe('operation confirmation',()=>{
+  it('blocks side replacement and staging when the affected editor has unsaved changes',async()=>{
+    const filename=path.join(repo.root,'same.txt');host.documents=[{isDirty:true,uri:{scheme:'file',fsPath:process.platform==='win32'?filename.toUpperCase():filename}}];
+    await expect(confirmAction(repo,{type:'conflict.choose',token:'checked',side:'ours'},'zh-CN')).rejects.toThrow('未保存');
+    await expect(confirmAction(repo,{type:'resolve-and-stage',paths:['same.txt']},'zh-CN')).rejects.toThrow('未保存');
+    expect(await confirmAction(repo,{type:'resolve-and-stage',paths:['other.txt']},'zh-CN')).toBe(true);
+  });
   it('distinguishes local-only, remote-only and combined Tag deletion', async () => {
     await confirmAction(repo,{type:'tag.delete',name:'v1',expectedOid:'a'.repeat(40)},'zh-CN');
     expect(host.warning.mock.calls[0][0]).toContain('不会修改任何远端仓库');
