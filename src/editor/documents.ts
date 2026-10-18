@@ -56,6 +56,19 @@ function isBinary(bytes: Buffer, truncated: boolean): boolean {
   catch { return true; }
 }
 export class GitDocuments implements vscode.TextDocumentContentProvider {
+  async openMergeEditor(repo: Repository, filename: string): Promise<{mode:'merge'|'text'}> {
+    const full=await safeWorkingPath(repo.root,filename,false),details=await this.git.conflictDetails?.(repo,filename);
+    if(!details?.canMerge){await this.openFile(repo,filename);return {mode:'text'};}
+    const extension=vscode.extensions.getExtension<{getAPI(version:number):{getRepository(uri:vscode.Uri):unknown;openRepository?(uri:vscode.Uri):Promise<unknown>}}>('vscode.git');
+    try{if(extension){
+      const exports=extension.isActive?extension.exports:await extension.activate(),api=exports.getAPI(1),uri=vscode.Uri.file(full);
+      const repository=api.getRepository(uri)??await api.openRepository?.(vscode.Uri.file(repo.root));
+      if(repository&&(await vscode.commands.getCommands(true)).includes('git.openMergeEditor')){
+        try{await vscode.commands.executeCommand('git.openMergeEditor',uri);return {mode:'merge'};}catch{/* Fall back to ordinary editing when this host cannot open a merge editor. */}
+      }
+    }}catch{/* The built-in Git extension can be disabled or unavailable in this host. */}
+    await this.openFile(repo,filename);return {mode:'text'};
+  }
   private readonly entries = new Map<string, { repo: Repository; source: ContentSource } | { text: string }>();
   private sequence = 0;
   private readonly snapshots = new Map<string, { repoId: string; diff: IndexedTextDiff; owner: object }>();
@@ -249,8 +262,9 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
         label = `${path.basename(change.path)} · HEAD ↔ Index`;
       } else if (target.area === 'conflict') {
         if (!change.conflict) throw new MessageError(localizeMessage("documents.thisFileNoLongerHasAConflictRefreshIts"));
-        left = { source: { kind: 'index', path: change.path, stage: 2 }, label: translate('en', "documents.ours"), path: change.path };
-        right = { source: { kind: 'index', path: change.path, stage: 3 }, label: translate('en', "documents.theirs"), path: change.path };
+        const conflict=await this.git.conflictDetails?.(repo,change.path);
+        left = { source: conflict&&!conflict.ours?{kind:'empty'}:{ kind: 'index', path: change.path, stage: 2 }, label: translate('en', "documents.ours"), path: change.path };
+        right = { source: conflict&&!conflict.theirs?{kind:'empty'}:{ kind: 'index', path: change.path, stage: 3 }, label: translate('en', "documents.theirs"), path: change.path };
         label = translate('en', "documents.oursTheirsEditWorkingFileToResolve", { value: (path.basename(change.path)) });
       } else {
         if (!change.untracked && change.worktreeStatus === ' ') throw new MessageError(localizeMessage("documents.thisFileHasNoUnstagedChangesRefreshItsComparison"));

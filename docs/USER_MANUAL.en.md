@@ -1127,6 +1127,8 @@ Basic functionality requires VS Code 1.106+ and Git 2.40+. Saving selected files
 
 Git runs in the VS Code extension host where the repository resides. The product architecture is designed for local environments, WSL, Remote SSH, and Dev Containers; Git, paths, permissions, and authentication still need to be verified separately in each environment. Git is not executed in untrusted workspaces, and browser-only virtual workspaces are not supported.
 
+**Conflict workflow:** Choose Resolve conflicts in the operation bar and inspect each file and both source commits. Open the native merge editor for ordinary text, save, then mark and stage. Manual working-file editing remains available when native integration is unavailable. For modify/delete conflicts, explicitly choose a complete side or its deletion; this replaces saved manual edits and still requires staging. During Rebase, stage 2 is the target result and stage 3 is the replayed commit. After resolving remaining entries, review staged results before Continue. Refresh changed or expired choices; staged does not mean correct.
+
 Current scope: whole-file and Git-hunk staging, standard and interactive Rebase, commit reordering, Squash/Fixup, remote branch management, explicit Tag Push, and lease-protected remote Tag deletion. Not currently provided: Format Patch, remote Tag replacement, or freely floating panels.
 
 | Setting | Default or range | Description |

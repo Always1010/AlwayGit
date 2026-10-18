@@ -14,6 +14,7 @@ import { worktreeOverviewSchema, externalUrlSchema, remoteLinksSchema, remoteTag
 import * as vscode from 'vscode';
 import { randomBytes } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { conflictPathSchema } from '../protocol/conflicts';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { AddRepositoriesResult, GitAction, GitServiceContract, HostMessage, RepositoryChanges, RepositoryCollection, RepositoryDiscoveryPreview, RepositoryStatus, RpcRequest, Snapshot, OperationSettings, PushResult, DeletionResult } from '../protocol/types';
@@ -653,6 +654,8 @@ export class Workbench implements vscode.Disposable {
       case 'history': return this.git.history(repo, { limit: vscode.workspace.getConfiguration('alwaygit').get<number>('historyPageSize', 300), ...historySchema.parse(request.payload ?? {}) });
       case 'cherryPickCheck': { const data=cherryPickCheckSchema.parse(request.payload); return this.git.cherryPickCheck(repo,data.commits,data); }
       case 'operationReview': return this.git.reviewOperation(repo);
+      case 'conflictDetails': { if(!this.git.conflictDetails)throw new MessageError(message('conflicts.unavailable'));return this.git.conflictDetails(repo,conflictPathSchema.parse(request.payload).path); }
+      case 'openMergeEditor': { const data=conflictPathSchema.parse(request.payload);return this.documents.openMergeEditor(repo,data.path); }
       case 'prepareDiscard': return this.git.prepareDiscard(repo, discardRequestSchema.parse(request.payload));
       case 'inspectDetails':
       case 'details': { const data = detailsSchema.parse(request.payload); return this.git.details(repo, data.oid, data.parent); }

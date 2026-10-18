@@ -27,6 +27,7 @@ import { commitSelected } from './selected-commit';
 import { safeWorkingPath } from '../editor/paths';
 import { requireExactFileScope } from './file-scope';
 import { PatchHunkStore } from './patch-hunks';
+import { ConflictStore } from './conflicts';
 import { dropStash } from './stash-drop';
 import { NetworkProgressParser } from './network-progress';
 import { ReflogReader } from './reflog';
@@ -87,6 +88,8 @@ function parseCommitFiles(output:Buffer):CommitFile[]{const names=decodePaths(ou
 const commitFormat = '%H%x00%P%x00%an%x00%ae%x00%at%x00%s';
 
 export class GitService implements GitServiceContract {
+  private readonly conflicts = new ConflictStore();
+  async conflictDetails(repo: Repository, name: string) { return this.conflicts.preview(repo, validateFilePath(name), args => this.run(repo,args), () => this.snapshot(repo)); }
   private version = 0;
   private executable?: Promise<string>;
   private readonly fileHistories = new Map<string, FileHistoryIndex & { created: number; remoteKey?: string; localOnly?: Set<string> }>();
@@ -976,6 +979,7 @@ export class GitService implements GitServiceContract {
     if (action.type !== 'commit' && action.type !== 'operation.continue') this.reviews.delete(repo.id);
     let args: string[], pushedRemote: string | undefined, boundRemote: BoundRemote | undefined; const remote = (value?: string) => value ? [token(value, 'remote')] : [];
     switch (action.type) {
+      case 'conflict.choose': return this.conflicts.choose(repo,action.token,action.side,args=>this.run(repo,args),()=>this.snapshot(repo));
       case 'stage-lines': case 'unstage-lines': case 'stage-hunk': case 'unstage-hunk': case 'discard-hunk': return this.hunks.apply(repo, action, (args, execution) => this.run(repo, args, false, undefined, execution), () => this.status(repo));
       case 'rebase.interactive': return this.interactiveRebase.start(repo, await this.snapshot(repo), (args, execution) => this.run(repo, args, false, undefined, execution), action);
       case 'discard': return this.discard(repo, action, onProgress);
