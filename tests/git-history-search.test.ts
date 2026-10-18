@@ -70,23 +70,65 @@ it('validates exact commit IDs, intersects selected scope and retains rename-awa
   expect(page.commits.map(commit => commit.oid)).toContain(first);
   expect(page.commits.find(commit => commit.oid === first)?.fileHistory?.paths).toContain('old.txt');
   expect((await service.history(repo, { tips: ['main'], filters: { commitId: first.slice(0, 12) } })).commits.map(commit => commit.oid)).toEqual([first]);
+  await git(root, 'branch', first.slice(0, 12), head);
+  expect((await service.history(repo, { tips: ['main'], filters: { commitId: first.slice(0, 12) } })).commits.map(commit => commit.oid)).toEqual([first]);
   expect((await service.history(repo, { tips: ['other'], filters: { commitId: head } })).commits).toEqual([]);
   await expect(service.history(repo, { filters: { commitId: 'HEAD~1' } })).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' });
   await expect(service.history(repo, { filters: { commitId: '0'.repeat(40) } })).rejects.toThrow();
 });
 
 it('restricts code to each file identity historical path and excludes unrelated changes in the same commit', async () => {
-  const { root, repo, service } = await fixtures.setup();
+  const { root, repo } = await fixtures.setup();
   const first = await commitFile(root, 'old.txt', 'needle\none\ntwo\nthree\nfour\n');
   await writeFile(path.join(root, 'old.txt'), 'needle\none\ntwo\nthree\nfour\nordinary change\n');
   await writeFile(path.join(root, 'unrelated.txt'), 'other file keyword\n');
   await git(root, 'add', '.'); await git(root, 'commit', '-m', 'both files');
   await git(root, 'mv', 'old.txt', 'new.txt'); await git(root, 'commit', '-m', 'rename');
   const last = await commitFile(root, 'new.txt', 'needle\none\ntwo\nthree\nfour\nordinary change\nneedle again\n');
+  let broadCodeScans = 0, scopedCodeScans = 0;
+  const service = new GitService({ environment: async (_repo, args) => {
+    if (args[0] === 'log' && args.some(arg => arg.startsWith('-G'))) {
+      if (args.includes('--topo-order')) broadCodeScans++;
+      if (args.includes('--no-walk=unsorted')) scopedCodeScans++;
+    }
+    return {};
+  } });
   const query = { tips: ['HEAD'], file: { path: 'new.txt', revision: last } };
   expect((await service.history(repo, { ...query, filters: { code: 'other file keyword' } })).commits).toEqual([]);
-  expect((await service.history(repo, { ...query, filters: { code: 'needle' } })).commits.map(commit => commit.oid)).toEqual([last, first]);
+  const page = await service.history(repo, { ...query, filters: { code: 'needle' }, limit: 1 });
+  const scansAfterFirstPage = scopedCodeScans;
+  const next = await service.history(repo, { ...query, tips: page.tips, filters: { code: 'needle' }, limit: 1, offset: page.nextOffset });
+  expect([...page.commits, ...next.commits].map(commit => commit.oid)).toEqual([last, first]);
+  expect(scopedCodeScans).toBe(scansAfterFirstPage);
   expect((await service.history(repo, { ...query, filters: { code: 'needle', path: 'unrelated.txt' } })).commits).toEqual([]);
+  expect(broadCodeScans).toBe(0);
+  expect(scopedCodeScans).toBeGreaterThan(0);
+});
+
+it('reuses complete advanced matches across pages without caching a failed request', async () => {
+  const { root, repo } = await fixtures.setup();
+  await commitFile(root, 'a.txt', 'one\n'); await commitFile(root, 'a.txt', 'two\n'); await commitFile(root, 'a.txt', 'three\n');
+  let fullScans = 0, failMetadata = true;
+  const service = new GitService({ environment: async (_repo, args) => {
+    if (args[0] === 'log' && args.includes('--topo-order') && args.includes('--format=%H')) fullScans++;
+    if (failMetadata && args[0] === 'log' && args.includes('--no-walk=unsorted') && args.includes('-z')) { failMetadata = false; throw new Error('metadata failed'); }
+    return {};
+  } });
+  const query = { tips: ['HEAD'], filters: { author: 'test@example.com' }, limit: 1 };
+  await expect(service.history(repo, query)).rejects.toThrow('metadata failed');
+  const page = await service.history(repo, query);
+  const next = await service.history(repo, { ...query, tips: page.tips, offset: page.nextOffset });
+  expect(page.commits).toHaveLength(1); expect(next.commits).toHaveLength(1);
+  expect(fullScans).toBe(2);
+});
+
+it.runIf(process.platform === 'win32')('normalizes Windows separators before intersecting file-history code paths', async () => {
+  const { root, repo, service } = await fixtures.setup(); await mkdir(path.join(root, 'dir'));
+  await commitFile(root, 'dir/old.txt', 'needle\nbase\n');
+  await git(root, 'mv', 'dir/old.txt', 'dir/new.txt'); await git(root, 'commit', '-m', 'rename'); const renamed = await git(root, 'rev-parse', 'HEAD');
+  const last = await commitFile(root, 'dir/new.txt', 'needle\nbase\nneedle again\n');
+  const page = await service.history(repo, { tips: ['HEAD'], file: { path: 'dir/new.txt', revision: last }, filters: { path: 'dir\\new.txt', code: 'needle' } });
+  expect(page.commits.map(commit => commit.oid)).toEqual([last, renamed]);
 });
 
 it('rejects invalid structured filters, preserves old sessions and fails visibly at the output limit', async () => {
