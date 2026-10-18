@@ -175,6 +175,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
       <main className="settings-content">
         <header className="settings-page-heading"><span>{page === 'advanced' ? t("settings.advanced") : page === 'language' || page === 'keyboard' ? t("settings.general") : page === 'colors' || page === 'history' ? t("settings.commitGraph") : t("settings.interface")} › {pageLabel}</span><small>{page === 'advanced' ? t("settings.gitOptionsTakeEffectOnlyAfterApply") : page === 'keyboard' ? t('settings.shortcutApplyHint') : t("settings.changesPreviewImmediatelyApplyToSave")}</small></header>
 
+        <div className="settings-page-scroll" key={page}>
         {saveError&&<p role="alert" className="form-error">{saveError}</p>}
         {page === 'files' && <section className="settings-page" aria-label={t('changes.fileList')}>
           <section className="settings-section" aria-labelledby="file-list-display-heading">
@@ -313,6 +314,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
           <div className="main-color-row"><div><strong>{t("settings.mainLine")}</strong><small>{t("settings.keptSeparateFromBranchColors")}</small></div><ColorField value={appearance.mainColors[colorTheme]} label={t("settings.mainLineColor")} onChange={value => updateAppearance({ ...appearance, mainColors: { ...appearance.mainColors, [colorTheme]: value } })}/><Button className="icon-only" icon="discard" title={t("settings.restoreMainLineColor")} aria-label={t("settings.restoreMainLineColor")} onClick={() => updateAppearance({ ...appearance, mainColors: { ...appearance.mainColors, [colorTheme]: defaultMainColors[colorTheme] } })}/></div>
           <p className="settings-note"><span className="contrast-dot is-good"/> {t("settings.atLeast31AgainstThePreviewBackground")} <span className="contrast-dot is-low"/> {t("settings.lowContrastConsiderAStrongerColor")}. {t("settings.newPathsPreferUnusedColorsThatDifferFromNearby")}</p>
         </section>}
+        </div>
       </main>
     </div>
   </Modal>;

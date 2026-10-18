@@ -1066,7 +1066,7 @@ Double-click a terminal tab to rename it. The toolbar clears the display and off
 ### Set the language and display appearance
 
 1. Click the gear in the upper-right corner to open settings.
-2. Choose a page in the General, Interface, Commit Graph, or Advanced category.
+2. Choose a page in the General, Interface, Commit Graph, or Advanced category. The settings dialog keeps the same dimensions when switching categories. Long pages scroll in the right content area while the title and footer remain fixed. In smaller windows the dialog fits the available space, and category navigation scrolls independently.
 3. Interface → Text & density controls the interface font size and commit list density. Interface → File list controls split or unified display and file spacing. Interface → Diff groups the Diff font size, line height, row separators (off by default), and navigation scope with a code preview. Expand Detailed rules for navigation exceptions. Commit Graph → Display independently controls commit row separators and alternating row backgrounds, both off by default; selection, hover, and Working Tree indicators remain visible.
 4. Click Apply to save. To discard unapplied changes, click Cancel, close settings, or press Esc.
 
