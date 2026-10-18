@@ -200,6 +200,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
               <label>{t("settings.fontSize")}<select aria-label={t("settings.diffFont")} value={appearance.codeFont} onChange={event => updateAppearance({ ...appearance, codeFont: Number(event.target.value) })}>{[11,12,13,14,15,16,17,18].map(size => <option key={size} value={size}>{size}px{size === 12 ? t("settings.default") : ''}</option>)}</select></label>
               <DiffHeightField value={appearance.codeRowHeight} onChange={codeRowHeight => updateAppearance({ ...appearance, codeRowHeight })}/>
             </div>
+            <label className="form-checkbox"><input type="checkbox" checked={appearance.diffRowSeparators} onChange={event => updateAppearance({ ...appearance, diffRowSeparators: event.target.checked })}/>{t('settings.showRowSeparators')}</label>
             <figure className="settings-preview">
               <figcaption><span>{t("settings.preview")}</span><span>{t("settings.renderedLineHeight")} · {diffRowHeight(appearance.codeFont, appearance.codeRowHeight)}{uiText("settings.px")}</span></figcaption>
               <div className="diff-content settings-diff-preview" role="region" aria-label={t("settings.diffTextPreview")}>
