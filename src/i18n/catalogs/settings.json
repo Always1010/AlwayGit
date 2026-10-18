@@ -1,4 +1,10 @@
 {
+  "settings.showRowSeparators": {
+    "en": "Show row separators",
+    "zh-CN": "显示行分隔线",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / row appearance"
+  },
   "settings.lineHeight": {
     "en": "Line height",
     "zh-CN": "行高",

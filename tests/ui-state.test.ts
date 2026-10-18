@@ -582,12 +582,13 @@ describe('repository UI consistency', () => {
     original.beginSettings();
     expect(original.diffNavigationScope).toBe('commit');
     expect(original.singleKeyShortcuts).toBe(true);
-    store.getState().previewSettings({ changeListMode:'unified', singleKeyShortcuts: false, diffNavigationScope: 'file', language: 'zh-CN', font: 16, row: 28, appearance: { theme: 'light', palette: 'extended', codeFont: 18, codeRowHeight: 24, fileSpacing: 5, currentBranchColor: '#00ff99', currentRepositoryColor: '#ff4ad4' } });
+    store.getState().previewSettings({ changeListMode:'unified', singleKeyShortcuts: false, diffNavigationScope: 'file', language: 'zh-CN', font: 16, row: 28, appearance: { theme: 'light', palette: 'extended', codeFont: 18, codeRowHeight: 24, diffRowSeparators: true, fileSpacing: 5, currentBranchColor: '#00ff99', currentRepositoryColor: '#ff4ad4' } });
     expect(store.getState().changeListMode).toBe('unified');
     expect(bridge.save.mock.calls.at(-1)?.[0].changeListMode).toBe('split');
     expect(store.getState().diffNavigationScope).toBe('file');
     expect(store.getState().singleKeyShortcuts).toBe(false);
     expect(store.getState().appearance.palette).toBe('extended');
+    expect(store.getState().appearance.diffRowSeparators).toBe(true);
     expect(store.getState().appearance).toMatchObject({currentBranchColor:'#00FF99',currentRepositoryColor:'#FF4AD4'});
     expect(bridge.save.mock.calls.at(-1)?.[0]).toMatchObject({ singleKeyShortcuts: true, diffNavigationScope: 'commit', language: original.language, layout: original.layout, appearance: original.appearance });
     // A background refresh/save during preview must still persist committed settings.
@@ -609,14 +610,14 @@ describe('repository UI consistency', () => {
   it('applies settings through host session validation and restores only panel geometry', async () => {
     const { sessionSchema } = await import('../src/protocol/validation');
     store.getState().beginSettings();
-    store.getState().previewSettings({ changeListMode:'unified', singleKeyShortcuts: false, diffNavigationScope: 'file', language: 'zh-CN', font: 15, row: 28, appearance: { theme: 'contrast', palette: 'distinct', codeFont: 17, codeRowHeight: 23, fileSpacing: 6, badgeColor: '#006BFF', currentBranchColor:'#00FF99', currentRepositoryColor:'#FF4AD4' } });
+    store.getState().previewSettings({ changeListMode:'unified', singleKeyShortcuts: false, diffNavigationScope: 'file', language: 'zh-CN', font: 15, row: 28, appearance: { theme: 'contrast', palette: 'distinct', codeFont: 17, codeRowHeight: 23, diffRowSeparators: true, fileSpacing: 6, badgeColor: '#006BFF', currentBranchColor:'#00FF99', currentRepositoryColor:'#FF4AD4' } });
     bridge.rpc.mockImplementation(async (method, _repo, payload) => method === 'saveInterfaceSettings' ? payload : undefined);
     await store.getState().finishSettings(true);
     const saved = bridge.save.mock.calls.at(-1)?.[0];
     expect(sessionSchema.parse(saved).changeListMode).toBe('unified');
     expect(sessionSchema.parse(saved).diffNavigationScope).toBe('file');
     expect(sessionSchema.parse(saved).singleKeyShortcuts).toBe(false);
-    expect(sessionSchema.parse(saved).appearance).toMatchObject({ theme: 'contrast', palette: 'distinct', codeFont: 17, codeRowHeight: 23, fileSpacing: 6, badgeColor: '#006BFF', currentBranchColor:'#00FF99', currentRepositoryColor:'#FF4AD4' });
+    expect(sessionSchema.parse(saved).appearance).toMatchObject({ theme: 'contrast', palette: 'distinct', codeFont: 17, codeRowHeight: 23, diffRowSeparators: true, fileSpacing: 6, badgeColor: '#006BFF', currentBranchColor:'#00FF99', currentRepositoryColor:'#FF4AD4' });
     expect(saved.appearance.colors.light).toHaveLength(8);
     expect(saved.appearance.colors.dark).toHaveLength(8);
     store.getState().setLayout({ sidebar: 260, details: 350, diff: 900, diffCollapsed: true }); store.getState().restoreLayout();
@@ -628,7 +629,7 @@ describe('repository UI consistency', () => {
     const { sessionSchema } = await import('../src/protocol/validation');
     const legacy = { theme: 'light' as const, palette: 'vivid' as const, codeFont: 15 };
     expect(sessionSchema.safeParse({ appearance: legacy }).success).toBe(true);
-    expect(normalizeAppearance(legacy)).toMatchObject({ theme: 'light', codeFont: 15, codeRowHeight: 18, fileSpacing: 1, currentBranchColor:'#2463C5',currentRepositoryColor:'#2463C5' });
+    expect(normalizeAppearance(legacy)).toMatchObject({ theme: 'light', codeFont: 15, codeRowHeight: 18, diffRowSeparators: false, fileSpacing: 1, currentBranchColor:'#2463C5',currentRepositoryColor:'#2463C5' });
     for (const codeRowHeight of [15, 37, 19.5]) {
       expect(sessionSchema.safeParse({ appearance: { ...legacy, codeRowHeight } }).success).toBe(false);
     }

@@ -360,7 +360,7 @@ h1,h2,p {margin:0;}
 .diff-horizontal-scroll {flex:none;width:var(--diff-viewport-width,100%);height:var(--diff-horizontal-height,0px);overflow-x:auto;overflow-y:hidden;font:var(--diff-font,12px)/1 var(--vscode-editor-font-family,Consolas,monospace);}
 .diff-horizontal-scroll>div {height:1px;}
 .diff-line {font:12px/18px var(--vscode-editor-font-family,Consolas,monospace);}
-.diff-line>.diff-side {display:flex;overflow:hidden;white-space:pre;min-width:0;box-shadow:inset 0 -1px color-mix(in srgb,var(--row-border) 70%,transparent);}
+.diff-line>.diff-side {display:flex;overflow:hidden;white-space:pre;min-width:0;box-shadow:var(--diff-row-shadow,none);}
 .diff-hunk-gutter {position:relative;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));min-height:0;overflow:hidden;border-inline:1px solid var(--border);}
 .diff-hunk-gutter.has-hunk {background:color-mix(in srgb,var(--muted) 12%,var(--panel));}
 .diff-content {font:12px/18px var(--vscode-editor-font-family,Consolas,monospace);}

@@ -13,6 +13,7 @@ export interface Appearance {
   palette: GraphPaletteId;
   codeFont: number;
   codeRowHeight: number;
+  diffRowSeparators: boolean;
   fileSpacing: number;
   badgeColor: string;
   currentBranchColor: string;
@@ -34,7 +35,7 @@ export function presetColors(id: GraphPaletteId): GraphPaletteColors {
 }
 
 export const defaultAppearance: Appearance = {
-  theme: 'system', palette: 'vivid', codeFont: 12, codeRowHeight: 18, fileSpacing: 1, badgeColor: defaultBadgeColor, currentBranchColor: defaultCurrentBranchColor, currentRepositoryColor: defaultCurrentRepositoryColor, colors: presetColors('vivid'), mainColors: { ...defaultMainColors },
+  theme: 'system', palette: 'vivid', codeFont: 12, codeRowHeight: 18, diffRowSeparators: false, fileSpacing: 1, badgeColor: defaultBadgeColor, currentBranchColor: defaultCurrentBranchColor, currentRepositoryColor: defaultCurrentRepositoryColor, colors: presetColors('vivid'), mainColors: { ...defaultMainColors },
 };
 
 function normalizeColors(value: Partial<GraphPaletteColors> | undefined, palette: GraphPaletteId): GraphPaletteColors {
@@ -51,6 +52,7 @@ export function normalizeAppearance(value: Partial<Appearance> = {}): Appearance
     palette,
     codeFont: Number.isFinite(value.codeFont) ? Math.round(Math.max(11, Math.min(18, value.codeFont!))) : 12,
     codeRowHeight: Number.isFinite(value.codeRowHeight) ? Math.round(Math.max(16, Math.min(36, value.codeRowHeight!))) : 18,
+    diffRowSeparators: value.diffRowSeparators === true,
     fileSpacing: Number.isFinite(value.fileSpacing) ? Math.round(Math.max(0, Math.min(8, value.fileSpacing!))) : 1,
     badgeColor: hexColor.test(value.badgeColor ?? '') ? value.badgeColor!.toUpperCase() : defaultBadgeColor,
     currentBranchColor: hexColor.test(value.currentBranchColor ?? '') ? value.currentBranchColor!.toUpperCase() : defaultCurrentBranchColor,

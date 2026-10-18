@@ -70,7 +70,7 @@
 .settings-preview figcaption {display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;color:var(--muted);font-size:11px;}
 .settings-preview .settings-row-preview {margin-top:0;}
 .settings-diff-preview {overflow:auto;border:1px solid var(--border);border-radius:4px;background:var(--panel);}
-.settings-diff-preview-line {display:flex;min-width:max-content;padding-right:8px;white-space:pre;}
+.settings-diff-preview-line {display:flex;min-width:max-content;padding-right:8px;white-space:pre;box-shadow:var(--diff-row-shadow,none);}
 .settings-diff-preview code {font:inherit;color:inherit;background:transparent;border:0;border-radius:0;padding:0;white-space:pre;}
 .settings-diff-page .settings-control {max-width:none;}
 .settings-rules {margin-top:10px;}
