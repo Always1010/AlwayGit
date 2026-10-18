@@ -20,7 +20,6 @@ import { diffKey } from './refresh';
 import { diffRowHeight } from './appearance';
 import { useShortcuts } from './shortcuts';
 import type { DiffImage, DiffPreview as Preview } from '../src/protocol/types';
-import { selectPatchLine, type LineSelection } from './lineSelection';
 
 interface Selection {key:string;rows:readonly DiffRow[];index:number;ranges?:readonly DiffChangeRange[]}
 type ImageZoom = 'fit' | number;
@@ -50,7 +49,6 @@ function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():
   const t=useTranslation(),[preview,setPreview]=useState<Preview>(),[error,setError]=useState<string>(),[loading,setLoading]=useState(false),[selection,setSelection]=useState<Selection>(),[viewportWidth,setViewportWidth]=useState(0),viewport=useRef<HTMLDivElement>(null),displayedKey=useRef(''),lastScrollTop=useRef(0),navigationScroll=useRef<number|undefined>(undefined);
   const [discardConfirmation,setDiscardConfirmation]=useState<{hunk:PatchHunk;token:string;left:number;top:number;deletesFile:boolean}>();
   const [previewGeneration,setPreviewGeneration]=useState(0);
-  const [selectedLines,setSelectedLines]=useState<LineSelection>({ids:[]});
   const frame=useRef<HTMLElement>(null),horizontal=useRef<HTMLDivElement>(null),horizontalOffset=useRef(0);
   const setHorizontalOffset=(left:number)=>{
     if(horizontal.current)horizontal.current.scrollLeft=left;
@@ -238,23 +236,6 @@ function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():
   const previousHint=commitMode?t("diff.previousChangeAcrossCommitFilesWrapsToTheLast"):changeCount===1?t("diff.locateTheOnlyChange"):t("diff.previousChangeWrapsToTheLast"),nextHint=commitMode?t("diff.nextChangeAcrossCommitFilesWrapsToTheFirst"):changeCount===1?t("diff.locateTheOnlyChange"):t("diff.nextChangeWrapsToTheFirst");
   const hunkTarget=!isolated&&state.tab==='changes'&&state.diffTarget?.kind==='change'&&state.diffTarget.area!=='conflict'?state.diffTarget:undefined;
   const patchHunks=hunkTarget&&preview?.kind==='text'?preview.patchHunks:undefined;
-  const lineIndex=useMemo(()=>new Map(patchHunks?.lines?.map(line=>[`${line.side}:${line.line}`,line])),[patchHunks]);
-  const selectedLineIds=useMemo(()=>new Set(selectedLines.ids),[selectedLines.ids]);
-  useEffect(()=>{setSelectedLines({ids:[]});},[targetKey,revision,patchHunks?.token]);
-  const pickLine=(side:'before'|'after',line:number|undefined,event:React.MouseEvent)=>{
-    const target=lineIndex.get(`${side}:${line}`);if(!target||state.busy||loading)return;
-    event.stopPropagation();setSelectedLines(current=>selectPatchLine(patchHunks?.lines??[],current,target.id,{shift:event.shiftKey,additive:event.ctrlKey||event.metaKey}));
-  };
-  const applyLines=()=>{
-    const current=useWorkbench.getState();
-    if(!patchHunks?.token||!hunkTarget||!selectedLines.ids.length||state.busy||loading||current.repoId!==state.repoId||diffKey(current.diffTarget)!==diffKey(hunkTarget))return;
-    hunkScroll.current={repoId:state.repoId,path:hunkTarget.path,top:viewport.current?.scrollTop??lastScrollTop.current,left:horizontalOffset.current};
-    void state.execute({type:hunkTarget.area==='staged'?'unstage-lines':'stage-lines',token:patchHunks.token,lineIds:selectedLines.ids});
-  };
-  const lineNumber=(side:'before'|'after',line:number|undefined)=>{
-    const item=lineIndex.get(`${side}:${line}`),label=t('diff.selectLine',{side:side==='before'?t('diff.deletedLine'):t('diff.addedLine'),line:line??0});
-    return item?<button type="button" className={`line-number diff-select-line${selectedLineIds.has(item.id)?' selected':''}`} disabled={state.busy||loading} aria-label={label} title={label} aria-pressed={selectedLineIds.has(item.id)} onClick={event=>pickLine(side,line,event)}>{line}</button>:<span className="line-number">{line??''}</span>;
-  };
   useEffect(()=>{setDiscardConfirmation(undefined);},[targetKey,revision,patchHunks?.token]);
   const applyHunk=(hunkId:string,discard=false)=>{
     const current=useWorkbench.getState();
@@ -300,7 +281,7 @@ function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():
       const current=useWorkbench.getState();
       if(JSON.stringify([current.repoId,diffKey(current.diffTarget)])!==targetKey)return;
       preloaded.current=undefined;setPreviewGeneration(value=>value+1);
-    }}/>} {(patchHunks?.lines?.length??0)>0&&<div className="diff-line-selection" onKeyDown={event=>{if(event.key==='Escape'){event.stopPropagation();setSelectedLines({ids:[]});}}}><span role="status">{selectedLines.ids.length?t('diff.selectedLines',{count:selectedLines.ids.length}):t('diff.selectLinesHint')}</span>{selectedLines.ids.length>0&&<><Button className="icon-only" icon={hunkTarget?.area==='staged'?'arrow-up':'stage-inbox'} aria-label={t(hunkTarget?.area==='staged'?'diff.unstageLines':'diff.stageLines')} title={t(hunkTarget?.area==='staged'?'diff.unstageLines':'diff.stageLines')} disabled={state.busy||loading} onClick={applyLines}/><Button className="icon-only" icon="close" aria-label={t('diff.clearLineSelection')} title={t('diff.clearLineSelection')} onClick={()=>setSelectedLines({ids:[]})}/></>}</div>}{preview&&<div className={`diff-labels${preview.kind==='text'?' text-diff-labels':''}`}><span>{preview.leftLabel}</span>{preview.kind==='text'&&<span className="diff-label-gutter" aria-hidden="true"/>}<span>{preview.rightLabel}</span></div>}
+    }}/>} {preview&&<div className={`diff-labels${preview.kind==='text'?' text-diff-labels':''}`}><span>{preview.leftLabel}</span>{preview.kind==='text'&&<span className="diff-label-gutter" aria-hidden="true"/>}<span>{preview.rightLabel}</span></div>}
     {hunkTarget&&patchHunks?.unavailable&&<div className="history-caption" role="status">{t(patchHunks.unavailable==='changed'?'diff.hunkStale':'diff.hunkUnavailable')}</div>}
     {truncated&&<div className="history-caption">{t("diff.previewIsTruncatedOpenDiffToInspectTheFull")}</div>}
     <div className={`diff-viewport${preview?.kind==='text'?' text-diff-viewport':''}`} ref={viewport} onScroll={trackScroll}>
@@ -312,9 +293,9 @@ function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():
         const active=!!highlighted&&item.index>=highlighted.start&&item.index<=highlighted.end,rowHunk=patchHunkForRow(patchHunks,row);
         const hunk=patchHunkAtRow(patchHunks,row)??(item.index===virtualItems[0]?.index?rowHunk:undefined);
         return <div key={item.index} className={`diff-line${active?' active-change':''}${active&&item.index===highlighted?.start?' active-change-start':''}${active&&item.index===highlighted?.end?' active-change-end':''}`} style={{position:'absolute',left:0,width:'var(--diff-viewport-width,100%)',height:ROW_HEIGHT,transform:`translateY(${item.start}px)`}}>
-          <div className={`diff-side${row.changed&&row.before!==undefined?' removed':''}`}>{lineNumber('before',row.beforeLine)}<span className="diff-marker" aria-hidden="true">{row.changed&&row.before!==undefined?'−':''}</span><span className="diff-code">{content(row.before,row.after,row.changed,'before')}</span></div>
+          <div className={`diff-side${row.changed&&row.before!==undefined?' removed':''}`}><span className="line-number">{row.beforeLine??''}</span><span className="diff-marker" aria-hidden="true">{row.changed&&row.before!==undefined?'−':''}</span><span className="diff-code">{content(row.before,row.after,row.changed,'before')}</span></div>
           <div className={`diff-hunk-gutter${rowHunk?' has-hunk':''}`} data-hunk-id={rowHunk?.id}>{hunk&&<DiffHunkAction hunk={hunk} area={hunkTarget!.area as 'staged'|'unstaged'} disabled={state.busy||loading} apply={applyHunk} discard={requestDiscard}/>}</div>
-          <div className={`diff-side${row.changed&&row.after!==undefined?' added':''}`}>{lineNumber('after',row.afterLine)}<span className="diff-marker" aria-hidden="true">{row.changed&&row.after!==undefined?'+':''}</span><span className="diff-code">{content(row.after,row.before,row.changed,'after')}</span></div>
+          <div className={`diff-side${row.changed&&row.after!==undefined?' added':''}`}><span className="line-number">{row.afterLine??''}</span><span className="diff-marker" aria-hidden="true">{row.changed&&row.after!==undefined?'+':''}</span><span className="diff-code">{content(row.after,row.before,row.changed,'after')}</span></div>
         </div>;
       })}</div>}
     </div>

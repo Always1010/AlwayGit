@@ -38,7 +38,6 @@ export function blocksWorkbench(action: GitAction | string): boolean {
 export function actionName(action: GitAction): string {
   const names: Partial<Record<GitAction['type'], string>> = {
     'conflict.choose': uiText('conflicts.chooseVersion'),
-    'stage-lines': uiText('diff.stageLines'), 'unstage-lines': uiText('diff.unstageLines'),
     'lfs.fetchHistorical':uiText('historicalLfs.confirm'), 'lfs.fetch':uiText('lfs.fetch'), 'lfs.checkout':uiText('lfs.checkout'), 'lfs.pull':uiText('lfs.pull'), 'lfs.push':uiText('lfs.push'), 'lfs.track':uiText('lfs.apply'),
     'stage-hunk': uiText('diff.stageHunk'), 'unstage-hunk': uiText('diff.unstageHunk'), 'discard-hunk': uiText('diff.discardHunk'),
     stage: uiText("actionNames.stage"), 'resolve-and-stage': uiText("actionNames.markStage"), unstage: uiText("actionNames.unstage"), discard: uiText("actionNames.discard"), commit: action.type === 'commit' && action.amend ? uiText("actionNames.amend") : uiText("actionNames.commit"),

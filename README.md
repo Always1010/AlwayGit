@@ -29,7 +29,7 @@ Release packages target `win32-x64`, `linux-x64`, and `linux-arm64`. With Remote
 - Multiple-reference filters, recursive branch trees, paginated topological commit graphs, file history, combined author/date/path/code-change searches, and HEAD location.
 - Commit details, complete file trees at any commit, Merge Parent selection, automatic two-commit and bidirectional branch comparison, file-path filtering, and read-only text/image diffs.
 - Shared bottom Diff and terminal tabs with Shell selection, renaming, termination/restart, collapse, and maximization.
-- Working Tree conflict, Unstaged, and Staged management; whole-file, Git-hunk, selected-line, and bulk staging actions; Commit, Amend, and per-repository drafts.
+- Working Tree conflict, Unstaged, and Staged management; whole-file, Git-hunk, and bulk staging actions; Commit, Amend, and per-repository drafts.
 - Conflict-file navigation, native three-way merge editing with a manual fallback, complete-side selection, and reviewed staged results before continuation.
 - Git LFS status, tracking-rule previews, object fetching/uploading, cache checkout, and explicit historical-object downloads and previews.
 - Branch, remote-branch, Tag, Stash, and Worktree management, plus Fetch, Pull, Push, Merge, ordinary and interactive Rebase, Cherry-pick, Reset, Revert, and active-operation handling.

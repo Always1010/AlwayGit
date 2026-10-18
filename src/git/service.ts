@@ -1090,7 +1090,7 @@ export class GitService implements GitServiceContract {
     let args: string[], pushedRemote: string | undefined, boundRemote: BoundRemote | undefined; const remote = (value?: string) => value ? [token(value, 'remote')] : [];
     switch (action.type) {
       case 'conflict.choose': return this.conflicts.choose(repo,action.token,action.side,args=>this.run(repo,args),()=>this.snapshot(repo));
-      case 'stage-lines': case 'unstage-lines': case 'stage-hunk': case 'unstage-hunk': case 'discard-hunk': return this.hunks.apply(repo, action, (args, execution) => this.run(repo, args, false, undefined, execution), () => this.status(repo));
+      case 'stage-hunk': case 'unstage-hunk': case 'discard-hunk': return this.hunks.apply(repo, action, (args, execution) => this.run(repo, args, false, undefined, execution), () => this.status(repo));
       case 'lfs.fetchHistorical': return this.lfs.execute(repo, lfsActionSchema.parse(action), (args, allowFailure, execution) => this.run(repo, args, allowFailure, undefined, execution), { branch: '' });
       case 'lfs.track': case 'lfs.fetch': case 'lfs.checkout': case 'lfs.pull': case 'lfs.push': return this.lfs.execute(repo, lfsActionSchema.parse(action), (args, allowFailure, execution) => this.run(repo, args, allowFailure, undefined, execution), await this.status(repo));
       case 'rebase.interactive': return this.interactiveRebase.start(repo, await this.snapshot(repo), (args, execution) => this.run(repo, args, false, undefined, execution), action);

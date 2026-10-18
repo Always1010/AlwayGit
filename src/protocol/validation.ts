@@ -12,7 +12,6 @@ const kind = z.enum(['merge', 'rebase', 'cherry-pick', 'revert']);
 const actionContext = { expectedHead: z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})?$/), expectedBranch: z.string().max(4096) };
 export const actionSchema = z.union([
   conflictChoiceSchema,
-  z.object({ type: z.enum(['stage-lines', 'unstage-lines']), token: z.string().uuid(), lineIds: z.array(z.string().uuid()).min(1).max(200000) }).strict(),
   lfsActionSchema,
   z.object({ type: z.enum(['stage-hunk', 'unstage-hunk', 'discard-hunk']), token: z.string().uuid(), hunkId: z.string().uuid() }).strict(),
   z.object({ type: z.enum(['stage', 'resolve-and-stage', 'unstage']), paths }),
