@@ -130,6 +130,7 @@ export async function verifyDiffNavigation(browser, url) {
     await settings.getByLabel('Diff line height', { exact: true }).selectOption('18');
     await page.waitForFunction(() => document.querySelector('.diff-line')?.getBoundingClientRect().height === 22);
     assert.equal(await diff.locator('.diff-line').first().evaluate(element => getComputedStyle(element).lineHeight), '22px', 'CSS and virtual rows agree on the safe minimum for large text');
+    await verifyDiffLineNumberClearance(diff);
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     await page.waitForFunction(() => document.querySelector('.diff-line')?.getBoundingClientRect().height === 18);
     await viewport.evaluate(element => { element.scrollTop = 0; element.dispatchEvent(new Event('scroll')); });
@@ -149,6 +150,7 @@ export async function verifyDiffNavigation(browser, url) {
     await diff.getByRole('button',{name:'Next change'}).click();
     await diff.locator('.active-change-start .line-number').first().getByText('100001',{exact:true}).waitFor();
     await diff.locator('mark').getByText('tail changed',{exact:true}).waitFor();
+    await verifyDiffLineNumberClearance(diff);
     assert.ok(await diff.locator('.diff-line').count()<100,'Only viewport rows render for a complete 100,001-line file');
     await viewport.evaluate(e=>{e.scrollTop=0;e.dispatchEvent(new Event('scroll'));});
     await diff.locator('.line-number').getByText('1',{exact:true}).first().waitFor();
@@ -158,6 +160,7 @@ export async function verifyDiffNavigation(browser, url) {
     await diff.getByRole('button',{name:'Next change'}).click();
     await diff.locator('.active-change-start .line-number').first().getByText('4999999',{exact:true}).waitFor();
     await diff.locator('mark').getByText('tail changed',{exact:true}).waitFor();
+    await verifyDiffLineNumberClearance(diff);
     await viewport.evaluate(e=>{e.scrollTop=e.scrollHeight;e.dispatchEvent(new Event('scroll'));});
     await diff.locator('.line-number').getByText('5000000',{exact:true}).first().waitFor();
     assert.ok(await diff.locator('.diff-line').count()<100,'Scaled scrolling reaches all rows without a browser height limit');
@@ -377,6 +380,7 @@ export async function verifyCommitNavigation(browser, url) {
 
 /** Sample every frame while panning; fixed chrome must never need positional compensation. */
 export async function verifyFixedDiffScroll(diff) {
+  await verifyDiffLineNumberClearance(diff);
   const result=await diff.evaluate(async panel=>{
     const tick=()=>new Promise(resolve=>requestAnimationFrame(resolve));await tick();await tick();
     const bar=panel.querySelector('.diff-horizontal-scroll'),view=panel.querySelector('.diff-viewport');
@@ -413,4 +417,15 @@ export async function verifyFixedDiffScroll(diff) {
   assert.equal(result.viewportLeft,0,'The vertical viewport never pans horizontally');
   assert.ok(result.tailVisible,'The longest visible line remains reachable at the right limit');
   assert.ok(result.trackpad>0&&result.shiftWheel>result.trackpad,'Trackpad and Shift+wheel pan the shared text layer');
+  await verifyDiffLineNumberClearance(diff);
+}
+
+async function verifyDiffLineNumberClearance(diff) {
+  const gaps=await diff.locator('.diff-side.added .line-number,.diff-side.removed .line-number').evaluateAll(numbers=>numbers.filter(number=>number.textContent).map(number=>{
+    const range=document.createRange();range.selectNodeContents(number);
+    const text=range.getBoundingClientRect(),cell=number.parentElement.getBoundingClientRect();
+    return {left:text.left-cell.left,right:number.getBoundingClientRect().right-text.right};
+  }));
+  assert.ok(gaps.length>0,'The fixture must contain numbered changed lines');
+  assert.ok(gaps.every(gap=>gap.left>=5&&gap.right>=3.9),'Changed line numbers leave space for the 3px emphasis stripe and retain their right spacing');
 }
