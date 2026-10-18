@@ -338,7 +338,7 @@ h1,h2,p {margin:0;}
 .diff-viewport {overflow:auto;flex:1;min-height:0;}
 .diff-line {font:12px/18px var(--vscode-editor-font-family,Consolas,monospace);}
 .diff-line>.diff-side {display:flex;overflow:hidden;white-space:pre;min-width:0;box-shadow:inset 0 -1px color-mix(in srgb,var(--row-border) 70%,transparent);}
-.diff-hunk-gutter {position:relative;display:flex;align-items:flex-start;justify-content:space-between;border-inline:1px solid var(--border);}
+.diff-hunk-gutter {position:relative;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));min-height:0;overflow:hidden;border-inline:1px solid var(--border);}
 .diff-hunk-gutter.has-hunk {background:color-mix(in srgb,var(--muted) 12%,var(--panel));}
 .diff-content {font:12px/18px var(--vscode-editor-font-family,Consolas,monospace);}
 .diff-code {flex:1;min-width:0;overflow:hidden;}
@@ -612,9 +612,10 @@ h1,h2,p {margin:0;}
 .comparison-files button{width:100%;text-align:left;display:flex;gap:6px}
 .comparison-file-diff>.diff-preview{min-width:0;min-height:0;height:100%;overflow:hidden}
 @media(max-width:650px){.comparison-file-diff{grid-template-columns:1fr;grid-template-rows:100px minmax(160px,1fr)}.comparison-controls>select{width:100%}}
-.diff-hunk-action.button {position:relative;z-index:1;min-width:0;width:15px;height:100%;padding:0;flex:none;border:0;border-radius:2px;font-size:16px;line-height:1;color:var(--accent);background:transparent;}
+.diff-hunk-action.button {position:relative;z-index:1;min-width:0;min-height:0;width:100%;height:100%;max-height:100%;padding:0;border:0;border-radius:2px;font-size:16px;line-height:1;outline-offset:-2px;color:var(--accent);background:transparent;}
 .diff-hunk-action.button:hover,.diff-hunk-action.button:focus-visible {background:color-mix(in srgb,var(--accent) 25%,var(--panel));}
-.diff-hunk-left {margin-left:auto;}
+.diff-hunk-right {grid-column:1;grid-row:1;}
+.diff-hunk-left {grid-column:2;grid-row:1;}
 
 .diff-hunk-discard.button {color:var(--error);}
 .modal-backdrop:has(>.diff-hunk-confirm) {background:transparent;}
