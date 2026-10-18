@@ -56,10 +56,10 @@ export async function verifyPartialStaging(browser, url) {
     assert.ok(geometry.number<32,'Line numbers no longer reserve a wide action column');
     assert.equal(await firstStage.innerText(),'«','Staging points from Working Tree to Index');
     await firstStage.hover();
-    assert.equal(await diff.locator('.hunk-scope').count(),1,'Hover highlights only the selected contiguous change block');
+    assert.ok(await diff.locator('.active-change .diff-side').evaluateAll(cells=>cells.every(cell=>getComputedStyle(cell).outlineStyle==='none')),'Hover adds no outlines over red and green changes');
     await firstStage.focus();
     await page.mouse.move(10,10);
-    assert.equal(await diff.locator('.hunk-scope').count(),1,'Keyboard focus keeps the complete block highlighted after the pointer leaves');
+    assert.ok(await diff.locator('.active-change').evaluateAll(rows=>rows.every(row=>getComputedStyle(row,'::after').borderTopWidth==='0px'&&getComputedStyle(row,'::after').borderBottomWidth==='0px')),'Keyboard block navigation adds no blue frame');
     await diff.screenshot({path:'artifacts/partial-staging-unstaged.png'});
     await firstStage.click();
     await page.waitForFunction(() => !!window.__hunkFixture.pendingAction);
