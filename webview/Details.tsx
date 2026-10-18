@@ -18,6 +18,7 @@ import { fileHistoryChanges } from './refresh';
 import { fileHistoryKey } from '../src/protocol/history';
 import { changeEntries, changeKey, isStaged, isUnstaged, compareChangedFiles, type ChangeEntry } from './changeEntries';
 import type { ContextHandler } from './Sidebar';
+import { RevisionTree } from './RevisionTree';
 
 function FileLabel({ path }: { path: string }) {
   const label = filePathLabel(path);
@@ -72,7 +73,7 @@ function CommitFiles({ files, scope, filter, onFilterChange, target, empty, empt
 }
 
 function DetailsPanel({ open, edit, context, startCommit }: { open(dialog:DialogRequest):void; edit():void; context:ContextHandler; startCommit():void }) {
-  const state=useWorkbenchFields('compareCommits', 'comparison', 'details', 'detailsLoading', 'language', 'repoId', 'selectCommit', 'selectStashSection', 'selectedStashOid', 'selectedStashSection', 'stashDetails', 'tab', 'fileHistory'),t=useTranslation(),detail=state.details,comparison=state.comparison,[fileFilter,setFileFilter]=useState('');
+  const state=useWorkbenchFields('compareCommits', 'comparison', 'detailFileMode', 'details', 'detailsLoading', 'language', 'repoId', 'selectCommit', 'selectStashSection', 'selectedStashOid', 'selectedStashSection', 'setDetailFileMode', 'stashDetails', 'tab', 'fileHistory'),t=useTranslation(),detail=state.details,comparison=state.comparison,[fileFilter,setFileFilter]=useState('');
   useEffect(()=>{setFileFilter('');},[state.repoId,state.tab,state.selectedStashSection,fileHistoryKey(state.fileHistory)]);
   const stash=state.selectedStashOid?state.stashDetails:undefined,metadata=stash??detail,bodyLines=metadata?.body.split('\n')??[],body=(bodyLines[0]===metadata?.commit.subject?bodyLines.slice(1):bodyLines).join('\n').trim();
   const stashSections=stash?(Object.entries(stash.sections) as ['working'|'index'|'untracked',CommitDetails][]).filter((entry):entry is ['working'|'index'|'untracked',CommitDetails]=>!!entry[1]):[];
@@ -84,8 +85,11 @@ function DetailsPanel({ open, edit, context, startCommit }: { open(dialog:Dialog
       <div className="commit-metadata"><strong>{metadata!.commit.subject}</strong><span className="hash" title={metadata!.commit.oid}>{metadata!.commit.oid.slice(0,8)}</span><span>{metadata!.commit.author} &lt;{metadata!.commit.email}&gt;</span><span className="muted">{new Date(metadata!.commit.timestamp*1000).toLocaleString(state.language)}</span>{body&&<pre>{body}</pre>}
         {stash&&<><div className="stash-summary">{t("details.savedFiles", { count: (stash.totalFiles) })} · {t("details.untracked", { value: (stash.sections.untracked?.files.length??0) })}</div><div className="stash-tabs" role="tablist" aria-label={t("details.stashFileCategories")}>{stashSections.map(([section,value])=><Button key={section} role="tab" aria-selected={state.selectedStashSection===section} className={`stash-tab ${state.selectedStashSection===section?'selected':''}`} onClick={()=>state.selectStashSection(section)}>{sectionLabel(section)} <span>{value.files.length}</span></Button>)}</div></>}
       </div>
-      <div className="pane-heading"><strong>{t("details.changedFilesVariant2")} · {detail.files.length}</strong>{!stash&&detail.commit.parents.length>1&&<select aria-label={uiText("details.compareParent")} value={detail.parent??detail.commit.parents[0]} onChange={event=>void state.selectCommit(detail.commit.oid,event.target.value)}>{detail.commit.parents.map((parent,i)=><option key={parent} value={parent}>{uiText("details.parent")}{i+1} · {parent.slice(0,8)}</option>)}</select>}</div>
-      <CommitFiles files={detail.files} scope={`commit:${detail.commit.oid}:${detail.parent??''}`} filter={fileFilter} onFilterChange={setFileFilter} target={file=>({kind:'commit',oid:detail.commit.oid,parent:detail.parent,path:file.path,previousPath:file.previousPath})} empty={jump?t("details.thisCategoryHasNoFilesHas", { value: (sectionLabel(jump[0])), count: (jump[1].files.length) }):t("details.noChangedFiles")} emptyAction={jump&&<Button icon="arrow-right" onClick={()=>state.selectStashSection(jump[0])}>{t("details.open", { value: (sectionLabel(jump[0])) })}</Button>} edit={edit} context={context}/>
+      <div className="pane-heading"><strong>{state.detailFileMode==='tree'&&!stash?t('tree.fullTree'):t("details.changedFilesVariant2")} {state.detailFileMode==='changes'||stash?`· ${detail.files.length}`:''}</strong><div className="detail-file-heading-actions">{!stash&&<div className="detail-file-mode" role="group" aria-label={t('tree.commitFilesView')}><Button aria-pressed={state.detailFileMode==='changes'} onClick={()=>state.setDetailFileMode('changes')}>{t('tree.changed')}</Button><Button aria-pressed={state.detailFileMode==='tree'} onClick={()=>state.setDetailFileMode('tree')}>{t('tree.fullTree')}</Button></div>}{!stash&&detail.commit.parents.length>1&&<select aria-label={uiText("details.compareParent")} value={detail.parent??detail.commit.parents[0]} onChange={event=>void state.selectCommit(detail.commit.oid,event.target.value)}>{detail.commit.parents.map((parent,i)=><option key={parent} value={parent}>{uiText("details.parent")}{i+1} · {parent.slice(0,8)}</option>)}</select>}</div></div>
+      {state.detailFileMode==='tree'&&!stash
+        ? <RevisionTree revision={detail.commit.oid} context={context}/>
+        : <CommitFiles files={detail.files} scope={`commit:${detail.commit.oid}:${detail.parent??''}`} filter={fileFilter} onFilterChange={setFileFilter} target={file=>({kind:'commit',oid:detail.commit.oid,parent:detail.parent,path:file.path,previousPath:file.previousPath})} empty={jump?t("details.thisCategoryHasNoFilesHas", { value: (sectionLabel(jump[0])), count: (jump[1].files.length) }):t("details.noChangedFiles")} emptyAction={jump&&<Button icon="arrow-right" onClick={()=>state.selectStashSection(jump[0])}>{t("details.open", { value: (sectionLabel(jump[0])) })}</Button>} edit={edit} context={context}/>
+      }
     </>}
   </section>;
 }

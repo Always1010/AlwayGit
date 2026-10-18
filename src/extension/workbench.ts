@@ -10,7 +10,7 @@ import { SnapshotCoordinator } from '../application/snapshot-coordinator';
 import { QueryCoordinator } from '../application/query-coordinator';
 import { reflogQuerySchema } from '../protocol/reflog';
 import { readQueryCategory } from '../protocol/queries';
-import { worktreeOverviewSchema, externalUrlSchema, remoteLinksSchema, remoteTagsSchema, cancelQuerySchema, actionSchema, operationSettingsSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, branchComparisonSchema, cherryPickCheckSchema, diffSchema, diffPreviewSchema, diffPageSchema, diffReleaseSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema, repositoryDiscoverySchema, cancelRepositoryDiscoverySchema, addRepositoriesSchema, reorderRepositorySchema, createRepositoryCollectionSchema } from '../protocol/validation';
+import { worktreeOverviewSchema, externalUrlSchema, remoteLinksSchema, remoteTagsSchema, cancelQuerySchema, actionSchema, operationSettingsSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, branchComparisonSchema, cherryPickCheckSchema, revisionTreeSchema, revisionTreeSearchSchema, openRevisionSchema, diffSchema, diffPreviewSchema, diffPageSchema, diffReleaseSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema, repositoryDiscoverySchema, cancelRepositoryDiscoverySchema, addRepositoriesSchema, reorderRepositorySchema, createRepositoryCollectionSchema } from '../protocol/validation';
 import * as vscode from 'vscode';
 import { randomBytes } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -659,6 +659,8 @@ export class Workbench implements vscode.Disposable {
       case 'prepareDiscard': return this.git.prepareDiscard(repo, discardRequestSchema.parse(request.payload));
       case 'inspectDetails':
       case 'details': { const data = detailsSchema.parse(request.payload); return this.git.details(repo, data.oid, data.parent); }
+      case 'revisionTree': return this.git.revisionTree(repo, revisionTreeSchema.parse(request.payload));
+      case 'revisionTreeSearch': return this.git.searchRevisionTree(repo, revisionTreeSearchSchema.parse(request.payload));
       case 'stashDetails': { const data = detailsSchema.parse(request.payload); return this.git.stashDetails(repo, data.oid); }
       case 'branchComparison': { const data=branchComparisonSchema.parse(request.payload); if (!this.git.branchComparison) throw new MessageError(message('comparison.unavailable')); return this.git.branchComparison(repo,data); }
       case 'compare': { const data=comparisonSchema.parse(request.payload); return this.git.compare(repo,data.left,data.right,data.preserveOrder); }
@@ -677,6 +679,7 @@ export class Workbench implements vscode.Disposable {
         return null;
       }
       case 'openFile': await this.projects.openFile(repo.root, fileSchema.parse(request.payload).path); return null;
+      case 'openRevision': await this.documents.openRevision(repo, openRevisionSchema.parse(request.payload)); return null;
       case 'openProject': return this.projects.openProject(repo.root);
       case 'openWorktree': {
         const data = openWorktreeSchema.parse(request.payload);

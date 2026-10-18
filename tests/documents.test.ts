@@ -67,6 +67,17 @@ describe('Complete Git Diff previews', () => {
     expect(await documents.preview(repo,{kind:'comparison',left,right,path:'after.txt'})).toMatchObject({leftLabel:left.slice(0,8),rightLabel:right.slice(0,8),left:'common\nleft',right:'common\nright'});
   });
 
+  it('compares a fixed historical file with the working tree, including an absent working path', async () => {
+    const { root, repo, documents } = await setup();
+    await writeFile(path.join(root, 'historical.txt'), 'saved revision'); const revision = await commit(root, 'historical');
+    await rm(path.join(root, 'historical.txt'));
+    expect(await documents.preview(repo, { kind: 'revision', revision, path: 'historical.txt' })).toMatchObject({
+      kind: 'text', left: 'saved revision', right: '', leftLabel: revision.slice(0, 8), rightLabel: 'Working Tree',
+    });
+    expect(await documents.revisionPreview(repo, { revision, path: 'historical.txt' })).toMatchObject({ kind: 'text', left: '', right: 'saved revision' });
+    await expect(documents.preview(repo, { kind: 'revision', revision: 'HEAD', path: 'historical.txt' })).rejects.toThrow('fixed Commit ID');
+  });
+
   it('compares a saved untracked file with the existing working copy',async()=>{
     const {root,repo,service,documents}=await setup();
     await writeFile(path.join(root,'base.txt'),'base');await commit(root,'initial');

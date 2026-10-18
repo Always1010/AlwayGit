@@ -232,7 +232,7 @@ function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():
     return()=>element.removeEventListener('wheel',wheel,true);
   },[preview?.kind,collapsed,active,ROW_HEIGHT,virtual.scale]);
   const highlighted=activeChange>=0?changes[activeChange]:undefined;
-  const openLabel=t("diff.openDiff"),editLabel=t("diff.editInVSCode"),previousLabel=t("diff.previousChange"),nextLabel=t("diff.nextChange");
+  const openLabel=t("diff.openDiff"),editLabel=state.diffTarget?.kind==='revision'?t('tree.openHistoricalFile'):t("diff.editInVSCode"),previousLabel=t("diff.previousChange"),nextLabel=t("diff.nextChange");
   const previousHint=commitMode?t("diff.previousChangeAcrossCommitFilesWrapsToTheLast"):changeCount===1?t("diff.locateTheOnlyChange"):t("diff.previousChangeWrapsToTheLast"),nextHint=commitMode?t("diff.nextChangeAcrossCommitFilesWrapsToTheFirst"):changeCount===1?t("diff.locateTheOnlyChange"):t("diff.nextChangeWrapsToTheFirst");
   const hunkTarget=!isolated&&state.tab==='changes'&&state.diffTarget?.kind==='change'&&state.diffTarget.area!=='conflict'?state.diffTarget:undefined;
   const patchHunks=hunkTarget&&preview?.kind==='text'?preview.patchHunks:undefined;

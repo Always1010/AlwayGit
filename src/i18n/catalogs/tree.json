@@ -1,0 +1,167 @@
+{
+  "tree.invalidRevision": {
+    "en": "The historical tree requires a fixed Commit ID.",
+    "zh-CN": "历史文件树需要固定的提交 ID。",
+    "review": "translated",
+    "context": "src/git/tree.ts / fixedRevision"
+  },
+  "tree.invalidPath": {
+    "en": "The repository path is invalid.",
+    "zh-CN": "仓库路径无效。",
+    "review": "translated",
+    "context": "src/git/tree.ts / treePath"
+  },
+  "tree.invalidEncoding": {
+    "en": "The repository tree contains a path that is not valid UTF-8.",
+    "zh-CN": "仓库树中包含不是有效 UTF-8 的路径。",
+    "review": "translated",
+    "context": "src/git/tree.ts / decode"
+  },
+  "tree.malformedOutput": {
+    "en": "Git returned an invalid repository tree record.",
+    "zh-CN": "Git 返回了无效的仓库树记录。",
+    "review": "translated",
+    "context": "src/git/tree.ts / parseEntries"
+  },
+  "tree.searchRequired": {
+    "en": "Enter a path to search for.",
+    "zh-CN": "请输入要搜索的路径。",
+    "review": "translated",
+    "context": "src/git/tree.ts / search"
+  },
+  "tree.searchAllPaths": {
+    "en": "Search all paths in this Commit",
+    "zh-CN": "搜索此提交中的全部路径",
+    "review": "translated",
+    "context": "webview/RevisionTree.tsx"
+  },
+  "tree.searchAllPathsPlaceholder": {
+    "en": "Search all paths…",
+    "zh-CN": "搜索全部路径…",
+    "review": "translated",
+    "context": "webview/RevisionTree.tsx"
+  },
+  "tree.clearSearch": {
+    "en": "Clear tree search",
+    "zh-CN": "清除文件树搜索",
+    "review": "translated",
+    "context": "webview/RevisionTree.tsx"
+  },
+  "tree.matches": {
+    "en": {
+      "one": "{{count}} matching path",
+      "other": "{{count}} matching paths"
+    },
+    "zh-CN": "匹配 {{count}} 个路径",
+    "review": "translated",
+    "context": "webview/RevisionTree.tsx"
+  },
+  "tree.resultTreeAt": {
+    "en": "Result tree at {{oid}}",
+    "zh-CN": "{{oid}} 的结果树",
+    "review": "translated",
+    "context": "webview/RevisionTree.tsx"
+  },
+  "tree.searchTruncated": {
+    "en": "search limited to the first 100,000 entries",
+    "zh-CN": "搜索范围限于前 100,000 个条目",
+    "review": "translated",
+    "context": "webview/RevisionTree.tsx"
+  },
+  "tree.fullRepositoryTree": {
+    "en": "Full repository tree",
+    "zh-CN": "完整仓库文件树",
+    "review": "translated",
+    "context": "webview/RevisionTree.tsx"
+  },
+  "tree.directory": {
+    "en": "Directory",
+    "zh-CN": "目录",
+    "review": "translated",
+    "context": "webview/RevisionTree.tsx"
+  },
+  "tree.symbolicLink": {
+    "en": "Symbolic Link",
+    "zh-CN": "符号链接",
+    "review": "translated",
+    "context": "webview/RevisionTree.tsx"
+  },
+  "tree.gitlink": {
+    "en": "Gitlink",
+    "zh-CN": "Gitlink",
+    "review": "keep",
+    "context": "webview/RevisionTree.tsx"
+  },
+  "tree.file": {
+    "en": "File",
+    "zh-CN": "文件",
+    "review": "translated",
+    "context": "webview/RevisionTree.tsx"
+  },
+  "tree.noMatchingPaths": {
+    "en": "No matching paths",
+    "zh-CN": "没有匹配的路径",
+    "review": "translated",
+    "context": "webview/RevisionTree.tsx"
+  },
+  "tree.emptyTree": {
+    "en": "This Commit has an empty tree",
+    "zh-CN": "此提交的文件树为空",
+    "review": "translated",
+    "context": "webview/RevisionTree.tsx"
+  },
+  "tree.loading": {
+    "en": "Loading repository tree…",
+    "zh-CN": "正在读取仓库文件树…",
+    "review": "translated",
+    "context": "webview/RevisionTree.tsx"
+  },
+  "tree.loadMore": {
+    "en": "Load More",
+    "zh-CN": "加载更多",
+    "review": "translated",
+    "context": "webview/RevisionTree.tsx"
+  },
+  "tree.fullTree": {
+    "en": "Full Tree",
+    "zh-CN": "完整文件树",
+    "review": "translated",
+    "context": "webview/Details.tsx"
+  },
+  "tree.changed": {
+    "en": "Changed",
+    "zh-CN": "变更文件",
+    "review": "translated",
+    "context": "webview/Details.tsx"
+  },
+  "tree.commitFilesView": {
+    "en": "Commit files view",
+    "zh-CN": "提交文件视图",
+    "review": "translated",
+    "context": "webview/Details.tsx"
+  },
+  "tree.openHistoricalFile": {
+    "en": "Open Historical File in VS Code",
+    "zh-CN": "在 VS Code 中打开历史文件",
+    "review": "translated",
+    "context": "webview/menus.ts"
+  },
+  "tree.compareWithWorkingTree": {
+    "en": "Compare with Working Tree",
+    "zh-CN": "与当前工作区比较",
+    "review": "translated",
+    "context": "webview/menus.ts"
+  },
+  "tree.copyObjectId": {
+    "en": "Copy Object ID",
+    "zh-CN": "复制对象 ID",
+    "review": "translated",
+    "context": "webview/menus.ts"
+  },
+  "tree.browseRepositoryTree": {
+    "en": "Browse Repository Tree",
+    "zh-CN": "浏览此提交的仓库文件树",
+    "review": "translated",
+    "context": "webview/menus.ts"
+  }
+}

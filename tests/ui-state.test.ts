@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Commit, HistoryPage, HostMessage, Repository, Snapshot } from '../src/protocol/types';
+import { translate } from '../src/i18n';
 const bridge = vi.hoisted(() => ({ rpc: vi.fn(), save: vi.fn(), event: undefined as ((message: HostMessage) => void) | undefined }));
 vi.mock('../webview/rpc', () => ({ demoMode: false, readSession: () => globalThis.window?.__ALWAYGIT_TRANSFER__?.session ?? globalThis.window?.__ALWAYGIT_SESSION__ ?? {}, saveSession: bridge.save, rpc: bridge.rpc, subscribe: (listener: (message: HostMessage) => void) => { bridge.event = listener; return () => {}; } }));
 const a: Repository = { id: 'a', root: '/a', commonDir: '/a/.git', name: 'A' };
@@ -325,15 +326,17 @@ describe('repository UI consistency', () => {
     const open=vi.fn(),checkout=vi.fn(),noop=vi.fn(),api={startCommit:noop,open,checkout,openDiff:noop,editFile:noop,host:vi.fn().mockResolvedValue(undefined),addRepository:vi.fn().mockResolvedValue(undefined),removeRepositories:noop,fetchRepositories:noop};
     const tag={name:'v1',fullName:'refs/tags/v1',kind:'tag' as const,oid:'old'};
     const target={kind:'commit' as const,oid:'old'};
+    const commitActions=()=>menuFor(target,api).items.filter(item=>item.label!==translate(store.getState().language,'tree.browseRepositoryTree'));
     for (const language of ['en','zh-CN'] as const) {
       store.setState({language});
-      const menu=menuFor(target,api).items;
+      expect(menuFor(target,api).items.some(item=>item.label===translate(language,'tree.browseRepositoryTree'))).toBe(true);
+      const menu=commitActions();
       expect(menu[0]).toMatchObject({disabled:true});
       expect(menu[0].label).toContain('Detached HEAD');
       expect(menu[0].reason).toMatch(/disabled|禁止/);
       expect(menu[1].disabled).toBe(false);menu[1].run();
       expect(open).toHaveBeenLastCalledWith({type:'branch.create',target:'old',checkout:true,requireCheckout:true});
-      menu[2].run();
+      menu.find(item=>item.label===translate(language,'menus.createTag'))!.run();
       expect(open).toHaveBeenLastCalledWith({type:'tag.create',target:'old',fixedTagTarget:{oid:'old',subject:'Example'}});
       const tagMenu=menuFor({kind:'ref',ref:tag},api).items;
       expect(tagMenu).toHaveLength(7);
@@ -344,17 +347,17 @@ describe('repository UI consistency', () => {
     store.setState({language:'en'});
     expect(menuFor({kind:'ref',ref:tag},api).items.map(item=>item.label)).toEqual(['Show Only This Tag History','Locate Tag Commit in Graph','Check remote Tag status','Push Tag…','Delete Tag…','Copy Tag Name','Copy Commit ID']);
     store.setState({language:'en',operationSettings:{allowDetachedHead:true,pushFollowTags:false,pushTagAfterCreate:false,forceDeleteUnmergedBranches:false,forceRemoveDirtyWorktrees:false,defaultResetMode:'mixed',scope:'workspace'}});
-    const enabled=menuFor(target,api).items;
+    const enabled=commitActions();
     expect(enabled.filter(item=>item.label.includes('Detached HEAD'))).toHaveLength(1);
     expect(enabled[0].disabled).toBe(false);enabled[0].run();
     expect(open).toHaveBeenLastCalledWith({type:'commit.checkout',target:'old'});
     expect(checkout).not.toHaveBeenCalled();
     store.setState({operationSettings:{allowDetachedHead:false,pushFollowTags:false,pushTagAfterCreate:false,forceDeleteUnmergedBranches:false,forceRemoveDirtyWorktrees:false,defaultResetMode:'mixed',scope:'workspace'},snapshot:{...snapshot(a),refs:[{name:'topic',fullName:'refs/heads/topic',kind:'local',oid:'old'}]}});
-    const branch=menuFor(target,api).items[0];expect(branch).toMatchObject({label:'Switch to Branch "topic"…',disabled:false});branch.run();expect(checkout).toHaveBeenCalledWith('old');
+    const branch=commitActions()[0];expect(branch).toMatchObject({label:'Switch to Branch "topic"…',disabled:false});branch.run();expect(checkout).toHaveBeenCalledWith('old');
     store.setState({snapshot:{...store.getState().snapshot!,branch:'topic'}});
-    expect(menuFor(target,api).items[0]).toMatchObject({disabled:true,reason:'This is the current branch.'});
+    expect(commitActions()[0]).toMatchObject({disabled:true,reason:'This is the current branch.'});
     store.setState({snapshot:{...snapshot(a),refs:[{name:'topic',fullName:'refs/heads/topic',kind:'local',oid:'old'},{name:'other',fullName:'refs/heads/other',kind:'local',oid:'old'}]}});
-    expect(menuFor(target,api).items[0]).toMatchObject({label:'Choose Branch to Checkout…',disabled:false});
+    expect(commitActions()[0]).toMatchObject({label:'Choose Branch to Checkout…',disabled:false});
   });
 
   it('disables already-included cherry-picks, waits for ancestry and keeps deliberate historical reapplication separate', async () => {

@@ -121,7 +121,7 @@ export function App() {
     else if(candidates.length>1)open({type:'branch.checkout',target:candidates[0].name,candidates:candidates.map(r=>r.name)});
     else open({type:'branch.create',target:oid,checkout:true,requireCheckout:true});
   },[checkoutBranch,open]);
-  const edit=useCallback(async(target=useWorkbench.getState().diffTarget)=>{const current=useWorkbench.getState();if(!target)return;if(target.kind==='comparison'){await host('diff',target,current.repoId);return;}try{await rpc('openFile',current.repoId,{path:target.path});if(demoMode)useWorkbench.setState({notice:translate(current.language, "workbench.demoEditInVSCode")});}catch(error){if(target.kind==='commit')await host('diff',target,current.repoId);else current.report(error);}},[host]);
+  const edit=useCallback(async(target=useWorkbench.getState().diffTarget)=>{const current=useWorkbench.getState();if(!target)return;if(target.kind==='comparison'){await host('diff',target,current.repoId);return;}try{if(target.kind==='revision')await rpc('openRevision',current.repoId,{revision:target.revision,path:target.path});else await rpc('openFile',current.repoId,{path:target.path});if(demoMode&&target.kind!=='revision')useWorkbench.setState({notice:translate(current.language, "workbench.demoEditInVSCode")});}catch(error){if(target.kind==='commit')await host('diff',target,current.repoId);else current.report(error);}},[host]);
   const editSelected=useCallback(()=>void edit(),[edit]);
   const native=useCallback(()=>{const state=useWorkbench.getState();if(state.diffTarget)void host('diff',state.diffTarget);},[host]);
   const openWorktree=useCallback((path:string)=>void host('openWorktree',{path,newWindow:false}),[host]);

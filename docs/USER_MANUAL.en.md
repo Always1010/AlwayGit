@@ -347,11 +347,12 @@ Ref checkboxes control which history you see; branch names and row selections co
 1. Click a Commit row to read its message, author, timestamp, and changed files.
 2. Use the file-path filter field to narrow Changed Files. Matching is case-insensitive and uses the full repository-relative path.
 3. Click a file to view its Diff. For a Merge Commit, use the Parent selector to choose the parent commit to compare against.
-4. For text files, use native Open Diff to view the full content or Edit in VS Code to change the current Working Tree file. Use the bottom preview only for images and other binary files.
+4. Switch between **Changed Files** and **Full Tree** to inspect the complete repository tree saved by that Commit. You can also right-click a Commit and choose **Browse Repository Tree**. Directories load when expanded; search finds full relative paths inside directories that have not been expanded and pages the results.
+5. Click a historical file to compare it with the same path in the current Working Tree; a missing Working Tree path appears as an empty side. Its menu can open file history or copy the path or object ID. **Open Historical File in VS Code** opens historical text as a read-only document; PNG, JPEG, and WebP use the bottom image preview.
 
 **Result:** The Diff corresponds to the currently selected Commit, Parent, and file.
 
-**Caution:** Different Parents produce different diffs. The edit action in historical details operates on the file in the current Working Tree; it does not directly modify the old commit.
+**Caution:** Different Parents produce different changed-file diffs. Full Tree always shows the selected Commit's result tree, including for a Merge Commit. It is pinned to the full Commit ID captured when opened and does not move with a branch. A symbolic link shows and compares its target text without following it; a Gitlink shows only its recorded object ID and does not enter the submodule. Tree search scans at most the first 100,000 entries and says when the bound is reached. These historical actions do not restore or write Working Tree files.
 
 <a id="section-04-04"></a>
 
