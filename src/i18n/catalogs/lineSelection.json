@@ -1,4 +1,5 @@
 {
+  "diff.lineBoundary": {"en":"This partial selection would join lines at a missing final newline. Select both sides of the replacement or use the whole block.","zh-CN":"此部分选择会在缺少末尾换行的位置拼接两行，请选择替换的两侧或使用整块操作。","review":"translated","context":"src/git/patch-hunks.ts"},
   "diff.selectLine": {"en":"Select {{side}} line {{line}}","zh-CN":"选择{{side}}第 {{line}} 行","review":"translated","context":"webview/DiffPreview.tsx"},
   "diff.deletedLine": {"en":"deleted","zh-CN":"删除侧","review":"translated","context":"webview/DiffPreview.tsx"},
   "diff.addedLine": {"en":"added","zh-CN":"新增侧","review":"translated","context":"webview/DiffPreview.tsx"},

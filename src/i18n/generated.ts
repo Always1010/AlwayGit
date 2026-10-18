@@ -3212,6 +3212,10 @@ export const catalog = {
     "en": "Interactive Rebase does not support newline characters in the Git directory or runtime path.",
     "zh-CN": "交互式 Rebase 不支持 Git 目录或运行时路径中包含换行符。"
   },
+  "diff.lineBoundary": {
+    "en": "This partial selection would join lines at a missing final newline. Select both sides of the replacement or use the whole block.",
+    "zh-CN": "此部分选择会在缺少末尾换行的位置拼接两行，请选择替换的两侧或使用整块操作。"
+  },
   "diff.selectLine": {
     "en": "Select {{side}} line {{line}}",
     "zh-CN": "选择{{side}}第 {{line}} 行"
@@ -7749,6 +7753,7 @@ export interface MessageParameters {
   "interactiveRebase.reviewPaused": {  };
   "interactiveRebase.alreadyApplied": {  };
   "interactiveRebase.path": {  };
+  "diff.lineBoundary": {  };
   "diff.selectLine": { side: ParameterValue; line: ParameterValue };
   "diff.deletedLine": {  };
   "diff.addedLine": {  };
