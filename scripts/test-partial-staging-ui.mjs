@@ -71,6 +71,7 @@ export async function verifyPartialStaging(browser, url) {
     assert.ok(initialScroll > 0, 'The fixture exercises a distant hunk and nonzero reading position');
     const geometry=await firstStage.evaluate(element=>{const line=element.closest('.diff-line'),gutter=element.parentElement;return {gutter:gutter.getBoundingClientRect().width,number:line.querySelector('.line-number').getBoundingClientRect().width};});
     await verifyRowBounds(firstStage);
+    assert.ok(await firstStage.evaluate(element=>{const row=element.closest('.diff-line'),header=row.closest('.diff-preview').querySelector('.text-diff-labels');return [...row.children].every((cell,index)=>{const a=cell.getBoundingClientRect(),b=header.children[index].getBoundingClientRect();return Math.abs(a.left-b.left)<0.1&&Math.abs(a.width-b.width)<0.1;});}),'Working Tree headings and the 32px action gutter share the body columns');
     assert.equal(geometry.gutter,32,'The center action gutter stays 32px wide');
     assert.ok(geometry.number<32,'Line numbers no longer reserve a wide action column');
     assert.equal(await firstStage.getAttribute('title'),'Stage block','Stage tooltip contains only the action name');
