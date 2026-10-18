@@ -53,8 +53,7 @@ export async function verifyDiffNavigation(browser, url) {
     const blockBox = await block.boundingBox(), viewportBox = await viewport.boundingBox();
     assert.ok(blockBox.y >= viewportBox.y && blockBox.y < viewportBox.y + viewportBox.height, 'Jump must reveal the current block');
     const borders = await diff.locator('.active-change').evaluateAll(rows => rows.map(row => { const style = getComputedStyle(row, '::after'); return { top: style.borderTopWidth, bottom: style.borderBottomWidth, outline: getComputedStyle(row).outlineStyle }; }));
-    assert.equal(borders.filter(border => border.top === '1px').length, 1);
-    assert.equal(borders.filter(border => border.bottom === '1px').length, 1);
+    assert.ok(borders.every(border => border.top === '0px' && border.bottom === '0px'), 'Navigation does not draw an extra frame around changed code');
     assert.ok(borders.every(border => border.outline === 'none'), 'No outline on individual changed lines');
     await viewport.evaluate(element => { element.scrollLeft = 220; element.dispatchEvent(new Event('scroll')); });
     const halves = await diff.locator('.active-change-start').evaluate(row => [...row.querySelectorAll('.diff-side')].map(cell => cell.getBoundingClientRect().width));
