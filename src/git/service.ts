@@ -32,7 +32,9 @@ import { ConflictStore } from './conflicts';
 import { dropStash } from './stash-drop';
 import { NetworkProgressParser } from './network-progress';
 import { ReflogReader } from './reflog';
+import { RevisionTreeReader } from './tree';
 import type { ReflogQuery } from '../protocol/reflog';
+import type { RevisionTreeRequest, RevisionTreeSearchRequest } from '../protocol/tree';
 import { fileHistoryIndex, type FileHistoryIndex } from './file-history';
 import { redactSecrets, SecretRedactor } from '../application/logging';
 
@@ -103,7 +105,13 @@ export class GitService implements GitServiceContract {
   private readonly discards = new Map<string, { root: string; expires: number; plan: DiscardPlan; fingerprint: string; request: DiscardRequest }>();
   private readonly readSignal = new AsyncLocalStorage<{ controller: AbortController; pending: Set<Promise<void>> }>();
   private readonly networkProgress = new AsyncLocalStorage<(progress: NetworkOperationProgress) => void>();
-  constructor(private readonly options: GitServiceOptions = {}) {}
+  private readonly revisionTrees: RevisionTreeReader;
+  constructor(private readonly options: GitServiceOptions = {}) {
+    this.revisionTrees = new RevisionTreeReader(
+      (repo, args, stream) => this.run(repo, args, false, stream ? 0 : undefined, stream ? { onStdout: stream.onStdout } : {}),
+      (repo, revision) => this.oid(repo, revision),
+    );
+  }
   private gitPath(): Promise<string> {
     return this.executable ??= Promise.resolve().then(() => this.options.gitPath || this.options.resolveGitPath?.()).then(value => value || 'git');
   }
@@ -566,6 +574,14 @@ export class GitService implements GitServiceContract {
     if (base && !commit.parents.includes(base)) throw new GitError(localizeMessage("service.selectedParentIsNotAParentOfThisCommit"), 'INVALID_PARENT');
     const args = ['diff-tree', '--no-commit-id', '--name-status', '-z', '-r', '-M', ...(base ? [base, oid] : ['--root', oid]), '--']; const files=parseCommitFiles((await this.run(repo,args)).stdout);
     return { commit, body: data.slice(6).join('\0').trimEnd(), files, ...(base ? { parent: base } : {}) };
+  }
+  async revisionTree(repo: Repository, request: RevisionTreeRequest) {
+    await this.verify(repo);
+    return this.revisionTrees.list(repo, request);
+  }
+  async searchRevisionTree(repo: Repository, request: RevisionTreeSearchRequest) {
+    await this.verify(repo);
+    return this.revisionTrees.search(repo, request);
   }
   async stashDetails(repo: Repository, revision: string): Promise<StashDetails> {
     const stash = await this.details(repo, revision), [, indexOid, untrackedOid] = stash.commit.parents;

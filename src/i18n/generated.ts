@@ -6551,6 +6551,117 @@ export const catalog = {
     "en": "Local branch for {{name}}",
     "zh-CN": "{{name}} 的本地分支"
   },
+  "tree.invalidRevision": {
+    "en": "The historical tree requires a fixed Commit ID.",
+    "zh-CN": "历史文件树需要固定的提交 ID。"
+  },
+  "tree.invalidPath": {
+    "en": "The repository path is invalid.",
+    "zh-CN": "仓库路径无效。"
+  },
+  "tree.invalidEncoding": {
+    "en": "The repository tree contains a path that is not valid UTF-8.",
+    "zh-CN": "仓库树中包含不是有效 UTF-8 的路径。"
+  },
+  "tree.malformedOutput": {
+    "en": "Git returned an invalid repository tree record.",
+    "zh-CN": "Git 返回了无效的仓库树记录。"
+  },
+  "tree.searchRequired": {
+    "en": "Enter a path to search for.",
+    "zh-CN": "请输入要搜索的路径。"
+  },
+  "tree.searchAllPaths": {
+    "en": "Search all paths in this Commit",
+    "zh-CN": "搜索此提交中的全部路径"
+  },
+  "tree.searchAllPathsPlaceholder": {
+    "en": "Search all paths…",
+    "zh-CN": "搜索全部路径…"
+  },
+  "tree.clearSearch": {
+    "en": "Clear tree search",
+    "zh-CN": "清除文件树搜索"
+  },
+  "tree.matches": {
+    "en": {
+      "one": "{{count}} matching path",
+      "other": "{{count}} matching paths"
+    },
+    "zh-CN": "匹配 {{count}} 个路径"
+  },
+  "tree.resultTreeAt": {
+    "en": "Result tree at {{oid}}",
+    "zh-CN": "{{oid}} 的结果树"
+  },
+  "tree.searchTruncated": {
+    "en": "search limited to the first 100,000 entries",
+    "zh-CN": "搜索范围限于前 100,000 个条目"
+  },
+  "tree.fullRepositoryTree": {
+    "en": "Full repository tree",
+    "zh-CN": "完整仓库文件树"
+  },
+  "tree.directory": {
+    "en": "Directory",
+    "zh-CN": "目录"
+  },
+  "tree.symbolicLink": {
+    "en": "Symbolic Link",
+    "zh-CN": "符号链接"
+  },
+  "tree.gitlink": {
+    "en": "Gitlink",
+    "zh-CN": "Gitlink"
+  },
+  "tree.file": {
+    "en": "File",
+    "zh-CN": "文件"
+  },
+  "tree.noMatchingPaths": {
+    "en": "No matching paths",
+    "zh-CN": "没有匹配的路径"
+  },
+  "tree.emptyTree": {
+    "en": "This Commit has an empty tree",
+    "zh-CN": "此提交的文件树为空"
+  },
+  "tree.loading": {
+    "en": "Loading repository tree…",
+    "zh-CN": "正在读取仓库文件树…"
+  },
+  "tree.loadMore": {
+    "en": "Load More",
+    "zh-CN": "加载更多"
+  },
+  "tree.fullTree": {
+    "en": "Full Tree",
+    "zh-CN": "完整文件树"
+  },
+  "tree.changed": {
+    "en": "Changed",
+    "zh-CN": "变更文件"
+  },
+  "tree.commitFilesView": {
+    "en": "Commit files view",
+    "zh-CN": "提交文件视图"
+  },
+  "tree.openHistoricalFile": {
+    "en": "Open Historical File in VS Code",
+    "zh-CN": "在 VS Code 中打开历史文件"
+  },
+  "tree.compareWithWorkingTree": {
+    "en": "Compare with Working Tree",
+    "zh-CN": "与当前工作区比较"
+  },
+  "tree.copyObjectId": {
+    "en": "Copy Object ID",
+    "zh-CN": "复制对象 ID"
+  },
+  "tree.browseRepositoryTree": {
+    "en": "Browse Repository Tree",
+    "zh-CN": "浏览此提交的仓库文件树"
+  },
   "validation.checkoutRequiresExactlyOneBranch": {
     "en": "Checkout requires exactly one branch",
     "zh-CN": "切换操作只能选择一个分支"
@@ -8644,6 +8755,33 @@ export interface MessageParameters {
   "tracking.createOrReuseAllBranchesInThisSelectionKeep": {  };
   "tracking.checkedOut": { value: ParameterValue };
   "tracking.localBranchFor": { name: ParameterValue };
+  "tree.invalidRevision": {  };
+  "tree.invalidPath": {  };
+  "tree.invalidEncoding": {  };
+  "tree.malformedOutput": {  };
+  "tree.searchRequired": {  };
+  "tree.searchAllPaths": {  };
+  "tree.searchAllPathsPlaceholder": {  };
+  "tree.clearSearch": {  };
+  "tree.matches": { count: number };
+  "tree.resultTreeAt": { oid: ParameterValue };
+  "tree.searchTruncated": {  };
+  "tree.fullRepositoryTree": {  };
+  "tree.directory": {  };
+  "tree.symbolicLink": {  };
+  "tree.gitlink": {  };
+  "tree.file": {  };
+  "tree.noMatchingPaths": {  };
+  "tree.emptyTree": {  };
+  "tree.loading": {  };
+  "tree.loadMore": {  };
+  "tree.fullTree": {  };
+  "tree.changed": {  };
+  "tree.commitFilesView": {  };
+  "tree.openHistoricalFile": {  };
+  "tree.compareWithWorkingTree": {  };
+  "tree.copyObjectId": {  };
+  "tree.browseRepositoryTree": {  };
   "validation.checkoutRequiresExactlyOneBranch": {  };
   "validation.stashRequiresCheckout": {  };
   "validation.chooseAnExistingGroupOrCreateANewOne": {  };

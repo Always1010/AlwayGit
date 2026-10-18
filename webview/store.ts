@@ -76,10 +76,10 @@ interface WorkbenchState {
   operationSettings: OperationSettings; loadOperationSettings(): Promise<void>; saveOperationSettings(settings: Partial<Pick<OperationSettings,'allowDetachedHead' | 'pushFollowTags' | 'pushTagAfterCreate' | 'defaultResetMode' | 'forceDeleteUnmergedBranches' | 'forceRemoveDirtyWorktrees'>>, scope?: OperationSettings['scope']): Promise<void>;
   appearance: Appearance; diffNavigationScope: DiffNavigationScope; singleKeyShortcuts: boolean; shortcutOverrides: ShortcutOverrides; changeListMode: 'split' | 'unified'; settingsBaseline?: InterfaceSettings;
   beginSettings(): void; previewSettings(value: InterfaceSettingsUpdate): void; finishSettings(apply: boolean): Promise<void>; restoreLayout(): void;
-  repositories: Repository[]; repositoryCollections:RepositoryCollection[]; repositoryOrder?:RepositoryOrder; reorderRepository(payload:ReorderRepository):Promise<void>; repositoryStatuses: Record<string, RepositoryStatus>; selectedRepositoryKeys:string[]; repositorySelectionAnchor?:string; selectedWorktreePaths:string[]; worktreeSelectionAnchor?:string; repoId?: string; snapshot?: Snapshot; commits: Commit[]; historyHead?: Commit; details?: CommitDetails; comparison?: CommitComparison; selectedOid?: string; selectedOids: string[]; selectionAnchor?: string; selectedRefs:string[]; refSelectionAnchor?:string; selectedRemoteTag?:{remote:string;fullName:string}; selectedParent?: string; selectedStashOid?: string; selectedStashSection?:StashSection; stashDetails?: StashDetails; selectedFile?: string; diffTarget?: DiffTarget; diffRevision: number;
+  repositories: Repository[]; repositoryCollections:RepositoryCollection[]; repositoryOrder?:RepositoryOrder; reorderRepository(payload:ReorderRepository):Promise<void>; repositoryStatuses: Record<string, RepositoryStatus>; selectedRepositoryKeys:string[]; repositorySelectionAnchor?:string; selectedWorktreePaths:string[]; worktreeSelectionAnchor?:string; repoId?: string; snapshot?: Snapshot; commits: Commit[]; historyHead?: Commit; details?: CommitDetails; comparison?: CommitComparison; selectedOid?: string; selectedOids: string[]; selectionAnchor?: string; selectedRefs:string[]; refSelectionAnchor?:string; selectedRemoteTag?:{remote:string;fullName:string}; selectedParent?: string; selectedStashOid?: string; selectedStashSection?:StashSection; stashDetails?: StashDetails; selectedFile?: string; diffTarget?: DiffTarget; diffRevision: number; detailFileMode: 'changes' | 'tree';
   ref?: string; checkedRefs?: string[]; expandedRefGroups?:string[]; collapsedSidebarGroups:string[]; search: string; language: Language; layout: LayoutState; checkoutFailure?: CheckoutFailure; stashApplyFailure?: StashApplyBlocker; actionFeedback?: ActionFeedback; locateToken:number;
   nextOffset: number; hasMore: boolean; tips: string[]; loading: boolean; historyLoading: boolean; locatingOid?: string; locateCommit(oid: string, append?: boolean): Promise<void>; detailsLoading: boolean; busy: boolean; activity: string; error?: string; notice?: string; tab: 'history' | 'changes'; drafts: Record<string, string>;
-  initialize(): Promise<void>; loadRepositoryStatuses(): Promise<void>; selectRepository(id: string, options?: { restoreView?: boolean }): Promise<void>; refresh(options?: { background?: boolean; changes?: RepositoryChanges; snapshot?: Snapshot }): Promise<void>; loadHistory(append?: boolean): Promise<void>; selectCommit(oid: string, parent?: string, stashOid?: string, preserveSelection?: boolean): Promise<void>; selectStashSection(section:StashSection):void; compareCommits(left:string,right:string,preserveOrder?:boolean):Promise<void>; setCommitSelection(oids:string[],anchor?:string,primary?:string):void; setRefSelection(refs:string[],anchor?:string):void; setRemoteTagSelection(tag?:{remote:string;fullName:string}):void; setRepositorySelection(keys:string[],anchor?:string):void; setWorktreeSelection(paths:string[],anchor?:string):void;
+  initialize(): Promise<void>; loadRepositoryStatuses(): Promise<void>; selectRepository(id: string, options?: { restoreView?: boolean }): Promise<void>; refresh(options?: { background?: boolean; changes?: RepositoryChanges; snapshot?: Snapshot }): Promise<void>; loadHistory(append?: boolean): Promise<void>; selectCommit(oid: string, parent?: string, stashOid?: string, preserveSelection?: boolean): Promise<void>; browseRevisionTree(oid: string): Promise<void>; setDetailFileMode(mode: 'changes' | 'tree'): void; selectStashSection(section:StashSection):void; compareCommits(left:string,right:string,preserveOrder?:boolean):Promise<void>; setCommitSelection(oids:string[],anchor?:string,primary?:string):void; setRefSelection(refs:string[],anchor?:string):void; setRemoteTagSelection(tag?:{remote:string;fullName:string}):void; setRepositorySelection(keys:string[],anchor?:string):void; setWorktreeSelection(paths:string[],anchor?:string):void;
   setFilter(ref?: string, search?: string): void; setCheckedRefs(refs: string[]): void; setExpandedRefGroup(key:string,expanded:boolean):void; toggleSidebarGroup(key:string):void; setSearch(value: string): void; selectWorking(): void; selectFile(target: DiffTarget, activate?: boolean): void; locateHead():void;
   workingFilters: Record<string, string>; setWorkingFilter(value: string): void;
   execute(action: GitAction, context?: RepositoryActionContext): Promise<boolean>; dismissFeedback(): void; setDraft(value: string): void; setLanguage(value: Language): void; setLayout(value: Partial<LayoutState>): void; report(error: unknown): void;
@@ -155,7 +155,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   showFileHistory(target) {
     const state = get(), snapshot = state.snapshot;
     if (!snapshot) return;
-    const revision = target.kind === 'commit' ? target.oid : target.kind === 'comparison' ? target.right : target.kind === 'stash-working' ? target.stashOid : snapshot.head;
+    const revision = target.kind === 'commit' ? target.oid : target.kind === 'comparison' ? target.right : target.kind === 'stash-working' ? target.stashOid : target.kind === 'revision' ? target.revision : snapshot.head;
     const change = target.kind === 'change' ? snapshot.changes.find(change => change.path === target.path) : undefined;
     const fileHistory: FileHistoryFilter = { path: target.path, ...(revision ? { revision } : {}), ...(target.kind === 'change' ? { anchorPath: change?.originalPath ?? target.path } : {}) };
     if (fileHistoryKey(state.fileHistory) === fileHistoryKey(fileHistory) && !state.search && !hasHistorySearch(state.historyFilters) && !state.historyError) return;
@@ -237,7 +237,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     }
   },
   catalogState: 'loading', catalogError: undefined,
-  repositories: [], repositoryCollections:[], repositoryStatuses: {}, selectedRepositoryKeys:[], selectedWorktreePaths:[], commits: [], selectedOids:[], selectedRefs:[], search: '', language: session.language === 'zh-CN' ? 'zh-CN' : 'en', layout: initialLayout, appearance: normalizeAppearance(session.appearance), locateToken:0,nextOffset: 0, tips: [], hasMore: false, loading: false, historyLoading: false, detailsLoading: false, diffRevision: 0, busy: false, activity: '', tab: 'history', drafts: session.drafts ?? {}, collapsedSidebarGroups:[],
+  repositories: [], repositoryCollections:[], repositoryStatuses: {}, selectedRepositoryKeys:[], selectedWorktreePaths:[], commits: [], selectedOids:[], selectedRefs:[], search: '', language: session.language === 'zh-CN' ? 'zh-CN' : 'en', layout: initialLayout, appearance: normalizeAppearance(session.appearance), locateToken:0,nextOffset: 0, tips: [], hasMore: false, loading: false, historyLoading: false, detailsLoading: false, diffRevision: 0, detailFileMode: 'changes', busy: false, activity: '', tab: 'history', drafts: session.drafts ?? {}, collapsedSidebarGroups:[],
   report(error) { set({ error: message(error) }); },
   async initialize() {
     const preferenceRequest = preferencesEpoch;
@@ -402,7 +402,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       return;
     }
     const epoch = ++detailEpoch;
-    set({ selectedOid: oid, selectedParent: parent, ...(!preserveSelection?{selectedOids:[oid],selectionAnchor:oid}:{}), selectedStashOid:undefined,selectedStashSection:undefined,stashDetails:undefined, comparison:undefined, details: undefined, detailsLoading: true, tab: 'history', diffTarget: undefined });
+    set({ selectedOid: oid, selectedParent: parent, ...(!preserveSelection?{selectedOids:[oid],selectionAnchor:oid}:{}), selectedStashOid:undefined,selectedStashSection:undefined,stashDetails:undefined, comparison:undefined, details: undefined, detailsLoading: true, detailFileMode: 'changes', tab: 'history', diffTarget: undefined });
     try {
       const details=await rpc<CommitDetails>('details', repoId, { oid, parent });
       if (epoch !== detailEpoch || repoEpoch !== repositoryEpoch) return;
@@ -412,6 +412,11 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     } catch (error) { if (epoch === detailEpoch && repoEpoch === repositoryEpoch) get().report(error); }
     finally { if (epoch === detailEpoch && repoEpoch === repositoryEpoch) set({ detailsLoading: false }); }
   },
+  async browseRevisionTree(oid) {
+    await get().selectCommit(oid);
+    if (get().details?.commit.oid === oid && !get().selectedStashOid) set({ detailFileMode: 'tree', selectedFile: undefined, diffTarget: undefined });
+  },
+  setDetailFileMode(detailFileMode) { set({ detailFileMode }); },
   selectStashSection(section){
     const stashDetails=get().stashDetails,details=stashDetails?.sections[section];if(!stashDetails||!details)return;
     ++detailEpoch;set({selectedStashSection:section,selectedOid:details.commit.oid,selectedParent:details.parent,details,detailsLoading:false,comparison:undefined,diffTarget:undefined,selectedFile:undefined});

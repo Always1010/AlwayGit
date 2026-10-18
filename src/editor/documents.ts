@@ -7,6 +7,7 @@ import type { ContentSource, DiffImage, DiffPreview, DiffTarget, GitServiceContr
 import { safeWorkingPath } from './paths';
 import { IndexedTextDiff } from './text-diff';
 import type { DiffPage } from '../protocol/diff';
+import type { RevisionTarget } from '../protocol/tree';
 
 const MAX_DOCUMENT = 32 * 1024 * 1024;
 const MAX_PREVIEW_BYTES = 256 * 1024;
@@ -55,6 +56,10 @@ function isBinary(bytes: Buffer, truncated: boolean): boolean {
   try { new TextDecoder('utf-8', { fatal: true }).decode(bytes, { stream: truncated }); return false; }
   catch { return true; }
 }
+function immutableRevision(value: string): string {
+  if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(value)) throw new MessageError(localizeMessage('tree.invalidRevision'));
+  return value;
+}
 export class GitDocuments implements vscode.TextDocumentContentProvider {
   async openMergeEditor(repo: Repository, filename: string): Promise<{mode:'merge'|'text'}> {
     const full=await safeWorkingPath(repo.root,filename,false),details=await this.git.conflictDetails?.(repo,filename);
@@ -94,6 +99,22 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
     const prefix = await this.readWorking(full, MAX_PREVIEW_BYTES + 1);
     if (imageHeader(prefix) || isBinary(prefix.subarray(0, MAX_PREVIEW_BYTES), prefix.length > MAX_PREVIEW_BYTES)) throw new MessageError(localizeMessage("documents.imagesAndBinaryFilesCanOnlyBeViewedInTheAlwayGitDiffPreview"));
     await vscode.window.showTextDocument(vscode.Uri.file(full), { viewColumn: vscode.ViewColumn.Active, preview: false, preserveFocus: false });
+  }
+  /** Preview one immutable historical blob without assuming how it will be displayed. */
+  async revisionPreview(repo: Repository, target: RevisionTarget): Promise<DiffPreview> {
+    const revision = immutableRevision(target.revision);
+    return this.previewComparison(repo, {
+      left: { source: { kind: 'empty' }, label: translate('en', 'documents.empty'), path: target.path },
+      right: { source: { kind: 'revision', revision, path: target.path }, label: revision.slice(0, 8), path: target.path },
+      label: `${path.basename(target.path)} · ${revision.slice(0, 8)}`,
+      path: target.path,
+    });
+  }
+  async openRevision(repo: Repository, target: RevisionTarget): Promise<void> {
+    const preview = await this.revisionPreview(repo, target);
+    if (preview.kind !== 'text') throw new MessageError(localizeMessage('documents.imagesAndBinaryFilesCanOnlyBeViewedInTheAlwayGitDiffPreview'));
+    const uri = this.uri(repo, preview.right, target.revision.slice(0, 8), target.path);
+    await vscode.window.showTextDocument(uri, { viewColumn: vscode.ViewColumn.Active, preview: false, preserveFocus: false });
   }
   async diff(repo: Repository, target: DiffTarget): Promise<void> {
     const comparison = await this.comparison(repo, target);
@@ -223,7 +244,16 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
     let left: Side;
     let right: Side;
     let label: string;
-    if (target.kind === 'stash-working') {
+    if (target.kind === 'revision') {
+      const revision = immutableRevision(target.revision);
+      left = { source: { kind: 'revision', revision, path: target.path }, label: revision.slice(0, 8), path: target.path };
+      try { right = await this.workingSide(repo, target.path); }
+      catch (error) {
+        if (!['ENOENT', 'ENOTDIR'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
+        right = { source: { kind: 'empty' }, label: translate('en', 'documents.workingTree'), path: target.path };
+      }
+      label = `${path.basename(target.path)} · ${revision.slice(0, 8)} ↔ ${translate('en', 'documents.workingTree')}`;
+    } else if (target.kind === 'stash-working') {
       const details = await this.git.stashDetails(repo, target.stashOid), untracked = details.sections.untracked;
       const savedUntracked = untracked?.files.some(item => item.path === target.path);
       const savedTracked = [...details.sections.working.files, ...details.sections.index.files].some(item => item.path === target.path || item.previousPath === target.path);
