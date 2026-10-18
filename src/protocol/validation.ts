@@ -8,6 +8,7 @@ export const discardRequestSchema = z.object({ paths: paths.optional(), scope: z
 const kind = z.enum(['merge', 'rebase', 'cherry-pick', 'revert']);
 const actionContext = { expectedHead: z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})?$/), expectedBranch: z.string().max(4096) };
 export const actionSchema = z.union([
+  z.object({ type: z.enum(['stage-lines', 'unstage-lines']), token: z.string().uuid(), lineIds: z.array(z.string().uuid()).min(1).max(200000) }).strict(),
   z.object({ type: z.enum(['stage-hunk', 'unstage-hunk', 'discard-hunk']), token: z.string().uuid(), hunkId: z.string().uuid() }).strict(),
   z.object({ type: z.enum(['stage', 'resolve-and-stage', 'unstage']), paths }),
   z.object({ type: z.literal('discard'), paths: z.array(text).default([]), planToken: text.optional(), mode: z.literal('all').optional() }).refine(value => (value.paths.length > 0 || !!value.planToken) && (!value.mode || !!value.planToken)),

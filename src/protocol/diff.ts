@@ -14,4 +14,5 @@ export interface DiffPage { token: string; start: number; rows: DiffRow[] }
 
 /** Host-issued zero-context patches for individual contiguous change blocks. */
 export interface PatchHunk extends TextDiffHunk { id: string; header: string }
-export interface PatchHunks { token?: string; hunks: PatchHunk[]; unavailable?: 'unsupported' | 'changed' }
+export interface PatchLine { id: string; hunkId: string; side: 'before' | 'after'; line: number }
+export interface PatchHunks { token?: string; hunks: PatchHunk[]; lines?: PatchLine[]; unavailable?: 'unsupported' | 'changed' }

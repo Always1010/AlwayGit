@@ -5,7 +5,7 @@ import { constants } from 'node:fs';
 import { message } from '../i18n';
 import { safeWorkingPath } from '../editor/paths';
 import type { Change, Repository } from '../protocol/types';
-import type { PatchHunks, PatchHunk } from '../protocol/diff';
+import type { PatchHunks, PatchHunk, PatchLine } from '../protocol/diff';
 import type { StashExecution } from './stash';
 import type { GitResult } from './runner';
 import { GitError, GitTerminationError } from './error';
@@ -14,7 +14,9 @@ const LIMIT = 2 * 1024 * 1024, INDEX_LIMIT = 32 * 1024 * 1024, TTL = 5 * 60_000;
 type Run = (args: string[], execution?: StashExecution & { maxOutputBytes?: number }) => Promise<GitResult>;
 type Target = { path: string; area: 'staged' | 'unstaged' };
 type Status = { head?: string; branch: string; changes: Change[] };
-type Context = { root: string; target: Target; fingerprint: string; expires: number; header: string; parts: (PatchHunk & { patch: string })[] };
+type PatchPart = PatchHunk & { patch: string; lines: (PatchLine & { text: string })[] };
+type Context = { root: string; target: Target; fingerprint: string; expires: number; header: string; parts: PatchPart[] };
+type PatchAction = { type: 'stage-hunk' | 'unstage-hunk' | 'discard-hunk'; token: string; hunkId: string } | { type: 'stage-lines' | 'unstage-lines'; token: string; lineIds: string[] };
 const hash = (bytes: Buffer | string) => createHash('sha256').update(bytes).digest('hex');
 const stale = () => new GitError(message('diff.hunkStale'), 'PATCH_CHANGED');
 class Unsupported extends Error {}
@@ -57,12 +59,41 @@ function restoreBlock(working: Buffer, restored: Buffer, part: PatchHunk & { pat
   return Buffer.from([...original.slice(0, start), ...replacement, ...original.slice(start + part.afterCount)].join(''), 'utf8');
 }
 /** Zero-context hunks match the contiguous change blocks used by the Diff index. */
-function parsePatch(patch: string): { header: string; hunks: (PatchHunk & { patch: string })[] } {
+function parsePatch(patch: string): { header: string; hunks: PatchPart[] } {
   if ((patch.match(/^diff --git /gm) ?? []).length !== 1 || /^(?:GIT binary patch|Binary files |old mode |new mode |rename |copy )/m.test(patch)) throw new Unsupported();
   const starts = [...patch.matchAll(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@[^\n]*\n/gm)];
   if (!starts.length || starts.length > 1024) throw new Unsupported();
   const header = patch.slice(0, starts[0].index);
-  return { header, hunks: starts.map((match, index) => ({ id: randomUUID(), beforeStart: +match[1], beforeCount: +(match[2] ?? 1), afterStart: +match[3], afterCount: +(match[4] ?? 1), header: match[0].trimEnd(), patch: patch.slice(match.index, starts[index + 1]?.index) })) };
+  return { header, hunks: starts.map((match, index) => {
+    const id = randomUUID(), body = patch.slice(match.index! + match[0].length, starts[index + 1]?.index);
+    const lines: PatchPart['lines'] = []; let before = +match[1], after = +match[3];
+    for (const raw of body.match(/[^\n]*\n|[^\n]+$/g) ?? []) {
+      if (/^\\ /.test(raw)) { const previous = lines.at(-1); if (previous) previous.text = previous.text.replace(/\n$/, ''); continue; }
+      if (raw[0] !== '-' && raw[0] !== '+') throw new Unsupported();
+      const side = raw[0] === '-' ? 'before' : 'after';
+      lines.push({ id: randomUUID(), hunkId: id, side, line: side === 'before' ? before++ : after++, text: raw.slice(1) });
+    }
+    return { id, beforeStart: +match[1], beforeCount: +(match[2] ?? 1), afterStart: +match[3], afterCount: +(match[4] ?? 1), header: match[0].trimEnd(), patch: patch.slice(match.index, starts[index + 1]?.index), lines };
+  }) };
+}
+
+/** Build a canonical Index blob from host-owned changes, independent of virtual display rows. */
+function selectedContent(parts: PatchPart[], ids: string[], baseline: string, reverse: boolean): string {
+  const selected = new Set(ids), known = new Set(parts.flatMap(part => part.lines.map(line => line.id)));
+  if (!selected.size || selected.size !== ids.length || ids.some(id => !known.has(id))) throw stale();
+  const source = baseline.match(/[^\n]*\n|[^\n]+$/g) ?? [], result: string[] = []; let cursor = 0;
+  for (const part of parts) {
+    const old = part.lines.filter(line => line.side === 'before'), added = part.lines.filter(line => line.side === 'after');
+    const count = reverse ? part.afterCount : part.beforeCount, start = (reverse ? part.afterStart : part.beforeStart) - (count ? 1 : 0);
+    if (start < cursor || source.slice(start, start + count).join('') !== (reverse ? added : old).map(line => line.text).join('')) throw stale();
+    result.push(...source.slice(cursor, start));
+    for (let index = 0; index < Math.max(old.length, added.length); index++) {
+      if (old[index] && (reverse ? selected.has(old[index].id) : !selected.has(old[index].id))) result.push(old[index].text);
+      if (added[index] && (reverse ? !selected.has(added[index].id) : selected.has(added[index].id))) result.push(added[index].text);
+    }
+    cursor = start + count;
+  }
+  result.push(...source.slice(cursor)); return result.join('');
 }
 
 export class PatchHunkStore {
@@ -123,17 +154,18 @@ export class PatchHunkStore {
       if (first.fingerprint !== second.fingerprint) throw stale();
       const token = randomUUID();
       this.contexts.set(token, { root: repo.root, target, fingerprint: first.fingerprint, expires: Date.now() + TTL, header: first.header, parts: first.hunks });
-      return { metadata: { token, hunks: first.hunks.map(({ patch: _patch, ...hunk }) => hunk) }, left: first.left, right: first.right };
+      return { metadata: { token, hunks: first.hunks.map(({ patch: _patch, lines: _lines, ...hunk }) => hunk), lines: first.hunks.flatMap(part => part.lines.map(({ text: _text, ...line }) => line)) }, left: first.left, right: first.right };
     } catch (error) {
       if (error instanceof Unsupported || error instanceof GitError && error.code === 'OUTPUT_LIMIT') return { metadata: { hunks: [], unavailable: 'unsupported' } };
       if (error instanceof GitError && error.code === 'PATCH_CHANGED') return { metadata: { hunks: [], unavailable: 'changed' } };
       throw error;
     }
   }
-  async apply(repo: Repository, action: { type: 'stage-hunk' | 'unstage-hunk' | 'discard-hunk'; token: string; hunkId: string }, run: Run, status: () => Promise<Status>): Promise<void> {
+  async apply(repo: Repository, action: PatchAction, run: Run, status: () => Promise<Status>): Promise<void> {
     const context = this.contexts.get(action.token);
-    if (!context || context.root !== repo.root || context.expires <= Date.now() || (context.target.area === 'staged') !== (action.type === 'unstage-hunk')) throw stale();
-    const part = context.parts.find(part => part.id === action.hunkId); if (!part) throw stale();
+    if (!context || context.root !== repo.root || context.expires <= Date.now() || (context.target.area === 'staged') !== (action.type === 'unstage-hunk' || action.type === 'unstage-lines')) throw stale();
+    const lineAction = 'lineIds' in action;
+    const part = context.parts.find(part => !lineAction && part.id === action.hunkId); if (!lineAction && !part) throw stale();
     const indexPath = (await run(['rev-parse', '--path-format=absolute', '--git-path', 'index'])).stdout.toString('utf8').trim();
     const lockPath = indexPath + '.lock', temporary = indexPath + '.alwaygit-' + randomUUID();
     // The real index lock excludes cooperating Git writers during revalidation and publication.
@@ -152,7 +184,18 @@ export class PatchHunkStore {
       try { captured = await this.capture(repo, context.target, run, status); } catch (error) { if (error instanceof Unsupported) throw stale(); throw error; }
       if (captured.indexPath !== indexPath || captured.fingerprint !== context.fingerprint) throw stale();
       if (captured.indexBytes) { const file = await open(temporary, 'wx', 0o600); try { await file.writeFile(captured.indexBytes); } finally { await file.close(); } }
-      const env = { GIT_INDEX_FILE: temporary }, input = Buffer.from(context.header + part.patch, 'utf8'), discard = action.type === 'discard-hunk';
+      const env = { GIT_INDEX_FILE: temporary }, input = Buffer.from(context.header + (part?.patch ?? ''), 'utf8'), discard = action.type === 'discard-hunk';
+      if (lineAction) {
+        const reverse = action.type === 'unstage-lines';
+        const content = selectedContent(context.parts, action.lineIds, reverse ? captured.right : captured.left, reverse);
+        const remove = content.length === 0 && (reverse ? /^new file mode /m.test(context.header) : /^deleted file mode /m.test(context.header));
+        if (remove) await run(['update-index', '--force-remove', '--', context.target.path], { env });
+        else {
+          const oid = (await run(['hash-object', '-w', '--stdin'], { env, input: Buffer.from(content, 'utf8') })).stdout.toString('utf8').trim();
+          const mode = captured.indexMode ?? context.header.match(/^new file mode (\d+)/m)?.[1] ?? '100644';
+          await run(['update-index', '--add', '--cacheinfo', mode, oid, context.target.path], { env });
+        }
+      }
       if (discard) {
         // Trial the inverse against the current Working Tree in an isolated Index.
         // Git performs its own clean/smudge conversions; the real Index is never published.
@@ -163,15 +206,14 @@ export class PatchHunkStore {
         }
       }
       const args = ['apply', '--cached', '--unidiff-zero', '--whitespace=nowarn', ...(action.type !== 'stage-hunk' ? ['--reverse'] : [])];
-      await run([...args, '--check', '-'], { env, input });
-      await run([...args, '-'], { env, input });
+      if (!lineAction) { await run([...args, '--check', '-'], { env, input }); await run([...args, '-'], { env, input }); }
       let restored: Buffer | undefined;
       if (discard) {
         const entry = (await run(['ls-files', '--stage', '-z', '--', context.target.path], { env })).stdout.toString('utf8').split('\0').find(Boolean);
         if (entry) {
           const oid = entry.split(' ')[1];
           const bytes = (await run(['cat-file', '--filters', `--path=${context.target.path}`, oid], { env, maxOutputBytes: LIMIT })).stdout;
-          restored = restoreBlock(captured.working, bytes, part);
+          restored = restoreBlock(captured.working, bytes, part!);
           await mkdir(path.dirname(captured.workingPath), { recursive: true });
           await safeWorkingPath(repo.root, context.target.path, false);
           workingTemporary = path.join(path.dirname(captured.workingPath), '.alwaygit-hunk-' + randomUUID());
