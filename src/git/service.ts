@@ -1,4 +1,4 @@
-import { hasHistorySearch, historySearchArguments, historySearchSchema } from '../protocol/history-search';
+import { hasHistorySearch, historySearchArguments, historySearchKey, historySearchSchema } from '../protocol/history-search';
 import { InteractiveRebase } from './interactive-rebase';
 import { message as localizeMessage, translate } from '../i18n/index';
 import { createHash, randomUUID } from 'node:crypto';
@@ -96,6 +96,7 @@ export class GitService implements GitServiceContract {
   private version = 0;
   private executable?: Promise<string>;
   private readonly fileHistories = new Map<string, FileHistoryIndex & { created: number; remoteKey?: string; localOnly?: Set<string> }>();
+  private readonly historyMatches = new Map<string, { created: number; ids: readonly string[] }>();
   private readonly reviews = new Map<string, { token: string; fingerprint: string }>();
   private readonly hunks = new PatchHunkStore();
   async patchHunks(repo: Repository, target: { path: string; area: 'staged' | 'unstaged' }) {
@@ -315,6 +316,26 @@ export class GitService implements GitServiceContract {
     return [...new Set(decodePaths(output.stdout).split('\0').filter(name => names.has(name)))];
   }
   private async oid(repo: Repository, revision: string): Promise<string> { token(revision, 'revision'); return this.text(repo, ['rev-parse', '--verify', '--end-of-options', `${revision}^{commit}`]); }
+  private async commitPrefixOid(repo: Repository, prefix: string): Promise<string> {
+    token(prefix, 'revision');
+    const output = await this.text(repo, ['rev-parse', `--disambiguate=${prefix}`]);
+    const candidates = [...new Set(output ? output.split(/\r?\n/).filter(oid => /^[a-f\d]{40,64}$/i.test(oid)) : [])];
+    if (candidates.length !== 1 || await this.text(repo, ['cat-file', '-t', candidates[0]]) !== 'commit') throw new GitError(localizeMessage('service.invalidSearch'), 'INVALID_ARGUMENT');
+    return candidates[0];
+  }
+  private cachedHistoryMatches(key: string): readonly string[] | undefined {
+    const cached = this.historyMatches.get(key);
+    if (!cached) return undefined;
+    if (Date.now() - cached.created > 60_000) { this.historyMatches.delete(key); return undefined; }
+    this.historyMatches.delete(key); this.historyMatches.set(key, cached);
+    return cached.ids;
+  }
+  private rememberHistoryMatches(key: string, ids: readonly string[]): void {
+    this.readSignal.getStore()?.controller.signal.throwIfAborted();
+    if (ids.length > 210_000) return;
+    this.historyMatches.delete(key); this.historyMatches.set(key, { created: Date.now(), ids: [...ids] });
+    while (this.historyMatches.size > 4 || [...this.historyMatches.values()].reduce((total, item) => total + item.ids.length, 0) > 210_000) this.historyMatches.delete(this.historyMatches.keys().next().value!);
+  }
   private async refName(repo: Repository, name: string): Promise<string> { const problem=branchNameProblem(name);if(problem)throw new GitError(branchNameProblemMessage(problem),'INVALID_BRANCH_NAME');await this.run(repo, ['check-ref-format', `refs/heads/${name}`]); return name; }
   private async status(repo: Repository) { return parseStatus((await this.run(repo, ['status', '--porcelain=v2', '-z', '--branch', '--untracked-files=all'])).stdout); }
   async cherryPickCheck(repo: Repository, commits: string[], context?: { expectedHead: string; expectedBranch: string }) {
@@ -448,16 +469,34 @@ export class GitService implements GitServiceContract {
     const parsedFilters = historySearchSchema.safeParse(query.filters ?? {});
     if (!parsedFilters.success || query.search?.includes('\0')) throw new GitError(localizeMessage("service.invalidSearch"), 'INVALID_ARGUMENT');
     const filters = parsedFilters.data, advanced = hasHistorySearch(filters);
-    const searchArgs = historySearchArguments(query.search, filters);
     const paths = filters.path ? [validateFilePath(filters.path)] : [];
-    const targetOid = filters.commitId ? await this.oid(repo, filters.commitId) : undefined;
+    const normalizedFilters = paths.length ? { ...filters, path: paths[0] } : filters;
+    const candidateFilters = query.file && filters.code ? { ...normalizedFilters, code: undefined, codeRegex: undefined } : normalizedFilters;
+    const candidateAdvanced = hasHistorySearch(candidateFilters), searchArgs = historySearchArguments(query.search, candidateFilters);
+    const fileSearchArgs = query.file && filters.code ? historySearchArguments(query.search, normalizedFilters) : searchArgs;
+    const targetOid = filters.commitId ? await this.commitPrefixOid(repo, filters.commitId) : undefined;
     const tipInput = Buffer.from(`${tips.join('\n')}\n`, 'utf8');
+    let shallow: string | undefined;
+    const shallowState = async () => {
+      if (shallow !== undefined) return shallow;
+      const shallowPath = await this.text(repo, ['rev-parse', '--git-path', 'shallow']);
+      try { shallow = await readFile(path.resolve(repo.root, shallowPath), 'utf8'); }
+      catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') shallow = ''; else throw error; }
+      return shallow;
+    };
     // Git can emit a merge once per matching parent with -G. Deduplicate before
     // slicing so offsets and hasMore refer to commits, never parent diff records.
     let matchingIds: string[] | undefined;
-    if (advanced) {
-      const output = tips.length ? (await this.run(repo, ['log', '--topo-order', '--format=%H', ...searchArgs, '--no-patch', '--stdin', '--', ...paths], false, undefined, { input: tipInput, maxOutputBytes: Math.min(this.options.maxOutputBytes ?? Infinity, 8 * 1024 * 1024) })).stdout.toString('utf8').trim() : '';
-      matchingIds = [...new Set(output ? output.split(/\r?\n/).filter(oid => /^[a-f\d]{40,64}$/i.test(oid)) : [])].filter(oid => !targetOid || oid === targetOid);
+    const pendingHistoryMatches: { key: string; ids: readonly string[] }[] = [];
+    if (candidateAdvanced) {
+      const matchKey = JSON.stringify(['history', repo.id, repo.commonDir, tips, query.search ?? '', historySearchKey(candidateFilters), await shallowState()]);
+      const cached = this.cachedHistoryMatches(matchKey);
+      if (cached) matchingIds = [...cached];
+      else {
+        const output = tips.length ? (await this.run(repo, ['log', '--topo-order', '--format=%H', ...searchArgs, '--no-patch', '--stdin', '--', ...paths], false, undefined, { input: tipInput, maxOutputBytes: Math.min(this.options.maxOutputBytes ?? Infinity, 8 * 1024 * 1024) })).stdout.toString('utf8').trim() : '';
+        matchingIds = [...new Set(output ? output.split(/\r?\n/).filter(oid => /^[a-f\d]{40,64}$/i.test(oid)) : [])].filter(oid => !targetOid || oid === targetOid);
+        pendingHistoryMatches.push({ key: matchKey, ids: matchingIds });
+      }
     }
     if (query.file) {
       const file = query.file, name = validateFilePath(file.path), anchorPath = validateFilePath(file.anchorPath ?? name);
@@ -467,29 +506,28 @@ export class GitService implements GitServiceContract {
       const run = async (args: string[], input?: Buffer) => (await this.run(repo, args, false, undefined, { input })).stdout;
       // Commit identities pin pagination. Include shallow boundaries because a
       // deepen can reveal more ancestors without changing any reference tip.
-      const shallowPath = (await run(['rev-parse', '--git-path', 'shallow'])).toString('utf8').trim();
-      let shallow = '';
-      try { shallow = await readFile(path.resolve(repo.root, shallowPath), 'utf8'); }
-      catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
-      const key = JSON.stringify([repo.root, [...tips].sort(), revision, anchorPath, currentHead, shallow]);
+      const key = JSON.stringify([repo.root, [...tips].sort(), revision, anchorPath, currentHead, await shallowState()]);
       let index = this.fileHistories.get(key);
       if (!index || Date.now() - index.created > 60_000) {
         const result = await fileHistoryIndex(run, tips, revision, anchorPath, currentHead, this.readSignal.getStore()?.controller.signal);
         index = { ...result, created: Date.now() };
       }
-      let matching = index.entries;
-      if ((query.search || advanced) && matching.length) {
+      const fileMatchKey = query.search || advanced ? JSON.stringify(['file-history', key, query.search ?? '', historySearchKey(normalizedFilters)]) : undefined;
+      const cachedFileMatches = fileMatchKey ? this.cachedHistoryMatches(fileMatchKey) : undefined;
+      const entries = new Map(index.entries.map(entry => [entry.oid, entry]));
+      let matching = cachedFileMatches ? cachedFileMatches.map(oid => entries.get(oid)).filter((entry): entry is NonNullable<typeof entry> => !!entry) : index.entries;
+      if (cachedFileMatches === undefined && (query.search || candidateAdvanced) && matching.length) {
         const output = matchingIds ? undefined : (await run(['log', '--format=%H', ...searchArgs, '--stdin', '--'], tipInput)).toString('utf8').trim();
         const matches = new Set(matchingIds ?? (output ? output.split('\n') : []));
         matching = matching.filter(entry => matches.has(entry.oid));
       }
-      if (filters.code && matching.length) {
+      if (cachedFileMatches === undefined && filters.code && matching.length) {
         // File identity can have a different name at every commit. Keep -G on
         // those paths, including rename sources, so another changed file cannot
         // make this file's history match. Group/batch immutable IDs, never walk
         // ancestors from stdin here (some Git versions ignore --no-walk there).
         const groups = new Map<string, { paths: string[]; oids: string[] }>();
-        const literalPath = filters.path?.replace(/\/$/, '');
+        const literalPath = paths[0]?.replace(/\/$/, '');
         for (const entry of matching) {
           const entryPaths = entry.searchPaths.filter(name => !literalPath || name === literalPath || name.startsWith(`${literalPath}/`));
           if (!entryPaths.length) continue;
@@ -501,10 +539,11 @@ export class GitService implements GitServiceContract {
           for (let start = 0; start < group.oids.length; start += 128) chunks.push({ paths: group.paths, oids: group.oids.slice(start, start + 128) });
           return chunks;
         });
-        const results = await mapGitQueries(batches, async batch => (await run(['log', '--no-walk=unsorted', '--format=%H', ...searchArgs, '-M', '--no-patch', ...batch.oids, '--', ...batch.paths])).toString('utf8'));
+        const results = await mapGitQueries(batches, async batch => (await run(['log', '--no-walk=unsorted', '--format=%H', ...fileSearchArgs, '-M', '--no-patch', ...batch.oids, '--', ...batch.paths])).toString('utf8'));
         const matches = new Set(results.flatMap(output => output.split(/\r?\n/).filter(Boolean)));
         matching = matching.filter(entry => matches.has(entry.oid));
       }
+      if (cachedFileMatches === undefined && fileMatchKey) pendingHistoryMatches.push({ key: fileMatchKey, ids: matching.map(entry => entry.oid) });
       const selected = matching.slice(offset, offset + limit);
       // --stdin enables revision walking even with --no-walk on some Git
       // versions. Bounded argv batches fetch exactly the selected identities.
@@ -513,15 +552,15 @@ export class GitService implements GitServiceContract {
       const metadata = (await mapGitQueries(batches, batch => run(['log', '--no-walk=unsorted', '-z', `--format=${commitFormat}`, ...batch, '--']))).map(buffer => buffer.toString('utf8')).join('').split('\0');
       const commits: Commit[] = [];
       for (let i = 0; i + 5 < metadata.length; i += 6) commits.push(parseCommit(metadata.slice(i, i + 6)));
-      const visible = commits, entries = new Map(index.entries.map(entry => [entry.oid, entry.fileHistory]));
-      const headEntry = currentHead ? entries.get(currentHead) : undefined;
+      const visible = commits, historyEntries = new Map(index.entries.map(entry => [entry.oid, entry.fileHistory]));
+      const headEntry = currentHead ? historyEntries.get(currentHead) : undefined;
       if (visible.length || headEntry) {
         const remoteKey = (await run(['for-each-ref', '--format=%(refname) %(objectname)', 'refs/remotes'])).toString('utf8');
         if (index.remoteKey !== remoteKey || !index.localOnly) {
           const local = (await run(['rev-list', '--stdin', '--not', '--remotes', '--'], Buffer.from(tips.join('\n') + '\n'))).toString('utf8').trim();
-          index.localOnly = new Set(local ? local.split('\n').filter(oid => entries.has(oid)) : []); index.remoteKey = remoteKey;
+          index.localOnly = new Set(local ? local.split('\n').filter(oid => historyEntries.has(oid)) : []); index.remoteKey = remoteKey;
         }
-        for (const commit of visible) { commit.fileHistory = entries.get(commit.oid); commit.pushed = !index.localOnly.has(commit.oid); }
+        for (const commit of visible) { commit.fileHistory = historyEntries.get(commit.oid); commit.pushed = !index.localOnly.has(commit.oid); }
       }
       let head = currentHead ? visible.find(commit => commit.oid === currentHead) : undefined;
       if (!head && headEntry && currentHead) {
@@ -535,6 +574,7 @@ export class GitService implements GitServiceContract {
         this.fileHistories.delete(key); this.fileHistories.set(key, index);
         while (this.fileHistories.size > 4 || [...this.fileHistories.values()].reduce((total, item) => total + item.entries.length, 0) > 50_000) this.fileHistories.delete(this.fileHistories.keys().next().value!);
       }
+      for (const pending of pendingHistoryMatches) this.rememberHistoryMatches(pending.key, pending.ids);
       return { commits: visible, tips, filePaths: index.filePaths, ...(head ? { head } : {}), nextOffset: offset + visible.length, hasMore: offset + visible.length < matching.length };
     }
     // Only resolved commit IDs enter stdin; raw revisions cannot inject flags or
@@ -566,6 +606,7 @@ export class GitService implements GitServiceContract {
       const localOnly = await this.text(repo, ['rev-list', '--max-count=1', oid, '--not', '--remotes']);
       head.pushed = localOnly !== oid;
     }
+    for (const pending of pendingHistoryMatches) this.rememberHistoryMatches(pending.key, pending.ids);
     return { commits: visible, nextOffset: offset + Math.min(commits.length, limit), hasMore: commits.length > limit, tips, ...(head ? { head } : {}) };
   }
   async details(repo: Repository, revision: string, parent?: string): Promise<CommitDetails> {
