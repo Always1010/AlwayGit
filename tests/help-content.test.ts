@@ -20,6 +20,9 @@ describe('manual-backed help', () => {
         expect(readFileSync(resolve('docs', block.source)).subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
       }
       imageSets.push([...new Set([...markdown.matchAll(/!\[[^\]]*\]\((images\/user-manual\/[^)]+)\)/g)].map(match => match[1]))].sort());
+      const chapterImages = topicsFor(manual, 'manual').flatMap(section => section.blocks.filter(block => block.kind === 'image').map(block => block.source));
+      expect([...new Set(chapterImages)].sort(), 'Full-manual chapters must expose every maintained figure').toEqual(imageSets.at(-1));
+      expect(findManualSection(manual, 'chapter-05')?.level).toBe(2);
       screenshotVersions.push(manual.screenshotNote.match(/\b\d+\.\d+\.\d+\b/)?.[0]);
       expect(screenshotVersions.at(-1)).toBeDefined();
       expect(findManualSection(manual, 'section-01-06')?.id).toBe('quick-start');
