@@ -1908,6 +1908,10 @@ export const catalog = {
     "en": "This is a new untracked file. Discarding its complete change block deletes the file.",
     "zh-CN": "这是未跟踪的新增文件，丢弃它的完整修改块会删除该文件。"
   },
+  "diff.scrollHorizontally": {
+    "en": "Scroll Diff text horizontally",
+    "zh-CN": "横向滚动差异正文"
+  },
   "dock.terminalLabel": {
     "en": "Terminal {{title}}",
     "zh-CN": "终端 {{title}}"
@@ -7274,6 +7278,7 @@ export interface MessageParameters {
   "diff.discardHunkConfirm": {  };
   "diff.discardHunkWarning": {  };
   "diff.discardHunkDeleteFile": {  };
+  "diff.scrollHorizontally": {  };
   "dock.terminalLabel": { title: ParameterValue };
   "dock.panel": {  };
   "dock.tabs": {  };

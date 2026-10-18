@@ -34,21 +34,26 @@ function ImageSide({image,label,zoom,onScroll,sideRef}:{image?:DiffImage;label:s
   const t=useTranslation();
   return <div className="image-diff-side"><div className="image-diff-canvas" ref={sideRef} onScroll={onScroll}>{image?<img src={`data:${image.mimeType};base64,${image.data}`} alt={t("diff.imagePreviewFor", { label })} draggable="false" className={zoom==='fit'?'fit':undefined} style={zoom==='fit'?undefined:{width:image.width*zoom,height:image.height*zoom}}/>:<div className="image-diff-empty"><span>{t("diff.emptyImageSide")}</span></div>}</div>{image&&<div className="image-diff-meta">{image.width} × {image.height} · {formatBytes(image.byteLength)}</div>}</div>;
 }
-function content(value:string|undefined,other:string|undefined,changed:boolean,side:'before'|'after',scrollLeft:number) {
+function content(value:string|undefined,other:string|undefined,changed:boolean,side:'before'|'after') {
   if(value===undefined)return null;
-  const style={transform:`translateX(-${scrollLeft}px)`};
-  if(!changed||other===undefined)return <code style={style}>{value}</code>;
+  if(!changed||other===undefined)return <code>{value}</code>;
   const parts=changedParts(side==='before'?value:other,side==='before'?other:value),middle=side==='before'?parts.before:parts.after;
-  return <code style={style}>{parts.prefix}{middle&&<mark className={side==='before'?'diff-word-removed':'diff-word-added'}>{middle}</mark>}{parts.suffix}</code>;
+  return <code>{parts.prefix}{middle&&<mark className={side==='before'?'diff-word-removed':'diff-word-added'}>{middle}</mark>}{parts.suffix}</code>;
 }
 export interface IsolatedDiffPreview { repoId: string; target?: DiffTarget }
 function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():void; edit():void; active?:boolean; isolated?: IsolatedDiffPreview }) {
   const globalState=useWorkbenchFields('busy', 'execute', 'appearance', 'diffNavigationScope', 'details', 'selectedStashOid', 'tab', 'diffRevision', 'diffTarget', 'layout', 'repoId', 'selectedFile', 'selectFile', 'setLayout');
   const [isolatedCollapsed, setIsolatedCollapsed] = useState(false);
   const state = isolated ? { ...globalState, repoId: isolated.repoId, diffTarget: isolated.target, selectedFile: isolated.target?.path, diffRevision: 0, details: undefined, selectedStashOid: undefined, diffNavigationScope: 'file' as const, layout: { ...globalState.layout, diffCollapsed: isolatedCollapsed }, setLayout: (value: { diffCollapsed?: boolean }) => { if (value.diffCollapsed !== undefined) setIsolatedCollapsed(value.diffCollapsed); } } : globalState;
-  const t=useTranslation(),[preview,setPreview]=useState<Preview>(),[error,setError]=useState<string>(),[loading,setLoading]=useState(false),[selection,setSelection]=useState<Selection>(),[horizontalScroll,setHorizontalScroll]=useState(0),[viewportWidth,setViewportWidth]=useState(0),viewport=useRef<HTMLDivElement>(null),displayedKey=useRef(''),lastScrollTop=useRef(0),navigationScroll=useRef<number|undefined>(undefined);
+  const t=useTranslation(),[preview,setPreview]=useState<Preview>(),[error,setError]=useState<string>(),[loading,setLoading]=useState(false),[selection,setSelection]=useState<Selection>(),[viewportWidth,setViewportWidth]=useState(0),viewport=useRef<HTMLDivElement>(null),displayedKey=useRef(''),lastScrollTop=useRef(0),navigationScroll=useRef<number|undefined>(undefined);
   const [discardConfirmation,setDiscardConfirmation]=useState<{hunk:PatchHunk;token:string;left:number;top:number;deletesFile:boolean}>();
-  const frame=useRef<HTMLElement>(null);
+  const frame=useRef<HTMLElement>(null),horizontal=useRef<HTMLDivElement>(null),horizontalOffset=useRef(0);
+  const setHorizontalOffset=(left:number)=>{
+    if(horizontal.current)horizontal.current.scrollLeft=left;
+    horizontalOffset.current=horizontal.current?.scrollLeft??left;
+    frame.current?.style.setProperty('--diff-scroll-x',`${-horizontalOffset.current}px`);
+  };
+  const trackHorizontal=()=>{if(horizontal.current)setHorizontalOffset(horizontal.current.scrollLeft);};
   const pendingHunkScroll=useRef<{top:number;left:number}|undefined>(undefined);
   const hunkScroll=useRef<{repoId?:string;path:string;top:number;left:number}|undefined>(undefined);
   const [navigating,setNavigating]=useState(false),[navigationError,setNavigationError]=useState<string>(),[noNavigableFiles,setNoNavigableFiles]=useState(false),navigationRequest=useRef<AbortController|undefined>(undefined),preloaded=useRef<{key:string;preview:Preview}|undefined>(undefined),landing=useRef<{key:string;index:number}|undefined>(undefined);
@@ -77,7 +82,7 @@ function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():
   useEffect(()=>{
     let live=true;
     const controller=new AbortController();
-    if(displayedKey.current!==targetKey){const saved=hunkScroll.current,preserve=saved&&saved.repoId===state.repoId&&saved.path===state.diffTarget?.path;hunkScroll.current=undefined;pendingHunkScroll.current=preserve?{top:saved.top,left:saved.left}:undefined;displayedKey.current=targetKey;initiallyPositioned.current=!!preserve;setPreview(undefined);setSelection(undefined);setHorizontalScroll(preserve?saved.left:0);setImageZoom('fit');lastScrollTop.current=preserve?saved.top:0;navigationScroll.current=undefined;viewport.current?.scrollTo({top:lastScrollTop.current,left:preserve?saved.left:0});}
+    if(displayedKey.current!==targetKey){const saved=hunkScroll.current,preserve=saved&&saved.repoId===state.repoId&&saved.path===state.diffTarget?.path;hunkScroll.current=undefined;pendingHunkScroll.current=preserve?{top:saved.top,left:saved.left}:undefined;displayedKey.current=targetKey;initiallyPositioned.current=!!preserve;setPreview(undefined);setSelection(undefined);setHorizontalOffset(preserve?saved.left:0);setImageZoom('fit');lastScrollTop.current=preserve?saved.top:0;navigationScroll.current=undefined;viewport.current?.scrollTo({top:lastScrollTop.current});}
     setError(undefined);
     const target=state.diffTarget;if(!target){setLoading(false);return;}
     if(preloaded.current?.key===targetKey){setPreview(preloaded.current.preview);preloaded.current=undefined;setLoading(false);return;}
@@ -120,7 +125,7 @@ function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():
     if(!saved||!preview||!element||!rowCount||loading)return;
     pendingHunkScroll.current=undefined;
     const top=Math.max(0,Math.min(saved.top,virtual.getScrollSize()-element.clientHeight));
-    navigationScroll.current=top;virtual.scrollToOffset(virtual.toLogicalOffset(top));element.scrollLeft=saved.left;lastScrollTop.current=element.scrollTop;
+    navigationScroll.current=top;virtual.scrollToOffset(virtual.toLogicalOffset(top));setHorizontalOffset(saved.left);lastScrollTop.current=element.scrollTop;
   },[preview,loading,rowCount,totalHeight]);
   const changes=useMemo(()=>index?.changes??changedRanges(rows),[index,rows]);
   const virtualItems=virtual.getVirtualItems();
@@ -169,7 +174,7 @@ function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():
     const element=viewport.current;
     if(!element||!initiallyPositioned.current)return;
     navigationScroll.current=lastScrollTop.current;
-    element.scrollTo({top:lastScrollTop.current,left:horizontalScroll});
+    element.scrollTo({top:lastScrollTop.current});setHorizontalOffset(horizontalOffset.current);
   },[collapsed]);
   useLayoutEffect(()=>{
     if(initiallyPositioned.current||displayedKey.current!==targetKey||!preview||collapsed||!viewportWidth||!viewport.current?.clientHeight)return;
@@ -178,7 +183,6 @@ function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():
   },[targetKey,rows,collapsed,viewportWidth]);
   const trackScroll=()=>{
     const element=viewport.current;if(!element)return;
-    setHorizontalScroll(element.scrollLeft);
     if(element.scrollTop===lastScrollTop.current)return;
     lastScrollTop.current=element.scrollTop;
     if(navigationScroll.current!==undefined&&Math.abs(element.scrollTop-navigationScroll.current)<2){navigationScroll.current=undefined;return;}
@@ -197,9 +201,34 @@ function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():
     }
     return columns;
   },[rows,index]);
-  // The scroll spacer represents overflow within one half; comparison columns
-  // retain their visible width and only code moves beneath the fixed gutters.
-  const contentWidth=`max(100%, calc(${contentColumns}ch + ${viewportWidth/2+48}px))`;
+  // Horizontal scrolling has its own native control; only code receives its offset.
+  useLayoutEffect(()=>{
+    const element=viewport.current,bar=horizontal.current;if(!element||!bar)return;
+    const measure=()=>{
+      const cells=[...element.querySelectorAll<HTMLElement>('.diff-code')].slice(0,2);
+      const width=cells.length?Math.min(...cells.map(cell=>cell.getBoundingClientRect().width)):0;
+      frame.current?.style.setProperty('--diff-code-width',`${width}px`);
+      const overflow=contentColumns>0&&bar.scrollWidth>bar.clientWidth;
+      frame.current?.style.setProperty('--diff-horizontal-height',overflow?'6px':'0px');
+      bar.tabIndex=overflow?0:-1;setHorizontalOffset(horizontalOffset.current);
+    };
+    measure();const observer=new ResizeObserver(measure);observer.observe(element);
+    const code=element.querySelector('.diff-code');if(code)observer.observe(code);
+    return()=>observer.disconnect();
+  },[contentColumns,rowCount,viewportWidth,collapsed,active,preview?.kind,state.appearance.codeFont]);
+  useLayoutEffect(()=>{
+    const element=viewport.current;if(!element||preview?.kind!=='text')return;
+    const wheel=(event:WheelEvent)=>{
+      const bar=horizontal.current;if(!bar||bar.scrollWidth<=bar.clientWidth)return;
+      const unit=event.deltaMode===1?ROW_HEIGHT:event.deltaMode===2?element.clientHeight:1;
+      const delta=(event.deltaX||(event.shiftKey?event.deltaY:0))*unit;if(!delta)return;
+      event.preventDefault();event.stopImmediatePropagation();
+      setHorizontalOffset(bar.scrollLeft+delta);
+      if(event.deltaY&&!event.shiftKey)element.scrollTop+=event.deltaY*unit*virtual.scale;
+    };
+    element.addEventListener('wheel',wheel,{capture:true,passive:false});
+    return()=>element.removeEventListener('wheel',wheel,true);
+  },[preview?.kind,collapsed,active,ROW_HEIGHT,virtual.scale]);
   const highlighted=activeChange>=0?changes[activeChange]:undefined;
   const openLabel=t("diff.openDiff"),editLabel=t("diff.editInVSCode"),previousLabel=t("diff.previousChange"),nextLabel=t("diff.nextChange");
   const previousHint=commitMode?t("diff.previousChangeAcrossCommitFilesWrapsToTheLast"):changeCount===1?t("diff.locateTheOnlyChange"):t("diff.previousChangeWrapsToTheLast"),nextHint=commitMode?t("diff.nextChangeAcrossCommitFilesWrapsToTheFirst"):changeCount===1?t("diff.locateTheOnlyChange"):t("diff.nextChangeWrapsToTheFirst");
@@ -209,7 +238,7 @@ function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():
   const applyHunk=(hunkId:string,discard=false)=>{
     const current=useWorkbench.getState();
     if(!patchHunks?.token||!hunkTarget||state.busy||loading||current.repoId!==state.repoId||diffKey(current.diffTarget)!==diffKey(hunkTarget)||discard&&hunkTarget.area!=='unstaged')return;
-    hunkScroll.current={repoId:state.repoId,path:hunkTarget.path,top:viewport.current?.scrollTop??lastScrollTop.current,left:horizontalScroll};
+    hunkScroll.current={repoId:state.repoId,path:hunkTarget.path,top:viewport.current?.scrollTop??lastScrollTop.current,left:horizontalOffset.current};
     void state.execute({type:discard?'discard-hunk':hunkTarget.area==='staged'?'unstage-hunk':'stage-hunk',token:patchHunks.token,hunkId});
   };
   const requestDiscard=(hunk:PatchHunk,anchor:HTMLElement)=>{
@@ -249,21 +278,23 @@ function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():
     {!collapsed&&<>{preview&&<div className={`diff-labels${preview.kind==='text'?' text-diff-labels':''}`}><span>{preview.leftLabel}</span>{preview.kind==='text'&&<span className="diff-label-gutter" aria-hidden="true"/>}<span>{preview.rightLabel}</span></div>}
     {hunkTarget&&patchHunks?.unavailable&&<div className="history-caption" role="status">{t(patchHunks.unavailable==='changed'?'diff.hunkStale':'diff.hunkUnavailable')}</div>}
     {truncated&&<div className="history-caption">{t("diff.previewIsTruncatedOpenDiffToInspectTheFull")}</div>}
-    <div className="diff-viewport" ref={viewport} onScroll={trackScroll}>
+    <div className={`diff-viewport${preview?.kind==='text'?' text-diff-viewport':''}`} ref={viewport} onScroll={trackScroll}>
       {navigationError&&<p className="form-error" role="alert">{navigationError}</p>}
       {navigating&&<div className="history-caption" role="status">{t("diff.loadingTheNextDiffFile")}</div>}
       {(error||(!loading&&pages.error))&&<p className="form-error" role="alert">{error??pages.error}</p>}
-      {loading&&!preview?<Empty title={t("diff.loadingDiff")}/>:preview?.kind==='binary'?<Empty title={binaryTitle!}/>:!preview?(!error&&<Empty title={t("diff.selectAFileToPreviewItsDiff")}/>):preview.kind==='image'?<div className="image-diff"><ImageSide image={preview.left} label={preview.leftLabel} zoom={imageZoom} sideRef={imageSides[0]} onScroll={event=>syncImageScroll(0,event)}/><ImageSide image={preview.right} label={preview.rightLabel} zoom={imageZoom} sideRef={imageSides[1]} onScroll={event=>syncImageScroll(1,event)}/></div>:<div className="diff-content" style={{height:virtual.getScrollSize(),position:'relative',width:contentWidth}}>{virtualItems.map(item=>{
+      {loading&&!preview?<Empty title={t("diff.loadingDiff")}/>:preview?.kind==='binary'?<Empty title={binaryTitle!}/>:!preview?(!error&&<Empty title={t("diff.selectAFileToPreviewItsDiff")}/>):preview.kind==='image'?<div className="image-diff"><ImageSide image={preview.left} label={preview.leftLabel} zoom={imageZoom} sideRef={imageSides[0]} onScroll={event=>syncImageScroll(0,event)}/><ImageSide image={preview.right} label={preview.rightLabel} zoom={imageZoom} sideRef={imageSides[1]} onScroll={event=>syncImageScroll(1,event)}/></div>:<div className="diff-content" style={{height:virtual.getScrollSize(),position:'relative'}}>{virtualItems.map(item=>{
         const row=(index?pages.row(item.index):rows[item.index])??{changed:false,before:t('diff.loadingDiff'),after:t('diff.loadingDiff')};
         const active=!!highlighted&&item.index>=highlighted.start&&item.index<=highlighted.end,rowHunk=patchHunkForRow(patchHunks,row);
         const hunk=patchHunkAtRow(patchHunks,row)??(item.index===virtualItems[0]?.index?rowHunk:undefined);
-        return <div key={item.index} className={`diff-line${active?' active-change':''}${active&&item.index===highlighted?.start?' active-change-start':''}${active&&item.index===highlighted?.end?' active-change-end':''}`} style={{position:'absolute',left:horizontalScroll,width:'var(--diff-viewport-width,100%)',height:ROW_HEIGHT,transform:`translateY(${item.start}px)`}}>
-          <div className={`diff-side${row.changed&&row.before!==undefined?' removed':''}`}><span className="line-number">{row.beforeLine??''}</span><span className="diff-marker" aria-hidden="true">{row.changed&&row.before!==undefined?'−':''}</span><span className="diff-code">{content(row.before,row.after,row.changed,'before',horizontalScroll)}</span></div>
+        return <div key={item.index} className={`diff-line${active?' active-change':''}${active&&item.index===highlighted?.start?' active-change-start':''}${active&&item.index===highlighted?.end?' active-change-end':''}`} style={{position:'absolute',left:0,width:'var(--diff-viewport-width,100%)',height:ROW_HEIGHT,transform:`translateY(${item.start}px)`}}>
+          <div className={`diff-side${row.changed&&row.before!==undefined?' removed':''}`}><span className="line-number">{row.beforeLine??''}</span><span className="diff-marker" aria-hidden="true">{row.changed&&row.before!==undefined?'−':''}</span><span className="diff-code">{content(row.before,row.after,row.changed,'before')}</span></div>
           <div className={`diff-hunk-gutter${rowHunk?' has-hunk':''}`} data-hunk-id={rowHunk?.id}>{hunk&&<DiffHunkAction hunk={hunk} area={hunkTarget!.area as 'staged'|'unstaged'} disabled={state.busy||loading} apply={applyHunk} discard={requestDiscard}/>}</div>
-          <div className={`diff-side${row.changed&&row.after!==undefined?' added':''}`}><span className="line-number">{row.afterLine??''}</span><span className="diff-marker" aria-hidden="true">{row.changed&&row.after!==undefined?'+':''}</span><span className="diff-code">{content(row.after,row.before,row.changed,'after',horizontalScroll)}</span></div>
+          <div className={`diff-side${row.changed&&row.after!==undefined?' added':''}`}><span className="line-number">{row.afterLine??''}</span><span className="diff-marker" aria-hidden="true">{row.changed&&row.after!==undefined?'+':''}</span><span className="diff-code">{content(row.after,row.before,row.changed,'after')}</span></div>
         </div>;
       })}</div>}
-    </div></>}
+    </div>
+    {preview?.kind==='text'&&<div className="diff-horizontal-scroll" ref={horizontal} onScroll={trackHorizontal} role="region" aria-label={t('diff.scrollHorizontally')} tabIndex={-1}><div style={{width:`max(100%, calc(100% + ${contentColumns}ch + 4px - var(--diff-code-width,0px)))`}}/></div>}
+    </>}
     {discardConfirmation&&patchHunks?.token===discardConfirmation.token&&createPortal(<Modal title={t('diff.discardHunkConfirm')} className="diff-hunk-confirm" style={{position:'fixed',left:discardConfirmation.left,top:discardConfirmation.top,width:320}} onClose={()=>setDiscardConfirmation(undefined)} footer={<><Button data-autofocus="true" onClick={()=>setDiscardConfirmation(undefined)}>{t('common.cancel')}</Button><Button className="danger" disabled={state.busy||loading} onClick={()=>{if(patchHunks?.token!==discardConfirmation.token)return;const id=discardConfirmation.hunk.id;setDiscardConfirmation(undefined);applyHunk(id,true);}}>{t('diff.discardHunk')}</Button></>}><div className="diff-hunk-confirm-path">{hunkTarget?.path}</div><code>{discardConfirmation.hunk.header}</code><p>{t(discardConfirmation.deletesFile?'diff.discardHunkDeleteFile':'diff.discardHunkWarning')}</p></Modal>,viewport.current?.closest('.workbench')??document.body)}
   </section>;
 }
