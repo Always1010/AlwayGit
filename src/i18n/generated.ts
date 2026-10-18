@@ -1877,12 +1877,12 @@ export const catalog = {
     "zh-CN": "Diff · "
   },
   "diff.stageHunk": {
-    "en": "Stage this change block",
-    "zh-CN": "暂存此修改块"
+    "en": "Stage block",
+    "zh-CN": "暂存此块"
   },
   "diff.unstageHunk": {
-    "en": "Unstage this change block",
-    "zh-CN": "取消暂存此修改块"
+    "en": "Unstage block",
+    "zh-CN": "取消暂存此块"
   },
   "diff.hunkStale": {
     "en": "The hunk preview changed or expired. Refresh the Diff and try again.",
@@ -1893,20 +1893,8 @@ export const catalog = {
     "zh-CN": "此文件或 Git 操作不支持分块操作，请使用整文件入口。"
   },
   "diff.discardHunk": {
-    "en": "Discard this change block",
-    "zh-CN": "丢弃此修改块"
-  },
-  "diff.stageHunkHint": {
-    "en": "Add this Working Tree block to the Index; keep the file contents.",
-    "zh-CN": "将工作区此块加入暂存区，保留工作区内容。"
-  },
-  "diff.unstageHunkHint": {
-    "en": "Restore this Index block from HEAD; keep the Working Tree file.",
-    "zh-CN": "将暂存区此块恢复为 HEAD 版本，保留工作区文件。"
-  },
-  "diff.discardHunkHint": {
-    "en": "Restore this Working Tree block from the Index.",
-    "zh-CN": "将工作区此块恢复为暂存区版本。"
+    "en": "Discard block",
+    "zh-CN": "丢弃此块"
   },
   "diff.discardHunkConfirm": {
     "en": "Discard this change block?",
@@ -7283,9 +7271,6 @@ export interface MessageParameters {
   "diff.hunkStale": {  };
   "diff.hunkUnavailable": {  };
   "diff.discardHunk": {  };
-  "diff.stageHunkHint": {  };
-  "diff.unstageHunkHint": {  };
-  "diff.discardHunkHint": {  };
   "diff.discardHunkConfirm": {  };
   "diff.discardHunkWarning": {  };
   "diff.discardHunkDeleteFile": {  };

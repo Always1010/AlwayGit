@@ -6,15 +6,15 @@ import { DiffHunkAction, patchHunkAtRow, patchHunkForRow } from '../webview/Diff
 vi.mock('../webview/i18n', () => ({ useTranslation: () => translator('en') }));
 vi.mock('../webview/store', () => ({ useWorkbench: (select: (state: unknown) => unknown) => select({ singleKeyShortcuts: true }) }));
 const hunk = { id: 'host-id', beforeStart: 4, beforeCount: 8, afterStart: 4, afterCount: 9, header: '@@ -4,8 +4,9 @@' };
-it('renders directional block actions with accessible ranges and disables during writes', () => {
+it('renders directional block actions with concise accessible labels and disables during writes', () => {
   const stage = renderToStaticMarkup(<DiffHunkAction hunk={hunk} area="unstaged" disabled={false} apply={() => {}}/>);
-  expect(stage).toContain('aria-label="Stage this change block: @@ -4,8 +4,9 @@"'); expect(stage).toContain('diff-hunk-left'); expect(stage).toContain('«');
+  expect(stage).toContain('aria-label="Stage block"'); expect(stage).toContain('title="Stage block"'); expect(stage).not.toContain('@@'); expect(stage).toContain('diff-hunk-left'); expect(stage).toContain('«');
   const unstage = renderToStaticMarkup(<DiffHunkAction hunk={hunk} area="staged" disabled={true} apply={() => {}}/>);
-  expect(unstage).toContain('aria-label="Unstage this change block: @@ -4,8 +4,9 @@"'); expect(unstage).toContain('diff-hunk-right'); expect(unstage).toContain('»'); expect(unstage).toContain('disabled');
+  expect(unstage).toContain('aria-label="Unstage block"'); expect(unstage).toContain('title="Unstage block"'); expect(unstage).not.toContain('@@'); expect(unstage).toContain('diff-hunk-right'); expect(unstage).toContain('»'); expect(unstage).toContain('disabled');
   const working = renderToStaticMarkup(<DiffHunkAction hunk={hunk} area="unstaged" disabled={false} apply={() => {}} discard={() => {}}/>);
-  expect(working).toContain('Discard this change block'); expect(working).toContain('»'); expect(working).toContain('«');
+  expect(working).toContain('Discard block'); expect(working).toContain('»'); expect(working).toContain('«');
   const staged = renderToStaticMarkup(<DiffHunkAction hunk={hunk} area="staged" disabled={false} apply={() => {}} discard={() => {}}/>);
-  expect(staged).not.toContain('Discard this change block');
+  expect(staged).not.toContain('Discard block');
 });
 it('anchors actions only at actual changed lines and tracks the entire block', () => {
   const metadata = { token: 'host-token', hunks: [hunk] };

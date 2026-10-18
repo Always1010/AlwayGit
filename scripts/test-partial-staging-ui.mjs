@@ -46,7 +46,7 @@ export async function verifyPartialStaging(browser, url) {
     });
     await page.goto(url.replace('?demo=1', ''));
     const diff = page.getByTestId('bottom-dock').getByTestId('diff-preview'), viewport = diff.locator('.diff-viewport');
-    const firstStage = diff.getByRole('button', { name: 'Stage this change block: @@ -42 +42 @@', exact: true });
+    const firstStage = diff.locator('[data-hunk-id="11111111-1111-4111-8111-111111111111"]').getByRole('button', { name: 'Stage block', exact: true });
     await firstStage.waitFor();
     const anchor = async () => { await viewport.evaluate(element => { element.scrollTop = 36 * 18; element.dispatchEvent(new Event('scroll')); }); await firstStage.waitFor(); return viewport.evaluate(element => element.scrollTop); };
     const initialScroll = await anchor();
@@ -54,6 +54,7 @@ export async function verifyPartialStaging(browser, url) {
     const geometry=await firstStage.evaluate(element=>{const line=element.closest('.diff-line'),gutter=element.parentElement;return {gutter:gutter.getBoundingClientRect().width,number:line.querySelector('.line-number').getBoundingClientRect().width};});
     assert.equal(geometry.gutter,32,'The center action gutter stays 32px wide');
     assert.ok(geometry.number<32,'Line numbers no longer reserve a wide action column');
+    assert.equal(await firstStage.getAttribute('title'),'Stage block','Stage tooltip contains only the action name');
     assert.equal(await firstStage.innerText(),'«','Staging points from Working Tree to Index');
     await firstStage.hover();
     assert.ok(await diff.locator('.active-change .diff-side').evaluateAll(cells=>cells.every(cell=>getComputedStyle(cell).outlineStyle==='none')),'Hover adds no outlines over red and green changes');
@@ -78,10 +79,11 @@ export async function verifyPartialStaging(browser, url) {
     assert.ok(Math.abs(await viewport.evaluate(element => element.scrollTop) - initialScroll) < 2, 'Same-area staging retains the reading position');
     assert.equal(await page.locator('#change-files-unstaged .preview-current .file-name').getAttribute('aria-label'), 'file.txt', 'Refresh keeps the selected file');
     await page.locator('#change-files-staged').getByRole('button', { name: 'file.txt', exact: true }).click();
-    const unstage = diff.getByRole('button', { name: 'Unstage this change block: @@ -42 +42 @@', exact: true });
+    const unstage = diff.locator('[data-hunk-id="11111111-1111-4111-8111-111111111111"]').getByRole('button', { name: 'Unstage block', exact: true });
     await unstage.waitFor();
     await viewport.evaluate(element => { element.scrollTop = 36 * 18; element.dispatchEvent(new Event('scroll')); });
     const stagedScroll = await viewport.evaluate(element => element.scrollTop);
+    assert.equal(await unstage.getAttribute('title'),'Unstage block','Unstage tooltip contains only the action name');
     assert.equal(await unstage.innerText(),'»','Unstaging points from HEAD to Index');
     await diff.screenshot({path:'artifacts/partial-staging-staged.png'});
     await unstage.click();
@@ -120,7 +122,7 @@ export async function verifyPartialStaging(browser, url) {
     assert.equal(await dialog.locator('.diff-hunk-action').count(), 0, 'An isolated Commit inspector remains read-only');
     await dialog.getByRole('button', { name: 'Close', exact: true }).click();
     await firstStage.waitFor();
-    const discard=diff.getByRole('button',{name:'Discard this change block: @@ -42 +42 @@',exact:true});
+    const discard=diff.locator('[data-hunk-id="11111111-1111-4111-8111-111111111111"]').getByRole('button',{name:'Discard block',exact:true});
     await discard.click();
     const confirmation=page.getByRole('dialog',{name:'Discard this change block?',exact:true});
     await confirmation.waitFor();
@@ -140,7 +142,7 @@ export async function verifyPartialStaging(browser, url) {
     await discard.click();
     await confirmation.waitFor();
     await confirmation.screenshot({path:'artifacts/partial-staging-discard-confirm.png'});
-    await confirmation.getByRole('button',{name:'Discard this change block',exact:true}).click();
+    await confirmation.getByRole('button',{name:'Discard block',exact:true}).click();
     await page.waitForFunction(()=>window.__hunkFixture.pendingAction?.type==='discard-hunk');
     assert.deepEqual(await page.evaluate(()=>window.__hunkFixture.calls.filter(call=>call.method==='action').at(-1).payload),{type:'discard-hunk',token:'00000000-0000-4000-8000-000000000001',hunkId:'11111111-1111-4111-8111-111111111111'});
     assert.equal(await discard.isDisabled(),true);
@@ -149,7 +151,7 @@ export async function verifyPartialStaging(browser, url) {
     await page.evaluate(()=>window.__hunkFixture.releasePreviews());
     await diff.getByTestId('diff-change-count').getByText('1/2',{exact:true}).waitFor();
     assert.equal(await firstStage.count(),0,'Only the discarded block disappears');
-    await diff.getByRole('button',{name:'Stage this change block: @@ -46 +46 @@',exact:true}).waitFor();
+    await diff.locator('[data-hunk-id="33333333-3333-4333-8333-333333333333"]').getByRole('button',{name:'Stage block',exact:true}).waitFor();
     const final = await page.evaluate(() => ({ writes: window.__hunkFixture.calls.filter(call => call.method === 'action').map(call => call.payload.type), draft: window.__hunkFixture.session.drafts.hunks, isolated: window.__hunkFixture.calls.filter(call => call.method === 'isolatedDiffPreview').map(call => call.payload.kind) }));
     assert.deepEqual(final.writes, ['stage-hunk', 'unstage-hunk', 'discard-hunk'], 'Inspection and canceled confirmations create no writes');
     assert.equal(final.draft, 'Keep hunk draft');
