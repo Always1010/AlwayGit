@@ -15,7 +15,7 @@ import { graphPalettes, type GraphPaletteId } from './graph/palettes';
 
 
 
-type SettingsPage = 'files' | 'language' | 'keyboard' | 'theme' | 'density' | 'diff' | 'status' | 'colors' | 'advanced';
+type SettingsPage = 'files' | 'language' | 'keyboard' | 'theme' | 'density' | 'diff' | 'status' | 'history' | 'colors' | 'advanced';
 type ColorTheme = 'light' | 'dark';
 const defaultMainColors = { light: '#283447', dark: '#EDF3FF' } as const;
 const themes: { id: ThemePreference; labelKey: StaticMessageKey; colors: readonly [string, string, string] }[] = [
@@ -159,7 +159,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
   };
   const presetBase = presetColors(appearance.palette);
   const customized = appearance.colors.light.some((color, index) => color !== presetBase.light[index]) || appearance.colors.dark.some((color, index) => color !== presetBase.dark[index]) || appearance.colors.light.length !== presetBase.light.length;
-  const pageLabel = page === 'files' ? t('changes.fileList') : page === 'advanced' ? t("settings.gitOperations") : page === 'keyboard' ? t("settings.keyboardShortcuts") : page === 'language' ? t("common.language") : page === 'theme' ? t("settings.theme") : page === 'density' ? t("settings.textDensity") : page === 'diff' ? uiText("settings.diff") : page === 'status' ? t("settings.statusIndicators") : t("settings.graphColors");
+  const pageLabel = page === 'files' ? t('changes.fileList') : page === 'advanced' ? t("settings.gitOperations") : page === 'keyboard' ? t("settings.keyboardShortcuts") : page === 'language' ? t("common.language") : page === 'theme' ? t("settings.theme") : page === 'density' ? t("settings.textDensity") : page === 'diff' ? uiText("settings.diff") : page === 'status' ? t("settings.statusIndicators") : page === 'history' ? t('settings.display') : t("settings.graphColors");
   const navItem = (id: SettingsPage, icon: string, label: string) => <button type="button" className={`settings-nav-item ${page === id ? 'is-active' : ''}`} aria-current={page === id ? 'page' : undefined} onClick={() => setPage(id)}><Icon name={icon}/><span>{label}</span></button>;
 
   return <Modal title={t("common.settings")} busy={saving} onClose={close} footer={
@@ -169,11 +169,11 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
       <nav className="settings-nav" aria-label={t("settings.settingsCategories")}>
         <div className="settings-nav-group"><strong>{t("settings.general")}</strong>{navItem('language', 'globe', t("common.language"))}{navItem('keyboard', 'keyboard', t("settings.keyboardShortcuts"))}</div>
         <div className="settings-nav-group"><strong>{t("settings.interface")}</strong>{navItem('theme', 'color-mode', t("settings.theme"))}{navItem('density', 'text-size', t("settings.textDensity"))}{navItem('files', 'list-tree', t('changes.fileList'))}{navItem('diff', 'diff', t("settings.diff"))}{navItem('status', 'bell-dot', t("settings.statusIndicators"))}</div>
-        <div className="settings-nav-group"><strong>{t("settings.commitGraph")}</strong>{navItem('colors', 'git-merge', t("settings.colors"))}</div>
+        <div className="settings-nav-group"><strong>{t("settings.commitGraph")}</strong>{navItem('history', 'list-flat', t('settings.display'))}{navItem('colors', 'git-merge', t("settings.colors"))}</div>
         <div className="settings-nav-group"><strong>{t("settings.advanced")}</strong>{navItem('advanced', 'tools', t("settings.gitOperations"))}</div>
       </nav>
       <main className="settings-content">
-        <header className="settings-page-heading"><span>{page === 'advanced' ? t("settings.advanced") : page === 'language' || page === 'keyboard' ? t("settings.general") : page === 'colors' ? t("settings.commitGraph") : t("settings.interface")} › {pageLabel}</span><small>{page === 'advanced' ? t("settings.gitOptionsTakeEffectOnlyAfterApply") : page === 'keyboard' ? t('settings.shortcutApplyHint') : t("settings.changesPreviewImmediatelyApplyToSave")}</small></header>
+        <header className="settings-page-heading"><span>{page === 'advanced' ? t("settings.advanced") : page === 'language' || page === 'keyboard' ? t("settings.general") : page === 'colors' || page === 'history' ? t("settings.commitGraph") : t("settings.interface")} › {pageLabel}</span><small>{page === 'advanced' ? t("settings.gitOptionsTakeEffectOnlyAfterApply") : page === 'keyboard' ? t('settings.shortcutApplyHint') : t("settings.changesPreviewImmediatelyApplyToSave")}</small></header>
 
         {saveError&&<p role="alert" className="form-error">{saveError}</p>}
         {page === 'files' && <section className="settings-page" aria-label={t('changes.fileList')}>
@@ -190,6 +190,19 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
             </figure>
             <p className="settings-note">{t("settings.fileSpacingSetsThePaddingAboveAndBelowEach")}</p>
             <p className="settings-note">{t("settings.rowHeightGrowsWithLargerTextToKeepEvery")}</p>
+          </section>
+        </section>}
+        {page === 'history' && <section className="settings-page" aria-label={t('settings.commitGraph')}>
+          <section className="settings-section">
+            <h3>{t('settings.display')}</h3>
+            <label className="form-checkbox"><input type="checkbox" checked={appearance.historyRowSeparators} onChange={event => updateAppearance({ ...appearance, historyRowSeparators: event.target.checked })}/>{t('settings.showRowSeparators')}</label>
+            <label className="form-checkbox"><input type="checkbox" checked={appearance.historyAlternateRows} onChange={event => updateAppearance({ ...appearance, historyAlternateRows: event.target.checked })}/>{t('settings.alternateRows')}</label>
+            <figure className="settings-preview">
+              <figcaption>{t('settings.preview')}</figcaption>
+              <div className="settings-history-preview">
+                {['settings.hEADMain', 'settings.featureSearch', 'settings.fixSidebar'].map((key, index) => <div key={key} className={`commit-row ${index % 2 ? 'alternate' : ''}`}><span className="settings-history-node"><i className="push-node pushed"/></span><span className="truncate">{t(key as StaticMessageKey)}</span></div>)}
+              </div>
+            </figure>
           </section>
         </section>}
         {page === 'keyboard' && <ShortcutSettings onRecordingChange={setRecordingShortcut}/>}

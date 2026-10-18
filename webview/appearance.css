@@ -72,6 +72,11 @@
 .settings-diff-preview {overflow:auto;border:1px solid var(--border);border-radius:4px;background:var(--panel);}
 .settings-diff-preview-line {display:flex;min-width:max-content;padding-right:8px;white-space:pre;box-shadow:var(--diff-row-shadow,none);}
 .settings-diff-preview code {font:inherit;color:inherit;background:transparent;border:0;border-radius:0;padding:0;white-space:pre;}
+.settings-history-preview {border:1px solid var(--border);border-radius:4px;overflow:hidden;background:var(--bg);}
+.settings-history-preview .commit-row {grid-template-columns:26px minmax(0,1fr);height:var(--row-height,24px);padding-right:8px;}
+.settings-history-node {height:100%;display:flex;align-items:center;justify-content:center;position:relative;color:var(--muted);}
+.settings-history-node::before {content:"";position:absolute;top:0;bottom:0;left:50%;width:1px;background:currentColor;}
+.settings-history-node .push-node {z-index:1;}
 .settings-diff-page .settings-control {max-width:none;}
 .settings-rules {margin-top:10px;}
 .settings-rules summary {width:fit-content;color:var(--muted);font-size:11px;cursor:pointer;}

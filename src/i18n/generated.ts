@@ -5607,6 +5607,10 @@ export const catalog = {
     "en": "Session exceeds the storage limit",
     "zh-CN": "会话超过存储限制"
   },
+  "settings.alternateRows": {
+    "en": "Use alternating row backgrounds",
+    "zh-CN": "使用交替行底色"
+  },
   "settings.showRowSeparators": {
     "en": "Show row separators",
     "zh-CN": "显示行分隔线"
@@ -8807,6 +8811,7 @@ export interface MessageParameters {
   "session.lightAndDarkGraphPalettesMustHaveTheSame": {  };
   "session.zhCN": {  };
   "session.sessionExceedsTheStorageLimit": {  };
+  "settings.alternateRows": {  };
   "settings.showRowSeparators": {  };
   "settings.lineHeight": {  };
   "settings.diffLineHeight": {  };
