@@ -29,9 +29,11 @@ During startup, the extension registers commands, panel restoration, and window 
 | `src/git` | `service.ts`, `runner.ts`, `error.ts`, `stash.ts`, `stash-drop.ts`, `default-branch.ts` | System Git execution, structured parsing, queries, actions, isolated Stash restoration, identity-checked deletion, and shared repository queues |
 | `src/repositories` | `manager.ts`, `catalog-store.ts`, `discovery.ts` | Repository registration, recursive discovery, file watching, and persistence |
 | `src/editor` | `paths.ts`, `documents.ts` | Safe path resolution, Git content documents, read-only previews, and VS Code native Diff |
+| `src/git`, `src/protocol` | `patch-hunks.ts`, `conflicts.ts`, `history-search.ts`, `file-history.ts`, `tree.ts`, `lfs.ts` | Selected-line Index construction and content checks, conflict-version identity, structured history queries, immutable commit trees, and LFS objects/transfers |
 | `src/protocol` | `types.ts`, `validation.ts`, `session.ts`, `repositories.ts` | Data models, RPC requests and responses, runtime validation, and repository display grouping |
 | `webview` | `App.tsx`, `store.ts`, `rpc.ts`, `demo.ts` | React composition, Zustand state, production host bridge, and independent Demo adapter |
 | `webview` | `Sidebar.tsx`, `History.tsx`, `Details.tsx`, `DiffPreview.tsx` | Four-area presentation, object selection, and read-only comparisons |
+| `webview` | `HistorySearch.tsx`, `RevisionTree.tsx`, `ConflictWorkflow.tsx`, `LfsDialog.tsx`, `HistoricalLfsPreview.tsx` | Advanced filters, historical trees, conflict steps, LFS status/actions, and explicit historical-object downloads |
 | `webview` | `BottomDock.tsx`, `dock-store.ts`, `TerminalView.tsx` | Bottom tabs, terminal display and input, and active-tab state |
 | `src/application`, `src/extension` | `terminal-sessions.ts`, `terminal-runtime.ts`, `terminal-host.ts` | Source-panel isolation, Shell configuration, PTY helper process, and output flow control |
 | `webview` | `shortcutKeys.ts`, `shortcuts.ts`, `ShortcutSettings.tsx`, `shortcutDefinitions.ts` | Default bindings and session overrides, recording and moving conflicts, capture dispatch, editing/dialog/input-method protection, and component action registration; actions, button tooltips, and help share effective bindings, while `src/protocol/shortcuts.ts` validates overrides |
