@@ -11,6 +11,13 @@ export async function verifyDiffNavigation(browser, url) {
     await page.getByTestId('diff-preview').getByTestId('diff-change-count').getByText('1/3',{exact:true}).waitFor();
     await page.getByTestId('history').locator('[data-oid]').first().click();
     const diff = page.getByTestId('diff-preview'), count = diff.getByTestId('diff-change-count'), summary = diff.getByTestId('diff-change-summary'), viewport = diff.locator('.diff-viewport');
+    const assertColumnsAligned = async () => {
+      await page.waitForFunction(() => {
+        const header=document.querySelector('.text-diff-labels'),row=document.querySelector('.diff-line');
+        if(!header||!row)return false;
+        return [...row.children].every((cell,index)=>{const a=cell.getBoundingClientRect(),b=header.children[index].getBoundingClientRect();return Math.abs(a.left-b.left)<0.1&&Math.abs(a.width-b.width)<0.1;});
+      });
+    };
     const assertRevealed = async () => {
       await page.waitForFunction(() => {
         const block = document.querySelector('.active-change-start'), viewport = document.querySelector('.diff-viewport');
@@ -21,6 +28,7 @@ export async function verifyDiffNavigation(browser, url) {
     };
     await count.getByText('1/3', { exact: true }).waitFor();
     await assertRevealed();
+    await assertColumnsAligned();
     assert.ok(await viewport.evaluate(element => element.scrollTop > 0), 'The first distant change is revealed automatically');
     assert.equal(await summary.locator('.diff-change-added').innerText(), '+0');
     assert.equal(await summary.locator('.diff-change-modified').innerText(), '~3');
@@ -65,6 +73,7 @@ export async function verifyDiffNavigation(browser, url) {
       const viewport = document.querySelector('.diff-viewport'), row = document.querySelector('.diff-line');
       return Math.abs(row.getBoundingClientRect().width - viewport.clientWidth) < 1;
     });
+    await assertColumnsAligned();
     const resizedHalves = await diff.locator('.active-change-start').evaluate(row => [...row.querySelectorAll('.diff-side')].map(cell => cell.getBoundingClientRect().width));
     assert.ok(resizedHalves.every(width => width < 400), 'Resize recomputes both comparison columns');
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -73,6 +82,7 @@ export async function verifyDiffNavigation(browser, url) {
     await count.getByText('1/3', { exact: true }).waitFor();
     await page.getByTestId('details').getByRole('button', { name: 'same.txt', exact: true }).click();
     await count.getByText('0/0', { exact: true }).waitFor();
+    await assertColumnsAligned();
     assert.equal(await diff.getByRole('button', { name: 'Previous change' }).isDisabled(), true);
     assert.equal(await diff.getByRole('button', { name: 'Next change' }).isDisabled(), true);
     assert.equal(await viewport.evaluate(element => element.scrollLeft), 0);
