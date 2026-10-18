@@ -50,6 +50,25 @@ it('unstages one hunk from a partially staged file while preserving other index 
   expect(await git(root, 'show', ':file.txt')).toBe(edit(edit(base, 17, 'unstaged middle'), 30, 'staged last').trim());
   expect(await readFile(path.join(root, 'file.txt'), 'utf8')).toBe(working);
 });
+it('isolates nearby visual blocks and preserves offsets when staging and unstaging an insertion', async () => {
+  const { root, service, repo } = await fixtures.setup(); await commitFile(root, 'file.txt', base);
+  const inserted = base.replace('line 10\n', 'line 10\ninserted line\n');
+  const working = inserted.replace('line 14\n', 'nearby change\n').replace('line 30\n', 'distant change\n');
+  await writeFile(path.join(root, 'file.txt'), working);
+  let preview = await service.patchHunks(repo, { path: 'file.txt', area: 'unstaged' });
+  expect(preview.metadata.hunks).toHaveLength(3);
+  expect(preview.metadata.hunks[0]).toMatchObject({ beforeStart: 10, beforeCount: 0, afterStart: 11, afterCount: 1 });
+  await service.execute(repo, action(preview.metadata, 1));
+  expect(await git(root, 'show', ':file.txt')).toBe(base.replace('line 14\n', 'nearby change\n').trim());
+  preview = await service.patchHunks(repo, { path: 'file.txt', area: 'unstaged' });
+  await service.execute(repo, action(preview.metadata));
+  expect(await git(root, 'show', ':file.txt')).toBe(inserted.replace('line 14\n', 'nearby change\n').trim());
+  const staged = await service.patchHunks(repo, { path: 'file.txt', area: 'staged' });
+  expect(staged.metadata.hunks).toHaveLength(2);
+  await service.execute(repo, action(staged.metadata, 0, 'unstage-hunk'));
+  expect(await git(root, 'show', ':file.txt')).toBe(base.replace('line 14\n', 'nearby change\n').trim());
+  expect(await readFile(path.join(root, 'file.txt'), 'utf8')).toBe(working);
+});
 it.each(['working', 'index', 'head'] as const)('rejects a stale preview after %s changes without changing the index', async kind => {
   const { root, service, repo } = await fixtures.setup(); await commitFile(root, 'file.txt', base);
   await writeFile(path.join(root, 'file.txt'), edit(base, 2, 'new first'));

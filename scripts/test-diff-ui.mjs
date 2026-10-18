@@ -57,7 +57,7 @@ export async function verifyDiffNavigation(browser, url) {
     assert.equal(borders.filter(border => border.bottom === '1px').length, 1);
     assert.ok(borders.every(border => border.outline === 'none'), 'No outline on individual changed lines');
     await viewport.evaluate(element => { element.scrollLeft = 220; element.dispatchEvent(new Event('scroll')); });
-    const halves = await diff.locator('.active-change-start').evaluate(row => [...row.children].map(cell => cell.getBoundingClientRect().width));
+    const halves = await diff.locator('.active-change-start').evaluate(row => [...row.querySelectorAll('.diff-side')].map(cell => cell.getBoundingClientRect().width));
     assert.ok(halves.every(width => width > 300 && width < 700), 'Both columns retain half viewport width for long lines');
     assert.equal(await count.innerText(), '3/3', 'Horizontal scroll must not change current block');
     assert.ok(await viewport.evaluate(element => element.scrollWidth > element.clientWidth));
@@ -66,7 +66,7 @@ export async function verifyDiffNavigation(browser, url) {
       const viewport = document.querySelector('.diff-viewport'), row = document.querySelector('.diff-line');
       return Math.abs(row.getBoundingClientRect().width - viewport.clientWidth) < 1;
     });
-    const resizedHalves = await diff.locator('.active-change-start').evaluate(row => [...row.children].map(cell => cell.getBoundingClientRect().width));
+    const resizedHalves = await diff.locator('.active-change-start').evaluate(row => [...row.querySelectorAll('.diff-side')].map(cell => cell.getBoundingClientRect().width));
     assert.ok(resizedHalves.every(width => width < 400), 'Resize recomputes both comparison columns');
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.waitForFunction(() => Math.abs(document.querySelector('.diff-line').getBoundingClientRect().width - document.querySelector('.diff-viewport').clientWidth) < 1);

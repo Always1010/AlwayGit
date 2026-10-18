@@ -330,14 +330,18 @@ h1,h2,p {margin:0;}
 .commit-amend {margin-top:6px;}
 .commit-draft-note {font-size:12px;}
 .commit-shortcut {margin-right:auto;font-size:11px;}
-.diff-labels,.diff-line {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
+.diff-labels {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:var(--diff-gutter-width,1px);}
+.diff-line {display:grid;grid-template-columns:minmax(0,1fr) var(--diff-gutter-width,1px) minmax(0,1fr);}
 .diff-labels {background:var(--panel);font-size:11px;color:var(--muted);border-bottom:1px solid var(--row-border);}
 .diff-labels>span {padding:3px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .diff-labels>span+span {border-left:1px solid var(--border);}
 .diff-viewport {overflow:auto;flex:1;min-height:0;}
 .diff-line {font:12px/18px var(--vscode-editor-font-family,Consolas,monospace);}
-.diff-line>div {display:flex;overflow:hidden;white-space:pre;min-width:0;box-shadow:inset 0 -1px color-mix(in srgb,var(--row-border) 70%,transparent);}
-.diff-line>div+div {border-left:1px solid var(--border);}
+.diff-line>.diff-side {display:flex;overflow:hidden;white-space:pre;min-width:0;box-shadow:inset 0 -1px color-mix(in srgb,var(--row-border) 70%,transparent);}
+.diff-hunk-gutter {position:relative;display:flex;align-items:flex-start;justify-content:space-between;border-inline:1px solid var(--border);}
+.diff-hunk-gutter.has-hunk {background:color-mix(in srgb,var(--accent) 13%,var(--panel));}
+.diff-line.hunk-scope>.diff-side {outline:1px solid color-mix(in srgb,var(--accent) 50%,transparent);outline-offset:-1px;}
+.diff-line.hunk-scope>.diff-hunk-gutter {background:color-mix(in srgb,var(--accent) 30%,var(--panel));}
 .diff-content {font:12px/18px var(--vscode-editor-font-family,Consolas,monospace);}
 .diff-code {flex:1;min-width:0;overflow:hidden;}
 .diff-line code {font:inherit;display:block;width:max-content;white-space:pre;tab-size:4;}
@@ -360,8 +364,8 @@ h1,h2,p {margin:0;}
 .image-diff-canvas img.fit {max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;}
 .image-diff-empty {display:flex;align-items:center;justify-content:center;width:100%;height:100%;min-height:96px;color:var(--muted);background:color-mix(in srgb,var(--bg) 80%,transparent);}
 .image-diff-meta {flex:none;padding:3px 8px;border-top:1px solid var(--row-border);background:var(--panel);color:var(--muted);font-size:11px;text-align:center;font-variant-numeric:tabular-nums;}
-.diff-marker {display:inline-block;min-width:18px;flex:none;text-align:center;font-weight:700;user-select:none;}
-.line-number {display:inline-block;min-width:34px;flex:none;text-align:right;color:var(--muted);padding-right:8px;font-size:11px;user-select:none;}
+.diff-marker {display:inline-block;width:9px;flex:none;text-align:center;font-weight:700;user-select:none;}
+.line-number {display:inline-block;width:calc(var(--diff-line-digits,2)*1ch + 4px);flex:none;text-align:right;color:var(--muted);padding-right:4px;font-size:11px;user-select:none;}
 .added {background:var(--diff-added);box-shadow:inset 3px 0 var(--green)!important;}
 .removed {background:var(--diff-removed);box-shadow:inset 3px 0 var(--error)!important;}
 .added .diff-marker {color:var(--green);}.removed .diff-marker {color:var(--error);}
@@ -614,4 +618,6 @@ h1,h2,p {margin:0;}
 .comparison-files button{width:100%;text-align:left;display:flex;gap:6px}
 .comparison-file-diff>.diff-preview{min-width:0;min-height:0;height:100%;overflow:hidden}
 @media(max-width:650px){.comparison-file-diff{grid-template-columns:1fr;grid-template-rows:100px minmax(160px,1fr)}.comparison-controls>select{width:100%}}
-.diff-hunk-action.icon-only {min-width:18px;width:18px;height:100%;padding:0;flex:none;border:0;border-radius:0;color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);}
+.diff-hunk-action.button {position:relative;z-index:1;min-width:0;width:15px;height:100%;padding:0;flex:none;border:0;border-radius:2px;font-size:16px;line-height:1;color:var(--accent);background:transparent;}
+.diff-hunk-action.button:hover,.diff-hunk-action.button:focus-visible {background:color-mix(in srgb,var(--accent) 25%,var(--panel));}
+.diff-hunk-left {margin-left:auto;}

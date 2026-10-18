@@ -146,7 +146,7 @@ App、History、Sidebar、Details 和 Diff 按各自使用的状态字段订阅�
 
 Diff 的加载依赖比较目标的语义身份。历史比较不依赖 Snapshot 版本；工作区比较使用独立的内容刷新代数，根据所选文件路径、Index、相关状态与 Staged 比较的 HEAD 变化失效。来源不明确的通知保守更新当前工作区比较。更新同一个比较时保留旧预览及滚动位置，只有切换比较目标才清空内容并回到顶部。
 
-`patch-hunks.ts` 直接读取禁用外部 Diff/Textconv 的 Git 三行上下文补丁，不从 Webview 文本或视觉对齐行重建。`diffPreview` 附带宿主颁发的补丁块 ID 和不透明上下文 token；token 绑定仓库根目录、分支、HEAD、真实 Index 摘要、所选文件内容和类型、属性及完整补丁，五分钟过期，最多保留八份，每文件/补丁 2 MiB、最多 1024 块、Index 32 MiB。预览文本不匹配时不给出写入入口。`stage-hunk` / `unstage-hunk` 共用现有 commonDir 操作锁和写队列，取得真实 `index.lock` 后重新核对来源，在临时 Index 上通过 `git apply --cached` 或 `--reverse --cached` 检查并应用一个原始补丁块，再次核对并原子替换真实 Index；磁盘文件不写入。旧 token、ID、来源变化和 Index 锁竞争会拒绝执行并刷新。进程终止尚未确认时保留锁并延迟清理。不承诺与外部文件系统编辑完全原子执行。
+`patch-hunks.ts` 直接读取禁用外部 Diff/Textconv 的 Git 零上下文补丁，不从 Webview 文本或视觉对齐行重建。`diffPreview` 附带宿主颁发的补丁块 ID 和不透明上下文 token；token 绑定仓库根目录、分支、HEAD、真实 Index 摘要、所选文件内容和类型、属性及完整补丁，五分钟过期，最多保留八份，每文件/补丁 2 MiB、最多 1024 块、Index 32 MiB。预览文本不匹配时不给出写入入口。`stage-hunk` / `unstage-hunk` 共用现有 commonDir 操作锁和写队列，取得真实 `index.lock` 后重新核对来源，在临时 Index 上通过 `git apply --cached --unidiff-zero` 或 `--reverse --cached` 检查并应用一个原始补丁块，再次核对并原子替换真实 Index；磁盘文件不写入。旧 token、ID、来源变化和 Index 锁竞争会拒绝执行并刷新。进程终止尚未确认时保留锁并延迟清理。不承诺与外部文件系统编辑完全原子执行。
 
 跨文件导航只在当前普通 Commit 的完整文件列表中查找，每轮扫描每个候选文件最多一次，通过 `diffPreview` 的 `summaryOnly` 请求计算完整修改索引且不保留候选文本。找到目标文本文件后建立其可分页快照；图片结果直接复用。文本按连续修改块导航，图片按一个整文件视觉更改导航，其他二进制跳过。前端只保留当前画面和视口文本缓存，不一次载入整个 Commit 内容。定位请求绑定仓库、Commit、Parent、文件与导航模式，取消或切换上下文后丢弃旧响应。
 
