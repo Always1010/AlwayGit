@@ -46,7 +46,7 @@ export interface Snapshot { repository: Repository; branch: string; head?: strin
 export interface Commit { oid: string; parents: string[]; author: string; email: string; timestamp: number; subject: string; pushed?: boolean; fileHistory?: { paths: string[]; parent?: string; graphParents: string[] } }
 /** The revision pins the file identity; anchorPath handles an uncommitted rename. */
 export interface FileHistoryFilter { path: string; revision?: string; anchorPath?: string }
-export interface HistoryQuery { offset?: number; limit?: number; tips?: string[]; ref?: string; search?: string; head?: string; file?: FileHistoryFilter }
+export interface HistoryQuery { offset?: number; limit?: number; tips?: string[]; ref?: string; search?: string; head?: string; file?: FileHistoryFilter; filters?: import('./history-search').HistorySearchFilters }
 export interface HistoryPage { commits: Commit[]; nextOffset: number; hasMore: boolean; tips: string[]; head?: Commit; filePaths?: string[] }
 export interface CommitFile { path: string; previousPath?: string; status: string }
 export interface CommitDetails { commit: Commit; body: string; files: CommitFile[]; parent?: string }

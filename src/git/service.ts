@@ -1,3 +1,4 @@
+import { hasHistorySearch, historySearchArguments, historySearchSchema } from '../protocol/history-search';
 import { InteractiveRebase } from './interactive-rebase';
 import { message as localizeMessage, translate } from '../i18n/index';
 import { createHash, randomUUID } from 'node:crypto';
@@ -436,8 +437,20 @@ export class GitService implements GitServiceContract {
       const head = (await this.status(repo)).head; if (head) tips.push(head);
     }
     tips = [...new Set(tips)];
-    const searchArgs = query.search ? ['--fixed-strings', '--regexp-ignore-case', `--grep=${query.search}`] : [];
-    if (query.search?.includes('\0')) throw new GitError(localizeMessage("service.invalidSearch"), 'INVALID_ARGUMENT');
+    const parsedFilters = historySearchSchema.safeParse(query.filters ?? {});
+    if (!parsedFilters.success || query.search?.includes('\0')) throw new GitError(localizeMessage("service.invalidSearch"), 'INVALID_ARGUMENT');
+    const filters = parsedFilters.data, advanced = hasHistorySearch(filters);
+    const searchArgs = historySearchArguments(query.search, filters);
+    const paths = filters.path ? [validateFilePath(filters.path)] : [];
+    const targetOid = filters.commitId ? await this.oid(repo, filters.commitId) : undefined;
+    const tipInput = Buffer.from(`${tips.join('\n')}\n`, 'utf8');
+    // Git can emit a merge once per matching parent with -G. Deduplicate before
+    // slicing so offsets and hasMore refer to commits, never parent diff records.
+    let matchingIds: string[] | undefined;
+    if (advanced) {
+      const output = tips.length ? (await this.run(repo, ['log', '--topo-order', '--format=%H', ...searchArgs, '--no-patch', '--stdin', '--', ...paths], false, undefined, { input: tipInput, maxOutputBytes: Math.min(this.options.maxOutputBytes ?? Infinity, 8 * 1024 * 1024) })).stdout.toString('utf8').trim() : '';
+      matchingIds = [...new Set(output ? output.split(/\r?\n/).filter(oid => /^[a-f\d]{40,64}$/i.test(oid)) : [])].filter(oid => !targetOid || oid === targetOid);
+    }
     if (query.file) {
       const file = query.file, name = validateFilePath(file.path), anchorPath = validateFilePath(file.anchorPath ?? name);
       if (!tips.length) return { commits: [], tips, nextOffset: offset, hasMore: false };
@@ -457,9 +470,31 @@ export class GitService implements GitServiceContract {
         index = { ...result, created: Date.now() };
       }
       let matching = index.entries;
-      if (query.search && matching.length) {
-        const output = (await run(['log', '--format=%H', ...searchArgs, '--stdin', '--'], Buffer.from(tips.join('\n') + '\n'))).toString('utf8').trim();
-        const matches = new Set(output ? output.split('\n') : []);
+      if ((query.search || advanced) && matching.length) {
+        const output = matchingIds ? undefined : (await run(['log', '--format=%H', ...searchArgs, '--stdin', '--'], tipInput)).toString('utf8').trim();
+        const matches = new Set(matchingIds ?? (output ? output.split('\n') : []));
+        matching = matching.filter(entry => matches.has(entry.oid));
+      }
+      if (filters.code && matching.length) {
+        // File identity can have a different name at every commit. Keep -G on
+        // those paths, including rename sources, so another changed file cannot
+        // make this file's history match. Group/batch immutable IDs, never walk
+        // ancestors from stdin here (some Git versions ignore --no-walk there).
+        const groups = new Map<string, { paths: string[]; oids: string[] }>();
+        const literalPath = filters.path?.replace(/\/$/, '');
+        for (const entry of matching) {
+          const entryPaths = entry.searchPaths.filter(name => !literalPath || name === literalPath || name.startsWith(`${literalPath}/`));
+          if (!entryPaths.length) continue;
+          const groupKey = JSON.stringify([...entryPaths].sort()), group = groups.get(groupKey) ?? { paths: entryPaths, oids: [] };
+          group.oids.push(entry.oid); groups.set(groupKey, group);
+        }
+        const batches = [...groups.values()].flatMap(group => {
+          const chunks: { paths: string[]; oids: string[] }[] = [];
+          for (let start = 0; start < group.oids.length; start += 128) chunks.push({ paths: group.paths, oids: group.oids.slice(start, start + 128) });
+          return chunks;
+        });
+        const results = await mapGitQueries(batches, async batch => (await run(['log', '--no-walk=unsorted', '--format=%H', ...searchArgs, '-M', '--no-patch', ...batch.oids, '--', ...batch.paths])).toString('utf8'));
+        const matches = new Set(results.flatMap(output => output.split(/\r?\n/).filter(Boolean)));
         matching = matching.filter(entry => matches.has(entry.oid));
       }
       const selected = matching.slice(offset, offset + limit);
@@ -496,14 +531,22 @@ export class GitService implements GitServiceContract {
     }
     // Only resolved commit IDs enter stdin; raw revisions cannot inject flags or
     // negative tips. Keep --not/--remotes on argv to preserve remote exclusion.
-    const tipInput = Buffer.from(`${tips.join('\n')}\n`, 'utf8');
-    const output = tips.length ? (await this.run(repo, ['log', '--topo-order', '-z', `--format=${commitFormat}`, `--skip=${offset}`, `--max-count=${limit + 1}`, ...searchArgs, '--stdin', '--'], false, undefined, { input: tipInput })).stdout.toString('utf8').split('\0') : [];
+    const output = tips.length && !matchingIds ? (await this.run(repo, ['log', '--topo-order', '-z', `--format=${commitFormat}`, `--skip=${offset}`, `--max-count=${limit + 1}`, ...searchArgs, '--stdin', '--'], false, undefined, { input: tipInput })).stdout.toString('utf8').split('\0') : [];
     const commits: Commit[] = []; for (let i = 0; i + 5 < output.length; i += 6) commits.push(parseCommit(output.slice(i, i + 6)));
+    if (matchingIds) {
+      const selected = matchingIds.slice(offset, offset + limit + 1), records: Commit[] = [];
+      for (let start = 0; start < selected.length; start += 128) {
+        const metadata = (await this.run(repo, ['log', '--no-walk=unsorted', '-z', `--format=${commitFormat}`, ...selected.slice(start, start + 128), '--'])).stdout.toString('utf8').split('\0');
+        for (let i = 0; i + 5 < metadata.length; i += 6) records.push(parseCommit(metadata.slice(i, i + 6)));
+      }
+      const byOid = new Map(records.map(commit => [commit.oid, commit]));
+      commits.splice(0, commits.length, ...selected.map(oid => byOid.get(oid)!).filter(Boolean));
+    }
     const visible = commits.slice(0, limit);
     if (visible.length) {
       // Remote availability is based on locally known remote-tracking refs. The
       // same search filter keeps the bounded query aligned with history paging.
-      const localOnlyOutput = (await this.run(repo, ['rev-list', '--topo-order', `--max-count=${offset + limit + 1}`, ...searchArgs, '--stdin', '--not', '--remotes', '--'], false, undefined, { input: tipInput })).stdout.toString('utf8').trim();
+      const localOnlyOutput = (await this.run(repo, ['rev-list', '--topo-order', ...(!matchingIds ? [`--max-count=${offset + limit + 1}`, ...searchArgs] : []), '--stdin', '--not', '--remotes', '--'], false, undefined, { input: matchingIds ? Buffer.from(visible.map(commit => commit.oid).join('\n') + '\n') : tipInput })).stdout.toString('utf8').trim();
       const localOnly = new Set(localOnlyOutput ? localOnlyOutput.split('\n') : []);
       for (const commit of visible) commit.pushed = !localOnly.has(commit.oid);
     }

@@ -1290,6 +1290,47 @@ describe('Tag remote queries', () => {
   });
 });
 
+describe('advanced history search', () => {
+  it('cancels replaced and explicitly cancelled queries, rejects stale responses and blocks cross-filter append', async () => {
+    await store.getState().selectRepository('a');
+    const old = deferred<HistoryPage>(), next = deferred<HistoryPage>(), fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, repoId, payload) => method === 'history' ? payload.filters?.author === 'old' ? old.promise : next.promise : fallback(method, repoId, payload));
+    store.getState().setHistoryFilters({ author: 'old' });
+    const signal = bridge.rpc.mock.calls.filter(([method]) => method === 'history').at(-1)![3].signal as AbortSignal;
+    store.getState().setHistoryFilters({ author: 'new', code: 'literal[0]' });
+    expect(signal.aborted).toBe(true); expect(store.getState().commits).toEqual([]);
+    old.resolve({ commits: [{ ...commit, oid: 'stale' }], tips: ['old-tip'], nextOffset: 1, hasMore: true }); await old.promise;
+    expect(store.getState().commits).toEqual([]);
+    const currentSignal = bridge.rpc.mock.calls.filter(([method]) => method === 'history').at(-1)![3].signal as AbortSignal;
+    store.getState().cancelHistory(); expect(currentSignal.aborted).toBe(true);
+    next.resolve({ commits: [commit], tips: ['new-tip'], nextOffset: 1, hasMore: true }); await next.promise;
+    expect(store.getState()).toMatchObject({ historyLoading: false, commits: [], historyFilters: { author: 'new' } });
+    const reads = bridge.rpc.mock.calls.filter(([method]) => method === 'history').length;
+    await store.getState().loadHistory(true);
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'history')).toHaveLength(reads);
+    bridge.rpc.mockImplementation(fallback); await store.getState().loadHistory();
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'history').at(-1)?.[2].filters).toEqual({ author: 'new', code: 'literal[0]' });
+    expect(store.getState().displayedHistory?.historyFilters?.author).toBe('new');
+  });
+
+  it('persists conditions, restores them across repositories and Back, then clears them for full-history locating', async () => {
+    const filters = { author: 'Alice', committerAfter: '2024-01-01', path: 'src' };
+    vi.stubGlobal('window', { __ALWAYGIT_SESSION__: { version: 2, views: { a: { tab: 'history', search: 'message', historyFilters: filters } } } });
+    vi.resetModules(); store = (await import('../webview/store')).useWorkbench;
+    await store.getState().selectRepository('a', { restoreView: true });
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'history').at(-1)?.[2]).toMatchObject({ search: 'message', filters });
+    await store.getState().selectRepository('b'); expect(store.getState().historyFilters).toBeUndefined();
+    await store.getState().selectRepository('a'); expect(store.getState().historyFilters).toEqual(filters);
+    expect(bridge.save.mock.calls.at(-1)?.[0].views.a.historyFilters).toEqual(filters);
+    store.getState().setHistoryFilters({ code: 'replacement' });
+    await vi.waitFor(() => expect(store.getState().historyLoading).toBe(false));
+    store.getState().backHistory(); expect(store.getState().historyFilters).toEqual(filters);
+    await store.getState().locateCommit(commit.oid);
+    expect(store.getState().historyFilters).toBeUndefined();
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'history').at(-1)?.[2]).not.toHaveProperty('filters');
+  });
+});
+
 describe('file history navigation', () => {
   it('opens the right-clicked file, binds its revision and auto-selects its historical Diff', async () => {
     await store.getState().selectRepository('a');
