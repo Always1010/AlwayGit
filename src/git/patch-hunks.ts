@@ -35,7 +35,7 @@ function utf8(bytes: Buffer): string {
   if (bytes.includes(0)) throw new Unsupported();
   try { return new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes); } catch { throw new Unsupported(); }
 }
-/** Only complete Git patch hunks are retained. Display alignment never supplies patch text. */
+/** Zero-context hunks match the contiguous change blocks used by the Diff index. */
 function parsePatch(patch: string): { header: string; hunks: (PatchHunk & { patch: string })[] } {
   if ((patch.match(/^diff --git /gm) ?? []).length !== 1 || /^(?:GIT binary patch|Binary files |old mode |new mode |rename |copy )/m.test(patch)) throw new Unsupported();
   const starts = [...patch.matchAll(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@[^\n]*\n/gm)];
@@ -86,7 +86,7 @@ export class PatchHunkStore {
       if (entry.some(record => record.slice(record.indexOf('\t') + 1) !== target.path || !/^100(?:644|755) blob /.test(record))) throw new Unsupported();
       if (entry[0]) head = await readBlob(entry[0].split(' ')[2].split('\t')[0]);
     }
-    const args = ['diff', '--no-ext-diff', '--no-textconv', '--no-color', '--no-renames', '--diff-algorithm=myers', '--no-indent-heuristic', '--unified=3', '--inter-hunk-context=0', '--output-indicator-new=+', '--output-indicator-old=-', '--output-indicator-context= ', '--src-prefix=a/', '--dst-prefix=b/'];
+    const args = ['diff', '--no-ext-diff', '--no-textconv', '--no-color', '--no-renames', '--diff-algorithm=myers', '--no-indent-heuristic', '--unified=0', '--inter-hunk-context=0', '--output-indicator-new=+', '--output-indicator-old=-', '--output-indicator-context= ', '--src-prefix=a/', '--dst-prefix=b/'];
     const patchResult = await run(change.untracked ? [...args, '--no-index', '--', '/dev/null', target.path] : [...args, ...(target.area === 'staged' ? ['--cached'] : []), '--', target.path], { maxOutputBytes: LIMIT, allowFailure: change.untracked, config: { 'core.quotePath': 'true', 'diff.suppressBlankEmpty': 'false' } });
     const patch = utf8(patchResult.stdout); if (patchResult.stdout.length > LIMIT) throw new Unsupported();
     const parsed = parsePatch(patch), left = utf8(target.area === 'staged' ? head : index), right = utf8(target.area === 'staged' ? index : working);
@@ -131,7 +131,7 @@ export class PatchHunkStore {
       if (captured.indexPath !== indexPath || captured.fingerprint !== context.fingerprint) throw stale();
       if (captured.indexBytes) { const file = await open(temporary, 'wx', 0o600); try { await file.writeFile(captured.indexBytes); } finally { await file.close(); } }
       const env = { GIT_INDEX_FILE: temporary }, input = Buffer.from(context.header + part.patch, 'utf8');
-      const args = ['apply', '--cached', '--whitespace=nowarn', ...(action.type === 'unstage-hunk' ? ['--reverse'] : [])];
+      const args = ['apply', '--cached', '--unidiff-zero', '--whitespace=nowarn', ...(action.type === 'unstage-hunk' ? ['--reverse'] : [])];
       await run([...args, '--check', '-'], { env, input });
       await run([...args, '-'], { env, input });
       // Recheck HEAD/working bytes after the trial. External working-tree writes cannot be locked.

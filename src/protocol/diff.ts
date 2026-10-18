@@ -12,6 +12,6 @@ export interface DiffIndex {
 }
 export interface DiffPage { token: string; start: number; rows: DiffRow[] }
 
-/** Complete three-context-line Git patch hunks, distinct from visual change ranges. */
+/** Host-issued zero-context patches for individual contiguous change blocks. */
 export interface PatchHunk extends TextDiffHunk { id: string; header: string }
 export interface PatchHunks { token?: string; hunks: PatchHunk[]; unavailable?: 'unsupported' | 'changed' }

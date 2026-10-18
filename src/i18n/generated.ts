@@ -1877,12 +1877,12 @@ export const catalog = {
     "zh-CN": "Diff · "
   },
   "diff.stageHunk": {
-    "en": "Stage Git hunk",
-    "zh-CN": "暂存 Git 补丁块"
+    "en": "Stage this change block",
+    "zh-CN": "暂存此修改块"
   },
   "diff.unstageHunk": {
-    "en": "Unstage Git hunk",
-    "zh-CN": "取消暂存 Git 补丁块"
+    "en": "Unstage this change block",
+    "zh-CN": "取消暂存此修改块"
   },
   "diff.hunkStale": {
     "en": "The hunk preview changed or expired. Refresh the Diff and try again.",
