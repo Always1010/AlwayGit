@@ -4,13 +4,21 @@
 
 - 日常使用的安装包固定为 `artifacts/alwaygit.vsix`，后续更新沿用同一路径，不要求用户每次手动选择新的 VSIX。
 - 使用 `node scripts/package.mjs` 构建并打包；打包成功后才替换固定包，失败时保留原包。上一份包保存为 `artifacts/alwaygit-previous.vsix`，版本包仍保留用于辨认版本。
-- 扩展身份 `alwaygit-dev.alwaygit` 保持不变。功能版本正常递增；仅重新打包同一份扩展时可保留版本号。不得通过卸载扩展或删除用户数据完成更新。
+- 扩展身份 `alwaygit-dev.alwaygit` 保持不变，不得通过卸载扩展或删除用户数据完成更新。
 - 默认不因代码修改或测试通过而自动构建 VSIX、替换固定包或安装扩展。仅当用户在当前请求中明确要求打包时才执行打包；仅当用户明确要求更新或安装到本机 VS Code 时，才运行 `scripts/update-local.ps1`，若已经生成包则使用 `-InstallOnly` 避免重复构建。
 - 自动安装使用官方 CLI 的 `--install-extension <VSIX> --force`，随后核对扩展 ID 和版本。成功后告知用户重启 VS Code 即可，不要求再次手动执行 Install from VSIX。
 - 默认安装到执行脚本机器的桌面 VS Code（Desktop），可通过菜单或 `--install-to server` / `-InstallTo server` 选择该机器的官方 VS Code Server。安装位置只选一次，后续自动定位与检查 CLI，不要求用户另行确认路径或 Server 版本；失败不得自动切换安装位置。默认 Profile，Desktop/Server 与 Server 数据根目录的记录分别保存到 `artifacts/local-install.json`；上次的 Server 记录不得改变下次 Desktop 默认值。可通过脚本参数 `-CodePath` / `-Profile` 或环境变量 `ALWAYGIT_CODE_CLI` / `ALWAYGIT_VSCODE_PROFILE` 覆盖，但 CLI 必须符合所选位置。此记录和全部安装产物不得提交。
 - 只替换 VSIX 不会更新已安装扩展。未实际安装或安装校验失败时，必须如实说明，不得宣称重启就能使用新版本。
 - 不自动关闭、重启 VS Code，不打断用户编辑。保留扩展设置、仓库选择、布局和草稿；涉及会话结构变更时使用兼容迁移。
 - 本机更新流程由单 Agent 完成打包、安装与验证；仅在任务另有需要时拆分协作。
+
+## 版本管理
+
+- 日常开发不升版本，发布时集中更新；仅当用户明确要求发布新版本或修改版本号时才执行。提交、测试通过、打包或本机更新均不自动触发升版。
+- 采用 `主版本号.次版本号.修订号`：不兼容变更升主版本，兼容的新功能升次版本，修复与细节改善的集中发布升修订版本；高位递增时低位归零。
+- 按相对上一正式版本的全部改动取最高升级级别，每次发布只升一次；不按代码量或单个提交类型自动升版。达到重要里程碑时可提出建议，不自行改号。
+- 升版时同步 `package.json`、`package-lock.json` 顶层及根包版本；正式发布 Tag 使用一致的 `vX.Y.Z`。已发布版本、Tag 和 Release 不复用、不覆盖，后续修改另发新版本。
+- 本地验证包可沿用当前版本，以 Git 提交区分代码状态。
 
 ## 测试与验证
 
