@@ -110,6 +110,29 @@ export class LfsManager {
     const pointer = await this.historicalPointer(request, run);
     return { ...pointer, ...await cachedObject(await this.media(run), pointer.oid, pointer.size, maxBytes) };
   }
+  /** Host-only cache reads also support working files that have not been smudged. */
+  async localObject(pointer: { oid: string; size: number }, run: Run, maxBytes = 0): Promise<import('../protocol/lfs').LfsCachedObject> {
+    if (!/^[a-f0-9]{64}$/.test(pointer.oid) || !Number.isSafeInteger(pointer.size) || pointer.size < 0
+      || !Number.isSafeInteger(maxBytes) || maxBytes < 0 || maxBytes > 64 * 1024 * 1024) throw new GitError(message('lfs.historicalLimit'), 'INVALID_ARGUMENT');
+    return { ...pointer, ...await cachedObject(await this.media(run), pointer.oid, pointer.size, maxBytes) };
+  }
+  /** Read the selected Index stage without treating pointer-shaped symlinks as LFS. */
+  async indexObject(repo: Repository, request: import('../protocol/lfs').LfsIndexRequest, run: Run, maxBytes = 0): Promise<import('../protocol/lfs').LfsIndexObject> {
+    const stage = request.stage ?? 0;
+    if (!validPath(request.path) || ![0, 1, 2, 3].includes(stage)) throw new GitError(message('lfs.invalidPattern'), 'INVALID_PATH');
+    const records = (await run(['ls-files', '--stage', '-z', '--', request.path])).stdout.toString('utf8').split('\0');
+    const record = records.find(value => {
+      const tab = value.indexOf('\t');
+      return value.slice(tab + 1) === request.path && Number(value.slice(0, tab).split(' ')[2]) === stage;
+    });
+    const fields = record?.slice(0, record.indexOf('\t')).split(' ');
+    if (!fields || !['100644', '100755'].includes(fields[0]) || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(fields[1])) throw new GitError(message('lfs.historicalFileRequired'), 'INVALID_PATH');
+    const size = Number((await run(['cat-file', '-s', fields[1]])).stdout.toString('utf8').trim());
+    if (!Number.isSafeInteger(size) || size < 0 || size > 1024) throw new GitError(message('lfs.notPointer'), 'LFS_NOT_POINTER');
+    const pointer = parseLfsPointer((await run(['cat-file', 'blob', fields[1]])).stdout);
+    if (!pointer) throw new GitError(message('lfs.notPointer'), 'LFS_NOT_POINTER');
+    return { ...request, ...await this.localObject(pointer, run, maxBytes) };
+  }
   private async attributes(repo: Repository): Promise<Buffer> {
     const target = path.join(repo.root, '.gitattributes');
     try { const info = await lstat(target); if (!info.isFile() || info.isSymbolicLink() || info.size > 1024 * 1024) throw new GitError(message('lfs.attributesUnsafe'), 'INVALID_PATH'); return await readFile(target); }

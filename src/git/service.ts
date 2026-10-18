@@ -812,6 +812,8 @@ export class GitService implements GitServiceContract {
   private readonly lfs = new LfsManager();
   async lfsStatus(repo: Repository) { await this.verify(repo); return this.lfs.status(repo, (args, allowFailure, execution) => this.run(repo, args, allowFailure, undefined, execution)); }
   async lfsHistoricalObject(repo: Repository, request: LfsHistoricalRequest, maxBytes = 0) { await this.verify(repo); return this.lfs.historicalObject(repo, request, (args, allowFailure) => this.run(repo, args, allowFailure), maxBytes); }
+  async lfsIndexObject(repo: Repository, request: import('../protocol/lfs').LfsIndexRequest, maxBytes = 0) { await this.verify(repo); return this.lfs.indexObject(repo, request, (args, allowFailure) => this.run(repo, args, allowFailure), maxBytes); }
+  async lfsCachedObject(repo: Repository, pointer: { oid: string; size: number }, maxBytes = 0) { await this.verify(repo); return this.lfs.localObject(pointer, (args, allowFailure) => this.run(repo, args, allowFailure), maxBytes); }
   async lfsTrackPreview(repo: Repository, request: LfsTrackRequest) { await this.verify(repo); return this.lfs.preview(repo, request, (args, allowFailure, execution) => this.run(repo, args, allowFailure, undefined, execution)); }
   async lfsDestinations(repo: Repository) { await this.verify(repo); return (await captureLfsDestinations(repo, (args, allowFailure, execution) => this.run(repo, args, allowFailure, undefined, execution))).destinations; }
   async reflog(repo: Repository, query: ReflogQuery = {}) {

@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-147：LFS 差异比较混用实体内容与指针文本
+
+- 日期：2026-10-18
+- 状态：已解决
+- 现象：已跟踪的 LFS 文件修改并暂存后，HEAD 一侧展开为实体，Index 一侧仍为指针，文本显示误导性差异，图片不能正常比较；未暂存比较也会混用 Index 指针与工作区实体。
+- 原因：预览仅解析历史 `revision` 一侧的 LFS 对象，没有处理 Index 阶段及未展开的普通工作文件，原生 Diff 也复用了不一致的来源。
+- 解决方案：为 Index 常规文件和工作文件指针提供仅本地、限额内、经 SHA-256 校验的缓存读取；比较各侧统一使用实体内容，缺失、损坏或超限时整组占位。原生 Diff 使用相同内容，只有真正的历史对象提供下载入口，符号链接继续按目标文本读取。
+- 验证方式：定向无界面回归 2 文件 / 17 项通过，覆盖 HEAD/Index 文本及图片、新增文件、未暂存实体与指针、冲突阶段、符号链接、原生 Diff、配置存储和缺失/损坏缓存；类型检查通过。
+- 相关文件：`src/editor/documents.ts`、`src/git/lfs.ts`、`src/git/service.ts`、`src/protocol/lfs.ts`、`src/protocol/types.ts`、`webview/HistoricalLfsPreview.tsx`、`tests/historical-lfs-preview.test.ts`、`tests/index-lfs-cache.test.ts`。
+
 ## BUG-146：完整文件树的历史版对工作区差异保留过期内容
 
 - 日期：2026-10-18
