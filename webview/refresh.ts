@@ -58,11 +58,11 @@ export function fileHistoryChanges(snapshot: Pick<Snapshot, 'changes'>, file?: F
 }
 
 export function affectsWorkingDiff(before: Snapshot | undefined, after: Snapshot, target: DiffTarget, changes?: RepositoryChanges): boolean {
-  if (target.kind !== 'change') return false;
-  if (!before || !changes?.paths || changes.index) return true;
+  if (target.kind !== 'change' && target.kind !== 'revision') return false;
+  if (!before || !changes?.paths || target.kind === 'change' && changes.index) return true;
   const oldFile = before.changes.find(file => file.path === target.path), file = after.changes.find(file => file.path === target.path);
-  if (JSON.stringify(oldFile) !== JSON.stringify(file) || target.area === 'staged' && before.head !== after.head) return true;
-  if (target.area === 'staged') return false;
+  if (JSON.stringify(oldFile) !== JSON.stringify(file) || (target.kind === 'revision' || target.area === 'staged') && before.head !== after.head) return true;
+  if (target.kind === 'change' && target.area === 'staged') return false;
   const normalize = (value: string) => /^[A-Za-z]:[\\/]/.test(after.repository.root) ? value.replace(/\\/g, '/').toLowerCase() : value;
   const names = [target.path, file?.originalPath].filter((name): name is string => !!name).map(normalize);
   return changes.paths.some(path => names.some(name => name === normalize(path) || name.startsWith(normalize(path) + '/')));

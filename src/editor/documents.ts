@@ -137,9 +137,15 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
     return preview;
   }
   /** Recheck the exact displayed comparison without rebuilding its index or notifying the UI. */
-  async changedWorkingPreview(repo: Repository, owner: object, snapshot: Snapshot, selectedFile?: string): Promise<Extract<DiffTarget, { kind: 'change' }> | undefined> {
+  async changedWorkingPreview(repo: Repository, owner: object, snapshot: Snapshot, selectedFile?: string): Promise<Extract<DiffTarget, { kind: 'change' | 'revision' }> | undefined> {
     const baseline = this.previews.get(owner);
-    if (!baseline || baseline.repoId !== repo.id || baseline.target.kind !== 'change' || selectedFile && selectedFile !== baseline.target.path) return;
+    if (!baseline || baseline.repoId !== repo.id || !['change', 'revision'].includes(baseline.target.kind) || selectedFile && selectedFile !== baseline.target.path) return;
+    if (baseline.target.kind === 'revision') {
+      const preview = await this.previewComparison(repo, await this.comparison(repo, baseline.target, snapshot));
+      if (this.previews.get(owner) === baseline && previewFingerprint(preview) !== baseline.fingerprint) return baseline.target;
+      return;
+    }
+    if (baseline.target.kind !== 'change') return;
     const target = baseline.target, file = snapshot.changes.find(change => change.path === target.path);
     const valid = file && (target.area === 'conflict' ? file.conflict : !file.conflict && (target.area === 'staged'
       ? !file.untracked && file.indexStatus !== ' ' && file.indexStatus !== '?'

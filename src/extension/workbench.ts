@@ -783,10 +783,10 @@ export class Workbench implements vscode.Disposable {
             // Status alone misses edits that remain M/?? or changes within the Index.
             // Compare the displayed content on the host; unchanged polls send nothing.
             let diffChanges: RepositoryChanges | undefined;
-            if (view?.tab === 'changes') {
+            if (view?.tab === 'changes' || view?.tab === 'history') {
               try {
                 const target = await this.documents.changedWorkingPreview(repo, entry, snapshot, view.selectedFile);
-                if (target) diffChanges = { paths: [target.path], ...(target.area === 'staged' ? { index: true } : {}) };
+                if (target) diffChanges = { paths: [target.path], ...(target.kind === 'change' && target.area === 'staged' ? { index: true } : {}) };
               }
               catch (error) { this.output.appendLine(redactSecrets(translate('en', 'host.refresh', { value: error instanceof Error ? error.message : String(error) }))); }
             }
