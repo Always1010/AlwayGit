@@ -171,6 +171,38 @@ export async function verifyAppearance(browser, url) {
     await page.waitForFunction(() => document.querySelector('[data-testid="workbench"]')?.getAttribute('data-theme') === 'hc-dark');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     let dialog = page.getByRole('dialog', { name: 'Settings' }), settings = page.getByTestId('interface-settings');
+    const settingsBox = await requiredBox(dialog, 'Settings dialog');
+    const settingsFooter = await requiredBox(dialog.locator('.modal-footer'), 'Settings footer');
+    assert.equal(settingsBox.width, 760);
+    assert.equal(settingsBox.height, 600);
+    for (const category of await settings.locator('.settings-nav button').all()) {
+      await category.click();
+      assert.deepEqual(await requiredBox(dialog, 'Settings after switching categories'), settingsBox, 'Category content never resizes or moves the dialog');
+      assert.deepEqual(await requiredBox(dialog.locator('.modal-footer'), 'Footer after switching categories'), settingsFooter, 'Footer remains in place');
+    }
+    await page.setViewportSize({ width: 500, height: 380 });
+    await settings.locator('.settings-nav button').last().click();
+    const smallBox = await requiredBox(dialog, 'Settings in a small window');
+    const smallFooter = await requiredBox(dialog.locator('.modal-footer'), 'Footer in a small window');
+    assert.ok(smallBox.width <= 468 && smallBox.height <= 348);
+    assert.ok(smallFooter.y + smallFooter.height <= 364, 'Footer stays inside the available viewport');
+    assert.equal(await settings.locator('.settings-page-scroll').evaluate(element => element.scrollHeight > element.clientHeight), true, 'Long content scrolls internally');
+    await page.setViewportSize({ width: 1440, height: 940 });
+    await settings.getByRole('button', { name: 'Diff', exact: true }).click();
+    const diffSeparators = settings.getByRole('checkbox', { name: 'Show row separators', exact: true });
+    assert.equal(await diffSeparators.isChecked(), false);
+    assert.equal(await settings.locator('.settings-diff-preview-line').first().evaluate(element => getComputedStyle(element).boxShadow), 'none');
+    await diffSeparators.check();
+    assert.notEqual(await settings.locator('.settings-diff-preview-line').first().evaluate(element => getComputedStyle(element).boxShadow), 'none');
+    await settings.getByRole('button', { name: 'Display', exact: true }).click();
+    const historySeparators = settings.getByRole('checkbox', { name: 'Show row separators', exact: true });
+    const alternatingRows = settings.getByRole('checkbox', { name: 'Use alternating row backgrounds', exact: true });
+    assert.equal(await historySeparators.isChecked(), false);
+    assert.equal(await alternatingRows.isChecked(), false);
+    await historySeparators.check(); await alternatingRows.check();
+    assert.equal(await workbench.getAttribute('data-history-row-separators'), 'true');
+    assert.equal(await workbench.getAttribute('data-history-alternate-rows'), 'true');
+    await settings.getByRole('button', { name: 'Theme', exact: true }).click();
     await settings.getByRole('radio', { name: 'Clear Light', exact: true }).click();
     assert.equal(await workbench.getAttribute('data-theme'), 'light', 'Manual light theme overrides a high-contrast host');
     await settings.getByRole('radio', { name: 'Warm Paper', exact: true }).click();
@@ -199,6 +231,9 @@ export async function verifyAppearance(browser, url) {
     assert.equal(previewSession.appearance.fileSpacing, 1, 'File spacing preview is not persisted before Apply');
     await page.screenshot({ path: 'artifacts/appearance-settings.png' });
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    assert.equal(await workbench.getAttribute('data-history-row-separators'), 'false');
+    assert.equal(await workbench.getAttribute('data-history-alternate-rows'), 'false');
+    assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--diff-row-shadow').trim()), 'none');
     assert.equal(await workbench.getAttribute('data-theme'), 'hc-dark', 'Cancel restores the host-resolved high-contrast theme');
     await assertCurrentIndicator(currentIndicator, 'rgb(255, 255, 255)', 'High-contrast dark current marker');
     assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--workbench-font').trim()), '13px', 'Cancel restores interface font');

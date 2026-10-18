@@ -50,16 +50,18 @@
 .workbench .modal-heading h2 {font-size:15px;}
 .workbench .modal-footer {background:var(--surface-toolbar);padding:9px 12px;}
 .workbench .modal-footer .button {min-width:64px;}
-.workbench .modal:has(.interface-settings) {width:760px;}
-.workbench .modal-body:has(.interface-settings) {padding:0;}
-.interface-settings {display:grid;grid-template-columns:170px minmax(0,1fr);min-height:440px;font-size:13px;}
-.settings-nav {padding:10px 8px;background:var(--panel);border-right:1px solid var(--border);}
+.workbench .modal:has(.interface-settings) {width:760px;height:600px;}
+.workbench .modal:has(.interface-settings)>.modal-heading,.workbench .modal:has(.interface-settings)>.modal-footer {flex:none;}
+.workbench .modal-body:has(.interface-settings) {padding:0;flex:1;min-height:0;overflow:hidden;}
+.interface-settings {display:grid;grid-template-columns:170px minmax(0,1fr);flex:1;min-height:0;font-size:13px;overflow:hidden;}
+.settings-nav {padding:10px 8px;background:var(--panel);border-right:1px solid var(--border);overflow:auto;min-height:0;}
 .settings-nav-group {display:flex;flex-direction:column;margin-bottom:12px;}
 .settings-nav-group>strong {padding:3px 8px;color:var(--muted);font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;}
 .settings-nav-item {display:flex;align-items:center;gap:7px;min-height:30px;padding:4px 8px 4px 18px;border-radius:4px;color:var(--fg);text-align:left;}
 .settings-nav-item.is-active {background:var(--selected);color:var(--selected-fg);box-shadow:inset 2px 0 var(--accent);}
-.settings-content {display:flex;min-width:0;flex-direction:column;}
-.settings-page-heading {display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:43px;padding:8px 16px;border-bottom:1px solid var(--border);}
+.settings-content {display:flex;min-width:0;min-height:0;flex-direction:column;overflow:hidden;}
+.settings-page-scroll {flex:1;min-height:0;overflow:auto;scrollbar-gutter:stable;}
+.settings-page-heading {display:flex;flex:none;align-items:center;justify-content:space-between;gap:12px;min-height:43px;padding:8px 16px;border-bottom:1px solid var(--border);}
 .settings-page-heading>span {font-weight:600;}
 .settings-page-heading>small,.settings-page-copy {color:var(--muted);font-size:11px;}
 .settings-page {padding:16px;min-width:0;}
@@ -155,7 +157,6 @@
 @media(max-width:520px) {.settings-grid{grid-template-columns:minmax(0,1fr);}.settings-preview figcaption{flex-wrap:wrap;}}
 
 /* Keyboard management stays inside the existing settings dialog. */
-.workbench .modal:has(.shortcut-settings) {width:940px;}
 .shortcut-filters {display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0;}
 .shortcut-filters>input {flex:1 1 180px;min-width:100px;}
 .shortcut-filters>select {max-width:180px;}
