@@ -93,7 +93,7 @@ export type ContentSource = { kind: 'revision'; revision: string; path: string }
 export interface CommitSelection { path: string; area: 'staged' | 'unstaged' }
 export type DiffTarget = { kind: 'change'; path: string; area: 'staged' | 'unstaged' | 'conflict' } | { kind: 'commit'; oid: string; path: string; parent?: string; previousPath?: string } | { kind: 'comparison'; left: string; right: string; path: string; previousPath?: string } | { kind: 'stash-working'; stashOid: string; path: string } | ({ kind: 'revision' } & import('./tree').RevisionTarget);
 export interface DiffImage { mimeType: 'image/png' | 'image/jpeg' | 'image/webp'; data: string; byteLength: number; width: number; height: number }
-export interface HistoricalLfsPreviewObject { side: 'left' | 'right'; revision: string; path: string; oid: string; size: number; localObject: 'available' | 'missing' | 'unknown'; resolved: boolean; downloadable: boolean }
+export interface HistoricalLfsPreviewObject { side: 'left' | 'right'; revision?: string; path: string; oid: string; size: number; localObject: 'available' | 'missing' | 'unknown'; resolved: boolean; downloadable: boolean }
 interface DiffPreviewBase { path: string; leftLabel: string; rightLabel: string; lfs?: HistoricalLfsPreviewObject[] }
 export type DiffPreview =
   | DiffPreviewBase & { kind: 'text'; left: string; right: string; truncated?: boolean; patchHunks?: import('./diff').PatchHunks; index?: import('./diff').DiffIndex }
@@ -120,6 +120,8 @@ export interface GitServiceContract {
   lfsStatus?(repo: Repository): Promise<import('./lfs').LfsStatus>;
   lfsDestinations?(repo: Repository): Promise<import('./lfs').LfsDestinations>;
   lfsHistoricalObject?(repo: Repository, request: import('./lfs').LfsHistoricalRequest, maxBytes?: number): Promise<import('./lfs').LfsHistoricalObject>;
+  lfsIndexObject?(repo: Repository, request: import('./lfs').LfsIndexRequest, maxBytes?: number): Promise<import('./lfs').LfsIndexObject>;
+  lfsCachedObject?(repo: Repository, pointer: { oid: string; size: number }, maxBytes?: number): Promise<import('./lfs').LfsCachedObject>;
   lfsTrackPreview?(repo: Repository, request: import('./lfs').LfsTrackRequest): Promise<import('./lfs').LfsTrackPreview>;
   withReadSignal?<T>(signal: AbortSignal, task: () => Promise<T>): Promise<T>;
   discover(root: string): Promise<Repository>;

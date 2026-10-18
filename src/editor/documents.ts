@@ -121,8 +121,9 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
     const comparison = await this.comparison(repo, target);
     const preview = await this.previewComparison(repo, comparison);
     if (preview.kind !== 'text') throw new MessageError(localizeMessage("documents.imagesAndBinaryFilesCanOnlyBeViewedInTheAlwayGitDiffPreview"));
-    const uri = (side: Side, position: 'left' | 'right') => 'workingPath' in side ? vscode.Uri.file(side.workingPath) : this.uri(repo,
-      preview.lfs?.some(object => object.side === position && object.resolved) ? preview[position] : 'text' in side ? side.text : side.source, side.label, side.path);
+    const uri = (side: Side, position: 'left' | 'right') => preview.lfs?.some(object => object.side === position && object.resolved)
+      ? this.uri(repo, preview[position], side.label, side.path) : 'workingPath' in side ? vscode.Uri.file(side.workingPath)
+        : this.uri(repo, 'text' in side ? side.text : side.source, side.label, side.path);
     await vscode.commands.executeCommand('vscode.diff', uri(comparison.left, 'left'), uri(comparison.right, 'right'), comparison.label, { viewColumn: vscode.ViewColumn.Active, preview: false, preserveFocus: false });
   }
   async preview(repo: Repository, target: DiffTarget, owner?: object): Promise<DiffPreview> {
@@ -216,18 +217,25 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
     let unavailable: 'lfs-missing' | 'lfs-too-large' | 'lfs-unavailable' | undefined;
     await Promise.all((['left', 'right'] as const).map(async position => {
       const side = comparison[position], bytes = await this.readSide(repo, side, MAX_PREVIEW_BYTES + 1); initial.set(side, bytes);
-      if (!('source' in side) || side.source.kind !== 'revision') return;
+      if ('text' in side || 'source' in side && side.source.kind === 'empty') return;
       const pointer = parseLfsPointer(bytes); if (!pointer) return;
-      const source = side.source;
+      const source = 'source' in side ? side.source : undefined;
+      const historical = source?.kind === 'revision' ? source : undefined;
       let object;
-      try { object = await this.git.lfsHistoricalObject?.(repo, { revision: source.revision, path: source.path }, pointer.size <= MAX_DOCUMENT ? MAX_DOCUMENT : 0); }
+      const maxBytes = pointer.size <= MAX_DOCUMENT ? MAX_DOCUMENT : 0;
+      try {
+        object = historical ? await this.git.lfsHistoricalObject?.(repo, { revision: historical.revision, path: historical.path }, maxBytes)
+          : source?.kind === 'index' ? await this.git.lfsIndexObject?.(repo, { path: source.path, stage: source.stage }, maxBytes)
+          : await this.git.lfsCachedObject?.(repo, pointer, maxBytes);
+      }
       catch (error) {
-        // A symlink target is ordinary immutable text, even if it resembles a pointer.
+        // Git also stores symlink targets as blobs; only regular files are LFS objects.
         if (['LFS_NOT_POINTER', 'INVALID_PATH'].includes((error as { code?: string }).code ?? '')) return;
         throw error;
       }
-      const metadata: HistoricalLfsPreviewObject = { ...pointer, revision: source.revision, path: source.path, side: position,
-        localObject: object?.localObject ?? 'unknown', resolved: !!object?.content, downloadable: !!this.git.lfsHistoricalObject };
+      if (object && (object.oid !== pointer.oid || object.size !== pointer.size)) throw new MessageError(localizeMessage('documents.theFileStatusChangedRefreshAndOpenItsComparison'));
+      const metadata: HistoricalLfsPreviewObject = { ...pointer, ...(historical ? { revision: historical.revision } : {}), path: side.path, side: position,
+        localObject: object?.localObject ?? 'unknown', resolved: !!object?.content, downloadable: !!historical && !!this.git.lfsHistoricalObject };
       lfs.push(metadata);
       if (object?.content) resolved.set(side, object.content);
       else unavailable = pointer.size > MAX_DOCUMENT ? 'lfs-too-large' : object?.localObject === 'missing' ? 'lfs-missing' : 'lfs-unavailable';

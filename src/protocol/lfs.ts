@@ -11,6 +11,9 @@ export type LfsHistoricalRequest = z.infer<typeof lfsHistoricalRequestSchema>;
 export interface LfsHistoricalStatus extends LfsHistoricalRequest { oid: string; size: number; localObject: 'available' | 'missing' | 'unknown' }
 /** Host-only bytes: the historical-status RPC returns metadata without this property. */
 export interface LfsHistoricalObject extends LfsHistoricalStatus { content?: Buffer }
+export interface LfsIndexRequest { path: string; stage?: 0 | 1 | 2 | 3 }
+export interface LfsCachedObject { oid: string; size: number; localObject: 'available' | 'missing' | 'unknown'; content?: Buffer }
+export interface LfsIndexObject extends LfsIndexRequest, LfsCachedObject {}
 const context = { expectedHead: z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})?$/), expectedBranch: z.string().max(4096) };
 const remote = pattern.refine(value => !value.startsWith('-'));
 const expectedDestination = z.string().regex(/^[a-f0-9]{64}$/);

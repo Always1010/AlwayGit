@@ -27,7 +27,7 @@ export function HistoricalLfsPreview({ objects, repoId, isolated, refreshed }: {
   }, [selected, repoId]);
   async function download() {
     const context = captureActionContext(), destination = destinations?.[remote];
-    if (!selected || !destination || !canDownload || context.repoId !== repoId) return;
+    if (!selected?.revision || !selected.downloadable || !destination || !canDownload || context.repoId !== repoId) return;
     const completed = await useWorkbench.getState().execute({ type: 'lfs.fetchHistorical', revision: selected.revision, path: selected.path,
       oid: selected.oid, remote, expectedDestination: destination.fetch }, context);
     if (completed && isActionContextCurrent(context)) { setSelected(undefined); refreshed(); }
@@ -39,7 +39,7 @@ export function HistoricalLfsPreview({ objects, repoId, isolated, refreshed }: {
         <span>{t('historicalLfs.object', { side: object.side === 'left' ? t('historicalLfs.left') : t('historicalLfs.right'), size: object.size })}</span>
         <code className="truncate" style={{ maxWidth: '18ch' }} title={`sha256:${object.oid}`}>{object.oid}</code>
         <span>{t(object.resolved ? 'historicalLfs.cached' : object.localObject === 'available' ? 'historicalLfs.tooLarge' : 'historicalLfs.notLoaded')}</span>
-        {!object.resolved && object.localObject !== 'available' && object.downloadable && <Button icon="cloud-download" disabled={!canDownload} title={isolated ? t('historicalLfs.isolated') : t('historicalLfs.download')} onClick={() => setSelected(object)}>{t('historicalLfs.download')}</Button>}
+        {!object.resolved && object.localObject !== 'available' && object.revision && object.downloadable && <Button icon="cloud-download" disabled={!canDownload} title={isolated ? t('historicalLfs.isolated') : t('historicalLfs.download')} onClick={() => setSelected(object)}>{t('historicalLfs.download')}</Button>}
       </div>)}
     </div>
     {selected && <Modal title={t('historicalLfs.download')} busy={state.busy} onClose={() => setSelected(undefined)} footer={<>
