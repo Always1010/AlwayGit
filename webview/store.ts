@@ -88,7 +88,7 @@ const message = (error: unknown) => errorMessage(error, useWorkbench.getState().
 const clamp = (n: number, min: number, max: number, fallback: number) => Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : fallback;
 function layout(value: Partial<LayoutState> = {}): LayoutState {
   const l = { ...defaultLayout, ...value };
-  return { preset: 'workbench', sidebar: clamp(l.sidebar, 160, 360, 210), details: clamp(l.details, 230, 480, 300), diff: clamp(l.diff, 130, 1400, 220), diffCollapsed: Boolean(l.diffCollapsed), graph: clamp(l.graph, 48, 180, 64), author: clamp(l.author, 64, 220, 100), date: clamp(l.date, 82, 220, 120), font: Math.round(clamp(l.font, 12, 16, 13)), row: Math.round(clamp(l.row, 22, 36, 24)) };
+  return { preset: 'workbench', sidebarCollapsed: l.sidebarCollapsed === true, detailsCollapsed: l.detailsCollapsed === true, sidebar: clamp(l.sidebar, 160, 360, 210), details: clamp(l.details, 230, 480, 300), diff: clamp(l.diff, 130, 1400, 220), diffCollapsed: Boolean(l.diffCollapsed), graph: clamp(l.graph, 48, 180, 64), author: clamp(l.author, 64, 220, 100), date: clamp(l.date, 82, 220, 120), font: Math.round(clamp(l.font, 12, 16, 13)), row: Math.round(clamp(l.row, 22, 36, 24)) };
 }
 function interfaceSnapshot(state: Pick<WorkbenchState, 'language' | 'layout' | 'appearance' | 'diffNavigationScope' | 'singleKeyShortcuts' | 'shortcutOverrides' | 'changeListMode'>): InterfaceSettings {
   return { language: state.language, font: state.layout.font, row: state.layout.row, appearance: state.appearance,

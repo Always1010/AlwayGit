@@ -7010,6 +7010,22 @@ export const catalog = {
     "en": "The project window rejected the request.",
     "zh-CN": "项目窗口拒绝了请求。"
   },
+  "workbench.collapseSidebar": {
+    "en": "Collapse repository sidebar",
+    "zh-CN": "收起仓库侧栏"
+  },
+  "workbench.expandSidebar": {
+    "en": "Expand repository sidebar",
+    "zh-CN": "展开仓库侧栏"
+  },
+  "workbench.collapseDetails": {
+    "en": "Collapse details panel",
+    "zh-CN": "收起详情侧栏"
+  },
+  "workbench.expandDetails": {
+    "en": "Expand details panel",
+    "zh-CN": "展开详情侧栏"
+  },
   "workbench.moreActions": {
     "en": "More actions",
     "zh-CN": "更多操作"
@@ -9161,6 +9177,10 @@ export interface MessageParameters {
   "windowBridge.theProjectWindowClosedBeforeResponding": {  };
   "windowBridge.invalidProjectWindowResponse": {  };
   "windowBridge.theProjectWindowRejectedTheRequest": {  };
+  "workbench.collapseSidebar": {  };
+  "workbench.expandSidebar": {  };
+  "workbench.collapseDetails": {  };
+  "workbench.expandDetails": {  };
   "workbench.moreActions": {  };
   "workbench.opening": {  };
   "workbench.unavailable": {  };

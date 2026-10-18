@@ -1,4 +1,28 @@
 {
+  "workbench.collapseSidebar": {
+    "en": "Collapse repository sidebar",
+    "zh-CN": "收起仓库侧栏",
+    "review": "translated",
+    "context": "webview/App.tsx / panel divider"
+  },
+  "workbench.expandSidebar": {
+    "en": "Expand repository sidebar",
+    "zh-CN": "展开仓库侧栏",
+    "review": "translated",
+    "context": "webview/App.tsx / panel divider"
+  },
+  "workbench.collapseDetails": {
+    "en": "Collapse details panel",
+    "zh-CN": "收起详情侧栏",
+    "review": "translated",
+    "context": "webview/App.tsx / panel divider"
+  },
+  "workbench.expandDetails": {
+    "en": "Expand details panel",
+    "zh-CN": "展开详情侧栏",
+    "review": "translated",
+    "context": "webview/App.tsx / panel divider"
+  },
   "workbench.moreActions": {
     "en": "More actions",
     "zh-CN": "更多操作",

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { sessionSchema, type SessionState, type LayoutState } from './session';
 
-export const defaultLayout: LayoutState = { preset: 'workbench', sidebar: 210, details: 300, diff: 220, diffCollapsed: false, graph: 64, author: 100, date: 120, font: 13, row: 24 };
+export const defaultLayout: LayoutState = { preset: 'workbench', sidebar: 210, details: 300, sidebarCollapsed: false, detailsCollapsed: false, diff: 220, diffCollapsed: false, graph: 64, author: 100, date: 120, font: 13, row: 24 };
 export const interfaceSettingsSchema = z.object({
   language: z.enum(['en', 'zh-CN']).optional(),
   font: sessionSchema.shape.layout.unwrap().shape.font.optional(),

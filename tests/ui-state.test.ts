@@ -620,8 +620,8 @@ describe('repository UI consistency', () => {
     expect(sessionSchema.parse(saved).appearance).toMatchObject({ theme: 'contrast', palette: 'distinct', codeFont: 17, codeRowHeight: 23, diffRowSeparators: true, historyRowSeparators: true, historyAlternateRows: true, fileSpacing: 6, badgeColor: '#006BFF', currentBranchColor:'#00FF99', currentRepositoryColor:'#FF4AD4' });
     expect(saved.appearance.colors.light).toHaveLength(8);
     expect(saved.appearance.colors.dark).toHaveLength(8);
-    store.getState().setLayout({ sidebar: 260, details: 350, diff: 900, diffCollapsed: true }); store.getState().restoreLayout();
-    expect(store.getState()).toMatchObject({ singleKeyShortcuts: false, diffNavigationScope: 'file', language: 'zh-CN', layout: { sidebar: 210, details: 300, diff: 220, diffCollapsed: false, font: 15, row: 28 }, appearance: saved.appearance });
+    store.getState().setLayout({ sidebar: 260, details: 350, sidebarCollapsed: true, detailsCollapsed: true, diff: 900, diffCollapsed: true }); store.getState().restoreLayout();
+    expect(store.getState()).toMatchObject({ singleKeyShortcuts: false, diffNavigationScope: 'file', language: 'zh-CN', layout: { sidebar: 210, details: 300, sidebarCollapsed: false, detailsCollapsed: false, diff: 220, diffCollapsed: false, font: 15, row: 28 }, appearance: saved.appearance });
     expect(store.getState().settingsBaseline).toBeUndefined();
   });
   it('restores legacy Diff settings without losing the font and validates custom line heights', async () => {
@@ -640,6 +640,21 @@ describe('repository UI consistency', () => {
     }
     expect(normalizeAppearance({ ...legacy, fileSpacing: NaN }).fileSpacing).toBe(1);
     expect(normalizeAppearance({ ...legacy, fileSpacing: 100 }).fileSpacing).toBe(8);
+  });
+  it('restores collapsed sidebars with their widths and preserves them across repository switches', async () => {
+    await store.getState().selectRepository('a');
+    store.getState().setDraft('keep my draft');
+    store.getState().setLayout({ sidebar: 260, details: 350, sidebarCollapsed: true, detailsCollapsed: true });
+    const { sessionSchema } = await import('../src/protocol/session');
+    const saved = sessionSchema.parse(bridge.save.mock.calls.at(-1)?.[0]);
+    expect(saved.layout).toMatchObject({ sidebar: 260, details: 350, sidebarCollapsed: true, detailsCollapsed: true });
+    vi.stubGlobal('window', { __ALWAYGIT_SESSION__: saved });
+    vi.resetModules(); store = (await import('../webview/store')).useWorkbench;
+    await store.getState().selectRepository('b');
+    expect(store.getState().layout).toMatchObject({ sidebar: 260, details: 350, sidebarCollapsed: true, detailsCollapsed: true });
+    expect(store.getState().drafts.a).toBe('keep my draft');
+    store.getState().setLayout({ sidebarCollapsed: false });
+    expect(store.getState().layout).toMatchObject({ sidebar: 260, details: 350, sidebarCollapsed: false, detailsCollapsed: true });
   });
   it('opens and preserves a comparison when exactly two commits are selected',async()=>{
     await store.getState().selectRepository('a');const left={...commit,oid:'left',subject:'Left'},right={...commit,oid:'right',subject:'Right'},fallback=bridge.rpc.getMockImplementation()!;

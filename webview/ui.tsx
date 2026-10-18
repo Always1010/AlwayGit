@@ -36,6 +36,15 @@ export function ResizeHandle({ axis, label, value, onChange, min, max, reverse =
   }} />;
 }
 
+export function PanelDivider({ side, collapsed, toggleLabel, controls, onToggle, ...resize }: {
+  side: 'left' | 'right'; collapsed: boolean; toggleLabel: string; controls: string; onToggle(): void;
+} & Omit<React.ComponentProps<typeof ResizeHandle>, 'axis' | 'className'>) {
+  return <div className={`panel-divider panel-divider-${side}`} data-collapsed={collapsed}>
+    {!collapsed && <ResizeHandle axis="x" {...resize}/>}
+    <Button className="icon-only panel-toggle" icon={(side === 'left') !== collapsed ? 'chevron-left' : 'chevron-right'} title={toggleLabel} aria-label={toggleLabel} aria-expanded={!collapsed} aria-controls={controls} onClick={onToggle}/>
+  </div>;
+}
+
 export function Modal({ title, children, onClose, busy = false, footer, className='', style }: { title: string; children: React.ReactNode; onClose(): void; busy?: boolean; footer?: React.ReactNode; className?:string; style?: React.CSSProperties }) {
   const t = useTranslation(), panel = useRef<HTMLDivElement>(null), callback = useRef(onClose); callback.current = onClose;
   useLayoutEffect(() => {
