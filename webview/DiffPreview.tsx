@@ -1,5 +1,6 @@
 import type { DiffTarget } from '../src/protocol/types';
-import { Button, Empty, hasOpenInteractionLayer } from './ui';
+import { Button, Empty, Modal, hasOpenInteractionLayer } from './ui';
+import { createPortal } from 'react-dom';
 
 import { uiText } from './text';
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -11,7 +12,7 @@ import { useTranslation } from './i18n';
 import { rpc } from './rpc';
 import { DiffHunkAction, patchHunkAtRow, patchHunkForRow } from './DiffHunkAction';
 import { useDiffPages } from './diff-pages';
-import type { DiffChangeRange } from '../src/protocol/diff';
+import type { DiffChangeRange, PatchHunk } from '../src/protocol/diff';
 import { adjacentDiffFile, alignDiff, changeAtRow, changedParts, changedRanges, remapChange, summarizeChanges, type DiffDirection, type DiffRow } from './diff';
 
 import { diffKey } from './refresh';
@@ -46,7 +47,8 @@ function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():
   const [isolatedCollapsed, setIsolatedCollapsed] = useState(false);
   const state = isolated ? { ...globalState, repoId: isolated.repoId, diffTarget: isolated.target, selectedFile: isolated.target?.path, diffRevision: 0, details: undefined, selectedStashOid: undefined, diffNavigationScope: 'file' as const, layout: { ...globalState.layout, diffCollapsed: isolatedCollapsed }, setLayout: (value: { diffCollapsed?: boolean }) => { if (value.diffCollapsed !== undefined) setIsolatedCollapsed(value.diffCollapsed); } } : globalState;
   const t=useTranslation(),[preview,setPreview]=useState<Preview>(),[error,setError]=useState<string>(),[loading,setLoading]=useState(false),[selection,setSelection]=useState<Selection>(),[horizontalScroll,setHorizontalScroll]=useState(0),[viewportWidth,setViewportWidth]=useState(0),viewport=useRef<HTMLDivElement>(null),displayedKey=useRef(''),lastScrollTop=useRef(0),navigationScroll=useRef<number|undefined>(undefined);
-  const [pointedHunk,setPointedHunk]=useState<string>();
+  const [pointedHunk,setPointedHunk]=useState<string>(),[focusedHunk,setFocusedHunk]=useState<string>();
+  const [discardConfirmation,setDiscardConfirmation]=useState<{hunk:PatchHunk;token:string;left:number;top:number;deletesFile:boolean}>();
   const pendingHunkScroll=useRef<{top:number;left:number}|undefined>(undefined);
   const hunkScroll=useRef<{repoId?:string;path:string;top:number;left:number}|undefined>(undefined);
   const [navigating,setNavigating]=useState(false),[navigationError,setNavigationError]=useState<string>(),[noNavigableFiles,setNoNavigableFiles]=useState(false),navigationRequest=useRef<AbortController|undefined>(undefined),preloaded=useRef<{key:string;preview:Preview}|undefined>(undefined),landing=useRef<{key:string;index:number}|undefined>(undefined);
@@ -203,11 +205,17 @@ function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():
   const previousHint=commitMode?t("diff.previousChangeAcrossCommitFilesWrapsToTheLast"):changeCount===1?t("diff.locateTheOnlyChange"):t("diff.previousChangeWrapsToTheLast"),nextHint=commitMode?t("diff.nextChangeAcrossCommitFilesWrapsToTheFirst"):changeCount===1?t("diff.locateTheOnlyChange"):t("diff.nextChangeWrapsToTheFirst");
   const hunkTarget=!isolated&&state.tab==='changes'&&state.diffTarget?.kind==='change'&&state.diffTarget.area!=='conflict'?state.diffTarget:undefined;
   const patchHunks=hunkTarget&&preview?.kind==='text'?preview.patchHunks:undefined;
-  const applyHunk=(hunkId:string)=>{
+  useEffect(()=>{setDiscardConfirmation(undefined);},[targetKey,revision,patchHunks?.token]);
+  const applyHunk=(hunkId:string,discard=false)=>{
     const current=useWorkbench.getState();
-    if(!patchHunks?.token||!hunkTarget||current.repoId!==state.repoId||diffKey(current.diffTarget)!==diffKey(hunkTarget))return;
+    if(!patchHunks?.token||!hunkTarget||state.busy||loading||current.repoId!==state.repoId||diffKey(current.diffTarget)!==diffKey(hunkTarget)||discard&&hunkTarget.area!=='unstaged')return;
     hunkScroll.current={repoId:state.repoId,path:hunkTarget.path,top:viewport.current?.scrollTop??lastScrollTop.current,left:horizontalScroll};
-    void state.execute({type:hunkTarget.area==='staged'?'unstage-hunk':'stage-hunk',token:patchHunks.token,hunkId});
+    void state.execute({type:discard?'discard-hunk':hunkTarget.area==='staged'?'unstage-hunk':'stage-hunk',token:patchHunks.token,hunkId});
+  };
+  const requestDiscard=(hunk:PatchHunk,anchor:HTMLElement)=>{
+    if(!patchHunks?.token||!hunkTarget||hunkTarget.area!=='unstaged'||state.busy||loading)return;
+    const bounds=anchor.getBoundingClientRect(),change=useWorkbench.getState().snapshot?.changes.find(change=>change.path===hunkTarget.path);
+    setDiscardConfirmation({hunk,token:patchHunks.token,left:Math.max(8,Math.min(bounds.left-140,window.innerWidth-328)),top:Math.max(8,Math.min(bounds.bottom+4,window.innerHeight-250)),deletesFile:!!change?.untracked});
   };
   const truncated=preview?.kind==='text'&&preview.truncated,countLabel=preview?.kind==='image'?t("diff.imageChanges"):t("diff.changeBlocks"),blockCount=`${activeChange<0?0:activeChange+1}/${changeCount}${truncated?t("diff.preview"):''}`,countText=commitMode?`${t("diff.file")} ${fileIndex+1}/${commitFiles!.length} · ${t("diff.change")} ${blockCount}`:blockCount,addedLabel=t("diff.addedBlocks"),modifiedLabel=t("diff.modifiedBlocks"),removedLabel=t("diff.removedBlocks");
   const navigationDisabled=loading||navigating||noNavigableFiles||(!changeCount&&(!commitMode||commitFiles!.length<2));
@@ -248,14 +256,15 @@ function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():
       {loading&&!preview?<Empty title={t("diff.loadingDiff")}/>:preview?.kind==='binary'?<Empty title={binaryTitle!}/>:!preview?(!error&&<Empty title={t("diff.selectAFileToPreviewItsDiff")}/>):preview.kind==='image'?<div className="image-diff"><ImageSide image={preview.left} label={preview.leftLabel} zoom={imageZoom} sideRef={imageSides[0]} onScroll={event=>syncImageScroll(0,event)}/><ImageSide image={preview.right} label={preview.rightLabel} zoom={imageZoom} sideRef={imageSides[1]} onScroll={event=>syncImageScroll(1,event)}/></div>:<div className="diff-content" onMouseLeave={()=>setPointedHunk(undefined)} style={{height:virtual.getScrollSize(),position:'relative',width:contentWidth}}>{virtualItems.map(item=>{
         const row=(index?pages.row(item.index):rows[item.index])??{changed:false,before:t('diff.loadingDiff'),after:t('diff.loadingDiff')};
         const active=!!highlighted&&item.index>=highlighted.start&&item.index<=highlighted.end,rowHunk=patchHunkForRow(patchHunks,row);
-        const hunk=patchHunkAtRow(patchHunks,row)??(item.index===virtualItems[0]?.index?rowHunk:undefined),scope=!!rowHunk&&rowHunk.id===pointedHunk;
-        return <div key={item.index} className={`diff-line${active?' active-change':''}${active&&item.index===highlighted?.start?' active-change-start':''}${active&&item.index===highlighted?.end?' active-change-end':''}${scope?' hunk-scope':''}`} onMouseEnter={()=>setPointedHunk(rowHunk?.id)} onFocusCapture={()=>setPointedHunk(rowHunk?.id)} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))setPointedHunk(undefined);}} style={{position:'absolute',left:horizontalScroll,width:viewportWidth||'100%',height:ROW_HEIGHT,transform:`translateY(${item.start}px)`}}>
+        const hunk=patchHunkAtRow(patchHunks,row)??(item.index===virtualItems[0]?.index?rowHunk:undefined),scope=!!rowHunk&&rowHunk.id===(discardConfirmation?.hunk.id??pointedHunk??focusedHunk);
+        return <div key={item.index} className={`diff-line${active?' active-change':''}${active&&item.index===highlighted?.start?' active-change-start':''}${active&&item.index===highlighted?.end?' active-change-end':''}${scope?' hunk-scope':''}`} onMouseEnter={()=>setPointedHunk(rowHunk?.id)} onFocusCapture={()=>setFocusedHunk(rowHunk?.id)} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget))setFocusedHunk(undefined);}} style={{position:'absolute',left:horizontalScroll,width:viewportWidth||'100%',height:ROW_HEIGHT,transform:`translateY(${item.start}px)`}}>
           <div className={`diff-side${row.changed&&row.before!==undefined?' removed':''}`}><span className="line-number">{row.beforeLine??''}</span><span className="diff-marker" aria-hidden="true">{row.changed&&row.before!==undefined?'−':''}</span><span className="diff-code">{content(row.before,row.after,row.changed,'before',horizontalScroll)}</span></div>
-          <div className={`diff-hunk-gutter${rowHunk?' has-hunk':''}`}>{hunk&&<DiffHunkAction hunk={hunk} area={hunkTarget!.area as 'staged'|'unstaged'} disabled={state.busy||loading} apply={applyHunk}/>}</div>
+          <div className={`diff-hunk-gutter${rowHunk?' has-hunk':''}`}>{hunk&&<DiffHunkAction hunk={hunk} area={hunkTarget!.area as 'staged'|'unstaged'} disabled={state.busy||loading} apply={applyHunk} discard={requestDiscard}/>}</div>
           <div className={`diff-side${row.changed&&row.after!==undefined?' added':''}`}><span className="line-number">{row.afterLine??''}</span><span className="diff-marker" aria-hidden="true">{row.changed&&row.after!==undefined?'+':''}</span><span className="diff-code">{content(row.after,row.before,row.changed,'after',horizontalScroll)}</span></div>
         </div>;
       })}</div>}
     </div></>}
+    {discardConfirmation&&patchHunks?.token===discardConfirmation.token&&createPortal(<Modal title={t('diff.discardHunkConfirm')} className="diff-hunk-confirm" style={{position:'fixed',left:discardConfirmation.left,top:discardConfirmation.top,width:320}} onClose={()=>setDiscardConfirmation(undefined)} footer={<><Button data-autofocus="true" onClick={()=>setDiscardConfirmation(undefined)}>{t('common.cancel')}</Button><Button className="danger" disabled={state.busy||loading} onClick={()=>{if(patchHunks?.token!==discardConfirmation.token)return;const id=discardConfirmation.hunk.id;setDiscardConfirmation(undefined);applyHunk(id,true);}}>{t('diff.discardHunk')}</Button></>}><div className="diff-hunk-confirm-path">{hunkTarget?.path}</div><code>{discardConfirmation.hunk.header}</code><p>{t(discardConfirmation.deletesFile?'diff.discardHunkDeleteFile':'diff.discardHunkWarning')}</p></Modal>,viewport.current?.closest('.workbench')??document.body)}
   </section>;
 }
 

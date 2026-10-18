@@ -60,7 +60,7 @@ export interface CherryPickCheck { head: string; branch: string; included: strin
 export type GitAction =
   | import('./interactive-rebase').InteractiveRebaseAction
   | { type: 'stage' | 'resolve-and-stage' | 'unstage'; paths: string[] }
-  | { type: 'stage-hunk' | 'unstage-hunk'; token: string; hunkId: string }
+  | { type: 'stage-hunk' | 'unstage-hunk' | 'discard-hunk'; token: string; hunkId: string }
   | { type: 'discard'; paths: string[]; planToken?: string; mode?: 'all' }
   | { type: 'commit'; message: string; amend?: boolean; reviewToken?: string; files?: CommitSelection[]; expectedHead?: string; expectedBranch?: string }
   | { type: 'fetch'; remote?: string }

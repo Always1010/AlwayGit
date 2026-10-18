@@ -621,3 +621,10 @@ h1,h2,p {margin:0;}
 .diff-hunk-action.button {position:relative;z-index:1;min-width:0;width:15px;height:100%;padding:0;flex:none;border:0;border-radius:2px;font-size:16px;line-height:1;color:var(--accent);background:transparent;}
 .diff-hunk-action.button:hover,.diff-hunk-action.button:focus-visible {background:color-mix(in srgb,var(--accent) 25%,var(--panel));}
 .diff-hunk-left {margin-left:auto;}
+
+.diff-hunk-discard.button {color:var(--error);}
+.modal-backdrop:has(>.diff-hunk-confirm) {background:transparent;}
+.diff-hunk-confirm .modal-heading h2 {font-size:13px;}
+.diff-hunk-confirm .modal-body {font-size:12px;}
+.diff-hunk-confirm-path {overflow-wrap:anywhere;font-weight:600;}
+.diff-hunk-confirm code {display:block;overflow-wrap:anywhere;white-space:normal;color:var(--muted);margin-top:4px;}

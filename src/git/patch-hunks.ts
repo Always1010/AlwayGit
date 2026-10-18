@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { lstat, open, rename, rm } from 'node:fs/promises';
+import { chmod, link, lstat, mkdir, open, rename, rm, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { constants } from 'node:fs';
 import { message } from '../i18n';
@@ -14,7 +14,7 @@ const LIMIT = 2 * 1024 * 1024, INDEX_LIMIT = 32 * 1024 * 1024, TTL = 5 * 60_000;
 type Run = (args: string[], execution?: StashExecution & { maxOutputBytes?: number }) => Promise<GitResult>;
 type Target = { path: string; area: 'staged' | 'unstaged' };
 type Status = { head?: string; branch: string; changes: Change[] };
-type Context = { root: string; target: Target; fingerprint: string; expires: number; header: string; parts: { id: string; patch: string }[] };
+type Context = { root: string; target: Target; fingerprint: string; expires: number; header: string; parts: (PatchHunk & { patch: string })[] };
 const hash = (bytes: Buffer | string) => createHash('sha256').update(bytes).digest('hex');
 const stale = () => new GitError(message('diff.hunkStale'), 'PATCH_CHANGED');
 class Unsupported extends Error {}
@@ -34,6 +34,27 @@ async function boundedFile(filename: string, limit: number): Promise<Buffer | un
 function utf8(bytes: Buffer): string {
   if (bytes.includes(0)) throw new Unsupported();
   try { return new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes); } catch { throw new Unsupported(); }
+}
+/** Preserve the original bytes outside the selected lines, including mixed line endings. */
+function restoreBlock(working: Buffer, restored: Buffer, part: PatchHunk & { patch: string }): Buffer {
+  const lines = (bytes: Buffer) => utf8(bytes).match(/[^\n]*\n|[^\n]+$/g) ?? [];
+  const original = lines(working), result = lines(restored), start = part.afterStart - (part.afterCount ? 1 : 0);
+  if (start < 0 || start + part.afterCount > original.length || start + part.beforeCount > result.length) throw stale();
+  const normalize = (value: string[]) => value.join('').replaceAll('\r\n', '\n');
+  if (normalize(original.slice(0, start)) !== normalize(result.slice(0, start))
+    || normalize(original.slice(start + part.afterCount)) !== normalize(result.slice(start + part.beforeCount))) throw stale();
+  const oldLines = part.patch.split('\n').filter(line => line.startsWith('-'));
+  const ending = (line: string | undefined) => line?.endsWith('\r\n') ? '\r\n' : line?.endsWith('\n') ? '\n' : undefined;
+  const replacement = result.slice(start, start + part.beforeCount).map((line, offset) => {
+    // Git may smudge LF index content to CRLF even in an LF working file.
+    // Retain the local ending for that conversion, but honor explicit CRLF in the original patch.
+    if (line.endsWith('\r\n') && !oldLines[offset]?.endsWith('\r')) {
+      const local = ending(original[start + Math.min(offset, Math.max(0, part.afterCount - 1))]) ?? ending(original[start - 1]);
+      if (local) return line.slice(0, -2) + local;
+    }
+    return line;
+  });
+  return Buffer.from([...original.slice(0, start), ...replacement, ...original.slice(start + part.afterCount)].join(''), 'utf8');
 }
 /** Zero-context hunks match the contiguous change blocks used by the Diff index. */
 function parsePatch(patch: string): { header: string; hunks: (PatchHunk & { patch: string })[] } {
@@ -91,7 +112,7 @@ export class PatchHunkStore {
     const patch = utf8(patchResult.stdout); if (patchResult.stdout.length > LIMIT) throw new Unsupported();
     const parsed = parsePatch(patch), left = utf8(target.area === 'staged' ? head : index), right = utf8(target.area === 'staged' ? index : working);
     const fingerprint = hash(JSON.stringify([current.head, current.branch, change, indexBytes ? hash(indexBytes) : null, hash(working), workingMode, missing, attrs, hash(patch)]));
-    return { ...parsed, fingerprint, indexPath, indexBytes, left, right };
+    return { ...parsed, fingerprint, indexPath, indexBytes, left, right, working, workingPath, workingMode, missing, indexMode: entries[0]?.split(' ')[0] };
   }
   async preview(repo: Repository, target: Target, run: Run, status: () => Promise<Status>): Promise<{ metadata: PatchHunks; left?: string; right?: string }> {
     this.prune();
@@ -101,7 +122,7 @@ export class PatchHunkStore {
       const second = await this.capture(repo, target, run, status);
       if (first.fingerprint !== second.fingerprint) throw stale();
       const token = randomUUID();
-      this.contexts.set(token, { root: repo.root, target, fingerprint: first.fingerprint, expires: Date.now() + TTL, header: first.header, parts: first.hunks.map(({ id, patch }) => ({ id, patch })) });
+      this.contexts.set(token, { root: repo.root, target, fingerprint: first.fingerprint, expires: Date.now() + TTL, header: first.header, parts: first.hunks });
       return { metadata: { token, hunks: first.hunks.map(({ patch: _patch, ...hunk }) => hunk) }, left: first.left, right: first.right };
     } catch (error) {
       if (error instanceof Unsupported || error instanceof GitError && error.code === 'OUTPUT_LIMIT') return { metadata: { hunks: [], unavailable: 'unsupported' } };
@@ -109,7 +130,7 @@ export class PatchHunkStore {
       throw error;
     }
   }
-  async apply(repo: Repository, action: { type: 'stage-hunk' | 'unstage-hunk'; token: string; hunkId: string }, run: Run, status: () => Promise<Status>): Promise<void> {
+  async apply(repo: Repository, action: { type: 'stage-hunk' | 'unstage-hunk' | 'discard-hunk'; token: string; hunkId: string }, run: Run, status: () => Promise<Status>): Promise<void> {
     const context = this.contexts.get(action.token);
     if (!context || context.root !== repo.root || context.expires <= Date.now() || (context.target.area === 'staged') !== (action.type === 'unstage-hunk')) throw stale();
     const part = context.parts.find(part => part.id === action.hunkId); if (!part) throw stale();
@@ -120,26 +141,59 @@ export class PatchHunkStore {
       if ((error as NodeJS.ErrnoException).code === 'EEXIST') throw new GitError(message('service.anotherGitProcessIsUsingThisRepositoryFinishIt'), 'INDEX_LOCKED');
       throw error;
     });
-    let published = false, deferred = false;
+    let published = false, deferred = false, workingTemporary: string | undefined;
     const cleanup = async () => {
       await lock.close().catch(() => {}); if (!published) await rm(lockPath, { force: true });
       await rm(temporary, { force: true }); await rm(temporary + '.lock', { force: true });
+      if (workingTemporary) await rm(workingTemporary, { force: true });
     };
     try {
       let captured;
       try { captured = await this.capture(repo, context.target, run, status); } catch (error) { if (error instanceof Unsupported) throw stale(); throw error; }
       if (captured.indexPath !== indexPath || captured.fingerprint !== context.fingerprint) throw stale();
       if (captured.indexBytes) { const file = await open(temporary, 'wx', 0o600); try { await file.writeFile(captured.indexBytes); } finally { await file.close(); } }
-      const env = { GIT_INDEX_FILE: temporary }, input = Buffer.from(context.header + part.patch, 'utf8');
-      const args = ['apply', '--cached', '--unidiff-zero', '--whitespace=nowarn', ...(action.type === 'unstage-hunk' ? ['--reverse'] : [])];
+      const env = { GIT_INDEX_FILE: temporary }, input = Buffer.from(context.header + part.patch, 'utf8'), discard = action.type === 'discard-hunk';
+      if (discard) {
+        // Trial the inverse against the current Working Tree in an isolated Index.
+        // Git performs its own clean/smudge conversions; the real Index is never published.
+        if (captured.missing) await run(['update-index', '--force-remove', '--', context.target.path], { env });
+        else {
+          const oid = (await run(['hash-object', '-w', `--path=${context.target.path}`, '--stdin'], { env, input: captured.working })).stdout.toString('utf8').trim();
+          await run(['update-index', '--add', '--cacheinfo', captured.indexMode ?? (captured.workingMode & 0o111 ? '100755' : '100644'), oid, context.target.path], { env });
+        }
+      }
+      const args = ['apply', '--cached', '--unidiff-zero', '--whitespace=nowarn', ...(action.type !== 'stage-hunk' ? ['--reverse'] : [])];
       await run([...args, '--check', '-'], { env, input });
       await run([...args, '-'], { env, input });
+      let restored: Buffer | undefined;
+      if (discard) {
+        const entry = (await run(['ls-files', '--stage', '-z', '--', context.target.path], { env })).stdout.toString('utf8').split('\0').find(Boolean);
+        if (entry) {
+          const oid = entry.split(' ')[1];
+          const bytes = (await run(['cat-file', '--filters', `--path=${context.target.path}`, oid], { env, maxOutputBytes: LIMIT })).stdout;
+          restored = restoreBlock(captured.working, bytes, part);
+          await mkdir(path.dirname(captured.workingPath), { recursive: true });
+          await safeWorkingPath(repo.root, context.target.path, false);
+          workingTemporary = path.join(path.dirname(captured.workingPath), '.alwaygit-hunk-' + randomUUID());
+          const file = await open(workingTemporary, 'wx', 0o600);
+          try { await file.writeFile(restored); await file.sync(); } finally { await file.close(); }
+          await chmod(workingTemporary, captured.missing ? parseInt(captured.indexMode ?? '100644', 8) & 0o777 : captured.workingMode & 0o777);
+        }
+      }
       // Recheck HEAD/working bytes after the trial. External working-tree writes cannot be locked.
       let latest;
       try { latest = await this.capture(repo, context.target, run, status); } catch (error) { if (error instanceof Unsupported) throw stale(); throw error; }
       if (latest.fingerprint !== context.fingerprint) throw stale();
-      const result = await boundedFile(temporary, INDEX_LIMIT); if (!result) throw stale();
-      await lock.writeFile(result); await lock.sync(); await lock.close(); await rename(lockPath, indexPath); published = true;
+      if (discard) {
+        const destination = await safeWorkingPath(repo.root, context.target.path, false);
+        // For a missing target, a hard link publishes atomically without overwriting a new external file.
+        if (restored === undefined) await unlink(destination);
+        else if (captured.missing) await link(workingTemporary!, destination);
+        else await rename(workingTemporary!, destination);
+      } else {
+        const result = await boundedFile(temporary, INDEX_LIMIT); if (!result) throw stale();
+        await lock.writeFile(result); await lock.sync(); await lock.close(); await rename(lockPath, indexPath); published = true;
+      }
       for (const [token, entry] of this.contexts) if (entry.root === repo.root) this.contexts.delete(token);
     } catch (error) {
       // Never release the real index lock while an unconfirmed Git writer may still run.

@@ -12,7 +12,7 @@ const fixtures = gitFixtures('alwaygit-patch-hunks-');
 afterEach(() => { vi.useRealTimers(); return fixtures.cleanup(); });
 const base = Array.from({ length: 35 }, (_, index) => `line ${index + 1}`).join('\n') + '\n';
 function edit(value: string, line: number, text: string): string { const lines = value.split('\n'); lines[line - 1] = text; return lines.join('\n'); }
-function action(metadata: PatchHunks, index = 0, type: 'stage-hunk' | 'unstage-hunk' = 'stage-hunk') {
+function action(metadata: PatchHunks, index = 0, type: 'stage-hunk' | 'unstage-hunk' | 'discard-hunk' = 'stage-hunk') {
   expect(metadata.unavailable).toBeUndefined(); expect(metadata.token).toBeTruthy(); expect(metadata.hunks[index]).toBeDefined();
   return { type, token: metadata.token!, hunkId: metadata.hunks[index].id };
 }
@@ -156,4 +156,76 @@ it('validates only host-issued opaque context and hunk IDs, rejecting arbitrary 
   expect(actionSchema.safeParse({ type: 'stage-hunk', token: randomUUID(), hunkId: randomUUID() }).success).toBe(true);
   expect(actionSchema.safeParse({ type: 'stage-hunk', token: randomUUID(), hunkId: randomUUID(), patch: 'untrusted' }).success).toBe(false);
   expect(actionSchema.safeParse({ type: 'unstage-hunk', token: 'invalid', hunkId: randomUUID() }).success).toBe(false);
+  expect(actionSchema.safeParse({ type: 'discard-hunk', token: randomUUID(), hunkId: randomUUID() }).success).toBe(true);
+  expect(actionSchema.safeParse({ type: 'discard-hunk', token: randomUUID(), hunkId: randomUUID(), path: 'forged.txt' }).success).toBe(false);
+});
+it('discards only one nearby block from a partially staged file and preserves the exact Index', async () => {
+  const { root, service, repo } = await fixtures.setup(); await commitFile(root, 'file.txt', base);
+  const staged = edit(base, 2, 'already staged');
+  await writeFile(path.join(root, 'file.txt'), staged); await git(root, 'add', 'file.txt');
+  const working = edit(edit(staged, 10, 'keep nearby'), 14, 'discard selected');
+  await writeFile(path.join(root, 'file.txt'), working);
+  const index = await readFile(path.join(root, '.git', 'index'));
+  const preview = await service.patchHunks(repo, { path: 'file.txt', area: 'unstaged' });
+  expect(preview.metadata.hunks).toHaveLength(2);
+  await service.execute(repo, action(preview.metadata, 1, 'discard-hunk'));
+  expect(await readFile(path.join(root, 'file.txt'), 'utf8')).toBe(edit(staged, 10, 'keep nearby'));
+  expect(await readFile(path.join(root, '.git', 'index'))).toEqual(index);
+  expect((await readdir(root)).filter(name => name.startsWith('.alwaygit-hunk-'))).toEqual([]);
+  expect((await readdir(path.join(root, '.git'))).filter(name => name.includes('alwaygit-') || name === 'index.lock')).toEqual([]);
+});
+it.each(['crlf', 'mixed', 'no-final-newline'] as const)('discards a block without rewriting unrelated %s bytes', async kind => {
+  const { root, service, repo } = await fixtures.setup();
+  if (kind !== 'no-final-newline') await git(root, 'config', 'core.autocrlf', 'true');
+  const initial = kind === 'no-final-newline' ? base.trimEnd() : base.replaceAll('\n', '\r\n');
+  await commitFile(root, 'file.txt', initial);
+  let working = edit(edit(initial, 2, 'discard this'), 30, 'keep this');
+  if (kind === 'mixed') working = working.replace('keep this\r\n', 'keep this\n');
+  await writeFile(path.join(root, 'file.txt'), working);
+  const index = await readFile(path.join(root, '.git', 'index'));
+  const preview = await service.patchHunks(repo, { path: 'file.txt', area: 'unstaged' });
+  await service.execute(repo, action(preview.metadata, 0, 'discard-hunk'));
+  expect(await readFile(path.join(root, 'file.txt'))).toEqual(Buffer.from(working.replace('discard this', 'line 2')));
+  expect(await readFile(path.join(root, '.git', 'index'))).toEqual(index);
+});
+it.each(['inserted', 'deleted'] as const)('discards an %s block with shifted later changes', async kind => {
+  const { root, service, repo } = await fixtures.setup(); await commitFile(root, 'file.txt', base);
+  const changed = kind === 'inserted' ? base.replace('line 10\n', 'line 10\nextra line\n') : base.replace('line 10\n', '');
+  await writeFile(path.join(root, 'file.txt'), changed.replace('line 14\n', 'keep later\n'));
+  const preview = await service.patchHunks(repo, { path: 'file.txt', area: 'unstaged' });
+  expect(preview.metadata.hunks).toHaveLength(2);
+  await service.execute(repo, action(preview.metadata, 0, 'discard-hunk'));
+  expect(await readFile(path.join(root, 'file.txt'), 'utf8')).toBe(base.replace('line 14\n', 'keep later\n'));
+  expect(await git(root, 'diff', '--cached')).toBe('');
+});
+it.each(['new', 'deleted', 'unborn'] as const)('discards an ordinary %s file block without changing the Index', async kind => {
+  const { root, service, repo } = await fixtures.setup();
+  if (kind !== 'unborn') await commitFile(root, 'file.txt', 'index content without newline');
+  if (kind === 'deleted') await rm(path.join(root, 'file.txt'));
+  else await writeFile(path.join(root, 'new.txt'), 'new content without newline');
+  const filename = kind === 'deleted' ? 'file.txt' : 'new.txt';
+  const preview = await service.patchHunks(repo, { path: filename, area: 'unstaged' });
+  await service.execute(repo, action(preview.metadata, 0, 'discard-hunk'));
+  if (kind === 'deleted') expect(await readFile(path.join(root, filename), 'utf8')).toBe('index content without newline');
+  else await expect(readFile(path.join(root, filename))).rejects.toMatchObject({ code: 'ENOENT' });
+  expect(await git(root, 'diff', '--cached')).toBe('');
+});
+it('rejects stale or staged discard contexts and preserves an external edit during the trial', async () => {
+  const { root, repo } = await fixtures.setup(); await commitFile(root, 'file.txt', base);
+  let mutate = false;
+  const service = new GitService({ environment: async (_repo, args) => {
+    if (mutate && args[0] === 'apply' && args.includes('--check')) { mutate = false; await writeFile(path.join(root, 'file.txt'), edit(base, 2, 'external edit')); }
+    return {};
+  } });
+  await writeFile(path.join(root, 'file.txt'), edit(base, 2, 'previewed'));
+  let preview = await service.patchHunks(repo, { path: 'file.txt', area: 'unstaged' });
+  const index = await readFile(path.join(root, '.git', 'index'));
+  mutate = true;
+  await expect(service.execute(repo, action(preview.metadata, 0, 'discard-hunk'))).rejects.toMatchObject({ code: 'PATCH_CHANGED' });
+  expect(await readFile(path.join(root, 'file.txt'), 'utf8')).toBe(edit(base, 2, 'external edit'));
+  expect(await readFile(path.join(root, '.git', 'index'))).toEqual(index);
+  expect((await readdir(root)).filter(name => name.startsWith('.alwaygit-hunk-'))).toEqual([]);
+  await git(root, 'add', 'file.txt');
+  preview = await service.patchHunks(repo, { path: 'file.txt', area: 'staged' });
+  await expect(service.execute(repo, action(preview.metadata, 0, 'discard-hunk'))).rejects.toMatchObject({ code: 'PATCH_CHANGED' });
 });

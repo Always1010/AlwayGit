@@ -12,7 +12,8 @@ export function patchHunkForRow(hunks: PatchHunks | undefined, row: DiffRow): Pa
   return hunks?.hunks.find(hunk => hunk.beforeCount > 0 && row.beforeLine !== undefined && row.beforeLine >= hunk.beforeStart && row.beforeLine < hunk.beforeStart + hunk.beforeCount
     || hunk.afterCount > 0 && row.afterLine !== undefined && row.afterLine >= hunk.afterStart && row.afterLine < hunk.afterStart + hunk.afterCount);
 }
-export function DiffHunkAction({ hunk, area, disabled, apply }: { hunk: PatchHunk; area: 'staged' | 'unstaged'; disabled: boolean; apply(id: string): void }) {
+export function DiffHunkAction({ hunk, area, disabled, apply, discard }: { hunk: PatchHunk; area: 'staged' | 'unstaged'; disabled: boolean; apply(id: string): void; discard?(hunk: PatchHunk, anchor: HTMLElement): void }) {
   const t = useTranslation(), label = `${t(area === 'staged' ? 'diff.unstageHunk' : 'diff.stageHunk')}: ${hunk.header}`;
-  return <Button className={`diff-hunk-action ${area === 'staged' ? 'diff-hunk-right' : 'diff-hunk-left'}`} title={label} aria-label={label} disabled={disabled} onClick={() => apply(hunk.id)}><span aria-hidden="true">{area === 'staged' ? '»' : '«'}</span></Button>;
+  const discardLabel = `${t('diff.discardHunk')}: ${hunk.header}`;
+  return <>{area === 'unstaged' && discard && <Button className="diff-hunk-action diff-hunk-right diff-hunk-discard" title={`${discardLabel}\n${t('diff.discardHunkHint')}`} aria-label={discardLabel} disabled={disabled} onClick={event => discard(hunk, event.currentTarget)}><span aria-hidden="true">»</span></Button>}<Button className={`diff-hunk-action ${area === 'staged' ? 'diff-hunk-right' : 'diff-hunk-left'}`} title={`${label}\n${t(area === 'staged' ? 'diff.unstageHunkHint' : 'diff.stageHunkHint')}`} aria-label={label} disabled={disabled} onClick={() => apply(hunk.id)}><span aria-hidden="true">{area === 'staged' ? '»' : '«'}</span></Button></>;
 }
