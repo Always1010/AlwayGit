@@ -46,12 +46,31 @@ export async function verifyPartialStaging(browser, url) {
     });
     await page.goto(url.replace('?demo=1', ''));
     const diff = page.getByTestId('bottom-dock').getByTestId('diff-preview'), viewport = diff.locator('.diff-viewport');
+    const verifyRowBounds = async button => {
+      const samples = await button.evaluate(element => {
+        const row = element.closest('.diff-line'), previous = row.style.height;
+        try { return [16,18,24,36].map(height => {
+          row.style.height = height + 'px';
+          const bounds = row.getBoundingClientRect(), gutter = row.querySelector('.diff-hunk-gutter').getBoundingClientRect();
+          const buttons = [...row.querySelectorAll('.diff-hunk-action')].map(button => { const box = button.getBoundingClientRect(), glyph = button.querySelector('span').getBoundingClientRect(); return {top:box.top,bottom:box.bottom,width:box.width,center:(glyph.top+glyph.bottom)/2}; });
+          const sides = [...row.querySelectorAll('.diff-side')].map(side => {const box=side.getBoundingClientRect();return {top:box.top,bottom:box.bottom};});
+          return {height,top:bounds.top,bottom:bounds.bottom,gutterTop:gutter.top,gutterBottom:gutter.bottom,buttons,sides};
+        }); } finally {row.style.height=previous;}
+      });
+      for (const sample of samples) {
+        assert.ok(Math.abs(sample.gutterTop-sample.top)<0.1&&Math.abs(sample.gutterBottom-sample.bottom)<0.1,'The action gutter must fit its '+sample.height+'px row');
+        assert.ok([...sample.buttons,...sample.sides].every(box=>box.top>=sample.top-0.1&&box.bottom<=sample.bottom+0.1),'Buttons and colored sides must never overlap the next line');
+        assert.ok(sample.buttons.every(box=>Math.abs(box.center-(sample.top+sample.bottom)/2)<0.1),'Chevrons must be vertically centered');
+        assert.ok(sample.buttons.every(box=>Math.abs(box.width-sample.buttons[0].width)<0.1),'The two action slots must be symmetric');
+      }
+    };
     const firstStage = diff.locator('[data-hunk-id="11111111-1111-4111-8111-111111111111"]').getByRole('button', { name: 'Stage block', exact: true });
     await firstStage.waitFor();
     const anchor = async () => { await viewport.evaluate(element => { element.scrollTop = 36 * 18; element.dispatchEvent(new Event('scroll')); }); await firstStage.waitFor(); return viewport.evaluate(element => element.scrollTop); };
     const initialScroll = await anchor();
     assert.ok(initialScroll > 0, 'The fixture exercises a distant hunk and nonzero reading position');
     const geometry=await firstStage.evaluate(element=>{const line=element.closest('.diff-line'),gutter=element.parentElement;return {gutter:gutter.getBoundingClientRect().width,number:line.querySelector('.line-number').getBoundingClientRect().width};});
+    await verifyRowBounds(firstStage);
     assert.equal(geometry.gutter,32,'The center action gutter stays 32px wide');
     assert.ok(geometry.number<32,'Line numbers no longer reserve a wide action column');
     assert.equal(await firstStage.getAttribute('title'),'Stage block','Stage tooltip contains only the action name');
@@ -83,6 +102,7 @@ export async function verifyPartialStaging(browser, url) {
     await unstage.waitFor();
     await viewport.evaluate(element => { element.scrollTop = 36 * 18; element.dispatchEvent(new Event('scroll')); });
     const stagedScroll = await viewport.evaluate(element => element.scrollTop);
+    await verifyRowBounds(unstage);
     assert.equal(await unstage.getAttribute('title'),'Unstage block','Unstage tooltip contains only the action name');
     assert.equal(await unstage.innerText(),'»','Unstaging points from HEAD to Index');
     await diff.screenshot({path:'artifacts/partial-staging-staged.png'});
