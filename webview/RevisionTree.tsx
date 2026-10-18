@@ -8,6 +8,11 @@ import { Button, Empty, Icon } from './ui';
 import { VirtualFileRows } from './VirtualFileRows';
 
 type TreeRow = { entry: RevisionTreeEntry; depth: number };
+type SearchContext = { repoId?: string; revision: string; query: string };
+
+function sameSearchContext(left: SearchContext, right: SearchContext): boolean {
+  return left.repoId === right.repoId && left.revision === right.revision && left.query === right.query;
+}
 
 function sizeLabel(bytes?: number): string {
   if (bytes === undefined) return '';
@@ -34,7 +39,16 @@ export function RevisionTree({ revision, context }: { revision: string; context:
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState<RevisionTreeSearchPage>();
   const [searching, setSearching] = useState(false);
-  const treeEpoch = useRef(0), searchEpoch = useRef(0);
+  const treeEpoch = useRef(0), searchEpoch = useRef(0), searchController = useRef<AbortController | undefined>(undefined);
+  const searchContext = useRef<SearchContext>({ repoId: state.repoId, revision, query: query.trim() });
+  searchContext.current = { repoId: state.repoId, revision, query: query.trim() };
+  const cancelSearch = () => { ++searchEpoch.current; searchController.current?.abort(); searchController.current = undefined; };
+  const beginSearch = (context: SearchContext) => {
+    cancelSearch();
+    const controller = new AbortController(); searchController.current = controller;
+    return { request: searchEpoch.current, controller, context };
+  };
+  const currentSearch = ({ request, controller, context }: ReturnType<typeof beginSearch>) => request === searchEpoch.current && !controller.signal.aborted && sameSearchContext(context, searchContext.current);
 
   const load = useCallback(async (treePath: string) => {
     if (!state.repoId || loading.has(treePath) || listings.has(treePath)) return;
@@ -52,7 +66,7 @@ export function RevisionTree({ revision, context }: { revision: string; context:
   }, [state.repoId, revision, listings, loading, state.report]);
 
   useEffect(() => {
-    const request = ++treeEpoch.current; ++searchEpoch.current;
+    const request = ++treeEpoch.current; cancelSearch();
     setListings(new Map()); setExpanded(new Set()); setLoading(new Set([''])); setError(undefined); setQuery(''); setSearch(undefined);
     void rpc<RevisionTreeListing>('revisionTree', state.repoId, { revision }).then(result => {
       if (request === treeEpoch.current && result.revision === revision && result.path === '') setListings(new Map([['', result.entries]]));
@@ -60,15 +74,16 @@ export function RevisionTree({ revision, context }: { revision: string; context:
   }, [state.repoId, revision]);
 
   useEffect(() => {
-    const value = query.trim(), request = ++searchEpoch.current;
-    if (!value) { setSearch(undefined); setSearching(false); return; }
+    const value = query.trim();
+    if (!value) { cancelSearch(); setSearch(undefined); setSearching(false); return cancelSearch; }
+    const pending = beginSearch({ repoId: state.repoId, revision, query: value });
     setSearching(true);
     const timer = window.setTimeout(() => {
-      void rpc<RevisionTreeSearchPage>('revisionTreeSearch', state.repoId, { revision, query: value }).then(result => {
-        if (request === searchEpoch.current && result.revision === revision && result.query === value) setSearch(result);
-      }).catch(cause => { if (request === searchEpoch.current) { setError(cause instanceof Error ? cause.message : String(cause)); state.report(cause); } }).finally(() => { if (request === searchEpoch.current) setSearching(false); });
+      void rpc<RevisionTreeSearchPage>('revisionTreeSearch', state.repoId, { revision, query: value }, { signal: pending.controller.signal }).then(result => {
+        if (currentSearch(pending) && result.revision === revision && result.query === value) setSearch(result);
+      }).catch(cause => { if (currentSearch(pending)) { setError(cause instanceof Error ? cause.message : String(cause)); state.report(cause); } }).finally(() => { if (currentSearch(pending)) { searchController.current = undefined; setSearching(false); } });
     }, 250);
-    return () => window.clearTimeout(timer);
+    return () => { window.clearTimeout(timer); cancelSearch(); };
   }, [query, revision, state.repoId, state.report]);
 
   const expand = (entry: RevisionTreeEntry) => {
@@ -88,18 +103,21 @@ export function RevisionTree({ revision, context }: { revision: string; context:
   const visibleRows = search ? search.entries.map(entry => ({ entry, depth: 0 })) : rootRows;
   const more = async () => {
     if (!search?.nextCursor || !state.repoId) return;
-    setSearching(true);
+    const page = search, context = { repoId: state.repoId, revision, query: query.trim() };
+    if (page.revision !== revision || page.query !== context.query) return;
+    const pending = beginSearch(context);
+    setSearching(true); setError(undefined);
     try {
-      const next = await rpc<RevisionTreeSearchPage>('revisionTreeSearch', state.repoId, { revision, query: search.query, cursor: search.nextCursor });
-      if (next.revision === revision && next.query === search.query) setSearch({ ...next, entries: [...search.entries, ...next.entries], truncated: search.truncated || next.truncated });
-    } catch (cause) { state.report(cause); }
-    finally { setSearching(false); }
+      const next = await rpc<RevisionTreeSearchPage>('revisionTreeSearch', context.repoId, { revision, query: page.query, cursor: page.nextCursor }, { signal: pending.controller.signal });
+      if (currentSearch(pending) && next.revision === revision && next.query === page.query) setSearch({ ...next, entries: [...page.entries, ...next.entries], truncated: page.truncated || next.truncated });
+    } catch (cause) { if (currentSearch(pending)) { setError(cause instanceof Error ? cause.message : String(cause)); state.report(cause); } }
+    finally { if (currentSearch(pending)) { searchController.current = undefined; setSearching(false); } }
   };
 
   return <div className="revision-tree">
     <div className="revision-tree-toolbar">
-      <label className="file-path-filter"><Icon name="search"/><input type="search" value={query} onChange={event => setQuery(event.target.value)} aria-label={t('tree.searchAllPaths')} placeholder={t('tree.searchAllPathsPlaceholder')}/></label>
-      {query && <Button className="icon-only" icon="close" title={t('tree.clearSearch')} aria-label={t('tree.clearSearch')} onClick={() => setQuery('')}/>}
+      <label className="file-path-filter"><Icon name="search"/><input type="search" value={query} onChange={event => { cancelSearch(); setQuery(event.target.value); }} aria-label={t('tree.searchAllPaths')} placeholder={t('tree.searchAllPathsPlaceholder')}/></label>
+      {query && <Button className="icon-only" icon="close" title={t('tree.clearSearch')} aria-label={t('tree.clearSearch')} onClick={() => { cancelSearch(); setQuery(''); }}/>}
     </div>
     <div className="revision-tree-status" aria-live="polite">{search ? t('tree.matches', { count: search.entries.length }) : t('tree.resultTreeAt', { oid: revision.slice(0, 8) })}{search?.truncated ? ` · ${t('tree.searchTruncated')}` : ''}</div>
     <div className="revision-tree-rows" role="tree" aria-label={t('tree.fullRepositoryTree')}>
