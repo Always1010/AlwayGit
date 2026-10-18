@@ -30,7 +30,8 @@
 - 原因：所选结果直接拼接行字节，未验证最终换行边界；未跟踪补丁基于原始磁盘字节，写入对象时未应用路径转换；Index 不含删除路径时文件模式回退为普通文件。
 - 解决方案：拒绝使无换行行落在结果中间的部分选择并提示选完整替换；仅对原先未跟踪的结果应用 Git 路径转换，已有 Index 字节保持原样；从删除补丁元数据恢复模式。大量上下文逐行追加，避免展开过多函数参数。
 - 验证方式：真实 Git 回归覆盖双向 EOF 部分选择拒绝且 Index 不变、未跟踪 autocrlf 与 text/eol 属性转换及工作区字节不变、已删除可执行文件部分取消暂存后的内容与模式；类型、双语资源与差异检查。
-- 相关文件：src/git/patch-hunks.ts、src/i18n/catalogs/lineSelection.json、src/i18n/generated.ts、tests/git-patch-hunks.test.ts。
+- 后续范围：自由选行暂存与取消暂存已按产品决定撤回，本条保留当时的排查记录；当前仍支持整文件和修改块操作。
+- 相关文件：`src/git/patch-hunks.ts`、`tests/git-patch-hunks.test.ts`；历史选行实现见提交 `9d13f1c`、`3cadb36`。
 
 ## BUG-140：Diff 横向滚动时行号与中缝抖动
 

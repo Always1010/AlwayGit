@@ -29,7 +29,7 @@ AlwayGit 是 Workspace 类型的 VS Code 扩展。React 工作台共用一套消
 | `src/git` | `service.ts`、`runner.ts`、`error.ts`、`stash.ts`、`stash-drop.ts`、`default-branch.ts` | 系统 Git 执行、结构化解析、查询、操作、Stash 隔离与身份核验删除及共享仓库队列 |
 | `src/repositories` | `manager.ts`、`catalog-store.ts`、`discovery.ts` | 仓库注册、递归发现、文件监听和持久化 |
 | `src/editor` | `paths.ts`、`documents.ts` | 安全路径解析、Git 内容文档、只读预览和 VS Code 原生 Diff |
-| `src/git`、`src/protocol` | `patch-hunks.ts`、`conflicts.ts`、`history-search.ts`、`file-history.ts`、`tree.ts`、`lfs.ts` | 选行 Index 构造与内容复核、冲突版本身份、结构化历史查询、固定提交目录树，以及 LFS 对象与传输能力 |
+| `src/git`、`src/protocol` | `patch-hunks.ts`、`conflicts.ts`、`history-search.ts`、`file-history.ts`、`tree.ts`、`lfs.ts` | 修改块暂存与内容复核、冲突版本身份、结构化历史查询、固定提交目录树，以及 LFS 对象与传输能力 |
 | `src/protocol` | `types.ts`、`validation.ts`、`session.ts`、`repositories.ts` | 数据模型、RPC 请求响应、运行时校验和仓库展示分组 |
 | `webview` | `App.tsx`、`store.ts`、`rpc.ts`、`demo.ts` | React 组合、Zustand 状态、生产宿主桥接及独立的 Demo 适配器 |
 | `webview` | `Sidebar.tsx`、`History.tsx`、`Details.tsx`、`DiffPreview.tsx` | 四区呈现、对象选择和只读比较 |

@@ -3592,42 +3592,6 @@ export const catalog = {
     "en": "Apply attributes preview",
     "zh-CN": "应用属性预览"
   },
-  "diff.lineBoundary": {
-    "en": "This partial selection would join lines at a missing final newline. Select both sides of the replacement or use the whole block.",
-    "zh-CN": "此部分选择会在缺少末尾换行的位置拼接两行，请选择替换的两侧或使用整块操作。"
-  },
-  "diff.selectLine": {
-    "en": "Select {{side}} line {{line}}",
-    "zh-CN": "选择{{side}}第 {{line}} 行"
-  },
-  "diff.deletedLine": {
-    "en": "deleted",
-    "zh-CN": "删除侧"
-  },
-  "diff.addedLine": {
-    "en": "added",
-    "zh-CN": "新增侧"
-  },
-  "diff.selectedLines": {
-    "en": "Selected changes: {{count}} lines",
-    "zh-CN": "已选择 {{count}} 行改动"
-  },
-  "diff.selectLinesHint": {
-    "en": "Select changed line numbers; Shift selects a range, Ctrl/Cmd adds lines.",
-    "zh-CN": "点击修改行号选择；Shift 连选，Ctrl/Cmd 追加。替换需选择两侧。"
-  },
-  "diff.stageLines": {
-    "en": "Stage selected lines",
-    "zh-CN": "暂存所选行"
-  },
-  "diff.unstageLines": {
-    "en": "Unstage selected lines",
-    "zh-CN": "取消暂存所选行"
-  },
-  "diff.clearLineSelection": {
-    "en": "Clear selected lines",
-    "zh-CN": "清除行选择"
-  },
   "manager.theRepositoryOrGroupNoLongerExists": {
     "en": "The repository or group no longer exists.",
     "zh-CN": "仓库或分组已不存在。"
@@ -8339,15 +8303,6 @@ export interface MessageParameters {
   "lfs.before": {  };
   "lfs.after": {  };
   "lfs.apply": {  };
-  "diff.lineBoundary": {  };
-  "diff.selectLine": { side: ParameterValue; line: ParameterValue };
-  "diff.deletedLine": {  };
-  "diff.addedLine": {  };
-  "diff.selectedLines": { count: number };
-  "diff.selectLinesHint": {  };
-  "diff.stageLines": {  };
-  "diff.unstageLines": {  };
-  "diff.clearLineSelection": {  };
   "manager.theRepositoryOrGroupNoLongerExists": {  };
   "manager.reorderItemsWithinTheSameLevel": {  };
   "manager.selectARegisteredRepositoryFirst": {  };

@@ -27,7 +27,7 @@ Focused browser entry points:
 
 | Argument | Main scope |
 | --- | --- |
-| `--workflow-additions-only` | Selected-line cross-side/range selection and host IDs, pending-write guards; advanced-search cancellation, stale results and reload persistence; lazy complete trees, global path search and read-only historical opening; conflict-side confirmation, native-editor fallback, separate staging and reviewed continuation |
+| `--workflow-additions-only` | advanced-search cancellation, stale results and reload persistence; lazy complete trees, global path search and read-only historical opening; conflict-side confirmation, native-editor fallback, separate staging and reviewed continuation |
 | `--lfs-only` | Status without automatic transfers; selected-object fetch and branch upload bound to the remote and destination fingerprint; reviewed tracking-rule application; explicit missing historical-object download and refresh of the same fixed comparison target |
 | `--partial-staging-only` | Git-hunk stage/unstage, preserved same-file scroll/selection, stale failures and whole-file fallback, read-only history and isolated comparisons |
 | `--branch-comparison-only` | Fixed endpoints, paged exclusive commits on both sides, two comparison modes, swap, file filters, and isolated commit/Diff inspection |
