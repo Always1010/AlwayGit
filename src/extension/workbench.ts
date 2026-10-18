@@ -9,6 +9,7 @@ import { terminalAckSchema, terminalCreateSchema, terminalIdSchema, terminalInpu
 import { SnapshotCoordinator } from '../application/snapshot-coordinator';
 import { QueryCoordinator } from '../application/query-coordinator';
 import { reflogQuerySchema } from '../protocol/reflog';
+import { lfsHistoricalRequestSchema, lfsTrackRequestSchema } from '../protocol/lfs';
 import { readQueryCategory } from '../protocol/queries';
 import { worktreeOverviewSchema, externalUrlSchema, remoteLinksSchema, remoteTagsSchema, cancelQuerySchema, actionSchema, operationSettingsSchema, requestSchema, historySchema, detailsSchema, comparisonSchema, branchComparisonSchema, cherryPickCheckSchema, revisionTreeSchema, revisionTreeSearchSchema, openRevisionSchema, diffSchema, diffPreviewSchema, diffPageSchema, diffReleaseSchema, fileSchema, sessionSchema, copySchema, openRepositorySchema, openWorkbenchSchema, openWorktreeSchema, repositoryKeysSchema, repositoryCollectionSchema, moveRepositoriesSchema, repositoryDiscoverySchema, cancelRepositoryDiscoverySchema, addRepositoriesSchema, reorderRepositorySchema, createRepositoryCollectionSchema } from '../protocol/validation';
 import * as vscode from 'vscode';
@@ -650,6 +651,10 @@ export class Workbench implements vscode.Disposable {
       case 'remoteLinks': { const data=remoteLinksSchema.parse(request.payload??{});return this.git.remoteLinks?.(repo,data.remote,data.branch)??{repositories:[]}; }
       case 'prepareInteractiveRebase': { if (!this.git.prepareInteractiveRebase) throw new MessageError(message('interactiveRebase.unavailable')); return this.git.prepareInteractiveRebase(repo, prepareRebaseSchema.parse(request.payload ?? {}).start); }
       case 'reflog': { if (!this.git.reflog) throw new MessageError(message('reflog.unavailable')); return this.git.reflog(repo, reflogQuerySchema.parse(request.payload ?? {})); }
+      case 'lfsStatus': { if (!this.git.lfsStatus) throw new MessageError(message('lfs.unavailable')); return this.git.lfsStatus(repo); }
+      case 'lfsDestinations': { if (!this.git.lfsDestinations) throw new MessageError(message('lfs.unavailable')); return this.git.lfsDestinations(repo); }
+      case 'lfsHistoricalStatus': { if (!this.git.lfsHistoricalObject) throw new MessageError(message('lfs.unavailable')); const { content: _content, ...metadata } = await this.git.lfsHistoricalObject(repo, lfsHistoricalRequestSchema.parse(request.payload), 0); return metadata; }
+      case 'lfsTrackPreview': { if (!this.git.lfsTrackPreview) throw new MessageError(message('lfs.unavailable')); return this.git.lfsTrackPreview(repo, lfsTrackRequestSchema.parse(request.payload)); }
       case 'worktreeOverview': { const data = worktreeOverviewSchema.parse(request.payload ?? {}); if (!this.git.worktreeOverview) throw new MessageError(message('overview.unavailable')); return this.git.worktreeOverview(repo, data.paths); }
       case 'history': return this.git.history(repo, { limit: vscode.workspace.getConfiguration('alwaygit').get<number>('historyPageSize', 300), ...historySchema.parse(request.payload ?? {}) });
       case 'cherryPickCheck': { const data=cherryPickCheckSchema.parse(request.payload); return this.git.cherryPickCheck(repo,data.commits,data); }

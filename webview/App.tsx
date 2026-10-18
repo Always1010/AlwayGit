@@ -50,6 +50,7 @@ import { repositoryViewState } from './repositoryState';
 import { useShortcuts, useWorkbenchKeyboard } from './shortcuts';
 
 const HelpDialog = lazy(() => import('./HelpDialog'));
+const LfsDialog = lazy(() => import('./LfsDialog').then(module => ({ default: module.LfsDialog })));
 
 export function App() {
   const state=useWorkbenchFields('repoId','language','changeListMode','operationSettings','appearance','layout','snapshot','loading','catalogState','catalogError','repositories','busy','activity','diffTarget','notice','error','actionFeedback','checkoutFailure','stashApplyFailure','remoteRequest','operationReview','settingsBaseline','locateHead','refresh','execute','selectWorking','restoreLayout','beginSettings','setLayout'),t=useTranslation(),[dialog,setDialog]=useState<DialogRequest>(),[repositoryDialog,setRepositoryDialog]=useState(false),[repositoryRemoval,setRepositoryRemoval]=useState<RepositoryGroup[]>(),[repositoryFetch,setRepositoryFetch]=useState<Repository[]>(),[context,setContext]=useState<{x:number;y:number;target:MenuTarget;anchor:HTMLElement}>();
@@ -79,6 +80,7 @@ export function App() {
     if (event.type === 'showWorkbenchLocations') { setContext(undefined); setToolbarMenu(undefined); setLocationSettings(current => current ?? event.locations); }
   }), []);
   const [reflogOpen,setReflogOpen]=useState(false);
+  const [lfsOpen,setLfsOpen]=useState(false);
   const [helpOpen,setHelpOpen]=useState(false);
   const [overviewOpen,setOverviewOpen]=useState(false);
   const previousOverviewRegion=useRef(region);
@@ -100,7 +102,7 @@ export function App() {
   useLayoutEffect(()=>{document.documentElement.lang=state.language;},[state.language]);
   useEffect(()=>{if(connected){if(!demoMode)void rpc('workbenchReady').catch(useWorkbench.getState().report);void useWorkbench.getState().initialize();}},[]);
   useEffect(()=>{setDialog(undefined);setContext(undefined);setToolbarMenu(undefined);},[state.repoId,state.language]);
-  useEffect(()=>{setCommitRepoId(undefined);setReflogOpen(false);},[state.repoId]);
+  useEffect(()=>{setCommitRepoId(undefined);setReflogOpen(false);setLfsOpen(false);},[state.repoId]);
   const closeMenu=useCallback(()=>setContext(undefined),[]);
   const host=useCallback(async(method:RpcRequest['method'],payload?:unknown,repoId?:string)=>{
     const current=useWorkbench.getState();try{await rpc(method,repoId??current.repoId,payload);if(demoMode&&method!=='copyText')useWorkbench.setState({notice:translate(current.language, "workbench.demoNativeVSCodeCommandPreview")});}catch(error){current.report(error);}
@@ -139,7 +141,7 @@ export function App() {
       if(request===projectRequest.current&&useWorkbench.getState().repoId===repoId)current.report(error);
     });
   },[]);
-  useWorkbenchKeyboard(blockInteraction || !!(reflogOpen||locationSettings||state.remoteRequest||commitRepoId||dialog||repositoryDialog||repositoryRemoval||repositoryFetch||context||toolbarMenu||helpOpen||state.settingsBaseline||state.checkoutFailure||state.operationReview));
+  useWorkbenchKeyboard(blockInteraction || !!(lfsOpen||reflogOpen||locationSettings||state.remoteRequest||commitRepoId||dialog||repositoryDialog||repositoryRemoval||repositoryFetch||context||toolbarMenu||helpOpen||state.settingsBaseline||state.checkoutFailure||state.operationReview));
   useLayoutEffect(()=>{const element=mainPanel.current;if(!element)return;const measure=()=>setMainPanelHeight(element.clientHeight);measure();const observer=new ResizeObserver(measure);observer.observe(element);return()=>observer.disconnect();},[]);
   const snapshot=state.snapshot,layout=state.layout,unpushed=snapshot?.unpushed??snapshot?.ahead??0,repositoryState=repositoryViewState(snapshot,!!state.repoId,state.loading),hasRepositories=state.repositories.length>0;
   const canOperate=!!snapshot&&!state.busy,canPush=canOperate&&!!snapshot?.branch,canStash=canOperate&&!!snapshot?.changes.length&&!snapshot?.operation.kind;
@@ -163,11 +165,12 @@ export function App() {
   const branchState=repositoryState==='branch'?t("workbench.currentBranch", { branch: (snapshot!.branch) }):repositoryState==='detached'?uiText("workbench.detachedHEAD"):repositoryState==='opening'?t("workbench.openingRepository"):repositoryState==='unavailable'?t("workbench.repositoryUnavailable"):t("workbench.noRepositorySelected");
   const branchTitle=snapshot?[snapshot.repository.name,branchState,snapshot.upstream?t("workbench.upstream", { upstream: (snapshot.upstream) }):undefined].filter(Boolean).join('\n'):branchState;
   const maxDiffHeight=Math.max(130,(mainPanelHeight||576)-126),diffHeight=Math.min(layout.diff,maxDiffHeight);
-  const menuApi=useMemo<MenuApi>(()=>({open,checkout,startCommit,compareBranches:(base,target)=>{ const repoId=useWorkbench.getState().repoId; if(repoId){setContext(undefined);setBranchComparison({repoId,base,target});} },openDiff:target=>void host('diff',target),editFile:target=>void edit(target),host,addRepository,removeRepositories:groups=>{setContext(undefined);setRepositoryRemoval(groups);},fetchRepositories:repositories=>setRepositoryFetch(repositories)}),[open,checkout,startCommit,host,edit,addRepository]);
+  const menuApi=useMemo<MenuApi>(()=>({openLfs:repoId=>{setContext(undefined);void (async()=>{if(useWorkbench.getState().repoId!==repoId)await useWorkbench.getState().selectRepository(repoId);setLfsOpen(true);})();},open,checkout,startCommit,compareBranches:(base,target)=>{ const repoId=useWorkbench.getState().repoId; if(repoId){setContext(undefined);setBranchComparison({repoId,base,target});} },openDiff:target=>void host('diff',target),editFile:target=>void edit(target),host,addRepository,removeRepositories:groups=>{setContext(undefined);setRepositoryRemoval(groups);},fetchRepositories:repositories=>setRepositoryFetch(repositories)}),[open,checkout,startCommit,host,edit,addRepository]);
   const sidebarActions=useCallback((target:MenuTarget)=>menuFor(target,menuApi).items,[menuApi]);
   const cherryPickCheck=useCherryPickCheck(state.repoId,state.snapshot?.head,state.snapshot?.branch,context?.target);
   const menu=context?menuFor(context.target,menuApi,cherryPickCheck):undefined;
   const toolbarMenuItems: MenuItem[] = [
+    { label:t('lfs.title'),icon:'database',disabled:!snapshot,run:()=>setLfsOpen(true) },
     { label:t('reflog.open'),icon:'history',disabled:!snapshot,run:()=>setReflogOpen(true) },
     { label: t('workbench.locateHEAD'), icon: 'location', shortcut: 'head', disabled: !snapshot?.head, reason: t('workbench.locateTheCurrentCommitHEAD'), run: state.locateHead },
     { label: t('workbench.openRepositoryFolder'), iconContent: <OpenRepositoryFolderIcon/>, shortcut: 'repository', testId: 'open-project', disabled: !snapshot, reason: snapshot ? `${t('workbench.openRepositoryFolder')}\n${t('workbench.switchesToItsVSCodeWindowWhenAlreadyOpen')}\n${snapshot.repository.root}` : t('workbench.selectARepositoryFirst'), run: openRepository },
@@ -220,6 +223,7 @@ export function App() {
     {state.checkoutFailure&&snapshot&&<CheckoutFailureDialog onClose={()=>{setDialog(undefined);useWorkbench.setState({checkoutFailure:undefined,error:undefined});}} host={host}/>}
     {state.settingsBaseline&&<SettingsDialog theme={theme}/>}
     {reflogOpen&&state.repoId&&snapshot&&<ReflogDialog repoId={state.repoId} snapshot={snapshot} onClose={()=>setReflogOpen(false)}/>}
+    {lfsOpen&&state.repoId&&snapshot&&<Suspense fallback={null}><LfsDialog repoId={state.repoId} snapshot={snapshot} onClose={()=>setLfsOpen(false)}/></Suspense>}
     {helpOpen&&<Suspense fallback={null}><HelpDialog onClose={()=>setHelpOpen(false)}/></Suspense>}
     {state.remoteRequest&&<RemoteRequestDialog key={state.remoteRequest.identity}/>}
     {blockInteraction&&<OperationProgress key={`${state.repoId}-${progressFeedback?.id ?? 'host'}`} feedback={progressFeedback}/>}

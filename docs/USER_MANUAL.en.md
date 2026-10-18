@@ -1124,6 +1124,26 @@ The results bar retains the operation name, target, and success or failure statu
 | Diff cannot complete | Whether the file is binary, has encoding issues, or reached a resource limit | Check the error; text is limited to 32 MiB per side, with no partial comparison shown on failure |
 | The commit graph has no connecting lines | Whether a search is active or no references are checked | Clear the search or adjust the reference scope |
 
+<a id="git-lfs"></a>
+
+### Git LFS objects and common operations
+
+Historical commit, comparison, and full-tree previews use cached LFS content after verifying its SHA-256 and size. Text is limited to 32 MiB per side and images to 4 MiB per side. Missing objects show their ID, size, and a download action. Select a remote and confirm to fetch only the fixed commit/path object into the cache, then refresh the current preview without checking out the commit or restoring working files. Isolated previews do not offer downloads; oversized local content shows a specific explanation.
+
+Open **Git LFS** from the toolbar's More menu, a repository context menu, or a file context menu. The panel checks the current extension host's Git LFS version and process-filter configuration on demand. It lists LFS files in the current index, full SHA-256 object IDs, sizes, pointer or content state in the working tree, and local object-cache state. A present cache entry checks file type and size only; it does not verify the content hash. Status checks never download objects. If Git LFS is unavailable, the panel explains the host requirement without installing tools or changing Git configuration.
+
+| Operation | Scope |
+| --- | --- |
+| Fetch current objects | Download LFS objects referenced by the current commit into the cache; leave working files unchanged |
+| Fetch selected | Download selected list objects still referenced by the current commit; paths containing commas or trailing whitespace require fetching the whole current commit |
+| Restore from cache | Replace current LFS pointers from existing cached objects without contacting the remote; Git LFS protects modified files |
+| Download and restore | Run LFS pull for the current branch, downloading objects and restoring files without fetching or merging Git commits |
+| Retry branch object upload | Upload the current local branch's LFS objects to the chosen remote without pushing Git branch references |
+
+Choose a remote and explicitly start an operation. Failures retain errors and logs; resolve authentication, permissions, network, or missing-object problems before retrying. AlwayGit does not rerun failed commands; Git LFS transfer and SSH retry settings use their supported minimum. The Git LFS status area retains its pending upload candidates and staging information. Candidates are inferred from local refs and configuration and **do not verify remote object availability**. The file list shows at most the first 1,000 entries and supports refresh. Status and selection are bound to the current branch and HEAD. Changes to the Git/LFS destination configuration require a fresh review; network commands use the captured configuration snapshot.
+
+Tracking rules accept literal filenames or glob patterns. Preview the root `.gitattributes` changes before applying them. Unrelated rules and the index remain intact; edits remain unstaged. Literal filenames are anchored to the repository root and escape glob characters according to the host platform; patterns ending in whitespace require manual attribute editing. Switching branches or changing HEAD invalidates the preview. Untrack removes only an exactly matching standard LFS rule; custom rules and nested attributes need manual review. Adding or removing a rule does not migrate existing content, rewrite history, or re-stage files. Migration, cache pruning, file locks, and global Git configuration are outside this panel's scope.
+
 <a id="section-11-05"></a>
 
 ### Environment requirements and support boundaries
@@ -1134,7 +1154,7 @@ Git runs in the VS Code extension host where the repository resides. The product
 
 **Conflict workflow:** Choose Resolve conflicts in the operation bar and inspect each file and both source commits. Open the native merge editor for ordinary text, save, then mark and stage. Manual working-file editing remains available when native integration is unavailable. For modify/delete conflicts, explicitly choose a complete side or its deletion; this replaces saved manual edits and still requires staging. During Rebase, stage 2 is the target result and stage 3 is the replayed commit. After resolving remaining entries, review staged results before Continue. Refresh changed or expired choices; staged does not mean correct.
 
-Current scope: whole-file and Git-hunk staging, standard and interactive Rebase, commit reordering, Squash/Fixup, remote branch management, explicit Tag Push, and lease-protected remote Tag deletion. Not currently provided: Format Patch, remote Tag replacement, or freely floating panels.
+Current scope: whole-file, Git-hunk and freely selected-line staging, standard and interactive Rebase, commit reordering, Squash/Fixup, remote branch management, explicit Tag Push, and lease-protected remote Tag deletion. Not currently provided: Format Patch, remote Tag replacement, or freely floating panels.
 
 | Setting | Default or range | Description |
 | --- | --- | --- |

@@ -1,9 +1,10 @@
+import { parseLfsPointer } from '../git/lfs';
 import { message as localizeMessage, MessageError, translate } from '../i18n/index';
 import * as vscode from 'vscode';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { open, lstat, readlink } from 'node:fs/promises';
-import type { ContentSource, DiffImage, DiffPreview, DiffTarget, GitServiceContract, Repository, Snapshot } from '../protocol/types';
+import type { ContentSource, DiffImage, DiffPreview, HistoricalLfsPreviewObject, DiffTarget, GitServiceContract, Repository, Snapshot } from '../protocol/types';
 import { safeWorkingPath } from './paths';
 import { IndexedTextDiff } from './text-diff';
 import type { DiffPage } from '../protocol/diff';
@@ -120,8 +121,9 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
     const comparison = await this.comparison(repo, target);
     const preview = await this.previewComparison(repo, comparison);
     if (preview.kind !== 'text') throw new MessageError(localizeMessage("documents.imagesAndBinaryFilesCanOnlyBeViewedInTheAlwayGitDiffPreview"));
-    const uri = (side: Side) => 'workingPath' in side ? vscode.Uri.file(side.workingPath) : this.uri(repo, 'text' in side ? side.text : side.source, side.label, side.path);
-    await vscode.commands.executeCommand('vscode.diff', uri(comparison.left), uri(comparison.right), comparison.label, { viewColumn: vscode.ViewColumn.Active, preview: false, preserveFocus: false });
+    const uri = (side: Side, position: 'left' | 'right') => 'workingPath' in side ? vscode.Uri.file(side.workingPath) : this.uri(repo,
+      preview.lfs?.some(object => object.side === position && object.resolved) ? preview[position] : 'text' in side ? side.text : side.source, side.label, side.path);
+    await vscode.commands.executeCommand('vscode.diff', uri(comparison.left, 'left'), uri(comparison.right, 'right'), comparison.label, { viewColumn: vscode.ViewColumn.Active, preview: false, preserveFocus: false });
   }
   async preview(repo: Repository, target: DiffTarget, owner?: object): Promise<DiffPreview> {
     const comparison = await this.comparison(repo, target);
@@ -198,11 +200,42 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
   }
   private async readSide(repo: Repository, side: Side, maxBytes: number): Promise<Buffer> {
     if ('text' in side) return Buffer.from(side.text, 'utf8');
-    if ('source' in side) return this.git.content(repo, side.source, maxBytes);
+    // The sentinel byte is for disk reads. Git's bounded API cannot accept a
+    // limit above MAX_DOCUMENT; complete blobs are checked after the full read.
+    if ('source' in side) return this.git.content(repo, side.source, maxBytes > MAX_DOCUMENT ? undefined : maxBytes);
     return this.readWorking(side.workingPath, maxBytes);
   }
   private async previewComparison(repo: Repository, comparison: Comparison): Promise<DiffPreview> {
-    const read = (side: Side, maxBytes = MAX_PREVIEW_BYTES + 1) => this.readSide(repo, side, maxBytes);
+    const initial = new Map<Side, Buffer>(), resolved = new Map<Side, Buffer>(), lfs: HistoricalLfsPreviewObject[] = [];
+    let unavailable: 'lfs-missing' | 'lfs-too-large' | 'lfs-unavailable' | undefined;
+    await Promise.all((['left', 'right'] as const).map(async position => {
+      const side = comparison[position], bytes = await this.readSide(repo, side, MAX_PREVIEW_BYTES + 1); initial.set(side, bytes);
+      if (!('source' in side) || side.source.kind !== 'revision') return;
+      const pointer = parseLfsPointer(bytes); if (!pointer) return;
+      const source = side.source;
+      let object;
+      try { object = await this.git.lfsHistoricalObject?.(repo, { revision: source.revision, path: source.path }, pointer.size <= MAX_DOCUMENT ? MAX_DOCUMENT : 0); }
+      catch (error) {
+        // A symlink target is ordinary immutable text, even if it resembles a pointer.
+        if (['LFS_NOT_POINTER', 'INVALID_PATH'].includes((error as { code?: string }).code ?? '')) return;
+        throw error;
+      }
+      const metadata: HistoricalLfsPreviewObject = { ...pointer, revision: source.revision, path: source.path, side: position,
+        localObject: object?.localObject ?? 'unknown', resolved: !!object?.content, downloadable: !!this.git.lfsHistoricalObject };
+      lfs.push(metadata);
+      if (object?.content) resolved.set(side, object.content);
+      else unavailable = pointer.size > MAX_DOCUMENT ? 'lfs-too-large' : object?.localObject === 'missing' ? 'lfs-missing' : 'lfs-unavailable';
+    }));
+    lfs.sort((a, b) => a.side.localeCompare(b.side));
+    if (unavailable) return { kind: 'binary', reason: unavailable, path: comparison.path, leftLabel: comparison.left.label, rightLabel: comparison.right.label, lfs };
+    // Verified cached objects are read once and retained only for this comparison.
+    // Image/text classification and complete reads reuse those same bytes.
+    const read = async (side: Side, maxBytes = MAX_PREVIEW_BYTES + 1) => resolved.has(side) ? resolved.get(side)!.subarray(0, maxBytes)
+      : maxBytes <= MAX_PREVIEW_BYTES + 1 ? initial.get(side)!.subarray(0, maxBytes) : this.readSide(repo, side, maxBytes);
+    const preview = await this.classifyComparison(comparison, read);
+    return lfs.length ? { ...preview, lfs } : preview;
+  }
+  private async classifyComparison(comparison: Comparison, read: (side: Side, maxBytes?: number) => Promise<Buffer>): Promise<DiffPreview> {
     const [left, right] = await Promise.all([read(comparison.left), read(comparison.right)]);
     const initialHeaders = [left, right].map(bytes => bytes.length ? imageHeader(bytes) : undefined);
     const nonempty = [left, right].map((bytes, index) => bytes.length ? initialHeaders[index] : true);
@@ -224,7 +257,7 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
     if (binary) return { kind: 'binary', reason: 'unsupported', path: comparison.path, leftLabel: comparison.left.label, rightLabel: comparison.right.label };
     // Prefixes classify content only. Never compare incomplete text.
     const complete = async (side: Side, prefix: Buffer) => {
-      const bytes = prefix.length > MAX_PREVIEW_BYTES ? ('source' in side ? await this.git.content(repo, side.source) : await read(side, MAX_DOCUMENT + 1)) : prefix;
+      const bytes = prefix.length > MAX_PREVIEW_BYTES ? await read(side, MAX_DOCUMENT + 1) : prefix;
       if (bytes.length > MAX_DOCUMENT) throw new MessageError(localizeMessage("documents.textComparisonResourceLimit"));
       return bytes;
     };
