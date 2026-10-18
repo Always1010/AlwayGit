@@ -7,7 +7,7 @@ type Run = (args: string[], input?: Buffer) => Promise<Buffer>;
 interface Node { oid: string; parents: string[]; children: string[] }
 interface Change { status: string; path: string; previousPath?: string }
 interface Edge { oid: string; parent?: string; changes: Change[] }
-export interface FileHistoryEntry { oid: string; fileHistory: NonNullable<Commit['fileHistory']> }
+export interface FileHistoryEntry { oid: string; searchPaths: string[]; fileHistory: NonNullable<Commit['fileHistory']> }
 export interface FileHistoryIndex { entries: FileHistoryEntry[]; filePaths: string[] }
 const ids = (values: string[]) => Buffer.from(values.join('\n') + '\n', 'utf8');
 const edgeKey = (oid: string, parent?: string) => `${oid}:${parent ?? ''}`;
@@ -88,14 +88,15 @@ export async function fileHistoryIndex(run: Run, tips: string[], revision: strin
     byPath.set(key, new Map(edge.changes.filter(change => aliases.has(change.path)).map(change => [change.path, change])));
     bySource.set(key, new Map(edge.changes.filter(change => change.status.startsWith('R') && change.previousPath && aliases.has(change.previousPath)).map(change => [change.previousPath!, change])));
   }
-  const related = new Map<string, { paths: Set<string>; parent?: string }>();
+  const related = new Map<string, { paths: Set<string>; searchPaths: Set<string>; parent?: string }>();
   const record = (oid: string, change: Change, parent?: string) => {
     if (!scope.has(oid)) return;
     let entry = related.get(oid);
-    if (!entry) related.set(oid, entry = { paths: new Set(), parent });
+    if (!entry) related.set(oid, entry = { paths: new Set(), searchPaths: new Set(), parent });
     // Prefer the first actual parent for the normal commit-details comparison.
     if (parent === graph.get(oid)?.parents[0]) entry.parent = parent;
-    entry.paths.add(change.path);
+    entry.paths.add(change.path); entry.searchPaths.add(change.path);
+    if (change.previousPath) entry.searchPaths.add(change.previousPath);
   };
   let seed = revision;
   if (tree) {
@@ -139,7 +140,7 @@ export async function fileHistoryIndex(run: Run, tips: string[], revision: strin
     if (index % 4096 === 0) await checkpoint();
     const node = nodes[index], parents = [...new Set(node.parents.flatMap(parent => nearest.get(parent) ?? []))], entry = related.get(node.oid);
     nearest.set(node.oid, entry ? [node.oid] : parents);
-    if (entry) result.push({ oid: node.oid, fileHistory: { paths: [...entry.paths], ...(entry.parent ? { parent: entry.parent } : {}), graphParents: parents } });
+    if (entry) result.push({ oid: node.oid, searchPaths: [...entry.searchPaths], fileHistory: { paths: [...entry.paths], ...(entry.parent ? { parent: entry.parent } : {}), graphParents: parents } });
   }
   return { entries: result.reverse(), filePaths: head ? [...(seen.get(head) ?? [])] : [] };
 }

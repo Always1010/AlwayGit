@@ -6,7 +6,7 @@ This manual explains how to inspect changes, save revisions, and collaborate wit
 
 Select More actions → Help & Guide, with its question-mark icon, in the upper-right corner of the Workbench to open the offline help. It includes quick start instructions, common tasks, common questions, and the full chapters of this manual. Its language follows the workbench setting.
 
-**About the screenshots:** All 40 shared figures were recaptured on 2026-10-06 from the 0.52.0 source build with an English interface and sample repositories, using the default theme's white appearance on a light host; the language page previews Chinese. The narrow sidebar figure demonstrates region navigation at that viewport size. Images do not include native VS Code chrome. The current toolbar combines the two rows and moves less-used actions into More; follow the text for current entry points. The figures retain the original task examples. The old file preview highlight is now a small dot beside the icon; row backgrounds indicate only the current operation selection. Names, paths, and Commit IDs may differ in your project.
+**About the screenshots:** All 40 shared figures were recaptured on 2026-10-06 from the 0.52.0 source build with an English interface and sample repositories, using the default theme's white appearance on a light host; the language page previews Chinese. The narrow sidebar figure demonstrates region navigation at that viewport size. Images do not include native VS Code chrome. The current toolbar combines the two rows and moves less-used actions into More; follow the text for current entry points. The figures retain the original task examples. The old file preview highlight is now a small dot beside the icon; row backgrounds indicate only the current operation selection. Names, paths, and Commit IDs may differ in your project. History search figures show the message field; advanced filters are now opened with the adjacent filter icon.
 
 ## Read by task
 
@@ -317,20 +317,24 @@ Ref checkboxes control which history you see; branch names and row selections co
 
 <a id="section-04-02"></a>
 
-### Search commit messages and return to full history
+### Search history and return to full history
 
-**Prerequisite:** You know a keyword from the commit message.
+**Prerequisite:** Select the branch or Tag scope to query and identify a message, author, code fragment, or Commit ID.
 
-1. Enter the keyword in the commit search field in History.
-2. Review the commit search results and the match count. A plus sign after the count indicates that additional matches have not yet loaded.
-3. Click a matching commit to inspect its details on the right.
-4. Use the icon for locating the commit in full history to clear the search and locate that commit within the current ref scope. You can also clear the search manually.
+1. Enter a message keyword in History. The query runs after typing pauses. Open advanced history search with the adjacent filter icon.
+2. Optionally enter an author name or email, UTC committer date range, repository-relative file or directory, added or removed single-line code, or Commit ID, then select **Apply filters**. Advanced fields remain drafts until applied; applied fields, the message keyword, and the selected refs combine with AND.
+3. Review the match count; `+` means more matching commits are available. Queries cover the entire history in the selected scope. Use Load More to continue, or the stop icon to cancel a running query. Applying changed conditions cancels the old request and clears old rows immediately.
+4. Select a match to inspect its details. Locate in Full History clears message, advanced, and file-history conditions before locating the commit within the selected refs. Clear advanced filters clears only advanced fields.
 
-**Result:** Search filters commits by message. Returning to full history restores the Graph and column widths.
+**Result:** Conditions match the same commit, and a Merge matching several parents appears once. Conditions persist per repository view and can be restored with Back; existing saved sessions remain compatible. Clearing every search condition restores Graph and the saved column widths.
 
-**Caution:** Search results hide the Graph because intervening commits that do not match may be missing. Do not interpret the absence of connecting lines as damaged history.
+**Matching rules:** Message and author use case-insensitive literal substrings. Paths identify an exact file or directory scope using `/`; `[]` and `*` remain literal and paths do not automatically follow renames. Dedicated file history keeps its rename tracking and intersects advanced matches. Code examines added or removed lines, using case-sensitive literal matching by default; the regex option uses Git extended regular expressions (ERE). When a path is provided, code must match changes within it; without a path, dedicated file history restricts code to that file identity's historical paths, including rename sources, while ordinary history permits any changed file. Commit ID accepts a unique hexadecimal abbreviation of at least four characters or a full ID resolving to an existing commit. Ref names and commands are not accepted; IDs outside the selected scope produce no results.
 
-**Troubleshooting:** If you cannot find the target, check the keyword and ref filter scope. Do not assume that the search covers all unselected branches.
+**Dates:** Both endpoints include the entire UTC calendar day and filter the committer date. Rows show the author date in the interface's local time zone, so the two may differ. Either endpoint may be omitted.
+
+**Caution:** Search hides Graph because intervening non-matching commits may be absent. Oversized queries fail visibly instead of presenting truncated data as complete. Advanced search limits commit-ID output to 8 MiB; narrow the date, path, or refs and retry. Cancelled or failed queries cannot append rows from an old scope.
+
+**Troubleshooting:** Check applied conditions and ref scope, and clear unrelated conditions before retrying. Invalid dates, reversed ranges, and malformed IDs produce an input error. Unresolvable IDs and invalid regular expressions display the Git query error. Searches do not cover unselected branches.
 
 ![Figure 13 Search for native diff with Graph hidden and a matching Commit selected](images/user-manual/figure-13.png)
 

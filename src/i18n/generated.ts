@@ -2730,8 +2730,8 @@ export const catalog = {
     "zh-CN": "作者"
   },
   "history.date": {
-    "en": "Date",
-    "zh-CN": "日期"
+    "en": "Author date",
+    "zh-CN": "作者日期"
   },
   "history.viewWorkingTree": {
     "en": "View Working Tree",
@@ -2912,6 +2912,66 @@ export const catalog = {
   "history.noFileHistoryHint": {
     "en": "No committed changes to this file in the selected references. Select other branches or exit file history.",
     "zh-CN": "所选引用中没有此文件的提交记录。请选择其他分支，或退出文件历史。"
+  },
+  "history.search.advanced": {
+    "en": "Advanced history search",
+    "zh-CN": "高级历史搜索"
+  },
+  "history.search.author": {
+    "en": "Author name or email (literal)",
+    "zh-CN": "作者姓名或邮箱（字面匹配）"
+  },
+  "history.search.path": {
+    "en": "File or directory (literal, repository relative)",
+    "zh-CN": "文件或目录（仓库相对字面路径）"
+  },
+  "history.search.committerAfter": {
+    "en": "Committer date from (UTC, inclusive)",
+    "zh-CN": "提交者日期起点（UTC，含当天）"
+  },
+  "history.search.committerBefore": {
+    "en": "Committer date through (UTC, inclusive)",
+    "zh-CN": "提交者日期终点（UTC，含当天）"
+  },
+  "history.search.code": {
+    "en": "Added or removed code (one line)",
+    "zh-CN": "新增或删除的代码（单行）"
+  },
+  "history.search.commitId": {
+    "en": "Commit ID (4–64 hexadecimal characters)",
+    "zh-CN": "Commit ID（4–64 位十六进制）"
+  },
+  "history.search.regex": {
+    "en": "Code uses Git extended regular expression",
+    "zh-CN": "代码使用 Git 扩展正则表达式"
+  },
+  "history.search.apply": {
+    "en": "Apply filters",
+    "zh-CN": "应用条件"
+  },
+  "history.search.clear": {
+    "en": "Clear advanced filters",
+    "zh-CN": "清除高级条件"
+  },
+  "history.search.cancel": {
+    "en": "Cancel history query",
+    "zh-CN": "取消历史查询"
+  },
+  "history.search.invalid": {
+    "en": "Check the commit ID and date range. Use real calendar dates, ordered from earliest to latest; code must fit one line.",
+    "zh-CN": "请检查 Commit ID 和日期范围，使用有效且顺序正确的日期；代码条件必须为单行。"
+  },
+  "history.search.help": {
+    "en": "All applied conditions and the message box match together within the selected references. Paths are literal; dates use the committer date in UTC. Rows display the author date.",
+    "zh-CN": "已应用条件与提交消息按 AND 组合，并限定在已选引用范围。路径按字面匹配；日期按 UTC 提交者日期筛选，历史行显示作者日期。"
+  },
+  "history.search.authorDate": {
+    "en": "Author date",
+    "zh-CN": "作者日期"
+  },
+  "history.searchCancelled": {
+    "en": "History query cancelled. Retry to load this scope.",
+    "zh-CN": "历史查询已取消，可重试读取当前范围。"
   },
   "host.trustThisWorkspaceUsingVSCodeWorkspaceTrustThen": {
     "en": "Trust this workspace using VS Code Workspace Trust, then reopen AlwayGit.",
@@ -7679,6 +7739,21 @@ export interface MessageParameters {
   "history.allBranches": {  };
   "history.fileGraphHint": {  };
   "history.noFileHistoryHint": {  };
+  "history.search.advanced": {  };
+  "history.search.author": {  };
+  "history.search.path": {  };
+  "history.search.committerAfter": {  };
+  "history.search.committerBefore": {  };
+  "history.search.code": {  };
+  "history.search.commitId": {  };
+  "history.search.regex": {  };
+  "history.search.apply": {  };
+  "history.search.clear": {  };
+  "history.search.cancel": {  };
+  "history.search.invalid": {  };
+  "history.search.help": {  };
+  "history.search.authorDate": {  };
+  "history.searchCancelled": {  };
   "host.trustThisWorkspaceUsingVSCodeWorkspaceTrustThen": {  };
   "host.selectARepositoryOrAFolderContainingRepositories": {  };
   "host.scanFolder": {  };
