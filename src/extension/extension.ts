@@ -32,7 +32,7 @@ export async function activate(context: vscode.ExtensionContext) {
     allowDetachedHead: () => vscode.workspace.getConfiguration('alwaygit').get<boolean>('allowDetachedHead', false) === true,
     onOutput: (repo, text) => output.append(redactSecrets(`[${repo.name}] ${text}`)),
     environment: async (_repo, args) => {
-      if (!['fetch', 'pull', 'push'].includes(args[0])) return {};
+      if (!['fetch', 'pull', 'push'].includes(args[0]) && !(args[0] === 'lfs' && ['fetch', 'pull', 'push'].includes(args[1]))) return {};
       return createGitCredentialEnvironment(vscode.Uri.joinPath(context.extensionUri, 'dist', 'askpass.cjs').fsPath);
     },
   });

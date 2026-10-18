@@ -1,0 +1,110 @@
+{
+  "historicalLfs.metadata": {
+    "en": "Historical Git LFS objects",
+    "zh-CN": "历史 Git LFS 对象",
+    "review": "translated",
+    "context": "webview/HistoricalLfsPreview.tsx / historical LFS preview"
+  },
+  "historicalLfs.left": {
+    "en": "left",
+    "zh-CN": "左侧",
+    "review": "translated",
+    "context": "webview/HistoricalLfsPreview.tsx / historical LFS preview"
+  },
+  "historicalLfs.right": {
+    "en": "right",
+    "zh-CN": "右侧",
+    "review": "translated",
+    "context": "webview/HistoricalLfsPreview.tsx / historical LFS preview"
+  },
+  "historicalLfs.object": {
+    "en": "Git LFS · {{side}} · {{size}} B",
+    "zh-CN": "Git LFS · {{side}} · {{size}} B",
+    "review": "keep",
+    "context": "webview/HistoricalLfsPreview.tsx / historical LFS preview"
+  },
+  "historicalLfs.cached": {
+    "en": "Verified local object",
+    "zh-CN": "已校验本地对象",
+    "review": "translated",
+    "context": "webview/HistoricalLfsPreview.tsx / historical LFS preview"
+  },
+  "historicalLfs.notLoaded": {
+    "en": "Object content is not loaded",
+    "zh-CN": "尚未加载对象内容",
+    "review": "translated",
+    "context": "webview/HistoricalLfsPreview.tsx / historical LFS preview"
+  },
+  "historicalLfs.missing": {
+    "en": "This historical LFS object is missing from the local cache",
+    "zh-CN": "本地缓存缺少此历史 LFS 对象",
+    "review": "translated",
+    "context": "webview/HistoricalLfsPreview.tsx / historical LFS preview"
+  },
+  "historicalLfs.unavailable": {
+    "en": "This historical LFS object cannot be verified locally",
+    "zh-CN": "无法在本地校验此历史 LFS 对象",
+    "review": "translated",
+    "context": "webview/HistoricalLfsPreview.tsx / historical LFS preview"
+  },
+  "historicalLfs.tooLarge": {
+    "en": "LFS object exceeds the 32 MiB text preview limit",
+    "zh-CN": "LFS 对象超过 32 MiB 文本预览上限",
+    "review": "translated",
+    "context": "webview/HistoricalLfsPreview.tsx / historical LFS preview"
+  },
+  "historicalLfs.download": {
+    "en": "Download historical LFS object…",
+    "zh-CN": "下载历史 LFS 对象…",
+    "review": "translated",
+    "context": "webview/HistoricalLfsPreview.tsx / historical LFS preview"
+  },
+  "historicalLfs.confirm": {
+    "en": "Download to local cache",
+    "zh-CN": "下载到本地缓存",
+    "review": "translated",
+    "context": "webview/HistoricalLfsPreview.tsx / historical LFS preview"
+  },
+  "historicalLfs.confirmHint": {
+    "en": "Download this exact historical object from the selected remote. The host verifies the fetch destination before downloading. This fills the LFS cache; it does not check out or stage the file. Preview size limits still apply.",
+    "zh-CN": "从所选远端下载此历史对象，宿主会先校验下载目标。此操作只填充 LFS 缓存，不检出或暂存文件；预览大小限制仍然适用。",
+    "review": "translated",
+    "context": "webview/HistoricalLfsPreview.tsx / historical LFS preview"
+  },
+  "historicalLfs.remote": {
+    "en": "Download remote",
+    "zh-CN": "下载远端",
+    "review": "translated",
+    "context": "webview/HistoricalLfsPreview.tsx / historical LFS preview"
+  },
+  "historicalLfs.noRemote": {
+    "en": "No remote with a verified LFS fetch destination is available.",
+    "zh-CN": "没有可用且已校验的 LFS 下载远端。",
+    "review": "translated",
+    "context": "webview/HistoricalLfsPreview.tsx / historical LFS preview"
+  },
+  "historicalLfs.failed": {
+    "en": "The download did not complete. Check the operation error before retrying.",
+    "zh-CN": "下载未完成，请检查操作错误后重试。",
+    "review": "translated",
+    "context": "webview/HistoricalLfsPreview.tsx / historical LFS preview"
+  },
+  "historicalLfs.isolated": {
+    "en": "Open this comparison in the main repository view to download the object.",
+    "zh-CN": "请在对应仓库的主视图中打开此比较后下载对象。",
+    "review": "translated",
+    "context": "webview/HistoricalLfsPreview.tsx / historical LFS preview"
+  },
+  "historicalLfs.file": {
+    "en": "{{path}} · {{size}} B",
+    "zh-CN": "{{path}} · {{size}} B",
+    "review": "keep",
+    "context": "webview/HistoricalLfsPreview.tsx / immutable historical object metadata"
+  },
+  "historicalLfs.hash": {
+    "en": "sha256:{{oid}}",
+    "zh-CN": "sha256:{{oid}}",
+    "review": "keep",
+    "context": "webview/HistoricalLfsPreview.tsx / immutable historical object metadata"
+  }
+}

@@ -1,5 +1,6 @@
 import { verifyPartialStaging } from './test-partial-staging-ui.mjs';
 import { verifyWorkflowAdditions } from './test-workflow-additions-ui.mjs';
+import { verifyLfs } from './test-lfs-ui.mjs';
 import { verifyInteractiveRebase } from './test-interactive-rebase-ui.mjs';
 import { verifyReflog } from './test-revision-tools-ui.mjs';
 import { verifyOverview } from './test-overview-ui.mjs';
@@ -32,6 +33,7 @@ import { verifyDockedWorkbench, verifyWorkbenchLocations } from './test-workbenc
 // Full and targeted runs share one registry, so a new suite cannot be omitted from full runs.
 const suites = new Map([
   ['workflow-additions', verifyWorkflowAdditions],
+  ['lfs', verifyLfs],
   ['partial-staging', verifyPartialStaging],
   ['interactive-rebase', verifyInteractiveRebase],
   ['reflog', verifyReflog],

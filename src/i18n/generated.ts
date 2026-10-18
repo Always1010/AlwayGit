@@ -2665,6 +2665,78 @@ export const catalog = {
     "en": "Clear the filter to browse the guide.",
     "zh-CN": "清空筛选后可继续浏览指南。"
   },
+  "historicalLfs.metadata": {
+    "en": "Historical Git LFS objects",
+    "zh-CN": "历史 Git LFS 对象"
+  },
+  "historicalLfs.left": {
+    "en": "left",
+    "zh-CN": "左侧"
+  },
+  "historicalLfs.right": {
+    "en": "right",
+    "zh-CN": "右侧"
+  },
+  "historicalLfs.object": {
+    "en": "Git LFS · {{side}} · {{size}} B",
+    "zh-CN": "Git LFS · {{side}} · {{size}} B"
+  },
+  "historicalLfs.cached": {
+    "en": "Verified local object",
+    "zh-CN": "已校验本地对象"
+  },
+  "historicalLfs.notLoaded": {
+    "en": "Object content is not loaded",
+    "zh-CN": "尚未加载对象内容"
+  },
+  "historicalLfs.missing": {
+    "en": "This historical LFS object is missing from the local cache",
+    "zh-CN": "本地缓存缺少此历史 LFS 对象"
+  },
+  "historicalLfs.unavailable": {
+    "en": "This historical LFS object cannot be verified locally",
+    "zh-CN": "无法在本地校验此历史 LFS 对象"
+  },
+  "historicalLfs.tooLarge": {
+    "en": "LFS object exceeds the 32 MiB text preview limit",
+    "zh-CN": "LFS 对象超过 32 MiB 文本预览上限"
+  },
+  "historicalLfs.download": {
+    "en": "Download historical LFS object…",
+    "zh-CN": "下载历史 LFS 对象…"
+  },
+  "historicalLfs.confirm": {
+    "en": "Download to local cache",
+    "zh-CN": "下载到本地缓存"
+  },
+  "historicalLfs.confirmHint": {
+    "en": "Download this exact historical object from the selected remote. The host verifies the fetch destination before downloading. This fills the LFS cache; it does not check out or stage the file. Preview size limits still apply.",
+    "zh-CN": "从所选远端下载此历史对象，宿主会先校验下载目标。此操作只填充 LFS 缓存，不检出或暂存文件；预览大小限制仍然适用。"
+  },
+  "historicalLfs.remote": {
+    "en": "Download remote",
+    "zh-CN": "下载远端"
+  },
+  "historicalLfs.noRemote": {
+    "en": "No remote with a verified LFS fetch destination is available.",
+    "zh-CN": "没有可用且已校验的 LFS 下载远端。"
+  },
+  "historicalLfs.failed": {
+    "en": "The download did not complete. Check the operation error before retrying.",
+    "zh-CN": "下载未完成，请检查操作错误后重试。"
+  },
+  "historicalLfs.isolated": {
+    "en": "Open this comparison in the main repository view to download the object.",
+    "zh-CN": "请在对应仓库的主视图中打开此比较后下载对象。"
+  },
+  "historicalLfs.file": {
+    "en": "{{path}} · {{size}} B",
+    "zh-CN": "{{path}} · {{size}} B"
+  },
+  "historicalLfs.hash": {
+    "en": "sha256:{{oid}}",
+    "zh-CN": "sha256:{{oid}}"
+  },
   "history.commitSearchResults": {
     "en": "Commit Search Results",
     "zh-CN": "提交搜索结果"
@@ -3271,6 +3343,254 @@ export const catalog = {
   "interactiveRebase.path": {
     "en": "Interactive Rebase does not support newline characters in the Git directory or runtime path.",
     "zh-CN": "交互式 Rebase 不支持 Git 目录或运行时路径中包含换行符。"
+  },
+  "lfs.endpointUnsupported": {
+    "en": "The Git LFS endpoint configuration cannot be captured safely. Use regular UTF-8 config files without .lfsconfig includes and refresh.",
+    "zh-CN": "无法安全捕获 Git LFS 端点配置。请使用普通 UTF-8 配置文件，移除 .lfsconfig 中的 include 后刷新。"
+  },
+  "lfs.destinationChanged": {
+    "en": "The Git LFS destination configuration changed or was not reviewed. Refresh and choose the remote again.",
+    "zh-CN": "Git LFS 目标配置已变化或尚未核对，请刷新并重新选择远端。"
+  },
+  "lfs.trailingSpaceUnsupported": {
+    "en": "This operation cannot safely express a filename or pattern ending in whitespace. Edit .gitattributes manually for this path.",
+    "zh-CN": "此操作无法安全表达以空白结尾的文件名或模式，请针对该路径手动编辑 .gitattributes。"
+  },
+  "lfs.historicalCommitRequired": {
+    "en": "Select a full, existing commit object ID for historical LFS content.",
+    "zh-CN": "历史 LFS 内容需要完整且已存在的提交对象 ID。"
+  },
+  "lfs.historicalFileRequired": {
+    "en": "The selected historical path must identify a regular file in that commit.",
+    "zh-CN": "所选历史路径须对应该提交中的普通文件。"
+  },
+  "lfs.notPointer": {
+    "en": "The selected historical file is not a supported Git LFS pointer.",
+    "zh-CN": "所选历史文件不是受支持的 Git LFS 指针。"
+  },
+  "lfs.historicalLimit": {
+    "en": "Historical LFS reads require a whole-byte limit between 0 and 64 MiB; 0 returns metadata only.",
+    "zh-CN": "历史 LFS 读取上限须为 0 至 64 MiB 的整数字节数；0 表示仅返回元数据。"
+  },
+  "lfs.historicalSelectionChanged": {
+    "en": "The historical pointer does not match the selected object, or its path contains a comma or trailing whitespace. Re-select the historical file; comma paths require a Git LFS command outside this action.",
+    "zh-CN": "历史指针与所选对象不匹配，或路径含逗号、末尾空白。请重新选择历史文件；含逗号的路径需在此操作之外使用 Git LFS 命令处理。"
+  },
+  "lfs.title": {
+    "en": "Git LFS",
+    "zh-CN": "Git LFS"
+  },
+  "lfs.hint": {
+    "en": "LFS objects are separate from Git blobs. Status checks use the extension host and never download objects. Remote object availability is unknown.",
+    "zh-CN": "LFS 对象与 Git blob 分开存储。状态检查在扩展宿主执行，不下载对象；远端对象是否存在仍未知。"
+  },
+  "lfs.unavailable": {
+    "en": "Git LFS is unavailable in this host.",
+    "zh-CN": "当前宿主不支持 Git LFS。"
+  },
+  "lfs.missingTool": {
+    "en": "Git LFS is unavailable on the extension host. Install it there separately, then refresh.",
+    "zh-CN": "扩展宿主上无法使用 Git LFS。请单独在该宿主安装后刷新。"
+  },
+  "lfs.configured": {
+    "en": "LFS process filter configured",
+    "zh-CN": "已配置 LFS process 过滤器"
+  },
+  "lfs.notConfigured": {
+    "en": "LFS process filter not configured; check host Git settings",
+    "zh-CN": "未配置 LFS process 过滤器，请检查宿主 Git 设置"
+  },
+  "lfs.invalidOutput": {
+    "en": "Git LFS returned an unsupported file record.",
+    "zh-CN": "Git LFS 返回了不支持的文件记录。"
+  },
+  "lfs.attributesUnsafe": {
+    "en": "The attributes file must be a regular UTF-8 file of at most 1 MiB. Symbolic links are unsupported.",
+    "zh-CN": "属性文件须为不超过 1 MiB 的普通 UTF-8 文件，不支持符号链接。"
+  },
+  "lfs.invalidPattern": {
+    "en": "Enter a repository-relative filename or glob without traversal or control characters.",
+    "zh-CN": "请输入仓库相对文件名或通配模式，不允许越界路径和控制字符。"
+  },
+  "lfs.untrackExact": {
+    "en": "No matching standard LFS rule was found. Review custom rules in .gitattributes manually.",
+    "zh-CN": "未找到对应的标准 LFS 规则，请手动检查 .gitattributes 中的自定义规则。"
+  },
+  "lfs.previewChanged": {
+    "en": "The repository, branch, or attributes changed. Refresh and preview again.",
+    "zh-CN": "仓库、分支或属性文件已变化，请刷新并重新预览。"
+  },
+  "lfs.selectionChanged": {
+    "en": "The selected objects are no longer in the current commit, or a selected path contains a comma or ends in whitespace. Refresh or fetch the whole current commit.",
+    "zh-CN": "所选对象已不在当前提交中，或所选路径含逗号、末尾空白。请刷新，或获取整个当前提交的对象。"
+  },
+  "lfs.invalidRemote": {
+    "en": "Select an existing named remote.",
+    "zh-CN": "请选择已存在的命名远端。"
+  },
+  "lfs.branchRequired": {
+    "en": "This operation requires a current commit and a local branch.",
+    "zh-CN": "此操作需要当前提交与本地分支。"
+  },
+  "lfs.remote": {
+    "en": "Remote",
+    "zh-CN": "远端"
+  },
+  "lfs.fetch": {
+    "en": "Fetch current objects",
+    "zh-CN": "获取当前对象"
+  },
+  "lfs.fetchHint": {
+    "en": "Download objects referenced by the current commit into the local cache. Working files stay as they are.",
+    "zh-CN": "将当前提交引用的对象下载到本地缓存，工作区文件保持原状。"
+  },
+  "lfs.fetchSelected": {
+    "en": "Fetch selected",
+    "zh-CN": "获取所选对象"
+  },
+  "lfs.selectedHint": {
+    "en": "Download selected objects from the current commit. Paths with commas require fetching the whole commit.",
+    "zh-CN": "下载当前提交中的所选对象。含逗号的路径需获取整个提交的对象。"
+  },
+  "lfs.checkout": {
+    "en": "Restore from cache",
+    "zh-CN": "从缓存还原"
+  },
+  "lfs.checkoutHint": {
+    "en": "Replace current LFS pointers using objects already cached locally. No download; modified working files are protected by Git LFS.",
+    "zh-CN": "使用本地已缓存对象替换当前 LFS 指针，不下载对象；Git LFS 会保护已修改的工作区文件。"
+  },
+  "lfs.pull": {
+    "en": "Download and restore",
+    "zh-CN": "下载并还原"
+  },
+  "lfs.pullHint": {
+    "en": "Run LFS pull for the current branch: download LFS objects and restore working files. Git commits are not fetched or merged.",
+    "zh-CN": "对当前分支执行 LFS pull：下载 LFS 对象并还原工作区文件，不获取或合并 Git 提交。"
+  },
+  "lfs.push": {
+    "en": "Retry branch object upload",
+    "zh-CN": "重试分支对象上传"
+  },
+  "lfs.pushHint": {
+    "en": "Upload LFS objects for the current local branch to the selected remote. This does not push Git branch references. AlwayGit does not rerun failed commands; Git LFS uses its minimum internal retry setting.",
+    "zh-CN": "向所选远端上传当前本地分支的 LFS 对象，不推送 Git 分支引用。AlwayGit 不自动重跑失败命令；Git LFS 使用其最小内部重试设置。"
+  },
+  "lfs.cap": {
+    "en": "The file list is limited to the first 1,000 entries.",
+    "zh-CN": "文件列表最多显示前 1,000 条。"
+  },
+  "lfs.selection": {
+    "en": "Selection",
+    "zh-CN": "选择"
+  },
+  "lfs.selectFile": {
+    "en": "Select {{path}}",
+    "zh-CN": "选择 {{path}}"
+  },
+  "lfs.path": {
+    "en": "Path",
+    "zh-CN": "路径"
+  },
+  "lfs.object": {
+    "en": "SHA-256 object / size",
+    "zh-CN": "SHA-256 对象 / 大小"
+  },
+  "lfs.worktree": {
+    "en": "Working file",
+    "zh-CN": "工作区文件"
+  },
+  "lfs.cache": {
+    "en": "Local object cache",
+    "zh-CN": "本地对象缓存"
+  },
+  "lfs.changes": {
+    "en": "Changes",
+    "zh-CN": "更改"
+  },
+  "lfs.bytes": {
+    "en": "bytes",
+    "zh-CN": "字节"
+  },
+  "lfs.pointer": {
+    "en": "Pointer",
+    "zh-CN": "指针"
+  },
+  "lfs.content": {
+    "en": "Content",
+    "zh-CN": "实体内容"
+  },
+  "lfs.missing": {
+    "en": "Missing",
+    "zh-CN": "缺失"
+  },
+  "lfs.unknown": {
+    "en": "Unknown",
+    "zh-CN": "未知"
+  },
+  "lfs.available": {
+    "en": "Present (size checked)",
+    "zh-CN": "存在（已核对大小）"
+  },
+  "lfs.staged": {
+    "en": "Staged",
+    "zh-CN": "已暂存"
+  },
+  "lfs.unstaged": {
+    "en": "Unstaged",
+    "zh-CN": "未暂存"
+  },
+  "lfs.empty": {
+    "en": "No LFS files found in the current index.",
+    "zh-CN": "当前索引中没有发现 LFS 文件。"
+  },
+  "lfs.statusTitle": {
+    "en": "Git LFS status and pending upload candidates",
+    "zh-CN": "Git LFS 状态与待上传候选对象"
+  },
+  "lfs.pendingHint": {
+    "en": "Git LFS determines pending candidates from local refs and configuration. This is not a check of remote object availability.",
+    "zh-CN": "Git LFS 根据本地引用和配置判断待上传候选项，此结果不代表已核对远端对象是否存在。"
+  },
+  "lfs.pattern": {
+    "en": "Filename / glob",
+    "zh-CN": "文件名 / 通配模式"
+  },
+  "lfs.literal": {
+    "en": "Literal filename",
+    "zh-CN": "按字面文件名"
+  },
+  "lfs.operation": {
+    "en": "Tracking operation",
+    "zh-CN": "跟踪操作"
+  },
+  "lfs.track": {
+    "en": "Track",
+    "zh-CN": "跟踪"
+  },
+  "lfs.untrack": {
+    "en": "Untrack",
+    "zh-CN": "取消跟踪"
+  },
+  "lfs.preview": {
+    "en": "Preview attributes",
+    "zh-CN": "预览属性修改"
+  },
+  "lfs.trackHint": {
+    "en": "Rules edit only the root .gitattributes and remain unstaged. Existing content is not migrated or re-added. Untrack removes only the exact standard LFS rule shown in the preview; custom rules and nested attributes require manual review.",
+    "zh-CN": "仅修改根目录 .gitattributes，修改保持未暂存。不会迁移或重新添加已有内容。取消跟踪只移除预览中的精确标准 LFS 规则；自定义规则和子目录属性需手动检查。"
+  },
+  "lfs.before": {
+    "en": "Before",
+    "zh-CN": "修改前"
+  },
+  "lfs.after": {
+    "en": "After",
+    "zh-CN": "修改后"
+  },
+  "lfs.apply": {
+    "en": "Apply attributes preview",
+    "zh-CN": "应用属性预览"
   },
   "diff.lineBoundary": {
     "en": "This partial selection would join lines at a missing final newline. Select both sides of the replacement or use the whole block.",
@@ -7788,6 +8108,24 @@ export interface MessageParameters {
   "help.helpContent": {  };
   "help.readTheFullChapter": {  };
   "help.clearTheFilterToBrowseTheGuide": {  };
+  "historicalLfs.metadata": {  };
+  "historicalLfs.left": {  };
+  "historicalLfs.right": {  };
+  "historicalLfs.object": { side: ParameterValue; size: ParameterValue };
+  "historicalLfs.cached": {  };
+  "historicalLfs.notLoaded": {  };
+  "historicalLfs.missing": {  };
+  "historicalLfs.unavailable": {  };
+  "historicalLfs.tooLarge": {  };
+  "historicalLfs.download": {  };
+  "historicalLfs.confirm": {  };
+  "historicalLfs.confirmHint": {  };
+  "historicalLfs.remote": {  };
+  "historicalLfs.noRemote": {  };
+  "historicalLfs.failed": {  };
+  "historicalLfs.isolated": {  };
+  "historicalLfs.file": { path: ParameterValue; size: ParameterValue };
+  "historicalLfs.hash": { oid: ParameterValue };
   "history.commitSearchResults": {  };
   "history.commitHistory": {  };
   "history.searchCommitHistory": {  };
@@ -7939,6 +8277,68 @@ export interface MessageParameters {
   "interactiveRebase.reviewPaused": {  };
   "interactiveRebase.alreadyApplied": {  };
   "interactiveRebase.path": {  };
+  "lfs.endpointUnsupported": {  };
+  "lfs.destinationChanged": {  };
+  "lfs.trailingSpaceUnsupported": {  };
+  "lfs.historicalCommitRequired": {  };
+  "lfs.historicalFileRequired": {  };
+  "lfs.notPointer": {  };
+  "lfs.historicalLimit": {  };
+  "lfs.historicalSelectionChanged": {  };
+  "lfs.title": {  };
+  "lfs.hint": {  };
+  "lfs.unavailable": {  };
+  "lfs.missingTool": {  };
+  "lfs.configured": {  };
+  "lfs.notConfigured": {  };
+  "lfs.invalidOutput": {  };
+  "lfs.attributesUnsafe": {  };
+  "lfs.invalidPattern": {  };
+  "lfs.untrackExact": {  };
+  "lfs.previewChanged": {  };
+  "lfs.selectionChanged": {  };
+  "lfs.invalidRemote": {  };
+  "lfs.branchRequired": {  };
+  "lfs.remote": {  };
+  "lfs.fetch": {  };
+  "lfs.fetchHint": {  };
+  "lfs.fetchSelected": {  };
+  "lfs.selectedHint": {  };
+  "lfs.checkout": {  };
+  "lfs.checkoutHint": {  };
+  "lfs.pull": {  };
+  "lfs.pullHint": {  };
+  "lfs.push": {  };
+  "lfs.pushHint": {  };
+  "lfs.cap": {  };
+  "lfs.selection": {  };
+  "lfs.selectFile": { path: ParameterValue };
+  "lfs.path": {  };
+  "lfs.object": {  };
+  "lfs.worktree": {  };
+  "lfs.cache": {  };
+  "lfs.changes": {  };
+  "lfs.bytes": {  };
+  "lfs.pointer": {  };
+  "lfs.content": {  };
+  "lfs.missing": {  };
+  "lfs.unknown": {  };
+  "lfs.available": {  };
+  "lfs.staged": {  };
+  "lfs.unstaged": {  };
+  "lfs.empty": {  };
+  "lfs.statusTitle": {  };
+  "lfs.pendingHint": {  };
+  "lfs.pattern": {  };
+  "lfs.literal": {  };
+  "lfs.operation": {  };
+  "lfs.track": {  };
+  "lfs.untrack": {  };
+  "lfs.preview": {  };
+  "lfs.trackHint": {  };
+  "lfs.before": {  };
+  "lfs.after": {  };
+  "lfs.apply": {  };
   "diff.lineBoundary": {  };
   "diff.selectLine": { side: ParameterValue; line: ParameterValue };
   "diff.deletedLine": {  };

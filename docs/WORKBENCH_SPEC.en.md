@@ -326,6 +326,14 @@ Each tab restores its own Webview state. A saved workspace session initializes o
 
 Git path/refresh interval changes require VS Code window reload. Applied interface theme/palette/type/density/language takes effect immediately.
 
+## Git LFS
+
+The toolbar More menu, repository menu, and file menu open the Git LFS panel. On demand it shows the host version, filter configuration, indexed object IDs and sizes, working-file state, and local cache state. Status reads never contact the network. The list is limited to 1,000 entries; pending uploads are local candidates and do not verify remote object availability.
+
+Explicit operations fetch the current commit or selected objects, restore cached content, download and restore, upload current-branch objects, and preview/apply root `.gitattributes` tracking changes. Network operations bind the selected remote, captured effective destination configuration, and reviewed commit. Changes require a refreshed review. Restore uses Git LFS protection for modified files; tracking edits remain unstaged and do not migrate history. A missing Git LFS installation produces host guidance without installing tools or changing global configuration.
+
+Historical Diff, commit-tree previews, and native text Diff can read local LFS objects. Content is verified against SHA-256 and size before use, with a 32 MiB text limit per side and the existing 4 MiB image limit. Any unresolved side produces a placeholder for the whole comparison. Download requires explicit remote selection and confirmation, fetches only the fixed commit/path object into the cache, and refreshes the same preview without checking out a commit or restoring working files. Isolated previews do not offer downloads. Migration, cache pruning, and LFS locks remain outside scope.
+
 ## Reflog and recovery
 
 The top More menu opens a separate Reflog dialog for the current worktree HEAD or a local branch. Entries show Git's original description, event time, actor and full commit ID. Inspect commits, merge parents and file diffs independently of the main Graph, File History and drafts. Bounded snapshots expire after ten minutes and page through at most the latest 5,000 entries; new records do not shift loaded pages. Refresh captures a new snapshot. Git reads support linked worktrees; unavailable objects report an error.

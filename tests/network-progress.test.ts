@@ -9,6 +9,11 @@ import { pathToFileURL } from 'node:url';
 const fixtures = gitFixtures('alwaygit-network-progress-');
 afterEach(async () => { vi.useRealTimers(); await fixtures.cleanup(); });
 describe('network operation progress', () => {
+  it('reports LFS object counts without treating a completed transfer line as operation success', () => {
+    const emit = vi.fn(), parser = new NetworkProgressParser('push', emit);
+    parser.write(Buffer.from('Uploading LFS objects: 100% (2/2), 37 B | 0 B/s, done.\r')); parser.end();
+    expect(emit.mock.lastCall?.[0]).toMatchObject({ command: 'push', phase: 'sending', percent: 100, completed: 2, total: 2 });
+  });
   it('streams split CR lines, throttles updates, and waits for confirmation after sending', async () => {
     vi.useFakeTimers(); const emit = vi.fn(), parser = new NetworkProgressParser('push', emit);
     parser.write(Buffer.from('Counting objects: 25% (1/4)\rCompressing objects: 50% (2/4)\rWriting obj'));

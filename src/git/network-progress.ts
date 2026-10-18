@@ -40,6 +40,11 @@ export class NetworkProgressParser {
   }
   private line(text: string): void {
     const line = text.replace(/\x1b\[[0-9;]*[A-Za-z]/g, '').trim();
+    const lfs = /^(Uploading|Downloading) LFS objects:\s*(\d+)%\s*\((\d+)\/(\d+)\)/.exec(line);
+    if (lfs) {
+      this.state = { command: this.state.command, startedAt: this.state.startedAt, lastOutputAt: this.state.lastOutputAt, phase: lfs[1] === 'Uploading' ? 'sending' : 'receiving', percent: Math.min(100, Number(lfs[2])), completed: Number(lfs[3]), total: Number(lfs[4]) };
+      return;
+    }
     const match = /^(remote:\s*)?(Enumerating objects|Counting objects|Compressing objects|Writing objects|Receiving objects|Resolving deltas):\s*(.*)$/.exec(line);
     if (match) {
       const remote = !!match[1], phase = phases[match[2]], detail = match[3];

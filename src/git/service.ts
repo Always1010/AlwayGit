@@ -33,6 +33,9 @@ import { dropStash } from './stash-drop';
 import { NetworkProgressParser } from './network-progress';
 import { ReflogReader } from './reflog';
 import { RevisionTreeReader } from './tree';
+import { LfsManager } from './lfs';
+import { captureLfsDestinations } from './lfs-destination';
+import { lfsActionSchema, type LfsHistoricalRequest, type LfsTrackRequest } from '../protocol/lfs';
 import type { ReflogQuery } from '../protocol/reflog';
 import type { RevisionTreeRequest, RevisionTreeSearchRequest } from '../protocol/tree';
 import { fileHistoryIndex, type FileHistoryIndex } from './file-history';
@@ -137,7 +140,7 @@ export class GitService implements GitServiceContract {
     if (!readOnly && scopeSignal) throw new GitError(localizeMessage("service.aReadOnlyRequestCannotRunGitMutations"), 'WRITE_IN_READ_SCOPE');
     const unsafe = unsafeTerminations.get(normalized(repo.commonDir));
     if (!readOnly && unsafe) throw unsafe;
-    const prefix = ['-C', execution.root ?? repo.root, ...(args[0] === 'stash' ? [] : ['--literal-pathspecs']), ...[...Object.entries(execution.config ?? {}), ...(execution.configOverrides ?? [])].flatMap(([key, value]) => ['-c', `${key}=${value}`])];
+    const prefix = ['-C', execution.root ?? repo.root, ...(['stash', 'lfs'].includes(args[0]) ? [] : ['--literal-pathspecs']), ...[...Object.entries(execution.config ?? {}), ...(execution.configOverrides ?? [])].flatMap(([key, value]) => ['-c', `${key}=${value}`])];
     const executable = await this.gitPath();
     const batches = splitCleanArguments(executable, prefix, args);
     if (batches.length > 1) {
@@ -154,8 +157,10 @@ export class GitService implements GitServiceContract {
       }
       return { stdout: Buffer.concat(results.map(result => result.stdout)), stderr: Buffer.concat(results.map(result => result.stderr)), code: results.at(-1)?.code ?? 0 };
     }
-    const networkCommand = ['fetch', 'pull', 'push'].includes(args[0]) ? args[0] as NetworkOperationProgress['command'] : undefined;
-    const prepared = prepareGitArguments(networkCommand ? [args[0], '--progress', ...args.slice(1)] : args, execution.input);
+    const lfsNetwork = args[0] === 'lfs' && ['fetch', 'pull', 'push'].includes(args[1]);
+    const networkCommand = (lfsNetwork ? args[1] : ['fetch', 'pull', 'push'].includes(args[0]) ? args[0] : undefined) as NetworkOperationProgress['command'] | undefined;
+    if (lfsNetwork) prefix.push('-c', 'lfs.transfer.maxretries=1', '-c', 'lfs.ssh.retries=1', '-c', 'lfs.fetchrecentalways=false', '-c', 'lfs.fetchprunealways=false', '-c', 'lfs.remote.autodetect=false', '-c', 'lfs.remote.searchall=false', '-c', 'lfs.transfer.enablehrefrewrite=false', '-c', 'core.ignorecase=false');
+    const prepared = prepareGitArguments(networkCommand && !lfsNetwork ? [args[0], '--progress', ...args.slice(1)] : args, execution.input);
     assertGitArgumentBudget(executable, [...prefix, ...prepared.args]);
     const adapter = this.options.environment;
     const supplied = execution.isolated ? undefined : typeof adapter === 'function' ? await adapter(repo, args) : adapter;
@@ -194,7 +199,7 @@ export class GitService implements GitServiceContract {
         args: [...prefix, ...prepared.args],
         // User-requested network operations may need browser authentication;
         // other commands (including remote probes) remain non-interactive.
-        env: { ...commandEnv, GIT_TERMINAL_PROMPT: '0', ...(!['fetch', 'pull', 'push'].includes(args[0]) ? { GCM_INTERACTIVE: 'never' } : {}), GIT_EDITOR: 'true', GIT_SEQUENCE_EDITOR: 'true', ...(['status', 'log', 'show', 'ls-tree', 'ls-files', 'for-each-ref'].includes(args[0]) ? { GIT_OPTIONAL_LOCKS: '0' } : {}), ...execution.env, ...(bindingConfig ? { GIT_CONFIG_SYSTEM: bindingConfig, GIT_CONFIG_NOSYSTEM: '0' } : {}) },
+        env: { ...commandEnv, GIT_TERMINAL_PROMPT: '0', ...(!networkCommand ? { GCM_INTERACTIVE: 'never' } : {}), GIT_EDITOR: 'true', GIT_SEQUENCE_EDITOR: 'true', ...(['status', 'log', 'show', 'ls-tree', 'ls-files', 'for-each-ref'].includes(args[0]) ? { GIT_OPTIONAL_LOCKS: '0' } : {}), ...execution.env, ...(bindingConfig ? { GIT_CONFIG_SYSTEM: bindingConfig, GIT_CONFIG_NOSYSTEM: '0' } : {}) },
         input: prepared.input, signal: execution.signal && scopeSignal ? AbortSignal.any([execution.signal,scopeSignal]) : execution.signal ?? scopeSignal, readOnly, captureBytes,
         timeoutMs: this.options.timeoutMs ?? (args[0] === 'ls-remote' ? 30_000 : networkCommand ? (typeof this.options.networkTimeoutMs === 'function' ? this.options.networkTimeoutMs() : this.options.networkTimeoutMs) ?? 600_000 : undefined), onStop: wrapped?.cancelPrompts, maxOutputBytes: execution.maxOutputBytes ?? this.options.maxOutputBytes,
         onStderr: chunk => { if (!execution.silent) log.write(chunk); progress?.write(chunk); },
@@ -804,6 +809,11 @@ export class GitService implements GitServiceContract {
     return this.interactiveRebase.prepare(repo, await this.snapshot(repo), (args, execution) => this.run(repo, args, false, undefined, execution), start);
   }
   private readonly reflogReader = new ReflogReader();
+  private readonly lfs = new LfsManager();
+  async lfsStatus(repo: Repository) { await this.verify(repo); return this.lfs.status(repo, (args, allowFailure, execution) => this.run(repo, args, allowFailure, undefined, execution)); }
+  async lfsHistoricalObject(repo: Repository, request: LfsHistoricalRequest, maxBytes = 0) { await this.verify(repo); return this.lfs.historicalObject(repo, request, (args, allowFailure) => this.run(repo, args, allowFailure), maxBytes); }
+  async lfsTrackPreview(repo: Repository, request: LfsTrackRequest) { await this.verify(repo); return this.lfs.preview(repo, request, (args, allowFailure, execution) => this.run(repo, args, allowFailure, undefined, execution)); }
+  async lfsDestinations(repo: Repository) { await this.verify(repo); return (await captureLfsDestinations(repo, (args, allowFailure, execution) => this.run(repo, args, allowFailure, undefined, execution))).destinations; }
   async reflog(repo: Repository, query: ReflogQuery = {}) {
     await this.verify(repo);
     return this.reflogReader.read(repo, query, (args, allowFailure) => this.run(repo, args, allowFailure));
@@ -1081,6 +1091,8 @@ export class GitService implements GitServiceContract {
     switch (action.type) {
       case 'conflict.choose': return this.conflicts.choose(repo,action.token,action.side,args=>this.run(repo,args),()=>this.snapshot(repo));
       case 'stage-lines': case 'unstage-lines': case 'stage-hunk': case 'unstage-hunk': case 'discard-hunk': return this.hunks.apply(repo, action, (args, execution) => this.run(repo, args, false, undefined, execution), () => this.status(repo));
+      case 'lfs.fetchHistorical': return this.lfs.execute(repo, lfsActionSchema.parse(action), (args, allowFailure, execution) => this.run(repo, args, allowFailure, undefined, execution), { branch: '' });
+      case 'lfs.track': case 'lfs.fetch': case 'lfs.checkout': case 'lfs.pull': case 'lfs.push': return this.lfs.execute(repo, lfsActionSchema.parse(action), (args, allowFailure, execution) => this.run(repo, args, allowFailure, undefined, execution), await this.status(repo));
       case 'rebase.interactive': return this.interactiveRebase.start(repo, await this.snapshot(repo), (args, execution) => this.run(repo, args, false, undefined, execution), action);
       case 'discard': return this.discard(repo, action, onProgress);
       case 'stage': case 'resolve-and-stage': case 'unstage': {

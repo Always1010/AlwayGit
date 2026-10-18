@@ -20,6 +20,9 @@ export interface ActionFeedback {
 }
 
 export function networkCommand(action: GitAction): NetworkOperationProgress['command'] | undefined {
+  if (action.type === 'lfs.fetch' || action.type === 'lfs.fetchHistorical') return 'fetch';
+  if (action.type === 'lfs.pull') return 'pull';
+  if (action.type === 'lfs.push') return 'push';
   if (action.type === 'push' || action.type === 'fetch' || action.type === 'pull') return action.type;
   if (action.type === 'tag.push' || action.type === 'remote.delete' || action.type === 'tag.create' && action.pushRemote || action.type === 'tag.delete' && action.remote) return 'push';
 }
@@ -29,13 +32,14 @@ export function blocksWorkbench(action: GitAction | string): boolean {
   const type = typeof action === 'string' ? action : action.type;
   if (typeof action !== 'string' && (action.type === 'branch.create' || action.type === 'branch.track')) return !!action.checkout;
   if (type === 'branch.create' || type === 'branch.track') return true;
-  return ['branch.checkout', 'commit.checkout', 'checkout.stash', 'pull', 'merge', 'rebase', 'rebase.interactive', 'reset', 'cherry-pick', 'revert', 'stash.apply', 'operation.continue', 'operation.abort', 'operation.skip', 'discard', 'worktree.remove'].includes(type);
+  return ['lfs.checkout', 'lfs.pull', 'branch.checkout', 'commit.checkout', 'checkout.stash', 'pull', 'merge', 'rebase', 'rebase.interactive', 'reset', 'cherry-pick', 'revert', 'stash.apply', 'operation.continue', 'operation.abort', 'operation.skip', 'discard', 'worktree.remove'].includes(type);
 }
 
 export function actionName(action: GitAction): string {
   const names: Partial<Record<GitAction['type'], string>> = {
     'conflict.choose': uiText('conflicts.chooseVersion'),
     'stage-lines': uiText('diff.stageLines'), 'unstage-lines': uiText('diff.unstageLines'),
+    'lfs.fetchHistorical':uiText('historicalLfs.confirm'), 'lfs.fetch':uiText('lfs.fetch'), 'lfs.checkout':uiText('lfs.checkout'), 'lfs.pull':uiText('lfs.pull'), 'lfs.push':uiText('lfs.push'), 'lfs.track':uiText('lfs.apply'),
     'stage-hunk': uiText('diff.stageHunk'), 'unstage-hunk': uiText('diff.unstageHunk'), 'discard-hunk': uiText('diff.discardHunk'),
     stage: uiText("actionNames.stage"), 'resolve-and-stage': uiText("actionNames.markStage"), unstage: uiText("actionNames.unstage"), discard: uiText("actionNames.discard"), commit: action.type === 'commit' && action.amend ? uiText("actionNames.amend") : uiText("actionNames.commit"),
     fetch: uiText("actionNames.fetch"), pull: uiText("actionNames.pull"), push: uiText("actionNames.push"), 'remote.add':uiText("actionNames.addRemote"), 'branch.create': uiText("actionNames.createBranch"), 'branch.checkout': uiText("actionNames.checkout"), 'commit.checkout': uiText("actionNames.checkout"),
@@ -54,6 +58,7 @@ export function operationName(kind: string): string {
 }
 
 export function actionTarget(action: GitAction, snapshot?: Snapshot): string | undefined {
+  if (action.type === 'lfs.fetchHistorical') return `${action.remote}: ${action.path} · ${action.oid.slice(0, 12)}`;
   if (action.type === 'pull' && action.remote && action.remoteBranch) return `${action.remote}/${action.remoteBranch} → ${action.expectedBranch ?? snapshot?.branch ?? ''}`;
   if (action.type === 'push') {
     const branch = action.branch ?? snapshot?.branch;
