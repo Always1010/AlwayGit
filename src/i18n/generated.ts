@@ -1889,8 +1889,36 @@ export const catalog = {
     "zh-CN": "补丁块预览已变化或过期，请刷新 Diff 后重试。"
   },
   "diff.hunkUnavailable": {
-    "en": "Hunk actions are unavailable for this file or Git operation. Use whole-file Stage / Unstage.",
-    "zh-CN": "此文件或 Git 操作不支持补丁块操作，请使用整文件暂存或取消暂存。"
+    "en": "Block actions are unavailable for this file or Git operation. Use whole-file actions.",
+    "zh-CN": "此文件或 Git 操作不支持分块操作，请使用整文件入口。"
+  },
+  "diff.discardHunk": {
+    "en": "Discard this change block",
+    "zh-CN": "丢弃此修改块"
+  },
+  "diff.stageHunkHint": {
+    "en": "Add this Working Tree block to the Index; keep the file contents.",
+    "zh-CN": "将工作区此块加入暂存区，保留工作区内容。"
+  },
+  "diff.unstageHunkHint": {
+    "en": "Restore this Index block from HEAD; keep the Working Tree file.",
+    "zh-CN": "将暂存区此块恢复为 HEAD 版本，保留工作区文件。"
+  },
+  "diff.discardHunkHint": {
+    "en": "Restore this Working Tree block from the Index.",
+    "zh-CN": "将工作区此块恢复为暂存区版本。"
+  },
+  "diff.discardHunkConfirm": {
+    "en": "Discard this change block?",
+    "zh-CN": "丢弃此修改块？"
+  },
+  "diff.discardHunkWarning": {
+    "en": "Restore only this block from the Index. Its unstaged changes will be lost; staged content and other blocks are kept.",
+    "zh-CN": "仅将此块恢复为暂存区版本。此块未暂存的修改将被移除，已暂存内容及其他块保留。"
+  },
+  "diff.discardHunkDeleteFile": {
+    "en": "This is a new untracked file. Discarding its complete change block deletes the file.",
+    "zh-CN": "这是未跟踪的新增文件，丢弃它的完整修改块会删除该文件。"
   },
   "dock.terminalLabel": {
     "en": "Terminal {{title}}",
@@ -7254,6 +7282,13 @@ export interface MessageParameters {
   "diff.unstageHunk": {  };
   "diff.hunkStale": {  };
   "diff.hunkUnavailable": {  };
+  "diff.discardHunk": {  };
+  "diff.stageHunkHint": {  };
+  "diff.unstageHunkHint": {  };
+  "diff.discardHunkHint": {  };
+  "diff.discardHunkConfirm": {  };
+  "diff.discardHunkWarning": {  };
+  "diff.discardHunkDeleteFile": {  };
   "dock.terminalLabel": { title: ParameterValue };
   "dock.panel": {  };
   "dock.tabs": {  };

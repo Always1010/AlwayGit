@@ -15,10 +15,10 @@ export async function verifyPartialStaging(browser, url) {
       const hunk = (id, start) => ({ id, header: `@@ -${start} +${start} @@`, beforeStart: start, beforeCount: 1, afterStart: start, afterCount: 1 });
       const firstId = '11111111-1111-4111-8111-111111111111', secondId = '22222222-2222-4222-8222-222222222222';
       const token = state => `00000000-0000-4000-8000-00000000000${state}`;
-      const fixture = window.__hunkFixture = { calls: [], staged: false, version: 1, pendingPreviews: [], blockPreview: false, pendingAction: undefined, session: { version: 2, language: 'en', repoId: repo.id, drafts: { [repo.id]: 'Keep hunk draft' }, views: { [repo.id]: { tab: 'changes', selectedFile: 'file.txt' } } } };
+      const fixture = window.__hunkFixture = { calls: [], staged: false, discarded: false, version: 1, pendingPreviews: [], blockPreview: false, pendingAction: undefined, session: { version: 2, language: 'en', repoId: repo.id, drafts: { [repo.id]: 'Keep hunk draft' }, views: { [repo.id]: { tab: 'changes', selectedFile: 'file.txt' } } } };
       const snapshot = () => ({ repository: repo, branch: 'main', head, ahead: 0, behind: 0, remotes: [], changes: [{ path: 'file.txt', indexStatus: fixture.staged ? 'M' : ' ', worktreeStatus: 'M', conflict: false, untracked: false }, { path: 'other.txt', indexStatus: ' ', worktreeStatus: 'M', conflict: false, untracked: false }], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: head }, { name: 'topic', fullName: 'refs/heads/topic', kind: 'local', oid: topic }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: fixture.version });
-      const metadata = area => area === 'staged' ? { token: token(3), hunks: [hunk(firstId, 42)] } : { token: token(fixture.staged ? 2 : 1), hunks: fixture.staged ? [hunk('33333333-3333-4333-8333-333333333333', 46), hunk(secondId, 130)] : [hunk(firstId, 42), hunk('33333333-3333-4333-8333-333333333333', 46), hunk(secondId, 130)] };
-      fixture.releaseAction = () => { fixture.staged = fixture.pendingAction.type === 'stage-hunk'; fixture.version++; fixture.blockPreview = true; fixture.pendingAction.reply(); fixture.pendingAction = undefined; };
+      const metadata = area => area === 'staged' ? { token: token(3), hunks: [hunk(firstId, 42)] } : { token: token(fixture.discarded ? 4 : fixture.staged ? 2 : 1), hunks: fixture.staged || fixture.discarded ? [hunk('33333333-3333-4333-8333-333333333333', 46), hunk(secondId, 130)] : [hunk(firstId, 42), hunk('33333333-3333-4333-8333-333333333333', 46), hunk(secondId, 130)] };
+      fixture.releaseAction = () => { fixture.staged = fixture.pendingAction.type === 'stage-hunk'; if(fixture.pendingAction.type==='discard-hunk')fixture.discarded=true; fixture.version++; fixture.blockPreview = true; fixture.pendingAction.reply(); fixture.pendingAction = undefined; };
       fixture.releasePreviews = () => { fixture.blockPreview = false; fixture.pendingPreviews.splice(0).forEach(reply => reply()); };
       window.acquireVsCodeApi = () => ({ getState: () => fixture.session, setState: state => { fixture.session = state; }, postMessage(request) {
         fixture.calls.push(structuredClone(request));
@@ -35,7 +35,7 @@ export async function verifyPartialStaging(browser, url) {
         if (request.method === 'branchComparison') result = { baseRef: 'refs/heads/main', targetRef: 'refs/heads/topic', baseOid: head, targetOid: topic, mode: 'review', mergeBases: [parent], mergeBase: parent, diffBase: parent, files: [{ path: 'file.txt', status: 'M' }], base: { commits: [commit(head)], total: 1, nextOffset: 1, hasMore: false }, target: { commits: [commit(topic)], total: 1, nextOffset: 1, hasMore: false } };
         if (['diffPreview', 'isolatedDiffPreview'].includes(request.method)) {
           const target = request.payload, staged = target.kind === 'change' && target.area === 'staged', immutable = target.kind !== 'change';
-          result = { kind: 'text', path: target.path, leftLabel: immutable ? 'Immutable before' : staged ? 'HEAD' : 'Index', rightLabel: immutable ? 'Immutable after' : staged ? 'Index' : 'Working Tree', left: immutable || staged || !fixture.staged ? original : first, right: immutable || staged ? first : working,
+          result = { kind: 'text', path: target.path, leftLabel: immutable ? 'Immutable before' : staged ? 'HEAD' : 'Index', rightLabel: immutable ? 'Immutable after' : staged ? 'Index' : 'Working Tree', left: immutable || staged || !fixture.staged ? original : first, right: immutable || staged ? first : fixture.discarded ? working.replace('first hunk change','context 42') : working,
             // Deliberately include metadata for immutable responses to verify the UI boundary too.
             patchHunks: metadata(staged ? 'staged' : 'unstaged') };
           if (fixture.blockPreview && !immutable) { fixture.pendingPreviews.push(reply); return; }
@@ -57,7 +57,10 @@ export async function verifyPartialStaging(browser, url) {
     assert.equal(await firstStage.innerText(),'«','Staging points from Working Tree to Index');
     await firstStage.hover();
     assert.equal(await diff.locator('.hunk-scope').count(),1,'Hover highlights only the selected contiguous change block');
-    await page.screenshot({path:'artifacts/partial-staging-unstaged.png'});
+    await firstStage.focus();
+    await page.mouse.move(10,10);
+    assert.equal(await diff.locator('.hunk-scope').count(),1,'Keyboard focus keeps the complete block highlighted after the pointer leaves');
+    await diff.screenshot({path:'artifacts/partial-staging-unstaged.png'});
     await firstStage.click();
     await page.waitForFunction(() => !!window.__hunkFixture.pendingAction);
     const stageRequest = await page.evaluate(() => window.__hunkFixture.calls.filter(call => call.method === 'action').at(-1));
@@ -80,7 +83,7 @@ export async function verifyPartialStaging(browser, url) {
     await viewport.evaluate(element => { element.scrollTop = 36 * 18; element.dispatchEvent(new Event('scroll')); });
     const stagedScroll = await viewport.evaluate(element => element.scrollTop);
     assert.equal(await unstage.innerText(),'»','Unstaging points from HEAD to Index');
-    await page.screenshot({path:'artifacts/partial-staging-staged.png'});
+    await diff.screenshot({path:'artifacts/partial-staging-staged.png'});
     await unstage.click();
     await page.waitForFunction(() => !!window.__hunkFixture.pendingAction);
     assert.deepEqual(await page.evaluate(() => window.__hunkFixture.calls.filter(call => call.method === 'action').at(-1).payload), { type: 'unstage-hunk', token: '00000000-0000-4000-8000-000000000003', hunkId: '11111111-1111-4111-8111-111111111111' });
@@ -117,12 +120,42 @@ export async function verifyPartialStaging(browser, url) {
     assert.equal(await dialog.locator('.diff-hunk-action').count(), 0, 'An isolated Commit inspector remains read-only');
     await dialog.getByRole('button', { name: 'Close', exact: true }).click();
     await firstStage.waitFor();
+    const discard=diff.getByRole('button',{name:'Discard this change block: @@ -42 +42 @@',exact:true});
+    await discard.click();
+    const confirmation=page.getByRole('dialog',{name:'Discard this change block?',exact:true});
+    await confirmation.waitFor();
+    assert.ok((await confirmation.innerText()).includes('file.txt')&&(await confirmation.innerText()).includes('@@ -42 +42 @@'),'Confirmation binds the file and exact block');
+    assert.equal(await page.evaluate(()=>window.__hunkFixture.calls.filter(call=>call.method==='action').length),2,'Opening discard never writes');
+    assert.equal(await confirmation.evaluate(element=>getComputedStyle(element).getPropertyValue('--panel')),await diff.evaluate(element=>getComputedStyle(element).getPropertyValue('--panel')),'The anchored confirmation inherits the current workbench theme');
+    assert.equal(await page.evaluate(()=>document.activeElement.textContent),'Cancel','Destructive confirmation defaults to Cancel');
+    await confirmation.getByRole('button',{name:'Cancel',exact:true}).click();
+    await firstStage.waitFor();
+    await discard.click();
+    await confirmation.waitFor();
+    await page.locator('#change-files-unstaged').getByRole('button',{name:'other.txt',exact:true}).dispatchEvent('click');
+    await confirmation.waitFor({state:'hidden'});
+    assert.equal(await page.evaluate(()=>window.__hunkFixture.calls.filter(call=>call.method==='action').length),2,'Changing the comparison invalidates an open discard confirmation');
+    await page.locator('#change-files-unstaged').getByRole('button',{name:'file.txt',exact:true}).dispatchEvent('click');
+    await firstStage.waitFor();
+    await discard.click();
+    await confirmation.waitFor();
+    await confirmation.screenshot({path:'artifacts/partial-staging-discard-confirm.png'});
+    await confirmation.getByRole('button',{name:'Discard this change block',exact:true}).click();
+    await page.waitForFunction(()=>window.__hunkFixture.pendingAction?.type==='discard-hunk');
+    assert.deepEqual(await page.evaluate(()=>window.__hunkFixture.calls.filter(call=>call.method==='action').at(-1).payload),{type:'discard-hunk',token:'00000000-0000-4000-8000-000000000001',hunkId:'11111111-1111-4111-8111-111111111111'});
+    assert.equal(await discard.isDisabled(),true);
+    await page.evaluate(()=>window.__hunkFixture.releaseAction());
+    await page.waitForFunction(()=>window.__hunkFixture.pendingPreviews.length>0);
+    await page.evaluate(()=>window.__hunkFixture.releasePreviews());
+    await diff.getByTestId('diff-change-count').getByText('1/2',{exact:true}).waitFor();
+    assert.equal(await firstStage.count(),0,'Only the discarded block disappears');
+    await diff.getByRole('button',{name:'Stage this change block: @@ -46 +46 @@',exact:true}).waitFor();
     const final = await page.evaluate(() => ({ writes: window.__hunkFixture.calls.filter(call => call.method === 'action').map(call => call.payload.type), draft: window.__hunkFixture.session.drafts.hunks, isolated: window.__hunkFixture.calls.filter(call => call.method === 'isolatedDiffPreview').map(call => call.payload.kind) }));
-    assert.deepEqual(final.writes, ['stage-hunk', 'unstage-hunk'], 'Inspection creates no additional writes');
+    assert.deepEqual(final.writes, ['stage-hunk', 'unstage-hunk', 'discard-hunk'], 'Inspection and canceled confirmations create no writes');
     assert.equal(final.draft, 'Keep hunk draft');
     assert.ok(final.isolated.includes('comparison') && final.isolated.includes('commit'));
     assert.deepEqual(errors, [], 'The hunk flow must not throw browser runtime errors');
-    console.log('ALWAYGIT_PARTIAL_STAGING_UI_PASSED: Stage/Unstage opaque payloads, pending/refresh guards, snapshots, selection/scroll, immutable Commit and isolated comparisons');
+    console.log('ALWAYGIT_PARTIAL_STAGING_UI_PASSED: Stage/Unstage/Discard opaque payloads, scoped confirmation/cancel, pending/refresh guards, snapshots, selection/scroll, immutable Commit and isolated comparisons');
   } catch (error) { console.error((await page.locator('body').innerText()).slice(-5000)); throw error; }
   finally { await page.close(); }
 }

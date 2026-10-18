@@ -11,6 +11,10 @@ it('renders directional block actions with accessible ranges and disables during
   expect(stage).toContain('aria-label="Stage this change block: @@ -4,8 +4,9 @@"'); expect(stage).toContain('diff-hunk-left'); expect(stage).toContain('«');
   const unstage = renderToStaticMarkup(<DiffHunkAction hunk={hunk} area="staged" disabled={true} apply={() => {}}/>);
   expect(unstage).toContain('aria-label="Unstage this change block: @@ -4,8 +4,9 @@"'); expect(unstage).toContain('diff-hunk-right'); expect(unstage).toContain('»'); expect(unstage).toContain('disabled');
+  const working = renderToStaticMarkup(<DiffHunkAction hunk={hunk} area="unstaged" disabled={false} apply={() => {}} discard={() => {}}/>);
+  expect(working).toContain('Discard this change block'); expect(working).toContain('»'); expect(working).toContain('«');
+  const staged = renderToStaticMarkup(<DiffHunkAction hunk={hunk} area="staged" disabled={false} apply={() => {}} discard={() => {}}/>);
+  expect(staged).not.toContain('Discard this change block');
 });
 it('anchors actions only at actual changed lines and tracks the entire block', () => {
   const metadata = { token: 'host-token', hunks: [hunk] };

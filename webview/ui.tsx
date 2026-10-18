@@ -36,7 +36,7 @@ export function ResizeHandle({ axis, label, value, onChange, min, max, reverse =
   }} />;
 }
 
-export function Modal({ title, children, onClose, busy = false, footer, className='' }: { title: string; children: React.ReactNode; onClose(): void; busy?: boolean; footer?: React.ReactNode; className?:string }) {
+export function Modal({ title, children, onClose, busy = false, footer, className='', style }: { title: string; children: React.ReactNode; onClose(): void; busy?: boolean; footer?: React.ReactNode; className?:string; style?: React.CSSProperties }) {
   const t = useTranslation(), panel = useRef<HTMLDivElement>(null), callback = useRef(onClose); callback.current = onClose;
   useLayoutEffect(() => {
     const previous = document.activeElement as HTMLElement;
@@ -57,5 +57,5 @@ export function Modal({ title, children, onClose, busy = false, footer, classNam
     };
     window.addEventListener('keydown', key); return () => { window.removeEventListener('keydown', key); if (previous?.isConnected) previous.focus(); };
   }, []);
-  return <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !busy) onClose(); }}><div className={`modal ${className}`.trim()} ref={panel} role="dialog" aria-modal="true" aria-label={title} aria-busy={busy}><div className="modal-heading"><h2>{title}</h2><Button icon="close" aria-label={t("common.close")} title={t("common.close")} onClick={onClose} disabled={busy} /></div><div className="modal-body">{children}</div>{footer!==null&&<div className="modal-footer">{footer ?? <Button onClick={onClose} disabled={busy}>{t("common.close")}</Button>}</div>}</div></div>;
+  return <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !busy) onClose(); }}><div className={`modal ${className}`.trim()} style={style} ref={panel} role="dialog" aria-modal="true" aria-label={title} aria-busy={busy}><div className="modal-heading"><h2>{title}</h2><Button icon="close" aria-label={t("common.close")} title={t("common.close")} onClick={onClose} disabled={busy} /></div><div className="modal-body">{children}</div>{footer!==null&&<div className="modal-footer">{footer ?? <Button onClick={onClose} disabled={busy}>{t("common.close")}</Button>}</div>}</div></div>;
 }
