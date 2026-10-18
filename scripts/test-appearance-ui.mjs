@@ -78,6 +78,28 @@ export async function verifyAppearance(browser, url) {
     assert.equal((await restore.innerText()).trim(), 'Restore Layout', 'Restore Layout has a label in More');
     assert.equal(await restore.locator('.codicon').count(), 1, 'Restore Layout keeps its icon');
     await page.keyboard.press('Escape');
+    {
+      const sidebar = page.getByTestId('sidebar'), details = page.getByTestId('details');
+      const leftWidth = (await requiredBox(sidebar, 'Repository sidebar')).width;
+      const rightWidth = (await requiredBox(details, 'Details panel')).width;
+      const historyWidth = (await requiredBox(history, 'History')).width;
+      await page.getByRole('button', { name: 'Collapse repository sidebar', exact: true }).click();
+      assert.equal(await sidebar.isVisible(), false);
+      assert.equal(await details.isVisible(), true);
+      assert.ok((await requiredBox(history, 'History with left sidebar hidden')).width >= historyWidth + leftWidth);
+      await page.getByRole('button', { name: 'Collapse details panel', exact: true }).click();
+      assert.equal(await details.isVisible(), false);
+      assert.equal((await requiredBox(history, 'History with both sidebars hidden')).width, (await requiredBox(page.locator('.workspace'), 'Workspace')).width);
+      await page.reload();
+      await page.getByRole('button', { name: 'Expand repository sidebar', exact: true }).waitFor();
+      assert.equal(await sidebar.isVisible(), false);
+      assert.equal(await details.isVisible(), false);
+      await page.getByRole('button', { name: 'Expand repository sidebar', exact: true }).click();
+      assert.equal((await requiredBox(sidebar, 'Restored repository sidebar')).width, leftWidth);
+      assert.equal(await details.isVisible(), false);
+      await page.getByRole('button', { name: 'Expand details panel', exact: true }).click();
+      assert.equal((await requiredBox(details, 'Restored details panel')).width, rightWidth);
+    }
     const separators = {
       sidebar: page.getByRole('separator', { name: 'Resize repository sidebar' }),
       details: page.getByRole('separator', { name: 'Resize details panel' }),

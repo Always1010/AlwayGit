@@ -6,7 +6,7 @@ This manual explains how to inspect changes, save revisions, and collaborate wit
 
 Select More actions → Help & Guide, with its question-mark icon, in the upper-right corner of the Workbench to open the offline help. It includes quick start instructions, common tasks, common questions, and the full chapters of this manual. Its language follows the workbench setting.
 
-**About the screenshots:** All 40 shared figures were recaptured on 2026-10-06 from the 0.52.0 source build with an English interface and sample repositories, using the default theme's white appearance on a light host; the language page previews Chinese. The narrow sidebar figure demonstrates region navigation at that viewport size. Images do not include native VS Code chrome. The current toolbar combines the two rows and moves less-used actions into More; follow the text for current entry points. The figures retain the original task examples. The old file preview highlight is now a small dot beside the icon; row backgrounds indicate only the current operation selection. Names, paths, and Commit IDs may differ in your project. History search figures show the message field; advanced filters are now opened with the adjacent filter icon.
+**About the screenshots:** All 40 shared figures were recaptured on 2026-10-06 from the 0.52.0 source build with an English interface and sample repositories, using the default theme's white appearance on a light host; the language page previews Chinese. The narrow sidebar figure demonstrates region navigation at that viewport size. Images do not include native VS Code chrome. The current toolbar combines the two rows and moves less-used actions into More; follow the text for current entry points. The figures retain the original task examples; the current left and right panel dividers also have collapse buttons at the top, as described in the text. The old file preview highlight is now a small dot beside the icon; row backgrounds indicate only the current operation selection. Names, paths, and Commit IDs may differ in your project. History search figures show the message field; advanced filters are now opened with the adjacent filter icon.
 
 ## Read by task
 
@@ -1100,12 +1100,12 @@ Git operation settings default to User. Select Current workspace before editing 
 
 **Prerequisite:** You want to redistribute space among history, details, and Diff.
 
-1. Drag the panel dividers to resize the left, right, and bottom areas.
+1. Drag the panel dividers to resize the left, right, and bottom areas. Arrow buttons at the top of the left and right dividers independently collapse each sidebar; the same edge button restores it. Drag outside the buttons to resize. Expansion restores the previous width, and collapse states are saved with this workbench layout while selections, filters, and drafts are retained. Narrow windows use region navigation to access each panel.
 2. Drag the visible boundaries of the Graph, author, and date columns to adjust their widths for easier reading.
 3. Use the icons in the Diff title bar to collapse or restore the lower panel.
 4. If the layout is unsuitable, select More actions → Restore Layout.
 
-**Result:** The reading area suits the current task. Restore Layout restores the dimensions and the Diff expansion state.
+**Result:** The reading area suits the current task. Restore Layout restores the dimensions and expands both sidebars and Diff.
 
 **Caution:** Restore Layout does not clear the language, theme, or commit draft.
 
