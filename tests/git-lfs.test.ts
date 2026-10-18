@@ -65,6 +65,16 @@ it('previews literal and glob attributes without staging and protects unrelated 
   const untrack = await service.lfsTrackPreview(repo, { pattern: 'asset[1].bin', literal: true, operation: 'untrack' });
   await service.execute(repo, { type: 'lfs.track', token: untrack.token });
   expect(await readFile(path.join(root, '.gitattributes'), 'utf8')).toBe(source);
+  const hashPattern = { pattern: '#*.dat', literal: false };
+  const hashRule = await service.lfsTrackPreview(repo, { ...hashPattern, operation: 'track' });
+  expect(hashRule.after).toContain('"#*.dat" filter=lfs diff=lfs merge=lfs -text');
+  await service.execute(repo, { type: 'lfs.track', token: hashRule.token });
+  expect(await git(root, 'check-attr', 'filter', '--', '#a.dat')).toContain('filter: lfs');
+  expect(await git(root, 'check-attr', 'filter', '--', 'a.dat')).toContain('filter: unspecified');
+  const untrackHash = await service.lfsTrackPreview(repo, { ...hashPattern, operation: 'untrack' });
+  await service.execute(repo, { type: 'lfs.track', token: untrackHash.token });
+  expect(await git(root, 'check-attr', 'filter', '--', '#a.dat')).toContain('filter: unspecified');
+  expect(await readFile(path.join(root, '.gitattributes'), 'utf8')).toBe(source);
   const mixed = '\uFEFF# preserve CRLF\r\n*.txt text\n*.bin filter=lfs diff=lfs merge=lfs -text\r\n# keep trailing';
   await writeFile(path.join(root, '.gitattributes'), mixed);
   const exact = await service.lfsTrackPreview(repo, { pattern: '*.bin', literal: false, operation: 'untrack' });

@@ -123,7 +123,7 @@ export class LfsManager {
     const before = await this.attributes(repo), source = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(before);
     const filename = process.platform === 'win32' ? request.pattern.replace(/\\/g, '/') : request.pattern;
     let pattern = request.literal ? '/' + filename.replace(/[\\\[\]*?]/g, '\\$&') : request.pattern;
-    if (/\s|["\\]/.test(pattern)) pattern = JSON.stringify(pattern);
+    if (pattern.startsWith('#') || /\s|["\\]/.test(pattern)) pattern = JSON.stringify(pattern);
     const line = `${pattern} filter=lfs diff=lfs merge=lfs -text`, eol = source.includes('\r\n') ? '\r\n' : '\n';
     const lines = source.split(/\r?\n/), matches = lines.filter(value => value === line);
     if (request.operation === 'untrack' && !matches.length) throw new GitError(message('lfs.untrackExact'), 'INVALID_ARGUMENT');
