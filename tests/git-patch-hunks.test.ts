@@ -56,6 +56,31 @@ it('rejects forged, duplicate and externally changed line selections without pub
   await expect(service.execute(repo,{type:'stage-lines',token:metadata.token!,lineIds:[line]})).rejects.toMatchObject({code:'PATCH_CHANGED'});
   expect(await readFile(path.join(root,'.git','index'))).toEqual(index);
 });
+it('rejects partial EOF changes that would concatenate displayed lines in both directions',async()=>{
+  const {root,service,repo}=await fixtures.setup();await git(root,'config','core.autocrlf','false');await commitFile(root,'file.txt','old');await writeFile(path.join(root,'file.txt'),'new\n');
+  let preview=await service.patchHunks(repo,{path:'file.txt',area:'unstaged'}),index=await readFile(path.join(root,'.git','index'));
+  await expect(service.execute(repo,{type:'stage-lines',token:preview.metadata.token!,lineIds:preview.metadata.lines!.filter(line=>line.side==='after').map(line=>line.id)})).rejects.toMatchObject({code:'PATCH_SELECTION'});
+  expect(await readFile(path.join(root,'.git','index'))).toEqual(index);
+  await service.execute(repo,action(preview.metadata));preview=await service.patchHunks(repo,{path:'file.txt',area:'staged'});index=await readFile(path.join(root,'.git','index'));
+  await expect(service.execute(repo,{type:'unstage-lines',token:preview.metadata.token!,lineIds:preview.metadata.lines!.filter(line=>line.side==='before').map(line=>line.id)})).rejects.toMatchObject({code:'PATCH_SELECTION'});
+  expect(await readFile(path.join(root,'.git','index'))).toEqual(index);expect(await readFile(path.join(root,'file.txt'),'utf8')).toBe('new\n');
+});
+it.each(['autocrlf','attributes'] as const)('uses Git clean conversion only for untracked %s line content',async kind=>{
+  const {root,service,repo}=await fixtures.setup();await git(root,'config','core.autocrlf',kind==='autocrlf'?'true':'false');
+  if(kind==='attributes')await writeFile(path.join(root,'.gitattributes'),'file.txt text eol=lf\n');
+  const bytes=Buffer.from('first\r\nsecond\r\n');await writeFile(path.join(root,'file.txt'),bytes);
+  const preview=await service.patchHunks(repo,{path:'file.txt',area:'unstaged'});
+  await service.execute(repo,{type:'stage-lines',token:preview.metadata.token!,lineIds:preview.metadata.lines!.filter(line=>line.line===1).map(line=>line.id)});
+  expect(await service.content(repo,{kind:'index',path:'file.txt'})).toEqual(Buffer.from('first\n'));
+  expect(await readFile(path.join(root,'file.txt'))).toEqual(bytes);
+});
+it('keeps the HEAD executable mode when partly unstaging a deleted file',async()=>{
+  const {root,service,repo}=await fixtures.setup();await commitFile(root,'file.txt','one\ntwo\n');await git(root,'update-index','--chmod=+x','file.txt');await git(root,'commit','-m','executable');
+  await rm(path.join(root,'file.txt'));await git(root,'add','file.txt');const preview=await service.patchHunks(repo,{path:'file.txt',area:'staged'});
+  await service.execute(repo,{type:'unstage-lines',token:preview.metadata.token!,lineIds:preview.metadata.lines!.filter(line=>line.line===1).map(line=>line.id)});
+  expect(await git(root,'ls-files','--stage','file.txt')).toMatch(/^100755 /);
+  expect(await service.content(repo,{kind:'index',path:'file.txt'})).toEqual(Buffer.from('one\n'));
+});
 it('stages one of two real Git hunks and commits only selected staged content', async () => {
   const { root, service, repo } = await fixtures.setup();
   await commitFile(root, 'file.txt', base); await commitFile(root, 'other.txt', 'other base\n');

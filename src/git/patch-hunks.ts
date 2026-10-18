@@ -86,14 +86,16 @@ function selectedContent(parts: PatchPart[], ids: string[], baseline: string, re
     const old = part.lines.filter(line => line.side === 'before'), added = part.lines.filter(line => line.side === 'after');
     const count = reverse ? part.afterCount : part.beforeCount, start = (reverse ? part.afterStart : part.beforeStart) - (count ? 1 : 0);
     if (start < cursor || source.slice(start, start + count).join('') !== (reverse ? added : old).map(line => line.text).join('')) throw stale();
-    result.push(...source.slice(cursor, start));
+    for (let line=cursor;line<start;line++) result.push(source[line]);
     for (let index = 0; index < Math.max(old.length, added.length); index++) {
       if (old[index] && (reverse ? selected.has(old[index].id) : !selected.has(old[index].id))) result.push(old[index].text);
       if (added[index] && (reverse ? !selected.has(added[index].id) : selected.has(added[index].id))) result.push(added[index].text);
     }
     cursor = start + count;
   }
-  result.push(...source.slice(cursor)); return result.join('');
+  for(let line=cursor;line<source.length;line++)result.push(source[line]);
+  if(result.slice(0,-1).some(line=>!line.endsWith('\n')))throw new GitError(message('diff.lineBoundary'),'PATCH_SELECTION');
+  return result.join('');
 }
 
 export class PatchHunkStore {
@@ -143,7 +145,7 @@ export class PatchHunkStore {
     const patch = utf8(patchResult.stdout); if (patchResult.stdout.length > LIMIT) throw new Unsupported();
     const parsed = parsePatch(patch), left = utf8(target.area === 'staged' ? head : index), right = utf8(target.area === 'staged' ? index : working);
     const fingerprint = hash(JSON.stringify([current.head, current.branch, change, indexBytes ? hash(indexBytes) : null, hash(working), workingMode, missing, attrs, hash(patch)]));
-    return { ...parsed, fingerprint, indexPath, indexBytes, left, right, working, workingPath, workingMode, missing, indexMode: entries[0]?.split(' ')[0] };
+    return { ...parsed, fingerprint, indexPath, indexBytes, left, right, working, workingPath, workingMode, missing, untracked:change.untracked, indexMode: entries[0]?.split(' ')[0] };
   }
   async preview(repo: Repository, target: Target, run: Run, status: () => Promise<Status>): Promise<{ metadata: PatchHunks; left?: string; right?: string }> {
     this.prune();
@@ -191,8 +193,8 @@ export class PatchHunkStore {
         const remove = content.length === 0 && (reverse ? /^new file mode /m.test(context.header) : /^deleted file mode /m.test(context.header));
         if (remove) await run(['update-index', '--force-remove', '--', context.target.path], { env });
         else {
-          const oid = (await run(['hash-object', '-w', '--stdin'], { env, input: Buffer.from(content, 'utf8') })).stdout.toString('utf8').trim();
-          const mode = captured.indexMode ?? context.header.match(/^new file mode (\d+)/m)?.[1] ?? '100644';
+          const oid = (await run(['hash-object', '-w', ...(captured.untracked?[`--path=${context.target.path}`]:[]), '--stdin'], { env, input: Buffer.from(content, 'utf8') })).stdout.toString('utf8').trim();
+          const mode = captured.indexMode ?? context.header.match(/^(?:new|deleted) file mode (\d+)/m)?.[1] ?? '100644';
           await run(['update-index', '--add', '--cacheinfo', mode, oid, context.target.path], { env });
         }
       }
