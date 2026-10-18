@@ -410,8 +410,6 @@ Entering file history clears an existing commit-message search and saves it in t
 
 Git similarity detection identifies renames, traced independently along each merge Parent. Deleted files remain inspectable; a same-name file recreated after deletion starts a separate history. Ordinary copies start a new file. Working Tree appears only when the target has uncommitted changes; its file list and split group actions use that file scope. Unified toolbar bulk actions and ordinary Commit retain their complete-repository scope. Missing records show an empty state; exceeded read limits produce an error, allowing a narrower branch scope and retry.
 
-<a id="chapter-05"></a>
-
 <a id="reflog-recovery"></a>
 
 ### Recover a commit with Reflog
@@ -419,6 +417,8 @@ Git similarity detection identifies renames, traced independently along each mer
 Open More → Open Reflog to inspect the current worktree HEAD or a local branch. Select a record, inspect its commit and choose a file for an independent Diff. Closing the dialog preserves your original history, file selection and drafts. Refresh reads recent records; pagination stays within one snapshot.
 
 To recover a commit from before a Reset or Rebase, select its record, enter a recovery branch name and choose Create recovery branch. Your current branch and worktree remain selected unless you explicitly check the switch option. Expired records or pruned objects may be unavailable. Reflog does not save discarded uncommitted file contents.
+
+<a id="chapter-05"></a>
 
 ## Branches and Historical Versions
 
