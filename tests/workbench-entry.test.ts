@@ -345,16 +345,17 @@ describe('Workbench entry presentation', () => {
     const workbench = workbenchFixture(undefined, undefined, { list: () => [repository] });
     const internals = workbench as unknown as { git: GitServiceContract; repositories: { get(): typeof repository }; documents: { changedWorkingPreview: ReturnType<typeof vi.fn> }; poll(): Promise<void> };
     const read = vi.fn(async () => ({ ...snapshot, version: snapshot.version++ }));
-    let workingChanged = false, stagedChanged = false;
+    let workingChanged = false, stagedChanged = false, revisionChanged = false;
     internals.documents.changedWorkingPreview = vi.fn(async (_repo, _owner, _snapshot, path) => path === 'a.txt' && workingChanged
-      ? { kind: 'change', path, area: 'unstaged' } : path === 'staged.txt' && stagedChanged ? { kind: 'change', path, area: 'staged' } : undefined);
+      ? { kind: 'change', path, area: 'unstaged' } : path === 'staged.txt' && stagedChanged ? { kind: 'change', path, area: 'staged' }
+      : path === 'historical.txt' && revisionChanged ? { kind: 'revision', path, revision: 'a'.repeat(40) } : undefined);
     internals.git.snapshot = read; internals.repositories.get = () => repository;
     const working = panelFixture(), history = panelFixture(), staged = panelFixture(), hidden = panelFixture();
     const fixtures = [working, history, staged, hidden];
     for (const fixture of fixtures) {
       vi.mocked(vscode.window.createWebviewPanel).mockReturnValueOnce(fixture.panel as unknown as vscode.WebviewPanel);
       await workbench.open('fixture', undefined, true);
-      const tab = fixture === history ? 'history' : 'changes', selectedFile = fixture === staged ? 'staged.txt' : 'a.txt';
+      const tab = fixture === history ? 'history' : 'changes', selectedFile = fixture === staged ? 'staged.txt' : fixture === history ? 'historical.txt' : 'a.txt';
       await fixture.receive({ id: selectedFile, method: 'saveSession', payload: { repoId: 'fixture', views: { fixture: { tab, search: '', selectedFile } } } });
     }
     hidden.panel.visible = false;
@@ -362,7 +363,7 @@ describe('Workbench entry presentation', () => {
     await internals.poll(); clear();
     await internals.poll();
     for (const fixture of fixtures) expect(fixture.panel.webview.postMessage).not.toHaveBeenCalled();
-    expect(internals.documents.changedWorkingPreview).toHaveBeenCalledTimes(4); // Only visible Working Tree comparisons.
+    expect(internals.documents.changedWorkingPreview).toHaveBeenCalledTimes(6); // Visible views can compare a historical revision to Working Tree.
     workingChanged = true;
     await internals.poll();
     expect(working.panel.webview.postMessage).toHaveBeenCalledOnce();
@@ -383,7 +384,12 @@ describe('Workbench entry presentation', () => {
     expect(staged.panel.webview.postMessage).toHaveBeenCalledOnce();
     expect(staged.panel.webview.postMessage.mock.calls[0][0]).toMatchObject({ changes: { paths: ['staged.txt'], index: true } });
     for (const fixture of [working, history, hidden]) expect(fixture.panel.webview.postMessage).not.toHaveBeenCalled();
-    expect(read).toHaveBeenCalledTimes(5);
+    clear(); stagedChanged = false; revisionChanged = true;
+    await internals.poll();
+    expect(history.panel.webview.postMessage).toHaveBeenCalledOnce();
+    expect(history.panel.webview.postMessage.mock.calls[0][0]).toMatchObject({ changes: { paths: ['historical.txt'] } });
+    for (const fixture of [working, staged, hidden]) expect(fixture.panel.webview.postMessage).not.toHaveBeenCalled();
+    expect(read).toHaveBeenCalledTimes(6);
   });
   it.each([false, true])('uses the latest successful panel baseline when activation overlaps queued saves (failed first write: %s)', async failed => {
     const output = { appendLine: vi.fn() }, workbench = workbenchFixture(output);

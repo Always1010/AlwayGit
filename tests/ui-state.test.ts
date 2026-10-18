@@ -1134,6 +1134,23 @@ describe('repository UI consistency', () => {
     expect(bridge.rpc.mock.calls.map(([method]) => method)).toEqual(['snapshot', 'snapshot']);
   });
 
+  it('refreshes revision comparisons on file events and manual refresh while retaining the historical selection', async () => {
+    await store.getState().selectRepository('a'); await store.getState().selectCommit(commit.oid);
+    const target = { kind: 'revision' as const, revision: 'a'.repeat(40), path: 'historical.txt' };
+    store.getState().selectFile(target, false); store.getState().setDetailFileMode('tree');
+    const before = store.getState(), revision = before.diffRevision;
+    await store.getState().refresh({ background: true, changes: { paths: ['other.txt'] } });
+    expect(store.getState().diffRevision).toBe(revision);
+    await store.getState().refresh({ background: true, changes: { paths: ['historical.txt'] } });
+    expect(store.getState().diffRevision).toBe(revision + 1);
+    await store.getState().refresh({ background: true, changes: { paths: [] } });
+    expect(store.getState().diffRevision).toBe(revision + 1);
+    await store.getState().refresh();
+    expect(store.getState().diffRevision).toBe(revision + 2);
+    expect(store.getState()).toMatchObject({ tab: 'history', detailFileMode: 'tree', selectedOid: commit.oid });
+    expect(store.getState().diffTarget).toBe(target); expect(store.getState().details).toBe(before.details);
+  });
+
   it('keeps a resumed tab usable and preserves history, selection and Diff when only the snapshot version changes', async () => {
     const current = await workingFixture();
     store.getState().setHistoryScroll(640); store.getState().setDraft('keep draft');

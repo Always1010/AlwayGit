@@ -343,6 +343,8 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         const target = workingTarget({ ...snapshot, changes: fileHistoryChanges(snapshot, get().displayedHistory ? get().displayedHistory!.fileHistory : get().fileHistory, get().historyFilePaths) }, get().diffTarget, get().selectedFile);
         if (target) get().selectFile(target, false); else if (get().diffTarget || get().selectedFile) set({ selectedFile: undefined, diffTarget: undefined });
         if (target && diffKey(target) === diffKey(previousTarget) && affectsWorkingDiff(previous, snapshot, target, invalidation.changes)) set({ diffRevision: get().diffRevision + 1 });
+      } else if (previousTarget?.kind === 'revision' && affectsWorkingDiff(previous, snapshot, previousTarget, invalidation.changes)) {
+        set({ diffRevision: get().diffRevision + 1 });
       }
       if (reloadHistory) await get().loadHistory();
     } catch (error) { if (epoch === repositoryEpoch && request === snapshotEpoch) get().report(error); }

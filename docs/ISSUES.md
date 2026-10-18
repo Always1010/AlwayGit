@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-146：完整文件树的历史版对工作区差异保留过期内容
+
+- 日期：2026-10-18
+- 状态：已解决
+- 现象：完整文件树中选中文件后，修改并保存工作区文件，后台或手动刷新仍显示旧正文与统计，切换文件后才更新。
+- 原因：`revision` 比较包含可变的工作区右侧，但前端失效、预览读取与宿主内容轮询仅处理 Working Tree 页的 `change` 目标。
+- 解决方案：把历史版对工作区比较接入路径范围失效、手动刷新与可见历史页的内容指纹轮询；保持历史提交、树模式和当前文件选择，工作区删除时按空侧重新读取，无关文件与未变化的轮询不触发重读。
+- 验证方式：定向无界面回归 3 文件 / 7 项通过，覆盖内容变化及删除、状态快照仍为 clean、无关路径、手动刷新、宿主历史页通知，以及原有 Staged 独立刷新。
+- 相关文件：`src/editor/documents.ts`、`src/extension/workbench.ts`、`webview/DiffPreview.tsx`、`webview/refresh.ts`、`webview/store.ts`、`tests/documents.test.ts`、`tests/ui-state.test.ts`、`tests/workbench-entry.test.ts`。
+
 ## BUG-145：Diff 增删强调线遮挡行号首位
 
 - 日期：2026-10-18

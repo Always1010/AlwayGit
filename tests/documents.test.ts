@@ -201,6 +201,24 @@ describe('Complete Git Diff previews', () => {
     expect(documents.diffPage(repo, isolated.index!.token, 0, 128)).toEqual({ ...page, token: isolated.index!.token });
   });
 
+  it('rechecks revision comparisons against working bytes even when the status snapshot stays clean', async () => {
+    const { root, repo, service, documents } = await setup(), owner = {};
+    const filename = path.join(root, 'historical.txt');
+    await writeFile(filename, 'historical content'); const revision = await commit(root, 'initial');
+    const target: DiffTarget = { kind: 'revision', revision, path: 'historical.txt' }, snapshot = await service.snapshot(repo);
+    await documents.indexedPreview(repo, target, true, owner);
+    await expect(documents.changedWorkingPreview(repo, owner, snapshot)).resolves.toBeUndefined();
+    await writeFile(filename, 'current working content');
+    await expect(documents.changedWorkingPreview(repo, owner, snapshot, 'other.txt')).resolves.toBeUndefined();
+    await expect(documents.changedWorkingPreview(repo, owner, snapshot)).resolves.toEqual(target);
+    expect(textPreview(await documents.preview(repo, target, owner))).toMatchObject({ left: 'historical content', right: 'current working content' });
+    await expect(documents.changedWorkingPreview(repo, owner, snapshot)).resolves.toBeUndefined();
+    await rm(filename);
+    await expect(documents.changedWorkingPreview(repo, owner, snapshot)).resolves.toEqual(target);
+    expect(textPreview(await documents.preview(repo, target, owner))).toMatchObject({ left: 'historical content', right: '' });
+    await expect(documents.changedWorkingPreview(repo, owner, snapshot)).resolves.toBeUndefined();
+  });
+
   it('rechecks the actual staged comparison independently of Working Tree edits', async () => {
     const { root, repo, service, documents } = await setup(), owner = {};
     const filename = path.join(root, 'a.txt'), target: DiffTarget = { kind: 'change', path: 'a.txt', area: 'staged' };

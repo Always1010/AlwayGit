@@ -69,7 +69,7 @@ function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():
     measure();const observer=new ResizeObserver(measure);observer.observe(element);
     return()=>observer.disconnect();
   },[collapsed,active]);
-  const targetKey=JSON.stringify([state.repoId,diffKey(state.diffTarget)]),revision=state.diffTarget?.kind==='change'?state.diffRevision:0;
+  const targetKey=JSON.stringify([state.repoId,diffKey(state.diffTarget)]),revision=state.diffTarget?.kind==='change'||state.diffTarget?.kind==='revision'?state.diffRevision:0;
   const commitTarget=state.diffTarget?.kind==='commit'?state.diffTarget:undefined;
   const commitFiles=state.diffNavigationScope==='commit'&&commitTarget&&!state.selectedStashOid&&state.tab==='history'&&state.details?.commit.oid===commitTarget.oid&&state.details.parent===commitTarget.parent?state.details.files:undefined;
   const fileIndex=commitFiles?.findIndex(file=>file.path===commitTarget?.path)??-1,commitMode=fileIndex>=0;
