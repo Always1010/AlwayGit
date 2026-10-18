@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-140：Diff 横向滚动时行号与中缝抖动
+
+- 日期：2026-10-18
+- 状态：已解决
+- 现象：查看长行并连续横向滚动时，固定的行号、分块中缝及其与标题的相对位置出现可见抖动。
+- 原因：整份 Diff 视口先由浏览器原生横向滚动，再通过 React 的 scrollLeft 状态更新逐行 left 和正文反向位移；浏览器滚动与 React 补偿并非同一时刻完成。旧检查只核对滚动后的列宽，没有采样连续过程。
+- 解决方案：纵向视口保持无横向溢出，底部独立原生横向滚动条仅通过 ref 与 CSS 变量移动左右正文；标题、行号、增删标记、中缝及红绿行背景不参与横移，移除逐行位置补偿。根据实际正文宽度计算滚动范围，支持触控板、Shift+滚轮及阅读位置恢复。
+- 验证方式：类型检查与 1690 条双语资源检查、Webview 生产构建、无头 diff / partial-staging 专项通过。历史、Unstaged、Staged 的连续双向滚动逐帧检查固定区域坐标和宽度不变、正文同步移动、虚拟行零 DOM 变更；覆盖行尾可达、触控板、Shift+滚轮、收起恢复、面板缩放、超大文件分页与图片预览。已查看滚动后截图，预览仅存忽略的 artifacts；未升版、打包或安装。
+- 相关文件：`webview/DiffPreview.tsx`、`webview/styles.css`、`src/i18n/catalogs/diff.json`、`src/i18n/generated.ts`、`scripts/test-diff-ui.mjs`、`scripts/test-partial-staging-ui.mjs`、双语架构与工作台规格。
+
 ## BUG-139：Diff 标题分隔线与正文中缝错位
 
 - 日期：2026-10-18

@@ -10,7 +10,7 @@ export async function verifyDiffNavigation(browser, url) {
     await page.getByRole('option', { name: 'Diff fixture' }).dblclick();
     await page.getByTestId('diff-preview').getByTestId('diff-change-count').getByText('1/3',{exact:true}).waitFor();
     await page.getByTestId('history').locator('[data-oid]').first().click();
-    const diff = page.getByTestId('diff-preview'), count = diff.getByTestId('diff-change-count'), summary = diff.getByTestId('diff-change-summary'), viewport = diff.locator('.diff-viewport');
+    const diff = page.getByTestId('diff-preview'), count = diff.getByTestId('diff-change-count'), summary = diff.getByTestId('diff-change-summary'), viewport = diff.locator('.diff-viewport'), horizontal = diff.locator('.diff-horizontal-scroll');
     const assertColumnsAligned = async () => {
       await page.waitForFunction(() => {
         const header=document.querySelector('.text-diff-labels'),row=document.querySelector('.diff-line');
@@ -63,11 +63,19 @@ export async function verifyDiffNavigation(browser, url) {
     const borders = await diff.locator('.active-change').evaluateAll(rows => rows.map(row => { const style = getComputedStyle(row, '::after'); return { top: style.borderTopWidth, bottom: style.borderBottomWidth, outline: getComputedStyle(row).outlineStyle }; }));
     assert.ok(borders.every(border => border.top === '0px' && border.bottom === '0px'), 'Navigation does not draw an extra frame around changed code');
     assert.ok(borders.every(border => border.outline === 'none'), 'No outline on individual changed lines');
-    await viewport.evaluate(element => { element.scrollLeft = 220; element.dispatchEvent(new Event('scroll')); });
+    await verifyFixedDiffScroll(diff);
+    await horizontal.evaluate(element => { element.scrollLeft = 220; element.dispatchEvent(new Event('scroll')); });
     const halves = await diff.locator('.active-change-start').evaluate(row => [...row.querySelectorAll('.diff-side')].map(cell => cell.getBoundingClientRect().width));
     assert.ok(halves.every(width => width > 300 && width < 700), 'Both columns retain half viewport width for long lines');
     assert.equal(await count.innerText(), '3/3', 'Horizontal scroll must not change current block');
-    assert.ok(await viewport.evaluate(element => element.scrollWidth > element.clientWidth));
+    await diff.screenshot({path:'artifacts/diff-horizontal-pan.png'});
+    const savedHorizontal=await horizontal.evaluate(element=>element.scrollLeft);
+    await page.getByTestId('bottom-dock').getByRole('button',{name:'Collapse bottom panel'}).click();
+    await page.getByTestId('bottom-dock').getByRole('button',{name:'Expand bottom panel'}).click();
+    await assertColumnsAligned();
+    assert.equal(await horizontal.evaluate(element=>element.scrollLeft),savedHorizontal,'Collapse/expand preserves horizontal reading position');
+    assert.ok(await horizontal.evaluate(element => element.scrollWidth > element.clientWidth));
+    assert.equal(await viewport.evaluate(element=>element.scrollWidth-element.clientWidth),0,'The vertical viewport has no horizontal overflow');
     await page.setViewportSize({ width: 960, height: 700 });
     await page.waitForFunction(() => {
       const viewport = document.querySelector('.diff-viewport'), row = document.querySelector('.diff-line');
@@ -85,7 +93,7 @@ export async function verifyDiffNavigation(browser, url) {
     await assertColumnsAligned();
     assert.equal(await diff.getByRole('button', { name: 'Previous change' }).isDisabled(), true);
     assert.equal(await diff.getByRole('button', { name: 'Next change' }).isDisabled(), true);
-    assert.equal(await viewport.evaluate(element => element.scrollLeft), 0);
+    assert.equal(await horizontal.evaluate(element => element.scrollLeft), 0);
     await page.getByTestId('bottom-dock').getByRole('button', { name: 'Collapse bottom panel' }).click();
     await page.getByTestId('details').getByRole('button', { name: 'single.txt', exact: true }).click();
     await count.getByText('1/1', { exact: true }).waitFor({ state: 'attached' });
@@ -365,4 +373,44 @@ export async function verifyCommitNavigation(browser, url) {
     assert.deepEqual(errors, []);
     console.log('ALWAYGIT_COMMIT_DIFF_UI_TESTS_PASSED: cross-file wrap, reverse landing, rename/parent, filtering, binary/empty files, read failures, cancellation and saved scope');
   } finally { await page.close(); }
+}
+
+/** Sample every frame while panning; fixed chrome must never need positional compensation. */
+export async function verifyFixedDiffScroll(diff) {
+  const result=await diff.evaluate(async panel=>{
+    const tick=()=>new Promise(resolve=>requestAnimationFrame(resolve));await tick();await tick();
+    const bar=panel.querySelector('.diff-horizontal-scroll'),view=panel.querySelector('.diff-viewport');
+    const row=view.querySelector('.active-change-start')??view.querySelector('.diff-line');
+    const fixed=[...panel.querySelectorAll('.text-diff-labels>span'),...row.querySelectorAll('.line-number,.diff-marker,.diff-hunk-gutter,.diff-side')];
+    const reference=fixed.map(node=>{const b=node.getBoundingClientRect();return {left:b.left,width:b.width};});
+    const code=[...row.querySelectorAll('.diff-code code')],original=bar.scrollLeft,maximum=bar.scrollWidth-bar.clientWidth;
+    const codeStart=code.map(node=>node.getBoundingClientRect().left);
+    let stable=true,moved=false,synchronized=true,mutations=0;
+    const observer=new MutationObserver(records=>{mutations+=records.length;});observer.observe(row,{attributes:true,childList:true,subtree:true});
+    const sample=()=>{
+      stable=stable&&fixed.every((node,index)=>{const b=node.getBoundingClientRect(),a=reference[index];return Math.abs(a.left-b.left)<0.1&&Math.abs(a.width-b.width)<0.1;});
+      const offsets=code.map((node,index)=>node.getBoundingClientRect().left-codeStart[index]);
+      moved=moved||offsets.some(value=>Math.abs(value)>10);
+      synchronized=synchronized&&offsets.every(value=>Math.abs(value-offsets[0])<0.1);
+    };
+    try {
+      for(let step=0;step<=24;step++){bar.scrollLeft=maximum*(step<=12?step:24-step)/12;bar.dispatchEvent(new Event('scroll'));sample();await tick();sample();}
+      bar.scrollLeft=maximum;bar.dispatchEvent(new Event('scroll'));await tick();
+      const longest=[...view.querySelectorAll('.diff-code code')].sort((a,b)=>b.getBoundingClientRect().width-a.getBoundingClientRect().width)[0];
+      const tail=longest.getBoundingClientRect(),clip=longest.parentElement.getBoundingClientRect();
+      const tailVisible=tail.right<=clip.right+1&&tail.right>=clip.left;
+      observer.disconnect();
+      bar.scrollLeft=0;bar.dispatchEvent(new Event('scroll'));
+      view.dispatchEvent(new WheelEvent('wheel',{deltaX:70,bubbles:true,cancelable:true}));const trackpad=bar.scrollLeft;
+      view.dispatchEvent(new WheelEvent('wheel',{deltaY:70,shiftKey:true,bubbles:true,cancelable:true}));const shiftWheel=bar.scrollLeft;
+      return {stable,moved,synchronized,mutations,maximum,tailVisible,trackpad,shiftWheel,viewportLeft:view.scrollLeft};
+    } finally {observer.disconnect();bar.scrollLeft=original;bar.dispatchEvent(new Event('scroll'));await tick();}
+  });
+  assert.ok(result.maximum>100,'The fixture must exercise long-line overflow');
+  assert.ok(result.stable,'Headings, line numbers, markers, backgrounds, and gutter stay fixed in every sampled frame');
+  assert.ok(result.moved&&result.synchronized,'Only both code columns pan, with matching offsets');
+  assert.equal(result.mutations,0,'Horizontal panning must not rerender or reposition virtual rows');
+  assert.equal(result.viewportLeft,0,'The vertical viewport never pans horizontally');
+  assert.ok(result.tailVisible,'The longest visible line remains reachable at the right limit');
+  assert.ok(result.trackpad>0&&result.shiftWheel>result.trackpad,'Trackpad and Shift+wheel pan the shared text layer');
 }

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { verifyFixedDiffScroll } from './test-diff-ui.mjs';
 
 /** Exercise the real browser/store/RPC path; Git patch application is covered by real-Git tests. */
 export async function verifyPartialStaging(browser, url) {
@@ -9,7 +10,7 @@ export async function verifyPartialStaging(browser, url) {
       const repo = { id: 'hunks', root: '/hunks', commonDir: '/hunks/.git', name: 'Hunk fixture' };
       const head = 'a'.repeat(40), topic = 'b'.repeat(40), parent = 'c'.repeat(40);
       const commit = oid => ({ oid, parents: [parent], author: 'Fixture', email: 'fixture@example.com', timestamp: 1700000000, subject: 'Immutable commit' });
-      const original = Array.from({ length: 180 }, (_, index) => `context ${index + 1}`).join('\n') + '\n';
+      const original = Array.from({ length: 180 }, (_, index) => `context ${index + 1}${index===36?' long context '+'.'.repeat(900):''}`).join('\n') + '\n';
       const replace = (text, line, value) => { const lines = text.split('\n'); lines[line - 1] = value; return lines.join('\n'); };
       const first = replace(original, 42, 'first hunk change'), working = replace(replace(first, 46, 'nearby independent change'), 130, 'second hunk change');
       const hunk = (id, start) => ({ id, header: `@@ -${start} +${start} @@`, beforeStart: start, beforeCount: 1, afterStart: start, afterCount: 1 });
@@ -71,6 +72,7 @@ export async function verifyPartialStaging(browser, url) {
     assert.ok(initialScroll > 0, 'The fixture exercises a distant hunk and nonzero reading position');
     const geometry=await firstStage.evaluate(element=>{const line=element.closest('.diff-line'),gutter=element.parentElement;return {gutter:gutter.getBoundingClientRect().width,number:line.querySelector('.line-number').getBoundingClientRect().width};});
     await verifyRowBounds(firstStage);
+    await verifyFixedDiffScroll(diff);
     assert.ok(await firstStage.evaluate(element=>{const row=element.closest('.diff-line'),header=row.closest('.diff-preview').querySelector('.text-diff-labels');return [...row.children].every((cell,index)=>{const a=cell.getBoundingClientRect(),b=header.children[index].getBoundingClientRect();return Math.abs(a.left-b.left)<0.1&&Math.abs(a.width-b.width)<0.1;});}),'Working Tree headings and the 32px action gutter share the body columns');
     assert.equal(geometry.gutter,32,'The center action gutter stays 32px wide');
     assert.ok(geometry.number<32,'Line numbers no longer reserve a wide action column');
@@ -104,6 +106,7 @@ export async function verifyPartialStaging(browser, url) {
     await viewport.evaluate(element => { element.scrollTop = 36 * 18; element.dispatchEvent(new Event('scroll')); });
     const stagedScroll = await viewport.evaluate(element => element.scrollTop);
     await verifyRowBounds(unstage);
+    await verifyFixedDiffScroll(diff);
     assert.equal(await unstage.getAttribute('title'),'Unstage block','Unstage tooltip contains only the action name');
     assert.equal(await unstage.innerText(),'»','Unstaging points from HEAD to Index');
     await diff.screenshot({path:'artifacts/partial-staging-staged.png'});

@@ -262,5 +262,11 @@
     "zh-CN": "这是未跟踪的新增文件，丢弃它的完整修改块会删除该文件。",
     "review": "translated",
     "context": "Diff change block actions and confirmation"
+  },
+  "diff.scrollHorizontally": {
+    "en": "Scroll Diff text horizontally",
+    "zh-CN": "横向滚动差异正文",
+    "review": "translated",
+    "context": "Independent horizontal scrollbar for Diff text"
   }
 }
