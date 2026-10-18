@@ -641,20 +641,20 @@ describe('repository UI consistency', () => {
     expect(normalizeAppearance({ ...legacy, fileSpacing: NaN }).fileSpacing).toBe(1);
     expect(normalizeAppearance({ ...legacy, fileSpacing: 100 }).fileSpacing).toBe(8);
   });
-  it('restores collapsed sidebars with their widths and preserves them across repository switches', async () => {
+  it.each([[560, 650], [48, 72]])('restores collapsed sidebars at %i / %i px and preserves them across repository switches', async (sidebar, details) => {
     await store.getState().selectRepository('a');
     store.getState().setDraft('keep my draft');
-    store.getState().setLayout({ sidebar: 260, details: 350, sidebarCollapsed: true, detailsCollapsed: true });
+    store.getState().setLayout({ sidebar, details, sidebarCollapsed: true, detailsCollapsed: true });
     const { sessionSchema } = await import('../src/protocol/session');
     const saved = sessionSchema.parse(bridge.save.mock.calls.at(-1)?.[0]);
-    expect(saved.layout).toMatchObject({ sidebar: 260, details: 350, sidebarCollapsed: true, detailsCollapsed: true });
+    expect(saved.layout).toMatchObject({ sidebar, details, sidebarCollapsed: true, detailsCollapsed: true });
     vi.stubGlobal('window', { __ALWAYGIT_SESSION__: saved });
     vi.resetModules(); store = (await import('../webview/store')).useWorkbench;
     await store.getState().selectRepository('b');
-    expect(store.getState().layout).toMatchObject({ sidebar: 260, details: 350, sidebarCollapsed: true, detailsCollapsed: true });
+    expect(store.getState().layout).toMatchObject({ sidebar, details, sidebarCollapsed: true, detailsCollapsed: true });
     expect(store.getState().drafts.a).toBe('keep my draft');
     store.getState().setLayout({ sidebarCollapsed: false });
-    expect(store.getState().layout).toMatchObject({ sidebar: 260, details: 350, sidebarCollapsed: false, detailsCollapsed: true });
+    expect(store.getState().layout).toMatchObject({ sidebar, details, sidebarCollapsed: false, detailsCollapsed: true });
   });
   it('opens and preserves a comparison when exactly two commits are selected',async()=>{
     await store.getState().selectRepository('a');const left={...commit,oid:'left',subject:'Left'},right={...commit,oid:'right',subject:'Right'},fallback=bridge.rpc.getMockImplementation()!;

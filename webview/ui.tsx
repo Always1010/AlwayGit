@@ -36,11 +36,61 @@ export function ResizeHandle({ axis, label, value, onChange, min, max, reverse =
   }} />;
 }
 
-export function PanelDivider({ side, collapsed, toggleLabel, controls, onToggle, ...resize }: {
+export function PanelDivider({ side, collapsed, toggleLabel, controls, onToggle, label, value, renderedValue, min, max, onChange, onDragStart, onDragEnd }: {
   side: 'left' | 'right'; collapsed: boolean; toggleLabel: string; controls: string; onToggle(): void;
-} & Omit<React.ComponentProps<typeof ResizeHandle>, 'axis' | 'className'>) {
+  label: string; value: number; renderedValue: number; min: number; max: number; onChange(value: number, collapsed: boolean): void;
+  onDragStart(): void; onDragEnd(): void;
+}) {
+  const listeners = useRef<(() => void) | undefined>(undefined);
+  const current = useRef({ onChange, onDragEnd, min, max }); current.current = { onChange, onDragEnd, min, max };
+  useEffect(() => () => listeners.current?.(), []);
+  const bound = (next: number) => Math.round(Math.max(min, Math.min(max, next)));
   return <div className={`panel-divider panel-divider-${side}`} data-collapsed={collapsed}>
-    {!collapsed && <ResizeHandle axis="x" {...resize}/>}
+    <button type="button" role="separator" aria-label={label} title={label} aria-controls={controls} aria-orientation="vertical" aria-valuenow={collapsed ? 0 : value} aria-valuemin={0} aria-valuemax={max} className="resize-handle resize-x" onKeyDown={event => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault(); event.stopPropagation();
+      const delta = (event.key === 'ArrowRight' ? 8 : -8) * (side === 'right' ? -1 : 1);
+      if (event.key === 'Home') onChange(min, false);
+      else if (event.key === 'End') onChange(max, false);
+      else if (!collapsed || delta > 0) onChange(bound(collapsed ? value : value + delta), false);
+    }} onPointerDown={event => {
+      if (event.button !== 0) return;
+      event.preventDefault(); listeners.current?.();
+      const element = event.currentTarget, pointerId = event.pointerId, start = event.clientX;
+      const initialValue = value, initialCollapsed = collapsed, origin = renderedValue;
+      let folded = collapsed;
+      onDragStart();
+      element.focus({ preventScroll: true }); element.setPointerCapture(pointerId); element.dataset.dragging = 'true';
+      const cleanup = (settle = false) => {
+        element.removeEventListener('pointermove', move); element.removeEventListener('pointerup', up);
+        element.removeEventListener('pointercancel', cancel); element.removeEventListener('lostpointercapture', cancel);
+        element.removeEventListener('keydown', keydown); delete element.dataset.dragging; listeners.current = undefined;
+        if (element.hasPointerCapture(pointerId)) element.releasePointerCapture(pointerId);
+        if (settle) current.current.onDragEnd();
+      };
+      const move = (next: PointerEvent) => {
+        if (next.pointerId !== pointerId) return;
+        const { onChange, min, max } = current.current;
+        // Use the original pointer origin throughout the gesture, including after a snap.
+        const raw = origin + (next.clientX - start) * (side === 'right' ? -1 : 1);
+        if (!folded && raw < min) folded = true;
+        else if (folded && raw >= min + 16) folded = false;
+        onChange(folded ? initialValue : Math.round(Math.max(min, Math.min(max, raw))), folded);
+      };
+      const up = (next: PointerEvent) => { if (next.pointerId === pointerId) cleanup(true); };
+      const cancel = (next: PointerEvent) => {
+        if (next.pointerId !== pointerId) return;
+        cleanup(); current.current.onChange(initialValue, initialCollapsed);
+      };
+      const keydown = (next: KeyboardEvent) => {
+        if (next.key !== 'Escape') return;
+        next.preventDefault(); next.stopPropagation(); cleanup(); current.current.onChange(initialValue, initialCollapsed);
+      };
+      listeners.current = cleanup;
+      element.addEventListener('pointermove', move); element.addEventListener('pointerup', up);
+      element.addEventListener('pointercancel', cancel); element.addEventListener('lostpointercapture', cancel);
+      element.addEventListener('keydown', keydown);
+    }}/>
     <Button className="icon-only panel-toggle" icon={(side === 'left') !== collapsed ? 'chevron-left' : 'chevron-right'} title={toggleLabel} aria-label={toggleLabel} aria-expanded={!collapsed} aria-controls={controls} onClick={onToggle}/>
   </div>;
 }
