@@ -976,7 +976,7 @@ export class GitService implements GitServiceContract {
     if (action.type !== 'commit' && action.type !== 'operation.continue') this.reviews.delete(repo.id);
     let args: string[], pushedRemote: string | undefined, boundRemote: BoundRemote | undefined; const remote = (value?: string) => value ? [token(value, 'remote')] : [];
     switch (action.type) {
-      case 'stage-hunk': case 'unstage-hunk': case 'discard-hunk': return this.hunks.apply(repo, action, (args, execution) => this.run(repo, args, false, undefined, execution), () => this.status(repo));
+      case 'stage-lines': case 'unstage-lines': case 'stage-hunk': case 'unstage-hunk': case 'discard-hunk': return this.hunks.apply(repo, action, (args, execution) => this.run(repo, args, false, undefined, execution), () => this.status(repo));
       case 'rebase.interactive': return this.interactiveRebase.start(repo, await this.snapshot(repo), (args, execution) => this.run(repo, args, false, undefined, execution), action);
       case 'discard': return this.discard(repo, action, onProgress);
       case 'stage': case 'resolve-and-stage': case 'unstage': {

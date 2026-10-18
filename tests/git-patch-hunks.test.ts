@@ -16,6 +16,46 @@ function action(metadata: PatchHunks, index = 0, type: 'stage-hunk' | 'unstage-h
   expect(metadata.unavailable).toBeUndefined(); expect(metadata.token).toBeTruthy(); expect(metadata.hunks[index]).toBeDefined();
   return { type, token: metadata.token!, hunkId: metadata.hunks[index].id };
 }
+it('stages paired lines inside one replacement and reverses selected lines without touching disk or other paths', async () => {
+  const {root,service,repo}=await fixtures.setup();
+  await commitFile(root,'file.txt','one\ntwo\nthree\nfour\n'); await commitFile(root,'other.txt','original\n');
+  await writeFile(path.join(root,'other.txt'),'staged other\n');await git(root,'add','other.txt');
+  const working='ONE\nTWO\nthree\nFOUR\n';await writeFile(path.join(root,'file.txt'),working);
+  let preview=await service.patchHunks(repo,{path:'file.txt',area:'unstaged'});
+  const selected=preview.metadata.lines!.filter(line=>line.line===1).map(line=>line.id);
+  await service.execute(repo,{type:'stage-lines',token:preview.metadata.token!,lineIds:selected});
+  expect(await git(root,'show',':file.txt')).toBe('ONE\ntwo\nthree\nfour');
+  expect(await git(root,'show',':other.txt')).toBe('staged other');
+  expect(await readFile(path.join(root,'file.txt'),'utf8')).toBe(working);
+  preview=await service.patchHunks(repo,{path:'file.txt',area:'staged'});
+  await service.execute(repo,{type:'unstage-lines',token:preview.metadata.token!,lineIds:preview.metadata.lines!.map(line=>line.id)});
+  expect(await git(root,'show',':file.txt')).toBe('one\ntwo\nthree\nfour');
+  expect(await readFile(path.join(root,'file.txt'),'utf8')).toBe(working);
+});
+it.each(['added','deleted','crlf','no-final-newline'] as const)('supports selected %s lines and preserves exact worktree bytes',async kind=>{
+  const {root,service,repo}=await fixtures.setup();
+  if(kind==='crlf')await git(root,'config','core.autocrlf','true');
+  const initial=kind==='no-final-newline'?'one\ntwo':'one\ntwo\n';
+  if(kind!=='added')await commitFile(root,'file.txt',initial);
+  if(kind==='deleted')await rm(path.join(root,'file.txt'));else await writeFile(path.join(root,'file.txt'),kind==='crlf'?'ONE\r\nTWO\r\n':kind==='no-final-newline'?'ONE\nTWO':'ONE\nTWO\n');
+  const bytes=kind==='deleted'?undefined:await readFile(path.join(root,'file.txt'));
+  let preview=await service.patchHunks(repo,{path:'file.txt',area:'unstaged'});
+  await service.execute(repo,{type:'stage-lines',token:preview.metadata.token!,lineIds:preview.metadata.lines!.filter(line=>line.line===1).map(line=>line.id)});
+  expect(await git(root,'show',':file.txt')).toBe(kind==='deleted'?'two':kind==='added'?'ONE':'ONE\ntwo');
+  preview=await service.patchHunks(repo,{path:'file.txt',area:'staged'});
+  await service.execute(repo,{type:'unstage-lines',token:preview.metadata.token!,lineIds:preview.metadata.lines!.map(line=>line.id)});
+  if(kind==='added')expect(await git(root,'ls-files','file.txt')).toBe('');
+  else expect(await git(root,'show',':file.txt')).toBe('one\ntwo');
+  if(bytes)expect(await readFile(path.join(root,'file.txt'))).toEqual(bytes);
+});
+it('rejects forged, duplicate and externally changed line selections without publishing Index changes',async()=>{
+  const {root,service,repo}=await fixtures.setup();await commitFile(root,'file.txt',base);await writeFile(path.join(root,'file.txt'),edit(base,2,'changed'));
+  const {metadata}=await service.patchHunks(repo,{path:'file.txt',area:'unstaged'}),line=metadata.lines![0].id,index=await readFile(path.join(root,'.git','index'));
+  for(const ids of [[randomUUID()],[line,line]])await expect(service.execute(repo,{type:'stage-lines',token:metadata.token!,lineIds:ids})).rejects.toMatchObject({code:'PATCH_CHANGED'});
+  await writeFile(path.join(root,'file.txt'),edit(base,2,'external'));
+  await expect(service.execute(repo,{type:'stage-lines',token:metadata.token!,lineIds:[line]})).rejects.toMatchObject({code:'PATCH_CHANGED'});
+  expect(await readFile(path.join(root,'.git','index'))).toEqual(index);
+});
 it('stages one of two real Git hunks and commits only selected staged content', async () => {
   const { root, service, repo } = await fixtures.setup();
   await commitFile(root, 'file.txt', base); await commitFile(root, 'other.txt', 'other base\n');

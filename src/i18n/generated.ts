@@ -3096,6 +3096,38 @@ export const catalog = {
     "en": "Interactive Rebase does not support newline characters in the Git directory or runtime path.",
     "zh-CN": "交互式 Rebase 不支持 Git 目录或运行时路径中包含换行符。"
   },
+  "diff.selectLine": {
+    "en": "Select {{side}} line {{line}}",
+    "zh-CN": "选择{{side}}第 {{line}} 行"
+  },
+  "diff.deletedLine": {
+    "en": "deleted",
+    "zh-CN": "删除侧"
+  },
+  "diff.addedLine": {
+    "en": "added",
+    "zh-CN": "新增侧"
+  },
+  "diff.selectedLines": {
+    "en": "Selected changes: {{count}} lines",
+    "zh-CN": "已选择 {{count}} 行改动"
+  },
+  "diff.selectLinesHint": {
+    "en": "Select changed line numbers; Shift selects a range, Ctrl/Cmd adds lines.",
+    "zh-CN": "点击修改行号选择；Shift 连选，Ctrl/Cmd 追加。替换需选择两侧。"
+  },
+  "diff.stageLines": {
+    "en": "Stage selected lines",
+    "zh-CN": "暂存所选行"
+  },
+  "diff.unstageLines": {
+    "en": "Unstage selected lines",
+    "zh-CN": "取消暂存所选行"
+  },
+  "diff.clearLineSelection": {
+    "en": "Clear selected lines",
+    "zh-CN": "清除行选择"
+  },
   "manager.theRepositoryOrGroupNoLongerExists": {
     "en": "The repository or group no longer exists.",
     "zh-CN": "仓库或分组已不存在。"
@@ -7572,6 +7604,14 @@ export interface MessageParameters {
   "interactiveRebase.reviewPaused": {  };
   "interactiveRebase.alreadyApplied": {  };
   "interactiveRebase.path": {  };
+  "diff.selectLine": { side: ParameterValue; line: ParameterValue };
+  "diff.deletedLine": {  };
+  "diff.addedLine": {  };
+  "diff.selectedLines": { count: number };
+  "diff.selectLinesHint": {  };
+  "diff.stageLines": {  };
+  "diff.unstageLines": {  };
+  "diff.clearLineSelection": {  };
   "manager.theRepositoryOrGroupNoLongerExists": {  };
   "manager.reorderItemsWithinTheSameLevel": {  };
   "manager.selectARegisteredRepositoryFirst": {  };

@@ -1,0 +1,10 @@
+{
+  "diff.selectLine": {"en":"Select {{side}} line {{line}}","zh-CN":"选择{{side}}第 {{line}} 行","review":"translated","context":"webview/DiffPreview.tsx"},
+  "diff.deletedLine": {"en":"deleted","zh-CN":"删除侧","review":"translated","context":"webview/DiffPreview.tsx"},
+  "diff.addedLine": {"en":"added","zh-CN":"新增侧","review":"translated","context":"webview/DiffPreview.tsx"},
+  "diff.selectedLines": {"en":"Selected changes: {{count}} lines","zh-CN":"已选择 {{count}} 行改动","review":"translated","context":"webview/DiffPreview.tsx"},
+  "diff.selectLinesHint": {"en":"Select changed line numbers; Shift selects a range, Ctrl/Cmd adds lines.","zh-CN":"点击修改行号选择；Shift 连选，Ctrl/Cmd 追加。替换需选择两侧。","review":"translated","context":"webview/DiffPreview.tsx"},
+  "diff.stageLines": {"en":"Stage selected lines","zh-CN":"暂存所选行","review":"translated","context":"webview/DiffPreview.tsx / webview/actionFeedback.ts"},
+  "diff.unstageLines": {"en":"Unstage selected lines","zh-CN":"取消暂存所选行","review":"translated","context":"webview/DiffPreview.tsx / webview/actionFeedback.ts"},
+  "diff.clearLineSelection": {"en":"Clear selected lines","zh-CN":"清除行选择","review":"translated","context":"webview/DiffPreview.tsx"}
+}

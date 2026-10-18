@@ -34,6 +34,7 @@ export function blocksWorkbench(action: GitAction | string): boolean {
 
 export function actionName(action: GitAction): string {
   const names: Partial<Record<GitAction['type'], string>> = {
+    'stage-lines': uiText('diff.stageLines'), 'unstage-lines': uiText('diff.unstageLines'),
     'stage-hunk': uiText('diff.stageHunk'), 'unstage-hunk': uiText('diff.unstageHunk'), 'discard-hunk': uiText('diff.discardHunk'),
     stage: uiText("actionNames.stage"), 'resolve-and-stage': uiText("actionNames.markStage"), unstage: uiText("actionNames.unstage"), discard: uiText("actionNames.discard"), commit: action.type === 'commit' && action.amend ? uiText("actionNames.amend") : uiText("actionNames.commit"),
     fetch: uiText("actionNames.fetch"), pull: uiText("actionNames.pull"), push: uiText("actionNames.push"), 'remote.add':uiText("actionNames.addRemote"), 'branch.create': uiText("actionNames.createBranch"), 'branch.checkout': uiText("actionNames.checkout"), 'commit.checkout': uiText("actionNames.checkout"),
