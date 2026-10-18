@@ -29,6 +29,7 @@ import { verifyActionSafety, verifyDeletionDefaults } from './test-action-safety
 import { verifyTransfer } from './test-transfer-ui.mjs';
 import { verifyProjectOpen } from './test-project-ui.mjs';
 import { verifyDockedWorkbench, verifyWorkbenchLocations } from './test-workbench-host-ui.mjs';
+import { verifyPanelResize } from './test-panel-resize-ui.mjs';
 
 // Full and targeted runs share one registry, so a new suite cannot be omitted from full runs.
 const suites = new Map([
@@ -47,6 +48,7 @@ const suites = new Map([
   ['tag-status', verifyTagStatus],
   ['terminal', verifyTerminalDock],
   ['workbench', verifyWorkbench],
+  ['panel-resize', verifyPanelResize],
   ['history', verifyHistory],
   ['file-history', verifyFileHistory],
   ['refresh', verifyRefresh],
@@ -429,10 +431,11 @@ async function verifyWorkbench(browser, url) {
     await sidebarSeparator.focus(); await sidebarSeparator.press('ArrowRight');
     assert.ok(Number(await sidebarSeparator.getAttribute('aria-valuenow')) > originalSidebar, 'Keyboard resizing must update the sidebar width');
     await sidebarSeparator.press('Home');
-    assert.equal(Number(await sidebarSeparator.getAttribute('aria-valuenow')), 160, 'Sidebar supports its documented minimum width');
+    assert.equal(Number(await sidebarSeparator.getAttribute('aria-valuenow')), 40, 'Sidebar can stay narrow above its fold threshold');
+    for (let index = 0; index < 15; index++) await sidebarSeparator.press('ArrowRight');
     const sidebarBox = await sidebar.boundingBox();
     const actionBoxes = await sidebar.locator('.sidebar-actions').evaluateAll(groups => groups.flatMap(group => [...group.querySelectorAll('button')].map(button => { const box = button.getBoundingClientRect(); return { left: box.left, right: box.right }; })));
-    assert.ok(sidebarBox && actionBoxes.every(box => box.left >= sidebarBox.x - .5 && box.right <= sidebarBox.x + sidebarBox.width + .5), 'Direct sidebar actions must stay visible at the minimum width');
+    assert.ok(sidebarBox && actionBoxes.every(box => box.left >= sidebarBox.x - .5 && box.right <= sidebarBox.x + sidebarBox.width + .5), 'Direct sidebar actions stay visible at the readable width');
     await page.getByTestId('toolbar-more').click();
     await page.getByRole('menuitem', { name: 'Restore Layout', exact: true }).click();
     assert.equal(Number(await sidebarSeparator.getAttribute('aria-valuenow')), 210);
