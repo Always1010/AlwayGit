@@ -46,7 +46,8 @@ export function nativeRuntimeFiles(target) {
   if (!targets.has(target)) throw new Error(`Unsupported build platform: ${target}.`);
   return target.startsWith('win32-')
     ? ['conpty.node', 'conpty_console_list.node', 'pty.node', 'winpty-agent.exe', 'winpty.dll', 'conpty/conpty.dll', 'conpty/OpenConsole.exe']
-    : ['pty.node', 'spawn-helper'];
+    // node-pty only builds and uses spawn-helper on macOS; Linux uses forkpty.
+    : target.startsWith('darwin-') ? ['pty.node', 'spawn-helper'] : ['pty.node'];
 }
 
 function runtimeFileAllowed(relative, target) {

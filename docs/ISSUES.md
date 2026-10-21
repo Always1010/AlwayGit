@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-163：Linux 安装打包误判 node-pty 运行时不完整
+
+- 日期：2026-10-21
+- 状态：已解决
+- 现象：Linux ARM64 执行安装脚本时，构建抛出 `No complete node-pty runtime for linux-arm64`，即使本机已存在编译完成的 `build/Release/pty.node`；同一判断也影响 Linux x64。
+- 原因：运行时复制与 VSIX 内容校验共用的文件清单，把仅在 macOS 构建和使用的 `spawn-helper` 当作所有 Unix 平台的必需文件；既有 Linux 测试夹具也错误地提供了该文件。
+- 解决方案：按平台区分原生文件，Linux 仅要求 `pty.node`，macOS 继续要求 `spawn-helper`，Windows 保持完整 ConPTY/WinPTY 文件检查；同步修正复制及发布内容测试夹具。
+- 验证方式：平台运行时专项 12 项通过，覆盖六种目标的复制规则、Linux 无 helper 的发布清单、macOS 缺少 helper 的拒绝及原生模块缺失检查；本机 Linux ARM64 的 `npm run build` 通过，无界面真实终端验证输入输出、缩放、自然退出、强制终止、启动失败及辅助进程清理通过。未生成 VSIX 或安装扩展。
+- 相关文件：`scripts/platform-runtime.mjs`、`tests/platform-runtime.test.ts`、`docs/ARCHITECTURE.md`、`docs/ARCHITECTURE.en.md`。
+
 ## BUG-162：不同 Profile 的同仓库写操作未共享互斥保护
 
 - 日期：2026-10-21
