@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-156：内嵌终端遗漏所选 Profile 的环境变量
+
+- 日期：2026-10-21
+- 状态：已解决
+- 现象：终端 Profile 设置的 PATH、虚拟环境等变量未进入内嵌终端，命令运行环境与所选 Profile 不符。
+- 原因：启动配置仅读取 Profile 的路径和参数，环境处理只应用全局终端配置。
+- 解决方案：全局终端环境后合并默认所选 Profile 的环境，支持 null 删除及环境变量、用户目录展开；显式选择其他 Shell 不继承默认 Profile 环境，不修改宿主进程环境。
+- 验证方式：终端启动配置定向回归 1 项通过，覆盖合并优先级、删除、展开、宿主环境保留和显式 Shell 隔离。
+- 相关文件：`src/extension/terminal-runtime.ts`、`tests/terminal-runtime.test.ts`、`docs/WORKBENCH_SPEC.md`、`docs/WORKBENCH_SPEC.en.md`。
+
 ## BUG-155：添加仓库失败后扫描结果无法重新提交
 
 - 日期：2026-10-21
