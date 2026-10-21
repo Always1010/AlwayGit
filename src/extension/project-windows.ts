@@ -1,10 +1,10 @@
 import { translate, message as localizeMessage, MessageError } from '../i18n/index';
 import * as vscode from 'vscode';
 import { createHash } from 'node:crypto';
-import { tmpdir } from 'node:os';
+import { homedir, hostname, tmpdir } from 'node:os';
 import path from 'node:path';
 import { WindowBridge, canonicalPath, type ProjectRequest, type WindowRecord } from '../application/window-bridge';
-import { RepositoryOperationLock } from '../application/operation-lock';
+import { RepositoryOperationBusyError, RepositoryOperationLock, type OperationLease } from '../application/operation-lock';
 import type { GitDocuments } from '../editor/documents';
 import type { RepositoryManager } from '../repositories/manager';
 import type { DiffTarget, OpenProjectResult } from '../protocol/types';
@@ -13,13 +13,20 @@ import type { DiffTarget, OpenProjectResult } from '../protocol/types';
 export class ProjectWindows implements vscode.Disposable {
   readonly bridge: WindowBridge;
   private readonly operationLock: RepositoryOperationLock;
+  private readonly legacyOperationLock: RepositoryOperationLock;
   private readonly disposables: vscode.Disposable[] = [];
   private focusCommand = false;
   private readonly opening = new Map<string, Promise<WindowRecord>>();
   constructor(context: vscode.ExtensionContext, private readonly log: vscode.OutputChannel, private readonly repositories: RepositoryManager, private readonly documents: GitDocuments, private readonly showWorkbench: (repoId?: string, blank?: boolean) => Promise<void>, private readonly synchronizeRepositories: () => Promise<void> = async () => {}, private readonly repositoryActivity: (commonDir: string, busy: boolean, label: string) => void = () => {}) {
     const scope = createHash('sha256').update([context.globalStorageUri.toString(), vscode.env.appRoot, vscode.env.remoteName ?? '', process.env.VSCODE_IPC_HOOK ?? ''].join('|')).digest('hex').slice(0, 24);
     this.bridge = new WindowBridge(path.join(tmpdir(), 'alwaygit-windows-' + scope), request => this.execute(request), message => this.log.appendLine('[project-window] ' + message));
-    this.operationLock = new RepositoryOperationLock(path.join(this.bridge.directory, 'operation-locks'), this.bridge.record.id);
+    // Window routing is Profile-specific; writes to shared Git storage are not.
+    // A user-owned, host-local directory also survives application upgrades and
+    // differing temporary-directory settings between Desktop and Server hosts.
+    const host = createHash('sha256').update(hostname().toLowerCase()).digest('hex').slice(0, 24);
+    this.operationLock = new RepositoryOperationLock(path.join(homedir(), '.alwaygit', 'operation-locks', host), this.bridge.record.id);
+    // Keep the old Profile lease for live older windows and interrupted operations.
+    this.legacyOperationLock = new RepositoryOperationLock(path.join(this.bridge.directory, 'operation-locks'), this.bridge.record.id);
   }
   private roots(): string[] { return (vscode.workspace.workspaceFolders ?? []).filter(folder => folder.uri.scheme === 'file').map(folder => folder.uri.fsPath); }
   async start(): Promise<void> {
@@ -62,31 +69,50 @@ export class ProjectWindows implements vscode.Disposable {
   async openFile(root: string, filename: string): Promise<void> { await this.route({ root, action: 'file', path: filename }); }
   async openDiff(root: string, target: DiffTarget): Promise<void> { await this.route({ root, action: 'diff', target }); }
   async notifyCatalogChanged(): Promise<void> { await this.bridge.broadcast({ action: 'catalog-changed' }); }
-  async isRepositoryBusy(commonDir: string): Promise<boolean> { return this.operationLock.isBusy(await canonicalPath(commonDir)); }
-  async recoverRepositoryOperation(commonDir: string, token: string): Promise<void> { await this.operationLock.recover(await canonicalPath(commonDir), token); }
+  async isRepositoryBusy(commonDir: string): Promise<boolean> {
+    const canonical = await canonicalPath(commonDir);
+    return await this.operationLock.isBusy(canonical) || await this.legacyOperationLock.isBusy(canonical);
+  }
+  async recoverRepositoryOperation(commonDir: string, token: string): Promise<void> {
+    const canonical = await canonicalPath(commonDir);
+    const shared = await this.operationLock.recoverMatching(canonical, token);
+    const legacy = await this.legacyOperationLock.recoverMatching(canonical, token);
+    if (!shared && !legacy) throw new RepositoryOperationBusyError(translate('en', 'operationLock.aGitOperationIsAlreadyRunningForThisRepository'));
+  }
   private async notifyActivity(commonDir: string, busy: boolean, label: string): Promise<void> {
     try { await this.bridge.broadcast({ action: 'repository-activity', commonDir, busy, label }); }
     catch (error) { try { this.log.appendLine(translate('en', "projectWindows.repositoryActivity", { value: (error instanceof Error ? error.message : String(error)) })); } catch { /* Disposal must not affect the Git operation or its lease. */ } }
   }
   async runRepositoryOperation<T>(commonDir: string, label: string, task: () => Promise<T>): Promise<T> {
     const canonical = await canonicalPath(commonDir), lease = await this.operationLock.acquire(canonical, label);
-    let unconfirmed = false;
+    const leases: OperationLease[] = [lease];
+    let unconfirmed = false, announced = false;
     try {
+      // Every new host acquires in this order; old hosts still see the second lease.
+      leases.push(await this.legacyOperationLock.acquire(canonical, label, lease.token));
       await this.notifyActivity(canonical, true, label);
-      await lease.markRunning();
+      announced = true;
+      for (const owned of leases) await owned.markRunning();
       return await task();
     }
     catch (error) {
       if ((error as { terminationUnconfirmed?: unknown })?.terminationUnconfirmed === true) {
         unconfirmed = true;
-        await lease.quarantine((error as { pid?: number }).pid);
+        const results = await Promise.allSettled(leases.map(owned => owned.quarantine((error as { pid?: number }).pid)));
+        // Both running records and live endpoints remain protective if a quarantine write fails.
+        // Preserve the original termination flag so callers also retain their busy state.
+        for (const result of results) if (result.status === 'rejected') {
+          try { this.log.appendLine('[operation-lock] ' + String(result.reason)); } catch { /* Disposed logging must not release protection. */ }
+        }
       }
       throw error;
     }
     finally {
       if (!unconfirmed) {
-        await lease.release();
-        await this.notifyActivity(canonical, false, label);
+        const released = await Promise.allSettled(leases.reverse().map(owned => owned.release()));
+        const failure = released.find(result => result.status === 'rejected');
+        if (failure?.status === 'rejected') throw failure.reason;
+        if (announced) await this.notifyActivity(canonical, false, label);
       }
     }
   }
@@ -185,5 +211,5 @@ export class ProjectWindows implements vscode.Disposable {
     }
     throw new MessageError(localizeMessage("projectWindows.theNewWindowOpenedButAlwayGitDidNotRespond"));
   }
-  dispose(): void { this.operationLock.dispose();this.bridge.dispose(); for (const disposable of this.disposables) disposable.dispose(); }
+  dispose(): void { this.operationLock.dispose();this.legacyOperationLock.dispose();this.bridge.dispose(); for (const disposable of this.disposables) disposable.dispose(); }
 }
