@@ -37,10 +37,10 @@
 - 日期：2026-10-21
 - 状态：已解决
 - 现象：扫描默认全选后取消某项，实际变成仅选该项；清空后逐项勾选也只保留最后一项，导致添加范围与复选框操作不符。
-- 原因：复选框复用了列表的普通单选分支，仅 Ctrl/Meta 点击才切换选中状态。
-- 解决方案：普通复选框点击独立增减选中项，保持 Shift 范围选择与 Ctrl/Meta 修饰行为。
-- 验证方式：真实 RepositoryDialog 组件回归验证取消默认选中项、逐项累积、范围选择及提交的仓库 keys；连同选择算法共 5 项通过。
-- 相关文件：`webview/RepositoryDialog.tsx`、`tests/repository-dialog.test.tsx`。
+- 原因：复选框复用了列表的普通单选分支，仅 Ctrl/Meta 点击才切换选中状态；点击处理还调用 preventDefault，导致浏览器回滚原生勾选外观，与实际选择和提交范围不一致。
+- 解决方案：普通复选框点击独立增减选中项，保持 Shift 范围选择与 Ctrl/Meta 修饰行为；不再阻止原生点击默认行为，使勾选外观、ARIA 状态和提交范围一致。
+- 验证方式：真实 RepositoryDialog 组件回归验证取消默认选中项、逐项累积、范围选择及提交的仓库 keys；连同选择算法共 5 项通过。真实 React 与 Chromium 无头验证普通点击、标签点击、Space、Shift/Ctrl 的 4 个场景，修正后组件 3 项再次通过；已有 worktrees 界面专项通过，持续核对 DOM 勾选、ARIA 与提交集合。最终类型、双语检查和 Webview 构建通过。
+- 相关文件：`webview/RepositoryDialog.tsx`、`tests/repository-dialog.test.tsx`、`scripts/test-worktrees-ui.mjs`。
 
 ## BUG-158：冲突文件父目录缺失时无法选择一侧恢复
 
