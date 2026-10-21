@@ -8,6 +8,21 @@ vi.mock('vscode',()=>({window:{showWarningMessage:host.warning},workspace:{get t
 const repo:Repository={id:'repo',root:path.resolve('test-repo'),commonDir:path.resolve('test-repo/.git'),name:'Test'};
 beforeEach(()=>{host.warning.mockReset();host.documents=[];});
 describe('operation confirmation',()=>{
+  it.each([{type:'commit',message:'ordinary'}, {type:'commit',message:'selected',files:[{path:'same.txt',area:'unstaged'}]}, {type:'operation.continue',kind:'merge'}] satisfies GitAction[])('normalizes Windows editor casing and respects repository boundaries for $type', async action => {
+    const filename = path.join(repo.root, 'same.txt');
+    host.documents = [{isDirty:true,uri:{scheme:'file',fsPath:process.platform === 'win32' ? filename.toUpperCase() : filename}}];
+    expect(await confirmAction(repo, action, 'zh-CN')).toBe(false);
+    expect(host.warning).toHaveBeenCalledOnce();
+    host.warning.mockClear();
+    host.documents = [{isDirty:true,uri:{scheme:'file',fsPath:path.join(repo.root + '-sibling', 'same.txt')}}];
+    expect(await confirmAction(repo, action, 'zh-CN')).toBe(true);
+    expect(host.warning).not.toHaveBeenCalled();
+    if (process.platform !== 'win32') {
+      host.documents = [{isDirty:true,uri:{scheme:'file',fsPath:filename.toUpperCase()}}];
+      expect(await confirmAction(repo, action, 'zh-CN')).toBe(true);
+      expect(host.warning).not.toHaveBeenCalled();
+    }
+  });
   it('blocks side replacement and staging when the affected editor has unsaved changes',async()=>{
     const filename=path.join(repo.root,'same.txt');host.documents=[{isDirty:true,uri:{scheme:'file',fsPath:process.platform==='win32'?filename.toUpperCase():filename}}];
     await expect(confirmAction(repo,{type:'conflict.choose',token:'checked',side:'ours'},'zh-CN')).rejects.toThrow('未保存');
