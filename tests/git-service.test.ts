@@ -10,6 +10,16 @@ const setup = fixtures.setup;
 afterEach(fixtures.cleanup);
 
 describe('Git service integration', () => {
+  it('classifies only confirmed missing commit objects as OBJECT_NOT_FOUND', async () => {
+    const { root, service, repo } = await setup();
+    const oid = await commit(root, 'file.txt', 'content');
+    await expect(service.details(repo, 'f'.repeat(40))).rejects.toMatchObject({ code: 'OBJECT_NOT_FOUND' });
+    await expect(service.details(repo, 'missing-branch')).rejects.toMatchObject({ code: 'GIT_FAILED' });
+    const blob = await git(root, 'rev-parse', 'HEAD:file.txt');
+    await expect(service.details(repo, blob)).rejects.toMatchObject({ code: 'GIT_FAILED' });
+    await expect(service.details(repo, oid, 'f'.repeat(40))).rejects.toMatchObject({ code: 'GIT_FAILED' });
+    expect((await service.details(repo, oid)).commit.oid).toBe(oid);
+  });
   it('pulls an explicit source into the captured local branch without changing its upstream', async () => {
     const { root, service, repo } = await setup();
     const base = await commit(root, 'base.txt', 'base');

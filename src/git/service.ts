@@ -615,7 +615,21 @@ export class GitService implements GitServiceContract {
     return { commits: visible, nextOffset: offset + Math.min(commits.length, limit), hasMore: commits.length > limit, tips, ...(head ? { head } : {}) };
   }
   async details(repo: Repository, revision: string, parent?: string): Promise<CommitDetails> {
-    await this.verify(repo); const oid = await this.oid(repo, revision); const data = (await this.run(repo, ['show', '-s', `--format=${commitFormat}%x00%B`, oid, '--'])).stdout.toString('utf8').split('\0'); const commit = parseCommit(data);
+    await this.verify(repo);
+    let oid: string;
+    try { oid = await this.oid(repo, revision); }
+    catch (error) {
+      // Only an explicit missing-object response may invalidate a saved selection.
+      // Revision errors, unavailable repositories and transient read failures remain retryable.
+      if (error instanceof GitError && error.code === 'GIT_FAILED' && /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i.test(revision)) {
+        const object = await this.run(repo, ['cat-file', '--batch-check'], true, undefined, { input: Buffer.from(`${revision}\n`) }).catch(() => undefined);
+        if (object?.code === 0 && object.stdout.toString('utf8').trim() === `${revision} missing`) {
+          throw new GitError(error.localizedMessage ?? error.message, 'OBJECT_NOT_FOUND', error.stdout, error.stderr);
+        }
+      }
+      throw error;
+    }
+    const data = (await this.run(repo, ['show', '-s', `--format=${commitFormat}%x00%B`, oid, '--'])).stdout.toString('utf8').split('\0'); const commit = parseCommit(data);
     const base = parent ? await this.oid(repo, parent) : commit.parents[0];
     if (base && !commit.parents.includes(base)) throw new GitError(localizeMessage("service.selectedParentIsNotAParentOfThisCommit"), 'INVALID_PARENT');
     const args = ['diff-tree', '--no-commit-id', '--name-status', '-z', '-r', '-M', ...(base ? [base, oid] : ['--root', oid]), '--']; const files=parseCommitFiles((await this.run(repo,args)).stdout);
