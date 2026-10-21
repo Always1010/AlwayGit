@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, readdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { RepositoryOperationLock, RepositoryOperationRecoveryRequiredError } from '../src/application/operation-lock';
@@ -30,9 +30,10 @@ const output = () => ({ appendLine: vi.fn() });
 async function projectWindows(broadcast = vi.fn(async () => {})) {
   const root = await mkdtemp(path.join(tmpdir(), 'alwaygit-lifecycle-')); roots.push(root);
   const lock = new RepositoryOperationLock(path.join(root, 'locks'), 'test'); locks.push(lock);
-  const projects = new ProjectWindows(context(), output() as never, {} as never, {} as never, async () => {});
-  Object.assign(projects, { operationLock: lock, bridge: { broadcast } });
-  return { projects, root, lock, broadcast };
+  const legacy = new RepositoryOperationLock(path.join(root, 'legacy-locks'), 'test'); locks.push(legacy);
+  const projects = Object.create(ProjectWindows.prototype) as ProjectWindows;
+  Object.assign(projects, { operationLock: lock, legacyOperationLock: legacy, log: output(), bridge: { broadcast } });
+  return { projects, root, lock, legacy, broadcast };
 }
 function workbench(projects: object) {
   const repo = { id: 'repo', root: path.resolve('repo'), commonDir: path.resolve('repo/.git'), name: 'repo' };
@@ -44,6 +45,71 @@ function workbench(projects: object) {
 const action = { id: 'action', method: 'action', repoId: 'repo', payload: { type: 'fetch' } } as const;
 
 describe('repository operation lifecycle', () => {
+  it('respects live legacy owners, releases the shared lease on failure and advertises new operations to old hosts', async () => {
+    const { projects, root, lock, legacy, broadcast } = await projectWindows();
+    const old = new RepositoryOperationLock(path.join(root, 'legacy-locks'), 'old'); locks.push(old);
+    const occupied = await old.acquire(root, 'old-fetch');
+    expect(await projects.isRepositoryBusy(root)).toBe(true);
+    const task = vi.fn(async () => {});
+    await expect(projects.runRepositoryOperation(root, 'pull', task)).rejects.toThrow('already running');
+    expect(task).not.toHaveBeenCalled();
+    expect(await lock.isBusy(root)).toBe(false);
+    expect(broadcast).not.toHaveBeenCalled();
+    await occupied.release();
+    await projects.runRepositoryOperation(root, 'pull', async () => {
+      expect(await old.isBusy(root)).toBe(true);
+      await expect(old.acquire(root, 'old-push')).rejects.toThrow('already running');
+    });
+    expect(await lock.isBusy(root)).toBe(false); expect(await legacy.isBusy(root)).toBe(false);
+  });
+  it('does not start Git and releases both leases when the legacy running marker cannot be persisted', async () => {
+    const { projects, root, lock, legacy } = await projectWindows();
+    const acquire = legacy.acquire.bind(legacy);
+    vi.spyOn(legacy, 'acquire').mockImplementationOnce(async (...args) => {
+      const lease = await acquire(...args);
+      return { ...lease, markRunning: async () => { throw new Error('legacy disk full'); } };
+    });
+    const task = vi.fn(async () => {});
+    await expect(projects.runRepositoryOperation(root, 'pull', task)).rejects.toThrow('legacy disk full');
+    expect(task).not.toHaveBeenCalled();
+    expect(await lock.isBusy(root)).toBe(false); expect(await legacy.isBusy(root)).toBe(false);
+    await expect(projects.runRepositoryOperation(root, 'pull', async () => 'retry')).resolves.toBe('retry');
+  });
+  it.each(['legacy', 'both'] as const)('recovers interrupted %s records by token without bypassing protection', async mode => {
+    const { projects, root, lock } = await projectWindows();
+    const directories = mode === 'both' ? ['locks', 'legacy-locks'] : ['legacy-locks'];
+    const token = 'a'.repeat(64);
+    for (const directory of directories) {
+      const location = path.join(root, directory), owner = new RepositoryOperationLock(location, 'interrupted'); locks.push(owner);
+      const lease = await owner.acquire(root, 'pull', token); await lease.markRunning(); await lease.quarantine(); await owner.close();
+      const file = path.join(location, (await readdir(location))[0]);
+      const record = JSON.parse(await readFile(file, 'utf8')); delete record.ownerPid;
+      await writeFile(file, JSON.stringify(record));
+    }
+    await expect(projects.runRepositoryOperation(root, 'push', async () => {})).rejects.toMatchObject({ token, code: 'REPOSITORY_RECOVERY_REQUIRED' });
+    if (mode === 'legacy') expect(await lock.isBusy(root)).toBe(false);
+    await expect(projects.recoverRepositoryOperation(root, 'b'.repeat(64))).rejects.toThrow('already running');
+    await projects.recoverRepositoryOperation(root, token);
+    await expect(projects.runRepositoryOperation(root, 'push', async () => 'recovered')).resolves.toBe('recovered');
+  });
+  it('retains both running leases and the original failure if one quarantine write fails', async () => {
+    const { projects, root, lock, legacy } = await projectWindows();
+    const acquire = legacy.acquire.bind(legacy);
+    vi.spyOn(legacy, 'acquire').mockImplementationOnce(async (...args) => {
+      const lease = await acquire(...args);
+      return { ...lease, quarantine: async () => { throw new Error('legacy disk full'); } };
+    });
+    const error = Object.assign(new Error('unknown Git tree'), { terminationUnconfirmed: true, pid: process.pid });
+    await expect(projects.runRepositoryOperation(root, 'pull', async () => { throw error; })).rejects.toBe(error);
+    expect(await lock.isBusy(root)).toBe(true); expect(await legacy.isBusy(root)).toBe(true);
+    await lock.close(); await legacy.close();
+    const records = await Promise.all(['locks', 'legacy-locks'].map(async directory => {
+      const location = path.join(root, directory), file = path.join(location, (await readdir(location))[0]);
+      return JSON.parse(await readFile(file, 'utf8')) as { token: string; running: boolean };
+    }));
+    expect(records[0].token).toBe(records[1].token);
+    expect(records.every(record => record.running)).toBe(true);
+  });
   it('releases the lease even when both activity broadcasts fail', async () => {
     const { projects, root } = await projectWindows(vi.fn(async () => { throw new Error('registry unavailable'); }));
     const task = vi.fn(async () => 'done');
@@ -53,10 +119,11 @@ describe('repository operation lifecycle', () => {
     expect(await projects.runRepositoryOperation(root, 'fetch', async () => 'again')).toBe('again');
   });
   it('keeps protection when process-tree termination is unconfirmed', async () => {
-    const { projects, root, lock, broadcast } = await projectWindows();
+    const { projects, root, lock, legacy, broadcast } = await projectWindows();
     const error = Object.assign(new Error('unknown Git tree'), { terminationUnconfirmed: true, pid: process.pid });
     await expect(projects.runRepositoryOperation(root, 'pull', async () => { throw error; })).rejects.toBe(error);
     expect(await projects.isRepositoryBusy(root)).toBe(true);
+    expect(await legacy.isBusy(root)).toBe(true);
     expect(broadcast).not.toHaveBeenCalledWith(expect.objectContaining({ busy: false }));
     await lock.close();
     await expect(projects.runRepositoryOperation(root, 'pull', async () => {})).rejects.toThrow('closed');
