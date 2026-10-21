@@ -9,6 +9,28 @@ const fixtures = gitFixtures('alwaygit-selected-commit-');
 afterEach(() => fixtures.cleanup());
 
 describe('selected file commits', () => {
+  it.each([false, true])('only reads a recreated rename source when explicitly selected (%s)', async includeSource => {
+    const { root, repo, service } = await fixtures.setup();
+    await commitFile(root, 'old.txt', 'original');
+    await commitFile(root, 'other.txt', 'other base');
+    await git(root, 'mv', 'old.txt', 'new.txt');
+    await writeFile(path.join(root, 'new.txt'), 'latest renamed');
+    await writeFile(path.join(root, 'old.txt'), 'independent new file');
+    await writeFile(path.join(root, 'other.txt'), 'other staged');
+    await git(root, 'add', 'other.txt');
+    await writeFile(path.join(root, 'other.txt'), 'other working');
+    const snapshot = await service.snapshot(repo);
+    const files: CommitSelection[] = [{ path: 'new.txt', area: 'unstaged' }, ...(includeSource ? [{ path: 'old.txt', area: 'unstaged' as const }] : [])];
+    await service.execute(repo, { type: 'commit', message: 'rename only', files, expectedHead: snapshot.head, expectedBranch: snapshot.branch });
+    expect(await git(root, 'show', 'HEAD:new.txt')).toBe('latest renamed');
+    expect((await git(root, 'ls-tree', '--name-only', 'HEAD')).split('\n').includes('old.txt')).toBe(includeSource);
+    if (includeSource) expect(await git(root, 'show', 'HEAD:old.txt')).toBe('independent new file');
+    else expect(await git(root, 'ls-files', '--others', '--exclude-standard')).toBe('old.txt');
+    expect(await readFile(path.join(root, 'old.txt'), 'utf8')).toBe('independent new file');
+    expect(await git(root, 'diff', '--cached', '--name-only')).toBe('other.txt');
+    expect(await git(root, 'show', ':other.txt')).toBe('other staged');
+    expect(await readFile(path.join(root, 'other.txt'), 'utf8')).toBe('other working');
+  });
   it.each(['pre-commit', 'commit-msg'])('keeps unselected content out when %s stages it', async hookName => {
     const { root, repo, service } = await fixtures.setup();
     await commitFile(root, 'chosen.txt', 'base');

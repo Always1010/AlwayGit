@@ -29,8 +29,11 @@ export async function commitSelected(run: Run, selections: CommitSelection[], ch
       ? [selection.path, change.originalPath] : [selection.path];
   };
   const staged = [...unique.values()].filter(selection => selection.area === 'staged').flatMap(related);
-  const unstaged = [...unique.values()].filter(selection => selection.area === 'unstaged').flatMap(related);
-  const selectedPaths = [...new Set([...staged, ...unstaged])];
+  const unstagedSelections = [...unique.values()].filter(selection => selection.area === 'unstaged');
+  const unstaged = unstagedSelections.map(selection => selection.path);
+  // A rename source authorizes removing its index entry, not reading a new file at that path.
+  const renameSources = [...new Set(unstagedSelections.flatMap(selection => related(selection).slice(1)))].filter(name => !unique.has(name));
+  const selectedPaths = [...new Set([...staged, ...unstaged, ...renameSources])];
   const indexPath = (await run(['rev-parse', '--path-format=absolute', '--git-path', 'index'])).stdout.toString('utf8').trim();
   const token = randomUUID(), originalIndex = path.join(path.dirname(indexPath), `alwaygit-${token}-original.index`);
   const commitIndex = path.join(path.dirname(indexPath), `alwaygit-${token}-commit.index`);
@@ -57,6 +60,7 @@ export async function commitSelected(run: Run, selections: CommitSelection[], ch
     }
     const stagedTree = (await run(['write-tree'], { env: originalEnv })).stdout.toString('utf8').trim();
     await run(head ? ['read-tree', head] : ['read-tree', '--empty'], { env: commitEnv });
+    if (renameSources.length) await run(['rm', '-f', '--cached', '--ignore-unmatch', '--', ...renameSources], { env: commitEnv });
     if (staged.length) await run(['restore', '--staged', `--source=${stagedTree}`, '--', ...staged], { env: commitEnv });
     if (unstaged.length) await run(['add', '-A', '--', ...unstaged], { env: commitEnv });
     hooks = await selectedCommitHooks(run, indexPath, head, selectedPaths, executable);
