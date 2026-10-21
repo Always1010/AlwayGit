@@ -179,7 +179,9 @@ export async function verifyWorktrees(browser, url) {
     assert.equal(await repositoryDialog.getByRole('checkbox',{name:/App/}).isDisabled(),true,'Already-added repositories are disabled');
     assert.equal(await repositoryDialog.locator('.repository-candidate[aria-selected="true"]').count(),3,'Available repositories are selected by default');
     await repositoryDialog.getByRole('checkbox',{name:/NotesAnywhere/}).click();
-    assert.equal(await repositoryDialog.locator('.repository-candidate[aria-selected="true"]').count(),1,'A plain click selects one candidate');
+    assert.equal(await repositoryDialog.locator('.repository-candidate[aria-selected="true"]').count(),2,'A checkbox click removes only that candidate from the selection');
+    assert.equal(await repositoryDialog.getByRole('checkbox',{name:/NotesAnywhere/}).isChecked(),false,'The browser must not roll back a checkbox toggle after click handling');
+    assert.deepEqual(await repositoryDialog.locator('.repository-candidate').evaluateAll(rows=>rows.map(row=>[row.querySelector('input').checked,row.getAttribute('aria-selected')==='true'])),[[false,false],[false,false],[true,true],[true,true]],'Native checkbox states agree with the actual selection');
     await repositoryDialog.getByRole('checkbox',{name:/SwiftResume/}).click({modifiers:['Shift']});
     assert.equal(await repositoryDialog.locator('.repository-candidate[aria-selected="true"]').count(),3,'Shift selects the complete visible candidate range');
     await repositoryDialog.getByRole('tab',{name:'Add Group',exact:true}).click();
@@ -187,10 +189,12 @@ export async function verifyWorktrees(browser, url) {
     assert.equal(await repositoryDialog.locator('.repository-candidate[aria-selected="true"]').count(),3,'Type switching preserves completed scan selections');
     await repositoryDialog.getByRole('button',{name:'New Group',exact:true}).click();
     await repositoryDialog.getByLabel('New group name',{exact:true}).fill('Imported');
+    const checkedKeys=await repositoryDialog.locator('.repository-candidate input:checked').evaluateAll(inputs=>inputs.map(input=>({NotesAnywhere:'notes',SchedulePin:'schedule',SwiftResume:'resume'}[input.closest('label').querySelector('strong').textContent])));
     await repositoryDialog.getByRole('button',{name:'Add 3 Repositories',exact:true}).click();
     await repositoryDialog.waitFor({state:'hidden'});
     const addCall=await page.evaluate(() => window.__worktreeFixture.calls.find(call=>call.method==='addRepository'));
     assert.deepEqual(addCall.payload.keys,['notes','schedule','resume']);assert.equal(addCall.payload.newCollectionName,'Imported');
+    assert.deepEqual(addCall.payload.keys,checkedKeys,'The submitted repositories exactly match the visible checked boxes');
     await page.getByText('Added 3 repositories to Imported. Skipped 1.',{exact:true}).waitFor();
     await page.evaluate(()=>{window.__worktreeFixture.holdScan=true;});
     await sidebar.getByRole('button',{name:'Add…',exact:true}).click();
