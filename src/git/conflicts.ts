@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { chmod, link, lstat, open, readFile, rename, rm, unlink } from 'node:fs/promises';
+import { chmod, link, lstat, mkdir, open, readFile, rename, rm, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { constants } from 'node:fs';
 import { safeWorkingPath } from '../editor/paths';
@@ -60,7 +60,14 @@ export class ConflictStore {
     const bytes=version?(await run(['cat-file','--filters',`--path=${saved.details.path}`,version.oid])).stdout:undefined;
     const temporary=path.join(path.dirname(current.full),'.alwaygit-conflict-'+randomUUID());
     try{
-      if(bytes){const file=await open(temporary,'wx',0o600);try{await file.writeFile(bytes);await file.sync();}finally{await file.close();}await chmod(temporary,((current.mode??0o644)&0o666)|(version!.mode==='100755'?0o111:0));}
+      if(bytes){
+        // A deleted conflict may have lost all of its parent directories too.
+        // Check containment both before creating parents and before opening a file.
+        await safeWorkingPath(repo.root,saved.details.path,false);
+        await mkdir(path.dirname(current.full),{recursive:true});
+        await safeWorkingPath(repo.root,saved.details.path,false);
+        const file=await open(temporary,'wx',0o600);try{await file.writeFile(bytes);await file.sync();}finally{await file.close();}await chmod(temporary,((current.mode??0o644)&0o666)|(version!.mode==='100755'?0o111:0));
+      }
       const latest=await this.capture(repo,saved.details.path,run,snapshot);if(latest.fingerprint!==saved.fingerprint)throw changed();
       await safeWorkingPath(repo.root,saved.details.path,false);
       if(!bytes){if(current.work)await unlink(current.full);}
