@@ -3,6 +3,7 @@ import { alignDiff, changedParts } from '../webview/diff';
 import { samePath } from '../webview/pathIdentity';
 import { buildRefTree, folderKeys, refsUnder, visibleRefs } from '../webview/refTree';
 import type { GitRef } from '../src/protocol/types';
+import { remoteParts, refsForRemote } from '../webview/remoteTracking';
 
 describe('workbench path identities',()=>{
   it('matches Windows Git paths and VS Code paths without conflating POSIX case',()=>{
@@ -31,6 +32,17 @@ describe('readonly Diff alignment',()=>{
 });
 describe('branch reference tree',()=>{
   const ref=(name:string):GitRef=>({name,fullName:`refs/heads/${name}`,kind:'local',oid:name});
+  it('groups and selects remote references by the longest configured remote name', () => {
+    const refs = ['team/main', 'team/mobile/topic', 'team/mobile/feature/one', 'teamwork/main'].map(name => ({ ...ref(name), kind: 'remote' as const, fullName: `refs/remotes/${name}` }));
+    const remotes = ['team', 'team/mobile', 'teamwork'];
+    expect(remoteParts(refs[1], remotes)).toEqual({ remote: 'team/mobile', branch: 'topic' });
+    for (const [remote, expected] of [['team', [refs[0]]], ['team/mobile', [refs[1], refs[2]]], ['teamwork', [refs[3]]]] as const) {
+      const grouped = refsForRemote(refs, remotes, remote);
+      expect(grouped).toEqual(expected);
+      const selected = buildRefTree(grouped, `remote:${remote}`, remote).flatMap(refsUnder);
+      expect(new Set(selected.map(ref => ref.fullName))).toEqual(new Set(expected.map(ref => ref.fullName)));
+    }
+  });
   it('groups slash-separated branches into recursively sorted folders',()=>{
     const tree=buildRefTree([ref('feature/test2'),ref('main'),ref('feature/login/api'),ref('feature/test')],'local');
     expect(tree.map(node=>node.label)).toEqual(['feature','main']);

@@ -7,6 +7,7 @@ import type { MenuItem } from './ContextMenu';
 import { useWorkbench } from './store';
 import { samePath } from './pathIdentity';
 import { rpc } from './rpc';
+import { remoteNames, remoteParts as resolveRemoteParts, refsForRemote } from './remoteTracking';
 import { showRemoteRequest } from './RemoteRequestDialog';
 import { cherryPickOrder } from './commitSelection';
 import type { CherryPickMenuCheck } from './useCherryPickCheck';
@@ -55,13 +56,13 @@ export function menuFor(target: MenuTarget, api: MenuApi, check?: CherryPickMenu
     const items=name==='repositories'?[item(t("menus.add"),api.addRepository,'add'),item(t("common.refresh"),()=>state.initialize(),'refresh')]:name==='local'?[action(uiText("menus.createBranch"),{type:'branch.create'},'git-branch'),preset(item(t("menus.showAllLocalBranchesInGraph"),()=>state.setCheckedRefs([...checked,...localNames]),'eye',!localNames.length),allLocal),preset(item(t("menus.showCurrentBranchOnlyInGraph"),()=>state.setCheckedRefs(current?[current.fullName]:[]),'target',!current,t("menus.noCurrentLocalBranch")),currentOnly)]:name==='remote'?[action(t("menus.addRemote"),{type:'remote.add'},'add'),track(snapshot?.refs.filter(ref=>ref.kind==='remote')??[]),refresh]:name==='tag'?[action(uiText("menus.createTag"),{type:'tag.create'},'tag'),checkTags]:name==='stash'?[action(uiText("menus.stashAllChanges"),{type:'stash.create'},'archive',busy||!snapshot?.changes.length||!!snapshot.operation.kind),refresh]:name==='worktree'?[action(uiText("menus.addWorktree"),{type:'worktree.add'},'new-folder'),refresh]:[refresh];
     return {caption:{repositories:t("menus.repositories"),local:t("menus.localBranches"),remote:t("menus.remotes"),tag:uiText("menus.tags"),stash:uiText("menus.stashes"),worktree:uiText("menus.worktrees")}[name],items};
   }
-  if(target.kind==='remote')return {caption:target.name,items:[action(uiText("menus.fetch"),{type:'fetch',remote:target.name},'cloud-download'),track(snapshot?.refs.filter(ref=>ref.kind==='remote'&&ref.name.startsWith(`${target.name}/`))??[]),refresh]};
+  if(target.kind==='remote')return {caption:target.name,items:[action(uiText("menus.fetch"),{type:'fetch',remote:target.name},'cloud-download'),track(refsForRemote(snapshot?.refs??[],snapshot?remoteNames(snapshot):[],target.name)),refresh]};
   if(target.kind==='remote-tag')return {caption:target.name,items:[
     checkTags,
     action(t('menus.deleteRemoteTag'),{type:'tag.delete',target:target.name,deleteLocal:false,remote:target.remote,expectedRemoteOid:target.remoteOid,expectedDestination:snapshot?.remoteDestinations?.[target.remote]},'trash',busy||target.separatePush||!snapshot?.remoteDestinations?.[target.remote],target.separatePush?t('menus.remoteTagDeletionRequiresMatchingAddresses'):undefined),
     copy(uiText("menus.copyTagName"),target.name),
   ]};
-  const remoteParts=(ref:GitRef)=>{const remote=(snapshot?.remotes??[]).slice().sort((a,b)=>b.length-a.length).find(name=>ref.name.startsWith(`${name}/`));return remote?{remote,branch:ref.name.slice(remote.length+1)}:undefined;};
+  const remoteParts=(ref:GitRef)=>resolveRemoteParts(ref,snapshot?remoteNames(snapshot):[]);
   const refBatch=(refs:GitRef[],caption:string)=>{
     const graphRefs=refs.filter(ref=>ref.targetType===undefined||ref.targetType==='commit'),names=graphRefs.map(ref=>ref.fullName),allLocal=refs.length>0&&refs.every(ref=>ref.kind==='local'),allRemote=refs.length>0&&refs.every(ref=>ref.kind==='remote'),allTags=refs.length>0&&refs.every(ref=>ref.kind==='tag'),current=refs.find(ref=>ref.kind==='local'&&ref.name===snapshot?.branch),occupied=refs.find(ref=>ref.kind==='local'&&snapshot?.worktrees.some(tree=>tree.branch?.replace(/^refs\/heads\//,'')===ref.name&&!samePath(tree.path,snapshot.repository.root))),blocked=current?t("menus.theCurrentBranchIsSelected"):occupied?t("menus.usedByAnotherWorktree", { name: (occupied.name) }):undefined;
     const items:MenuItem[]=[item(t("menus.showSelectedInGraph"),()=>state.setCheckedRefs([...(state.checkedRefs??[]),...names]),'eye',!graphRefs.length),item(t("menus.showOnlySelected"),()=>state.setCheckedRefs(names),'filter',!graphRefs.length),item(t("menus.hideSelectedFromGraph"),()=>state.setCheckedRefs((state.checkedRefs??[]).filter(name=>!names.includes(name))),'eye-closed',!graphRefs.length)];
