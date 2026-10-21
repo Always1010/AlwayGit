@@ -22,6 +22,29 @@ beforeEach(async () => {
 });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 describe('repository UI consistency', () => {
+  it.each([undefined, []])('keeps legacy remote grouping and tracking consistent when remotes is %s', async remotes => {
+    const { menuFor } = await import('../webview/menus'), { remoteNames, refsForRemote } = await import('../webview/remoteTracking');
+    const noop = vi.fn(), open = vi.fn(), api = { startCommit: noop, open, checkout: noop, openDiff: noop, editFile: noop, host: vi.fn(), addRepository: vi.fn(), removeRepositories: noop, fetchRepositories: noop };
+    const ref = { name: 'origin/main', fullName: 'refs/remotes/origin/main', kind: 'remote' as const, oid: 'a'.repeat(40) };
+    const current = { ...snapshot(a), refs: [ref], remotes };
+    store.setState({ snapshot: current });
+    expect(remoteNames(current)).toEqual(remotes === undefined ? ['origin'] : []);
+    expect(refsForRemote(current.refs, remoteNames(current), 'origin')).toEqual(remotes === undefined ? [ref] : []);
+    const tracking = menuFor({ kind: 'remote', name: 'origin' }, api).items.find(item => item.icon === 'git-branch')!;
+    expect(tracking.disabled).toBe(remotes !== undefined);
+    if (!tracking.disabled) { await tracking.run(); expect(open).toHaveBeenCalledWith(expect.objectContaining({ sources: [ref.fullName] })); }
+  });
+  it('limits remote-group tracking to the longest matching configured remote', async () => {
+    const { menuFor } = await import('../webview/menus');
+    const noop = vi.fn(), open = vi.fn(), api = { startCommit: noop, open, checkout: noop, openDiff: noop, editFile: noop, host: vi.fn(), addRepository: vi.fn(), removeRepositories: noop, fetchRepositories: noop };
+    const refs = ['team/main', 'team/mobile/topic'].map(name => ({ name, fullName: `refs/remotes/${name}`, kind: 'remote' as const, oid: 'a'.repeat(40) }));
+    store.setState({ snapshot: { ...snapshot(a), refs, remotes: ['team', 'team/mobile'] } });
+    for (const [index, name] of ['team', 'team/mobile'].entries()) {
+      const tracking = menuFor({ kind: 'remote', name }, api).items.find(item => item.icon === 'git-branch')!;
+      expect(tracking.disabled).toBe(false); await tracking.run();
+      expect(open).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'branch.track', sources: [refs[index].fullName] }));
+    }
+  });
   it.each(['OBJECT_NOT_FOUND', 'TIMEOUT', 'off-page'])('restores saved commit selection safely after %s', async outcome => {
     const savedOid = 'f'.repeat(40), savedParent = 'e'.repeat(40);
     vi.stubGlobal('window', { __ALWAYGIT_SESSION__: { repoId: 'a', views: { a: { tab: 'history', search: '', selectedOid: savedOid, selectedParent: savedParent, selectedFile: 'old.txt' } } } });
