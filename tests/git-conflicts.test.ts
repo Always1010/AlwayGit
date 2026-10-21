@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import {readFile,writeFile} from 'node:fs/promises';
+import {readFile,writeFile,rm,symlink,readdir,mkdir} from 'node:fs/promises';
 import path from 'node:path';
 import {gitFixtures,commitFile,git} from './support/git-fixture';
 import {GitDocuments} from '../src/editor/documents';
@@ -7,11 +7,32 @@ const editor=vi.hoisted(()=>({execute:vi.fn(),show:vi.fn(),native:true,fail:fals
 vi.mock('vscode',()=>({Uri:{file:(fsPath:string)=>({fsPath})},ViewColumn:{Active:1},window:{showTextDocument:editor.show},commands:{getCommands:async()=>['git.openMergeEditor'],executeCommand:editor.execute},extensions:{getExtension:()=>editor.native?{isActive:true,exports:{getAPI:()=>{if(editor.fail)throw new Error('API unavailable');return {getRepository:()=>({})};}}}:undefined}}));
 const fixtures=gitFixtures('alwaygit-conflicts-');
 afterEach(async()=>{vi.useRealTimers();editor.native=true;editor.fail=false;vi.clearAllMocks();await fixtures.cleanup();});
-async function conflict(deleted=false){
- const fixture=await fixtures.setup(),{root}=fixture;await git(root,'config','core.autocrlf','false');await commitFile(root,'file.txt','base\n');await git(root,'checkout','-b','incoming');
- if(deleted){await git(root,'rm','file.txt');await git(root,'commit','-m','delete');}else await commitFile(root,'file.txt','incoming\n');
- await git(root,'checkout','main');await commitFile(root,'file.txt','ours\n');await expect(git(root,'merge','incoming','--no-edit')).rejects.toThrow();return fixture;
+async function conflict(deleted=false,name='file.txt'){
+ const fixture=await fixtures.setup(),{root}=fixture;await mkdir(path.dirname(path.join(root,name)),{recursive:true});await git(root,'config','core.autocrlf','false');await commitFile(root,name,'base\n');await git(root,'checkout','-b','incoming');
+ if(deleted){await git(root,'rm',name);await git(root,'commit','-m','delete');}else await commitFile(root,name,'incoming\n');
+ await git(root,'checkout','main');await commitFile(root,name,'ours\n');await expect(git(root,'merge','incoming','--no-edit')).rejects.toThrow();return fixture;
 }
+it('restores a conflict side beneath missing parents without changing the Index',async()=>{
+ const name='deleted/nested/file.txt',{root,service,repo}=await conflict(false,name);
+ await rm(path.join(root,'deleted'),{recursive:true});
+ const index=await readFile(path.join(repo.gitDir!,'index')),details=await service.conflictDetails(repo,name);
+ expect(details.canChoose).toBe(true);
+ await service.execute(repo,{type:'conflict.choose',token:details.token,side:'theirs'});
+ expect(await readFile(path.join(root,name),'utf8')).toBe('incoming\n');
+ expect(await readFile(path.join(repo.gitDir!,'index'))).toEqual(index);
+ expect((await service.snapshot(repo)).operation.conflicts).toBe(1);
+ expect(await readdir(path.join(root,'deleted/nested'))).toEqual(['file.txt']);
+});
+it('refuses a missing conflict parent redirected outside the repository after preview',async()=>{
+ const name='deleted/nested/file.txt',{root,service,repo}=await conflict(false,name),outside=await fixtures.setup();
+ await rm(path.join(root,'deleted'),{recursive:true});
+ const details=await service.conflictDetails(repo,name),index=await readFile(path.join(repo.gitDir!,'index'));
+ const entries=await readdir(outside.root);
+ await symlink(outside.root,path.join(root,'deleted'),process.platform==='win32'?'junction':'dir');
+ await expect(service.execute(repo,{type:'conflict.choose',token:details.token,side:'ours'})).rejects.toThrow(/outside/i);
+ expect(await readdir(outside.root)).toEqual(entries);
+ expect(await readFile(path.join(repo.gitDir!,'index'))).toEqual(index);
+});
 it('chooses a pinned side without changing Index, then stages and reviews before continuing',async()=>{
  const {root,service,repo}=await conflict();const details=await service.conflictDetails(repo,'file.txt');
  expect(details).toMatchObject({status:'UU',canMerge:true,canChoose:true});expect(details.ours?.oid).not.toBe(details.theirs?.oid);
