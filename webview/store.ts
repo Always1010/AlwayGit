@@ -85,6 +85,12 @@ interface WorkbenchState {
   execute(action: GitAction, context?: RepositoryActionContext): Promise<boolean>; dismissFeedback(): void; setDraft(value: string): void; setLanguage(value: Language): void; setLayout(value: Partial<LayoutState>): void; report(error: unknown): void;
 }
 const message = (error: unknown) => errorMessage(error, useWorkbench.getState().language);
+/** A new history scope must not accept details from the selection it replaced. */
+function invalidateHistorySelection(state: WorkbenchState): Partial<WorkbenchState> {
+  ++detailEpoch;
+  return { selectedOids: [], selectionAnchor: undefined, comparison: undefined, detailsLoading: false,
+    ...(state.diffTarget?.kind === 'comparison' ? { selectedFile: undefined, diffTarget: undefined } : {}) };
+}
 const clamp = (n: number, min: number, max: number, fallback: number) => Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : fallback;
 function layout(value: Partial<LayoutState> = {}): LayoutState {
   const l = { ...defaultLayout, ...value };
@@ -168,7 +174,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   clearFileHistory() {
     if (!get().fileHistory) return;
     rememberHistory(); cancelSearchTimer();
-    set({ fileHistory: undefined, locatingOid: undefined });
+    set({ ...invalidateHistorySelection(get()), fileHistory: undefined, locatingOid: undefined });
     void get().loadHistory();
   },
   setHistoryScroll(top) { set({ historyScrollTop: Math.max(0, top) }); },
@@ -448,12 +454,12 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   setRemoteTagSelection(tag){set(tag?{selectedRemoteTag:tag,selectedRefs:[],refSelectionAnchor:undefined,selectedRepositoryKeys:[],repositorySelectionAnchor:undefined,selectedWorktreePaths:[],worktreeSelectionAnchor:undefined}:{selectedRemoteTag:undefined});},
   setRepositorySelection(keys,anchor){const selectedRepositoryKeys=[...new Set(keys)],repositorySelectionAnchor=anchor&&selectedRepositoryKeys.includes(anchor)?anchor:undefined;set(selectedRepositoryKeys.length?{selectedRepositoryKeys,repositorySelectionAnchor,selectedRefs:[],refSelectionAnchor:undefined,selectedRemoteTag:undefined,selectedWorktreePaths:[],worktreeSelectionAnchor:undefined}:{selectedRepositoryKeys,repositorySelectionAnchor});},
   setWorktreeSelection(paths,anchor){const selectedWorktreePaths=[...new Set(paths)],worktreeSelectionAnchor=anchor&&selectedWorktreePaths.includes(anchor)?anchor:undefined;set(selectedWorktreePaths.length?{selectedWorktreePaths,worktreeSelectionAnchor,selectedRepositoryKeys:[],repositorySelectionAnchor:undefined,selectedRefs:[],refSelectionAnchor:undefined,selectedRemoteTag:undefined}:{selectedWorktreePaths,worktreeSelectionAnchor});},
-  setFilter(ref, search = get().search) { set({ ref, locatingOid: undefined, checkedRefs: ref ? [ref] : get().snapshot?.refs.filter(r => r.kind !== 'tag').map(r => r.fullName) ?? [], search, tips: [], selectedOids:[], selectionAnchor:undefined, comparison:undefined, selectedStashOid: undefined,selectedStashSection:undefined,stashDetails:undefined }); void get().loadHistory(); },
+  setFilter(ref, search = get().search) { set({ ...invalidateHistorySelection(get()), ref, locatingOid: undefined, checkedRefs: ref ? [ref] : get().snapshot?.refs.filter(r => r.kind !== 'tag').map(r => r.fullName) ?? [], search, tips: [], selectedStashOid: undefined,selectedStashSection:undefined,stashDetails:undefined }); void get().loadHistory(); },
   setCheckedRefs(refs) {
     const next = [...new Set(refs)], prior = get().checkedRefs ?? [];
     if (next.length === prior.length && next.every(ref => prior.includes(ref))) return;
     rememberHistory();
-    set({ locatingOid: undefined, checkedRefs: next, ref: undefined, tips: [], selectedOids:[], selectionAnchor:undefined, comparison:undefined });
+    set({ ...invalidateHistorySelection(get()), locatingOid: undefined, checkedRefs: next, ref: undefined, tips: [] });
     void get().loadHistory();
   },
   setExpandedRefGroup(key,expanded){set({expandedRefGroups:expanded?[...new Set([...(get().expandedRefGroups??[]),key])]:(get().expandedRefGroups??[]).filter(item=>item!==key)});},
@@ -465,8 +471,8 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   setHistoryFilters(historyFilters) {
     if (historySearchKey(historyFilters) === historySearchKey(get().historyFilters)) return;
     rememberHistory(); historyController?.abort(); cancelSearchTimer(); ++historyEpoch;
-    set({ historyFilters, displayedHistory: undefined, historyError: undefined, commits: [], historyHead: undefined,
-      tips: [], nextOffset: 0, hasMore: false, locatingOid: undefined, selectedOids: [], selectionAnchor: undefined, comparison: undefined, historyLoading: !!get().repoId });
+    set({ ...invalidateHistorySelection(get()), historyFilters, displayedHistory: undefined, historyError: undefined, commits: [], historyHead: undefined,
+      tips: [], nextOffset: 0, hasMore: false, locatingOid: undefined, historyLoading: !!get().repoId });
     if (get().repoId) void get().loadHistory();
   },
   setSearch(search) {
@@ -474,7 +480,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     rememberHistory(); historyController?.abort();
     cancelSearchTimer(); ++historyEpoch;
     set({ displayedHistory: undefined, historyError: undefined });
-    set({ search, commits: [], historyHead: undefined, tips: [], nextOffset: 0, hasMore: false, locatingOid: undefined, selectedOids:[], selectionAnchor:undefined, comparison:undefined, historyLoading: !!get().repoId });
+    set({ ...invalidateHistorySelection(get()), search, commits: [], historyHead: undefined, tips: [], nextOffset: 0, hasMore: false, locatingOid: undefined, historyLoading: !!get().repoId });
     if (get().repoId) searchTimer = setTimeout(() => { searchTimer = undefined; void get().loadHistory(); }, 200);
   },
   selectWorking() {
