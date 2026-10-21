@@ -22,6 +22,32 @@ beforeEach(async () => {
 });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 describe('repository UI consistency', () => {
+  it.each(['OBJECT_NOT_FOUND', 'TIMEOUT', 'off-page'])('restores saved commit selection safely after %s', async outcome => {
+    const savedOid = 'f'.repeat(40), savedParent = 'e'.repeat(40);
+    vi.stubGlobal('window', { __ALWAYGIT_SESSION__: { repoId: 'a', views: { a: { tab: 'history', search: '', selectedOid: savedOid, selectedParent: savedParent, selectedFile: 'old.txt' } } } });
+    const fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, repoId, payload) => {
+      if (method === 'details' && payload.oid === savedOid) {
+        if (outcome !== 'off-page') return Promise.reject(Object.assign(new Error(outcome), { code: outcome }));
+        return Promise.resolve({ commit: { ...commit, oid: savedOid }, parent: savedParent, body: 'available', files: [] });
+      }
+      return fallback(method, repoId, payload);
+    });
+    vi.resetModules(); store = (await import('../webview/store')).useWorkbench;
+    await store.getState().initialize();
+    await vi.waitFor(() => expect(store.getState().detailsLoading).toBe(false));
+    if (outcome === 'OBJECT_NOT_FOUND') {
+      expect(store.getState()).toMatchObject({ tab: 'changes', selectedOid: undefined, selectedParent: undefined, selectedOids: [], selectionAnchor: undefined, selectedFile: undefined, diffTarget: undefined });
+      expect(bridge.save.mock.calls.at(-1)?.[0].views.a).toMatchObject({ tab: 'changes', selectedOid: undefined, selectedParent: undefined, selectedFile: undefined });
+      const priorReads = bridge.rpc.mock.calls.filter(([method]) => method === 'details').length;
+      await store.getState().loadHistory(); await store.getState().refresh();
+      expect(bridge.rpc.mock.calls.filter(([method]) => method === 'details')).toHaveLength(priorReads);
+    } else {
+      expect(store.getState()).toMatchObject({ tab: 'history', selectedOid: savedOid, selectedParent: savedParent });
+      if (outcome === 'off-page') expect(store.getState().details?.commit.oid).toBe(savedOid);
+      else expect(store.getState().error).toContain('TIMEOUT');
+    }
+  });
   it('binds network progress to its request and retains it across repository switches', async () => {
     await store.getState().selectRepository('a');
     const pending = deferred<Snapshot>(), fallback = bridge.rpc.getMockImplementation()!;

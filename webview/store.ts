@@ -411,7 +411,14 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       set({ details, selectedParent: details.parent });
       const file = (same ? details.files.find(f => f.path === get().selectedFile) : undefined) ?? details.files.find(file => historyFile?.paths.includes(file.path)) ?? details.files[0];
       if (file) get().selectFile({ kind: 'commit', oid, path: file.path, previousPath: file.previousPath, parent: details.parent }, false); else set({ selectedFile: undefined, diffTarget: undefined });
-    } catch (error) { if (epoch === detailEpoch && repoEpoch === repositoryEpoch) get().report(error); }
+    } catch (error) {
+      if (epoch === detailEpoch && repoEpoch === repositoryEpoch) {
+        if (error && typeof error === 'object' && 'code' in error && error.code === 'OBJECT_NOT_FOUND') {
+          set({ selectedOid: undefined, selectedParent: undefined, selectedOids: [], selectionAnchor: undefined, selectedFile: undefined, diffTarget: undefined, locatingOid: undefined, tab: 'changes' });
+        }
+        get().report(error);
+      }
+    }
     finally { if (epoch === detailEpoch && repoEpoch === repositoryEpoch) set({ detailsLoading: false }); }
   },
   async browseRevisionTree(oid) {
