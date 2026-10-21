@@ -716,6 +716,43 @@ describe('repository UI consistency', () => {
     store.getState().setCommitSelection([left.oid],left.oid,left.oid);await vi.waitFor(()=>expect(store.getState().details?.commit.oid).toBe(left.oid));expect(store.getState().comparison).toBeUndefined();
     store.getState().setCommitSelection([]);expect(store.getState()).toMatchObject({selectedOids:[],selectedOid:undefined,details:undefined,comparison:undefined,diffTarget:undefined});
   });
+  it.each(['search', 'advanced filters', 'checked refs', 'legacy filter', 'exit file history'] as const)('rejects an obsolete comparison after changing %s', async transition => {
+    await store.getState().selectRepository('a');
+    await store.getState().selectCommit(commit.oid);
+    vi.useFakeTimers();
+    const old = deferred<unknown>(), history = deferred<HistoryPage>(), fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, ...args) => method === 'compare' ? old.promise : method === 'history' ? history.promise : fallback(method, ...args));
+    store.setState({ selectedOids: ['left', 'right'], selectionAnchor: 'left', ...(transition === 'exit file history' ? { fileHistory: { path: 'old-only.txt' } } : {}) });
+    const pending = store.getState().compareCommits('left', 'right');
+    if (transition === 'search') store.getState().setSearch('new-query');
+    else if (transition === 'advanced filters') store.getState().setHistoryFilters({ author: 'Alice' });
+    else if (transition === 'checked refs') store.getState().setCheckedRefs(['refs/heads/other']);
+    else if (transition === 'legacy filter') store.getState().setFilter('refs/heads/other');
+    else store.getState().clearFileHistory();
+    expect(store.getState()).toMatchObject({ selectedOids: [], comparison: undefined, detailsLoading: false });
+    old.resolve({ left: { ...commit, oid: 'left' }, right: { ...commit, oid: 'right' }, files: [{ path: 'old-only.txt', status: 'M' }] });
+    await pending;
+    history.resolve({ commits: [commit], tips: ['new-tip'], nextOffset: 1, hasMore: false });
+    await vi.advanceTimersByTimeAsync(200);
+    expect(store.getState()).toMatchObject({ commits: [commit], comparison: undefined, detailsLoading: false, diffTarget: undefined });
+    expect(store.getState().details?.commit.oid).toBe(commit.oid);
+  });
+  it('clears a displayed comparison Diff and ignores a replaced comparison failure during search', async () => {
+    await store.getState().selectRepository('a');
+    vi.useFakeTimers();
+    const old = deferred<unknown>(), fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, ...args) => method === 'compare' ? old.promise : fallback(method, ...args));
+    const pending = store.getState().compareCommits('left', 'right');
+    // A visible comparison can also be replaced while another comparison read is pending.
+    store.getState().selectFile({ kind: 'comparison', left: 'older-left', right: 'older-right', path: 'old-only.txt' });
+    store.getState().setSearch('new-query');
+    expect(store.getState()).toMatchObject({ diffTarget: undefined, selectedFile: undefined, detailsLoading: false });
+    old.reject(new Error('obsolete comparison failed'));
+    await pending;
+    await vi.advanceTimersByTimeAsync(200);
+    expect(store.getState().error).toBeUndefined();
+    expect(store.getState().comparison).toBeUndefined();
+  });
   it('collapses cached multi-selection when the active commit is clicked without modifiers',async()=>{
     await store.getState().selectRepository('a');await store.getState().selectCommit(commit.oid);
     await vi.waitFor(()=>expect(store.getState().details?.commit.oid).toBe(commit.oid));
