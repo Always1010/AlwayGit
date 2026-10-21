@@ -397,6 +397,7 @@ export class GitService implements GitServiceContract {
     if (operation.kind === 'rebase') operation.managedRebase = await this.interactiveRebase.state((args, execution) => this.run(repo, args, false, undefined, execution), gitDir, operation.conflicts);
     if (operation.managedRebase?.applied) operation.canSkip = false;
     if (operation.managedRebase?.pause === 'unavailable') { operation.canContinue = false; operation.canSkip = false; }
+    if (operation.kind && operation.canSkip) operation.skipToken = await this.skipFingerprint(repo, status, operation.kind);
     let pushTarget: Snapshot['pushTarget'], pullTarget: Snapshot['pullTarget'];
     if (status.branch) {
       const [branchPushRemote, defaultPushRemote, branchRemote, mergeRef] = await Promise.all([
@@ -886,6 +887,23 @@ export class GitService implements GitServiceContract {
   private async readOperationFile(gitDir: string, name: string): Promise<string> {
     try { return await readFile(path.join(gitDir, name), 'utf8'); }
     catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return ''; throw error; }
+  }
+  /** Pin destructive Skip to this worktree, operation instance and current sequencer step. */
+  private async skipFingerprint(repo: Repository, current: { head?: string; branch: string }, kind: OperationState['kind']): Promise<string> {
+    const gitDir = await this.text(repo, ['rev-parse', '--path-format=absolute', '--git-dir']);
+    const names = ['MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'REBASE_HEAD', 'sequencer/head', 'sequencer/todo', 'sequencer/abort-safety',
+      'rebase-merge/head-name', 'rebase-merge/orig-head', 'rebase-merge/onto', 'rebase-merge/done', 'rebase-merge/git-rebase-todo', 'rebase-merge/stopped-sha', 'rebase-merge/msgnum',
+      'rebase-apply/head-name', 'rebase-apply/orig-head', 'rebase-apply/onto', 'rebase-apply/next', 'rebase-apply/last', 'rebase-apply/original-commit'];
+    const markers = await Promise.all(names.map(async name => {
+      const filename = path.join(gitDir, name);
+      try {
+        const [content, info] = await Promise.all([readFile(filename, 'utf8'), lstat(filename)]);
+        // Identical commits can be replayed by a restarted operation. File identity
+        // and timestamps distinguish that new instance even when marker text matches.
+        return [name, content, info.dev, info.ino, info.birthtimeMs, info.ctimeMs, info.mtimeMs];
+      } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [name, null]; throw error; }
+    }));
+    return createHash('sha256').update(JSON.stringify([repo.id, normalized(repo.root), normalized(gitDir), current.branch, current.head, kind, markers])).digest('hex');
   }
   private async reviewFingerprint(repo: Repository, snapshot: Snapshot, tree: string): Promise<string> {
     const gitDir = await this.text(repo, ['rev-parse', '--path-format=absolute', '--git-dir']);
@@ -1480,9 +1498,17 @@ export class GitService implements GitServiceContract {
         if (!state.kind || state.kind !== action.kind) throw new GitError(localizeMessage("service.theSelectedGitOperationIsNoLongerActive"), 'OPERATION_CHANGED');
         const command = action.type.split('.')[1];
         if (command === 'skip' && !state.canSkip) throw new GitError(localizeMessage("service.thisOperationCannotBeSkipped"), 'INVALID_ARGUMENT');
+        const verifySkip = action.type === 'operation.skip' ? async () => {
+          if (!action.skipToken || action.skipToken !== await this.skipFingerprint(repo, await this.status(repo), state.kind)) {
+            throw new GitError(localizeMessage('service.theSelectedGitOperationIsNoLongerActive'), 'OPERATION_CHANGED');
+          }
+        } : undefined;
+        if (action.type === 'operation.skip' && (!action.skipToken || action.skipToken !== state.skipToken)) throw new GitError(localizeMessage('service.theSelectedGitOperationIsNoLongerActive'), 'OPERATION_CHANGED');
         if (action.type === 'operation.continue') await this.requireReview(repo, snapshot, action.reviewToken);
-        if (action.kind === 'rebase' && state.managedRebase && await this.interactiveRebase.resume((args, execution) => this.run(repo, args, false, undefined, execution), command as 'continue'|'abort'|'skip', action.type === 'operation.continue' && action.keepEmpty)) return;
-        args = [action.kind, `--${command}`]; break;
+        if (action.kind === 'rebase' && state.managedRebase && await this.interactiveRebase.resume((args, execution) => this.run(repo, args, false, undefined, { ...execution, ...(args[0] === 'rebase' && args[1] === '--skip' ? { beforeSpawn: verifySkip } : {}) }), command as 'continue'|'abort'|'skip', action.type === 'operation.continue' && action.keepEmpty)) return;
+        args = [action.kind, `--${command}`];
+        if (verifySkip) { await this.run(repo, args, false, undefined, { beforeSpawn: verifySkip }); return; }
+        break;
       }
       default: throw new GitError(localizeMessage("service.unsupportedGitAction"), 'INVALID_ARGUMENT');
     }
