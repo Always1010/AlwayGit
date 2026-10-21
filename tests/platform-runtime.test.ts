@@ -34,31 +34,33 @@ describe('Native extension packaging', () => {
     expect(() => nativeTarget('linux', 'ia32')).toThrow(/Unsupported/);
   });
 
-  it.each(['linux-arm64', 'win32-x64'])('retains a complete %s runtime without stale, foreign or development files', async target => {
+  it.each(['linux-x64', 'linux-arm64', 'darwin-x64', 'darwin-arm64', 'win32-x64', 'win32-arm64'])('retains a complete %s runtime without stale, foreign or development files', async target => {
     const directory = await mkdtemp(path.join(os.tmpdir(), 'alwaygit-runtime-test-'));
     try {
       const source = path.join(directory, 'source'), destination = path.join(directory, 'runtime');
       const windows = target.startsWith('win32');
-      const binaries = windows ? ['conpty.node', 'conpty_console_list.node', 'pty.node', 'winpty-agent.exe', 'winpty.dll', 'conpty/conpty.dll', 'conpty/OpenConsole.exe'] : ['pty.node', 'spawn-helper'];
+      const binaries = windows ? ['conpty.node', 'conpty_console_list.node', 'pty.node', 'winpty-agent.exe', 'winpty.dll', 'conpty/conpty.dll', 'conpty/OpenConsole.exe'] : target.startsWith('darwin-') ? ['pty.node', 'spawn-helper'] : ['pty.node'];
       const nativeFolder = windows ? `prebuilds/${target}` : 'build/Release';
       await fixtureFile(destination, 'build/Release/pty.node', 'stale');
       await fixtureFile(source, 'package.json', '{"main":"lib/index.js"}');
       await fixtureFile(source, 'LICENSE');
       await fixtureFile(source, 'deps/winpty/LICENSE');
-      await fixtureFile(source, 'lib/index.js', 'module.exports = {};');
+      await fixtureFile(source, 'lib/index.js', 'exports.spawn = () => {};');
       await fixtureFile(source, 'lib/worker/conoutSocketWorker.js');
       await fixtureFile(source, 'lib/conpty_console_list_agent.js');
       for (const file of binaries) await fixtureFile(source, `${nativeFolder}/${file}`, 'selected');
       // A complete source build wins over the prebuild; an incomplete build falls back.
       await fixtureFile(source, windows ? 'build/Release/conpty/conpty.dll' : `prebuilds/${target}/pty.node`, 'unselected');
-      if (!windows) await fixtureFile(source, `prebuilds/${target}/spawn-helper`, 'unselected');
-      for (const file of ['lib/index.test.js', 'lib/index.js.map', 'typings/node-pty.d.ts', 'scripts/post-install.js', 'deps/winpty/misc/test.cc', 'third_party/conpty/win10-arm64/conpty.dll', 'prebuilds/darwin-x64/pty.node', `${nativeFolder}/pty.pdb`]) await fixtureFile(source, file);
-      await expect(copyTerminalRuntime(source, destination, target)).rejects.toThrow(/cannot create/);
+      if (target.startsWith('darwin-')) await fixtureFile(source, `prebuilds/${target}/spawn-helper`, 'unselected');
+      const foreignTarget = windows ? 'linux-arm64' : 'win32-x64';
+      for (const file of ['lib/index.test.js', 'lib/index.js.map', 'typings/node-pty.d.ts', 'scripts/post-install.js', 'deps/winpty/misc/test.cc', 'third_party/conpty/win10-arm64/conpty.dll', `prebuilds/${foreignTarget}/pty.node`, `${nativeFolder}/pty.pdb`]) await fixtureFile(source, file);
+      await copyTerminalRuntime(source, destination, target);
       expect(await readdir(path.join(destination, 'prebuilds'))).toEqual([target]);
       expect(await readFile(path.join(destination, `prebuilds/${target}/pty.node`), 'utf8')).toBe('selected');
       const copied = (await readdir(destination, { recursive: true })).map(file => file.split(path.sep).join('/'));
       expect(copied).toContain('lib/worker/conoutSocketWorker.js');
       expect(copied).not.toContain('lib/index.test.js');
+      expect(copied.includes(`prebuilds/${target}/spawn-helper`)).toBe(target.startsWith('darwin-'));
       expect(copied.some(file => /\.pdb$|\.map$|third_party|typings|scripts|misc/.test(file))).toBe(false);
       if (windows) expect(copied).toContain('deps/winpty/LICENSE');
       await expect(readdir(path.join(destination, 'build/Release'))).rejects.toThrow();
@@ -68,7 +70,7 @@ describe('Native extension packaging', () => {
     } finally { await rm(directory, { recursive: true, force: true }); }
   });
 
-  it('uses the release allowlist and rejects leaks, duplicate entries and missing terminal helpers', async () => {
+  it.each(['linux-x64', 'linux-arm64', 'darwin-x64', 'darwin-arm64'])('validates the %s release allowlist and required native files', async target => {
     const directory = await mkdtemp(path.join(os.tmpdir(), 'alwaygit-release-test-'));
     try {
       const require = createRequire(import.meta.url);
@@ -78,18 +80,24 @@ describe('Native extension packaging', () => {
       await fixtureFile(directory, 'package.json', JSON.stringify(manifest));
       await fixtureFile(directory, '.vscodeignore', await readFile(new URL('../.vscodeignore', import.meta.url), 'utf8'));
       const runtime = 'dist/terminal-runtime/node-pty/';
-      const required = ['README.md', 'package.nls.json', 'package.nls.zh-cn.json', 'media/alwaygit.svg', 'dist/extension.cjs', 'dist/terminal-host.cjs', 'dist/askpass.cjs', 'dist/askpass.sh', 'dist/launcher/launcher.js', 'dist/launcher/launcher.css', 'dist/webview/index.html', 'dist/webview/assets/index-fixture.js', 'dist/webview/assets/figure-01-fixture.png', `${runtime}package.json`, `${runtime}LICENSE`, `${runtime}lib/index.js`, `${runtime}prebuilds/linux-arm64/pty.node`, `${runtime}prebuilds/linux-arm64/spawn-helper`];
+      const required = ['README.md', 'package.nls.json', 'package.nls.zh-cn.json', 'media/alwaygit.svg', 'dist/extension.cjs', 'dist/terminal-host.cjs', 'dist/askpass.cjs', 'dist/askpass.sh', 'dist/launcher/launcher.js', 'dist/launcher/launcher.css', 'dist/webview/index.html', 'dist/webview/assets/index-fixture.js', 'dist/webview/assets/figure-01-fixture.png', `${runtime}package.json`, `${runtime}LICENSE`, `${runtime}lib/index.js`, `${runtime}prebuilds/${target}/pty.node`];
+      if (target.startsWith('darwin-')) required.push(`${runtime}prebuilds/${target}/spawn-helper`);
       const excluded = ['docs/ISSUES.md', 'docs/images/user-manual/figure-01.png', '.github/workflows/release.yml', 'new-development-file.txt', 'README.zh-CN.md', 'dist/extension.cjs.map', 'dist/extension-tests.cjs', `${runtime}prebuilds/linux-arm64/pty.pdb`, `${runtime}scripts/post-install.js`, `${runtime}third_party/conpty/win10-arm64/conpty.dll`];
       for (const file of [...required, ...excluded]) await fixtureFile(directory, file);
       const files: string[] = await listFiles({ cwd: directory, dependencies: false });
       expect(files.sort()).toEqual(['package.json', ...required].sort());
       const packaged = files.map(file => `extension/${file === 'README.md' ? 'readme.md' : file}`);
-      expect(() => verifyPackageContents(packaged, 'linux-arm64')).not.toThrow();
+      expect(() => verifyPackageContents(packaged, target)).not.toThrow();
       for (const leak of [...excluded, `${runtime}lib/terminal.test.js`, `${runtime}prebuilds/win32-x64/pty.node`]) {
-        expect(() => verifyPackageContents([...packaged, `extension/${leak}`], 'linux-arm64')).toThrow(/Unexpected/);
+        expect(() => verifyPackageContents([...packaged, `extension/${leak}`], target)).toThrow(/Unexpected/);
       }
-      expect(() => verifyPackageContents([...packaged, packaged[0]], 'linux-arm64')).toThrow(/Duplicate/);
-      expect(() => verifyPackageContents(packaged.filter(file => !file.endsWith('/spawn-helper')), 'linux-arm64')).toThrow(/Missing/);
+      expect(() => verifyPackageContents([...packaged, packaged[0]], target)).toThrow(/Duplicate/);
+      expect(() => verifyPackageContents(packaged.filter(file => !file.endsWith('/pty.node')), target)).toThrow(/Missing/);
+      if (target.startsWith('darwin-')) {
+        expect(() => verifyPackageContents(packaged.filter(file => !file.endsWith('/spawn-helper')), target)).toThrow(/Missing/);
+      } else {
+        expect(() => verifyPackageContents([...packaged, `extension/${runtime}prebuilds/${target}/spawn-helper`], target)).toThrow(/Unexpected/);
+      }
       const readmePath = 'artifacts/.release-readme.md';
       const releaseText = releaseReadme(await readFile(new URL('../README.md', import.meta.url), 'utf8'));
       await fixtureFile(directory, readmePath, releaseText);
