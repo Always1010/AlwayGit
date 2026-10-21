@@ -21,17 +21,22 @@ export async function confirmAction(repo: Repository, action: GitAction, languag
   if (action.type === 'commit.checkout') warning = text('confirm.detachedCheckout', { target: action.target });
   if (action.type === 'checkout.stash' && action.detached) warning = text('confirm.stashDetachedCheckout', { target: action.target });
   const proceed = text('confirm.proceed');
+  const normalize = (value: string) => process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
+  const root = normalize(repo.root);
+  const dirtyInRepository = vscode.workspace.textDocuments.filter(document => {
+    if (!document.isDirty || document.uri.scheme !== 'file') return false;
+    const relative = path.relative(root, normalize(document.uri.fsPath));
+    return !!relative && relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative);
+  });
   if(action.type==='conflict.choose'||action.type==='resolve-and-stage'){
-    const normalize=(value:string)=>process.platform==='win32'?path.resolve(value).toLowerCase():path.resolve(value),root=normalize(repo.root);
-    if(vscode.workspace.textDocuments.some(document=>{if(!document.isDirty||document.uri.scheme!=='file')return false;const file=normalize(document.uri.fsPath),relative=path.relative(root,file);return !!relative&&!relative.startsWith('..'+path.sep)&&relative!=='..'&&!path.isAbsolute(relative)&&(action.type==='conflict.choose'||action.paths.some(name=>normalize(path.join(repo.root,name))===file));}))throw new Error(text('conflicts.unsaved'));
+    if(dirtyInRepository.some(document=>action.type==='conflict.choose'||action.paths.some(name=>normalize(path.join(repo.root,name))===normalize(document.uri.fsPath))))throw new Error(text('conflicts.unsaved'));
   }
   if (action.type === 'reset') warning += text('confirm.currentHead', { branch: action.expectedBranch || text('confirm.detachedHead'), head: action.expectedHead || text('confirm.unborn') });
   if (action.type === 'operation.abort' && operation?.originalHead) warning += text('confirm.restoreOriginalHead', { head: operation.originalHead });
   if (warning) return (await vscode.window.showWarningMessage(warning, { modal: true, detail: text('confirm.repository', { root: repo.root }) }, proceed)) === proceed;
   if (action.type === 'commit' || action.type === 'operation.continue') {
     const selected = action.type === 'commit' ? action.files : undefined;
-    const taskPath = require('node:path') as typeof import('node:path');
-    const dirty = vscode.workspace.textDocuments.filter(d => d.isDirty && d.uri.scheme === 'file' && d.uri.fsPath.startsWith(repo.root + taskPath.sep) && (!selected || selected.some(file => taskPath.resolve(repo.root, file.path) === d.uri.fsPath)));
+    const dirty = dirtyInRepository.filter(document => !selected || selected.some(file => normalize(path.resolve(repo.root, file.path)) === normalize(document.uri.fsPath)));
     const includesUnstaged = selected?.some(file => file.area === 'unstaged');
     const button = text(includesUnstaged ? 'confirm.useDiskContent' : 'confirm.useStagedContent');
     if (dirty.length) return (await vscode.window.showWarningMessage(text(includesUnstaged ? 'confirm.unsavedSelectedFiles' : 'confirm.unsavedFiles', { count: dirty.length }), { modal: true }, button)) === button;
