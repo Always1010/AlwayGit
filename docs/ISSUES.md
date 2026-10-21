@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-162：不同 Profile 的同仓库写操作未共享互斥保护
+
+- 日期：2026-10-21
+- 状态：已解决
+- 现象：同一仓库在不同 Profile 或不同 VS Code 应用中打开时，双方可同时执行 AlwayGit 多命令写操作。
+- 原因：仓库操作锁沿用了窗口发现目录，按 Profile、应用和连接环境隔离，导致同一 commonDir 落入不同锁命名空间。
+- 解决方案：共享锁使用用户目录下按实际主机名隔离的持久目录，仓库键仍为规范化 commonDir；窗口发现保持原隔离。写操作按固定顺序同时持有共享锁和当前窗口隔离域旧锁，兼容旧版本活动租约及崩溃记录；双方共用令牌并保持运行标记、隔离、释放和恢复语义。
+- 验证方式：锁、项目窗口与操作生命周期 3 文件 / 31 项通过，覆盖跨 Profile/应用互斥、独立仓库并发、不同主机隔离、旧版活动与中断租约、登记失败清理和隔离持久化失败。
+- 相关文件：`src/extension/project-windows.ts`、`src/application/operation-lock.ts`、`tests/project-windows.test.ts`、`tests/repository-operation-lifecycle.test.ts`、`docs/ARCHITECTURE.md`、`docs/ARCHITECTURE.en.md`。
+
 ## BUG-161：旧 Skip 确认可能跳过另一仓库或操作步骤的提交
 
 - 日期：2026-10-21

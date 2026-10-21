@@ -13,7 +13,7 @@ export class RepositoryOperationRecoveryRequiredError extends Error {
   readonly code = 'REPOSITORY_RECOVERY_REQUIRED';
   constructor(readonly token: string, readonly label: string, readonly pid?: number) { super(translate('en', "operationLock.thePreviousGitOperationWasInterruptedConfirmThatIts")); }
 }
-export interface OperationLease { release(): Promise<void>; markRunning(): Promise<void>; quarantine(pid?: number): Promise<void> }
+export interface OperationLease { readonly token: string; release(): Promise<void>; markRunning(): Promise<void>; quarantine(pid?: number): Promise<void> }
 interface LeaseRecord { owner: string; ownerPid?: number; token: string; label: string; acquiredAt: number; port: number; running?: boolean; quarantined?: boolean; pid?: number }
 
 function normalized(value: string): string {
@@ -105,25 +105,34 @@ export class RepositoryOperationLock {
     return this.transaction(() => this.occupied(this.filename(key)));
   }
   async recover(key: string, token: string): Promise<void> {
-    await this.transaction(async () => {
-      const filename = this.filename(key), record = JSON.parse(await readFile(filename, 'utf8')) as LeaseRecord;
-      if (record.token !== token || await this.live(record)) throw new RepositoryOperationBusyError(BUSY_MESSAGE);
+    if (!await this.recoverMatching(key, token)) throw new RepositoryOperationBusyError(BUSY_MESSAGE);
+  }
+  /** Recovery may span compatible registries, but must never remove a different lease. */
+  async recoverMatching(key: string, token: string): Promise<boolean> {
+    return this.transaction(async () => {
+      const filename = this.filename(key);
+      let record: LeaseRecord;
+      try { record = JSON.parse(await readFile(filename, 'utf8')) as LeaseRecord; }
+      catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false; throw error; }
+      if (record.token !== token) return false;
+      if (await this.live(record)) throw new RepositoryOperationBusyError(BUSY_MESSAGE);
       for (const pid of [record.ownerPid, record.pid].filter((pid): pid is number => !!pid)) {
         try { process.kill(pid, 0); }
         catch (error) { if ((error as NodeJS.ErrnoException).code === 'ESRCH') continue; throw new RepositoryOperationBusyError(BUSY_MESSAGE); }
         throw new RepositoryOperationBusyError(BUSY_MESSAGE);
       }
       await rm(filename, { force: true });
+      return true;
     });
   }
-  async acquire(key: string, label: string): Promise<OperationLease> {
+  async acquire(key: string, label: string, token = randomBytes(32).toString('hex')): Promise<OperationLease> {
     if (this.closed) throw new MessageError(localizeMessage("operationLock.repositoryOperationLockIsClosed"));
     await mkdir(this.directory, { recursive: true, mode: 0o700 });
     return this.transaction(async () => {
       if (this.closed) throw new MessageError(localizeMessage("operationLock.repositoryOperationLockIsClosed"));
       const filename = this.filename(key);
       if (await this.occupied(filename, true)) throw new RepositoryOperationBusyError(BUSY_MESSAGE);
-      const token = randomBytes(32).toString('hex'), sockets = new Set<Socket>();
+      const sockets = new Set<Socket>();
       const server = createServer(socket => {
         sockets.add(socket); socket.unref();
         socket.once('close', () => sockets.delete(socket));
@@ -151,6 +160,7 @@ export class RepositoryOperationLock {
       let releasing: Promise<void> | undefined;
       const closeEndpoint = async () => { for (const socket of sockets) socket.destroy(); await stop(server); };
       const lease: OperationLease = {
+        token,
         markRunning: () => this.transaction(async () => { record.running = true; await persist(); }),
         quarantine: pid => this.transaction(async () => { record.quarantined = true; record.pid = pid; await persist(); }),
         release: () => releasing ??= this.transaction(async () => {

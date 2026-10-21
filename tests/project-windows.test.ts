@@ -5,6 +5,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { ProjectWindows } from '../src/extension/project-windows';
 import { WindowBridge, canonicalPath } from '../src/application/window-bridge';
+import { RepositoryOperationLock } from '../src/application/operation-lock';
+
+const environment = vi.hoisted(() => ({ home: '', hostname: 'host-one' }));
+vi.mock('node:os', async importOriginal => {
+  const os = await importOriginal<typeof import('node:os')>();
+  return { ...os, homedir: () => environment.home || os.homedir(), hostname: () => environment.hostname };
+});
 
 vi.mock('vscode', () => ({
   workspace: { isTrusted: true, workspaceFolders: [], onDidChangeWorkspaceFolders: () => ({ dispose() {} }) },
@@ -18,7 +25,8 @@ const directories: string[] = [], projects: ProjectWindows[] = [], targets: Wind
 beforeEach(() => {
   vi.mocked(vscode.commands.executeCommand).mockReset().mockResolvedValue(undefined);
   Object.assign(vscode.workspace, { isTrusted: true });
-  Object.assign(vscode.env, { remoteName: undefined });
+  Object.assign(vscode.env, { remoteName: undefined, appRoot: 'project-window-test' });
+  environment.hostname = 'host-one';
 });
 afterEach(async () => {
   await Promise.all(targets.splice(0).map(bridge => bridge.close()));
@@ -31,6 +39,7 @@ afterEach(async () => {
 
 async function setup(mode: 'exact' | 'parent' | 'multi' | 'other' = 'exact') {
   const directory = await mkdtemp(path.join(tmpdir(), 'alwaygit-project-test-')); directories.push(directory);
+  environment.home = directory;
   const root = path.join(directory, 'project'), other = path.join(directory, 'other');
   await Promise.all([mkdir(root), mkdir(other)]);
   const folders = mode === 'parent' ? [directory] : mode === 'multi' ? [other, root] : mode === 'other' ? [other] : [root];
@@ -40,11 +49,47 @@ async function setup(mode: 'exact' | 'parent' | 'multi' | 'other' = 'exact') {
     log as never, repositories as never, {} as never, showWorkbench);
   // Isolate the real IPC registry and all cleanup under this test's temporary directory.
   Object.assign(project.bridge, { directory: path.join(directory, 'registry') });
+  Object.assign(project, { legacyOperationLock: new RepositoryOperationLock(path.join(directory, 'legacy-locks'), project.bridge.record.id) });
   projects.push(project); await project.start();
   return { project, root, log, repositories, showWorkbench };
 }
 
 describe('Open Repository Folder', () => {
+  it('shares repository write leases across Profiles and applications while keeping window routing isolated', async () => {
+    const { project: first, root } = await setup();
+    Object.assign(vscode.env, { appRoot: 'another-vscode-application', remoteName: 'ssh-remote' });
+    const second = new ProjectWindows({ globalStorageUri: { toString: () => 'another-profile-storage' } } as unknown as vscode.ExtensionContext,
+      { appendLine() {} } as never, {} as never, {} as never, async () => {});
+    Object.assign(second.bridge, { directory: path.join(environment.home, 'other-registry') });
+    Object.assign(second, { legacyOperationLock: new RepositoryOperationLock(path.join(environment.home, 'other-legacy-locks'), second.bridge.record.id) });
+    projects.push(second); await second.start();
+    expect((await second.bridge.windows()).map(record => record.id)).not.toContain(first.bridge.record.id);
+    let release!: () => void, started!: () => void;
+    const held = new Promise<void>(resolve => { release = resolve; });
+    const entered = new Promise<void>(resolve => { started = resolve; });
+    const operation = first.runRepositoryOperation(root, 'commit', async () => { started(); await held; });
+    await entered;
+    try {
+      expect(await second.isRepositoryBusy(root)).toBe(true);
+      const write = vi.fn(async () => {});
+      await expect(second.runRepositoryOperation(root, 'pull', write)).rejects.toThrow(/already running/i);
+      expect(write).not.toHaveBeenCalled();
+      await expect(second.runRepositoryOperation(path.join(environment.home, 'other'), 'commit', async () => 'independent')).resolves.toBe('independent');
+    } finally { release(); await operation; }
+    expect(await second.isRepositoryBusy(root)).toBe(false);
+    await expect(second.runRepositoryOperation(root, 'pull', async () => 'next')).resolves.toBe('next');
+  });
+  it('separates loopback lease records for distinct hosts sharing a home directory', async () => {
+    const { project: first } = await setup();
+    environment.hostname = 'host-two';
+    const second = new ProjectWindows({ globalStorageUri: { toString: () => 'same-shared-home-profile' } } as unknown as vscode.ExtensionContext,
+      { appendLine() {} } as never, {} as never, {} as never, async () => {});
+    projects.push(second);
+    const directory = (project: ProjectWindows) => (project as unknown as { operationLock: { directory: string } }).operationLock.directory;
+    expect(path.dirname(directory(first))).toBe(path.dirname(directory(second)));
+    expect(directory(first)).not.toBe(directory(second));
+    expect(directory(first).startsWith(environment.home)).toBe(true);
+  });
   it.each([undefined, 'ssh-remote'])('opens a blank workbench with the current connection and delivers its request (remote: %s)', async remoteName => {
     Object.assign(vscode.env, { remoteName });
     const { project } = await setup(), received: unknown[] = [];
