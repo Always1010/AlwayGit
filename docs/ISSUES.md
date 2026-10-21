@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-152：辅助提交详情查询取消历史选择加载
+
+- 日期：2026-10-21
+- 状态：已解决
+- 现象：右键选择历史提交后快速复制提交信息，会取消刚开始的详情加载；标签目标解析和 Amend 信息读取也可打断历史详情或彼此干扰。
+- 原因：多个用途共用 `details` 请求类别，前端 RPC 和宿主 QueryCoordinator 都将其视作可相互替换的导航请求。
+- 解决方案：复制信息、标签目标和 Amend 分别使用独立的协议方法与查询类别，宿主和 Demo 均支持；保留历史导航以及独立检查面板的取消行为。
+- 验证方式：定向前端 RPC 与真实 Workbench 协议路由竞态回归通过，验证辅助请求与检查请求并存、过期导航仍取消，以及各请求返回自己的结果。
+- 相关文件：`src/protocol/queries.ts`、`src/protocol/types.ts`、`src/protocol/validation.ts`、`src/extension/workbench.ts`、`webview/menus.ts`、`webview/ActionDialog.tsx`、`webview/CommitDialog.tsx`、`webview/demo.ts`、`tests/rpc-timeout.test.ts`、`tests/repository-manager.test.ts`。
+
 ## BUG-151：Windows 路径大小写导致提交漏报未保存编辑
 
 - 日期：2026-10-21

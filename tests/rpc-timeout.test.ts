@@ -13,6 +13,19 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('host request timeouts', () => {
+  it('keeps auxiliary commit reads independent while cancelling obsolete navigation', async () => {
+    const { rpc } = await import('../webview/rpc');
+    const requests = ['details', 'copyCommitDetails', 'tagTargetDetails', 'amendDetails', 'inspectDetails'] as const;
+    const reads = requests.map(method => ({ method, promise: rpc(method, 'repo', { oid: 'selected' }), id: postMessage.mock.calls.at(-1)![0].id }));
+    expect(postMessage.mock.calls.map(([request]) => request.method)).toEqual(requests);
+    const obsolete = expect(reads[0].promise).rejects.toMatchObject({ code: 'ABORTED' });
+    const next = rpc('details', 'repo', { oid: 'next' }), nextId = postMessage.mock.calls.at(-1)![0].id;
+    await obsolete;
+    for (const read of reads.slice(1)) receive({ data: { type: 'response', id: read.id, result: read.method } });
+    receive({ data: { type: 'response', id: nextId, result: 'next' } });
+    expect(await Promise.all(reads.slice(1).map(read => read.promise))).toEqual(requests.slice(1));
+    await expect(next).resolves.toBe('next');
+  });
   it('keeps page reads independent from the complete index request and cancels stale pages', async () => {
     const { rpc } = await import('../webview/rpc');
     const page = rpc('diffPage', 'repo', { token: 'old', start: 0, count: 128 });

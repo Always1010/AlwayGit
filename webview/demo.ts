@@ -176,7 +176,7 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
     const plan:RebasePlan={token:crypto.randomUUID(),branch:demoSnapshot.branch,head:demoSnapshot.head!,base:scope.at(-1)!.parents[0],expires:Date.now()+900000,commits:scope.slice().reverse().map(commit=>({oid:commit.oid,subject:commit.subject,message:commit.subject})),published:scope.filter(commit=>commit.pushed).map(commit=>commit.oid)};rebasePlans.set(plan.token,plan);return plan;
   }
   if (method === 'reflog') return {token:'11111111-1111-4111-8111-111111111111',ref:(payload as {ref?:string})?.ref??'HEAD',entries:commits.map((commit,index)=>({oid:commit.oid,selector:`HEAD@{${index}}`,description:`commit: ${commit.subject}`,actor:commit.author,email:commit.email,date:new Date(commit.timestamp*1000).toISOString()})),recoveries:rebaseRecoveries,nextOffset:commits.length,hasMore:false,truncated:false,checkedAt:Date.now()};
-  if (method === 'inspectDetails' || method === 'details') {
+  if (['copyCommitDetails', 'tagTargetDetails', 'amendDetails', 'inspectDetails', 'details'].includes(method)) {
     const request = payload as { oid: string; parent?: string }; const commit = commits.find(c => c.oid === resolve(request.oid)) ?? commits[0];
     return { commit, body: `${commit.subject}\n\nImprove the repository experience with clear status feedback and consistent navigation.\n\nCloses #24`, parent: request.parent ?? commit.parents[0], files: [{ path: 'webview/App.tsx', status: 'M' }, { path: 'webview/styles.css', status: 'M' }, { path: 'src/git/service.ts', status: 'A' }] } satisfies CommitDetails;
   }

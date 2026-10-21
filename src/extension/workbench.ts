@@ -662,6 +662,9 @@ export class Workbench implements vscode.Disposable {
       case 'conflictDetails': { if(!this.git.conflictDetails)throw new MessageError(message('conflicts.unavailable'));return this.git.conflictDetails(repo,conflictPathSchema.parse(request.payload).path); }
       case 'openMergeEditor': { const data=conflictPathSchema.parse(request.payload);return this.documents.openMergeEditor(repo,data.path); }
       case 'prepareDiscard': return this.git.prepareDiscard(repo, discardRequestSchema.parse(request.payload));
+      case 'copyCommitDetails':
+      case 'tagTargetDetails':
+      case 'amendDetails':
       case 'inspectDetails':
       case 'details': { const data = detailsSchema.parse(request.payload); return this.git.details(repo, data.oid, data.parent); }
       case 'revisionTree': return this.git.revisionTree(repo, revisionTreeSchema.parse(request.payload));
