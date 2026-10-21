@@ -40,7 +40,7 @@ import { workbenchContainerIds, workbenchLauncherHtml, workbenchLocationSettings
 
 type WorkbenchSurface = vscode.WebviewPanel | vscode.WebviewView;
 interface WorkbenchPanel { isolatedDiffOwner?: object; panel: WorkbenchSurface; kind: WorkbenchLocation; ready: boolean; subscriptions: vscode.Disposable[]; visible: boolean; activeRepository?: string; blank: boolean; session?: SessionState; savedSession?: SessionState; pendingTerminal?: boolean; pendingChanges?: { repoId: string; changes?: RepositoryChanges }; catalogDirty?: boolean }
-interface RepositoryDiscoverySession { source?: WorkbenchPanel; cancelled: boolean; root: string; discovery?: DiscoveryResult }
+interface RepositoryDiscoverySession { source?: WorkbenchPanel; cancelled: boolean; adding?: boolean; root: string; discovery?: DiscoveryResult }
 export interface WorkbenchPresence { open: boolean; active: boolean }
 
 export class Workbench implements vscode.Disposable {
@@ -483,14 +483,19 @@ export class Workbench implements vscode.Disposable {
   }
   cancelRepositoryDiscovery(scanId:string,source?:WorkbenchPanel):void{const session=this.repositoryDiscoveries.get(scanId);if(!session||session.source!==source)return;session.cancelled=true;if(session.discovery)this.repositoryDiscoveries.delete(scanId);}
   async addRepository(scanId:string,keys:string[],collectionId:string|undefined,newCollectionName:string|undefined,source?:WorkbenchPanel):Promise<AddRepositoriesResult>{
-    const session=this.repositoryDiscoveries.get(scanId);if(!session||session.source!==source||!session.discovery||session.discovery.cancelled)throw new Error(this.text("host.theRepositoryScanHasExpiredScanTheFolderAgain"));
-    this.repositoryDiscoveries.delete(scanId);
+    const session=this.repositoryDiscoveries.get(scanId);if(!session||session.source!==source||!session.discovery||session.cancelled||session.discovery.cancelled||session.adding)throw new Error(this.text("host.theRepositoryScanHasExpiredScanTheFolderAgain"));
     const discoveredGroups=groupRepositories(session.discovery.repositories),availableKeys=new Set(discoveredGroups.map(group=>group.key)),selectedKeys=new Set(keys.filter(key=>availableKeys.has(key)));
     if(!selectedKeys.size)throw new Error(this.text("host.selectAtLeastOneAvailableRepository"));
     if(collectionId&&!this.repositories.collections().some(collection=>collection.id===collectionId))throw new Error(this.text("host.theSelectedRepositoryGroupNoLongerExists"));
     if(newCollectionName){const problem=this.collectionNameProblem(newCollectionName);if(problem)throw new Error(problem);}
     const repositories=discoveredGroups.filter(group=>selectedKeys.has(group.key)).flatMap(group=>group.members);
-    const result=await this.repositories.registerDiscovered({...session.discovery,repositories,found:selectedKeys.size},{},{collectionId,newCollectionName});
+    session.adding=true;
+    let result;
+    try {
+      result=await this.repositories.registerDiscovered({...session.discovery,repositories,found:selectedKeys.size},{isCancelled:()=>session.cancelled},{collectionId,newCollectionName});
+      // Consume only after registration succeeds. Cancellation/disposal must never resurrect a scan.
+      if(this.repositoryDiscoveries.get(scanId)===session)this.repositoryDiscoveries.delete(scanId);
+    } finally { session.adding=false; }
     // Existing candidates can change collection assignments without adding a new repository.
     if(result.added||result.existing||result.collection)await this.projects.notifyCatalogChanged();
     return {added:result.added,existing:result.existing,skipped:result.issues.length,...(result.collection?{collection:result.collection}:{})};
