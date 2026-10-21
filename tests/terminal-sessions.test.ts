@@ -62,6 +62,41 @@ describe('embedded terminal boundary and lifecycle', () => {
     expect(processes.every(p => vi.mocked(p.kill).mock.calls.length === 1)).toBe(true);
     expect(() => manager.create(owner, 'repo', '/repo', 'default', launch, 80, 24)).toThrow();
   });
+  it('drains suspended terminals into bounded replay and restores acknowledgements for the new renderer', () => {
+    vi.useFakeTimers(); const { manager, processes, events } = fixture(), source = {}, target = {};
+    const terminal = manager.create(source, 'repo', '/repo', 'default', launch, 80, 24);
+    processes[0].data('a'.repeat(131072));
+    expect(processes[0].pause).toHaveBeenCalledOnce();
+    manager.suspendOwner(source);
+    expect(processes[0].resume).toHaveBeenCalledOnce();
+    events.mockClear();
+    processes[0].data('b'.repeat(2 * 1024 * 1024));
+    processes[0].data('last suspended output');
+    vi.advanceTimersByTime(16);
+    const replay = manager.snapshot(source, terminal.id);
+    expect(replay.output.length).toBeLessThanOrEqual(1024 * 1024);
+    expect(replay.output.endsWith('last suspended output')).toBe(true);
+    expect(replay.sequence).toBeGreaterThan(4);
+    expect(events).not.toHaveBeenCalled();
+    expect(processes[0].pause).toHaveBeenCalledOnce();
+    // An asynchronous launch that completes after suspension must also drain immediately.
+    const late = manager.create(source, 'repo', '/repo', 'default', launch, 80, 24);
+    processes[1].data('late'.repeat(65536));
+    expect(processes[1].pause).not.toHaveBeenCalled();
+    manager.transferOwner(source, target); manager.disposeOwner(source);
+    expect(processes[0].kill).not.toHaveBeenCalled();
+    expect(manager.snapshot(target, terminal.id)).toEqual(replay);
+    manager.acknowledge(target, terminal.id, replay.sequence);
+    processes[0].data('c'.repeat(131072));
+    expect(events).toHaveBeenLastCalledWith(target, expect.objectContaining({ type: 'terminalOutput', sessionId: terminal.id }));
+    expect(processes[0].pause).toHaveBeenCalledTimes(2);
+    manager.acknowledge(target, terminal.id, manager.snapshot(target, terminal.id).sequence);
+    expect(processes[0].resume).toHaveBeenCalledTimes(2);
+    expect(() => manager.acknowledge(source, terminal.id, replay.sequence)).toThrow();
+    processes[1].exit(0);
+    expect(manager.snapshot(target, late.id).status).toBe('exited');
+    manager.dispose();
+  });
   it('batches output, flushes before replay/exit, pauses until acknowledged and retains bounded history', () => {
     vi.useFakeTimers(); const { manager, processes, events } = fixture(), owner = {};
     const terminal = manager.create(owner, 'repo', '/repo', 'default', launch, 80, 24);

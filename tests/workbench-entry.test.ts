@@ -119,7 +119,8 @@ describe('Workbench entry presentation', () => {
     const workbench = workbenchFixture(), source = viewFixture(), restored = viewFixture(), editor = panelFixture();
     await workbench.resolveDockedView(source.view as unknown as vscode.WebviewView, { drafts: { source: 'old' } }, location);
     await source.receive({ id: 'save', method: 'saveSession', payload: { drafts: { source: 'latest draft' } } });
-    const process = { write: vi.fn(), resize: vi.fn(), kill: vi.fn(), pause: vi.fn(), resume: vi.fn(), onData: () => ({ dispose() {} }), onExit: () => ({ dispose() {} }) };
+    let output!: (data: string) => void;
+    const process = { write: vi.fn(), resize: vi.fn(), kill: vi.fn(), pause: vi.fn(), resume: vi.fn(), onData: (listener: typeof output) => { output = listener; return { dispose() {} }; }, onExit: () => ({ dispose() {} }) };
     const terminals = new TerminalSessions(() => process, () => {});
     const internals = workbench as unknown as { terminals: TerminalSessions; dockedPanels: Map<string, object> };
     internals.terminals = terminals;
@@ -138,6 +139,8 @@ describe('Workbench entry presentation', () => {
     await source.receive({ id: 'close', method: 'workbenchLocationsClosed' });
     expect(sourceDisposed).toBe(true);
     expect(process.kill).not.toHaveBeenCalled();
+    output('background'.repeat(16384));
+    expect(process.pause).not.toHaveBeenCalled();
     expect(vscode.window.createWebviewPanel).toHaveBeenCalledOnce();
     await workbench.handle({ id: 'enable', method: 'saveWorkbenchLocations', payload: { enabled: ['editor', location], default: 'editor' } });
     expect(vscode.commands.executeCommand).toHaveBeenCalledWith('setContext', `alwaygit.${location}LocationEnabled`, true);
@@ -146,6 +149,8 @@ describe('Workbench entry presentation', () => {
     expect(html.mock.calls.at(-1)?.[3]).toEqual(nativeState ?? { drafts: { source: 'latest draft' } });
     await restored.receive({ id: 'list', method: 'terminalList' });
     expect(restored.view.webview.postMessage).toHaveBeenCalledWith({ type: 'response', id: 'list', result: [session] });
+    await restored.receive({ id: 'replay', method: 'terminalSync', payload: { sessionId: session.id } });
+    expect(restored.view.webview.postMessage).toHaveBeenCalledWith({ type: 'response', id: 'replay', result: expect.objectContaining({ ...session, output: 'background'.repeat(16384) }) });
     expect(process.kill).not.toHaveBeenCalled();
     workbench.dispose();
     expect(process.kill).toHaveBeenCalledOnce();
