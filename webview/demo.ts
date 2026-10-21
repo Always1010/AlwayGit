@@ -45,6 +45,15 @@ const demoStores:Record<string,{snapshot:Snapshot;commits:Commit[];saved:Map<str
   {snapshot:{...structuredClone(demoSnapshot),repository,remotes:['origin'],worktrees:demoSnapshot.worktrees.map((tree,i)=>({...tree,path:i?repository.root+'-graph':repository.root}))},commits:structuredClone(commits),saved:new Map([[commits[9].oid,[{path:'notes.txt',indexStatus:'?',worktreeStatus:'?',conflict:false,untracked:true}] ]])},
 ]));
 if(new URLSearchParams(location.search).get('interactiveRebase')==='1')for(const store of Object.values(demoStores)){store.snapshot.changes=[];for(let i=0;i<6;i++)store.commits[i].parents=[store.commits[i+1].oid];const remote=store.snapshot.refs.find(ref=>ref.name==='origin/main');if(remote)remote.oid=store.commits[3].oid;store.commits.forEach((commit,index)=>commit.pushed=index>=3);}
+const skipContexts=new Map<string,{operation:Snapshot['operation'];key:string;token:string}>();
+function refreshSkipToken(snapshot:Snapshot):void {
+  const operation=snapshot.operation,id=snapshot.repository.id;
+  if(!operation.kind||!operation.canSkip){delete operation.skipToken;skipContexts.delete(id);return;}
+  const key=JSON.stringify([snapshot.branch,snapshot.head,operation.kind,operation.originalHead,operation.managedRebase?.backupRef,operation.managedRebase?.step,operation.managedRebase?.stoppedOid]);
+  let context=skipContexts.get(id);
+  if(!context||context.operation!==operation||context.key!==key){context={operation,key,token:(crypto.randomUUID()+crypto.randomUUID()).replaceAll('-','')};skipContexts.set(id,context);}
+  operation.skipToken=context.token;
+}
 for (const { snapshot } of Object.values(demoStores)) publishedTags.set(`${snapshot.repository.id}:origin`, Object.fromEntries(snapshot.refs.filter(ref => ref.kind === 'tag').map(ref => [ref.fullName, ref.refOid ?? ref.oid])));
 if(noRemoteDemo)for(const store of Object.values(demoStores)){store.snapshot.remotes=[];store.snapshot.refs=store.snapshot.refs.filter(ref=>ref.kind!=='remote');delete store.snapshot.upstream;delete store.snapshot.pushTarget;}
 const demoCollections:RepositoryCollection[]=[];
@@ -62,6 +71,7 @@ const effectiveDemoOperationSettings = (): OperationSettings => ({ ...demoUserOp
 async function demoRequest(method: RpcRequest['method'], payload: unknown, repoId?:string): Promise<unknown> {
   await new Promise(resolve => setTimeout(resolve, 110));
   const data=demoStores[repoId??repo.id]??demoStores[repo.id],demoSnapshot=data.snapshot,commits=data.commits;
+  refreshSkipToken(demoSnapshot);
   if (method === 'worktreeOverview') {
     const paths = (payload as { paths?: string[] } | undefined)?.paths;
     return demoSnapshot.worktrees.filter(tree => !paths || paths.includes(tree.path)).map(tree => {
@@ -208,6 +218,12 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
   if(method==='copyText'){const {text}=payload as {text:string};if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(text);else throw new Error('Clipboard is unavailable in this browser.');return null;}
   if (method === 'action') {
     const action = payload as GitAction;
+    if(action.type==='operation.skip') {
+      const operation=demoSnapshot.operation;
+      if(!operation.canSkip||operation.kind!==action.kind||!action.skipToken||action.skipToken!==operation.skipToken)throw new RpcError('The selected Git operation changed. Refresh and confirm Skip again.','OPERATION_CHANGED');
+      if(operation.managedRebase&&operation.managedRebase.step<operation.managedRebase.total){operation.managedRebase.step++;operation.managedRebase.stoppedOid=commits[operation.managedRebase.step]?.oid;}
+      else {demoSnapshot.operation={conflicts:0,canContinue:false,canAbort:false,canSkip:false};demoSnapshot.changes=demoSnapshot.changes.filter(change=>!change.conflict);}
+    }
     if(action.type==='rebase.interactive'){const plan=rebasePlans.get(action.token);if(!plan||plan.head!==demoSnapshot.head||plan.published.length&&!action.acknowledgePublished)throw new Error('Rebase plan changed or requires acknowledgement.');rebaseRecoveries.unshift({ref:'refs/alwaygit/rebase-backups/demo-'+Date.now(),oid:plan.head});rebasePlans.delete(action.token);}
     if (action.type === 'discard' && action.planToken) { const plan = discardPlans.get(action.planToken); if (!plan) throw new Error('Discard plan expired.'); action.paths = plan.paths; action.mode = plan.scope === 'all' ? 'all' : undefined; discardPlans.delete(action.planToken); }
     if (action.type === 'stage' || action.type === 'resolve-and-stage' || action.type === 'unstage' || action.type === 'discard') {
@@ -275,7 +291,7 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
     else if (action.type === 'push') { demoSnapshot.ahead = 0; commits.forEach(commit => { commit.pushed = true; }); }
     else if (action.type === 'pull') demoSnapshot.behind = 0;
     demoSnapshot.stashes.forEach((stash,index)=>stash.selector=`stash@{${index}}`);
-    demoSnapshot.version++; return structuredClone(demoSnapshot);
+    demoSnapshot.version++; refreshSkipToken(demoSnapshot); return structuredClone(demoSnapshot);
   }
   return undefined;
 }

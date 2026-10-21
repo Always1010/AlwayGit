@@ -24,7 +24,7 @@ export interface RemoteTags { remote: string; destination: string; separatePush:
 export interface Stash { selector: string; oid: string; subject: string }
 export interface Worktree { path: string; head: string; branch?: string; bare: boolean; detached: boolean; locked?: string; prunable?: string }
 export type OperationKind = 'merge' | 'rebase' | 'cherry-pick' | 'revert';
-export interface OperationState { kind?: OperationKind; conflicts: number; canContinue: boolean; canAbort: boolean; canSkip: boolean; originalHead?: string; managedRebase?: import('./interactive-rebase').ManagedRebaseState }
+export interface OperationState { kind?: OperationKind; conflicts: number; canContinue: boolean; canAbort: boolean; canSkip: boolean; skipToken?: string; originalHead?: string; managedRebase?: import('./interactive-rebase').ManagedRebaseState }
 export interface OperationReview { kind: OperationKind; token: string; files: { path: string; lines: number[]; more?: boolean; skipped?: 'binary' | 'large' | 'encoding' | 'submodule' | 'limit' }[] }
 export interface PushTarget { localBranch: string; remote?: string; remoteBranch: string; configured: boolean }
 export interface PullTarget { localBranch: string; remote: string; remoteBranch: string }
@@ -88,7 +88,8 @@ export type GitAction =
   | { type: 'cherry-pick' | 'revert'; commits: string[]; mainline?: number; expectedHead?: string; expectedBranch?: string; allowIncluded?: boolean }
   | { type: 'reset'; target: string; mode: 'soft' | 'mixed' | 'hard'; expectedHead?: string; expectedBranch?: string }
   | { type: 'operation.continue'; kind: OperationKind; reviewToken?: string; keepEmpty?: boolean }
-  | { type: 'operation.abort' | 'operation.skip'; kind: OperationKind };
+  | { type: 'operation.abort'; kind: OperationKind }
+  | { type: 'operation.skip'; kind: OperationKind; skipToken: string };
 export type ContentSource = { kind: 'revision'; revision: string; path: string } | { kind: 'index'; path: string; stage?: 0 | 1 | 2 | 3 } | { kind: 'empty' };
 export interface CommitSelection { path: string; area: 'staged' | 'unstaged' }
 export type DiffTarget = { kind: 'change'; path: string; area: 'staged' | 'unstaged' | 'conflict' } | { kind: 'commit'; oid: string; path: string; parent?: string; previousPath?: string } | { kind: 'comparison'; left: string; right: string; path: string; previousPath?: string } | { kind: 'stash-working'; stashOid: string; path: string } | ({ kind: 'revision' } & import('./tree').RevisionTarget);
