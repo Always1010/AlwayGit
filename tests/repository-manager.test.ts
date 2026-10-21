@@ -359,6 +359,48 @@ describe('Add Repository host entry', () => {
     const projects={notifyCatalogChanged:vi.fn(async()=>{}),runRepositoryOperation:vi.fn(async(_commonDir:string,_label:string,task:()=>Promise<unknown>)=>task())};
     const value = new Workbench(context, git, manager, { releaseDiffOwner: vi.fn() } as never, output, projects as never); workbenches.push(value); return { value, manager, git, output, projects };
   }
+  it('keeps discovery retryable after invalid destinations and failed registration, then consumes it once', async () => {
+    const { value, manager } = workbench();
+    const repo = { id: 'retry', root: path.resolve('retry'), commonDir: path.resolve('retry/.git'), name: 'Retry' };
+    vi.spyOn(manager, 'discoverDirectory').mockResolvedValue({ repositories: [repo], issues: [], scanned: 1, found: 1, cancelled: false });
+    const preview = await value.discoverRepositories('retry-scan', repo.root), keys = preview.candidates.map(candidate => candidate.key);
+    await expect(value.addRepository('retry-scan', keys, 'missing', undefined)).rejects.toThrow('不存在');
+    const collection = await manager.createCollection('Deleted'); await manager.deleteCollection(collection.id);
+    await expect(value.addRepository('retry-scan', keys, collection.id, undefined)).rejects.toThrow('不存在');
+    await expect(value.addRepository('retry-scan', keys, undefined, ' ')).rejects.toThrow();
+    const registerActual = manager.registerDiscovered.bind(manager);
+    const register = vi.spyOn(manager, 'registerDiscovered').mockRejectedValueOnce(new Error('disk unavailable'));
+    await expect(value.addRepository('retry-scan', keys, undefined, undefined)).rejects.toThrow('disk unavailable');
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    register.mockImplementationOnce(async (discovery, options, destination) => { await gate; return registerActual(discovery, options, destination); });
+    const adding = value.addRepository('retry-scan', keys, undefined, undefined);
+    await expect(value.addRepository('retry-scan', keys, undefined, 'Duplicate')).rejects.toThrow();
+    expect(register).toHaveBeenCalledTimes(2);
+    release(); await expect(adding).resolves.toEqual({ added: 1, existing: 0, skipped: 0 });
+    expect(manager.list()).toEqual([repo]);
+    expect(manager.groups()[0].collectionId).toBeUndefined();
+    await expect(value.addRepository('retry-scan', keys, undefined, undefined)).rejects.toThrow();
+  });
+  it.each(['cancel', 'dispose'] as const)('does not restore a failed in-flight discovery after %s', async action => {
+    const { value, manager } = workbench();
+    const repo = { id: 'cancel', root: path.resolve('cancel'), commonDir: path.resolve('cancel/.git'), name: 'Cancel' };
+    vi.spyOn(manager, 'discoverDirectory').mockResolvedValue({ repositories: [repo], issues: [], scanned: 1, found: 1, cancelled: false });
+    const owner = {} as never, other = {} as never;
+    const preview = await value.discoverRepositories('cancel-scan', repo.root, owner), keys = preview.candidates.map(candidate => candidate.key);
+    await expect(value.addRepository('cancel-scan', keys, undefined, undefined, other)).rejects.toThrow();
+    value.cancelRepositoryDiscovery('cancel-scan', other);
+    let reject!: (error: Error) => void;
+    const gate = new Promise<never>((_resolve, fail) => { reject = fail; });
+    const register = vi.spyOn(manager, 'registerDiscovered').mockReturnValue(gate);
+    const adding = value.addRepository('cancel-scan', keys, undefined, undefined, owner);
+    const failed = expect(adding).rejects.toThrow('registration failed');
+    if (action === 'cancel') value.cancelRepositoryDiscovery('cancel-scan', owner); else value.dispose();
+    expect(register.mock.calls[0][1]?.isCancelled?.()).toBe(true);
+    reject(new Error('registration failed')); await failed;
+    await expect(value.addRepository('cancel-scan', keys, undefined, undefined, owner)).rejects.toThrow();
+    expect(register).toHaveBeenCalledOnce();
+  });
   it('routes auxiliary details independently through the validated host query coordinator', async () => {
     const { value, manager, git } = workbench();
     const repo = { id: 'details-repo', root: '/details', commonDir: '/details/.git', name: 'Details' };
