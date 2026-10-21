@@ -21,6 +21,7 @@ const replayLimit = 1024 * 1024;
 export class TerminalSessions {
   private readonly entries = new Map<string, Entry>();
   private readonly closedOwners = new WeakSet<object>();
+  private readonly suspendedOwners = new WeakSet<object>();
   constructor(private readonly spawn: PtyFactory, private readonly emit: (owner: object, event: TerminalEvent) => void) {}
   create(owner: object, repoId: string, cwd: string, shell: TerminalShell, launch: ShellLaunch, cols: number, rows: number, replaceId?: string, resources?: { dispose(): void }): TerminalSession {
     if (this.closedOwners.has(owner)) throw new MessageError(message('dock.closed'));
@@ -71,6 +72,15 @@ export class TerminalSessions {
     if (entry.session.status === 'running') entry.process.kill();
     this.emit(owner, { type: 'terminalClosed', sessionId: id });
   }
+  /** A disposed renderer cannot acknowledge output; keep draining into bounded replay instead. */
+  suspendOwner(owner: object): void {
+    this.suspendedOwners.add(owner);
+    for (const entry of this.entries.values()) if (entry.owner === owner) {
+      this.flush(entry);
+      entry.inflight.clear(); entry.unacknowledged = 0;
+      if (entry.paused && entry.session.status === 'running') { entry.paused = false; entry.process.resume(); }
+    }
+  }
   /** Move live processes and their replay buffers without restarting their shells. */
   transferOwner(source: object, target: object): void {
     if (this.closedOwners.has(target)) throw new MessageError(message('dock.closed'));
@@ -90,7 +100,9 @@ export class TerminalSessions {
     clearTimeout(entry.timer); entry.timer = undefined; if (!entry.pending || !this.entries.has(entry.session.id)) return;
     const data = entry.pending; entry.pending = ''; entry.output.push(data); entry.outputLength += data.length;
     while (entry.outputLength > replayLimit && entry.output.length > 1) entry.outputLength -= entry.output.shift()!.length;
-    entry.inflight.set(++entry.sequence, data.length); entry.unacknowledged += data.length;
+    entry.sequence++;
+    if (this.suspendedOwners.has(entry.owner)) return;
+    entry.inflight.set(entry.sequence, data.length); entry.unacknowledged += data.length;
     if (entry.unacknowledged >= 131072 && !entry.paused && entry.session.status === 'running') { entry.paused = true; entry.process.pause(); }
     this.emit(entry.owner, { type: 'terminalOutput', sessionId: entry.session.id, sequence: entry.sequence, data });
   }

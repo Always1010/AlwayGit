@@ -442,7 +442,10 @@ export class Workbench implements vscode.Disposable {
     this.panels.delete(entry.panel);
     // Native when-clause removal disposes a view even with retainContextWhenHidden.
     // Keep its saved session and terminal owner until this location is enabled again.
-    if (suspend && entry.kind !== 'editor') this.suspendedDockedPanels.set(entry.kind, entry);
+    if (suspend && entry.kind !== 'editor') {
+      this.suspendedDockedPanels.set(entry.kind, entry);
+      this.terminals.suspendOwner(entry);
+    }
     else this.terminals.disposeOwner(entry);
     this.queries.cancelOwner(entry);
     this.documents.releaseDiffOwner(entry);
