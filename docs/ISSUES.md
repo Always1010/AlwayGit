@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-161：旧 Skip 确认可能跳过另一仓库或操作步骤的提交
+
+- 日期：2026-10-21
+- 状态：已解决
+- 现象：Rebase 的 Skip 确认打开后，另一终端推进到下一冲突或宿主切换仓库，旧确认仍可能对新的当前步骤执行 Skip，丢弃未确认步骤的修改。
+- 原因：前端确认只保存布尔值，后端只核对操作种类，没有绑定仓库、操作实例和当前步骤。
+- 解决方案：快照提供绑定工作树、HEAD、操作实例和 sequencer 步骤的指纹；确认保存仓库与视图代数并在变化时失效；宿主执行及 Git 启动前再次比对指纹，普通与托管 Rebase 均拒绝过期确认；Demo 同步协议。
+- 验证方式：真实 Git、确认组件和托管 Rebase 3 文件 / 16 项通过，覆盖同 HEAD 下一冲突、重新发起同一 Rebase、跨仓库令牌和启动前竞争；Demo Skip 2 项及既有 Stash 3 项通过。
+- 相关文件：`src/git/service.ts`、`src/protocol/types.ts`、`src/protocol/validation.ts`、`webview/OperationNotice.tsx`、`webview/demo.ts`、`tests/git-operation-skip.test.ts`、`tests/operation-notice.test.tsx`、`tests/interactive-rebase.test.ts`、`tests/demo-operation-skip.test.ts`、`docs/ARCHITECTURE.md`、`docs/ARCHITECTURE.en.md`。
+
 ## BUG-160：停用工作台位置后保留的终端因输出背压阻塞
 
 - 日期：2026-10-21
