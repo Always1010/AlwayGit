@@ -357,8 +357,23 @@ describe('Add Repository host entry', () => {
   function workbench() {
     const { manager, context, git, output } = setup();
     const projects={notifyCatalogChanged:vi.fn(async()=>{}),runRepositoryOperation:vi.fn(async(_commonDir:string,_label:string,task:()=>Promise<unknown>)=>task())};
-    const value = new Workbench(context, git, manager, { releaseDiffOwner: vi.fn() } as never, output, projects as never); workbenches.push(value); return { value, manager, output, projects };
+    const value = new Workbench(context, git, manager, { releaseDiffOwner: vi.fn() } as never, output, projects as never); workbenches.push(value); return { value, manager, git, output, projects };
   }
+  it('routes auxiliary details independently through the validated host query coordinator', async () => {
+    const { value, manager, git } = workbench();
+    const repo = { id: 'details-repo', root: '/details', commonDir: '/details/.git', name: 'Details' };
+    vi.spyOn(manager, 'get').mockReturnValue(repo);
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    vi.spyOn(git, 'details').mockImplementation(async (_repo, oid) => { await gate; return { commit: { oid, parents: [], subject: oid, author: '', email: '', timestamp: 0 }, body: oid, files: [] }; });
+    const methods = ['details', 'copyCommitDetails', 'tagTargetDetails', 'amendDetails', 'inspectDetails'] as const;
+    const reads = methods.map(method => value.handle({ id: method, method, repoId: repo.id, payload: { oid: method } }));
+    const obsolete = expect(reads[0]).rejects.toMatchObject({ code: 'ABORTED' });
+    const next = value.handle({ id: 'next', method: 'details', repoId: repo.id, payload: { oid: 'next' } });
+    await obsolete;
+    release();
+    expect(await Promise.all([...reads.slice(1), next])).toEqual([...methods.slice(1), 'next'].map(oid => expect.objectContaining({ body: oid })));
+  });
   it('discovers candidates without registration and adds only the confirmed keys', async () => {
     const root = await fixture(), { value, manager, projects } = workbench();
     vi.mocked(vscode.window.showOpenDialog).mockResolvedValue([{ fsPath: root }] as vscode.Uri[]);

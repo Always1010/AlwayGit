@@ -138,7 +138,7 @@ function StandardActionDialog({ dialog, onClose: closeDialog, openAbort, replace
     const request=++tagTargetRequest.current;
     if(!target){setTagTargetDetails(undefined);setTagTargetError(undefined);return;}
     try{
-      const details=await rpc<CommitDetails>('details',state.repoId,{oid:target}),resolved={oid:details.commit.oid,subject:details.commit.subject};
+      const details=await rpc<CommitDetails>('tagTargetDetails',state.repoId,{oid:target}),resolved={oid:details.commit.oid,subject:details.commit.subject};
       if(mounted.current&&isActionContextCurrent(repositoryContext)&&request===tagTargetRequest.current){setTagTargetDetails(resolved);setTagTargetError(undefined);}
       return resolved;
     }catch(error){

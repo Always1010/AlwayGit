@@ -36,7 +36,7 @@ export function CommitDialog({ repoId, files, onClose }: { repoId: string; files
   useEffect(() => {
     const request = ++amendRequest.current, head = snapshot.head;
     if (!amend || !head || snapshot.operation.kind || useWorkbench.getState().drafts[repoId]) return;
-    void rpc<CommitDetails>('details', repoId, { oid: head }).then(detail => {
+    void rpc<CommitDetails>('amendDetails', repoId, { oid: head }).then(detail => {
       const current = useWorkbench.getState();
       if (request === amendRequest.current && current.repoId === repoId && current.snapshot?.head === head && !current.drafts[repoId]) {
         current.setDraft(detail.body || detail.commit.subject);
