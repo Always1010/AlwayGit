@@ -3,6 +3,12 @@ import assert from 'node:assert/strict';
 // Shared by Working Tree, Commit Details, and Commit comparison regressions.
 async function verifyFileSelectionPreview(page, list, screenshotPath) {
   const rows = list.locator('.file-item,.change-file'), first = rows.nth(0), second = rows.nth(1), third = rows.nth(2);
+  const labels = await rows.locator('.file-basename').evaluateAll(names => names.map(name => {
+    const range = document.createRange(); range.selectNodeContents(name);
+    const text = range.getBoundingClientRect(), box = name.getBoundingClientRect(), path = name.nextElementSibling.getBoundingClientRect();
+    return { fits: text.top >= box.top - 0.1 && text.bottom <= box.bottom + 0.1, gap: path.top - box.bottom };
+  }));
+  assert.ok(labels.length && labels.every(label => label.fits && label.gap >= 0.9), 'File names retain complete descenders and stay separate from parent paths');
   const click = (row, modifiers = []) => row.locator('.file-name').click({ modifiers });
   const selectedCount = () => list.locator('[role="option"][aria-selected="true"]').count();
   const heading = page.getByTestId('diff-preview').locator('.pane-heading > .truncate');
@@ -123,7 +129,7 @@ export async function verifyFiles(browser, url) {
     assert.equal((await panel.locator('.file-status-badge').first().innerText()).trim(), 'M', 'Modification status appears in the file icon corner');
     assert.equal(await panel.locator('.file-item > .codicon').count(), 0, 'Each row uses one file icon with a status badge');
     const compactRow = await panel.locator('.file-item').first().boundingBox();
-    assert.ok(compactRow && compactRow.height <= 34, 'Default two-line file rows stay compact');
+    assert.equal(compactRow?.height, 36, 'Default two-line rows reserve space for complete file-name glyphs');
     await verifyFileSelectionPreview(page, panel.locator('.detail-files'));
     await historyCommits.nth(1).click({ modifiers: ['Control'] });
     await details.locator('.comparison-summary').waitFor();
