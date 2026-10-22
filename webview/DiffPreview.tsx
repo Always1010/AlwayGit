@@ -293,9 +293,9 @@ function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():
         const active=!!highlighted&&item.index>=highlighted.start&&item.index<=highlighted.end,rowHunk=patchHunkForRow(patchHunks,row);
         const hunk=patchHunkAtRow(patchHunks,row)??(item.index===virtualItems[0]?.index?rowHunk:undefined);
         return <div key={item.index} className={`diff-line${active?' active-change':''}${active&&item.index===highlighted?.start?' active-change-start':''}${active&&item.index===highlighted?.end?' active-change-end':''}`} style={{position:'absolute',left:0,width:'var(--diff-viewport-width,100%)',height:ROW_HEIGHT,transform:`translateY(${item.start}px)`}}>
-          <div className={`diff-side${row.changed&&row.before!==undefined?' removed':''}`}><span className="line-number">{row.beforeLine??''}</span><span className="diff-marker" aria-hidden="true">{row.changed&&row.before!==undefined?'−':''}</span><span className="diff-code">{content(row.before,row.after,row.changed,'before')}</span></div>
+          <div className={`diff-side${row.changed&&row.before!==undefined?' removed':''}`}><span className="line-number">{row.beforeLine??''}</span><span className="diff-code">{content(row.before,row.after,row.changed,'before')}</span></div>
           <div className={`diff-hunk-gutter${rowHunk?' has-hunk':''}`} data-hunk-id={rowHunk?.id}>{hunk&&<DiffHunkAction hunk={hunk} area={hunkTarget!.area as 'staged'|'unstaged'} disabled={state.busy||loading} apply={applyHunk} discard={requestDiscard}/>}</div>
-          <div className={`diff-side${row.changed&&row.after!==undefined?' added':''}`}><span className="line-number">{row.afterLine??''}</span><span className="diff-marker" aria-hidden="true">{row.changed&&row.after!==undefined?'+':''}</span><span className="diff-code">{content(row.after,row.before,row.changed,'after')}</span></div>
+          <div className={`diff-side${row.changed&&row.after!==undefined?' added':''}`}><span className="line-number">{row.afterLine??''}</span><span className="diff-code">{content(row.after,row.before,row.changed,'after')}</span></div>
         </div>;
       })}</div>}
     </div>

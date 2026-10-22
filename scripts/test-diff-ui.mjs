@@ -33,6 +33,9 @@ export async function verifyDiffNavigation(browser, url) {
     assert.equal(await summary.locator('.diff-change-added').innerText(), '+0');
     assert.equal(await summary.locator('.diff-change-modified').innerText(), '~3');
     assert.equal(await summary.locator('.diff-change-removed').innerText(), '−0');
+    assert.equal(await diff.locator('.diff-marker').count(), 0, 'Diff prefixes are absent from the code area');
+    assert.equal(await diff.locator('.diff-side.removed code', { hasText: '-literal source prefix' }).innerText(), '-literal source prefix', 'A leading minus in the source remains intact');
+    assert.equal(await diff.locator('.diff-side.added code', { hasText: '+literal source prefix' }).innerText(), '+literal source prefix', 'A leading plus in the source remains intact');
     const emojiMark = diff.locator('mark.diff-word-added', { hasText: '😁' });
     await emojiMark.waitFor();
     assert.equal(await emojiMark.innerText(), '😁', 'Inline highlighting keeps the changed emoji in one DOM node');
@@ -122,6 +125,7 @@ export async function verifyDiffNavigation(browser, url) {
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     const settings = page.getByTestId('interface-settings'), dialog = page.getByRole('dialog', { name: 'Settings' });
     await settings.getByRole('button', { name: 'Diff', exact: true }).click();
+    assert.equal(await settings.locator('.diff-marker').count(), 0, 'The Settings preview uses the same prefix-free style');
     await settings.getByLabel('Diff line height', { exact: true }).selectOption('24');
     await page.waitForFunction(() => document.querySelector('.diff-line')?.getBoundingClientRect().height === 24);
     const resizedTopRow = await viewport.evaluate(element => element.scrollTop / 24);
@@ -241,8 +245,9 @@ async function addDiffFixture(page, diffNavigationScope) {
       const commit = { oid: 'a'.repeat(40), parents: ['b'.repeat(40), 'c'.repeat(40)], author: 'Fixture', email: 'test@example.com', timestamp: 0, subject: 'Diff navigation' };
       const lines = Array.from({ length: 130 }, (_, i) => `context line ${i}`);
       lines[26] = 'emoji 😀 stays';
+      lines[27] = '-literal source prefix';
       lines[81] = 'left long ' + '0123456789'.repeat(120);
-      const right = lines.map((line, i) => [26, 27, 28, 40, 41, 42, 80, 81, 82].includes(i) ? i === 26 ? 'emoji 😁 stays' : i === 81 ? 'right long ' + 'abcdefghij'.repeat(120) : `changed line ${i}` : line);
+      const right = lines.map((line, i) => [26, 27, 28, 40, 41, 42, 80, 81, 82].includes(i) ? i === 26 ? 'emoji 😁 stays' : i === 27 ? '+literal source prefix' : i === 81 ? 'right long ' + 'abcdefghij'.repeat(120) : `changed line ${i}` : line);
       const fixture = window.__diffFixture = { commit, calls: [], previews: [], failPath: null, holdPath: null, held: [], emptyFiles: false, left: lines.join('\n'), right: right.join('\n'), truncated: false, preferences, snapshots:new Map(), pageRequests:[], synthetic:null,
         snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 0, behind: 0, changes: [{ path: 'diff.txt', indexStatus: ' ', worktreeStatus: 'M', conflict: false, untracked: false }], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
         emit() { window.postMessage({ type: 'changed', repoId: repo.id, changes: { paths: ['diff.txt'] } }, '*'); },
@@ -385,7 +390,7 @@ export async function verifyFixedDiffScroll(diff) {
     const tick=()=>new Promise(resolve=>requestAnimationFrame(resolve));await tick();await tick();
     const bar=panel.querySelector('.diff-horizontal-scroll'),view=panel.querySelector('.diff-viewport');
     const row=view.querySelector('.active-change-start')??view.querySelector('.diff-line');
-    const fixed=[...panel.querySelectorAll('.text-diff-labels>span'),...row.querySelectorAll('.line-number,.diff-marker,.diff-hunk-gutter,.diff-side')];
+    const fixed=[...panel.querySelectorAll('.text-diff-labels>span'),...row.querySelectorAll('.line-number,.diff-hunk-gutter,.diff-side')];
     const reference=fixed.map(node=>{const b=node.getBoundingClientRect();return {left:b.left,width:b.width};});
     const code=[...row.querySelectorAll('.diff-code code')],original=bar.scrollLeft,maximum=bar.scrollWidth-bar.clientWidth;
     const codeStart=code.map(node=>node.getBoundingClientRect().left);
@@ -427,5 +432,5 @@ async function verifyDiffLineNumberClearance(diff) {
     return {left:text.left-cell.left,right:number.getBoundingClientRect().right-text.right};
   }));
   assert.ok(gaps.length>0,'The fixture must contain numbered changed lines');
-  assert.ok(gaps.every(gap=>gap.left>=5&&gap.right>=3.9),'Changed line numbers leave space for the 3px emphasis stripe and retain their right spacing');
+  assert.ok(gaps.every(gap=>gap.left>=5&&gap.right>=11.9),'Changed line numbers leave space for the 3px emphasis stripe and a 12px gap before source text');
 }
