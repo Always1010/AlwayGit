@@ -218,9 +218,9 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
             <figure className="settings-preview">
               <figcaption><span>{t("settings.preview")}</span><span>{t("settings.renderedLineHeight")} · {diffRowHeight(appearance.codeFont, appearance.codeRowHeight)}{uiText("settings.px")}</span></figcaption>
               <div className="diff-content settings-diff-preview" role="region" aria-label={t("settings.diffTextPreview")}>
-                <div className="settings-diff-preview-line"><span className="line-number">12</span><span className="diff-marker"> </span><code>{uiText("settings.constTitleAlwayGit")}</code></div>
-                <div className="settings-diff-preview-line removed"><span className="line-number">13</span><span className="diff-marker">−</span><code>{uiText("settings.constCount1")}</code></div>
-                <div className="settings-diff-preview-line added"><span className="line-number">13</span><span className="diff-marker">+</span><code>{uiText("settings.constCount2")}</code></div>
+                <div className="settings-diff-preview-line"><span className="line-number">12</span><code>{uiText("settings.constTitleAlwayGit")}</code></div>
+                <div className="settings-diff-preview-line removed"><span className="line-number">13</span><code>{uiText("settings.constCount1")}</code></div>
+                <div className="settings-diff-preview-line added"><span className="line-number">13</span><code>{uiText("settings.constCount2")}</code></div>
               </div>
             </figure>
           </section>

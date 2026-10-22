@@ -2,7 +2,7 @@
 .workbench[data-theme] {
   --section-border:var(--border);--row-border:color-mix(in srgb,var(--border) 48%,transparent);
   --soft-accent:color-mix(in srgb,var(--accent) 12%,var(--bg));
-  --diff-added:color-mix(in srgb,var(--green) 19%,var(--bg));--diff-removed:color-mix(in srgb,var(--error) 17%,var(--bg));
+  --diff-added:color-mix(in srgb,var(--green) 11%,var(--bg));--diff-removed:color-mix(in srgb,var(--error) 11%,var(--bg));
   --vscode-input-foreground:var(--fg);--vscode-input-placeholderForeground:var(--muted);--vscode-input-border:var(--border);
   --vscode-editorWidget-background:var(--bg);--vscode-menu-background:var(--bg);--vscode-menu-foreground:var(--fg);--vscode-menu-border:var(--border);
   --vscode-inputValidation-errorBackground:color-mix(in srgb,var(--error) 13%,var(--bg));
