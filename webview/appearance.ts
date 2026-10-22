@@ -70,7 +70,8 @@ export function normalizeAppearance(value: Partial<Appearance> = {}): Appearance
 }
 export const effectiveRowHeight = (layout: Pick<LayoutState, 'font' | 'row'>) => Math.max(layout.row, Math.round(layout.font * 1.35) + 6);
 export const diffRowHeight = (font: number, row = 18) => Math.max(row, font + 4);
-export const fileRowHeight = (font: number, spacing: number) => Math.ceil((font + 11) * 1.2) + spacing * 2 + 1;
+// Match the name/path line boxes, their gap, vertical padding, and row border.
+export const fileRowHeight = (font: number, spacing: number) => Math.ceil(font * 1.4 + 11 * 1.2 + 1) + spacing * 2 + 1;
 export const isLightTheme = (theme: ResolvedTheme) => ['light', 'paper', 'mist', 'hc-light'].includes(theme);
 export function textColorForBackground(hex: string): '#000000' | '#FFFFFF' {
   const channels = [1, 3, 5].map(offset => parseInt(hex.slice(offset, offset + 2), 16) / 255)
