@@ -6,11 +6,7 @@ AlwayGit is a graphical Git workbench for VS Code editor tabs, the Primary Sideb
 
 ![AlwayGit Workbench showing repository and branch navigation, commit history, working-tree status, and a side-by-side file diff](docs/images/user-manual/figure-03.png)
 
-Workbench overview rendered with real UI components and an example repository. See the [user manual's screenshot notes](docs/USER_MANUAL.en.md) for capture details and differences from the current UI. Click the image to view it at full size.
-
-[![Release code analysis: language shares, file types and counts, and Vitest test cases](https://always1010.github.io/AlwayGit/repository-stats.en.svg)](https://always1010.github.io/AlwayGit/index.en.html)
-
-The card identifies its release Tag and updates only after a stable Release succeeds. See [counting rules, Pages setup, and recovery](docs/VALIDATION.en.md#release-code-analysis).
+Workbench overview rendered with real UI components and an example repository. See the [user manual's screenshot notes](docs/USER_MANUAL.en.md) for capture details. Click the image to view it at full size.
 
 ## Installation and launch
 
@@ -56,3 +52,9 @@ For complete interactions, configuration, and feature boundaries, see the [Workb
 | [Project Collaboration Rules (Chinese)](AGENTS.md) | Rules for commits, documentation, testing, and local updates |
 
 The project has not specified an open-source license and has not been published to the VS Code Marketplace.
+
+## Release code analysis
+
+The card identifies its release Tag and updates only after a stable Release succeeds. See [counting rules, Pages setup, and recovery](docs/VALIDATION.en.md#release-code-analysis).
+
+[![Release code analysis: language shares, file types and counts, and Vitest test cases](https://always1010.github.io/AlwayGit/repository-stats.en.svg)](https://always1010.github.io/AlwayGit/index.en.html)
