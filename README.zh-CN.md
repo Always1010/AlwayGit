@@ -6,11 +6,7 @@ AlwayGit 是可在 VS Code 编辑器标签页、主侧边栏、第二侧边栏�
 
 ![AlwayGit 工作台：仓库与分支导航、提交历史、工作区状态及文件并排 Diff](docs/images/user-manual/figure-03.png)
 
-工作台全景采用真实界面组件与示例仓库渲染。采集来源及与当前界面的差异见[用户手册的截图说明](docs/USER_MANUAL.zh-CN.md)，点击图片可查看原图。
-
-[![发布版本代码分析：语言占比、文件类型与数量、Vitest 测试用例](https://always1010.github.io/AlwayGit/repository-stats.svg)](https://always1010.github.io/AlwayGit/)
-
-图卡标明对应的发布 Tag，仅在稳定版本 Release 成功后更新。[统计口径、Pages 设置与恢复方式](docs/VALIDATION.md#发布版本代码分析)。
+工作台全景采用真实界面组件与示例仓库渲染。采集来源见[用户手册的截图说明](docs/USER_MANUAL.zh-CN.md)，点击图片可查看原图。
 
 ## 安装与启动
 
@@ -56,3 +52,9 @@ npm run build
 | [项目协作规则](AGENTS.md) | 提交、文档治理、测试和本机更新的执行规则 |
 
 本项目尚未指定开源许可证，也尚未发布到 Marketplace。
+
+## 发布版本代码分析
+
+图卡标明对应的发布 Tag，仅在稳定版本 Release 成功后更新。[统计口径、Pages 设置与恢复方式](docs/VALIDATION.md#发布版本代码分析)。
+
+[![发布版本代码分析：语言占比、文件类型与数量、Vitest 测试用例](https://always1010.github.io/AlwayGit/repository-stats.svg)](https://always1010.github.io/AlwayGit/)
