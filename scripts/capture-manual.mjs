@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 import { build } from 'esbuild';
 import { createServer } from 'node:http';
-import { readFile, mkdir, copyFile } from 'node:fs/promises';
+import { readFile, mkdir, copyFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 
@@ -12,6 +12,7 @@ const write = process.argv.includes('--write');
 const only = process.argv.find(arg => arg.startsWith('--only='))?.slice(7);
 const from = process.argv.find(arg => arg.startsWith('--from='))?.slice(7);
 assert.ok(process.argv.slice(2).every(arg => arg === '--write' || /^--(?:only|from)=\d{2}$/.test(arg)), 'Use --write, --only=NN or --from=NN');
+assert.ok(!only || !from, 'Use either --only=NN or --from=NN');
 assert.ok(!write || !only && !from, 'Partial captures cannot replace the maintained set');
 const output = path.join(root, 'artifacts/manual-capture');
 await mkdir(output, { recursive: true });
@@ -32,6 +33,31 @@ const fixture = await build({ stdin: { resolveDir: root, contents: `
   const options = window.__captureOptions;
   window.__capturePending = 0;
   const request = createDemoRequest(event => window.postMessage(event, '*'));
+  // Features without a general Demo response receive explicit, capture-only sample data.
+  // These are protocol responses rendered by production components, never replacement markup.
+  const sampleTree = [
+    { name: 'docs', path: 'docs', type: 'tree', mode: '040000', oid: 'b'.repeat(40) },
+    { name: 'src', path: 'src', type: 'tree', mode: '040000', oid: 'c'.repeat(40) },
+    { name: 'webview', path: 'webview', type: 'tree', mode: '040000', oid: 'd'.repeat(40) },
+    { name: 'package.json', path: 'package.json', type: 'blob', mode: '100644', oid: 'e'.repeat(40), size: 4850 },
+    { name: 'README.md', path: 'README.md', type: 'blob', mode: '100644', oid: 'f'.repeat(40), size: 3210 },
+  ];
+  async function captureRequest(method, payload, repoId) {
+    if (method === 'revisionTree') return { revision: payload.revision, path: payload.path ?? '', entries: !payload.path ? sampleTree : payload.path === 'webview' ? ['App.tsx', 'History.tsx', 'styles.css'].map((name, index) => ({ name, path: 'webview/' + name, type: 'blob', mode: '100644', oid: String(index + 1).repeat(40), size: [23580, 17840, 48210][index] })) : [] };
+    if (method === 'lfsStatus' || method === 'lfsTrackPreview') {
+      const snapshot = await request('snapshot', undefined, repoId);
+      const context = { head: snapshot.head, branch: snapshot.branch };
+      if (method === 'lfsTrackPreview') return { ...context, token: '22222222-2222-4222-8222-222222222222', pattern: payload.pattern, operation: payload.operation,
+        before: '*.psd filter=lfs diff=lfs merge=lfs -text\\n', after: '*.psd filter=lfs diff=lfs merge=lfs -text\\n*.mp4 filter=lfs diff=lfs merge=lfs -text\\n' };
+      return { ...context, available: true, version: 'git-lfs/3.7.0 (sample)', filterConfigured: true, checkedAt: Date.now(), remoteAvailability: 'unknown', truncated: false,
+        destinations: { origin: { fetch: 'd'.repeat(64), push: 'd'.repeat(64) } }, statusText: 'Objects to be pushed to origin:\\n\\nObjects to be committed:\\n\\tassets/design.psd (LFS: sample object)\\n',
+        files: [
+          { path: 'assets/design.psd', oid: 'a1'.repeat(32), size: 12582912, worktree: 'content', localObject: 'available', staged: true, unstaged: false },
+          { path: 'media/demo.mp4', oid: 'b2'.repeat(32), size: 52428800, worktree: 'pointer', localObject: 'missing', staged: false, unstaged: false },
+        ] };
+    }
+    return request(method, payload, repoId);
+  }
   let committed;
   let session = { version: 2, repoId: 'demo-alwaygit', language: 'en', changeListMode: options.unified ? 'unified' : 'split',
     layout: { preset: 'workbench', sidebar: 248, details: 350, diff: 260, graph: 75, author: 105, date: 120, font: 13, row: 24 },
@@ -46,7 +72,7 @@ const fixture = await build({ stdin: { resolveDir: root, contents: `
           details: { kind: 'stash-apply', reason: 'restore-conflict', paths: ['webview/App.tsx'], conflictPaths: ['webview/App.tsx'], selector: 'stash@{0}', stashOid: 'a'.repeat(40), stashRetained: true, workingTreeUnchanged: true, output: 'CONFLICT (content): Merge conflict in webview/App.tsx' } } }, '*'); return;
       }
       const beforeCommit = call.method === 'action' && call.payload.type === 'commit' ? await request('snapshot', undefined, call.repoId) : undefined;
-      let result = await request(call.method, call.payload, call.repoId);
+      let result = await captureRequest(call.method, call.payload, call.repoId);
       if (beforeCommit && !call.payload.amend) committed = { oid: result.head, paths: call.payload.files?.map(file => file.path) ?? beforeCommit.changes.filter(file => !file.untracked && file.indexStatus !== ' ').map(file => file.path) };
       if (call.method === 'details' && committed?.oid === result.commit.oid) { result.files = committed.paths.map(path => ({ path, status: 'M' })); result.body = ''; }
       if (call.method === 'interfaceSettings') result = { appearance: { theme: 'system' }, changeListMode: options.unified ? 'unified' : 'split' };
@@ -58,6 +84,9 @@ const fixture = await build({ stdin: { resolveDir: root, contents: `
       }
       if (call.method === 'operationReview') result = { kind: 'merge', token: 'sample-review', files: [{ path: 'webview/App.tsx', lines: [] }] };
       if (call.method === 'snapshot' && options.unified) result.changes[0].worktreeStatus = 'M';
+      if (call.method === 'diffPreview' && call.payload.kind === 'revision') result = { kind: 'text', path: call.payload.path,
+        leftLabel: call.payload.revision.slice(0, 8) + ' · ' + call.payload.path, rightLabel: 'Working Tree',
+        left: 'export function Workbench() {\\n  return <HistoryPanel />;\\n}\\n', right: 'export function Workbench() {\\n  return (\\n    <WorkbenchLayout>\\n      <HistoryPanel />\\n      <CommitDetails />\\n    </WorkbenchLayout>\\n  );\\n}\\n' };
       if (call.method === 'stashDetails') {
         result.sections.index.files = [{ path: 'webview/App.tsx', status: 'M' }]; result.totalFiles = 2;
       }
@@ -83,6 +112,8 @@ async function branch(page, name = 'feature/history-graph') {
   return button(sidebar(page), `Branch ${name}`);
 }
 async function settings(page, name) { await button(page, 'Settings').click(); await button(page.getByTestId('interface-settings'), name).click(); }
+async function toolbarMenu(page, name) { await page.getByTestId('toolbar-more').click(); await page.getByRole('menuitem', { name, exact: true }).click(); await dialog(page).waitFor(); }
+async function contextAction(page, locator, name) { await locator.click({ button: 'right' }); await page.getByTestId('context-menu').getByRole('menuitem', { name, exact: true }).click(); }
 async function file(page, name = 'webview/App.tsx') { await details(page).getByRole('button', { name, exact: true }).first().click(); await page.getByTestId('diff-preview').waitFor(); }
 async function commit(page, message, amend = false) {
   await page.locator('.toolbar .commit-trigger').click();
@@ -95,7 +126,7 @@ const scenes = [
   ['03', {}, async p => { await file(p); }],
   ['04', {}, async p => { await commit(p, 'Add quick start documentation'); await button(dialog(p), 'Commit').click(); await dialog(p).waitFor({ state: 'hidden' }); await rows(p).first().click(); await file(p); }],
   ['05', {}, async p => { await settings(p, 'File list'); }],
-  ['06', {}, async p => { await sidebar(p).getByRole('option', { name: /^AlwayGit/ }).click(); await branch(p); }],
+  ['06', {}, async p => { await sidebar(p).getByRole('button', { name: /^AlwayGit/ }).click(); await branch(p); }],
   ['07', {}, async p => { await details(p).getByRole('searchbox').fill('webview'); await file(p, 'webview/styles.css'); }],
   ['08', { unified: true }, async p => { const f = details(p).getByRole('button', { name: 'webview/App.tsx', exact: true }).first(); await menu(p, f, 'Commit Selected…'); await dialog(p).getByRole('textbox').fill('Polish workbench layout'); }],
   ['09', {}, async p => { const dock = p.getByTestId('bottom-dock'); await button(dock, 'New embedded terminal').click(); await dock.locator('.terminal-content:not([hidden]) textarea').waitFor(); await button(dock, 'New embedded terminal').click(); await dock.getByRole('tab', { name: 'PowerShell 2', exact: true }).click(); await button(dock, 'Rename terminal').click(); await p.getByRole('textbox', { name: 'Rename terminal' }).fill('dev server'); await button(dialog(p), 'Apply').click(); await dock.getByRole('tab', { name: 'dev server', exact: true }).waitFor(); }],
@@ -130,6 +161,14 @@ const scenes = [
   ['38', {}, async p => { await settings(p, 'Diff'); }],
   ['39', { host: 'sidebar', viewport: { width: 380, height: 820 } }, async p => { await button(p.getByRole('navigation', { name: 'Workbench Regions' }), 'History').click(); await rows(p).first().waitFor(); }],
   ['40', {}, async p => { await commit(p, 'Polish workbench layout'); await button(dialog(p), 'Commit').click(); await dialog(p).waitFor({ state: 'hidden' }); await p.getByTestId('action-feedback').waitFor(); await button(p.getByTestId('action-feedback'), 'Operation details').click(); }],
+  ['41', {}, async p => { await button(history(p), 'Advanced history search').click(); await history(p).getByLabel('Author name or email (literal)', { exact: true }).fill('Alex Chen'); await history(p).getByLabel('File or directory (literal, repository relative)', { exact: true }).fill('webview/'); await history(p).getByLabel('Committer date from (UTC, inclusive)', { exact: true }).fill('2026-09-01'); await history(p).getByLabel('Added or removed code (one line)', { exact: true }).fill('HistoryPanel'); }],
+  ['42', {}, async p => { await contextAction(p, details(p).getByRole('button', { name: 'webview/App.tsx', exact: true }), 'Show File History'); await history(p).getByRole('group', { name: 'File History', exact: true }).waitFor(); await rows(p).first().click(); await file(p); }],
+  ['43', {}, async p => { await rows(p).first().click(); await button(details(p), 'Full Tree').click(); const tree = details(p).getByRole('tree'); await button(tree, 'webview').click(); await button(tree, 'App.tsx').click(); await p.getByTestId('diff-preview').waitFor(); }],
+  ['44', {}, async p => { await menu(p, await branch(p, 'feature/test'), 'Compare with Current Branch'); await dialog(p).getByRole('combobox', { name: 'Comparison mode', exact: true }).selectOption('snapshot'); await dialog(p).locator('.comparison-files .file-item').first().waitFor(); }],
+  ['45', {}, async p => { await toolbarMenu(p, 'Open Reflog'); await dialog(p).getByLabel('Recovery branch name', { exact: true }).fill('recovery/layout-review'); await dialog(p).locator('.revision-inspector strong').waitFor(); }],
+  ['46', {}, async p => { await button(sidebar(p), 'Worktree Overview').click(); await p.locator('.worktree-overview .overview-row').first().waitFor(); await p.locator('.worktree-overview .overview-row').first().getByText('Ready', { exact: true }).waitFor(); }],
+  ['47', { query: 'interactiveRebase=1' }, async p => { await menu(p, button(sidebar(p), 'Branch main'), 'Interactive Rebase'); const action = dialog(p).getByRole('combobox', { name: 'Rebase action', exact: true }); await action.first().selectOption('reword'); await dialog(p).getByLabel('New commit message', { exact: true }).fill('Clarify repository workbench layout'); await action.nth(1).selectOption('fixup'); await dialog(p).locator('.revision-inspector strong').waitFor(); }],
+  ['48', {}, async p => { await toolbarMenu(p, 'Git LFS'); await dialog(p).getByLabel('Filename / glob', { exact: true }).fill('*.mp4'); await dialog(p).getByLabel('Literal filename', { exact: true }).uncheck(); await button(dialog(p), 'Preview attributes').click(); await dialog(p).locator('.lfs-attributes').waitFor(); }],
 ];
 
 let browser;
@@ -143,10 +182,10 @@ try {
     page.setDefaultTimeout(10000);
     page.on('pageerror', error => errors.push(error.message));
     try {
-      await page.clock.install({ time: new Date('2026-10-06T04:00:00Z') });
+      await page.clock.install({ time: new Date('2026-10-24T04:00:00Z') });
       await page.addInitScript(options => { window.__captureOptions = options; }, options);
       await page.addInitScript({ content: fixtureCode });
-      await page.goto(url);
+      await page.goto(url + (options.query ? '?' + options.query : ''));
       await details(page).waitFor({ state: options.host ? 'attached' : 'visible' });
       if (!options.host) await rows(page).first().waitFor();
       await prepare(page);
@@ -154,11 +193,12 @@ try {
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       await page.getByText('Loading Diff…', { exact: true }).waitFor({ state: 'hidden' });
       await page.evaluate(async () => { await document.fonts.ready; });
-      await page.mouse.move(1430, 895);
+      const viewport = page.viewportSize();
+      await page.mouse.move(viewport.width - 4, viewport.height - 4);
       const visibleDialog = dialog(page);
       let clip;
       if (await visibleDialog.isVisible()) {
-        const box = await visibleDialog.boundingBox(), viewport = page.viewportSize();
+        const box = await visibleDialog.boundingBox();
         const x = Math.max(0, box.x - 16), y = Math.max(0, box.y - 16);
         clip = { x, y, width: Math.min(viewport.width - x, box.width + 32), height: Math.min(viewport.height - y, box.height + 32) };
       }
@@ -171,6 +211,7 @@ try {
       throw new Error(`Capture ${id} failed`, { cause: error });
     } finally { await context.close(); }
   }
+  await writeFile(path.join(output, 'capture-manifest.json'), JSON.stringify({ capturedAt: '2026-10-24', scenes: selected.map(([id]) => id) }, null, 2) + '\n');
   if (write) for (const [id] of scenes) await copyFile(path.join(output, `figure-${id}.png`), path.join(root, `docs/images/user-manual/figure-${id}.png`));
   console.log(`${scenes.length} available scenes; ${write ? 'maintained set replaced' : 'preview files in artifacts/manual-capture'}`);
 } finally { await browser?.close(); await new Promise(resolve => server.close(resolve)); }
