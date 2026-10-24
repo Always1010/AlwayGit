@@ -98,6 +98,8 @@ export async function verifyHelp(browser, url) {
         assert.ok(await dialog.locator('.help-content').evaluate(element => element.clientHeight > 100), 'Content remains scrollable in narrow windows');
       }
       await page.screenshot({ path: `artifacts/help-${language}-narrow.png` });
+      // Restore the invoking region before testing focus return; compact navigation can hide it.
+      await page.setViewportSize({ width: 1440, height: 940 });
       // Keyboard focus stays within the dialog and returns to the invoking control.
       const headerClose = dialog.locator('.modal-heading button');
       await headerClose.focus();
