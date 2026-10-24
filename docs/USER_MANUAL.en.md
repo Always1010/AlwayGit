@@ -6,7 +6,9 @@ This manual explains how to inspect changes, save revisions, and collaborate wit
 
 Select More actions → Help & Guide, with its question-mark icon, in the upper-right corner of the Workbench to open the offline help. It includes quick start instructions, common tasks, common questions, and the full chapters of this manual. Its language follows the workbench setting.
 
-**About the screenshots:** All 40 shared figures were recaptured on 2026-10-06 from the 0.52.0 source build with an English interface and sample repositories, using the default theme's white appearance on a light host; the language page previews Chinese. The narrow sidebar figure demonstrates region navigation at that viewport size. Images do not include native VS Code chrome. The current toolbar combines the two rows and moves less-used actions into More; follow the text for current entry points. The figures retain the original task examples; the current left and right panel dividers also have collapse buttons at the top, as described in the text. The old file preview highlight is now a small dot beside the icon; row backgrounds indicate only the current operation selection. Diff figures may still show per-line plus/minus prefixes; the current preview uses pale backgrounds and left stripes, as specified in the Workbench specification. Names, paths, and Commit IDs may differ in your project. History search figures show the message field; advanced filters are now opened with the adjacent filter icon.
+<a id="screenshot-notes"></a>
+
+**About the screenshots:** Shared figures were captured on 2026-10-24 from the 1.8.0 source build. They show the actual Workbench components with an English interface, the default theme's white appearance on a light host, and sample repository data; the language page previews Chinese. Sample RPC responses supply repository, Git-operation, and terminal states, so these images do not establish real-host validation of remotes, authentication, or native Git operations. The narrow sidebar figure demonstrates region navigation at that viewport size. Images exclude native VS Code chrome, native confirmation dialogs, and system folder pickers. Your project names, paths, and Commit IDs may differ. See [Validation](VALIDATION.en.md#manual-screenshots) for the capture process and verification scope.
 
 ## Read by task
 
@@ -15,7 +17,9 @@ Select More actions → Help & Guide, with its question-mark icon, in the upper-
 | [Quick start](#quick-start) | Add a repository, inspect a change, and make your first commit |
 | Understand the workbench | [Installation and interface](#chapter-01), [selection and shortcuts](#section-12-01), [common terms](#section-12-02) |
 | Everyday tasks | [Working Tree and commits](#chapter-03), [history and comparisons](#chapter-04), [branches and old revisions](#chapter-05), [remote collaboration](#chapter-08), [Stash](#chapter-07) |
+| Find and review | [Combined history search](#section-04-02), [File History](#file-history), [Full Tree](#commit-tree), [Branch comparison](#branch-comparison) |
 | Advanced tasks | [Merging and conflicts](#chapter-06), [history and Tags](#chapter-09), [repositories and groups](#chapter-02), [Worktrees](#chapter-10) |
+| Recovery and large files | [Reflog recovery](#reflog-recovery), [Interactive Rebase](#interactive-rebase), [Worktree overview](#worktree-overview), [Git LFS](#git-lfs) |
 | Terminals and help | [Embedded terminals](#chapter-13), [custom shortcuts](#shortcut-settings), [offline help](#help-guide) |
 | Troubleshooting and reference | [Settings and common questions](#chapter-11), [shortcuts, terms, and task index](#chapter-12) |
 
@@ -338,6 +342,8 @@ Ref checkboxes control which history you see; branch names and row selections co
 
 ![Figure 13 Search for native diff with Graph hidden and a matching Commit selected](images/user-manual/figure-13.png)
 
+![Figure 41 Draft advanced history filters, which take effect only after Apply filters](images/user-manual/figure-41.png)
+
 <a id="section-04-03"></a>
 
 ### Inspect commit content and merge parents
@@ -347,12 +353,26 @@ Ref checkboxes control which history you see; branch names and row selections co
 1. Click a Commit row to read its message, author, timestamp, and changed files.
 2. Use the file-path filter field to narrow Changed Files. Matching is case-insensitive and uses the full repository-relative path.
 3. Click a file to view its Diff. For a Merge Commit, use the Parent selector to choose the parent commit to compare against.
-4. Switch between **Changed Files** and **Full Tree** to inspect the complete repository tree saved by that Commit. You can also right-click a Commit and choose **Browse Repository Tree**. Directories load when expanded; search finds full relative paths inside directories that have not been expanded and pages the results.
-5. Click a historical file to compare it with the same path in the current Working Tree; a missing Working Tree path appears as an empty side. Its menu can open file history or copy the path or object ID. **Open Historical File in VS Code** opens historical text as a read-only document; PNG, JPEG, and WebP use the bottom image preview.
+4. To inspect files that this Commit did not change, switch to [Full Tree](#commit-tree).
 
 **Result:** The Diff corresponds to the currently selected Commit, Parent, and file.
 
-**Caution:** Different Parents produce different changed-file diffs. Full Tree always shows the selected Commit's result tree, including for a Merge Commit. It is pinned to the full Commit ID captured when opened and does not move with a branch. A symbolic link shows and compares its target text without following it; a Gitlink shows only its recorded object ID and does not enter the submodule. Tree search scans at most the first 100,000 entries and says when the bound is reached. These historical actions do not restore or write Working Tree files.
+**Caution:** Different Parents produce different changed-file diffs. Check the parent before reviewing, especially for a Merge: changes relative to one Parent do not represent every difference between the two branches.
+
+<a id="commit-tree"></a>
+
+### Browse the full file tree of any commit
+
+1. Switch Commit Details to **Full Tree**, or right-click a Commit and choose **Browse Repository Tree**. This view includes every file saved at that revision, including files that the Commit did not change.
+2. Expand directories to load their contents as needed, or search full repository-relative paths. Search also covers directories that have not been expanded and pages the matching results.
+3. Click a historical file to compare it with the same path in the current Working Tree; a missing Working Tree path appears as an empty side. Its menu can open File History or copy the path or object ID.
+4. **Open Historical File in VS Code** opens historical text as a read-only document; PNG, JPEG, and WebP use the bottom image preview. For missing LFS objects, follow [Git LFS](#git-lfs) to download the object for the fixed revision.
+
+**Result:** Inspect the selected revision's complete directory structure and file contents without restoring or writing Working Tree files. The tree stays pinned to the full Commit ID captured when opened and does not move with a branch. A Merge Commit always shows its result tree, independently of the selected Parent.
+
+**Caution:** A symbolic link shows and compares its target text without following it; a Gitlink shows only its recorded object ID and does not enter the submodule. Tree search scans at most the first 100,000 entries and says when the bound is reached. Check the Commit ID in the heading after switching commits; changes to Working Tree files refresh the comparison.
+
+![Figure 43 Full Tree pinned to a Commit, with an expanded directory and a historical file compared with the Working Tree](images/user-manual/figure-43.png)
 
 <a id="section-04-04"></a>
 
@@ -371,6 +391,8 @@ Ref checkboxes control which history you see; branch names and row selections co
 
 ![Figure 14 Exactly two selected Commits automatically compared with endpoints and files on the right](images/user-manual/figure-14.png)
 
+<a id="branch-comparison"></a>
+
 ### Compare branches without checkout
 
 1. Right-click a local or remote branch and choose **Compare with Current Branch**. Select the base and target branches in the dialog; neither selection checks out a branch.
@@ -379,6 +401,8 @@ Ref checkboxes control which history you see; branch names and row selections co
 4. The endpoint object IDs stay fixed when reading files, changing mode, paging, or reversing direction. When a branch moves or disappears, the dialog shows an update indicator. Use its refresh button to resolve the selected references again; it does not Fetch.
 
 If no common ancestor exists, review mode explains why it cannot show files; endpoint snapshots remain available. If there are several common ancestors, select one explicitly or use endpoint snapshots. Closing the dialog preserves the graph, File History, working selection, and commit drafts. Comparison selections are local to the open dialog.
+
+![Figure 44 Branch comparison in endpoint snapshot mode, with pinned versions, exclusive commits, and file Diff](images/user-manual/figure-44.png)
 
 <a id="section-04-05"></a>
 
@@ -389,7 +413,9 @@ If no common ancestor exists, review mode explains why it cannot show files; end
 1. Note the current file's added, modified, and deleted block counts. Historical Commits default to “File 2/5 · Change 1/3”, showing the file position and the block position within that file.
 2. Previous and Next follow the current Commit's changed-file order by default. Next enters the first block of the next file; Previous enters the last block of the previous file. The Commit's first and last blocks wrap around. Merge Commits keep the selected Parent, and navigation stays in the same Commit.
 3. To browse one file, open Settings → Interface → Diff, change “Diff navigation scope” to “Current file”, and Apply. This mode shows current / total blocks; with only one block, either button locates it again. The preference is saved in user settings and shared across windows.
-4. Scroll horizontally for long lines or drag the divider for a larger reading area. Collapse and reopen Diff to continue reading; check the comparison title after switching files.
+4. Use the shared bottom horizontal scrollbar for long lines. Both code columns move together while line numbers, stripes, and gutter actions stay fixed. Drag the divider for a larger reading area. Collapse and reopen Diff to continue reading; check the comparison title after switching files.
+
+Pale red backgrounds and red stripes to the left of line numbers mark deletions; green marks additions. Stronger inline emphasis identifies changed text. The preview adds no per-line plus/minus prefixes; literal `+` and `-` in source remain visible. Selecting and copying source text excludes line numbers. Row separators are off by default and can be enabled in Settings → Interface → Diff.
 
 **Result:** Choose to inspect the entire Commit or the current file block by block. Adjacent changed lines form one contiguous block.
 
@@ -410,6 +436,8 @@ Entering file history clears an existing commit-message search and saves it in t
 
 Git similarity detection identifies renames, traced independently along each merge Parent. Deleted files remain inspectable; a same-name file recreated after deletion starts a separate history. Ordinary copies start a new file. Working Tree appears only when the target has uncommitted changes; its file list and split group actions use that file scope. Unified toolbar bulk actions and ordinary Commit retain their complete-repository scope. Missing records show an empty state; exceeded read limits produce an error, allowing a narrower branch scope and retry.
 
+![Figure 42 File History lists commits for the selected path and previews its change in the selected revision](images/user-manual/figure-42.png)
+
 <a id="reflog-recovery"></a>
 
 ### Recover a commit with Reflog
@@ -417,6 +445,8 @@ Git similarity detection identifies renames, traced independently along each mer
 Open More → Open Reflog to inspect the current worktree HEAD or a local branch. Select a record, inspect its commit and choose a file for an independent Diff. Closing the dialog preserves your original history, file selection and drafts. Refresh reads recent records; pagination stays within one snapshot.
 
 To recover a commit from before a Reset or Rebase, select its record, enter a recovery branch name and choose Create recovery branch. Your current branch and worktree remain selected unless you explicitly check the switch option. Expired records or pruned objects may be unavailable. Reflog does not save discarded uncommitted file contents.
+
+![Figure 45 Inspect a Reflog record, its commit files and Diff, then enter a recovery branch name](images/user-manual/figure-45.png)
 
 <a id="chapter-05"></a>
 
@@ -747,7 +777,7 @@ The goal of conflict resolution is to produce the correct final file contents. M
 
 **Result:** The in-progress operation has actually finished, and you have reviewed the resulting contents.
 
-**Caution:** The review has limits involving size, binary files, encoding, and submodules. An absence of suspected markers does not guarantee semantic correctness. Changes to the Index or branch after the review require another review.
+**Caution:** The review has limits involving size, binary files, encoding, and submodules. An absence of suspected markers does not guarantee semantic correctness. Changes to the Index or branch after the review require another review. Skip appears only when the current Git operation supports it and discards the current commit and its conflict-resolution changes. Switching repositories, restarting the operation, or advancing a step invalidates an old confirmation; review the current step and confirm again.
 
 ![Figure 19 Review the staged result before continuing an operation after conflicts are resolved](images/user-manual/figure-19.png)
 
@@ -899,15 +929,13 @@ Skip is disabled when replay already created the commit but message editing fail
 
 The original HEAD remains under `refs/alwaygit/rebase-backups/…` after completion or abort. Inspect it through [Reflog](#reflog-recovery) and create a recovery branch. Existing hooks and signing configuration remain active; fix hook or signing failures before retrying, or abort.
 
+![Figure 47 Interactive Rebase plan in oldest-first order, with commit details, actions, and messages reviewed before execution](images/user-manual/figure-47.png)
+
 <a id="chapter-02"></a>
 
 ## Repositories and Project Groups
 
 First select the item you intend to operate on, then identify the current working repository. A blue selected row identifies the target of an action. The highlighted repository icon marks the current repository; a solid triangle marks the current Worktree or local branch. The current item and action selection can differ. Repositories, Local Branches, one Remote, Tags, and Worktrees retain only one blue action-selection scope at a time. Moving to another object type clears the previous blue selection without changing the current repository, current branch, or Graph checkboxes.
-
-Click the overview icon beside **Worktrees** to inspect every Git-registered worktree for the current logical repository, including directories not yet added to repository navigation. The table becomes cards in narrow windows. Rows show branch or Detached HEAD, short HEAD, staged/unstaged/untracked/conflict file counts, upstream, locally cached ahead/behind, active Git operation, locked/missing/read-error state, and last refresh time. Staged and unstaged counts can include the same file; conflicts are separate. This view performs no Fetch and does not indicate live Agent activity.
-
-Results fill in batches and retain readable rows when another directory fails. File events refresh the affected worktree; the refresh icon rereads all directories. Row icons select that worktree in AlwayGit, open its project window, or create a terminal in its directory. These actions are disabled for missing, unreadable, and bare repositories. Closing returns to the existing Graph/File History with selection, layout, and drafts retained. Closing or changing repositories cancels unfinished reads.
 
 <a id="section-02-01"></a>
 
@@ -917,7 +945,7 @@ Results fill in batches and retain readable rows when another directory fails. F
 
 1. Click the Add… plus button to the right of the Repositories heading and choose Add Repository.
 2. Click Choose Folder… in the center of the dialog. Select a repository directory, or a parent directory containing multiple projects. Close the initial page with the top-right close button or Esc.
-3. Wait for the scan to finish. Check the repository names and whether each can be added or has already been added. Filter, deselect items, or select a contiguous range as needed.
+3. Wait for the scan to finish. Check the repository names and whether each can be added or has already been added. Clicking a checkbox adds or removes that repository without clearing other checks. Use Shift for a visible contiguous range, or filter as needed.
 4. Select the target group, or Ungrouped. To create a group, click the plus beside Add to and enter its name in place. The add action creates the group and imports the selected repositories together. Check the number shown on the primary add button, then confirm.
 5. Double-click a newly added repository in the navigation, or focus its row and press Enter.
 
@@ -925,7 +953,7 @@ Results fill in batches and retain readable rows when another directory fails. F
 
 **Caution:** Once the scan finds a valid repository, it does not continue scanning inside it, so it will not also discover nested repositories or submodules. Closing or canceling the scan does not add a partial selection.
 
-**Troubleshooting:** Inaccessible directories are skipped. Review the reasons in the scan results, check the paths and permissions, then retry those directories individually.
+**Troubleshooting:** Inaccessible directories are skipped. Review the reasons in the scan results, check the paths and permissions, then retry those directories individually. If confirmation fails, the scan results, checks, filter, and destination group remain available so you can address the error and retry. An expired scan requires choosing the directory again.
 
 ![Figure 34 Repository discovery results with existing entries excluded and selection and destination checked before adding](images/user-manual/figure-34.png)
 
@@ -993,6 +1021,16 @@ Results fill in batches and retain readable rows when another directory fails. F
 
 Worktree lets a single repository have multiple working directories so you can work on different branches at the same time. They share Git storage and some references, but each directory's files, Index, and commit draft must be checked separately.
 
+<a id="worktree-overview"></a>
+
+### Inspect the status of every Worktree
+
+Click the overview icon beside **Worktrees** to inspect every Git-registered worktree for the current logical repository, including directories not yet added to repository navigation. The table becomes cards in narrow windows. Rows show branch or Detached HEAD, short HEAD, staged/unstaged/untracked/conflict file counts, upstream, locally cached ahead/behind, active Git operation, locked/missing/read-error state, and last refresh time. Staged and unstaged counts can include the same file; conflicts are separate. This view performs no Fetch and does not indicate live Agent activity.
+
+Results fill in batches and retain readable rows when another directory fails. File events refresh the affected worktree; the refresh icon rereads all directories. Row icons select that worktree in AlwayGit, open its project window, or create a terminal in its directory. These actions are disabled for missing, unreadable, and bare repositories. Closing returns to the existing Graph/File History with selection, layout, and drafts retained. Closing or changing repositories cancels unfinished reads.
+
+![Figure 46 Worktree overview with branches, change counts, operation status, and project-window and terminal actions](images/user-manual/figure-46.png)
+
 <a id="section-10-01"></a>
 
 ### Add a Worktree
@@ -1055,7 +1093,7 @@ The plus icon creates a terminal at the current repository root. Its dropdown se
 
 ### Manage terminals and exited shells
 
-Double-click a terminal tab to rename it. The toolbar clears the display and offers restart only after the shell exits; exit codes and output remain visible. Closing a terminal ends its shell; collapsing the panel or hiding the workbench keeps it running. Use All tabs to switch among many terminals and maximize to expand the panel temporarily. Ctrl+C with a selection or Ctrl+Shift+C copies; Ctrl+Shift+V pastes. Without a selection, Ctrl+C interrupts the shell command. Closing the workbench or reloading VS Code releases terminals; commands and output are not saved or restored. The command palette also provides `AlwayGit: New Embedded Terminal`, with `Ctrl+Alt+Shift+T` as the default shortcut (`Cmd+Alt+Shift+T` on macOS).
+Double-click a terminal tab to rename it. The toolbar clears the display and offers restart only after the shell exits; exit codes and output remain visible. Closing a terminal ends its shell; collapsing the panel or hiding the workbench keeps it running. Temporarily disabling that display location also keeps receiving output, available when you enable the location again. Use All tabs to switch among many terminals and maximize to expand the panel temporarily. Ctrl+C with a selection or Ctrl+Shift+C copies; Ctrl+Shift+V pastes. Without a selection, Ctrl+C interrupts the shell command. Closing the workbench or reloading VS Code releases terminals; commands and output are not saved or restored. The command palette also provides `AlwayGit: New Embedded Terminal`, with `Ctrl+Alt+Shift+T` as the default shortcut (`Cmd+Alt+Shift+T` on macOS).
 
 <a id="chapter-11"></a>
 
@@ -1143,6 +1181,8 @@ Open **Git LFS** from the toolbar's More menu, a repository context menu, or a f
 Choose a remote and explicitly start an operation. Failures retain errors and logs; resolve authentication, permissions, network, or missing-object problems before retrying. AlwayGit does not rerun failed commands; Git LFS transfer and SSH retry settings use their supported minimum. The Git LFS status area retains its pending upload candidates and staging information. Candidates are inferred from local refs and configuration and **do not verify remote object availability**. The file list shows at most the first 1,000 entries and supports refresh. Status and selection are bound to the current branch and HEAD. Changes to the Git/LFS destination configuration require a fresh review; network commands use the captured configuration snapshot.
 
 Tracking rules accept literal filenames or glob patterns. Preview the root `.gitattributes` changes before applying them. Unrelated rules and the index remain intact; edits remain unstaged. Literal filenames are anchored to the repository root and escape glob characters according to the host platform; patterns ending in whitespace require manual attribute editing. Switching branches or changing HEAD invalidates the preview. Untrack removes only an exactly matching standard LFS rule; custom rules and nested attributes need manual review. Adding or removing a rule does not migrate existing content, rewrite history, or re-stage files. Migration, cache pruning, file locks, and global Git configuration are outside this panel's scope.
+
+![Figure 48 Git LFS object cache status and a tracking-rule change preview before applying](images/user-manual/figure-48.png)
 
 <a id="section-11-05"></a>
 
@@ -1260,6 +1300,14 @@ Apply saves bindings in user settings and shares them across windows; Cancel res
 | Save current file changes as a version | Working Tree → Stage → review Staged → Commit |
 | Set changes aside to work on something else | Stash All Changes or Stash Selected Files |
 | See what changed between two versions | Select exactly two Commits in History |
+| Find commits by author, date, path, or code | [History advanced search](#section-04-02) |
+| Trace a file through changes and renames | [File menu → Show File History](#file-history) |
+| Read old files that a Commit did not change | [Commit Details → Full Tree](#commit-tree) |
+| Compare branch progress without switching | [Branch menu → Compare with Current Branch](#branch-comparison) |
+| Recover commits from before Reset or Rebase | [More → Open Reflog](#reflog-recovery) |
+| Reorder, combine, or reword unpublished commits | [Current branch menu → Interactive Rebase](#interactive-rebase) |
+| Inspect changes across working directories | [Worktrees heading → Overview](#worktree-overview) |
+| Inspect or download large-file objects | [More or file menu → Git LFS](#git-lfs) |
 | Integrate all progress from another branch | Make the target branch current → right-click the source → Merge |
 | Take only the changes from one commit | Make the target branch current → Commit menu → Cherry-pick |
 | Undo the effects of a commit that has already been shared | Commit menu → Revert |

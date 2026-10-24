@@ -90,6 +90,17 @@ const fixture = await build({ stdin: { resolveDir: root, contents: `
       if (call.method === 'stashDetails') {
         result.sections.index.files = [{ path: 'webview/App.tsx', status: 'M' }]; result.totalFiles = 2;
       }
+      // The linear Rebase Demo rewrites sample ancestry but retains a historical merge title.
+      // Give that single-parent sample a matching title in both the plan and its inspector.
+      if (options.query === 'interactiveRebase=1') {
+        const subject = 'Refine repository history layout';
+        if (call.method === 'prepareInteractiveRebase') for (const commit of result.commits) {
+          if (commit.subject.startsWith('Merge branch ')) { commit.subject = subject; commit.message = subject; }
+        }
+        if (call.method === 'inspectDetails' && result.commit.subject.startsWith('Merge branch ')) {
+          result.body = result.body.replace(result.commit.subject, subject); result.commit.subject = subject;
+        }
+      }
       window.postMessage({ type: 'response', id: call.id, result }, '*');
     } catch (error) { window.postMessage({ type: 'response', id: call.id, error: { message: error.message, code: error.code, details: error.details } }, '*'); }
     finally { window.__capturePending--; }
@@ -165,9 +176,9 @@ const scenes = [
   ['42', {}, async p => { await contextAction(p, details(p).getByRole('button', { name: 'webview/App.tsx', exact: true }), 'Show File History'); await history(p).getByRole('group', { name: 'File History', exact: true }).waitFor(); await rows(p).first().click(); await file(p); }],
   ['43', {}, async p => { await rows(p).first().click(); await button(details(p), 'Full Tree').click(); const tree = details(p).getByRole('tree'); await button(tree, 'webview').click(); await button(tree, 'App.tsx').click(); await p.getByTestId('diff-preview').waitFor(); }],
   ['44', {}, async p => { await menu(p, await branch(p, 'feature/test'), 'Compare with Current Branch'); await dialog(p).getByRole('combobox', { name: 'Comparison mode', exact: true }).selectOption('snapshot'); await dialog(p).locator('.comparison-files .file-item').first().waitFor(); }],
-  ['45', {}, async p => { await toolbarMenu(p, 'Open Reflog'); await dialog(p).getByLabel('Recovery branch name', { exact: true }).fill('recovery/layout-review'); await dialog(p).locator('.revision-inspector strong').waitFor(); }],
+  ['45', {}, async p => { await toolbarMenu(p, 'Open Reflog'); await dialog(p).getByLabel('Recovery branch name', { exact: true }).fill('recovery/layout-review'); await dialog(p).locator('.revision-inspector strong').first().waitFor(); }],
   ['46', {}, async p => { await button(sidebar(p), 'Worktree Overview').click(); await p.locator('.worktree-overview .overview-row').first().waitFor(); await p.locator('.worktree-overview .overview-row').first().getByText('Ready', { exact: true }).waitFor(); }],
-  ['47', { query: 'interactiveRebase=1' }, async p => { await menu(p, button(sidebar(p), 'Branch main'), 'Interactive Rebase'); const action = dialog(p).getByRole('combobox', { name: 'Rebase action', exact: true }); await action.first().selectOption('reword'); await dialog(p).getByLabel('New commit message', { exact: true }).fill('Clarify repository workbench layout'); await action.nth(1).selectOption('fixup'); await dialog(p).locator('.revision-inspector strong').waitFor(); }],
+  ['47', { query: 'interactiveRebase=1' }, async p => { await menu(p, button(sidebar(p), 'Branch main'), 'Interactive Rebase'); const action = dialog(p).getByRole('combobox', { name: 'Rebase action', exact: true }); await action.first().selectOption('reword'); await dialog(p).locator('.rebase-plan li').first().locator('textarea').fill('Clarify repository workbench layout'); await action.nth(1).selectOption('fixup'); await dialog(p).locator('.revision-inspector strong').first().waitFor(); }],
   ['48', {}, async p => { await toolbarMenu(p, 'Git LFS'); await dialog(p).getByLabel('Filename / glob', { exact: true }).fill('*.mp4'); await dialog(p).getByLabel('Literal filename', { exact: true }).uncheck(); await button(dialog(p), 'Preview attributes').click(); await dialog(p).locator('.lfs-attributes').waitFor(); }],
 ];
 

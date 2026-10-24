@@ -6,7 +6,7 @@ AlwayGit is a graphical Git workbench for VS Code editor tabs, the Primary Sideb
 
 ![AlwayGit Workbench showing repository and branch navigation, commit history, working-tree status, and a side-by-side file diff](docs/images/user-manual/figure-03.png)
 
-Workbench overview rendered with real UI components and an example repository. See the [user manual's screenshot notes](docs/USER_MANUAL.en.md) for capture details. Click the image to view it at full size.
+Workbench overview rendered with real UI components and an example repository. See the [user manual's screenshot notes](docs/USER_MANUAL.en.md#screenshot-notes) for capture details. Click the image to view it at full size.
 
 ## Installation and launch
 

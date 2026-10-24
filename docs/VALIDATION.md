@@ -250,7 +250,7 @@ README 的图卡和 [完整统计页](https://always1010.github.io/AlwayGit/) �
 2. 在 **Settings → Environments → github-pages** 核对部署规则。使用 **Selected branches and tags** 时，分别允许发布 Tag `v*` 和默认分支 `main`；后者用于从默认分支手动恢复。核对仓库允许工作流运行所用的官方 Actions。
 3. 先将本功能合入主干，再推送新的发布 Tag。已有 Pages 站点应先合并部署内容，本工作流上传的是完整统计站点，不能与其他工作流各自覆盖同一 Pages 站点。
 
-`scripts/repository-stats.mjs` 从同一份 Tag 快照与原始测试汇总生成中文 `repository-stats.svg` / `index.html` 和英文 `repository-stats.en.svg` / `index.en.html`，两版页面均列出全部文件类型并可互相切换，共用 `repository-stats.json`；数据与统计口径不因语言而变化。中文 README 引用中文图卡与页面，英文 README 引用英文图卡与页面，两个入口均已随 `v1.5.3` 发布部署。图卡只显示前八种文件类型并汇总其余类型。生成文件位于忽略目录 `artifacts/`，通过 `upload-pages-artifact` / `deploy-pages` 部署，不执行 Git commit 或 push，不使用 `gh-pages` 分支。首次配置所需的脚本、工作流和 README 引用是正常项目提交，后续生成结果不进入 Git。
+`scripts/repository-stats.mjs` 从同一份 Tag 快照与原始测试汇总生成中文 `repository-stats.svg` / `index.html` 和英文 `repository-stats.en.svg` / `index.en.html`，两版页面均列出全部文件类型并可互相切换，共用 `repository-stats.json`；数据与统计口径不因语言而变化。中文 README 引用中文图卡与页面，英文 README 引用英文图卡与页面；两版均展示同一成功发布版本的统计结果。图卡只显示前八种文件类型并汇总其余类型。生成文件位于忽略目录 `artifacts/`，通过 `upload-pages-artifact` / `deploy-pages` 部署，不执行 Git commit 或 push，不使用 `gh-pages` 分支。首次配置所需的脚本、工作流和 README 引用是正常项目提交，后续生成结果不进入 Git。
 
 统计部署使用仓库/Actions 只读及 Pages/OIDC 发布权限，不使用代码写入权限。部署任务统一串行，发布前检查原始 Release run 的工作流、提交及报告身份，再检查已发布稳定版本与 Pages 当前版本；低版本不会覆盖高版本。图卡统计或 Pages 失败不撤回已创建的 Release，上一版已部署图卡继续可用；Actions 中可查看失败原因。Pages 发布及 GitHub 图片缓存会带来显示延迟，图卡版本是统计对象的依据。
 
@@ -266,6 +266,7 @@ Release 会把已通过的测试计数、Tag、Commit、仓库和 run ID 保存�
 
 | 证据范围 | 日期 / 版本 | 已记录结果与限制 |
 | --- | --- | --- |
+| 双语手册、任务入口与全量截图更新 | 2026-10-24 / 源码 1.8.0 | 重新采集原有 40 张截图，新增高级搜索草稿、文件历史、完整文件树、分支比较、Reflog、工作树总览、交互式 Rebase 和 Git LFS 共 8 张，两版手册和离线帮助共用 48 张 PNG；首页全景同步更新，统计卡移至底部。类型与 1847 条双语资源检查、3 项帮助内容测试、6 项发布统计测试、最终生产构建及无头 Help 专项通过；覆盖两种语言的全部图片解码、离线 CSP、章节/任务导航、搜索、窄窗口与焦点恢复。帮助验收原断言在窄布局隐藏调用入口后检查焦点，恢复原视口后通过；不变更产品行为。12 份 Markdown 的 277 处本地链接、图片与锚点及差异格式检查通过。图片由真实界面组件与隔离示例 RPC 状态渲染，不作为真实 Git、远端认证或原生 VS Code 容器验收；未执行本地全量测试、VSIX 打包或扩展安装，正式发布检查与平台包由 Tag 工作流验证 |
 | 分块暂存、分支比较、Reflog、交互式 Rebase 与工作树总览 | 2026-10-18 / 源码 1.7.0 | 类型与 1685 条双语资源检查、相关真实 Git/协议/文档预览/帮助定向测试通过；真实 Git 覆盖补丁块与索引隔离、固定引用比较、恢复分支、工作树状态及 Rebase 六种动作、冲突继续/中止、空提交和 hook 失败。扩展代码独立编译与 Webview 生产构建通过；五项新功能、File History、Diff 与 Refresh 共八个无头界面专项通过。旧 Diff 用例未同步同文件刷新保留统计的既有行为，更新断言后与 Refresh 专项共同通过。12 份 Markdown 的 219 处本地链接、图片与锚点及差异格式检查通过。完整 build 仍受本机 node-pty 缺少完整 linux-arm64 运行文件限制；未安装依赖、运行全量或桌面验收、打包或安装扩展，真实 Windows/Electron 与签名环境未验收 |
 | 文件历史与提交图文件筛选 | 2026-10-18 / 源码 1.6.0 | 类型与 1563 条双语资源、扩展/终端/启动页代码编译及前端构建通过；125 项文件历史、状态、辅助与帮助定向检查通过，另有协议、图行和历史条目检查通过。真实 Git 覆盖 151 条文件记录跨批次/分页、重命名与合并两侧、删除重建、同名复用、旧路径来源、特殊路径、远端可达性及只读取消。无头文件历史、文件列表和帮助专项通过；返回与 HEAD 定位单独通过。完整 History 套件仍被现有 Demo Detached HEAD 权限判断阻塞；远端批量删除测试受本机 Git 2.43.0 未达 2.46 限制。整合远端构建校验后，完整 build 因本机 node-pty 缺少完整 linux-arm64 运行文件停止，采用现有依赖分别编译代码与前端。未运行全量或桌面验收，未打包或安装 |
 | 双语统计正式发布与 README 图卡接入 | 2026-10-14 / 1.5.3 | 推送 main 与附注 Tag v1.5.3；Release 类型/翻译检查、719 项单元测试和三个平台的 VSIX 验证通过，Release 与 Pages 部署成功。中文/英文 HTML、两张 SVG 与共用 JSON 均返回 HTTP 200，Tag 和 Commit 与发布快照一致；英文 README 已接入英文图卡与页面，本地文档链接检查通过。未更新本机扩展 |
