@@ -1092,8 +1092,8 @@
     "context": "webview/ShortcutSettings.tsx / shortcut management"
   },
   "settings.shortcutEditFile": {
-    "en": "Edit file in VS Code",
-    "zh-CN": "在 VS Code 中编辑文件",
+    "en": "Open working tree file in VS Code",
+    "zh-CN": "在 VS Code 中打开工作区文件",
     "review": "translated",
     "context": "webview/ShortcutSettings.tsx / shortcut management"
   },

@@ -1853,8 +1853,12 @@ export const catalog = {
     "zh-CN": "打开 Diff"
   },
   "diff.editInVSCode": {
-    "en": "Edit in VS Code",
-    "zh-CN": "在 VS Code 中编辑"
+    "en": "Open File in VS Code",
+    "zh-CN": "在 VS Code 中打开文件"
+  },
+  "diff.openWorkingFileHint": {
+    "en": "Open the current working tree file for editing; its contents may differ from this historical comparison.",
+    "zh-CN": "打开当前工作区中的文件进行编辑；内容可能与历史比较不同。"
   },
   "diff.previousChange": {
     "en": "Previous change",
@@ -2131,6 +2135,10 @@ export const catalog = {
   "documents.alwayGitBinaryFileTextComparisonIsUnavailable": {
     "en": "[AlwayGit: binary file. Text comparison is unavailable.]",
     "zh-CN": "[AlwayGit：二进制文件，无法进行文本比较。]"
+  },
+  "documents.workingFileMissing": {
+    "en": "The file {{path}} does not exist in the current working tree. It may have been deleted or may not be checked out.",
+    "zh-CN": "当前工作区中不存在文件 {{path}}，可能已删除或尚未检出。"
   },
   "documents.workingTreeSymbolicLink": {
     "en": "Working Tree · Symbolic Link",
@@ -3951,8 +3959,8 @@ export const catalog = {
     "zh-CN": "在 VS Code 中打开 Diff"
   },
   "menus.editInVSCode": {
-    "en": "Edit in VS Code",
-    "zh-CN": "在 VS Code 中编辑"
+    "en": "Open File in VS Code",
+    "zh-CN": "在 VS Code 中打开文件"
   },
   "menus.manuallyHandledMarkStage": {
     "en": "Manually handled: Mark & Stage {{count}}",
@@ -6336,8 +6344,8 @@ export const catalog = {
     "zh-CN": "打开原生差异视图"
   },
   "settings.shortcutEditFile": {
-    "en": "Edit file in VS Code",
-    "zh-CN": "在 VS Code 中编辑文件"
+    "en": "Open working tree file in VS Code",
+    "zh-CN": "在 VS Code 中打开工作区文件"
   },
   "settings.shortcutPreviousChange": {
     "en": "Previous change",
@@ -7231,8 +7239,8 @@ export const catalog = {
     "zh-CN": "模拟原生 VS Code 操作；未修改实际文件。"
   },
   "workbench.demoEditInVSCode": {
-    "en": "Demo: edit in VS Code.",
-    "zh-CN": "模拟：在 VS Code 中编辑。"
+    "en": "Demo: open working tree file in VS Code.",
+    "zh-CN": "模拟：在 VS Code 中打开工作区文件。"
   },
   "workbench.detached": {
     "en": "Detached",
@@ -7896,6 +7904,7 @@ export interface MessageParameters {
   "changes.discardAllScope": {  };
   "diff.openDiff": {  };
   "diff.editInVSCode": {  };
+  "diff.openWorkingFileHint": {  };
   "diff.previousChange": {  };
   "diff.nextChange": {  };
   "diff.previousChangeAcrossCommitFilesWrapsToTheLast": {  };
@@ -7965,6 +7974,7 @@ export interface MessageParameters {
   "dock.invalidAcknowledgement": {  };
   "documents.thisComparisonHasExpiredOpenItAgainFromAlwayGit": {  };
   "documents.alwayGitBinaryFileTextComparisonIsUnavailable": {  };
+  "documents.workingFileMissing": { path: ParameterValue };
   "documents.workingTreeSymbolicLink": {  };
   "documents.thisPathIsADirectoryOrSubmoduleNotA": {  };
   "documents.workingTree": {  };

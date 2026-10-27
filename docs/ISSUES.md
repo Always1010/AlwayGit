@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-165：打开文件按钮在历史比较中重复打开 Diff
+
+- 日期：2026-10-27
+- 状态：已解决
+- 现象：双提交比较中，Edit in VS Code 与 Open Diff 打开相同差异；单提交文件打开失败后也会转成 Diff，掩盖实际错误。Reflog 独立提交检查存在同样的按钮重合；历史文件预览中的同一按钮又用于打开历史内容，含义不一致。
+- 原因：主面板按比较类型分流编辑操作，comparison 直接调用 diff，commit 捕获全部打开错误后回退 diff，revision 转为 openRevision；独立检查将 edit 和 native 绑定到同一回调。
+- 解决方案：统一命名为 Open File in VS Code（在 VS Code 中打开文件），所有比较场景均打开当前工作区同路径实际文件；按钮、文件菜单和 E 快捷键保持一致，D 和 Open Diff 保留原比较对象。缺失路径提供中英文提示，其他错误直接报告，不自动创建文件、猜测重命名路径或回退 Diff。历史只读内容保留独立文件树菜单入口，同步悬浮说明、快捷键文案与中英文手册及规格。
+- 验证方式：类型检查、1849 条双语资源检查、Webview 生产构建、无头 file-open-only 与 reflog-only 通过，覆盖工作区／单提交／双提交／历史文件预览的实际文件打开、D/E、文件菜单、错误不回退 Diff、独立检查错误不误报提交被清理，以及独立历史内容入口。文件／预览单测累计 21 项通过，覆盖真实文件 URI、保留标签选项、缺失路径不创建文件及原样传播编辑器错误；首次新增断言因 Windows 短／长路径别名不一致失败，改为核对仓库规范路径后定向通过。1 项既有已跟踪文件预览缓存测试 30 秒超时，定向重跑及修改前 HEAD 代码均复现，未扩大本次修复范围。双语手册帮助内容 3 项及 126 条文档文件和图片引用检查通过。未执行可见桌面集成测试、VSIX 打包、本机安装或远程推送。
+- 相关文件：`webview/App.tsx`、`webview/DiffPreview.tsx`、`webview/RevisionInspector.tsx`、`webview/BranchComparison.tsx`、`webview/menus.ts`、`src/editor/documents.ts`、`src/i18n/catalogs/`、`src/i18n/generated.ts`、`tests/documents.test.ts`、`scripts/test-diff-ui.mjs`、`scripts/test-files-ui.mjs`、`scripts/test-revision-tools-ui.mjs`、`scripts/test-ui.mjs`、`docs/WORKBENCH_SPEC.md`、`docs/WORKBENCH_SPEC.en.md`、`docs/USER_MANUAL.zh-CN.md`、`docs/USER_MANUAL.en.md`。
+
 ## BUG-164：文件名字母下伸部分被裁切
 
 - 日期：2026-10-22

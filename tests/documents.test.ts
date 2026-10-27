@@ -6,11 +6,16 @@ import path from 'node:path';
 import os from 'node:os';
 import { GitService } from '../src/git/service';
 import { GitDocuments } from '../src/editor/documents';
+import * as vscode from 'vscode';
 import type { DiffPreview, DiffTarget } from '../src/protocol/types';
 
 // Preview is a host operation with no editor UI dependency. Native editor calls
 // are verified separately in tests/extension/runner.ts against real VS Code.
-vi.mock('vscode', () => ({}));
+vi.mock('vscode', () => ({
+  Uri: { file: (fsPath: string) => ({ scheme: 'file', fsPath }) },
+  ViewColumn: { Active: -1 },
+  window: { showTextDocument: vi.fn(async () => {}) },
+}));
 const exec = promisify(execFile);
 const roots: string[] = [];
 const git = async (root: string, ...args: string[]) => (await exec('git', ['-C', root, ...args], { windowsHide: true, env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_EDITOR: 'true' } })).stdout.trim();
@@ -28,6 +33,26 @@ function webp(width:number,height:number):Buffer { const value=Buffer.alloc(30);
 afterEach(async () => { for (const root of roots.splice(0)) { if (path.dirname(root) !== os.tmpdir() || !path.basename(root).startsWith('alwaygit-preview-')) throw new Error('Unsafe cleanup target'); await rm(root, { recursive: true, force: true, maxRetries: 5 }); } });
 
 describe('Complete Git Diff previews', () => {
+  it('opens the current working file and preserves editor failures', async () => {
+    const { root, repo, documents } = await setup();
+    await writeFile(path.join(root, 'current.txt'), 'current working content');
+    await documents.openFile(repo, 'current.txt');
+    expect(vscode.window.showTextDocument).toHaveBeenLastCalledWith({ scheme: 'file', fsPath: path.join(repo.root, 'current.txt') }, { viewColumn: -1, preview: false, preserveFocus: false });
+    const failure = Object.assign(new Error('Editor permission denied'), { code: 'EACCES' });
+    vi.mocked(vscode.window.showTextDocument).mockRejectedValueOnce(failure);
+    await expect(documents.openFile(repo, 'current.txt')).rejects.toBe(failure);
+  });
+
+  it('reports missing working paths without creating a file or opening an editor', async () => {
+    const { root, repo, documents } = await setup();
+    const calls = vi.mocked(vscode.window.showTextDocument).mock.calls.length;
+    for (const filename of ['missing.txt', 'missing/folder/file.txt']) {
+      await expect(documents.openFile(repo, filename)).rejects.toMatchObject({ localizedMessage: { key: 'documents.workingFileMissing', parameters: { path: filename } } });
+      await expect(import('node:fs/promises').then(fs => fs.stat(path.join(root, filename)))).rejects.toMatchObject({ code: 'ENOENT' });
+    }
+    expect(vscode.window.showTextDocument).toHaveBeenCalledTimes(calls);
+  });
+
   it('compares symbolic-link target text without reading an external target', async () => {
     const { root, repo } = await setup();
     const outside = await mkdtemp(path.join(os.tmpdir(), 'alwaygit-preview-')); roots.push(outside);

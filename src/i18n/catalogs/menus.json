@@ -242,8 +242,8 @@
     "context": "webview/menus.ts / menuFor"
   },
   "menus.editInVSCode": {
-    "en": "Edit in VS Code",
-    "zh-CN": "在 VS Code 中编辑",
+    "en": "Open File in VS Code",
+    "zh-CN": "在 VS Code 中打开文件",
     "review": "translated",
     "context": "webview/menus.ts / menuFor"
   },

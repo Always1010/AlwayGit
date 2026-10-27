@@ -77,7 +77,7 @@ export function menuFor(target: MenuTarget, api: MenuApi, check?: CherryPickMenu
     const unique=[...new Map(target.files.map(file=>[`${file.target.kind}:${file.path}:${'area' in file.target?file.target.area:''}`,file])).values()],paths=[...new Set(unique.map(file=>file.path))];
     const changes=unique.filter((file):file is FileMenuEntry & {target:Extract<DiffTarget,{kind:'change'}>}=>file.target.kind==='change'),stage=changes.filter(file=>file.target.area!=='staged').map(file=>file.path),unstage=changes.filter(file=>file.target.area==='staged').map(file=>file.path),discard=changes.filter(file=>file.target.area==='unstaged').map(file=>file.path),conflicts=changes.filter(file=>file.target.area==='conflict').map(file=>file.path);
     const items:MenuItem[]=[]; if(state.repoId&&api.openLfs)items.push(item(t('lfs.title'),()=>api.openLfs?.(state.repoId!),'database'));
-    if(unique.length===1)items.push(item(t("menus.openDiffInVSCode"),()=>api.openDiff(target.primary.target),'diff'),item(t("menus.editInVSCode"),()=>api.editFile(target.primary.target),'edit'));
+    if(unique.length===1)items.push(item(t("menus.openDiffInVSCode"),()=>api.openDiff(target.primary.target),'diff'),item(t("menus.editInVSCode"),()=>api.editFile(target.primary.target),'go-to-file',false,t('diff.openWorkingFileHint')));
     if(paths.length===1&&!target.primary.path.endsWith('/'))items.push(item(t('history.showFileHistory'),()=>state.showFileHistory(target.primary.target),'history'));
     if (state.changeListMode === 'unified' && changes.length) {
       items.push(item(uiText('commit.commit'), () => api.startCommit(), 'git-commit', busy));

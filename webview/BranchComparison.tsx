@@ -44,7 +44,7 @@ export function BranchComparison({ repoId, initialBase, initialTarget, onClose }
   const files = detail?.files ?? result?.files ?? [], visible = filterFilesByPath(files, filter);
   const targetFor = (file: typeof files[number]): DiffTarget => detail ? { kind: 'commit', oid: detail.commit.oid, parent: detail.parent, path: file.path, previousPath: file.previousPath } : { kind: 'comparison', left: result!.diffBase!, right: result!.targetOid, path: file.path, previousPath: file.previousPath };
   const native = () => { if (selected) void rpc('diff', repoId, selected).catch(failure => setError(String(failure))); };
-  const edit = () => { if (selected) void rpc('openFile', repoId, selected).catch(failure => setError(String(failure))); };
+  const edit = () => { if (selected) void rpc('openFile', repoId, {path:selected.path}).catch(failure => setError(String(failure))); };
   const options = [...(snapshot?.refs.filter(ref => ref.kind === 'local' || ref.kind === 'remote') ?? [])];
   for (const name of [baseRef, targetRef]) if (name !== 'HEAD' && !options.some(ref => ref.fullName === name)) options.push({ name, fullName: name, kind: 'local', oid: '' });
   return <Modal title={t('comparison.title')} className="branch-comparison-modal" onClose={onClose} footer={null}>

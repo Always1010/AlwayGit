@@ -11,6 +11,12 @@
     "review": "translated",
     "context": "src/editor/documents.ts / provideTextDocumentContent"
   },
+  "documents.workingFileMissing": {
+    "en": "The file {{path}} does not exist in the current working tree. It may have been deleted or may not be checked out.",
+    "zh-CN": "当前工作区中不存在文件 {{path}}，可能已删除或尚未检出。",
+    "review": "translated",
+    "context": "src/editor/documents.ts / openFile / missing working tree path"
+  },
   "documents.workingTreeSymbolicLink": {
     "en": "Working Tree · Symbolic Link",
     "zh-CN": "工作区 · 符号链接",
