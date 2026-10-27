@@ -13,7 +13,7 @@ import { verifyRefresh } from './test-refresh-ui.mjs';
 import { verifyFeedback } from './test-feedback-ui.mjs';
 import { verifyFiles } from './test-files-ui.mjs';
 import { verifyHistoryRows, verifyLocateHead, verifyHistoryNavigation, verifyFileHistory } from './test-history-ui.mjs';
-import { verifyDiffNavigation } from './test-diff-ui.mjs';
+import { verifyDiffNavigation, verifyFileOpen } from './test-diff-ui.mjs';
 import { verifyWorktrees } from './test-worktrees-ui.mjs';
 import { verifyAppearance } from './test-appearance-ui.mjs';
 import { verifyRemoteTracking } from './test-remote-tracking-ui.mjs';
@@ -55,6 +55,7 @@ const suites = new Map([
   ['feedback', verifyFeedback],
   ['files', verifyFiles],
   ['diff', verifyDiffNavigation],
+  ['file-open', verifyFileOpen],
   ['worktrees', verifyWorktrees],
   ['remote-tracking', verifyRemoteTracking],
   ['stash', verifyStash],

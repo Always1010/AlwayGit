@@ -8,7 +8,7 @@ Select More actions → Help & Guide, with its question-mark icon, in the upper-
 
 <a id="screenshot-notes"></a>
 
-**About the screenshots:** Shared figures were captured on 2026-10-24 from the 1.8.0 source build. They show the actual Workbench components with an English interface, the default theme's white appearance on a light host, and sample repository data; the language page previews Chinese. Sample RPC responses supply repository, Git-operation, and terminal states, so these images do not establish real-host validation of remotes, authentication, or native Git operations. The narrow sidebar figure demonstrates region navigation at that viewport size. Images exclude native VS Code chrome, native confirmation dialogs, and system folder pickers. Your project names, paths, and Commit IDs may differ. See [Validation](VALIDATION.en.md#manual-screenshots) for the capture process and verification scope.
+**About the screenshots:** Shared figures were captured on 2026-10-24 from the 1.8.0 source build. They show the actual Workbench components with an English interface, the default theme's white appearance on a light host, and sample repository data; the language page previews Chinese. Sample RPC responses supply repository, Git-operation, and terminal states, so these images do not establish real-host validation of remotes, authentication, or native Git operations. The narrow sidebar figure demonstrates region navigation at that viewport size. Images exclude native VS Code chrome, native confirmation dialogs, and system folder pickers. The toolbar file action is now named Open File in VS Code; its icon position remains as shown in the older figures. Your project names, paths, and Commit IDs may differ. See [Validation](VALIDATION.en.md#manual-screenshots) for the capture process and verification scope.
 
 ## Read by task
 
@@ -188,7 +188,7 @@ Split-mode heading actions use the current file filter; unified-mode toolbar bul
 1. Click Working Tree, then click the file in the appropriate group.
 2. Check the file and comparison targets in the Diff title at the bottom. In particular, confirm whether you are viewing Staged or Unstaged changes.
 3. Use the previous and next arrows to review each change block, noting the counts of additions, modifications, and deletions.
-4. To edit the full contents of a text file, use Edit in VS Code. Save it, then return to the workbench and check again. Images and other binary files are view-only in the AlwayGit preview.
+4. To edit the full contents of a text file, use Open File in VS Code to open the actual file in the current Working Tree. This also applies when viewing a historical Commit or comparing two Commits: the file belongs to the current checkout and may differ from the preview. Save it, then return to the workbench and check again. A missing file produces an explicit message; it is neither created nor replaced by a Diff view. Images and other binary files are view-only in the AlwayGit preview.
 
 **Result:** You can explain each block of changes you intend to keep and confirm that the comparison sources are correct.
 
@@ -366,7 +366,7 @@ Ref checkboxes control which history you see; branch names and row selections co
 1. Switch Commit Details to **Full Tree**, or right-click a Commit and choose **Browse Repository Tree**. This view includes every file saved at that revision, including files that the Commit did not change.
 2. Expand directories to load their contents as needed, or search full repository-relative paths. Search also covers directories that have not been expanded and pages the matching results.
 3. Click a historical file to compare it with the same path in the current Working Tree; a missing Working Tree path appears as an empty side. Its menu can open File History or copy the path or object ID.
-4. **Open Historical File in VS Code** opens historical text as a read-only document; PNG, JPEG, and WebP use the bottom image preview. For missing LFS objects, follow [Git LFS](#git-lfs) to download the object for the fixed revision.
+4. **Open Historical File in VS Code** in the tree context menu opens historical text as a read-only document. The bottom **Open File in VS Code** button and E shortcut open the current Working Tree file. PNG, JPEG, and WebP use the bottom image preview. For missing LFS objects, follow [Git LFS](#git-lfs) to download the object for the fixed revision.
 
 **Result:** Inspect the selected revision's complete directory structure and file contents without restoring or writing Working Tree files. The tree stays pinned to the full Commit ID captured when opened and does not move with a branch. A Merge Commit always shows its result tree, independently of the selected Parent.
 
@@ -1235,7 +1235,7 @@ Single-key shortcuts are enabled by default. The table below lists default bindi
 | H | Locate HEAD | Follow the existing HEAD location and history scope rules |
 | O | Open repository folder | Open or switch to the current repository's VS Code window |
 | D | Open Diff | Open native Diff for the current text preview; disabled for images and binary files |
-| E | Edit file | Same as Edit in VS Code; text Commit comparisons open native Diff; disabled for images and binary files |
+| E | Open working tree file | Same as Open File in VS Code; always opens the actual current Working Tree file and reports missing paths; disabled for images and binary files |
 | [; ] | Previous; next change | Follow the Diff navigation scope; expand a collapsed Diff before navigating |
 | \ | Minimize/expand Diff | Preserve the reading position |
 | / | Search commits | Focus and select the Commit search text |

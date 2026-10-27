@@ -96,10 +96,15 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
     return uri;
   }
   async openFile(repo: Repository, filename: string): Promise<void> {
-    const full = await safeWorkingPath(repo.root, filename);
-    const prefix = await this.readWorking(full, MAX_PREVIEW_BYTES + 1);
-    if (imageHeader(prefix) || isBinary(prefix.subarray(0, MAX_PREVIEW_BYTES), prefix.length > MAX_PREVIEW_BYTES)) throw new MessageError(localizeMessage("documents.imagesAndBinaryFilesCanOnlyBeViewedInTheAlwayGitDiffPreview"));
-    await vscode.window.showTextDocument(vscode.Uri.file(full), { viewColumn: vscode.ViewColumn.Active, preview: false, preserveFocus: false });
+    try {
+      const full = await safeWorkingPath(repo.root, filename);
+      const prefix = await this.readWorking(full, MAX_PREVIEW_BYTES + 1);
+      if (imageHeader(prefix) || isBinary(prefix.subarray(0, MAX_PREVIEW_BYTES), prefix.length > MAX_PREVIEW_BYTES)) throw new MessageError(localizeMessage("documents.imagesAndBinaryFilesCanOnlyBeViewedInTheAlwayGitDiffPreview"));
+      await vscode.window.showTextDocument(vscode.Uri.file(full), { viewColumn: vscode.ViewColumn.Active, preview: false, preserveFocus: false });
+    } catch (error) {
+      if (['ENOENT', 'ENOTDIR'].includes((error as NodeJS.ErrnoException).code ?? '')) throw new MessageError(localizeMessage('documents.workingFileMissing', { path: filename }));
+      throw error;
+    }
   }
   /** Preview one immutable historical blob without assuming how it will be displayed. */
   async revisionPreview(repo: Repository, target: RevisionTarget): Promise<DiffPreview> {

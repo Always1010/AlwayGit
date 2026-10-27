@@ -6,10 +6,16 @@
     "context": "webview/DiffPreview.tsx / DiffPreviewPanel / openLabel"
   },
   "diff.editInVSCode": {
-    "en": "Edit in VS Code",
-    "zh-CN": "在 VS Code 中编辑",
+    "en": "Open File in VS Code",
+    "zh-CN": "在 VS Code 中打开文件",
     "review": "translated",
     "context": "webview/DiffPreview.tsx / DiffPreviewPanel / editLabel"
+  },
+  "diff.openWorkingFileHint": {
+    "en": "Open the current working tree file for editing; its contents may differ from this historical comparison.",
+    "zh-CN": "打开当前工作区中的文件进行编辑；内容可能与历史比较不同。",
+    "review": "translated",
+    "context": "webview/DiffPreview.tsx and webview/menus.ts / working file action tooltip"
   },
   "diff.previousChange": {
     "en": "Previous change",

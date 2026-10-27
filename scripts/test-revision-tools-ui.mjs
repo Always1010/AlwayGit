@@ -29,7 +29,7 @@ async function verifyInspectionIsolation(browser, url) {
       const repo = { id: 'revision-fixture', root: '/revision', commonDir: '/revision/.git', name: 'Revision fixture' };
       const first = 'a'.repeat(40), second = 'b'.repeat(40), inspected = 'c'.repeat(40);
       const commit = { oid: inspected, parents: [first], author: 'Fixture', email: 'test@example.com', timestamp: 1700000000, subject: 'Inspected revision' };
-      const fixture = window.__revisionFixture = { calls: [], held: [], holdReflog: false, session: { version: 2, repoId: repo.id, language: 'en', singleKeyShortcuts: true, drafts: { [repo.id]: 'Keep my draft' } }, snapshot: { repository: repo, branch: 'main', head: first, ahead: 0, behind: 0, changes: [{path:'working.txt',indexStatus:' ',worktreeStatus:'M',conflict:false,untracked:false}], refs: [{name:'main',fullName:'refs/heads/main',kind:'local',oid:first},{name:'other',fullName:'refs/heads/other',kind:'local',oid:second}], stashes: [], worktrees: [], operation: {conflicts:0,canContinue:false,canAbort:false,canSkip:false}, version: 1 } };
+      const fixture = window.__revisionFixture = { calls: [], held: [], holdReflog: false, openFailure: false, session: { version: 2, repoId: repo.id, language: 'en', singleKeyShortcuts: true, drafts: { [repo.id]: 'Keep my draft' } }, snapshot: { repository: repo, branch: 'main', head: first, ahead: 0, behind: 0, changes: [{path:'working.txt',indexStatus:' ',worktreeStatus:'M',conflict:false,untracked:false}], refs: [{name:'main',fullName:'refs/heads/main',kind:'local',oid:first},{name:'other',fullName:'refs/heads/other',kind:'local',oid:second}], stashes: [], worktrees: [], operation: {conflicts:0,canContinue:false,canAbort:false,canSkip:false}, version: 1 } };
       window.acquireVsCodeApi = () => ({ getState: () => fixture.session, setState: value => { fixture.session = value; }, postMessage(request) {
         fixture.calls.push(structuredClone(request)); let result;
         if (request.method === 'repositories') result = [repo];
@@ -48,7 +48,8 @@ async function verifyInspectionIsolation(browser, url) {
           const left = Array.from({length:600},(_,index)=>`line-${index}`), right = left.map((value,index)=>index===10||index===599?value+'-after':value);
           result = {kind:'text',path:'revision.txt',leftLabel:'Parent',rightLabel:'Commit',left:left.join('\n'),right:right.join('\n')};
         }
-        setTimeout(() => window.postMessage({type:'response',id:request.id,result},'*'),0);
+        const error = request.method==='openFile' && fixture.openFailure ? {message:'Current working file is missing'} : undefined;
+        setTimeout(() => window.postMessage({type:'response',id:request.id,result,error},'*'),0);
       }});
     });
     await page.goto(url.replace('?demo=1',''));
@@ -66,6 +67,16 @@ async function verifyInspectionIsolation(browser, url) {
     await dialog.getByTestId('diff-preview').getByText('line-599-after',{exact:true}).waitFor();
     await dialog.getByTestId('diff-preview').getByRole('button',{name:'Open Diff',exact:true}).click();
     await page.waitForFunction(() => window.__revisionFixture.calls.some(call=>call.method==='diff' && call.payload.kind==='commit'));
+    await dialog.getByTestId('diff-preview').getByRole('button',{name:'Open File in VS Code',exact:true}).click();
+    await page.waitForFunction(() => window.__revisionFixture.calls.some(call=>call.method==='openFile' && call.repoId==='revision-fixture' && call.payload.path==='revision.txt'));
+    assert.equal(await page.evaluate(() => window.__revisionFixture.calls.filter(call=>call.method==='diff').length),1,'Opening an inspected file must not open another Diff');
+    await page.evaluate(() => { window.__revisionFixture.openFailure=true; });
+    await dialog.getByTestId('diff-preview').getByRole('button',{name:'Open File in VS Code',exact:true}).click();
+    const openError=dialog.getByRole('alert').filter({hasText:'Current working file is missing'});
+    await openError.waitFor();
+    assert.doesNotMatch(await openError.innerText(),/pruned|commit is no longer available/);
+    assert.equal(await page.evaluate(() => window.__revisionFixture.calls.filter(call=>call.method==='diff').length),1);
+    await page.evaluate(() => { window.__revisionFixture.openFailure=false; });
     await page.keyboard.press('Escape'); await dialog.waitFor({state:'detached'});
     await page.getByTestId('workbench').focus();
     await page.keyboard.press('d');

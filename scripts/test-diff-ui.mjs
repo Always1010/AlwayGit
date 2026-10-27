@@ -1,5 +1,85 @@
 import assert from 'node:assert/strict';
 
+export async function verifyFileOpen(browser, url) {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } }), errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  try {
+    await page.addInitScript(() => {
+      const repo = { id: 'file-open', root: '/file-open', commonDir: '/file-open/.git', name: 'File open fixture' };
+      const older = { oid: 'a'.repeat(40), parents: [], author: 'Fixture', email: 'test@example.com', timestamp: 0, subject: 'Older' };
+      const newer = { ...older, oid: 'b'.repeat(40), parents: [older.oid], subject: 'Newer' };
+      const files = [{ path: 'current.txt', status: 'R', previousPath: 'old.txt' }];
+      const fixture = window.__fileOpenFixture = { calls: [], failure: null };
+      const snapshot = { repository: repo, branch: 'main', head: newer.oid, ahead: 0, behind: 0, changes: [{ path: 'current.txt', indexStatus: ' ', worktreeStatus: 'M', untracked: false }], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: newer.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 1 };
+      window.acquireVsCodeApi = () => ({ getState: () => ({ repoId: repo.id, language: 'en', singleKeyShortcuts: true }), setState() {}, postMessage(request) {
+        fixture.calls.push(structuredClone(request)); let result;
+        if (request.method === 'repositories') result = [repo];
+        if (['repositoryCollections', 'repositoryStatuses', 'terminalList'].includes(request.method)) result = [];
+        if (request.method === 'interfaceSettings') result = { language: 'en', singleKeyShortcuts: true };
+        if (request.method === 'operationSettings') result = { scope: 'user' };
+        if (request.method === 'snapshot') result = snapshot;
+        if (request.method === 'history') result = { commits: [newer, older], tips: [newer.oid], nextOffset: 2, hasMore: false };
+        if (request.method === 'details') result = { commit: request.payload.oid === older.oid ? older : newer, parent: older.oid, body: '', files };
+        if (request.method === 'compare') result = { left: older, right: newer, files };
+        if (request.method === 'revisionTree') result = { revision: request.payload.revision, path: '', entries: [{ name: 'current.txt', path: 'current.txt', oid: 'c'.repeat(40), mode: '100644', type: 'blob' }] };
+        if (request.method === 'diffPreview') result = { kind: 'text', path: request.payload.path, leftLabel: 'Historical before', rightLabel: 'Historical after', left: 'before', right: 'after' };
+        const error = request.method === 'openFile' && fixture.failure ? { message: fixture.failure } : undefined;
+        setTimeout(() => window.postMessage({ type: 'response', id: request.id, result, error }, '*'), 0);
+      } });
+    });
+    await page.goto(url.replace('?demo=1', ''));
+    const diff = page.getByTestId('diff-preview'), history = page.getByTestId('history');
+    const opens = () => page.evaluate(() => window.__fileOpenFixture.calls.filter(call => ['openFile', 'openRevision', 'diff'].includes(call.method)));
+    const assertOpen = async (run, method, payload) => {
+      const before = (await opens()).length;
+      await run();
+      await page.waitForFunction(count => window.__fileOpenFixture.calls.filter(call => ['openFile', 'openRevision', 'diff'].includes(call.method)).length > count, before);
+      const added = (await opens()).slice(before);
+      assert.equal(added.length, 1);
+      assert.equal(added[0].method, method);
+      assert.equal(added[0].repoId, 'file-open');
+      for (const [key, value] of Object.entries(payload)) assert.deepEqual(added[0].payload[key], value);
+    };
+    const openButton = diff.getByRole('button', { name: 'Open File in VS Code', exact: true });
+    await page.getByTestId('details').getByRole('button', { name: 'current.txt', exact: true }).click();
+    await openButton.waitFor();
+    assert.match(await openButton.getAttribute('title'), /current working tree.*may differ/);
+    await assertOpen(() => openButton.click(), 'openFile', { path: 'current.txt' });
+    await history.locator('[data-oid]').first().click();
+    await diff.getByText('after', { exact: true }).waitFor();
+    await assertOpen(() => openButton.click(), 'openFile', { path: 'current.txt' });
+    await assertOpen(() => diff.getByRole('button', { name: 'Open Diff', exact: true }).click(), 'diff', { kind: 'commit', oid: 'b'.repeat(40), parent: 'a'.repeat(40), previousPath: 'old.txt' });
+    // An opening error must be visible and must never trigger another Diff request.
+    await page.evaluate(() => { window.__fileOpenFixture.failure = 'Current file is missing'; });
+    await assertOpen(() => openButton.click(), 'openFile', { path: 'current.txt' });
+    await page.getByRole('alert').filter({ hasText: 'Current file is missing' }).waitFor();
+    assert.equal((await opens()).at(-1).method, 'openFile');
+    await page.evaluate(() => { window.__fileOpenFixture.failure = null; });
+    await page.getByRole('button', { name: 'Dismiss error', exact: true }).click();
+    await history.locator('[data-oid]').last().click({ modifiers: ['Control'] });
+    await history.locator('[data-oid]').last().click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Compare Commits', exact: true }).click();
+    await diff.getByText('after', { exact: true }).waitFor();
+    await assertOpen(() => openButton.click(), 'openFile', { path: 'current.txt' });
+    await page.getByTestId('workbench').focus();
+    await assertOpen(() => page.keyboard.press('e'), 'openFile', { path: 'current.txt' });
+    await assertOpen(() => page.keyboard.press('d'), 'diff', { kind: 'comparison', left: 'a'.repeat(40), right: 'b'.repeat(40), previousPath: 'old.txt' });
+    const file = page.getByTestId('details').getByRole('button', { name: 'current.txt', exact: true });
+    await file.click({ button: 'right' });
+    await assertOpen(() => page.getByRole('menuitem', { name: 'Open File in VS Code', exact: true }).click(), 'openFile', { path: 'current.txt' });
+    await history.locator('[data-oid]').first().click();
+    await page.getByTestId('details').getByRole('button', { name: 'Full Tree', exact: true }).click();
+    const treeFile = page.getByRole('treeitem').filter({ hasText: 'current.txt' });
+    await treeFile.click();
+    await diff.getByText('after', { exact: true }).waitFor();
+    await assertOpen(() => openButton.click(), 'openFile', { path: 'current.txt' });
+    await treeFile.click({ button: 'right' });
+    await assertOpen(() => page.getByRole('menuitem', { name: 'Open Historical File in VS Code', exact: true }).click(), 'openRevision', { revision: 'b'.repeat(40), path: 'current.txt' });
+    assert.deepEqual(errors, []);
+    console.log('ALWAYGIT_FILE_OPEN_UI_PASSED: working/commit/comparison/tree file opens, D/E, context menu, error without Diff fallback and historical action');
+  } finally { await page.close(); }
+}
+
 export async function verifyDiffNavigation(browser, url) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
@@ -217,7 +297,7 @@ async function verifyImagePreview(browser, url) {
     assert.equal(await diff.getByTestId('diff-change-summary').locator('.diff-change-modified').innerText(),'~1');
     assert.equal(await diff.getByTestId('diff-change-count').innerText(),'1/1');
     assert.equal(await diff.getByRole('button',{name:'Open Diff'}).isDisabled(),true);
-    assert.equal(await diff.getByRole('button',{name:'Edit in VS Code'}).isDisabled(),true);
+    assert.equal(await diff.getByRole('button',{name:'Open File in VS Code'}).isDisabled(),true);
     await diff.getByRole('button',{name:'Show images at actual size'}).click();
     assert.equal(await diff.getByRole('button',{name:'Show images at actual size'}).getAttribute('aria-pressed'),'true');
     await diff.getByRole('button',{name:'Maximize image preview'}).click();
@@ -231,7 +311,7 @@ async function verifyImagePreview(browser, url) {
     await page.getByTestId('details').getByRole('button',{name:'binary.bin',exact:true}).click();
     await diff.getByText('Binary file: text preview unavailable',{exact:true}).waitFor();
     assert.equal(await diff.getByRole('button',{name:'Open Diff'}).isDisabled(),true);
-    assert.equal(await diff.getByRole('button',{name:'Edit in VS Code'}).isDisabled(),true);
+    assert.equal(await diff.getByRole('button',{name:'Open File in VS Code'}).isDisabled(),true);
     assert.deepEqual(errors,[]);
     console.log('ALWAYGIT_IMAGE_DIFF_UI_TESTS_PASSED: side-by-side image preview, metadata, zoom, maximize and disabled native actions');
   } finally { await page.close(); }
