@@ -109,6 +109,8 @@ export async function verifyDiffNavigation(browser, url) {
     await count.getByText('1/3', { exact: true }).waitFor();
     await assertRevealed();
     await assertColumnsAligned();
+    await diff.locator('.text-diff-labels>span').first().getByText('Before · bbbbbbbb', { exact: true }).waitFor();
+    await diff.locator('.text-diff-labels>span').last().getByText('After · aaaaaaaa', { exact: true }).waitFor();
     assert.ok(await viewport.evaluate(element => element.scrollTop > 0), 'The first distant change is revealed automatically');
     assert.equal(await summary.locator('.diff-change-added').innerText(), '+0');
     assert.equal(await summary.locator('.diff-change-modified').innerText(), '~3');
@@ -121,6 +123,8 @@ export async function verifyDiffNavigation(browser, url) {
     assert.equal(await emojiMark.innerText(), '😁', 'Inline highlighting keeps the changed emoji in one DOM node');
     assert.ok((await emojiMark.boundingBox()).width > 0, 'The changed emoji highlight covers the rendered glyph');
     assert.equal(await count.evaluate(element => getComputedStyle(element).borderTopWidth), '0px', 'Current/total count is flat text, not an input-like badge');
+    assert.equal(await summary.locator('..').getAttribute('class'), 'diff-heading-identity', 'Statistics stay with the current filename');
+    assert.deepEqual(await diff.locator('.diff-heading .inline-actions .button>.codicon').evaluateAll(icons => icons.map(icon => icon.className.trim())), ['codicon codicon-diff', 'codicon codicon-go-to-file', 'codicon codicon-arrow-up', 'codicon codicon-arrow-down'], 'Original action icons retain their order');
     const resize = page.getByRole('separator', { name: 'Resize Diff panel' });
     await resize.press('End');
     assert.ok((await diff.boundingBox()).height > 450, 'Diff panel maximum follows the available workbench height');
@@ -131,9 +135,12 @@ export async function verifyDiffNavigation(browser, url) {
     await page.getByTestId('bottom-dock').getByRole('button', { name: 'Expand bottom panel' }).click();
     assert.ok(Math.abs((await diff.boundingBox()).height - expandedHeight) < 2, 'Expanded Diff restores its previous height');
     assert.equal(await diff.getByRole('button', { name: 'Previous change' }).isEnabled(), true);
+    const readingPosition = () => viewport.evaluate(element => ({ top: element.getBoundingClientRect().top, height: element.clientHeight, scrollTop: element.scrollTop }));
+    const beforeBoundary = await readingPosition();
     await diff.getByRole('button', { name: 'Previous change' }).click();
     await count.getByText('1/3', { exact: true }).waitFor();
     await diff.getByTestId('diff-navigation-boundary').getByText('This is the first change in the current file. Run Previous change again to go to the last change.', { exact: true }).waitFor();
+    assert.deepEqual(await readingPosition(), beforeBoundary, 'The floating boundary notice preserves the viewport and reading position');
     await diff.getByRole('button', { name: 'Previous change' }).click();
     await count.getByText('3/3', { exact: true }).waitFor();
     await diff.getByRole('button', { name: 'Next change' }).click();
@@ -371,7 +378,8 @@ async function addDiffFixture(page, diffNavigationScope) {
           fixture.previews.push(structuredClone(request.payload));
           if (fixture.failPath === path) { setTimeout(() => window.postMessage({ type: 'response', id: request.id, error: { message: 'Read failed' } }, '*'), 10); return; }
           const right = fixture.emptyFiles || path === 'same.txt' ? fixture.left : path === 'tail.txt' ? fixture.left.split('\n').map((line, i) => [30, 95].includes(i) ? `tail changed ${i}` : line).join('\n') : path === 'single.txt' || path === 'large.txt' ? fixture.left.split('\n').map((line, i) => i === 80 || path === 'large.txt' && i > 80 && i <= 125 ? `changed line ${i}` : line).join('\n') : fixture.right;
-          result = path === 'binary.bin' ? { kind: 'binary', reason: 'unsupported', path, leftLabel: 'Before', rightLabel: 'After' } : { kind: 'text', path, leftLabel: 'Before', rightLabel: 'After', left: fixture.left, right, truncated: fixture.truncated };
+          const leftLabel = request.payload.kind === 'commit' ? (request.payload.parent ?? commit.parents[0]).slice(0, 8) : 'Index', rightLabel = request.payload.kind === 'commit' ? request.payload.oid.slice(0, 8) : 'Working Tree';
+          result = path === 'binary.bin' ? { kind: 'binary', reason: 'unsupported', path, leftLabel, rightLabel } : { kind: 'text', path, leftLabel, rightLabel, left: fixture.left, right, truncated: fixture.truncated };
           if(result.kind==='text'&&request.payload.paged){
             const afterLines=right.split('\n');const rows=fixture.left.split('\n').map((before,i)=>({before,after:afterLines[i],beforeLine:i+1,afterLine:i+1,changed:before!==afterLines[i]}));
             const changes=[];for(let i=0;i<rows.length;i++){if(!rows[i].changed)continue;const start=i;while(i+1<rows.length&&rows[i+1].changed)i++;changes.push({start,end:i});}

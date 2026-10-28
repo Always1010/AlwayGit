@@ -5,6 +5,8 @@ export async function verifyShortcuts(browser, url) {
   page.on('pageerror',error=>errors.push(error.message));
   try {
     await page.addInitScript(()=>{
+      const preferences=JSON.parse(localStorage.getItem('shortcut-preferences')??'{"changeListMode":"split"}');
+      window.__ALWAYGIT_PREFERENCES__=preferences;
       const repo={id:'keys',root:'/keys',commonDir:'/keys/.git',name:'Shortcut fixture'},other={id:'other',root:'/other',commonDir:'/other/.git',name:'Other repository'};
       const commit={oid:'a'.repeat(40),parents:['b'.repeat(40)],author:'Fixture',email:'test@example.com',timestamp:0,subject:'Shortcut Commit'};
       const older={...commit,oid:'b'.repeat(40),parents:[],subject:'Older Commit'};
@@ -20,6 +22,8 @@ export async function verifyShortcuts(browser, url) {
           fixture.calls.push(request);
           if(request.method==='action'&&fixture.holdAction){fixture.pending=request;return;}
           let result;
+          if(request.method==='interfaceSettings')result=structuredClone(preferences);
+          if(request.method==='saveInterfaceSettings'){Object.assign(preferences,request.payload);localStorage.setItem('shortcut-preferences',JSON.stringify(preferences));result=structuredClone(preferences);}
           if(request.method==='repositories')result=[repo,other];
           if(request.method==='snapshot')result=structuredClone({...snapshot,repository:request.repoId==='other'?other:repo,version:++snapshot.version});
           if(request.method==='history')result={commits:[commit,older],tips:[commit.oid],nextOffset:2,hasMore:false};
@@ -36,6 +40,7 @@ export async function verifyShortcuts(browser, url) {
     });
     await page.goto(url);
     const root=page.getByTestId('workbench'),history=page.getByTestId('history'),diff=page.getByTestId('diff-preview'),count=diff.getByTestId('diff-change-count');
+    await history.locator('[data-oid]').first().click();
     await count.getByText('File 1/2 · Change 1/2',{exact:true}).waitFor();
     const calls=()=>page.evaluate(()=>window.__shortcutFixture.calls.filter(call=>call.method==='action').length);
     const dialog=()=>page.getByRole('dialog');
@@ -93,7 +98,7 @@ export async function verifyShortcuts(browser, url) {
     await search.press('Control+a');assert.deepEqual(await search.evaluate(element=>[element.selectionStart,element.selectionEnd]),[0,12]);
     await search.fill('');
     // Clicking non-focusable text must release the input before dispatching another key.
-    await diff.locator('.pane-heading > .truncate').click();await page.keyboard.press('w');
+    await diff.locator('.diff-file-identity').click();await page.keyboard.press('w');
     await page.getByTestId('details').locator('.change-heading-staged').waitFor();
     assert.equal(await page.getByRole('textbox',{name:'Commit message',exact:true}).count(),0,'W opens Working Tree without a Commit editor');
     await press('c');const message=page.getByRole('textbox',{name:'Commit message',exact:true});
