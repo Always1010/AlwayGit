@@ -4,14 +4,14 @@ export interface DiffChangeSummary { added: number; modified: number; removed: n
 export type DiffDirection = -1 | 1;
 
 /** Scan each file at most once, including the current file on wrap-around. */
-export async function adjacentDiffFile(fileCount: number, current: number, direction: DiffDirection, countChanges: (index: number) => Promise<number>, signal: AbortSignal): Promise<{ fileIndex: number; changeIndex: number } | undefined> {
+export async function adjacentDiffFile(fileCount: number, current: number, direction: DiffDirection, countChanges: (index: number) => Promise<number>, signal: AbortSignal): Promise<{ fileIndex: number; changeIndex: number; wrapped: boolean } | undefined> {
   if (current < 0 || current >= fileCount) return;
   for (let step = 1; step <= fileCount; step++) {
     signal.throwIfAborted();
     const fileIndex = (current + direction * step + fileCount) % fileCount;
     const count = await countChanges(fileIndex);
     signal.throwIfAborted();
-    if (count > 0) return { fileIndex, changeIndex: direction === 1 ? 0 : count - 1 };
+    if (count > 0) return { fileIndex, changeIndex: direction === 1 ? 0 : count - 1, wrapped: direction === 1 ? current + step >= fileCount : current - step < 0 };
   }
 }
 

@@ -22,6 +22,7 @@ import { useShortcuts } from './shortcuts';
 import type { DiffImage, DiffPreview as Preview } from '../src/protocol/types';
 
 interface Selection {key:string;rows:readonly DiffRow[];index:number;ranges?:readonly DiffChangeRange[]}
+interface PendingBoundary {key:string;direction:DiffDirection;scope:'file'|'commit';destination?:{fileIndex:number;changeIndex:number;target:DiffTarget;preview?:Preview}}
 type ImageZoom = 'fit' | number;
 const zoomSteps=[.25,.5,1,2,4];
 function previewChangeCount(preview:Preview|undefined):number {
@@ -58,7 +59,7 @@ function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():
   const trackHorizontal=()=>{if(horizontal.current)setHorizontalOffset(horizontal.current.scrollLeft);};
   const pendingHunkScroll=useRef<{top:number;left:number}|undefined>(undefined);
   const hunkScroll=useRef<{repoId?:string;path:string;top:number;left:number}|undefined>(undefined);
-  const [navigating,setNavigating]=useState(false),[navigationError,setNavigationError]=useState<string>(),[noNavigableFiles,setNoNavigableFiles]=useState(false),navigationRequest=useRef<AbortController|undefined>(undefined),preloaded=useRef<{key:string;preview:Preview}|undefined>(undefined),landing=useRef<{key:string;index:number}|undefined>(undefined);
+  const [navigating,setNavigating]=useState(false),[navigationError,setNavigationError]=useState<string>(),[noNavigableFiles,setNoNavigableFiles]=useState(false),[pendingBoundary,setPendingBoundary]=useState<PendingBoundary>(),navigationRequest=useRef<AbortController|undefined>(undefined),preloaded=useRef<{key:string;preview:Preview}|undefined>(undefined),landing=useRef<{key:string;index:number}|undefined>(undefined);
   const [imageZoom,setImageZoom]=useState<ImageZoom>('fit'),[maximized,setMaximized]=useState(false),imageSides=[useRef<HTMLDivElement>(null),useRef<HTMLDivElement>(null)] as const,syncingImageScroll=useRef(false);
   const collapsed=state.layout.diffCollapsed;
   const pendingNavigation=useRef<{key:string;direction:DiffDirection}|undefined>(undefined);
@@ -76,11 +77,11 @@ function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():
   const commitScopeKey=JSON.stringify(commitFiles);
   useLayoutEffect(()=>{
     navigationRequest.current?.abort();navigationRequest.current=undefined;
-    setNavigating(false);setNavigationError(undefined);setNoNavigableFiles(false);
+    setNavigating(false);setNavigationError(undefined);setNoNavigableFiles(false);setPendingBoundary(undefined);
     if(landing.current?.key!==targetKey)landing.current=undefined;
     if(preloaded.current?.key!==targetKey)preloaded.current=undefined;
     return()=>{navigationRequest.current?.abort();};
-  },[targetKey,commitScopeKey,state.diffNavigationScope,collapsed]);
+  },[targetKey,revision,commitScopeKey,state.diffNavigationScope,collapsed]);
   useEffect(()=>{
     let live=true;
     const controller=new AbortController();
@@ -146,12 +147,28 @@ function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():
     navigationScroll.current=virtual.toScrollOffset(offset);
     virtual.scrollToOffset(offset);
   };
+  const boundaryKey=JSON.stringify([targetKey,revision,state.diffNavigationScope,commitScopeKey]);
+  const land=(destination:NonNullable<PendingBoundary['destination']>)=>{
+    setPendingBoundary(undefined);
+    if(destination.fileIndex===fileIndex){jump(destination.changeIndex);return;}
+    const key=JSON.stringify([state.repoId,diffKey(destination.target)]);
+    preloaded.current=destination.preview?.kind==='text'&&destination.preview.index&&!destination.preview.index.token?undefined:destination.preview?{key,preview:destination.preview}:undefined;
+    landing.current={key,index:destination.changeIndex};
+    state.selectFile(destination.target);
+  };
   const navigate=async(direction:DiffDirection)=>{
     if(loading||navigationRequest.current||displayedKey.current!==targetKey)return;
     setNavigationError(undefined);
     const next=activeChange+direction;
-    if(!commitMode||!commitFiles||!commitTarget){jump(next);return;}
-    if(changeCount&&next>=0&&next<changeCount){jump(next);return;}
+    const matchingBoundary=pendingBoundary?.key===boundaryKey&&pendingBoundary.direction===direction;
+    if(pendingBoundary&&!matchingBoundary)setPendingBoundary(undefined);
+    if(!commitMode||!commitFiles||!commitTarget){
+      if(changeCount<=1||next>=0&&next<changeCount){setPendingBoundary(undefined);jump(changeCount===1?0:next);return;}
+      if(matchingBoundary&&pendingBoundary.scope==='file'){setPendingBoundary(undefined);jump(next);return;}
+      setPendingBoundary({key:boundaryKey,direction,scope:'file'});return;
+    }
+    if(changeCount&&next>=0&&next<changeCount){setPendingBoundary(undefined);jump(next);return;}
+    if(matchingBoundary&&pendingBoundary.scope==='commit'&&pendingBoundary.destination){land(pendingBoundary.destination);return;}
     const controller=new AbortController();navigationRequest.current=controller;setNavigating(true);
     let destination:Preview|undefined;
     const targets=commitFiles.map(file=>({...commitTarget,path:file.path,previousPath:file.previousPath}));
@@ -165,9 +182,11 @@ function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():
       const current=useWorkbench.getState();
       if(controller.signal.aborted||current.repoId!==state.repoId||diffKey(current.diffTarget)!==diffKey(commitTarget)||current.diffNavigationScope!=='commit')return;
       if(!adjacent){setNoNavigableFiles(true);return;}
-      if(adjacent.fileIndex===fileIndex){jump(adjacent.changeIndex);return;}
       const target=targets[adjacent.fileIndex],key=JSON.stringify([state.repoId,diffKey(target)]);
-      preloaded.current=destination?.kind==='text'&&destination.index&&!destination.index.token?undefined:{key,preview:destination!};landing.current={key,index:adjacent.changeIndex};
+      const landingDestination={fileIndex:adjacent.fileIndex,changeIndex:adjacent.changeIndex,target,preview:destination};
+      if(adjacent.wrapped&&!(adjacent.fileIndex===fileIndex&&changeCount===1)){setPendingBoundary({key:boundaryKey,direction,scope:'commit',destination:landingDestination});return;}
+      if(adjacent.fileIndex===fileIndex){setPendingBoundary(undefined);jump(adjacent.changeIndex);return;}
+      preloaded.current=destination?.kind==='text'&&destination.index&&!destination.index.token?undefined:{key,preview:destination!};landing.current={key,index:adjacent.changeIndex};setPendingBoundary(undefined);
       state.selectFile(target);
     }catch(error){if(!controller.signal.aborted)setNavigationError(error instanceof Error?error.message:String(error));}
     finally{if(navigationRequest.current===controller){navigationRequest.current=undefined;setNavigating(false);}}
@@ -234,6 +253,7 @@ function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():
   const highlighted=activeChange>=0?changes[activeChange]:undefined;
   const openLabel=t("diff.openDiff"),editLabel=t("diff.editInVSCode"),previousLabel=t("diff.previousChange"),nextLabel=t("diff.nextChange");
   const previousHint=commitMode?t("diff.previousChangeAcrossCommitFilesWrapsToTheLast"):changeCount===1?t("diff.locateTheOnlyChange"):t("diff.previousChangeWrapsToTheLast"),nextHint=commitMode?t("diff.nextChangeAcrossCommitFilesWrapsToTheFirst"):changeCount===1?t("diff.locateTheOnlyChange"):t("diff.nextChangeWrapsToTheFirst");
+  const boundaryMessage=pendingBoundary?.key===boundaryKey?t(pendingBoundary.scope==='commit'?(pendingBoundary.direction===1?'diff.commitLastChangeReached':'diff.commitFirstChangeReached'):(pendingBoundary.direction===1?'diff.fileLastChangeReached':'diff.fileFirstChangeReached')):undefined;
   const hunkTarget=!isolated&&state.tab==='changes'&&state.diffTarget?.kind==='change'&&state.diffTarget.area!=='conflict'?state.diffTarget:undefined;
   const patchHunks=hunkTarget&&preview?.kind==='text'?preview.patchHunks:undefined;
   useEffect(()=>{setDiscardConfirmation(undefined);},[targetKey,revision,patchHunks?.token]);
@@ -284,7 +304,8 @@ function DiffPreviewPanel({ native, edit, active = true, isolated }: { native():
     }}/>} {preview&&<div className={`diff-labels${preview.kind==='text'?' text-diff-labels':''}`}><span>{preview.leftLabel}</span>{preview.kind==='text'&&<span className="diff-label-gutter" aria-hidden="true"/>}<span>{preview.rightLabel}</span></div>}
     {hunkTarget&&patchHunks?.unavailable&&<div className="history-caption" role="status">{t(patchHunks.unavailable==='changed'?'diff.hunkStale':'diff.hunkUnavailable')}</div>}
     {truncated&&<div className="history-caption">{t("diff.previewIsTruncatedOpenDiffToInspectTheFull")}</div>}
-    <div className={`diff-viewport${preview?.kind==='text'?' text-diff-viewport':''}`} ref={viewport} onScroll={trackScroll}>
+    {boundaryMessage&&<div className="history-caption diff-navigation-boundary" data-testid="diff-navigation-boundary" role="status" aria-live="polite">{boundaryMessage}</div>}
+    <div className={`diff-viewport${preview?.kind==='text'?' text-diff-viewport':''}`} ref={viewport} onScroll={trackScroll} onWheel={()=>setPendingBoundary(undefined)} onPointerDown={()=>setPendingBoundary(undefined)} onTouchStart={()=>setPendingBoundary(undefined)}>
       {navigationError&&<p className="form-error" role="alert">{navigationError}</p>}
       {navigating&&<div className="history-caption" role="status">{t("diff.loadingTheNextDiffFile")}</div>}
       {(error||(!loading&&pages.error))&&<p className="form-error" role="alert">{error??pages.error}</p>}

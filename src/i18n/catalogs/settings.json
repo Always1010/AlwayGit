@@ -288,14 +288,14 @@
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
   "settings.navigateChangesAcrossAllFilesInTheCommitWrapping": {
-    "en": "Navigate changes across all files in the Commit, wrapping at either end.",
-    "zh-CN": "在整个提交的变更文件之间跳转，首尾循环。",
+    "en": "Navigate changes across all files in the Commit. At either end, run the same action again to wrap.",
+    "zh-CN": "在整个 Commit 的变更文件之间跳转；到达首尾后，再次执行同方向操作才循环。",
     "review": "translated",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
   "settings.navigateChangesWithinTheCurrentFileWrappingAtEither": {
-    "en": "Navigate changes within the current file, wrapping at either end.",
-    "zh-CN": "在当前文件的修改之间跳转，首尾循环。",
+    "en": "Navigate changes within the current file. At either end, run the same action again to wrap.",
+    "zh-CN": "在当前文件的修改之间跳转；到达首尾后，再次执行同方向操作才循环。",
     "review": "translated",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
@@ -306,14 +306,14 @@
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
   "settings.entireCommitFollowsTheChangedFileOrderNextMoves": {
-    "en": "Entire Commit follows the changed-file order. Next moves to the first change in the next file; Previous moves to the last change in the previous file. The first and last changes of the Commit wrap around.",
-    "zh-CN": "整个提交按更改文件顺序导航。下一处跨文件定位第一处更改，上一处跨文件定位最后一处更改，提交的首尾循环衔接。",
+    "en": "Entire Commit follows the changed-file order. Next moves to the first change in the next file; Previous moves to the last change in the previous file. At the first or last change of the Commit, run the same action again to wrap.",
+    "zh-CN": "整个 Commit 按变更文件顺序导航。下一处跨文件定位第一处修改，上一处跨文件定位最后一处修改；到达 Commit 首尾后，再次执行同方向操作才循环。",
     "review": "translated",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
   "settings.navigatesAllFilesInTheCurrentCommitAndSelected": {
-    "en": "Navigates all files in the current Commit and selected Parent, including files hidden by the path filter. Binary files and files without text change blocks are skipped; text changes are calculated from complete file contents. Working Tree, Stash and comparisons continue to cycle within the current file.",
-    "zh-CN": "范围为当前提交和所选父提交的全部文件，包括路径筛选隐藏的文件。跳过二进制文件及没有文本更改块的文件；文本修改按完整文件计算。工作区、Stash 和提交比较仍在当前文件内循环。",
+    "en": "Navigates all files in the current Commit and selected Parent, including files hidden by the path filter. Binary files and files without text change blocks are skipped; text changes are calculated from complete file contents. Working Tree, Stash and comparisons stay within the current file and require the same action again before wrapping.",
+    "zh-CN": "范围为当前 Commit 和所选 Parent 的全部文件，包括路径筛选隐藏的文件。跳过二进制文件及没有文本修改块的文件；文本修改按完整文件计算。工作区、Stash 和 Commit 比较仍在当前文件内导航，首尾循环前同样需要再次执行同方向操作。",
     "review": "translated",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
