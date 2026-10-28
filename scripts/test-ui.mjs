@@ -142,7 +142,7 @@ async function verifyWorkbench(browser, url) {
     const branchBadge = page.getByTestId('current-branch');
     assert.equal(await branchBadge.innerText(), '—', 'A fresh Workbench does not select a repository at the entry point');
     assert.match(await branchBadge.locator('..').getAttribute('title'), /No repository selected/);
-    const repositoryOption=sidebar.getByRole('option', { name: /^AlwayGit/ });
+    const repositoryOption=sidebar.getByRole('option', { name: /^AlwayGit-Demo/ });
     await repositoryOption.dblclick();
     await Promise.all([history.waitFor(), details.waitFor()]);
     assert.ok((await sidebar.locator('.sidebar-heading').first().boundingBox()).height <= 29, 'Sidebar section headers stay compact');
@@ -156,7 +156,7 @@ async function verifyWorkbench(browser, url) {
     await page.getByTestId('toolbar-more').click();
     const projectButton = page.getByTestId('open-project');
     assert.equal(await projectButton.isEnabled(), true);
-    assert.match(await projectButton.getAttribute('title'), /AlwayGit/);
+    assert.match(await projectButton.getAttribute('title'), /D:\\Examples\\AlwayGit-Demo/);
     assert.equal((await projectButton.innerText()).trim(), 'Open Repository Folder', 'Repository folder command has a label in More');
     assert.equal(await projectButton.locator('.codicon-folder').count(), 0, 'Repository folder command removes the old double-folder glyphs');
     assert.equal(await projectButton.locator('svg.repository-folder-outline').count(), 1, 'Repository folder command uses the selected hollow folder outline');
@@ -426,7 +426,7 @@ async function verifyWorkbench(browser, url) {
     await openMenu(secondaryWorktree);
     await menu.getByRole('menuitem', { name: 'Remove Worktree…', exact: true }).click();
     await dialog.waitFor();
-    assert.match(await dialog.getByLabel('Worktree', { exact: true }).inputValue(), /AlwayGit-graph/);
+    assert.match(await dialog.getByLabel('Worktree', { exact: true }).inputValue(), /AlwayGit-Demo-graph/);
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
 
     const sidebarSeparator = page.getByRole('separator', { name: 'Resize repository sidebar' });
