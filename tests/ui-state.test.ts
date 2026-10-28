@@ -633,7 +633,7 @@ describe('repository UI consistency', () => {
     expect(original.singleKeyShortcuts).toBe(true);
     store.getState().previewSettings({ changeListMode:'unified', singleKeyShortcuts: false, diffNavigationScope: 'file', language: 'zh-CN', font: 16, row: 28, appearance: { theme: 'light', palette: 'extended', codeFont: 18, codeRowHeight: 24, diffRowSeparators: true, historyRowSeparators: true, historyAlternateRows: true, fileSpacing: 5, currentBranchColor: '#00ff99', currentRepositoryColor: '#ff4ad4' } });
     expect(store.getState().changeListMode).toBe('unified');
-    expect(bridge.save.mock.calls.at(-1)?.[0].changeListMode).toBe('split');
+    expect(bridge.save.mock.calls.at(-1)?.[0].changeListMode).toBe('unified');
     expect(store.getState().diffNavigationScope).toBe('file');
     expect(store.getState().singleKeyShortcuts).toBe(false);
     expect(store.getState().appearance.palette).toBe('extended');
@@ -644,7 +644,7 @@ describe('repository UI consistency', () => {
     await store.getState().refresh();
     expect(bridge.save.mock.calls.at(-1)?.[0].appearance).toEqual(original.appearance);
     store.getState().finishSettings(false);
-    expect(store.getState().changeListMode).toBe('split');
+    expect(store.getState().changeListMode).toBe('unified');
     expect(store.getState()).toMatchObject({ singleKeyShortcuts: true, diffNavigationScope: 'commit', language: original.language, layout: original.layout, appearance: original.appearance, drafts: { a: 'keep my draft' }, diffTarget: target });
   });
   it('saves user Git defaults without replacing workspace-effective operation guards', async () => {

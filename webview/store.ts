@@ -118,7 +118,7 @@ function synchronizeInterfaceSettings(preferences: InterfacePreferences): void {
   const current = useWorkbench.getState();
   const saved = overlayInterfaceSettings({ layout: current.layout }, preferences);
   const baseline: InterfaceSettings = { language: saved.language === 'zh-CN' ? 'zh-CN' : 'en', font: saved.layout!.font, row: saved.layout!.row,
-    appearance: normalizeAppearance(saved.appearance), changeListMode: saved.changeListMode ?? 'split', diffNavigationScope: saved.diffNavigationScope ?? 'commit',
+    appearance: normalizeAppearance(saved.appearance), changeListMode: saved.changeListMode ?? 'unified', diffNavigationScope: saved.diffNavigationScope ?? 'commit',
     singleKeyShortcuts: saved.singleKeyShortcuts !== false, shortcutOverrides: normalizeShortcutOverrides(saved.shortcutOverrides) };
   if (!current.settingsBaseline) { useWorkbench.setState(settingsState(baseline, current)); return; }
   const draft = preferenceChanges(interfaceSnapshot(current), current.settingsBaseline);
@@ -220,7 +220,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   workingFilters: globalThis.window?.__ALWAYGIT_TRANSFER__?.workingFilters ?? {},
   setWorkingFilter(value) { const repoId = get().repoId; if (repoId) set({ workingFilters: { ...get().workingFilters, [repoId]: value } }); },
   diffNavigationScope: session.diffNavigationScope === 'file' ? 'file' : 'commit',
-  changeListMode: session.changeListMode === 'unified' ? 'unified' : 'split',
+  changeListMode: session.changeListMode === 'split' ? 'split' : 'unified',
   singleKeyShortcuts: session.singleKeyShortcuts !== false, shortcutOverrides: normalizeShortcutOverrides(session.shortcutOverrides),
   operationSettings: { allowDetachedHead: false, pushFollowTags: false, pushTagAfterCreate: false, defaultResetMode: 'mixed', forceDeleteUnmergedBranches: false, forceRemoveDirtyWorktrees: false, scope: 'workspace' },
   async loadOperationSettings() { const settings = await rpc<OperationSettings>('operationSettings'); if (typeof settings?.allowDetachedHead === 'boolean'&&typeof settings?.pushFollowTags==='boolean'&&typeof settings?.pushTagAfterCreate==='boolean'&&['soft','mixed','hard'].includes(settings?.defaultResetMode)) set({ operationSettings: { ...settings, forceDeleteUnmergedBranches: settings.forceDeleteUnmergedBranches ?? false, forceRemoveDirtyWorktrees: settings.forceRemoveDirtyWorktrees ?? false } }); },

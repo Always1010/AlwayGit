@@ -173,7 +173,7 @@ Staged is the most important place to check before committing. A file appearing 
 
 ### Choose split or unified file lists
 
-Settings → Interface → File List offers the default split list or a unified changed-files list. The unified list places unstaged entries before staged entries and sorts each area by file name; conflicts come first. Each version has its own row and Diff. Stage All, Unstage All and Discard All in the top toolbar always operate on the complete repository, independently of filtering or selection. Discard All discards only unstaged changes and preserves staged content.
+Settings → Interface → File List uses the unified changed-files list by default and also offers the split list. The unified list places unstaged entries before staged entries and sorts each area by file name; conflicts come first. Each version has its own row and Diff. Stage All, Unstage All and Discard All in the top toolbar always operate on the complete repository, independently of filtering or selection. Discard All discards only unstaged changes and preserves staged content.
 
 Split-mode heading actions use the current file filter; unified-mode toolbar bulk actions always use the whole repository. Use file context menus for selected files. File spacing is separate from History row density.
 
