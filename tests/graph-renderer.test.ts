@@ -55,7 +55,7 @@ describe('Git graph SVG rows', () => {
       oid: 'merge', parents: ['first', 'second'], author: 'A', email: 'a@example.com', timestamp: 0, subject: 'Merge',
     }]);
     const markup = renderToStaticMarkup(React.createElement(GraphRow, { row: rows[0] }));
-    expect(markup).toContain('d="M 8 13 C 8 19.5, 24 19.5, 24 26"');
+    expect(markup).toContain('d="M 9 13 C 9 19.5, 27 19.5, 27 26"');
     expect(markup).not.toContain('git-graph-head-ring');
     expect(markup).not.toContain('data-head');
     expect(markup).not.toContain('Current HEAD');
@@ -89,13 +89,66 @@ describe('Git graph SVG rows', () => {
     const { rows } = layoutGraph([{
       oid: 'main-tip', parents: ['main-parent'], author: 'A', email: 'a@example.com', timestamp: 0, subject: 'Main',
     }]);
-    const mainTargets=new Set(['main-tip','main-parent']);
-    const markup=renderToStaticMarkup(React.createElement(GraphRow,{row:rows[0],main:true,mainTargets}));
+    const mainParents=new Map([['main-tip','main-parent']]);
+    const markup=renderToStaticMarkup(React.createElement(GraphRow,{row:rows[0],main:true,mainParents}));
     expect(markup).toContain('data-main="true"');
     expect(markup).toContain('Main branch.');
     expect(markup).toContain('stroke="var(--graph-main, #f2f2f2)"');
     expect(markup).toContain('stroke-width="3"');
     expect(markup).toContain('fill="var(--graph-main, #f2f2f2)"');
+  });
+
+  it('keeps side connectors colored while a main edge passes through intervening rows', () => {
+    const { rows } = layoutGraph([
+      { oid: 'merge', parents: ['main', 'topic2'] },
+      { oid: 'main', parents: ['base'] },
+      { oid: 'topic2', parents: ['topic1'] },
+      { oid: 'topic1', parents: ['base'] },
+      { oid: 'base', parents: [] },
+    ]);
+    const mainParents = new Map([['merge', 'main'], ['main', 'base']]);
+    const row = rows[3];
+    const markup = renderToStaticMarkup(React.createElement(GraphRow, { row, mainParents, hoveredPath: row.pathId }));
+    const paths = markup.match(/<path\b[^>]+>/g)!;
+    expect(paths[row.segments.findIndex(segment => segment.kind === 'through')]).toContain('stroke="var(--graph-main, #f2f2f2)"');
+    const connector = paths[row.segments.findIndex(segment => segment.kind === 'parent')];
+    expect(connector).toContain(`stroke="var(--graph-lane-${row.color},`);
+    expect(connector).toContain(`data-path-id="${row.pathId}"`);
+    expect(connector).toContain('stroke-width="4"');
+    expect(markup).toContain('cx="27"');
+  });
+
+  it('does not treat an additional edge to a main ancestor as a main edge', () => {
+    const { rows } = layoutGraph([
+      { oid: 'merge', parents: ['main', 'base'] },
+      { oid: 'main', parents: ['base'] },
+      { oid: 'base', parents: [] },
+    ]);
+    const mainParents = new Map([['merge', 'main'], ['main', 'base']]);
+    const markup = renderToStaticMarkup(React.createElement(GraphRow, { row: rows[0], main: true, mainParents }));
+    const paths = markup.match(/<path\b[^>]+>/g)!;
+    expect(paths[0]).toContain('stroke="var(--graph-main, #f2f2f2)"');
+    expect(paths[1]).toContain('stroke="var(--graph-lane-');
+  });
+
+  it('retains the main style after joining an earlier side path across page boundaries', () => {
+    const commits = [
+      { oid: 'topic', parents: ['base'] },
+      { oid: 'main', parents: ['base'], main: true },
+      { oid: 'unrelated', parents: [] },
+      { oid: 'base', parents: [] },
+    ];
+    const whole = layoutGraph(commits);
+    for (let boundary = 0; boundary <= commits.length; boundary++) {
+      const first = layoutGraph(commits.slice(0, boundary));
+      const second = layoutGraph(commits.slice(boundary), first.endState);
+      expect([...first.rows, ...second.rows]).toEqual(whole.rows);
+    }
+    const markup = renderToStaticMarkup(React.createElement(GraphRow, {
+      row: whole.rows[2], mainParents: new Map([['main', 'base']]),
+    }));
+    expect(markup).toContain('stroke="var(--graph-main, #f2f2f2)"');
+    expect(whole.rows[2].segments[0].source).toBe('main');
   });
 
   it('uses extended palette slots and highlights a lineage without decorating HEAD', () => {

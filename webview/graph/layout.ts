@@ -1,10 +1,17 @@
 import { getGraphPalette, paletteColorDistance, type GraphPaletteColors, type GraphPaletteId } from './palettes';
 
-export interface GraphCommit { oid: string; parents: readonly string[] }
+export interface GraphCommit {
+  oid: string;
+  parents: readonly string[];
+  /** Prefer this commit's first-parent edge when paths join. */
+  main?: boolean;
+}
 
 /** A lane reserves a path to a parent that has not been rendered yet. */
 export interface GraphLane {
   oid: string;
+  /** Child commit which opened this pending edge. */
+  source: string;
   color: number;
   /** Stable across first-parent ancestry, independently of reusable colors. */
   pathId?: string;
@@ -19,6 +26,8 @@ export interface GraphState {
 }
 
 export interface GraphSegment {
+  /** Child endpoint of the real edge, retained through intervening rows. */
+  source: string;
   fromLane: number;
   toLane: number;
   from: 'top' | 'middle';
@@ -100,7 +109,7 @@ export function layoutGraph<T extends GraphCommit>(commits: readonly T[], previo
     if (nodeLane === -1) {
       nodeLane = lanes.indexOf(null);
       if (nodeLane === -1) nodeLane = lanes.length;
-      lanes[nodeLane] = { oid: commit.oid, color: allocateColor(nodeLane), pathId: commit.oid };
+      lanes[nodeLane] = { oid: commit.oid, source: commit.oid, color: allocateColor(nodeLane), pathId: commit.oid };
     }
     const nodeColor = lanes[nodeLane]!.color;
     const nodePathId = lanes[nodeLane]!.pathId ?? commit.oid;
@@ -125,15 +134,23 @@ export function layoutGraph<T extends GraphCommit>(commits: readonly T[], previo
         }
         lanes[parentLane] = {
           oid: parent,
+          source: commit.oid,
           color: parentIndex === 0 ? nodeColor : allocateColor(parentLane, { lane: nodeLane, color: nodeColor }),
           pathId: parentIndex === 0 ? nodePathId : parent,
         };
         targetLanes.set(parent, parentLane);
+      } else if (parentIndex === 0 && commit.main) {
+        // Once the mainline joins a previously reserved side path, its edge
+        // owns the shared continuation. Keep the top snapshot unchanged.
+        lanes[parentLane] = { ...lanes[parentLane]!, source: commit.oid };
       }
       parentSegments.push({
+        source: commit.oid,
         fromLane: nodeLane, toLane: parentLane, from: 'middle', to: 'bottom',
-        color: lanes[parentLane]!.color, kind: 'parent', target: parent,
-        pathId: lanes[parentLane]!.pathId,
+        // A first-parent connector retains its source lineage until it joins
+        // an already reserved path. Other parents use the destination lineage.
+        color: parentIndex === 0 ? nodeColor : lanes[parentLane]!.color, kind: 'parent', target: parent,
+        pathId: parentIndex === 0 ? nodePathId : lanes[parentLane]!.pathId,
       });
     }
 
@@ -150,6 +167,7 @@ export function layoutGraph<T extends GraphCommit>(commits: readonly T[], previo
       if (!pending) continue;
       const incoming = lane === nodeLane;
       segments.push({
+        source: pending.source,
         fromLane: lane, toLane: incoming ? nodeLane : compactedLane.get(lane) ?? lane, from: 'top',
         to: incoming ? 'middle' : 'bottom',
         color: pending.color, kind: incoming ? 'incoming' : 'through',

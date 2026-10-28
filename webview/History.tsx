@@ -1,7 +1,7 @@
 import { HistorySearch } from './HistorySearch';
 import { hasHistorySearch, historySearchKey } from '../src/protocol/history-search';
 import { TagStatus } from './TagRemoteStatus';
-import { GraphRow, layoutGraph, type GraphCommit } from './graph';
+import { GraphRow, GRAPH_LANE_WIDTH, layoutGraph, type GraphCommit } from './graph';
 import { Button, Empty, Icon, ResizeHandle } from './ui';
 
 import { uiText } from './text';
@@ -25,7 +25,7 @@ import { fileHistoryChanges } from './refresh';
 
 const sameGraphPrefix = (prior: readonly GraphCommit[], next: readonly GraphCommit[]) => prior.every((commit,index)=>{
   const candidate=next[index];
-  return candidate?.oid===commit.oid&&candidate.parents.length===commit.parents.length&&candidate.parents.every((parent,parentIndex)=>parent===commit.parents[parentIndex]);
+  return candidate?.oid===commit.oid&&candidate.main===commit.main&&candidate.parents.length===commit.parents.length&&candidate.parents.every((parent,parentIndex)=>parent===commit.parents[parentIndex]);
 });
 
 function HistoryPanel({ context, checkout, checkoutBranch }: { context: ContextHandler; checkout(oid:string):void; checkoutBranch(name:string,remote?:boolean):void }) {
@@ -50,7 +50,16 @@ function HistoryPanel({ context, checkout, checkoutBranch }: { context: ContextH
   const currentScope=requestedRefs.length===1&&requestedRefs[0]===currentRef;
   const showResetHistory=!!state.snapshot?.head&&!!state.checkedRefs&&(!!state.search||hasHistorySearch(state.historyFilters)||!!fileHistory||!currentScope);
   const items=useMemo(()=>buildHistoryItems(state.commits,state.historyHead,working),[state.commits,state.historyHead,working]);
-  const graphCommits=useMemo<GraphCommit[]>(()=>items.map(item=>({oid:item.oid,parents:item.parents})),[items]);
+  const mainOids=useMemo(()=>{const result=new Set<string>(),all=state.historyHead?[state.historyHead,...state.commits]:state.commits,byOid=new Map(all.map(commit=>[commit.oid,commit])),name=state.snapshot?.defaultBranch;if(!name)return result;let oid=state.snapshot?.refs.find(ref=>ref.kind==='local'&&ref.name===name)?.oid??state.snapshot?.refs.find(ref=>ref.kind==='remote'&&ref.name.endsWith(`/${name}`))?.oid;while(oid&&!result.has(oid)){result.add(oid);oid=byOid.get(oid)?.parents[0];}return result;},[state.commits,state.historyHead,state.snapshot?.defaultBranch,state.snapshot?.refs]);
+  const mainParents=useMemo(()=>{
+    const result=new Map<string,string>();
+    for(const item of items){
+      const parent=item.parents[0];
+      if(parent&&(mainOids.has(item.oid)||item.kind==='working'&&mainOids.has(parent)))result.set(item.oid,parent);
+    }
+    return result;
+  },[items,mainOids]);
+  const graphCommits=useMemo<GraphCommit[]>(()=>items.map(item=>({oid:item.oid,parents:item.parents,main:mainParents.has(item.oid)})),[items,mainParents]);
   const paletteKey=`${state.appearance.palette}:${state.appearance.colors.light.join(',')}:${state.appearance.colors.dark.join(',')}`;
   const graph=useMemo(()=>{
     if(searching){cached.current=undefined;return undefined;}
@@ -58,10 +67,9 @@ function HistoryPanel({ context, checkout, checkoutBranch }: { context: ContextH
     if(prior&&prior.paletteKey===paletteKey&&graphCommits.length>prior.commits.length&&sameGraphPrefix(prior.commits,graphCommits)){const tail=layoutGraph(graphCommits.slice(prior.commits.length),prior.graph.endState,state.appearance.palette,state.appearance.colors);result={rows:[...prior.graph.rows,...tail.rows],endState:tail.endState,laneCount:Math.max(prior.graph.laneCount,tail.laneCount)};}else result=layoutGraph(graphCommits,undefined,state.appearance.palette,state.appearance.colors);
     cached.current={commits:graphCommits,paletteKey,graph:result};return result;
   },[graphCommits,paletteKey,searching]);
-  const rowHeight=effectiveRowHeight(state.layout),width=graph?Math.max(state.layout.graph,graph.laneCount*6+8):0,laneWidth=Math.min(12,(width-8)/Math.max(1,graph?.laneCount??1));
+  const rowHeight=effectiveRowHeight(state.layout),width=graph?Math.max(state.layout.graph,graph.laneCount*GRAPH_LANE_WIDTH+8):0;
   const previousRowHeight=useRef(rowHeight);
   const lastScrollTop=useRef(0);
-  const mainOids=useMemo(()=>{const result=new Set<string>(),all=state.historyHead?[state.historyHead,...state.commits]:state.commits,byOid=new Map(all.map(commit=>[commit.oid,commit])),name=state.snapshot?.defaultBranch;if(!name)return result;let oid=state.snapshot?.refs.find(ref=>ref.kind==='local'&&ref.name===name)?.oid??state.snapshot?.refs.find(ref=>ref.kind==='remote'&&ref.name.endsWith(`/${name}`))?.oid;while(oid&&!result.has(oid)){result.add(oid);oid=byOid.get(oid)?.parents[0];}return result;},[state.commits,state.historyHead,state.snapshot?.defaultBranch,state.snapshot?.refs]);
   const virtual=useVirtualizer({count:items.length,getScrollElement:()=>viewport.current,estimateSize:()=>rowHeight,overscan:10});
   const rows=virtual.getVirtualItems();
   useLayoutEffect(()=>{
@@ -110,12 +118,12 @@ function HistoryPanel({ context, checkout, checkoutBranch }: { context: ContextH
     }}>
       <div className="history-rows" style={{height:virtual.getTotalSize(),minWidth:width+180+state.layout.author+state.layout.date}}>
         {rows.map(row=>{const item=items[row.index],graphRow=graph?.rows[row.index],selected=item.kind==='working'?state.tab==='changes':state.tab==='history'&&state.selectedOids.includes(item.oid);if(item.kind==='working')return <div key={item.key} data-history-key={item.key} data-working-tree title={shortcutTitle(t("history.viewWorkingTree"),'working',state.singleKeyShortcuts,state.shortcutOverrides)} aria-keyshortcuts={shortcutAria('working',state.singleKeyShortcuts,state.shortcutOverrides)} role="row" tabIndex={0} aria-rowindex={row.index+2} aria-selected={selected} aria-label={`${t("history.workingTree")}, ${changeCount} ${t("history.changes")}, ${branch}, ${t("history.uncommitted")}`} className={`commit-row commit-row-interactive working-tree-row ${selected?'selected':''} ${row.index%2?'alternate':''}`} style={{...columns,position:'absolute',transform:`translateY(${row.start}px)`,height:rowHeight,width:'100%'}} onClick={event=>{event.currentTarget.focus();state.selectWorking();}} onContextMenu={event=>{event.currentTarget.focus({preventScroll:true});context(event,{kind:'working-tree'});}} onKeyDown={event=>keyboard(event,row.index,item)}>
-          {graphRow&&<div className="graph-cell" role="cell" aria-label={t("history.workingTreeVirtualNode")}><GraphRow compressed={!!displayedFile} row={graphRow} width={width} laneWidth={laneWidth} height={rowHeight} working selected={selected} mainTargets={mainOids} paletteId={state.appearance.palette} paletteSize={state.appearance.colors.light.length} hoveredPath={hoveredPath} onHoverPath={setHoveredPath}/></div>}
+          {graphRow&&<div className="graph-cell" role="cell" aria-label={t("history.workingTreeVirtualNode")}><GraphRow compressed={!!displayedFile} row={graphRow} width={width} height={rowHeight} working selected={selected} mainParents={mainParents} paletteId={state.appearance.palette} paletteSize={state.appearance.colors.light.length} hoveredPath={hoveredPath} onHoverPath={setHoveredPath}/></div>}
           <div className="commit-subject working-tree-subject" role="cell"><Icon name="files"/><strong>{t("history.workingTree")}</strong><span className="working-change-badge">{changeCount} {t("history.changes")}</span>{conflictCount>0&&<span className="working-conflict-badge" title={t("history.unresolvedConflicts")}>{conflictCount} {t("history.conflicts")}</span>}<span className="working-branch"><Icon name="git-branch"/><span className="truncate">{t("history.on")} {branch}</span></span></div>
           <span role="cell" className="history-author" aria-hidden="true"/><span role="cell" className="history-date working-state"><span>{t("history.uncommitted")}</span><Icon name="chevron-right"/></span>
         </div>;
         const commit=item.commit,refs=refIndex.byOid.get(commit.oid)??[],head=commit.oid===state.snapshot?.head,pushed=commit.pushed!==false;return <div key={item.key} data-history-key={item.key} data-oid={commit.oid} data-head-commit={head||undefined} role="row" tabIndex={0} aria-rowindex={row.index+2} aria-selected={selected} aria-label={`${commit.subject}, ${commit.author}, ${pushed?t("history.availableOnRemote"):t("history.localOnlyVariant2")}`} className={`commit-row commit-row-interactive ${pushed?'pushed-commit':'local-commit'} ${selected?'selected':''} ${row.index%2?'alternate':''}`} style={{...columns,position:'absolute',transform:`translateY(${row.start}px)`,height:rowHeight,width:'100%'}} onClick={event=>{event.currentTarget.focus();choose(event,item);}} onDoubleClick={()=>checkout(commit.oid)} onContextMenu={event=>{event.currentTarget.focus();openContext(event,commit.oid);}} onKeyDown={event=>keyboard(event,row.index,item)}>
-          {graphRow&&<div className="graph-cell" role="cell" aria-label={uiText("history.commitNode", { oid: (commit.oid) })}><GraphRow compressed={!!displayedFile} row={graphRow} width={width} laneWidth={laneWidth} height={rowHeight} head={head} selected={selected} pushed={pushed} main={mainOids.has(commit.oid)} mainTargets={mainOids} paletteId={state.appearance.palette} paletteSize={state.appearance.colors.light.length} hoveredPath={hoveredPath} onHoverPath={setHoveredPath}/></div>}
+          {graphRow&&<div className="graph-cell" role="cell" aria-label={uiText("history.commitNode", { oid: (commit.oid) })}><GraphRow compressed={!!displayedFile} row={graphRow} width={width} height={rowHeight} head={head} selected={selected} pushed={pushed} main={mainOids.has(commit.oid)} mainParents={mainParents} paletteId={state.appearance.palette} paletteSize={state.appearance.colors.light.length} hoveredPath={hoveredPath} onHoverPath={setHoveredPath}/></div>}
           <div className="commit-subject" role="cell">{searching&&<i className={`push-node search-push-state ${pushed?'pushed':'local'}`} role="img" aria-label={pushed?t("history.pushed"):t("history.localOnly")} title={pushed?t("history.pushed"):t("history.localOnly")}/>} {refs.map(ref=>{const current=ref.kind==='local'&&ref.name===state.snapshot?.branch;return <button key={ref.fullName} className={`ref-badge ${ref.kind}`} aria-current={current?'true':undefined} title={ref.fullName} onClick={event=>{event.stopPropagation();void state.selectCommit(commit.oid);}} onDoubleClick={event=>{event.stopPropagation();if(ref.kind==='local')checkoutBranch(ref.name);else if(ref.kind==='remote')checkoutBranch(ref.fullName,true);}} onContextMenu={event=>{event.stopPropagation();context(event,{kind:'ref',ref});}} onKeyDown={event=>{event.stopPropagation();if(event.key==='ContextMenu'||event.shiftKey&&event.key==='F10'){event.preventDefault();context(event,{kind:'ref',ref});}}}><span className="ref-badge-name">{ref.name}</span>{ref.kind==='tag'&&<TagStatus entry={{name:ref.name,fullName:ref.fullName,local:ref,state:'unknown'}} compact/>}</button>;})}{head&&!state.snapshot?.branch&&<span className="ref-badge">{uiText("history.detachedHEAD")}</span>}<span className="commit-message-button truncate" title={`${commit.subject}
 ${commit.oid}`}>{commit.subject}</span></div>
           <span role="cell" className="history-author truncate" title={`${commit.author} <${commit.email}>`}>{commit.author}</span><span role="cell" className="history-date truncate" title={`${t('history.search.authorDate')}: ${new Date(commit.timestamp*1000).toLocaleString()}`}>{new Date(commit.timestamp*1000).toLocaleString(state.language,{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false})}</span>

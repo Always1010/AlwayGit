@@ -21,8 +21,8 @@ describe('Git history graph', () => {
     expect(graph.rows.map(row => row.lane)).toEqual([0, 0, 0]);
     expect(graph.rows.map(row => row.hasIncoming)).toEqual([false, true, true]);
     expect(graph.rows[1].segments).toEqual([
-      { fromLane: 0, toLane: 0, from: 'top', to: 'middle', color: 0, kind: 'incoming', target: 'b', pathId: 'c' },
-      { fromLane: 0, toLane: 0, from: 'middle', to: 'bottom', color: 0, kind: 'parent', target: 'a', pathId: 'c' },
+      { source: 'c', fromLane: 0, toLane: 0, from: 'top', to: 'middle', color: 0, kind: 'incoming', target: 'b', pathId: 'c' },
+      { source: 'b', fromLane: 0, toLane: 0, from: 'middle', to: 'bottom', color: 0, kind: 'parent', target: 'a', pathId: 'c' },
     ]);
     expect(graph.rows[2].segments.map(segment => segment.kind)).toEqual(['incoming']);
     expect(graph.endState.lanes).toEqual([]);
@@ -37,7 +37,7 @@ describe('Git history graph', () => {
     expect(graph.rows[0].segments.map(segment => segment.toLane)).toEqual([0, 1]);
     const rightRow = graph.rows[2];
     expect(rightRow.segments.find(segment => segment.kind === 'parent')).toMatchObject({
-      fromLane: 1, toLane: 0, target: 'base',
+      source: 'right', fromLane: 1, toLane: 0, target: 'base', color: rightRow.color, pathId: rightRow.pathId,
     });
     expect(rightRow.segments.find(segment => segment.kind === 'through')).toMatchObject({
       fromLane: 0, toLane: 0, target: 'base',
@@ -67,7 +67,7 @@ describe('Git history graph', () => {
     const bColor = graph.rows[0].segments.find(segment => segment.target === 'b')!.color;
     const parents = graph.rows[1].segments.filter(segment => segment.kind === 'parent');
     expect(parents).toMatchObject([
-      { fromLane: 0, toLane: 1, from: 'middle', to: 'bottom', color: bColor, kind: 'parent', target: 'b', pathId: 'b' },
+      { source: 'a', fromLane: 0, toLane: 1, from: 'middle', to: 'bottom', color: graph.rows[1].color, kind: 'parent', target: 'b', pathId: graph.rows[1].pathId },
       { fromLane: 0, toLane: 0, from: 'middle', to: 'bottom', kind: 'parent', target: 'c', pathId: 'c' },
     ]);
     expect(parents[1].color).not.toBe(bColor);
@@ -144,10 +144,10 @@ describe('Git history graph', () => {
     expect(second.rows[0].hasIncoming).toBe(false);
     expect(second.rows[0].lane).toBe(1);
     expect(second.rows[0].segments).toEqual([
-      { fromLane: 0, toLane: 0, from: 'top', to: 'bottom', color: 0,
+      { source: 'match-one', fromLane: 0, toLane: 0, from: 'top', to: 'bottom', color: 0,
         kind: 'through', target: 'omitted-parent', pathId: 'match-one' },
     ]);
-    expect(second.endState.lanes).toEqual([{ oid: 'omitted-parent', color: 0, pathId: 'match-one' }]);
+    expect(second.endState.lanes).toEqual([{ oid: 'omitted-parent', source: 'match-one', color: 0, pathId: 'match-one' }]);
   });
 
   it('matches every outgoing endpoint to the next row in a complex interleaved DAG', () => {
@@ -161,11 +161,19 @@ describe('Git history graph', () => {
     const endpoints = (rowIndex: number, edge: 'top' | 'bottom') => {
       const segments = graph.rows[rowIndex].segments.filter(segment =>
         edge === 'top' ? segment.from === 'top' : segment.to === 'bottom');
+      // Different lineage colors may meet at the same shared-parent junction.
       return [...new Set(segments.map(segment =>
-        `${edge === 'top' ? segment.fromLane : segment.toLane}:${segment.target}:${segment.color}`))].sort();
+        `${edge === 'top' ? segment.fromLane : segment.toLane}:${segment.target}`))].sort();
     };
     for (let row = 0; row < history.length - 1; row++) {
       expect(endpoints(row, 'bottom')).toEqual(endpoints(row + 1, 'top'));
+      const outgoing = graph.rows[row].segments.filter(segment => segment.to === 'bottom');
+      for (const incoming of graph.rows[row + 1].segments.filter(segment => segment.from === 'top')) {
+        expect(outgoing).toContainEqual(expect.objectContaining({
+          toLane: incoming.fromLane, target: incoming.target, color: incoming.color,
+          source: incoming.source, pathId: incoming.pathId,
+        }));
+      }
       expect(graph.rows[row].segments.filter(segment => segment.kind === 'parent')
         .map(segment => segment.target)).toEqual(history[row].parents);
     }
@@ -216,7 +224,7 @@ describe('Git history graph', () => {
     expect([...first.rows, ...second.rows]).toEqual(whole.rows);
     expect(second.endState).toEqual(whole.endState);
     expect(whole.rows[1].pathId).toBe(whole.rows[0].pathId);
-    expect(whole.rows[2].segments.find(segment => segment.kind === 'parent')!.pathId).toBe(whole.rows[3].pathId);
+    expect(whole.rows[2].segments.find(segment => segment.kind === 'parent')!.pathId).toBe(whole.rows[2].pathId);
     const switched = layoutGraph(history, first.endState, 'distinct');
     expect(switched).toEqual(layoutGraph(history, undefined, 'distinct'));
   });
