@@ -32,7 +32,7 @@ export function legacyInterfaceSettings(session: SessionState): InterfacePrefere
 /** A restored panel keeps its geometry and drafts, but never overrides user preferences. */
 export function overlayInterfaceSettings(session: SessionState, settings: InterfacePreferences): SessionState {
   return { ...session, language: settings.language ?? 'en', appearance: settings.appearance,
-    changeListMode: settings.changeListMode ?? 'split', diffNavigationScope: settings.diffNavigationScope ?? 'commit',
+    changeListMode: settings.changeListMode ?? 'unified', diffNavigationScope: settings.diffNavigationScope ?? 'commit',
     singleKeyShortcuts: settings.singleKeyShortcuts ?? true, shortcutOverrides: settings.shortcutOverrides ?? {},
     layout: { ...defaultLayout, ...session.layout, font: settings.font ?? 13, row: settings.row ?? 24 } };
 }
