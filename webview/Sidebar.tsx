@@ -21,6 +21,7 @@ import { selectionForClick } from './commitSelection';
 import { collectionOrderKey, repositoryOrderKey } from '../src/protocol/repository-order';
 import type { MenuItem } from './ContextMenu';
 import { handleSelectionKeyboard } from './selectionKeyboard';
+import { useOperationSelection } from './operationSelection';
 import { useWorkbench } from './store';
 import type { TagListEntry } from './tagStatus';
 import { repositoryDisplayEntries, repositoryEntryKey, visibleRepositoryKeys, repositoryCollectionGroups } from './repositoryOrder';
@@ -101,6 +102,15 @@ function BranchTree({refs,keyPrefix,stripPrefix='',context,checkoutBranch}:{refs
 function SidebarPanel({ context, actions, checkoutBranch, openWorktree, openOverview }: { context: ContextHandler; actions:SidebarActionProvider; checkoutBranch(name:string,remote?:boolean):void; openWorktree(path:string):void; openOverview():void }) {
   const state={ ...useWorkbenchFields('appearance', 'busy', 'checkedRefs', 'displayedHistory', 'historyLoading', 'collapsedSidebarGroups', 'reorderRepository', 'repoId', 'repositories', 'catalogState', 'repositoryCollections', 'repositoryOrder', 'repositorySelectionAnchor', 'repositoryStatuses', 'selectCommit', 'selectRepository', 'selectedRepositoryKeys', 'selectedWorktreePaths', 'setRefSelection', 'setRepositorySelection', 'setWorktreeSelection', 'toggleSidebarGroup', 'worktreeSelectionAnchor'), snapshot: useSnapshotFields('branch', 'changes', 'operation', 'refs', 'remotes', 'repository', 'stashes', 'worktrees') },snapshot=state.snapshot,t=useTranslation();
   const [collapsedRepositoryCollections,setCollapsedRepositoryCollections]=useState<string[]>([]);
+  const selectionRoot=useOperationSelection<HTMLElement>({
+    rows:'.repository-row:not(.repository-collection-header),.ref-row,.tag-row,.worktree-list>.sidebar-item,.sidebar-list>.sidebar-item',
+    control:'.sidebar-item',preserve:'.repository-drag-handle',
+    clear:()=>{
+      const current=useWorkbench.getState();
+      if(current.selectedRepositoryKeys.length||current.selectedRefs.length||current.selectedRemoteTag||current.selectedWorktreePaths.length||current.repositorySelectionAnchor||current.refSelectionAnchor||current.worktreeSelectionAnchor)
+        useWorkbench.setState({selectedRepositoryKeys:[],repositorySelectionAnchor:undefined,selectedRefs:[],refSelectionAnchor:undefined,selectedRemoteTag:undefined,selectedWorktreePaths:[],worktreeSelectionAnchor:undefined});
+    },
+  });
   const dragging=useRef<{key:string;parent?:string}>(undefined),[dropTarget,setDropTarget]=useState<{key:string;position:'before'|'after'}>(),[ordering,setOrdering]=useState(false);
   const dropProps=(key:string,parent?:string)=>({
     'data-repository-order-key':key,
@@ -152,7 +162,7 @@ function SidebarPanel({ context, actions, checkoutBranch, openWorktree, openOver
 ${status.branch}${unpushed?` · ${unpushed} unpushed`:''}`:''}\n${t("sidebar.doubleClickOrPressEnterToSwitchRepository")}`} onClick={choose} onDoubleClick={activate} onKeyDown={event=>{if(event.key==='ContextMenu'||event.shiftKey&&event.key==='F10'){event.preventDefault();openContext(event);}else keyboard(event,target,activate);}}><RepositoryIcon current={current}/><span className="truncate">{group.name}</span>{unpushed?<span className="notification-badge" aria-hidden="true">{unpushed>99?'99+':unpushed}</span>:null}</button>
     </div>;
   };
-  return <aside id="repository-sidebar" data-testid="sidebar" className="sidebar" onKeyDownCapture={selectionKeys} style={{'--current-branch-color':state.appearance.currentBranchColor,'--current-branch-fg':textColorForBackground(state.appearance.currentBranchColor),'--current-repository-color':state.appearance.currentRepositoryColor} as React.CSSProperties}>
+  return <aside ref={selectionRoot} tabIndex={-1} id="repository-sidebar" data-testid="sidebar" className="sidebar" onKeyDownCapture={selectionKeys} style={{'--current-branch-color':state.appearance.currentBranchColor,'--current-branch-fg':textColorForBackground(state.appearance.currentBranchColor),'--current-repository-color':state.appearance.currentRepositoryColor} as React.CSSProperties}>
     {heading(t("sidebar.repositories"),'repositories')}{groupOpen('repositories')&&<div className="sidebar-list repository-list" data-selection-scope="repositories" tabIndex={0} role="listbox" aria-label={t("sidebar.repositories")} aria-multiselectable="true">{repositoryEntries.map(entry=>{
       if(entry.kind==='repository')return repositoryButton(entry.group);
       const groups=repositoryCollectionGroups(repositoryGroups,entry.collection.id,state.repositoryOrder),collapsed=collapsedRepositoryCollections.includes(entry.collection.id),target:MenuTarget={kind:'repository-collection',collection:entry.collection},key=collectionOrderKey(entry.collection.id),toggle=()=>setCollapsedRepositoryCollections(current=>collapsed?current.filter(id=>id!==entry.collection.id):[...current,entry.collection.id]);

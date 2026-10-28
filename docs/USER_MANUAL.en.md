@@ -937,6 +937,8 @@ The original HEAD remains under `refs/alwaygit/rebase-backups/…` after complet
 
 First select the item you intend to operate on, then identify the current working repository. A blue selected row identifies the target of an action. The highlighted repository icon marks the current repository; a solid triangle marks the current Worktree or local branch. The current item and action selection can differ. Repositories, Local Branches, one Remote, Tags, and Worktrees retain only one blue action-selection scope at a time. Moving to another object type clears the previous blue selection without changing the current repository, current branch, or Graph checkboxes.
 
+Click list whitespace or press Esc to clear the blue selection while retaining a thin focus outline on the previous item. Click History, Details, or another region to remove that outline too. The outline identifies the keyboard position; the current repository is identified by its accented checked repository icon and bold name. Context menus and their confirmation dialogs retain the operation targets. Esc first closes a menu; pressing Esc again in the list clears selection.
+
 <a id="section-02-01"></a>
 
 ### Add one repository or discover several
