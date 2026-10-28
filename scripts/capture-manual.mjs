@@ -6,12 +6,13 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 
 // Capture real built components with isolated sample RPC state. No Git, shell or VS Code commands run.
-// Stage the complete set before --write replaces any maintained screenshot.
+// Stage every selected scene before copying reviewed images; --write replaces only a complete set.
 const root = path.resolve(import.meta.dirname, '..');
 const write = process.argv.includes('--write');
 const only = process.argv.find(arg => arg.startsWith('--only='))?.slice(7);
 const from = process.argv.find(arg => arg.startsWith('--from='))?.slice(7);
-assert.ok(process.argv.slice(2).every(arg => arg === '--write' || /^--(?:only|from)=\d{2}$/.test(arg)), 'Use --write, --only=NN or --from=NN');
+const onlyIds = only?.split(',');
+assert.ok(process.argv.slice(2).every(arg => arg === '--write' || /^--only=\d{2}(?:,\d{2})*$/.test(arg) || /^--from=\d{2}$/.test(arg)), 'Use --write, --only=NN[,NN…] or --from=NN');
 assert.ok(!only || !from, 'Use either --only=NN or --from=NN');
 assert.ok(!write || !only && !from, 'Partial captures cannot replace the maintained set');
 const output = path.join(root, 'artifacts/manual-capture');
@@ -59,11 +60,13 @@ const fixture = await build({ stdin: { resolveDir: root, contents: `
     return request(method, payload, repoId);
   }
   let committed;
-  let session = { version: 2, repoId: 'demo-alwaygit', language: 'en', changeListMode: options.unified ? 'unified' : 'split',
+  // Leave the mode unset in ordinary scenes so production defaults remain authoritative.
+  const preferences = { appearance: { theme: 'system' }, ...(options.changeListMode ? { changeListMode: options.changeListMode } : {}) };
+  let session = { version: 2, repoId: 'demo-alwaygit', language: 'en',
     layout: { preset: 'workbench', sidebar: 248, details: 350, diff: 260, graph: 75, author: 105, date: 120, font: 13, row: 24 },
     drafts: {}, views: { 'demo-alwaygit': { search: '', tab: 'changes', expandedRefGroups: ['local:feature'] } } };
   window.__ALWAYGIT_HOST__ = options.host || 'editor';
-  window.__ALWAYGIT_PREFERENCES__ = { appearance: { theme: 'system' }, changeListMode: options.unified ? 'unified' : 'split' };
+  window.__ALWAYGIT_PREFERENCES__ = preferences;
   window.acquireVsCodeApi = () => ({ getState: () => session, setState: value => { session = value; }, postMessage: async call => {
     window.__capturePending++;
     try {
@@ -75,7 +78,7 @@ const fixture = await build({ stdin: { resolveDir: root, contents: `
       let result = await captureRequest(call.method, call.payload, call.repoId);
       if (beforeCommit && !call.payload.amend) committed = { oid: result.head, paths: call.payload.files?.map(file => file.path) ?? beforeCommit.changes.filter(file => !file.untracked && file.indexStatus !== ' ').map(file => file.path) };
       if (call.method === 'details' && committed?.oid === result.commit.oid) { result.files = committed.paths.map(path => ({ path, status: 'M' })); result.body = ''; }
-      if (call.method === 'interfaceSettings') result = { appearance: { theme: 'system' }, changeListMode: options.unified ? 'unified' : 'split' };
+      if (call.method === 'interfaceSettings') result = preferences;
       if (call.method === 'repositories') result[0].collectionId = 'learning';
       if (call.method === 'repositoryCollections') result = [{ id: 'learning', name: 'learning labs' }];
       if (call.method === 'snapshot' && options.operation) {
@@ -83,7 +86,7 @@ const fixture = await build({ stdin: { resolveDir: root, contents: `
         result.changes = [{ path: 'webview/App.tsx', indexStatus: options.operation === 'conflict' ? 'U' : 'M', worktreeStatus: options.operation === 'conflict' ? 'U' : ' ', conflict: options.operation === 'conflict', untracked: false }];
       }
       if (call.method === 'operationReview') result = { kind: 'merge', token: 'sample-review', files: [{ path: 'webview/App.tsx', lines: [] }] };
-      if (call.method === 'snapshot' && options.unified) result.changes[0].worktreeStatus = 'M';
+      if (call.method === 'snapshot' && options.overlappingChanges) result.changes[0].worktreeStatus = 'M';
       if (call.method === 'diffPreview' && call.payload.kind === 'revision') result = { kind: 'text', path: call.payload.path,
         leftLabel: call.payload.revision.slice(0, 8) + ' · ' + call.payload.path, rightLabel: 'Working Tree',
         left: 'export function Workbench() {\\n  return <HistoryPanel />;\\n}\\n', right: 'export function Workbench() {\\n  return (\\n    <WorkbenchLayout>\\n      <HistoryPanel />\\n      <CommitDetails />\\n    </WorkbenchLayout>\\n  );\\n}\\n' };
@@ -139,7 +142,7 @@ const scenes = [
   ['05', {}, async p => { await settings(p, 'File list'); }],
   ['06', {}, async p => { await sidebar(p).getByRole('button', { name: /^AlwayGit-Demo/ }).click(); await branch(p); }],
   ['07', {}, async p => { await details(p).getByRole('searchbox').fill('webview'); await file(p, 'webview/styles.css'); }],
-  ['08', { unified: true }, async p => { const f = details(p).getByRole('button', { name: 'webview/App.tsx', exact: true }).first(); await menu(p, f, 'Commit Selected…'); await dialog(p).getByRole('textbox').fill('Polish workbench layout'); }],
+  ['08', { overlappingChanges: true }, async p => { const f = details(p).getByRole('button', { name: 'webview/App.tsx', exact: true }).first(); await menu(p, f, 'Commit Selected…'); await dialog(p).getByRole('textbox').fill('Polish workbench layout'); }],
   ['09', {}, async p => { const dock = p.getByTestId('bottom-dock'); await button(dock, 'New embedded terminal').click(); await dock.locator('.terminal-content:not([hidden]) textarea').waitFor(); await button(dock, 'New embedded terminal').click(); await dock.getByRole('tab', { name: 'PowerShell 2', exact: true }).click(); await button(dock, 'Rename terminal').click(); await p.getByRole('textbox', { name: 'Rename terminal' }).fill('dev server'); await button(dialog(p), 'Apply').click(); await dock.getByRole('tab', { name: 'dev server', exact: true }).waitFor(); }],
   ['10', {}, async p => { await settings(p, 'Keyboard shortcuts'); }],
   ['11', {}, async p => { await commit(p, 'Polish repository workbench interactions', true); await button(dialog(p), 'Amend Commit').click(); await dialog(p).waitFor({ state: 'hidden' }); await rows(p).first().click(); await file(p); }],
@@ -180,12 +183,15 @@ const scenes = [
   ['46', {}, async p => { await button(sidebar(p), 'Worktree Overview').click(); await p.locator('.worktree-overview .overview-row').first().waitFor(); await p.locator('.worktree-overview .overview-row').first().getByText('Ready', { exact: true }).waitFor(); }],
   ['47', { query: 'interactiveRebase=1' }, async p => { await menu(p, button(sidebar(p), 'Branch main'), 'Interactive Rebase'); const action = dialog(p).getByRole('combobox', { name: 'Rebase action', exact: true }); await action.first().selectOption('reword'); await dialog(p).locator('.rebase-plan li').first().locator('textarea').fill('Clarify repository workbench layout'); await action.nth(1).selectOption('fixup'); await dialog(p).locator('.revision-inspector strong').first().waitFor(); }],
   ['48', {}, async p => { await toolbarMenu(p, 'Git LFS'); await dialog(p).getByLabel('Filename / glob', { exact: true }).fill('*.mp4'); await dialog(p).getByLabel('Literal filename', { exact: true }).uncheck(); await button(dialog(p), 'Preview attributes').click(); await dialog(p).locator('.lfs-attributes').waitFor(); }],
+  ['49', { changeListMode: 'split', capture: 'details' }, async p => { await file(p, 'webview/styles.css'); }],
+  ['50', { capture: 'diff' }, async p => { await rows(p).first().click(); await file(p); const diff = p.getByTestId('diff-preview'); await diff.getByTestId('diff-change-count').getByText('File 1/3 · Change 1/1', { exact: true }).waitFor(); await button(diff, 'Previous change').click(); await diff.getByTestId('diff-navigation-boundary').waitFor(); }],
 ];
 
 let browser;
 try {
   browser = await chromium.launch({ headless: true, ...(process.env.ALWAYGIT_BROWSER_EXECUTABLE ? { executablePath: process.env.ALWAYGIT_BROWSER_EXECUTABLE } : process.platform === 'win32' ? { channel: 'msedge' } : {}) });
-  const selected = scenes.filter(([id]) => (!only || only === id) && (!from || id >= from));
+  if (onlyIds) assert.ok(onlyIds.every(id => scenes.some(scene => scene[0] === id)), 'Unknown scene');
+  const selected = scenes.filter(([id]) => (!onlyIds || onlyIds.includes(id)) && (!from || id >= from));
   assert.ok(selected.length, 'Unknown scene');
   for (const [id, options, prepare] of selected) {
     const context = await browser.newContext({ viewport: options.viewport ?? { width: 1440, height: 900 }, deviceScaleFactor: 1, locale: 'en-US', timezoneId: 'Asia/Shanghai', colorScheme: 'light', reducedMotion: 'reduce' });
@@ -193,7 +199,7 @@ try {
     page.setDefaultTimeout(10000);
     page.on('pageerror', error => errors.push(error.message));
     try {
-      await page.clock.install({ time: new Date('2026-10-24T04:00:00Z') });
+      await page.clock.install({ time: new Date('2026-10-28T04:00:00Z') });
       await page.addInitScript(options => { window.__captureOptions = options; }, options);
       await page.addInitScript({ content: fixtureCode });
       await page.goto(url + (options.query ? '?' + options.query : ''));
@@ -208,7 +214,15 @@ try {
       await page.mouse.move(viewport.width - 4, viewport.height - 4);
       const visibleDialog = dialog(page);
       let clip;
-      if (await visibleDialog.isVisible()) {
+      if (options.capture) {
+        clip = await (options.capture === 'details' ? details(page) : page.getByTestId('diff-preview')).boundingBox();
+        assert.ok(clip, 'Capture region must be visible');
+        if (options.capture === 'details') {
+          const lastGroup = await details(page).locator('.change-group').last().boundingBox();
+          assert.ok(lastGroup, 'Split groups must be visible');
+          clip.height = Math.min(clip.height, lastGroup.y + lastGroup.height + 8 - clip.y);
+        }
+      } else if (await visibleDialog.isVisible()) {
         const box = await visibleDialog.boundingBox();
         const x = Math.max(0, box.x - 16), y = Math.max(0, box.y - 16);
         clip = { x, y, width: Math.min(viewport.width - x, box.width + 32), height: Math.min(viewport.height - y, box.height + 32) };
@@ -222,7 +236,7 @@ try {
       throw new Error(`Capture ${id} failed`, { cause: error });
     } finally { await context.close(); }
   }
-  await writeFile(path.join(output, 'capture-manifest.json'), JSON.stringify({ capturedAt: '2026-10-24', scenes: selected.map(([id]) => id) }, null, 2) + '\n');
+  await writeFile(path.join(output, 'capture-manifest.json'), JSON.stringify({ capturedAt: '2026-10-28', scenes: selected.map(([id]) => id) }, null, 2) + '\n');
   if (write) for (const [id] of scenes) await copyFile(path.join(output, `figure-${id}.png`), path.join(root, `docs/images/user-manual/figure-${id}.png`));
   console.log(`${scenes.length} available scenes; ${write ? 'maintained set replaced' : 'preview files in artifacts/manual-capture'}`);
 } finally { await browser?.close(); await new Promise(resolve => server.close(resolve)); }
