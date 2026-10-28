@@ -20,7 +20,12 @@ const repo: Repository = { id: 'demo-alwaygit', root: 'D:\\Examples\\AlwayGit-De
 const subjects = ['Polish repository workbench interactions', 'Add native diff integration', 'Merge branch feature/history-graph', 'Render commit graph with stable lanes', 'Keep commit drafts when switching repositories', 'Handle renamed files in changes', 'Improve keyboard navigation', 'Add worktree discovery', 'Show upstream tracking status', 'Update development dependencies', 'Fix status refresh after checkout', 'Introduce Git operation progress'];
 const authors = ['Alex Chen', 'Morgan Lee', 'Sam Rivera', 'Jamie Park'];
 const oid = (n: number) => (0x9a73ed + n * 98761).toString(16).padStart(8, '0') + 'c42d9918a6bc5e4791033ad7e6f202cc';
-const commits: Commit[] = Array.from({ length: 180 }, (_, n) => ({ oid: oid(n), parents: n === 179 ? [] : n % 12 === 2 ? [oid(n + 1), oid(n + 4)] : [oid(n + 1)], author: authors[n % 4], email: `${authors[n % 4].split(' ')[0].toLowerCase()}@example.com`, timestamp: 1790715600 - n * 13800, subject: subjects[n % subjects.length], pushed: n >= 2 }));
+const commits: Commit[] = Array.from({ length: 180 }, (_, n) => {
+  // A topic branch contributes two commits; main stays at their common base.
+  const branchTip = oid(n + 1), branchBase = oid(n + 3);
+  const parents = n === 179 ? [] : n % 12 === 2 ? [branchBase, branchTip] : [oid(n + 1)];
+  return { oid: oid(n), parents, author: authors[n % 4], email: `${authors[n % 4].split(' ')[0].toLowerCase()}@example.com`, timestamp: 1790715600 - n * 13800, subject: subjects[n % subjects.length], pushed: n >= 2 };
+});
 let demoSnapshot: Snapshot = { repository: repo, branch: 'main', head: commits[0].oid, upstream: 'origin/main', defaultBranch: 'main', pushTarget: { localBranch: 'main', remote: 'origin', remoteBranch: 'main', configured: true }, ahead: 2, behind: 0, changes: [
   { path: 'webview/App.tsx', indexStatus: 'M', worktreeStatus: ' ', conflict: false, untracked: false },
   { path: 'webview/styles.css', indexStatus: ' ', worktreeStatus: 'M', conflict: false, untracked: false },
