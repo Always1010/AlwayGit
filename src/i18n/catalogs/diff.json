@@ -1,4 +1,16 @@
 {
+  "diff.before": {
+    "en": "Before",
+    "zh-CN": "Before",
+    "review": "keep",
+    "context": "Diff side heading before the original revision label"
+  },
+  "diff.after": {
+    "en": "After",
+    "zh-CN": "After",
+    "review": "keep",
+    "context": "Diff side heading before the original revision label"
+  },
   "diff.openDiff": {
     "en": "Open Diff",
     "zh-CN": "打开 Diff",

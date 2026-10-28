@@ -11,7 +11,7 @@ async function verifyFileSelectionPreview(page, list, screenshotPath) {
   assert.ok(labels.length && labels.every(label => label.fits && label.gap >= 0.9), 'File names retain complete descenders and stay separate from parent paths');
   const click = (row, modifiers = []) => row.locator('.file-name').click({ modifiers });
   const selectedCount = () => list.locator('[role="option"][aria-selected="true"]').count();
-  const heading = page.getByTestId('diff-preview').locator('.pane-heading > .truncate');
+  const heading = page.getByTestId('diff-preview').locator('.diff-file-identity');
   await click(first);
   await page.getByTestId('diff-preview').locator('.diff-content').waitFor();
   assert.equal(await selectedCount(), 1);

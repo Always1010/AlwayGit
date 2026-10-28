@@ -1848,6 +1848,14 @@ export const catalog = {
     "en": "Discard all unstaged changes in this repository; keep staged changes.",
     "zh-CN": "丢弃当前仓库全部未暂存更改，保留已暂存内容。"
   },
+  "diff.before": {
+    "en": "Before",
+    "zh-CN": "Before"
+  },
+  "diff.after": {
+    "en": "After",
+    "zh-CN": "After"
+  },
   "diff.openDiff": {
     "en": "Open Diff",
     "zh-CN": "打开 Diff"
@@ -7918,6 +7926,8 @@ export interface MessageParameters {
   "changes.stageAllScope": {  };
   "changes.unstageAllScope": {  };
   "changes.discardAllScope": {  };
+  "diff.before": {  };
+  "diff.after": {  };
   "diff.openDiff": {  };
   "diff.editInVSCode": {  };
   "diff.openWorkingFileHint": {  };
