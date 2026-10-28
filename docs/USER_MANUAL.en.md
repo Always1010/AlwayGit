@@ -8,7 +8,7 @@ Select More actions → Help & Guide, with its question-mark icon, in the upper-
 
 <a id="screenshot-notes"></a>
 
-**About the screenshots:** Shared figures were captured on 2026-10-24 from the 1.8.0 source build. They show the actual Workbench components with an English interface, the default theme's white appearance on a light host, and sample repository data; the language page previews Chinese. The main sample repository is now named `AlwayGit-Demo`; the existing screenshots have not yet been updated and still show `AlwayGit` and the original sample paths. The repositories, authors, Commit IDs, history, and operation states are constructed demo data, not records from the real AlwayGit project. Sample RPC responses supply repository, Git-operation, and terminal states, so these images do not establish real-host validation of remotes, authentication, or native Git operations. The narrow sidebar figure demonstrates region navigation at that viewport size. Images exclude native VS Code chrome, native confirmation dialogs, and system folder pickers. The toolbar file action is now named Open File in VS Code; its icon position remains as shown in the older figures. Diff heading styles, statistics placement, and floating boundary notices follow the current instructions; older figures have not been refreshed. Your project names, paths, and Commit IDs may differ. See [Validation](VALIDATION.en.md#manual-screenshots) for the capture process and verification scope.
+**About the screenshots:** Both editions share the same images. Figures 03–07, 09, 11, 13–14, 18, 23, 29, 38, 40–47, and 49–50 were captured on 2026-10-28 from the 1.8.0 source build (UI baseline `67d3097`), reflecting the default unified list, current selection states, and Diff styles. Figure 49 explicitly demonstrates optional split mode; Figure 50 shows the navigation boundary notice. Other figures retain their 2026-10-24 source. Some still show the old sample name `AlwayGit`, original paths, and surrounding toolbar; the main sample repository is now `AlwayGit-Demo`. These differences do not change the dialog operations illustrated. Images show actual Workbench components with an English interface, the default theme on a light host, and sample data; the language page previews Chinese. Repository, author, Commit ID, history, Git-operation, and terminal states come from isolated sample RPC data, not real project records or validation of real remotes, authentication, Git, or terminal execution. The narrow sidebar figure demonstrates region navigation at that viewport size. Images exclude native VS Code chrome, native confirmations, and system folder pickers. Your names, paths, Commit IDs, and saved interface preferences may differ. See [Validation](VALIDATION.en.md#manual-screenshots) for the capture process and verification scope.
 
 ## Read by task
 
@@ -31,9 +31,9 @@ Select More actions → Help & Guide, with its question-mark icon, in the upper-
 Use a practice repository with existing Git history. Confirm the current branch and finish any active Git operation first. For installation, see [Install and launch](#section-01-02).
 
 1. Open the AlwayGit launch sidebar and select **Open Workbench**. Use **Add…** in Repositories to add a repository, then double-click it or press Enter to enter it.
-2. Edit and save a file in VS Code. Return to the workbench, select **Working Tree**, then select the file under Unstaged to inspect its Diff.
-3. Right-click the file you want to commit and choose **Stage**. Select it under Staged and check the actual content prepared for the commit.
-4. Select **Commit…** to the right of Unstage in the Staged heading (or Commit in the toolbar), enter a Commit Message in the dialog, then select **Commit**. Only Staged content is committed; other unstaged changes remain in the Working Tree.
+2. Edit and save a file in VS Code. Return to the workbench, select **Working Tree**, then select a file marked **Unstaged** in the default unified list to inspect its Diff.
+3. Right-click the file you want to commit and choose **Stage**. Find its **Staged** entry in the unified list and check the actual content prepared for the commit. A remaining Unstaged entry for the same file represents additional changes on disk.
+4. Select **Commit** in the top toolbar, enter a Commit Message in the dialog, then select **Commit**. Ordinary Commit selects all Staged files initially; you can deselect files. Other unstaged changes remain in the Working Tree. The optional split mode also provides **Commit…** in the Staged heading.
 5. Select **View Commit** in the result banner, or open the new commit in History. Verify its message, file list, and any remaining changes.
 
 **Result:** History contains a new commit with the Staged content you reviewed. To share your local commit, follow [Remote collaboration](#chapter-08) and Push it to a remote.
@@ -159,7 +159,7 @@ Help follows the Workbench language. Both manuals and their images are included 
 
 ## Working Tree and Commits
 
-Staged is the most important place to check before committing. A file appearing as both unstaged and staged is not a contradiction: the Index contains one version, while the file on disk has changed again since it was staged.
+Staged is the most important place to check before committing. The default unified list labels each entry Unstaged or Staged; split mode displays separate groups. A file appearing as both unstaged and staged is not a contradiction: the Index contains one version, while the file on disk has changed again since it was staged.
 
 | Status or group | Meaning | Recommended action |
 | --- | --- | --- |
@@ -173,11 +173,13 @@ Staged is the most important place to check before committing. A file appearing 
 
 ### Choose split or unified file lists
 
-Settings → Interface → File List uses the unified changed-files list by default and also offers the split list. The unified list places unstaged entries before staged entries and sorts each area by file name; conflicts come first. Each version has its own row and Diff. Stage All, Unstage All and Discard All in the top toolbar always operate on the complete repository, independently of filtering or selection. Discard All discards only unstaged changes and preserves staged content.
+Settings → Interface → File List uses the unified changed-files list by default and also offers the split list. This default applies when no display mode has been saved; existing split or unified preferences remain in effect until changed and applied here. The unified list places unstaged entries before staged entries and sorts each area by file name; conflicts come first. Each version has its own row and Diff. Stage All, Unstage All and Discard All in the top toolbar always operate on the complete repository, independently of filtering or selection. Discard All discards only unstaged changes and preserves staged content.
 
 Split-mode heading actions use the current file filter; unified-mode toolbar bulk actions always use the whole repository. Use file context menus for selected files. File spacing is separate from History row density.
 
-![Figure 05 File list settings with split and unified modes and independent file spacing](images/user-manual/figure-05.png)
+![Figure 05 File list settings with unified mode selected by default, optional split mode, and independent file spacing](images/user-manual/figure-05.png)
+
+![Figure 49 Optional split-mode file area with separate Unstaged and Staged groups and group-heading actions](images/user-manual/figure-49.png)
 
 <a id="section-03-01"></a>
 
@@ -185,7 +187,7 @@ Split-mode heading actions use the current file filter; unified-mode toolbar bul
 
 **Prerequisite:** You have saved your changes in the editor.
 
-1. Click Working Tree, then click the file in the appropriate group.
+1. Click Working Tree, then choose the file entry by its Unstaged or Staged label. In split mode, choose the file in the corresponding group.
 2. Check the file and comparison targets in the Diff title at the bottom. In particular, confirm whether you are viewing Staged or Unstaged changes.
 3. Use the previous and next arrows to review each change block, noting the counts of additions, modifications, and deletions.
 4. To edit the full contents of a text file, use Open File in VS Code to open the actual file in the current Working Tree. This also applies when viewing a historical Commit or comparing two Commits: the file belongs to the current checkout and may differ from the preview. Save it, then return to the workbench and check again. A missing file produces an explicit message; it is neither created nor replaced by a Diff view. Images and other binary files are view-only in the AlwayGit preview.
@@ -196,7 +198,7 @@ Split-mode heading actions use the current file filter; unified-mode toolbar bul
 
 **Troubleshooting:** If the content has not updated, first confirm that you saved it in the editor, then use Refresh. If the problem persists, check the output and error details.
 
-![Figure 07 Working Tree filtered by webview with an unstaged file and its Diff selected](images/user-manual/figure-07.png)
+![Figure 07 Default unified list filtered by webview, with an Unstaged file and its Before / After Diff sources](images/user-manual/figure-07.png)
 
 <a id="section-03-02"></a>
 
@@ -204,16 +206,16 @@ Split-mode heading actions use the current file filter; unified-mode toolbar bul
 
 **Prerequisite:** No unresolved conflicts remain, and you know which files should be included in the next commit.
 
-1. Click the target file under Unstaged. Use Ctrl/Cmd or Shift to select multiple files.
+1. Click the target entry marked Unstaged in the unified list, or enter the Unstaged group in split mode. Use Ctrl/Cmd or Shift to select multiple files.
 2. Right-click an already selected file and choose Stage. Right-clicking an unselected file first changes the selection to that file alone.
-3. Check the result under Staged. If you selected the wrong file, right-click it under Staged and choose Unstage.
-4. If you truly intend to act on the entire group, use Stage All or Unstage All in the group heading and verify the count in the confirmation.
+3. Select the Staged entry to check the result. If you selected the wrong file, right-click that entry and choose Unstage.
+4. For bulk actions in unified mode, use Stage All or Unstage All in the top toolbar; these always affect the complete repository. In split mode, use the corresponding group heading: without a filter it affects the whole group, and with a filter it affects matching files. Verify the count in the confirmation.
 
 **Result:** Staged contains only the changes needed for this commit. After Unstage, the changes remain in the Working Tree.
 
 **Act on a change block:** A compact 32px gutter between the Unstaged text Diff panes contains « to stage that Working Tree block into the Index. The left-side » opens a file/range-bound discard confirmation; confirming restores only that Working Tree block from the Index, preserving staged content and other blocks. Discarding a complete untracked addition deletes that file; a deleted file can be restored. Staged Diff uses » to restore that Index block from HEAD and unstage it. Line-number width follows the number of digits, without a reserved action column. Buttons anchor to actual changes; hover or keyboard focus shows only the action name; changes keep their red/green backgrounds without additional blue frames. Each contiguous change block is independent and matches navigation; nearby changes are no longer grouped by Git context. Arbitrary line selection is unavailable. Staging and unstaging preserve Working Tree bytes and other blocks. Recheck Staged after the action. Refresh expired previews; unsupported files, conversion filters, renames, and active Git operations use whole-file actions.
 
-**Caution:** File menus and group actions still operate on whole files. Search file names or relative paths below the Working Tree summary, ignoring case; use the clear icon to restore all files. In split mode, group actions apply to the entire group without a filter, or only matching paths with a filter. Tooltips and confirmations show the scope, independently of the current selection. Use a file’s context menu to act on selected items. Ctrl/Cmd+A selects only visible files. Filtering does not change the actual Index; Ordinary Commit selects all staged files by default; you may deselect files in the checklist.
+**Caution:** File menus and list bulk actions still operate on whole files. Filtering does not narrow the repository scope of the unified toolbar actions. Search file names or relative paths below the Working Tree summary, ignoring case; use the clear icon to restore all files. In split mode, group actions apply to the entire group without a filter, or only matching paths with a filter. Tooltips and confirmations show the scope, independently of the current selection. Use a file’s context menu to act on selected items. Ctrl/Cmd+A selects only visible files. Filtering does not change the actual Index; Ordinary Commit selects all staged files by default; you may deselect files in the checklist.
 
 <a id="section-03-03"></a>
 
@@ -237,7 +239,7 @@ Split-mode heading actions use the current file filter; unified-mode toolbar bul
 **Prerequisite:** At least one file is Staged, and you have prepared a commit message.
 
 1. Check each Staged file, including deletions and renames.
-2. Select Commit in the toolbar or Commit… in the Staged heading and enter a Commit Message in the dialog. Confirm the repository, branch, and file checklist (all staged files are selected by default; you may deselect files), then select Commit or press Ctrl/Cmd+Enter. Enter inserts a new line.
+2. Select Commit in the toolbar (split mode also offers Commit… in the Staged heading) and enter a Commit Message in the dialog. Confirm the repository, branch, and file checklist (all staged files are selected by default; you may deselect files), then select Commit or press Ctrl/Cmd+Enter. Enter inserts a new line.
 3. Click the new commit in History to verify the actual file list. Then return to Working Tree and check the remaining uncommitted changes.
 4. If Unstaged changes remain, continue editing or staging them for a separate commit.
 
@@ -284,9 +286,9 @@ In the unified list, Commit Selected… opens a checklist containing only the in
 
 **Prerequisite:** You have confirmed that you do not need the selected changes. Any content you need has been committed, saved in a Stash, or backed up elsewhere.
 
-1. Select the target files under Unstaged, right-click, and choose Discard….
+1. Select the target entries marked Unstaged, right-click, and choose Discard….
 2. Read the path list and discard explanation in the confirmation popover, checking each item. If a native VS Code Proceed confirmation follows, check again before continuing.
-3. Use Discard All… in the heading only when you intend to discard all Unstaged changes. Alternatively, right-click the graph's Working Tree node and choose Discard All Unstaged Changes… without opening the file list. Node actions ignore right-side path filters and selection.
+3. Use Discard All in the unified-mode top toolbar only when you intend to discard every Unstaged change in the repository. The split-mode Unstaged heading action affects the current filter matches. Alternatively, right-click the graph's Working Tree node and choose Discard All Unstaged Changes… without opening the file list. Node actions ignore right-side path filters and selection.
 4. After the operation, check the remaining Unstaged and Staged changes to confirm the scope of its effect.
 
 **Result:** The confirmed unstaged changes have been discarded. Content from the same file that was already in the Index should remain intact.
@@ -419,9 +421,11 @@ Pale red backgrounds and red stripes to the left of line numbers mark deletions;
 
 **Result:** Choose to inspect the entire Commit or the current file block by block. Adjacent changed lines form one contiguous block.
 
-**Caution:** Entire Commit includes files hidden by the path filter. The Diff title shows the actual path, and the file list identifies a hidden current file. Binary files and files without text change blocks are skipped but remain available for manual inspection. Read failures stop navigation and show an error. Text statistics and navigation cover the complete file, including changes after line 4000. Scroll to inspect all context. Resource limits produce an error rather than a partial comparison or a misleading zero-change count. Working Tree, Stash, and Commit comparisons still cycle within the current file.
+**Caution:** Entire Commit includes files hidden by the path filter. The Diff title shows the actual path, and the file list identifies a hidden current file. Binary files and files without text change blocks are skipped but remain available for manual inspection. Read failures stop navigation and show an error. Text statistics and navigation cover the complete file, including changes after line 4000. Scroll to inspect all context. Resource limits produce an error rather than a partial comparison or a misleading zero-change count. Working Tree, Stash, and Commit comparisons navigate within the current file, using the same notice-then-repeat boundary rule and immediate relocation for a single block.
 
 ![Figure 38 Diff settings with font, line height, code preview, and change navigation scope](images/user-manual/figure-38.png)
+
+![Figure 50 Floating notice at the first change: run Previous again to reach the last change in this Commit](images/user-manual/figure-50.png)
 
 <a id="file-history"></a>
 
@@ -972,7 +976,7 @@ Click list whitespace or press Esc to clear the blue selection while retaining a
 
 **Caution:** Groups organize the navigation only. They do not move directories on disk or combine the contents of different repositories.
 
-![Figure 06 The sample repository in learning labs (shown as AlwayGit in this older figure, now named AlwayGit-Demo) and the separate website repository entry](images/user-manual/figure-06.png)
+![Figure 06 AlwayGit-Demo in learning labs with its current-repository marker and blue action selection, plus the separate website repository entry](images/user-manual/figure-06.png)
 
 <a id="section-02-03"></a>
 
@@ -1107,7 +1111,7 @@ Double-click a terminal tab to rename it. The toolbar clears the display and off
 
 1. Click the gear in the upper-right corner to open settings.
 2. Choose a page in the General, Interface, Commit Graph, or Advanced category. The settings dialog keeps the same dimensions when switching categories. Long pages scroll in the right content area while the title and footer remain fixed. In smaller windows the dialog fits the available space, and category navigation scrolls independently.
-3. Interface → Text & density controls the interface font size and commit list density. Interface → File list controls split or unified display and file spacing. Interface → Diff groups the Diff font size, line height, row separators (off by default), and navigation scope with a code preview. Expand Detailed rules for navigation exceptions. Commit Graph → Display independently controls commit row separators and alternating row backgrounds, both off by default; selection, hover, and Working Tree indicators remain visible.
+3. Interface → Text & density controls the interface font size and commit list density. Interface → File list controls the default unified or optional split display and file spacing. Interface → Diff groups the Diff font size, line height, row separators (off by default), and navigation scope with a code preview. Expand Detailed rules for navigation exceptions. Commit Graph → Display independently controls commit row separators and alternating row backgrounds, both off by default; selection, hover, and Working Tree indicators remain visible.
 4. Click Apply to save. To discard unapplied changes, click Cancel, close settings, or press Esc.
 
 **Result:** Language, theme, colors, font sizes, density, shortcuts and reading preferences are saved in user settings and shared with other workbench windows in the same configuration environment. Cancel rolls back only this panel’s unapplied preview. Panel dimensions, browsing state and commit drafts are restored separately.

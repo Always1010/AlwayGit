@@ -43,7 +43,7 @@ export async function verifyHelp(browser, url) {
       await page.goto(url);
       await page.getByTestId('workbench').waitFor();
       if (active) {
-        await page.getByTestId('details').locator('.change-heading-staged').waitFor();
+        await page.getByTestId('details').getByRole('button', { name: 'notes.txt', exact: true }).waitFor();
         await page.getByRole('button', { name: 'notes.txt', exact: true }).click();
         await page.getByTestId('diff-preview').waitFor();
       } else await page.getByText('No repositories added', { exact: true }).waitFor();
