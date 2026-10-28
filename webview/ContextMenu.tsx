@@ -15,8 +15,14 @@ export function ContextMenu({ x, y, caption, items, anchor, close, className = '
     element.focus({ preventScroll: true });
     const outside = (event: PointerEvent) => { if (!element.contains(event.target as Node) && !(id && anchor.contains(event.target as Node))) close(); };
     const resize = () => close();
-    // Diff positioning and other panels' scrolling do not move this menu's source.
-    const scroll = (event: Event) => { if (event.target === document || event.target === window || event.target instanceof Element && event.target.contains(anchor)) close(); };
+    // A focus/scrollIntoView notification can arrive after the menu opens. Close
+    // only when scrolling actually moves its source from the opening position.
+    const sourceRect = anchor.getBoundingClientRect();
+    const scroll = (event: Event) => {
+      if (event.target !== document && event.target !== window && !(event.target instanceof Element && event.target.contains(anchor))) return;
+      const currentRect = anchor.getBoundingClientRect();
+      if (currentRect.left !== sourceRect.left || currentRect.top !== sourceRect.top) close();
+    };
     window.addEventListener('pointerdown', outside); window.addEventListener('resize', resize); window.addEventListener('scroll', scroll, true);
     return () => { window.removeEventListener('pointerdown', outside); window.removeEventListener('resize', resize); window.removeEventListener('scroll', scroll, true); if ((element.contains(document.activeElement)||document.activeElement===document.body) && previous?.isConnected) previous.focus({ preventScroll: true }); };
   }, [x, y, anchor, close, placement, id]);
