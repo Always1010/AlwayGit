@@ -30,7 +30,8 @@ describe('Git graph SVG rows', () => {
     expect(markup).toContain('Current HEAD. Selected commit.');
     expect(markup).toContain('data-head="true"');
     expect(markup).not.toContain('git-graph-head-ring');
-    expect(markup).toContain('var(--vscode-list-activeSelectionForeground, currentColor)');
+    expect(markup).not.toContain('var(--selected-fg,');
+    expect(markup).toContain('stroke-width="2"');
     expect(markup.match(/<circle/g)).toHaveLength(1);
   });
 
@@ -116,6 +117,8 @@ describe('Git graph SVG rows', () => {
     expect(connector).toContain(`data-path-id="${row.pathId}"`);
     expect(connector).toContain('stroke-width="4"');
     expect(markup).toContain('cx="27"');
+    const node = markup.match(/<circle\b[^>]*class="git-graph-node"[^>]*>/)![0];
+    expect(node.match(/stroke="([^"]+)"/)![1]).toBe(node.match(/fill="([^"]+)"/)![1]);
   });
 
   it('does not treat an additional edge to a main ancestor as a main edge', () => {

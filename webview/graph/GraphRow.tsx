@@ -124,7 +124,7 @@ export function GraphRow({ row, height = 26, laneWidth = GRAPH_LANE_WIDTH, width
           cy={nodeY}
           r={row.parents.length > 1 ? pushed ? 4.5 : 4 : pushed ? 3.5 : 3}
           fill={pushed ? nodeColor : 'var(--bg, var(--vscode-editor-background, Canvas))'}
-          stroke={selected ? 'var(--selected-fg, var(--vscode-list-activeSelectionForeground, currentColor))' : pushed ? 'var(--fg, var(--vscode-foreground, currentColor))' : nodeColor}
+          stroke={nodeColor}
           strokeWidth={selected ? 2 : pushed ? 1 : 2}
           opacity={hoveredPath && row.pathId !== hoveredPath ? .35 : 1}
           data-path-id={row.pathId}
