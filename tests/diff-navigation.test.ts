@@ -4,14 +4,14 @@ import { adjacentDiffFile, alignDiff, changeAtRow, changedRanges, remapChange, s
 describe('Diff change navigation', () => {
   it('wraps across files in both directions and skips files without text blocks', async () => {
     const counts=[2,0,0,3],controller=new AbortController(),count=async(index:number)=>counts[index];
-    expect(await adjacentDiffFile(4,0,1,count,controller.signal)).toEqual({fileIndex:3,changeIndex:0});
-    expect(await adjacentDiffFile(4,3,-1,count,controller.signal)).toEqual({fileIndex:0,changeIndex:1});
-    expect(await adjacentDiffFile(4,0,-1,count,controller.signal)).toEqual({fileIndex:3,changeIndex:2});
-    expect(await adjacentDiffFile(4,3,1,count,controller.signal)).toEqual({fileIndex:0,changeIndex:0});
+    expect(await adjacentDiffFile(4,0,1,count,controller.signal)).toEqual({fileIndex:3,changeIndex:0,wrapped:false});
+    expect(await adjacentDiffFile(4,3,-1,count,controller.signal)).toEqual({fileIndex:0,changeIndex:1,wrapped:false});
+    expect(await adjacentDiffFile(4,0,-1,count,controller.signal)).toEqual({fileIndex:3,changeIndex:2,wrapped:true});
+    expect(await adjacentDiffFile(4,3,1,count,controller.signal)).toEqual({fileIndex:0,changeIndex:0,wrapped:true});
     const visited:number[]=[];
     expect(await adjacentDiffFile(4,0,1,async index=>{visited.push(index);return 0;},controller.signal)).toBeUndefined();
     expect(visited).toEqual([1,2,3,0]);
-    expect(await adjacentDiffFile(1,0,-1,async()=>1,controller.signal)).toEqual({fileIndex:0,changeIndex:0});
+    expect(await adjacentDiffFile(1,0,-1,async()=>1,controller.signal)).toEqual({fileIndex:0,changeIndex:0,wrapped:true});
   });
 
   it('stops on read failure or cancellation without navigating using a stale response', async () => {

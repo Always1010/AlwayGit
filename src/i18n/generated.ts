@@ -1869,24 +1869,40 @@ export const catalog = {
     "zh-CN": "下一处修改"
   },
   "diff.previousChangeAcrossCommitFilesWrapsToTheLast": {
-    "en": "Previous change across Commit files (wraps to the last)",
-    "zh-CN": "上一处更改（跨提交文件，首处循环到末处）"
+    "en": "Previous change across Commit files (press again at the first to go to the last)",
+    "zh-CN": "上一处修改（跨 Commit 文件；在首处再次执行将跳转到末处）"
   },
   "diff.locateTheOnlyChange": {
     "en": "Locate the only change",
     "zh-CN": "定位唯一修改"
   },
   "diff.previousChangeWrapsToTheLast": {
-    "en": "Previous change (wraps to the last)",
-    "zh-CN": "上一处修改（从首处循环到末处）"
+    "en": "Previous change (press again at the first to go to the last)",
+    "zh-CN": "上一处修改（在首处再次执行将跳转到末处）"
   },
   "diff.nextChangeAcrossCommitFilesWrapsToTheFirst": {
-    "en": "Next change across Commit files (wraps to the first)",
-    "zh-CN": "下一处更改（跨提交文件，末处循环到首处）"
+    "en": "Next change across Commit files (press again at the last to go to the first)",
+    "zh-CN": "下一处修改（跨 Commit 文件；在末处再次执行将跳转到首处）"
   },
   "diff.nextChangeWrapsToTheFirst": {
-    "en": "Next change (wraps to the first)",
-    "zh-CN": "下一处修改（从末处循环到首处）"
+    "en": "Next change (press again at the last to go to the first)",
+    "zh-CN": "下一处修改（在末处再次执行将跳转到首处）"
+  },
+  "diff.fileFirstChangeReached": {
+    "en": "This is the first change in the current file. Run Previous change again to go to the last change.",
+    "zh-CN": "已到当前文件第一处修改；再次执行“上一处修改”将跳转到最后一处。"
+  },
+  "diff.fileLastChangeReached": {
+    "en": "This is the last change in the current file. Run Next change again to go to the first change.",
+    "zh-CN": "已到当前文件最后一处修改；再次执行“下一处修改”将跳转到第一处。"
+  },
+  "diff.commitFirstChangeReached": {
+    "en": "This is the first change in the current Commit. Run Previous change again to go to the last change in this Commit.",
+    "zh-CN": "已到当前 Commit 第一处修改；再次执行“上一处修改”将跳转到本 Commit 最后一处。"
+  },
+  "diff.commitLastChangeReached": {
+    "en": "This is the last change in the current Commit. Run Next change again to go to the first change in this Commit.",
+    "zh-CN": "已到当前 Commit 最后一处修改；再次执行“下一处修改”将跳转到本 Commit 第一处。"
   },
   "diff.changeBlocks": {
     "en": "Change blocks",
@@ -5808,24 +5824,24 @@ export const catalog = {
     "zh-CN": "当前文件"
   },
   "settings.navigateChangesAcrossAllFilesInTheCommitWrapping": {
-    "en": "Navigate changes across all files in the Commit, wrapping at either end.",
-    "zh-CN": "在整个提交的变更文件之间跳转，首尾循环。"
+    "en": "Navigate changes across all files in the Commit. At either end, run the same action again to wrap.",
+    "zh-CN": "在整个 Commit 的变更文件之间跳转；到达首尾后，再次执行同方向操作才循环。"
   },
   "settings.navigateChangesWithinTheCurrentFileWrappingAtEither": {
-    "en": "Navigate changes within the current file, wrapping at either end.",
-    "zh-CN": "在当前文件的修改之间跳转，首尾循环。"
+    "en": "Navigate changes within the current file. At either end, run the same action again to wrap.",
+    "zh-CN": "在当前文件的修改之间跳转；到达首尾后，再次执行同方向操作才循环。"
   },
   "settings.detailedRules": {
     "en": "Detailed rules",
     "zh-CN": "详细规则"
   },
   "settings.entireCommitFollowsTheChangedFileOrderNextMoves": {
-    "en": "Entire Commit follows the changed-file order. Next moves to the first change in the next file; Previous moves to the last change in the previous file. The first and last changes of the Commit wrap around.",
-    "zh-CN": "整个提交按更改文件顺序导航。下一处跨文件定位第一处更改，上一处跨文件定位最后一处更改，提交的首尾循环衔接。"
+    "en": "Entire Commit follows the changed-file order. Next moves to the first change in the next file; Previous moves to the last change in the previous file. At the first or last change of the Commit, run the same action again to wrap.",
+    "zh-CN": "整个 Commit 按变更文件顺序导航。下一处跨文件定位第一处修改，上一处跨文件定位最后一处修改；到达 Commit 首尾后，再次执行同方向操作才循环。"
   },
   "settings.navigatesAllFilesInTheCurrentCommitAndSelected": {
-    "en": "Navigates all files in the current Commit and selected Parent, including files hidden by the path filter. Binary files and files without text change blocks are skipped; text changes are calculated from complete file contents. Working Tree, Stash and comparisons continue to cycle within the current file.",
-    "zh-CN": "范围为当前提交和所选父提交的全部文件，包括路径筛选隐藏的文件。跳过二进制文件及没有文本更改块的文件；文本修改按完整文件计算。工作区、Stash 和提交比较仍在当前文件内循环。"
+    "en": "Navigates all files in the current Commit and selected Parent, including files hidden by the path filter. Binary files and files without text change blocks are skipped; text changes are calculated from complete file contents. Working Tree, Stash and comparisons stay within the current file and require the same action again before wrapping.",
+    "zh-CN": "范围为当前 Commit 和所选 Parent 的全部文件，包括路径筛选隐藏的文件。跳过二进制文件及没有文本修改块的文件；文本修改按完整文件计算。工作区、Stash 和 Commit 比较仍在当前文件内导航，首尾循环前同样需要再次执行同方向操作。"
   },
   "settings.allowDirectDetachedHEADCheckout": {
     "en": "Allow direct Detached HEAD Checkout",
@@ -7912,6 +7928,10 @@ export interface MessageParameters {
   "diff.previousChangeWrapsToTheLast": {  };
   "diff.nextChangeAcrossCommitFilesWrapsToTheFirst": {  };
   "diff.nextChangeWrapsToTheFirst": {  };
+  "diff.fileFirstChangeReached": {  };
+  "diff.fileLastChangeReached": {  };
+  "diff.commitFirstChangeReached": {  };
+  "diff.commitLastChangeReached": {  };
   "diff.changeBlocks": {  };
   "diff.preview": {  };
   "diff.file": {  };

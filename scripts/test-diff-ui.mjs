@@ -132,6 +132,19 @@ export async function verifyDiffNavigation(browser, url) {
     assert.ok(Math.abs((await diff.boundingBox()).height - expandedHeight) < 2, 'Expanded Diff restores its previous height');
     assert.equal(await diff.getByRole('button', { name: 'Previous change' }).isEnabled(), true);
     await diff.getByRole('button', { name: 'Previous change' }).click();
+    await count.getByText('1/3', { exact: true }).waitFor();
+    await diff.getByTestId('diff-navigation-boundary').getByText('This is the first change in the current file. Run Previous change again to go to the last change.', { exact: true }).waitFor();
+    await diff.getByRole('button', { name: 'Previous change' }).click();
+    await count.getByText('3/3', { exact: true }).waitFor();
+    await diff.getByRole('button', { name: 'Next change' }).click();
+    await count.getByText('3/3', { exact: true }).waitFor();
+    await diff.getByTestId('diff-navigation-boundary').getByText('This is the last change in the current file. Run Next change again to go to the first change.', { exact: true }).waitFor();
+    await diff.getByRole('button', { name: 'Previous change' }).click();
+    await count.getByText('2/3', { exact: true }).waitFor();
+    assert.equal(await diff.getByTestId('diff-navigation-boundary').count(), 0, 'The opposite direction clears the pending file wrap');
+    await diff.getByRole('button', { name: 'Next change' }).click();
+    await count.getByText('3/3', { exact: true }).waitFor();
+    await diff.getByRole('button', { name: 'Next change' }).click();
     await count.getByText('3/3', { exact: true }).waitFor();
     await diff.getByRole('button', { name: 'Next change' }).click();
     await count.getByText('1/3', { exact: true }).waitFor();
@@ -140,6 +153,11 @@ export async function verifyDiffNavigation(browser, url) {
     await diff.getByRole('button', { name: 'Next change' }).click();
     await count.getByText('3/3', { exact: true }).waitFor();
     assert.equal(await diff.getByRole('button', { name: 'Next change' }).isEnabled(), true);
+    await diff.getByRole('button', { name: 'Next change' }).click();
+    await diff.getByTestId('diff-navigation-boundary').waitFor();
+    await viewport.hover();
+    await page.mouse.wheel(0, 1);
+    await diff.getByTestId('diff-navigation-boundary').waitFor({ state: 'hidden' });
     const block = diff.locator('.active-change-start');
     const blockBox = await block.boundingBox(), viewportBox = await viewport.boundingBox();
     assert.ok(blockBox.y >= viewportBox.y && blockBox.y < viewportBox.y + viewportBox.height, 'Jump must reveal the current block');
@@ -260,7 +278,7 @@ export async function verifyDiffNavigation(browser, url) {
     await diff.getByRole('alert').getByText('Read failed',{exact:true}).waitFor();
     assert.equal(await count.innerText(),'—','A failed complete comparison must not report zero changes');
     assert.deepEqual(errors, []);
-    console.log('ALWAYGIT_DIFF_UI_TESTS_PASSED: initial reveal, cyclic/single-change navigation, tall blocks, collapse/restore, type summary, scrolling, refresh remap, complete tail changes, paging and scaled scrolling');
+    console.log('ALWAYGIT_DIFF_UI_TESTS_PASSED: initial reveal, boundary confirmation/single-change navigation, tall blocks, collapse/restore, type summary, scrolling, refresh remap, complete tail changes, paging and scaled scrolling');
   } finally { await page.close(); }
   await verifyCommitNavigation(browser, url);
   await verifyImagePreview(browser, url);
@@ -387,12 +405,18 @@ export async function verifyCommitNavigation(browser, url) {
       return page.getByRole('dialog', { name: 'Settings' });
     };
     await expectCount('File 1/6 · Change 1/3');
+    await diff.getByRole('button', { name: 'Previous change' }).click();
+    await expectCount('File 1/6 · Change 1/3');
+    await diff.getByTestId('diff-navigation-boundary').getByText('This is the first change in the current Commit. Run Previous change again to go to the last change in this Commit.', { exact: true }).waitFor();
     await step(-1, 'File 6/6 · Change 2/2');
     await page.waitForFunction(() => {
       const block = document.querySelector('.active-change-start'), viewport = document.querySelector('.diff-viewport');
       if (!block) return false;
       return block.querySelector('.line-number').textContent === '96' && block.getBoundingClientRect().y >= viewport.getBoundingClientRect().y && block.getBoundingClientRect().bottom <= viewport.getBoundingClientRect().bottom;
     });
+    await diff.getByRole('button', { name: 'Next change' }).click();
+    await expectCount('File 6/6 · Change 2/2');
+    await diff.getByTestId('diff-navigation-boundary').getByText('This is the last change in the current Commit. Run Next change again to go to the first change in this Commit.', { exact: true }).waitFor();
     await step(1, 'File 1/6 · Change 1/3');
     await step(1, 'File 1/6 · Change 2/3');
     await step(1, 'File 1/6 · Change 3/3');
@@ -411,6 +435,8 @@ export async function verifyCommitNavigation(browser, url) {
     await step(1, 'File 5/6 · Change 1/1');
     await step(1, 'File 6/6 · Change 1/2');
     await step(1, 'File 6/6 · Change 2/2');
+    await diff.getByRole('button', { name: 'Next change' }).click();
+    await expectCount('File 6/6 · Change 2/2');
     await step(1, 'File 1/6 · Change 1/3');
     await details.getByRole('button', { name: 'binary.bin', exact: true }).click();
     await expectCount('File 3/6 · Change 0/0');
@@ -446,6 +472,7 @@ export async function verifyCommitNavigation(browser, url) {
     await page.reload();
     await expectCount('1/1');
     await step(1, '1/1');
+    assert.equal(await diff.getByTestId('diff-navigation-boundary').count(), 0, 'A single change relocates immediately without arming a wrap');
     assert.ok(await details.locator('.file-item[aria-current="true"]').getByRole('button', { name: 'large.txt', exact: true }).count());
     dialog = await settings();
     assert.equal(await dialog.getByLabel('Diff navigation scope').inputValue(), 'file');
@@ -459,7 +486,7 @@ export async function verifyCommitNavigation(browser, url) {
     await page.waitForFunction(() => [...document.querySelectorAll('.diff-preview button')].filter(button => ['Previous change', 'Next change'].includes(button.getAttribute('aria-label'))).every(button => button.disabled) && !document.querySelector('.diff-viewport [role="status"]'));
     assert.equal(await count.innerText(), 'File 2/6 · Change 0/0');
     assert.deepEqual(errors, []);
-    console.log('ALWAYGIT_COMMIT_DIFF_UI_TESTS_PASSED: cross-file wrap, reverse landing, rename/parent, filtering, binary/empty files, read failures, cancellation and saved scope');
+    console.log('ALWAYGIT_COMMIT_DIFF_UI_TESTS_PASSED: cross-file boundary confirmation, reverse landing, rename/parent, filtering, binary/empty files, read failures, cancellation and saved scope');
   } finally { await page.close(); }
 }
 
