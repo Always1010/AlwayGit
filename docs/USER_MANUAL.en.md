@@ -8,7 +8,7 @@ Select More actions → Help & Guide, with its question-mark icon, in the upper-
 
 <a id="screenshot-notes"></a>
 
-**About the screenshots:** Shared figures were captured on 2026-10-24 from the 1.8.0 source build. They show the actual Workbench components with an English interface, the default theme's white appearance on a light host, and sample repository data; the language page previews Chinese. Sample RPC responses supply repository, Git-operation, and terminal states, so these images do not establish real-host validation of remotes, authentication, or native Git operations. The narrow sidebar figure demonstrates region navigation at that viewport size. Images exclude native VS Code chrome, native confirmation dialogs, and system folder pickers. The toolbar file action is now named Open File in VS Code; its icon position remains as shown in the older figures. Your project names, paths, and Commit IDs may differ. See [Validation](VALIDATION.en.md#manual-screenshots) for the capture process and verification scope.
+**About the screenshots:** Shared figures were captured on 2026-10-24 from the 1.8.0 source build. They show the actual Workbench components with an English interface, the default theme's white appearance on a light host, and sample repository data; the language page previews Chinese. The main sample repository is now named `AlwayGit-Demo`; the existing screenshots have not yet been updated and still show `AlwayGit` and the original sample paths. The repositories, authors, Commit IDs, history, and operation states are constructed demo data, not records from the real AlwayGit project. Sample RPC responses supply repository, Git-operation, and terminal states, so these images do not establish real-host validation of remotes, authentication, or native Git operations. The narrow sidebar figure demonstrates region navigation at that viewport size. Images exclude native VS Code chrome, native confirmation dialogs, and system folder pickers. The toolbar file action is now named Open File in VS Code; its icon position remains as shown in the older figures. Your project names, paths, and Commit IDs may differ. See [Validation](VALIDATION.en.md#manual-screenshots) for the capture process and verification scope.
 
 ## Read by task
 
@@ -972,7 +972,7 @@ Click list whitespace or press Esc to clear the blue selection while retaining a
 
 **Caution:** Groups organize the navigation only. They do not move directories on disk or combine the contents of different repositories.
 
-![Figure 06 AlwayGit in the learning labs group and the separate website repository entry](images/user-manual/figure-06.png)
+![Figure 06 The sample repository in learning labs (shown as AlwayGit in this older figure, now named AlwayGit-Demo) and the separate website repository entry](images/user-manual/figure-06.png)
 
 <a id="section-02-03"></a>
 

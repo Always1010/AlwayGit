@@ -16,7 +16,7 @@ const rebasePlans=new Map<string,RebasePlan>();
 const rebaseRecoveries:{ref:string;oid:string}[]=[];
 const discardPlans = new Map<string, DiscardPlan>();
 const terminals = new Map<string, TerminalSnapshot>();
-const repo: Repository = { id: 'demo-alwaygit', root: 'D:\\Projects\\AlwayGit', commonDir: 'D:\\Projects\\AlwayGit\\.git', name: 'AlwayGit' };
+const repo: Repository = { id: 'demo-alwaygit', root: 'D:\\Examples\\AlwayGit-Demo', commonDir: 'D:\\Examples\\AlwayGit-Demo\\.git', name: 'AlwayGit-Demo' };
 const subjects = ['Polish repository workbench interactions', 'Add native diff integration', 'Merge branch feature/history-graph', 'Render commit graph with stable lanes', 'Keep commit drafts when switching repositories', 'Handle renamed files in changes', 'Improve keyboard navigation', 'Add worktree discovery', 'Show upstream tracking status', 'Update development dependencies', 'Fix status refresh after checkout', 'Introduce Git operation progress'];
 const authors = ['Alex Chen', 'Morgan Lee', 'Sam Rivera', 'Jamie Park'];
 const oid = (n: number) => (0x9a73ed + n * 98761).toString(16).padStart(8, '0') + 'c42d9918a6bc5e4791033ad7e6f202cc';
@@ -37,8 +37,8 @@ let demoSnapshot: Snapshot = { repository: repo, branch: 'main', head: commits[0
   { name: 'origin/feature/checkout', fullName: 'refs/remotes/origin/feature/checkout', kind: 'remote', oid: commits[7].oid },
   { name: 'origin/feature/subtree/api', fullName: 'refs/remotes/origin/feature/subtree/api', kind: 'remote', oid: commits[8].oid },
   { name: 'v0.1.0', fullName: 'refs/tags/v0.1.0', kind: 'tag', oid: commits[14].oid, refOid: commits[14].oid },
-], stashes: [{ selector: 'stash@{0}', oid: commits[9].oid, subject: 'WIP: repository picker styling' }], worktrees: [{ path: repo.root, head: commits[0].oid, branch: 'refs/heads/main', bare: false, detached: false }, { path: 'D:\\Projects\\AlwayGit-graph', head: commits[3].oid, branch: 'refs/heads/feature/history-graph', bare: false, detached: false }], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 1 };
-const website:Repository={id:'demo-website',root:'D:\\Projects\\website',commonDir:'D:\\Projects\\website\\.git',name:'website'};
+], stashes: [{ selector: 'stash@{0}', oid: commits[9].oid, subject: 'WIP: repository picker styling' }], worktrees: [{ path: repo.root, head: commits[0].oid, branch: 'refs/heads/main', bare: false, detached: false }, { path: repo.root+'-graph', head: commits[3].oid, branch: 'refs/heads/feature/history-graph', bare: false, detached: false }], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 1 };
+const website:Repository={id:'demo-website',root:'D:\\Examples\\website',commonDir:'D:\\Examples\\website\\.git',name:'website'};
 const publishedTags = new Map<string, Record<string, string>>();
 const demoStores:Record<string,{snapshot:Snapshot;commits:Commit[];saved:Map<string,Snapshot['changes']>}>=Object.fromEntries([repo,website].map(repository=>[
   repository.id,
@@ -144,8 +144,8 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
     return update.scope === 'user' ? { ...demoUserOperationSettings, workspaceAvailable: true, overridden: demoWorkspaceOverrides } : effectiveDemoOperationSettings();
   }
   if (method === 'repositories') return [repo,website];
-  if(method==='pickRepositoryDirectory')return 'D:\\Projects';
-  if(method==='discoverRepositories'){const scanId=(payload as {scanId:string}).scanId;return {scanId,root:'D:\\Projects',scanned:8,found:3,cancelled:false,candidates:[{key:'demo-existing',name:'AlwayGit',path:repo.root,existing:true},{key:'demo-notes',name:'NotesAnywhere',path:'D:\\Projects\\NotesAnywhere',existing:false},{key:'demo-resume',name:'SwiftResume',path:'D:\\Projects\\SwiftResume',existing:false}],issues:[]};}
+  if(method==='pickRepositoryDirectory')return 'D:\\Examples';
+  if(method==='discoverRepositories'){const scanId=(payload as {scanId:string}).scanId;return {scanId,root:'D:\\Examples',scanned:8,found:3,cancelled:false,candidates:[{key:'demo-existing',name:repo.name,path:repo.root,existing:true},{key:'demo-notes',name:'NotesAnywhere',path:'D:\\Examples\\NotesAnywhere',existing:false},{key:'demo-resume',name:'SwiftResume',path:'D:\\Examples\\SwiftResume',existing:false}],issues:[]};}
   if(method==='cancelRepositoryDiscovery')return null;
   if(method==='addRepository')return {added:2,existing:0,skipped:0};
   if(method==='repositoryCollections')return demoCollections;
@@ -213,7 +213,7 @@ async function demoRequest(method: RpcRequest['method'], payload: unknown, repoI
     return {head:demoSnapshot.head,branch:demoSnapshot.branch,included:selected.filter(oid=>included.has(oid))};
   }
   if (method === 'operationReview') return { kind: demoSnapshot.operation.kind, token: `demo-${demoSnapshot.version}`, files: demoSnapshot.changes.filter(file=>file.indexStatus!==' '&&!file.untracked).map(file=>({path:file.path,lines:[]})) };
-  if (method === 'pickWorktree') return 'D:\\Projects\\AlwayGit-new';
+  if (method === 'pickWorktree') return repo.root+'-new';
   if(method==='diffPreview'||method==='isolatedDiffPreview'){const target=payload as {path:string;kind:string;area?:string;oid?:string;parent?:string;left?:string;right?:string};return {kind:'text',path:target.path,leftLabel:target.kind==='comparison'?target.left?.slice(0,8):target.kind==='commit'?'Parent '+(target.parent??'').slice(0,8):target.area==='staged'?'HEAD':'Index',rightLabel:target.kind==='comparison'?target.right?.slice(0,8):target.kind==='commit'?target.oid?.slice(0,8):target.area==='staged'?'Index':'Working Tree',left:'export function Workbench() {\n  return <HistoryPanel />;\n}\n',right:'export function Workbench() {\n  return (\n    <WorkbenchLayout>\n      <HistoryPanel />\n      <CommitDetails />\n    </WorkbenchLayout>\n  );\n}\n'};}
   if(method==='copyText'){const {text}=payload as {text:string};if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(text);else throw new Error('Clipboard is unavailable in this browser.');return null;}
   if (method === 'action') {
