@@ -25,6 +25,24 @@ async function verifyFileSelectionPreview(page, list, screenshotPath) {
     assert.equal(await first.getAttribute('aria-current'), 'true', 'The preview marker stays on the viewed file');
     assert.equal(await previewReads(), reads, 'Batch selection must not fetch another Diff');
   };
+  const outlined = row => row.evaluate(element => getComputedStyle(element).outlineStyle !== 'none');
+  const listBox = await list.boundingBox();
+  await list.click({ position: { x: listBox.width - 2, y: listBox.height - 2 } });
+  assert.equal(await selectedCount(), 0, 'Empty file-list space clears operation selection');
+  assert.equal(await first.locator('.file-name').evaluate(element => element === document.activeElement), true);
+  assert.equal(await outlined(first), true, 'Deselection retains only the real row focus outline');
+  await unchanged();
+  await heading.click();
+  assert.equal(await outlined(first), false, 'Leaving the file area removes the focus outline');
+  await unchanged();
+  await click(first); await click(second, ['Control']);
+  await heading.click();
+  assert.equal(await selectedCount(), 0, 'Leaving the file area also clears a bulk selection');
+  await unchanged();
+  // Icon and row padding clicks belong to the file, not to empty list space.
+  await first.locator('.file-status').click();
+  assert.equal(await selectedCount(), 1);
+  await unchanged();
   await click(second, ['Control']);
   assert.equal(await selectedCount(), 2);
   assert.equal(await second.getAttribute('aria-current'), null);
@@ -59,7 +77,19 @@ async function verifyFileSelectionPreview(page, list, screenshotPath) {
   await unchanged();
   await page.keyboard.press('Escape');
   assert.equal(await selectedCount(), 0);
+  assert.equal(await outlined(second), true, 'Escape retains keyboard focus independently of selection');
   await unchanged();
+  await click(first); await click(second, ['Control']);
+  await second.locator('.file-status').click({ button: 'right' });
+  const menu = page.getByRole('menu');
+  await menu.waitFor();
+  assert.equal(await selectedCount(), 2, 'File context menus retain the complete multi-selection');
+  assert.equal(await menu.evaluate(element=>element.contains(document.activeElement)),true,'File menu owns keyboard focus');
+  await page.keyboard.press('Escape');
+  assert.equal(await selectedCount(), 2);
+  assert.equal(await second.locator('.file-name').evaluate(element => element === document.activeElement), true, 'Closing the file menu restores focus to its row');
+  // Right-click retains the existing preview behavior; restore the fixture's preview before checking it.
+  await click(first);
   await click(second);
   assert.equal(await selectedCount(), 1);
   assert.equal(await second.getAttribute('aria-current'), 'true', 'An ordinary click switches the preview');
@@ -87,7 +117,7 @@ export async function verifyFiles(browser, url) {
         }
         let result;
         if (request.method === 'interfaceSettings' || request.method === 'saveInterfaceSettings') {
-          const preferences = JSON.parse(localStorage.getItem('files-preferences') || '{}');
+          const preferences = JSON.parse(localStorage.getItem('files-preferences') || '{"changeListMode":"split"}');
           result = request.method === 'saveInterfaceSettings' ? { ...preferences, ...request.payload } : preferences;
           if (request.method === 'saveInterfaceSettings') localStorage.setItem('files-preferences', JSON.stringify(result));
         }
@@ -110,10 +140,10 @@ export async function verifyFiles(browser, url) {
           result = fixture.discardPlan;
         }
         if (request.method === 'history') result = { commits: [commit, parent], tips: [commit.oid], nextOffset: 2, hasMore: false };
-        if (request.method === 'details') result = { commit: request.payload.oid === parent.oid ? parent : commit, body: '', files: paths.map(path => ({ path, status: 'M' })) };
+        if (request.method === 'details' || request.method === 'amendDetails') result = { commit: request.payload.oid === parent.oid ? parent : commit, body: '', files: paths.map(path => ({ path, status: 'M' })) };
         if (request.method === 'compare') result = { left: parent, right: commit, files: paths.map(path => ({ path, status: 'M' })) };
         if (request.method === 'diffPreview') result = { kind: 'text', path: request.payload.path, leftLabel: 'Before', rightLabel: 'After', left: 'before', right: 'after' };
-        if (request.method === 'details' && fixture.holdDetails) { fixture.heldDetails.push({ type: 'response', id: request.id, result }); return; }
+        if (request.method === 'amendDetails' && fixture.holdDetails) { fixture.heldDetails.push({ type: 'response', id: request.id, result }); return; }
         setTimeout(() => window.postMessage({ type: 'response', id: request.id, result }, '*'), 10);
       } });
     });
@@ -166,7 +196,7 @@ export async function verifyFiles(browser, url) {
     await panel.getByRole('button', { name: 'README.md', exact: true }).click({ button: 'right' });
     const menu = page.getByTestId('context-menu');
     await menu.waitFor();
-    assert.deepEqual((await menu.getByRole('menuitem').allTextContents()).map(value=>value.trim()), ['Open Diff in VS Code','Open File in VS Code','Show File History','Copy Path']);
+    assert.deepEqual((await menu.getByRole('menuitem').allTextContents()).map(value=>value.trim()), ['Git LFS','Open Diff in VS Code','Open File in VS Code','Show File History','Copy Path']);
     await menu.getByRole('menuitem', { name: 'Copy Path', exact: true }).click();
     await page.waitForFunction(() => window.__filesFixture.calls.filter(call => call.method === 'copyText').length === 3);
     assert.equal(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'copyText').at(-1).payload.text), 'README.md');
@@ -273,6 +303,8 @@ export async function verifyFiles(browser, url) {
     await page.getByRole('separator', { name: 'Resize details panel', exact: true }).press('Home');
     const headingBox = await staged.locator('.change-heading').boundingBox(), triggerBox = await commitTrigger.boundingBox();
     assert.ok(triggerBox.x + triggerBox.width <= headingBox.x + headingBox.width + 1, 'Commit fits the narrowest details panel');
+    assert.equal(await groups.locator('.change-file[aria-selected="true"]').count(), 0, 'Moving keyboard focus to the panel divider clears file selection');
+    await unstaged.getByRole('button', { name: 'README.md', exact: true }).click();
     await commitTrigger.click();
     const commitDialog = page.getByRole('dialog', { name: 'Commit', exact: true }), draft = commitDialog.getByRole('textbox', { name: 'Commit message' });
     await draft.fill('saved draft\nwith body');
@@ -306,7 +338,7 @@ export async function verifyFiles(browser, url) {
     assert.equal(await groups.locator('.change-file[aria-selected="true"]').count(), 1, 'Editing Ctrl+A must not change file selection');
     await unstaged.getByRole('button', { name: 'README.md', exact: true }).click({ button: 'right' });
     await menu.waitFor();
-    assert.deepEqual((await menu.getByRole('menuitem').allTextContents()).map(value=>value.trim()), ['Open Diff in VS Code','Open File in VS Code','Show File History','Stage 1 File','Stash Selected Files…','Discard 1 File…','Copy Path']);
+    assert.deepEqual((await menu.getByRole('menuitem').allTextContents()).map(value=>value.trim()), ['Git LFS','Open Diff in VS Code','Open File in VS Code','Show File History','Stage 1 File','Stash Selected Files…','Discard 1 File…','Copy Path']);
     await page.keyboard.press('Escape');
     await commitTrigger.click(); await draft.click({ button: 'right' });
     assert.equal(await menu.isVisible(), false, 'Editable text keeps the native context menu');

@@ -1264,7 +1264,7 @@ D, E, [, ], and \ are available only while the Diff tab is active. Terminal inpu
 
 Select all in the sidebar makes the focused scope the sole action-selection scope. Escape clears that scope without activating another. Branch action selection is independent of Graph ref checkboxes, so these keys do not change history filters.
 
-In file lists, an ordinary click selects only that entry and switches the bottom Diff. Ctrl/Cmd-click, Shift-click, and Ctrl/Cmd+Shift-click only change the selection; Ctrl/Cmd+A and Escape also keep the current Diff. Row backgrounds indicate operation selection and clear immediately when deselected. A small dot beside the file icon marks the version currently being previewed; keyboard focus uses a thin outline.
+In file lists, an ordinary click selects only that entry and switches the bottom Diff. Ctrl/Cmd-click, Shift-click, and Ctrl/Cmd+Shift-click only change the selection; Ctrl/Cmd+A and Escape also keep the current Diff. Row backgrounds indicate operation selection and clear immediately when deselected. A small dot beside the file icon marks the version currently being previewed; keyboard focus uses a thin outline. Click whitespace in Changed Files to clear selection while retaining the thin focus outline; move to Diff, History, or another region to remove the outline too. These actions retain the current Diff and its small preview marker. File icons and row padding also select the file. Path filters, Copy Paths, and context menus retain the selection needed for their actions.
 
 <a id="shortcut-settings"></a>
 

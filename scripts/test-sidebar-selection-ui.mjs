@@ -76,6 +76,12 @@ export async function verifySidebarSelection(browser, url) {
     assert.equal(await count(), 1, 'Reorder controls retain their operation context');
     await page.getByTestId('workbench').focus();
     assert.equal(await count(), 0);
+    await page.setViewportSize({width:1440,height:420});
+    await otherButton.click({button:'right'});
+    await menu.waitFor();
+    await sidebar.evaluate(element=>{element.scrollTop+=50;});
+    await menu.waitFor({state:'hidden'});
+    assert.equal(await count(),1,'Scrolling moves the menu source and closes its menu without discarding selection');
     assert.deepEqual(errors, []);
     console.log('ALWAYGIT_SIDEBAR_SELECTION_UI_TESTS_PASSED');
   } finally { await page.close(); }
