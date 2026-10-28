@@ -140,6 +140,12 @@ export async function verifyHistoryRows(page) {
   const working = history.locator('[data-working-tree]'), head = history.locator('[data-head-commit="true"]').first();
   await working.waitFor();
   await head.waitFor();
+  const mergeNode = third.locator('.git-graph-node'), topicNodes = [rows.nth(3).locator('.git-graph-node'), rows.nth(4).locator('.git-graph-node')];
+  const mainX = Number(await mergeNode.getAttribute('cx'));
+  for (const node of topicNodes) {
+    assert.equal(Number(await node.getAttribute('cx')) - mainX, 18, 'Topic commits must occupy a clearly separated side lane');
+    assert.notEqual(await node.getAttribute('fill'), await mergeNode.getAttribute('fill'), 'Topic nodes must retain their branch color');
+  }
   assert.ok(await working.locator('svg[data-working="true"] .git-graph-working-node').count(), 'Working Tree must use a distinct graph node');
   assert.equal(await head.locator('.git-graph-head-ring').count(),0,'HEAD must use the same graph node as other commits');
   assert.equal(await head.locator('.ref-badge.current').count(),0,'Current branch must not use a special green badge');
@@ -264,6 +270,7 @@ async function verifyDetachedHeadPolicy(page) {
     await page.getByRole('button',{name:'Settings',exact:true}).click();
     const dialog = page.getByRole('dialog',{name:'Settings',exact:true});
     await dialog.getByRole('button',{name:'Git operations',exact:true}).click();
+    await dialog.getByRole('combobox',{name:'Save scope',exact:true}).selectOption('workspace');
     return dialog;
   };
   let dialog = await settings();

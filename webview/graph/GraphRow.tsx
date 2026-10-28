@@ -3,6 +3,8 @@ import { useId } from 'react';
 import type { GraphLayoutRow, GraphSegment } from './layout';
 import { getGraphPalette, type GraphPaletteId } from './palettes';
 
+export const GRAPH_LANE_WIDTH = 18;
+
 export interface GraphRowProps {
   row: GraphLayoutRow;
   height?: number;
@@ -17,7 +19,8 @@ export interface GraphRowProps {
   working?: boolean;
   /** Edges in a file history can skip commits hidden by the file filter. */
   compressed?: boolean;
-  mainTargets?: ReadonlySet<string>;
+  /** First-parent edges of the default branch, keyed by child commit. */
+  mainParents?: ReadonlyMap<string, string>;
   paletteId?: GraphPaletteId;
   paletteSize?: number;
   hoveredPath?: string;
@@ -35,7 +38,7 @@ function pathFor(segment: GraphSegment, height: number, laneWidth: number): stri
 }
 
 /** A complete, independently renderable row for a fixed-height history table. */
-export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false, selected = false, main = false, pushed = true, working = false, compressed = false, mainTargets, paletteId = 'vivid', paletteSize, hoveredPath, onHoverPath }: GraphRowProps) {
+export function GraphRow({ row, height = 26, laneWidth = GRAPH_LANE_WIDTH, width, head = false, selected = false, main = false, pushed = true, working = false, compressed = false, mainParents, paletteId = 'vivid', paletteSize, hoveredPath, onHoverPath }: GraphRowProps) {
   const titleId = useId();
   const palette = getGraphPalette(paletteId);
   const colorFor = (index: number) => {
@@ -70,7 +73,7 @@ export function GraphRow({ row, height = 26, laneWidth = 16, width, head = false
     >
       <title id={titleId}>{label}</title>
       {row.segments.map((segment, index) => {
-        const mainSegment=mainTargets?.has(segment.target)??false;
+        const mainSegment=mainParents?.get(segment.source)===segment.target;
         const highlighted=!!hoveredPath&&segment.pathId===hoveredPath;
         return (
         <path
