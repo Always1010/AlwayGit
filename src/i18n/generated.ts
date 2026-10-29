@@ -6947,8 +6947,8 @@ export const catalog = {
     "zh-CN": "没有匹配的路径"
   },
   "tree.emptyTree": {
-    "en": "This Commit has an empty tree",
-    "zh-CN": "此提交的文件树为空"
+    "en": "This Commit has an empty tree.",
+    "zh-CN": "此提交的文件树为空。"
   },
   "tree.loading": {
     "en": "Loading repository tree…",
@@ -6983,8 +6983,88 @@ export const catalog = {
     "zh-CN": "复制对象 ID"
   },
   "tree.browseRepositoryTree": {
-    "en": "Browse Repository Tree",
-    "zh-CN": "浏览此提交的仓库文件树"
+    "en": "Browse Commit Tree",
+    "zh-CN": "查看提交文件树"
+  },
+  "tree.panelTitle": {
+    "en": "Tree · {{oid}} · AlwayGit",
+    "zh-CN": "文件树 · {{oid}} · AlwayGit"
+  },
+  "tree.fixedPanel": {
+    "en": "This tree tab is read-only and bound to one repository and Commit.",
+    "zh-CN": "此文件树标签页为只读，并固定绑定一个仓库和提交。"
+  },
+  "tree.snapshotTitle": {
+    "en": "Commit snapshot",
+    "zh-CN": "提交快照"
+  },
+  "tree.copyCommitId": {
+    "en": "Copy Commit ID",
+    "zh-CN": "复制提交 ID"
+  },
+  "tree.expandAll": {
+    "en": "Expand all directories",
+    "zh-CN": "展开全部目录"
+  },
+  "tree.collapseAll": {
+    "en": "Collapse all directories",
+    "zh-CN": "折叠全部目录"
+  },
+  "tree.togglePreview": {
+    "en": "Show or hide file preview",
+    "zh-CN": "显示或隐藏文件预览"
+  },
+  "tree.closePreview": {
+    "en": "Close file preview",
+    "zh-CN": "关闭文件预览"
+  },
+  "tree.snapshotCount": {
+    "en": "Snapshot: {{files}} files · {{submodules}} submodules",
+    "zh-CN": "快照：{{files}} 个文件 · {{submodules}} 个子模块"
+  },
+  "tree.indexing": {
+    "en": "Loading the complete snapshot and counting files…",
+    "zh-CN": "正在加载完整快照并统计文件…"
+  },
+  "tree.indexIncomplete": {
+    "en": "Full index incomplete; directories remain browsable.",
+    "zh-CN": "完整索引尚未完成，仍可逐级浏览目录。"
+  },
+  "tree.indexCancelled": {
+    "en": "Full snapshot loading cancelled. Retry to search all paths and count files.",
+    "zh-CN": "已取消完整快照加载。重试后可搜索全部路径并统计文件。"
+  },
+  "tree.cancelLoading": {
+    "en": "Cancel full snapshot loading",
+    "zh-CN": "取消完整快照加载"
+  },
+  "tree.expanding": {
+    "en": "Expanding: {{count}} directories",
+    "zh-CN": "正在展开：{{count}} 个目录"
+  },
+  "tree.cancelExpand": {
+    "en": "Stop expanding",
+    "zh-CN": "停止展开"
+  },
+  "tree.retry": {
+    "en": "Retry loading",
+    "zh-CN": "重试加载"
+  },
+  "tree.emptyFile": {
+    "en": "(empty file)",
+    "zh-CN": "（空文件）"
+  },
+  "tree.submodulePointer": {
+    "en": "Recorded submodule Commit:",
+    "zh-CN": "记录的子模块提交："
+  },
+  "tree.unavailablePreview": {
+    "en": "Preview unavailable ({{reason}}).",
+    "zh-CN": "无法预览（{{reason}}）。"
+  },
+  "tree.noMatches": {
+    "en": "No matching paths.",
+    "zh-CN": "没有匹配的路径。"
   },
   "validation.checkoutRequiresExactlyOneBranch": {
     "en": "Checkout requires exactly one branch",
@@ -9203,6 +9283,26 @@ export interface MessageParameters {
   "tree.compareWithWorkingTree": {  };
   "tree.copyObjectId": {  };
   "tree.browseRepositoryTree": {  };
+  "tree.panelTitle": { oid: ParameterValue };
+  "tree.fixedPanel": {  };
+  "tree.snapshotTitle": {  };
+  "tree.copyCommitId": {  };
+  "tree.expandAll": {  };
+  "tree.collapseAll": {  };
+  "tree.togglePreview": {  };
+  "tree.closePreview": {  };
+  "tree.snapshotCount": { files: ParameterValue; submodules: ParameterValue };
+  "tree.indexing": {  };
+  "tree.indexIncomplete": {  };
+  "tree.indexCancelled": {  };
+  "tree.cancelLoading": {  };
+  "tree.expanding": { count: number };
+  "tree.cancelExpand": {  };
+  "tree.retry": {  };
+  "tree.emptyFile": {  };
+  "tree.submodulePointer": {  };
+  "tree.unavailablePreview": { reason: ParameterValue };
+  "tree.noMatches": {  };
   "validation.checkoutRequiresExactlyOneBranch": {  };
   "validation.stashRequiresCheckout": {  };
   "validation.chooseAnExistingGroupOrCreateANewOne": {  };

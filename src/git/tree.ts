@@ -34,7 +34,7 @@ function parseRecord(bytes: Buffer, prefix = ''): RevisionTreeEntry {
   const name = record.slice(separator + 1);
   const mode = match[1], gitType = match[2], oid = match[3], rawSize = match[4];
   const type = mode === '160000' ? 'gitlink' : mode === '120000' ? 'symlink' : gitType === 'tree' ? 'tree' : 'blob';
-  return { name, path: prefix ? `${prefix}/${name}` : name, mode, oid, type, ...(rawSize === '-' ? {} : { size: Number(rawSize) }) };
+  return { name: path.posix.basename(name), path: prefix ? `${prefix}/${name}` : name, mode, oid, type, ...(rawSize === '-' ? {} : { size: Number(rawSize) }) };
 }
 
 function parseEntries(output: Buffer, prefix = ''): RevisionTreeEntry[] {
@@ -54,6 +54,22 @@ export class RevisionTreeReader {
   async list(repo: Repository, request: RevisionTreeRequest): Promise<RevisionTreeListing> {
     const revision = await this.resolveCommit(repo, fixedRevision(request.revision)), selectedPath = treePath(request.path);
     const treeish = selectedPath ? `${revision}:${selectedPath}` : revision;
+    if (request.recursive) {
+      const entries: RevisionTreeEntry[] = [];
+      let remainder = Buffer.alloc(0);
+      await this.run(repo, ['ls-tree', '-r', '-t', '-z', '-l', treeish], { onStdout(chunk) {
+        const buffer = remainder.length ? Buffer.concat([remainder, chunk]) : chunk;
+        let start = 0;
+        for (let end = buffer.indexOf(0, start); end >= 0; end = buffer.indexOf(0, start)) {
+          if (end > start) entries.push(parseRecord(buffer.subarray(start, end), selectedPath));
+          start = end + 1;
+        }
+        remainder = start === buffer.length ? Buffer.alloc(0) : Buffer.from(buffer.subarray(start));
+        if (remainder.length > 1024 * 1024) throw new GitError(localizeMessage('tree.malformedOutput'), 'PARSE_ERROR');
+      } });
+      if (remainder.length) throw new GitError(localizeMessage('tree.malformedOutput'), 'PARSE_ERROR');
+      return { revision, path: selectedPath, entries };
+    }
     const output = await this.run(repo, ['ls-tree', '-z', '-l', treeish]);
     return { revision, path: selectedPath, entries: parseEntries(output.stdout, selectedPath) };
   }

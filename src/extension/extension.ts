@@ -1,3 +1,4 @@
+import { commitTreePanelStateSchema } from '../protocol/tree';
 import { hostText, preferredLanguage } from '../application/language';
 import { translate } from '../i18n/index';
 import * as vscode from 'vscode';
@@ -75,6 +76,7 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('alwaygit.showLog', () => output.show(true)),
     createWorkbenchActivityLauncher(workbench),
     vscode.workspace.onDidChangeConfiguration(e => { if (e.affectsConfiguration('alwaygit.gitPath') || e.affectsConfiguration('alwaygit.refreshInterval')) void vscode.window.showInformationMessage(hostText(preferredLanguage(), "extension.reloadTheVSCodeWindowToApplyAlwayGitRuntime")); }),
+    vscode.window.registerWebviewPanelSerializer('alwaygit.commitTree', { async deserializeWebviewPanel(panel, state: unknown) { const parsed = commitTreePanelStateSchema.safeParse(state); if (parsed.success) await workbench.openCommitTree(parsed.data.commitTree.repoId, parsed.data.commitTree.revision, panel); else panel.dispose(); } }),
     vscode.window.registerWebviewPanelSerializer('alwaygit.workbench', { async deserializeWebviewPanel(panel, state: { repoId?: string } | undefined) { await workbench.open(state?.repoId, panel, false, state?.repoId===undefined); } }),
   );
   await projects.start();

@@ -428,8 +428,8 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     finally { if (epoch === detailEpoch && repoEpoch === repositoryEpoch) set({ detailsLoading: false }); }
   },
   async browseRevisionTree(oid) {
-    await get().selectCommit(oid);
-    if (get().details?.commit.oid === oid && !get().selectedStashOid) set({ detailFileMode: 'tree', selectedFile: undefined, diffTarget: undefined });
+    const repoId = get().repoId;
+    if (repoId) try { await rpc('openCommitTree', repoId, { revision: oid }); } catch (error) { get().report(error); }
   },
   setDetailFileMode(detailFileMode) { set({ detailFileMode }); },
   selectStashSection(section){
@@ -661,6 +661,7 @@ function workbenchSession(state: WorkbenchState): SessionState {
 }
 let persistedSelection: unknown[] = [];
 useWorkbench.subscribe(state => {
+  if (window.__ALWAYGIT_COMMIT_TREE__) return;
   const selection = [state.tagRemote, state.repoId, state.drafts, state.ref, state.checkedRefs, state.expandedRefGroups, state.collapsedSidebarGroups, state.search, state.historyFilters, state.fileHistory, state.selectedOid, state.selectedParent, state.selectedStashOid, state.selectedFile, state.tab, state.language, state.layout, state.appearance, state.diffNavigationScope, state.singleKeyShortcuts, state.shortcutOverrides, state.changeListMode, state.settingsBaseline];
   if (selection.every((value, index) => Object.is(value, persistedSelection[index]))) return;
   persistedSelection = selection;
@@ -675,6 +676,7 @@ subscribe(event => {
     return;
   }
   if (event.type === 'interfaceSettingsChanged') { ++preferencesEpoch; synchronizeInterfaceSettings(event.settings); }
+  if (window.__ALWAYGIT_COMMIT_TREE__) return;
   const state = useWorkbench.getState(); if (event.type === 'operationSettingsChanged') useWorkbench.setState({ operationSettings: event.settings });
   if (event.type === 'fileOperationProgress' && event.repoId === state.repoId && state.actionFeedback?.status === 'running') useWorkbench.setState({ actionFeedback: { ...state.actionFeedback, progress: event.progress } });
   if (event.type === 'networkOperationProgress') {

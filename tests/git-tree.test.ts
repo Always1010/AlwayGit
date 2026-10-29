@@ -7,6 +7,28 @@ const fixtures = gitFixtures('alwaygit-tree-');
 afterEach(() => fixtures.cleanup());
 
 describe('historical repository tree', () => {
+  it('indexes the complete snapshot without including working files or relying on a parent diff', async () => {
+    const { root, repo, service } = await fixtures.setup();
+    await mkdir(path.join(root, 'deep', 'nested'), { recursive: true });
+    await writeFile(path.join(root, 'deep', 'nested', '文件 [1].txt'), 'original');
+    await git(root, 'add', '-A'); await git(root, 'commit', '-m', 'snapshot');
+    const revision = await git(root, 'rev-parse', 'HEAD');
+    await writeFile(path.join(root, 'deep', 'nested', '文件 [1].txt'), 'working change');
+    await writeFile(path.join(root, 'untracked.txt'), 'not committed');
+    const tree = await service.revisionTree(repo, { revision, recursive: true });
+    expect(tree.entries.map(entry => entry.path)).toEqual(['deep', 'deep/nested', 'deep/nested/文件 [1].txt']);
+    expect(tree.entries.at(-1)).toMatchObject({ name: '文件 [1].txt', size: 8 });
+    expect(await service.revisionTreeCommit(repo, revision)).toMatchObject({ commit: { oid: revision, parents: [], subject: 'snapshot' }, repository: { root: repo.root } });
+    await writeFile(path.join(root, 'second.txt'), 'second');
+    await git(root, 'add', '-A'); await git(root, 'commit', '-m', 'second');
+    const shallow = await git(root, 'rev-parse', 'HEAD');
+    // Simulate a shallow boundary without deleting any objects or altering the working tree.
+    const gitDirectory = await git(root, 'rev-parse', '--absolute-git-dir');
+    await writeFile(path.join(gitDirectory, 'shallow'), `${shallow}\n`);
+    expect((await service.revisionTreeCommit(repo, shallow)).commit.parents).toEqual([revision]);
+    await expect(service.details(repo, shallow, revision)).rejects.toThrow();
+    expect((await service.revisionTree(repo, { revision: shallow, recursive: true })).entries.some(entry => entry.path === 'second.txt')).toBe(true);
+  });
   it('lists directories lazily and classifies symbolic links and gitlinks without following them', async () => {
     const { root, repo, service } = await fixtures.setup();
     await mkdir(path.join(root, 'src', 'nested'), { recursive: true });

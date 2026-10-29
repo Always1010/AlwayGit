@@ -1,0 +1,23 @@
+.commit-tree-page {--file-row-height:26px;}
+.commit-tree-header {display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-bottom:1px solid var(--section-border);min-width:0;}
+.commit-tree-header>div {display:flex;align-items:center;gap:7px;}
+.commit-tree-header>.muted {font-size:11px;overflow-wrap:anywhere;}
+.commit-tree-toolbar {flex-wrap:wrap;}
+.commit-tree-toolbar .file-path-filter {max-width:480px;min-width:150px;flex:1;}
+.commit-tree-body {display:flex;flex:1;min-height:0;min-width:0;}
+.commit-tree-rows {padding:5px 8px;}
+.commit-tree-rows .revision-tree-row {height:26px;min-height:26px;}
+.commit-tree-rows .revision-tree-entry {height:26px;gap:5px;padding:0 4px;}
+.commit-tree-rows .codicon-blank {width:14px;}
+.snapshot-guides {display:flex;align-self:stretch;flex:none;}
+.snapshot-guides>span {position:relative;width:17px;flex:none;}
+.snapshot-guides>.continuing::before,.snapshot-guides>.branch::before {content:'';position:absolute;left:8px;top:0;bottom:0;border-left:1px solid var(--border);opacity:.6;}
+.snapshot-guides>.branch::after {content:'';position:absolute;left:8px;right:0;top:50%;border-top:1px solid var(--border);opacity:.6;}
+.snapshot-guides>.last::before {bottom:50%;}
+.commit-tree-preview {display:flex;flex:1;min-width:0;overflow:hidden;border-left:1px solid var(--section-border);}
+.with-preview>.commit-tree-rows {flex:0 0 44%;min-width:180px;}
+.snapshot-preview {display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;}
+.snapshot-content {flex:1;margin:0;padding:10px;overflow:auto;font:var(--diff-font,12px)/var(--diff-row-height,18px) var(--vscode-editor-font-family,Consolas,monospace);tab-size:4;}
+.snapshot-image {display:flex;flex:1;align-items:center;justify-content:center;overflow:auto;padding:12px;}
+.snapshot-image img {max-width:100%;max-height:100%;object-fit:contain;}
+@media(max-width:650px) {.commit-tree-body.with-preview{flex-direction:column;}.with-preview>.commit-tree-rows{flex:0 0 50%;min-width:0;}.commit-tree-preview{border-left:0;border-top:1px solid var(--section-border);}}
