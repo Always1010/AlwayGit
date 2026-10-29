@@ -62,6 +62,35 @@ describe('historical repository tree', () => {
       expect.objectContaining({ path: 'type.txt', status: 'T', beforeMode: '100644', afterMode: '120000' }),
     ]));
     await expect(service.revisionTreeChanges(repo, revision, revision)).rejects.toMatchObject({ code: 'INVALID_PARENT' });
+    expect(await service.revisionTreeCompare(repo, revision, base)).toEqual({ revision, baseRevision: base, files: changes.files });
+    const reverse = await service.revisionTreeCompare(repo, base, revision);
+    expect(reverse.files).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: 'added.txt', status: 'D', beforeMode: '100644', afterMode: '000000' }),
+      expect.objectContaining({ path: 'src/deleted.txt', status: 'A', beforeMode: '000000', afterMode: '100644' }),
+      expect.objectContaining({ path: 'before.txt', previousPath: 'after.txt', status: 'R100' }),
+      expect.objectContaining({ path: 'type.txt', status: 'T', beforeMode: '120000', afterMode: '100644' }),
+    ]));
+
+  });
+  it('compares fixed endpoints across branches and unrelated histories without a merge base or timestamp ordering', async () => {
+    const { root, repo, service } = await fixtures.setup();
+    await writeFile(path.join(root, 'base.txt'), 'base'); await git(root, 'add', '-A'); await git(root, 'commit', '-m', 'base');
+    const base = await git(root, 'rev-parse', 'HEAD');
+    await git(root, 'switch', '-c', 'topic');
+    await writeFile(path.join(root, 'topic.txt'), 'topic'); await git(root, 'add', '-A'); await git(root, 'commit', '-m', 'topic');
+    const topic = await git(root, 'rev-parse', 'HEAD');
+    await git(root, 'switch', 'main');
+    await writeFile(path.join(root, 'main.txt'), 'main'); await git(root, 'add', '-A'); await git(root, 'commit', '-m', 'main');
+    const revision = await git(root, 'rev-parse', 'HEAD');
+    expect((await service.revisionTreeCompare(repo, revision, topic)).files.map(({ path, status }) => ({ path, status }))).toEqual([
+      { path: 'main.txt', status: 'A' }, { path: 'topic.txt', status: 'D' },
+    ]);
+    const baseTree = await git(root, 'rev-parse', `${base}^{tree}`);
+    const unrelated = await git(root, 'commit-tree', baseTree, '-m', 'unrelated');
+    expect((await service.revisionTreeCompare(repo, revision, unrelated)).files.map(file => file.path)).toEqual(['main.txt']);
+    expect(await service.revisionTreeCompare(repo, base, unrelated)).toEqual({ revision: base, baseRevision: unrelated, files: [] });
+    expect(await service.revisionTreeCompare(repo, revision, revision)).toEqual({ revision, baseRevision: revision, files: [] });
+    for (const [target, from] of [['HEAD', base], [revision, 'main']]) await expect(service.revisionTreeCompare(repo, target, from)).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' });
   });
   it('lists directories lazily and classifies symbolic links and gitlinks without following them', async () => {
     const { root, repo, service } = await fixtures.setup();

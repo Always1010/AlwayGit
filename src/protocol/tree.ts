@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import type { Commit } from './types';
 
-export const commitTreeTargetSchema = z.object({ repoId: z.string().min(1).max(4096), revision: z.string().regex(/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/) }).strict();
+const fixedRevisionSchema = z.string().regex(/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/);
+export const commitTreeTargetSchema = z.object({ repoId: z.string().min(1).max(4096), revision: fixedRevisionSchema, baseRevision: fixedRevisionSchema.optional() }).strict();
 export const commitTreePanelStateSchema = z.object({ commitTree: commitTreeTargetSchema }).strict();
 export type CommitTreeTarget = z.infer<typeof commitTreeTargetSchema>;
 export type CommitTreePanelState = z.infer<typeof commitTreePanelStateSchema>;
@@ -15,7 +16,7 @@ export interface RevisionTreeChange {
   beforeOid: string;
   afterOid: string;
 }
-export interface RevisionTreeChanges { revision: string; parent?: string; files: RevisionTreeChange[] }
+export interface RevisionTreeChanges { revision: string; parent?: string; baseRevision?: string; files: RevisionTreeChange[] }
 
 export type RevisionTreeEntryType = 'tree' | 'blob' | 'symlink' | 'gitlink';
 

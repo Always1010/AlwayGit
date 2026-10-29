@@ -22,6 +22,57 @@ beforeEach(async () => {
 });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 describe('repository UI consistency', () => {
+  it('opens the displayed comparison tree without changing main workbench state or direction', async () => {
+    const comparison = { left: { ...commit, oid: 'base' }, right: { ...commit, oid: 'target' }, files: [] };
+    store.setState({ repoId: a.id, comparison, selectedOids: ['target', 'base'], drafts: { a: 'draft' } });
+    const before = store.getState();
+    await before.browseComparisonTree('target', 'base');
+    expect(bridge.rpc).toHaveBeenCalledWith('openCommitTree', a.id, { revision: 'target', baseRevision: 'base' });
+    expect(bridge.rpc.mock.calls.some(([method]) => method === 'treeCompareOrder')).toBe(false);
+    expect(store.getState()).toBe(before);
+    await before.browseComparisonTree('target', 'base', true);
+    expect(bridge.rpc).toHaveBeenLastCalledWith('openCommitTree', a.id, { revision: 'base', baseRevision: 'target' });
+  });
+  it('resolves a missing comparison direction once and ignores a response after switching repositories', async () => {
+    const pending = deferred<{ left: Commit; right: Commit; files: [] }>();
+    bridge.rpc.mockImplementation(method => method === 'treeCompareOrder' ? pending.promise : Promise.resolve());
+    store.setState({ repoId: a.id });
+    const opening = store.getState().browseComparisonTree('target', 'base');
+    expect(bridge.rpc).toHaveBeenCalledWith('treeCompareOrder', a.id, { left: 'target', right: 'base' });
+    store.setState({ repoId: b.id });
+    pending.resolve({ left: { ...commit, oid: 'base' }, right: { ...commit, oid: 'target' }, files: [] });
+    await opening;
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'treeCompareOrder')).toHaveLength(1);
+    expect(bridge.rpc.mock.calls.some(([method]) => method === 'openCommitTree')).toBe(false);
+  });
+  it('opens a normalized comparison in its captured repository without replacing main details', async () => {
+    const comparison = { left: { ...commit, oid: 'base' }, right: { ...commit, oid: 'target' }, files: [] };
+    bridge.rpc.mockImplementation(method => Promise.resolve(method === 'treeCompareOrder' ? comparison : undefined));
+    store.setState({ repoId: a.id, selectedOids: ['target', 'base'], details: { commit, body: 'shown', files: [] } });
+    const before = store.getState();
+    await before.browseComparisonTree('target', 'base');
+    expect(bridge.rpc.mock.calls.map(([method]) => method)).toEqual(['treeCompareOrder', 'openCommitTree']);
+    expect(bridge.rpc).toHaveBeenLastCalledWith('openCommitTree', a.id, { revision: 'target', baseRevision: 'base' });
+    expect(store.getState()).toBe(before);
+  });
+  it('opens only the latest repeated comparison-tree request without reporting superseded cancellation', async () => {
+    const pending = deferred<{ left: Commit; right: Commit; files: [] }>();
+    const latest = deferred<{ left: Commit; right: Commit; files: [] }>();
+    bridge.rpc.mockImplementation(method => method === 'treeCompareOrder' ? pending.promise : Promise.resolve());
+    store.setState({ repoId: a.id });
+    const before = store.getState(), first = before.browseComparisonTree('target', 'base');
+    bridge.rpc.mockImplementation(method => method === 'treeCompareOrder' ? latest.promise : Promise.resolve());
+    const second = before.browseComparisonTree('target', 'base');
+    pending.reject(Object.assign(new Error('Superseded read'), { code: 'ABORTED' }));
+    await first;
+    expect(store.getState()).toBe(before);
+    latest.resolve({ left: { ...commit, oid: 'base' }, right: { ...commit, oid: 'target' }, files: [] });
+    await second;
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'openCommitTree')).toEqual([
+      ['openCommitTree', a.id, { revision: 'target', baseRevision: 'base' }],
+    ]);
+    expect(store.getState()).toBe(before);
+  });
   it.each([undefined, []])('keeps legacy remote grouping and tracking consistent when remotes is %s', async remotes => {
     const { menuFor } = await import('../webview/menus'), { remoteNames, refsForRemote } = await import('../webview/remoteTracking');
     const noop = vi.fn(), open = vi.fn(), api = { startCommit: noop, open, checkout: noop, openDiff: noop, editFile: noop, host: vi.fn(), addRepository: vi.fn(), removeRepositories: noop, fetchRepositories: noop };

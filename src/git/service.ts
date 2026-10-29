@@ -659,6 +659,13 @@ export class GitService implements GitServiceContract {
     const output = await this.run(repo, ['diff-tree', '--no-commit-id', '--raw', '--no-abbrev', '-z', '-r', '-M', ...(base ? [base, commit.oid] : ['--root', commit.oid]), '--']);
     return { revision: commit.oid, ...(base ? { parent: base } : {}), files: parseRevisionTreeChanges(output.stdout) };
   }
+  async revisionTreeCompare(repo: Repository, revision: string, baseRevision: string) {
+    await this.verify(repo);
+    if (![revision, baseRevision].every(value => /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(value))) throw new GitError(localizeMessage('tree.invalidRevision'), 'INVALID_ARGUMENT');
+    const [target, base] = await Promise.all([this.oid(repo, revision), this.oid(repo, baseRevision)]);
+    const output = await this.run(repo, ['diff-tree', '--no-commit-id', '--raw', '--no-abbrev', '-z', '-r', '-M', base, target, '--']);
+    return { revision: target, baseRevision: base, files: parseRevisionTreeChanges(output.stdout) };
+  }
   async searchRevisionTree(repo: Repository, request: RevisionTreeSearchRequest) {
     await this.verify(repo);
     return this.revisionTrees.search(repo, request);

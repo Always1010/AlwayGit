@@ -1,0 +1,32 @@
+{
+  "treeCompare.browse": {
+    "en": "View file tree differences",
+    "zh-CN": "查看文件树差异",
+    "review": "translated",
+    "context": "webview/menus.ts and webview/Details.tsx / open fixed two-commit tree comparison"
+  },
+  "treeCompare.title": {
+    "en": "File Tree Comparison",
+    "zh-CN": "文件树比较",
+    "review": "translated",
+    "context": "webview/CommitTree.tsx / fixed base-to-target comparison title"
+  },
+  "treeCompare.direction": {
+    "en": "Base {{base}} → Target {{target}}",
+    "zh-CN": "基准 {{base}} → 目标 {{target}}",
+    "review": "translated",
+    "context": "webview/CommitTree.tsx / comparison direction"
+  },
+  "treeCompare.reverse": {
+    "en": "Open reversed comparison in a comparison tab",
+    "zh-CN": "在比较标签页中打开反向比较",
+    "review": "translated",
+    "context": "webview/CommitTree.tsx / activate or open fixed reverse comparison"
+  },
+  "treeCompare.showChanges": {
+    "en": "Show comparison changes",
+    "zh-CN": "显示比较变更",
+    "review": "translated",
+    "context": "webview/CommitTree.tsx / two-commit change marker toggle"
+  }
+}

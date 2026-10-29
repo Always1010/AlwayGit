@@ -1,7 +1,30 @@
 import { describe, expect, it } from 'vitest';
+import { commitTreePanelStateSchema } from '../src/protocol/tree';
+import { treeCompareOrderSchema, openCommitTreeSchema, revisionTreeCompareSchema } from '../src/protocol/validation';
+import { readQueryCategory } from '../src/protocol/queries';
 import { actionSchema, historySchema, createRepositoryCollectionSchema, reorderRepositorySchema, diffSchema, diffPageSchema, openRepositorySchema, openWorkbenchSchema, operationSettingsSchema, requestSchema, sessionSchema } from '../src/protocol/validation';
 
 describe('Workbench protocol validation', () => {
+  it('persists ordered comparison targets while preserving legacy single-commit tree state', () => {
+    const revision = 'a'.repeat(40), baseRevision = 'b'.repeat(40);
+    for (const target of [{ revision }, { revision, baseRevision }]) {
+      expect(openCommitTreeSchema.parse(target)).toEqual(target);
+      const state = { commitTree: { repoId: 'repo', ...target } };
+      expect(commitTreePanelStateSchema.parse(state)).toEqual(state);
+    }
+    expect(requestSchema.parse({ id: 'compare', method: 'revisionTreeCompare' }).method).toBe('revisionTreeCompare');
+    expect(revisionTreeCompareSchema.parse({ revision, baseRevision })).toEqual({ revision, baseRevision });
+    expect(readQueryCategory('revisionTreeCompare')).toBe('revisionTreeCompare');
+    expect(treeCompareOrderSchema.parse({ left: revision, right: baseRevision })).toEqual({ left: revision, right: baseRevision });
+    expect(treeCompareOrderSchema.safeParse({ left: 'HEAD', right: baseRevision }).success).toBe(false);
+    expect(readQueryCategory('treeCompareOrder')).toBe('treeCompareOrder');
+    expect(readQueryCategory('treeCompareOrder')).not.toBe(readQueryCategory('compare'));
+    expect(readQueryCategory('treeCompareOrder')).not.toBe(readQueryCategory('details'));
+    expect(readQueryCategory('revisionTreeCompare')).not.toBe(readQueryCategory('revisionTreeChanges'));
+    for (const invalid of [{ revision }, { revision, baseRevision: 'HEAD' }, { revision: 'main', baseRevision }, { revision, baseRevision, parent: baseRevision }]) expect(revisionTreeCompareSchema.safeParse(invalid).success).toBe(false);
+    expect(commitTreePanelStateSchema.safeParse({ commitTree: { repoId: 'repo', revision, baseRevision: 'HEAD' } }).success).toBe(false);
+  });
+
   it('preserves bounded file-history context in requests and legacy-compatible sessions', () => {
     const file = { path: 'new.txt', anchorPath: 'old.txt', revision: 'a'.repeat(40) };
     expect(historySchema.parse({ file })).toEqual({ file });
