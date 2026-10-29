@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { message as localizeMessage } from '../i18n';
-import type { RevisionTreeEntry, RevisionTreeListing, RevisionTreeRequest, RevisionTreeSearchPage, RevisionTreeSearchRequest } from '../protocol/tree';
+import type { RevisionTreeChange, RevisionTreeEntry, RevisionTreeListing, RevisionTreeRequest, RevisionTreeSearchPage, RevisionTreeSearchRequest } from '../protocol/tree';
 import type { Repository } from '../protocol/types';
 import { GitError } from './error';
 
@@ -46,6 +46,21 @@ function parseEntries(output: Buffer, prefix = ''): RevisionTreeEntry[] {
   }
   if (start !== output.length) throw new GitError(localizeMessage('tree.malformedOutput'), 'PARSE_ERROR');
   return entries;
+}
+
+/** Raw tree diffs retain deleted entry types and modes, including gitlinks. */
+export function parseRevisionTreeChanges(output: Buffer): RevisionTreeChange[] {
+  const records = decode(output).split('\0'), files: RevisionTreeChange[] = [];
+  if (records.pop() !== '') throw new GitError(localizeMessage('tree.malformedOutput'), 'PARSE_ERROR');
+  for (let index = 0; index < records.length;) {
+    const match = /^:(\d{6}) (\d{6}) ([0-9a-f]{40,64}) ([0-9a-f]{40,64}) ([A-Z]\d*)$/.exec(records[index++]);
+    if (!match) throw new GitError(localizeMessage('tree.malformedOutput'), 'PARSE_ERROR');
+    const status = match[5], first = records[index++], renamed = /^[RC]/.test(status);
+    const target = renamed ? records[index++] : first;
+    if (!first || !target) throw new GitError(localizeMessage('tree.malformedOutput'), 'PARSE_ERROR');
+    files.push({ path: target, ...(renamed ? { previousPath: first } : {}), status, beforeMode: match[1], afterMode: match[2], beforeOid: match[3], afterOid: match[4] });
+  }
+  return files;
 }
 
 export class RevisionTreeReader {

@@ -20,4 +20,19 @@
 .snapshot-content {flex:1;margin:0;padding:10px;overflow:auto;font:var(--diff-font,12px)/var(--diff-row-height,18px) var(--vscode-editor-font-family,Consolas,monospace);tab-size:4;}
 .snapshot-image {display:flex;flex:1;align-items:center;justify-content:center;overflow:auto;padding:12px;}
 .snapshot-image img {max-width:100%;max-height:100%;object-fit:contain;}
+.commit-tree-changes-toggle {display:flex;align-items:center;gap:5px;padding:3px 6px;white-space:nowrap;}
+.commit-tree-change-info {display:flex;flex-wrap:wrap;align-items:center;gap:5px 14px;padding:5px 10px;border-bottom:1px solid var(--row-border);font-size:11px;}
+.commit-tree-baseline {display:flex;align-items:center;gap:6px;}
+.commit-tree-change-info .revision-tree-error {padding:0;}
+.snapshot-badge {font-weight:600;font-family:var(--vscode-editor-font-family,Consolas,monospace);padding:0 6px;flex:none;}
+.status-A {color:var(--green);}.status-M {color:var(--yellow);}.status-D {color:var(--error);}.status-R,.status-C {color:var(--accent);}.status-T {color:var(--vscode-gitDecoration-stageModifiedResourceForeground,#b59af4);}
+.snapshot-deleted .revision-tree-name {text-decoration:line-through;color:var(--muted);}
+.snapshot-deleted .revision-tree-entry>.codicon {opacity:.65;}
+.snapshot-deleted-label {font-size:10px;color:var(--muted);padding:0 5px;flex:none;}
+.snapshot-origin {font-size:11px;color:var(--muted);max-width:35%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.snapshot-directory-status {display:flex;padding:0 7px;color:var(--yellow);}
+.snapshot-directory-status .codicon {font-size:8px;}
+.commit-tree-diff {display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;}
+.commit-tree-diff .diff-preview {flex:1;height:auto;min-height:0;}
+.commit-tree-diff-mode {display:flex;align-items:center;justify-content:space-between;gap:5px;padding:2px 6px;background:var(--surface-header);font-size:11px;color:var(--muted);}
 @media(max-width:650px) {.commit-tree-body.with-preview{flex-direction:column;}.with-preview>.commit-tree-rows{flex:0 0 50%;min-width:0;}.commit-tree-preview{border-left:0;border-top:1px solid var(--section-border);}}

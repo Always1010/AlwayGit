@@ -6,6 +6,16 @@ export const commitTreePanelStateSchema = z.object({ commitTree: commitTreeTarge
 export type CommitTreeTarget = z.infer<typeof commitTreeTargetSchema>;
 export type CommitTreePanelState = z.infer<typeof commitTreePanelStateSchema>;
 export interface RevisionTreeCommit { commit: Commit; body: string; repository: { name: string; root: string } }
+export interface RevisionTreeChange {
+  path: string;
+  previousPath?: string;
+  status: string;
+  beforeMode: string;
+  afterMode: string;
+  beforeOid: string;
+  afterOid: string;
+}
+export interface RevisionTreeChanges { revision: string; parent?: string; files: RevisionTreeChange[] }
 
 export type RevisionTreeEntryType = 'tree' | 'blob' | 'symlink' | 'gitlink';
 

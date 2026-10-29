@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { git, gitFixtures } from './support/git-fixture';
 
@@ -27,7 +27,41 @@ describe('historical repository tree', () => {
     await writeFile(path.join(gitDirectory, 'shallow'), `${shallow}\n`);
     expect((await service.revisionTreeCommit(repo, shallow)).commit.parents).toEqual([revision]);
     await expect(service.details(repo, shallow, revision)).rejects.toThrow();
+    expect((await service.revisionTreeChanges(repo, shallow)).parent).toBe(revision);
     expect((await service.revisionTree(repo, { revision: shallow, recursive: true })).entries.some(entry => entry.path === 'second.txt')).toBe(true);
+    await rm(path.join(gitDirectory, 'objects', revision.slice(0, 2), revision.slice(2)));
+    await expect(service.revisionTreeChanges(repo, shallow)).rejects.toThrow();
+    expect((await service.revisionTree(repo, { revision: shallow, recursive: true })).entries.some(entry => entry.path === 'second.txt')).toBe(true);
+  });
+  it('reports root additions and typed changes against an explicit parent', async () => {
+    const { root, repo, service } = await fixtures.setup();
+    await mkdir(path.join(root, 'src'));
+    await writeFile(path.join(root, 'src', 'modified.txt'), 'before');
+    await writeFile(path.join(root, 'src', 'deleted.txt'), 'delete me');
+    await writeFile(path.join(root, 'before.txt'), 'rename this exact and unique content');
+    await writeFile(path.join(root, 'type.txt'), 'link text');
+    await git(root, 'add', '-A'); await git(root, 'commit', '-m', 'base');
+    const base = await git(root, 'rev-parse', 'HEAD');
+    expect((await service.revisionTreeChanges(repo, base)).files.every(file => file.status === 'A')).toBe(true);
+    await writeFile(path.join(root, 'src', 'modified.txt'), 'after');
+    await rm(path.join(root, 'src', 'deleted.txt'));
+    await rename(path.join(root, 'before.txt'), path.join(root, 'after.txt'));
+    await writeFile(path.join(root, 'added.txt'), 'new content');
+    await git(root, 'add', '-A');
+    const blob = await git(root, 'rev-parse', `${base}:type.txt`);
+    await git(root, 'update-index', '--cacheinfo', `120000,${blob},type.txt`);
+    await git(root, 'commit', '-m', 'changes');
+    const revision = await git(root, 'rev-parse', 'HEAD');
+    const changes = await service.revisionTreeChanges(repo, revision);
+    expect(changes).toMatchObject({ revision, parent: base });
+    expect(changes.files).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: 'added.txt', status: 'A', beforeMode: '000000' }),
+      expect.objectContaining({ path: 'src/deleted.txt', status: 'D', beforeMode: '100644', afterMode: '000000' }),
+      expect.objectContaining({ path: 'src/modified.txt', status: 'M' }),
+      expect.objectContaining({ path: 'after.txt', previousPath: 'before.txt', status: 'R100' }),
+      expect.objectContaining({ path: 'type.txt', status: 'T', beforeMode: '100644', afterMode: '120000' }),
+    ]));
+    await expect(service.revisionTreeChanges(repo, revision, revision)).rejects.toMatchObject({ code: 'INVALID_PARENT' });
   });
   it('lists directories lazily and classifies symbolic links and gitlinks without following them', async () => {
     const { root, repo, service } = await fixtures.setup();
@@ -85,5 +119,8 @@ describe('historical repository tree', () => {
 
     await expect(service.revisionTree(repo, { revision: 'HEAD' })).rejects.toThrow('fixed Commit ID');
     expect((await service.revisionTree(repo, { revision })).entries.map(entry => entry.path)).toEqual(['base.txt', 'main.txt', 'topic.txt']);
+    const { commit } = await service.revisionTreeCommit(repo, revision);
+    expect((await service.revisionTreeChanges(repo, revision)).files.map(file => file.path)).toEqual(['topic.txt']);
+    expect((await service.revisionTreeChanges(repo, revision, commit.parents[1])).files.map(file => file.path)).toEqual(['main.txt']);
   });
 });

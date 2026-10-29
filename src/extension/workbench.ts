@@ -39,10 +39,10 @@ import { captureWorkbenchSchema, readWorkbenchLocations, saveWorkbenchLocationsS
 import { workbenchContainerIds, workbenchLauncherHtml, workbenchLocationSettingsCommands, workbenchViewIds } from './workbench-launcher';
 
 import { commitTreeTargetSchema, type CommitTreePanelState } from '../protocol/tree';
-import { revisionTreeIndexSchema } from '../protocol/validation';
+import { revisionTreeChangesSchema, revisionTreeIndexSchema } from '../protocol/validation';
 
 type WorkbenchSurface = vscode.WebviewPanel | vscode.WebviewView;
-interface WorkbenchPanel { commitTree?: CommitTreePanelState; isolatedDiffOwner?: object; panel: WorkbenchSurface; kind: WorkbenchLocation; ready: boolean; subscriptions: vscode.Disposable[]; visible: boolean; activeRepository?: string; blank: boolean; session?: SessionState; savedSession?: SessionState; pendingTerminal?: boolean; pendingChanges?: { repoId: string; changes?: RepositoryChanges }; catalogDirty?: boolean }
+interface WorkbenchPanel { treeParents?: string[]; commitTree?: CommitTreePanelState; isolatedDiffOwner?: object; panel: WorkbenchSurface; kind: WorkbenchLocation; ready: boolean; subscriptions: vscode.Disposable[]; visible: boolean; activeRepository?: string; blank: boolean; session?: SessionState; savedSession?: SessionState; pendingTerminal?: boolean; pendingChanges?: { repoId: string; changes?: RepositoryChanges }; catalogDirty?: boolean }
 interface RepositoryDiscoverySession { source?: WorkbenchPanel; cancelled: boolean; adding?: boolean; root: string; discovery?: DiscoveryResult }
 export interface WorkbenchPresence { open: boolean; active: boolean }
 
@@ -540,11 +540,13 @@ export class Workbench implements vscode.Disposable {
   private async routeRequest(request: RpcRequest, source?:WorkbenchPanel): Promise<unknown> {
     if (source?.commitTree) {
       const target = source.commitTree.commitTree;
-      const allowed = ['workbenchReady', 'cancelQuery', 'copyText', 'interfaceSettings', 'revisionTree', 'revisionTreeIndex', 'revisionTreeCommit', 'inspectDetails', 'isolatedDiffPreview', 'isolatedDiffPage', 'diffRelease', 'openRevision', 'diff', 'openFile', 'lfsHistoricalStatus'];
+      const allowed = ['workbenchReady', 'cancelQuery', 'copyText', 'interfaceSettings', 'revisionTreeChanges', 'revisionTree', 'revisionTreeIndex', 'revisionTreeCommit', 'isolatedDiffPreview', 'isolatedDiffPage', 'diffRelease', 'openRevision', 'diff', 'lfsHistoricalStatus'];
       if (!allowed.includes(request.method) || request.repoId !== undefined && request.repoId !== target.repoId) throw new MessageError(message('tree.fixedPanel'));
-      const payload = request.payload as { revision?: string; oid?: string; kind?: string; left?: string; right?: string } | undefined;
-      if (['revisionTree', 'revisionTreeIndex', 'revisionTreeCommit', 'openRevision', 'lfsHistoricalStatus'].includes(request.method) && payload?.revision !== target.revision || request.method === 'inspectDetails' && payload?.oid !== target.revision) throw new MessageError(message('tree.fixedPanel'));
-      if (['isolatedDiffPreview', 'diff'].includes(request.method) && !(payload?.kind === 'revision' && payload.revision === target.revision || payload?.kind === 'commit' && payload.oid === target.revision || payload?.kind === 'comparison' && payload.left === target.revision && payload.right === target.revision)) throw new MessageError(message('tree.fixedPanel'));
+      const payload = request.payload as { revision?: string; oid?: string; kind?: string } | undefined;
+      const historicalParent = ['openRevision', 'lfsHistoricalStatus'].includes(request.method) && source.treeParents?.includes(payload?.revision ?? '');
+      if (['revisionTree', 'revisionTreeChanges', 'revisionTreeIndex', 'revisionTreeCommit', 'openRevision', 'lfsHistoricalStatus'].includes(request.method) && payload?.revision !== target.revision && !historicalParent) throw new MessageError(message('tree.fixedPanel'));
+      const fixedPreview = payload?.kind === 'snapshot' && payload.revision === target.revision || payload?.kind === 'commit' && payload.oid === target.revision;
+      if (['isolatedDiffPreview', 'diff'].includes(request.method) && !fixedPreview) throw new MessageError(message('tree.fixedPanel'));
       request = { ...request, repoId: target.repoId };
     }
     if(request.method==='cancelQuery'){this.queries.cancelOwner(source??this,cancelQuerySchema.parse(request.payload).requestId);return null;}
@@ -700,7 +702,8 @@ export class Workbench implements vscode.Disposable {
       case 'inspectDetails':
       case 'details': { const data = detailsSchema.parse(request.payload); return this.git.details(repo, data.oid, data.parent); }
       case 'openCommitTree': { const { revision } = revisionTreeIndexSchema.parse(request.payload); await this.openCommitTree(repo.id, revision); return null; }
-      case 'revisionTreeCommit': return this.git.revisionTreeCommit(repo, revisionTreeIndexSchema.parse(request.payload).revision);
+      case 'revisionTreeChanges': { const { revision, parent } = revisionTreeChangesSchema.parse(request.payload); return this.git.revisionTreeChanges(repo, revision, parent); }
+      case 'revisionTreeCommit': { const result = await this.git.revisionTreeCommit(repo, revisionTreeIndexSchema.parse(request.payload).revision); if (source?.commitTree) source.treeParents = result.commit.parents; return result; }
       case 'revisionTreeIndex': return this.git.revisionTree(repo, { ...revisionTreeIndexSchema.parse(request.payload), recursive: true });
       case 'revisionTree': return this.git.revisionTree(repo, revisionTreeSchema.parse(request.payload));
       case 'revisionTreeSearch': return this.git.searchRevisionTree(repo, revisionTreeSearchSchema.parse(request.payload));

@@ -87,6 +87,20 @@ describe('Commit tree editor tabs', () => {
       await first.receive({ id: 'pinned', repoId: repo.id, ...request });
       expect(first.panel.webview.postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'response', id: 'pinned', error: expect.objectContaining({ message: expect.stringContaining('read-only') }) }));
     }
+    const internals = workbench as unknown as { git: GitServiceContract; documents: { preview: ReturnType<typeof vi.fn>; openRevision: ReturnType<typeof vi.fn> } };
+    internals.git.revisionTreeCommit = vi.fn(async () => ({ commit: { oid: revision, parents: ['b'.repeat(40)] } } as never));
+    internals.documents.preview = vi.fn(async () => ({ kind: 'text', left: '', right: 'saved' }));
+    internals.documents.openRevision = vi.fn(async () => {});
+    await first.receive({ id: 'metadata', method: 'revisionTreeCommit', repoId: repo.id, payload: { revision } });
+    const target = { kind: 'snapshot', revision, path: 'saved.txt' };
+    await first.receive({ id: 'saved', method: 'isolatedDiffPreview', repoId: repo.id, payload: target });
+    expect(internals.documents.preview).toHaveBeenCalledWith(repo, target, expect.any(Object));
+    await first.receive({ id: 'deleted', method: 'openRevision', repoId: repo.id, payload: { revision: 'b'.repeat(40), path: 'deleted.txt' } });
+    expect(internals.documents.openRevision).toHaveBeenCalledWith(repo, { revision: 'b'.repeat(40), path: 'deleted.txt' });
+    for (const payload of [{ ...target, revision: 'c'.repeat(40) }, { kind: 'revision', revision, path: 'working.txt' }]) {
+      await first.receive({ id: 'wrong-preview', method: 'isolatedDiffPreview', repoId: repo.id, payload });
+      expect(first.panel.webview.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'wrong-preview', error: expect.any(Object) }));
+    }
   });
 });
 
