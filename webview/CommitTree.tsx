@@ -11,6 +11,8 @@ import { SnapshotPreview } from './SnapshotPreview';
 import { DiffPreview } from './DiffPreview';
 import { ContextMenu } from './ContextMenu';
 import { allSnapshotNodes, changeCounts, snapshotCounts, snapshotNodes, snapshotRows, type SnapshotNode } from './commitTreeModel';
+import { CommitTreeGraph } from './CommitTreeGraph';
+import type { TreeViewMode } from './treeLayout';
 import './commit-tree.css';
 
 export function CommitTree({ target: { repoId, revision } }: { target: CommitTreeTarget }) {
@@ -20,6 +22,7 @@ export function CommitTree({ target: { repoId, revision } }: { target: CommitTre
   const [metadata, setMetadata] = useState<RevisionTreeCommit>(), [error, setError] = useState<string>(), [metadataError, setMetadataError] = useState<string>();
   const [expanded, setExpanded] = useState(new Set<string>()), [query, setQuery] = useState(''), [selected, setSelected] = useState<string>();
   const [previewOpen, setPreviewOpen] = useState(false), [expanding, setExpanding] = useState<number>();
+  const [viewMode, setViewMode] = useState<TreeViewMode>('list');
   const indexController = useRef<AbortController | undefined>(undefined), expansionEpoch = useRef(0);
   const [attempt, setAttempt] = useState(0), [changeAttempt, setChangeAttempt] = useState(0);
   const [showChanges, setShowChanges] = useState(false), [selectedParent, setSelectedParent] = useState<string>();
@@ -104,6 +107,9 @@ export function CommitTree({ target: { repoId, revision } }: { target: CommitTre
       <span className="muted" title={metadata?.repository.root}>{metadata ? `${metadata.repository.name} · ${metadata.repository.root}` : repoId}</span>
     </header>
     <div className="revision-tree-toolbar commit-tree-toolbar">
+      <select className="commit-tree-view-select" aria-label={t('treeViews.presentation')} value={viewMode} onChange={event => { setMenu(undefined); setViewMode(event.target.value as TreeViewMode); }}>
+        <option value="list">{t('treeViews.list')}</option><option value="horizontal">{t('treeViews.horizontal')}</option><option value="radial">{t('treeViews.radial')}</option><option value="vertical">{t('treeViews.vertical')}</option>
+      </select>
       <label className="file-path-filter"><Icon name="search"/><input type="search" disabled={!indexed} value={query} onChange={event => setQuery(event.target.value)} placeholder={t('tree.searchAllPathsPlaceholder')} aria-label={t('tree.searchAllPaths')}/></label>
       <Button className="icon-only" icon="expand-all" title={t('tree.expandAll')} aria-label={t('tree.expandAll')} disabled={!indexed || expanding !== undefined} onClick={() => void expandAll()}/><Button className="icon-only" icon="collapse-all" title={t('tree.collapseAll')} aria-label={t('tree.collapseAll')} onClick={collapse}/>
       <label className="commit-tree-changes-toggle"><input type="checkbox" checked={showChanges} disabled={!indexed} onChange={event => { stopExpansion(); setMenu(undefined); setShowChanges(event.target.checked); }}/>{t('tree.showChanges')}</label>
@@ -121,7 +127,7 @@ export function CommitTree({ target: { repoId, revision } }: { target: CommitTre
     </div>}
     {(error || metadataError) && <div className="revision-tree-error" role="alert">{error || metadataError}<Button className="icon-only" icon="refresh" title={t('tree.retry')} aria-label={t('tree.retry')} onClick={() => setAttempt(value => value + 1)}/></div>}
     <main className={`commit-tree-body${previewOpen ? ' with-preview' : ''}`}>
-      <div className="revision-tree-rows commit-tree-rows" role="tree" aria-label={t('tree.fullRepositoryTree')}>
+      {viewMode === 'list' ? <div className="revision-tree-rows commit-tree-rows" role="tree" aria-label={t('tree.fullRepositoryTree')}>
         <VirtualFileRows items={rows} getKey={row => row.node.id} scrollParent=".commit-tree-rows" estimateSize={26} focusSelector=".revision-tree-entry">{({ node, depth, guides, last }) => {
           const entry = node.entry, folder = entry.type === 'tree', opened = expanded.has(node.id), status = node.change?.status[0];
           return <div className={`revision-tree-row${selected === node.id ? ' selected' : ''}${node.deleted ? ' snapshot-deleted' : ''}`} data-status={status} role="treeitem" aria-label={nodeHint(node)} aria-level={query ? 1 : depth + 1} aria-expanded={folder ? opened : undefined} aria-selected={selected === node.id} onContextMenu={event => { event.preventDefault(); setMenu({ node, x: event.clientX, y: event.clientY, anchor: event.currentTarget }); }}>
@@ -140,7 +146,7 @@ export function CommitTree({ target: { repoId, revision } }: { target: CommitTre
           </div>;
         }}</VirtualFileRows>
         {!rows.length && !loading && indexed && <div className="revision-tree-loading">{t(query ? 'tree.noMatches' : 'tree.emptyTree')}</div>}
-      </div>
+      </div> : <CommitTreeGraph rows={rows} mode={viewMode} query={query} expanded={expanded} selected={selected} nodeHint={nodeHint} statusName={statusName} openEntry={openEntry} openHistorical={openHistorical} context={(node, x, y, anchor) => setMenu({ node, x, y, anchor })} useList={() => setViewMode('list')}/>}
       {previewOpen && <div className="commit-tree-preview">
         {selectedEntry?.type === 'gitlink' ? <div className="revision-tree-loading">{t('tree.submodulePointer')} <span className="hash">{selectedEntry.oid}</span></div> : diffTarget ? <div className="commit-tree-diff"><div className="commit-tree-diff-mode"><span>{t('tree.changePreview')}</span><Button className="icon-only" icon="close" title={t('tree.closePreview')} aria-label={t('tree.closePreview')} onClick={() => setPreviewOpen(false)}/></div><DiffPreview isolated={{ repoId, target: diffTarget, hideEdit: true }} native={() => void rpc('diff', repoId, diffTarget).catch(fail)} edit={() => {}}/></div> : selectedEntry && !selectedNode?.deleted ? <SnapshotPreview repoId={repoId} revision={revision} path={selectedEntry.path} onClose={() => setPreviewOpen(false)}/> : <div className="revision-tree-loading">{t('tree.selectFile')}</div>}
       </div>}

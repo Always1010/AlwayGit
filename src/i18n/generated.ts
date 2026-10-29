@@ -7142,6 +7142,62 @@ export const catalog = {
     "en": "Select a file to preview.",
     "zh-CN": "选择文件以预览。"
   },
+  "treeViews.presentation": {
+    "en": "File tree presentation",
+    "zh-CN": "文件树展示方式"
+  },
+  "treeViews.list": {
+    "en": "Directory list",
+    "zh-CN": "目录列表"
+  },
+  "treeViews.horizontal": {
+    "en": "Horizontal tree",
+    "zh-CN": "横向连线树"
+  },
+  "treeViews.radial": {
+    "en": "Radial tree",
+    "zh-CN": "径向树"
+  },
+  "treeViews.vertical": {
+    "en": "Compact vertical tree",
+    "zh-CN": "纵向紧凑树"
+  },
+  "treeViews.zoomOut": {
+    "en": "Zoom out",
+    "zh-CN": "缩小"
+  },
+  "treeViews.zoomIn": {
+    "en": "Zoom in",
+    "zh-CN": "放大"
+  },
+  "treeViews.fit": {
+    "en": "Fit entire tree (0)",
+    "zh-CN": "适应完整树（0）"
+  },
+  "treeViews.canvas": {
+    "en": "Tree canvas: drag to pan, wheel or +/- to zoom, 0 to fit, Down to focus nodes",
+    "zh-CN": "树画布：拖动平移，滚轮或加减号缩放，0 适应完整树，下方向键聚焦节点"
+  },
+  "treeViews.navigationHint": {
+    "en": "Drag to pan · Scroll to zoom · 0 to fit",
+    "zh-CN": "拖动平移 · 滚轮缩放 · 0 适应完整树"
+  },
+  "treeViews.largeGraph": {
+    "en": "This tree has {{count}} expanded nodes. Drawing all nodes can be expensive. Collapse folders or use the directory list for a large repository, or explicitly draw the complete graph. No nodes will be omitted.",
+    "zh-CN": "当前树有 {{count}} 个展开节点，完整绘制可能较慢。大仓库可先收起目录或使用目录列表，也可选择绘制完整图形；不会省略节点。"
+  },
+  "treeViews.renderAll": {
+    "en": "Draw complete graph",
+    "zh-CN": "绘制完整图形"
+  },
+  "treeViews.visibleCount": {
+    "en": "{{visible}} nodes in viewport / {{count}} expanded or matching nodes",
+    "zh-CN": "视口内 {{visible}} 个节点 / 共 {{count}} 个展开或匹配节点"
+  },
+  "treeViews.searchPaths": {
+    "en": "Matching full paths; folder expansion is preserved",
+    "zh-CN": "匹配完整路径，保留目录展开状态"
+  },
   "validation.checkoutRequiresExactlyOneBranch": {
     "en": "Checkout requires exactly one branch",
     "zh-CN": "切换操作只能选择一个分支"
@@ -9398,6 +9454,20 @@ export interface MessageParameters {
   "tree.deletedDirectory": {  };
   "tree.changePreview": {  };
   "tree.selectFile": {  };
+  "treeViews.presentation": {  };
+  "treeViews.list": {  };
+  "treeViews.horizontal": {  };
+  "treeViews.radial": {  };
+  "treeViews.vertical": {  };
+  "treeViews.zoomOut": {  };
+  "treeViews.zoomIn": {  };
+  "treeViews.fit": {  };
+  "treeViews.canvas": {  };
+  "treeViews.navigationHint": {  };
+  "treeViews.largeGraph": { count: number };
+  "treeViews.renderAll": {  };
+  "treeViews.visibleCount": { visible: ParameterValue; count: number };
+  "treeViews.searchPaths": {  };
   "validation.checkoutRequiresExactlyOneBranch": {  };
   "validation.stashRequiresCheckout": {  };
   "validation.chooseAnExistingGroupOrCreateANewOne": {  };
