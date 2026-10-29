@@ -640,6 +640,17 @@ export class GitService implements GitServiceContract {
     await this.verify(repo);
     return this.revisionTrees.list(repo, request);
   }
+  async revisionTreeCommit(repo: Repository, revision: string) {
+    await this.verify(repo);
+    if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(revision)) throw new GitError(localizeMessage('tree.invalidRevision'), 'INVALID_ARGUMENT');
+    const oid = await this.oid(repo, revision);
+    const data = (await this.run(repo, ['show', '-s', `--format=${commitFormat}%x00%B`, oid, '--'])).stdout.toString('utf8').split('\0');
+    const commit = parseCommit(data);
+    // Pretty formats hide parents at shallow boundaries. The object header retains them.
+    const raw = (await this.run(repo, ['cat-file', 'commit', oid])).stdout.toString('utf8');
+    commit.parents = [...raw.slice(0, raw.indexOf('\n\n')).matchAll(/^parent ([0-9a-f]+)$/gm)].map(match => match[1]);
+    return { commit, body: data.slice(6).join('\0').trimEnd(), repository: { name: repo.name, root: repo.root } };
+  }
   async searchRevisionTree(repo: Repository, request: RevisionTreeSearchRequest) {
     await this.verify(repo);
     return this.revisionTrees.search(repo, request);

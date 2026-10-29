@@ -52,13 +52,43 @@ const workbenches: Workbench[] = [];
 beforeEach(() => vi.clearAllMocks());
 afterEach(() => { for (const workbench of workbenches.splice(0)) workbench.dispose(); vi.useRealTimers(); vi.restoreAllMocks(); });
 
-function workbenchFixture(output = { appendLine: vi.fn() }, events?: { changes: vscode.EventEmitter<{ repoId: string; changes?: RepositoryChanges }>; catalog: vscode.EventEmitter<void> }, overrides: Partial<Pick<RepositoryManager, 'scan' | 'list' | 'collections' | 'order'>> = {}) {
+function workbenchFixture(output = { appendLine: vi.fn() }, events?: { changes: vscode.EventEmitter<{ repoId: string; changes?: RepositoryChanges }>; catalog: vscode.EventEmitter<void> }, overrides: Partial<Pick<RepositoryManager, 'scan' | 'list' | 'collections' | 'order' | 'get'>> = {}) {
   const repositories = { scan: vi.fn(async () => {}), list: () => [], onDidChange: events?.changes.event ?? (() => ({ dispose() {} })), onDidChangeRepositories: events?.catalog.event ?? (() => ({ dispose() {} })), ...overrides };
   const workbench = new Workbench({ extensionUri: {}, workspaceState: { get: (_key: string, fallback: unknown) => fallback, update: async () => {} } } as unknown as vscode.ExtensionContext, {} as never, repositories as never, { releaseDiffOwner: vi.fn() } as never, output as never, {} as never);
   vi.spyOn(workbench as unknown as { html(): Promise<string> }, 'html').mockResolvedValue('<html></html>');
   workbenches.push(workbench);
   return workbench;
 }
+
+describe('Commit tree editor tabs', () => {
+  it('pins and reuses tree targets without taking over the normal editor or its saved baseline', async () => {
+    const repo = { id: 'repo', root: '/repo', commonDir: '/repo/.git', name: 'repo' };
+    const workbench = workbenchFixture(undefined, undefined, { list: () => [repo], get: () => repo });
+    const normal = panelFixture(), first = panelFixture(), second = panelFixture();
+    vi.mocked(vscode.window.createWebviewPanel).mockReturnValueOnce(normal.panel as never).mockReturnValueOnce(first.panel as never).mockReturnValueOnce(second.panel as never);
+    await workbench.open(repo.id);
+    const revision = 'a'.repeat(40);
+    await workbench.openCommitTree(repo.id, revision);
+    await workbench.openCommitTree(repo.id, revision);
+    expect(first.panel.reveal).toHaveBeenCalledOnce();
+    expect(vscode.window.createWebviewPanel).toHaveBeenCalledTimes(2);
+    await workbench.openCommitTree(repo.id, 'b'.repeat(40));
+    expect(vscode.window.createWebviewPanel).toHaveBeenCalledTimes(3);
+    await workbench.open();
+    expect(normal.panel.reveal).toHaveBeenCalledOnce();
+    for (const request of [
+      { method: 'action', payload: { type: 'stage', paths: ['x'] } },
+      { method: 'saveSession', payload: { drafts: { repo: 'overwrite' } } },
+      { method: 'snapshot' },
+      { method: 'revisionTree', repoId: 'other', payload: { revision } },
+      { method: 'revisionTreeIndex', payload: { revision: 'b'.repeat(40) } },
+    ]) {
+      first.panel.webview.postMessage.mockClear();
+      await first.receive({ id: 'pinned', repoId: repo.id, ...request });
+      expect(first.panel.webview.postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'response', id: 'pinned', error: expect.objectContaining({ message: expect.stringContaining('read-only') }) }));
+    }
+  });
+});
 
 describe('Workbench entry presentation', () => {
   function configure(enabled: WorkbenchLocation[], defaultLocation: WorkbenchLocation) {

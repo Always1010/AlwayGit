@@ -38,8 +38,11 @@ import { operationSettingsScopeSchema } from '../protocol/validation';
 import { captureWorkbenchSchema, readWorkbenchLocations, saveWorkbenchLocationsSchema, type DockedWorkbenchLocation, type WorkbenchLocation, type WorkbenchTransfer } from '../protocol/workbench-host';
 import { workbenchContainerIds, workbenchLauncherHtml, workbenchLocationSettingsCommands, workbenchViewIds } from './workbench-launcher';
 
+import { commitTreeTargetSchema, type CommitTreePanelState } from '../protocol/tree';
+import { revisionTreeIndexSchema } from '../protocol/validation';
+
 type WorkbenchSurface = vscode.WebviewPanel | vscode.WebviewView;
-interface WorkbenchPanel { isolatedDiffOwner?: object; panel: WorkbenchSurface; kind: WorkbenchLocation; ready: boolean; subscriptions: vscode.Disposable[]; visible: boolean; activeRepository?: string; blank: boolean; session?: SessionState; savedSession?: SessionState; pendingTerminal?: boolean; pendingChanges?: { repoId: string; changes?: RepositoryChanges }; catalogDirty?: boolean }
+interface WorkbenchPanel { commitTree?: CommitTreePanelState; isolatedDiffOwner?: object; panel: WorkbenchSurface; kind: WorkbenchLocation; ready: boolean; subscriptions: vscode.Disposable[]; visible: boolean; activeRepository?: string; blank: boolean; session?: SessionState; savedSession?: SessionState; pendingTerminal?: boolean; pendingChanges?: { repoId: string; changes?: RepositoryChanges }; catalogDirty?: boolean }
 interface RepositoryDiscoverySession { source?: WorkbenchPanel; cancelled: boolean; adding?: boolean; root: string; discovery?: DiscoveryResult }
 export interface WorkbenchPresence { open: boolean; active: boolean }
 
@@ -375,8 +378,8 @@ export class Workbench implements vscode.Disposable {
   async open(repoId?: string, restoredPanel?: vscode.WebviewPanel, newTab = false, blank = false): Promise<void> {
     if (!vscode.workspace.isTrusted) { await vscode.window.showWarningMessage(this.text('host.trustThisWorkspaceUsingVSCodeWorkspaceTrustThen')); return; }
     if (repoId) this.activeRepository = repoId;
-    const editors = [...this.panels.values()].filter(entry => entry.kind === 'editor');
-    const existing = !restoredPanel && !newTab ? editors.find(entry => this.isActive(entry)) ?? (this.lastPanel?.kind === 'editor' ? this.lastPanel : undefined) ?? editors.at(-1) : undefined;
+    const editors = [...this.panels.values()].filter(entry => entry.kind === 'editor' && !entry.commitTree);
+    const existing = !restoredPanel && !newTab ? editors.find(entry => this.isActive(entry)) ?? (this.lastPanel?.kind === 'editor' && !this.lastPanel.commitTree ? this.lastPanel : undefined) ?? editors.at(-1) : undefined;
     if (existing) { this.reveal(existing); this.lastPanel = existing; this.post({ type: 'repositoriesChanged' }, existing); if (repoId) this.selectPanelRepository(existing, repoId); this.presenceEmitter.fire(this.presence); return; }
     const saved = panelSession(this.context.workspaceState.get<SessionState>('alwaygit.session', {}), repoId, blank) as SessionState;
     const panel = restoredPanel ?? vscode.window.createWebviewPanel('alwaygit.workbench', 'AlwayGit', vscode.ViewColumn.Active, this.webviewOptions());
@@ -386,6 +389,18 @@ export class Workbench implements vscode.Disposable {
   private webviewOptions(): vscode.WebviewPanelOptions & vscode.WebviewOptions {
     return { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview')] };
   }
+  async openCommitTree(repoId: string, revision: string, restoredPanel?: vscode.WebviewPanel): Promise<void> {
+    if (!vscode.workspace.isTrusted) throw new Error(this.text('host.gitExecutionRequiresATrustedWorkspace'));
+    const target = commitTreeTargetSchema.parse({ repoId, revision });
+    await this.initializeRepositories();
+    this.repositories.get(repoId);
+    const existing = [...this.panels.values()].find(entry => entry.commitTree?.commitTree.repoId === repoId && entry.commitTree.commitTree.revision === revision);
+    if (existing && !restoredPanel) { this.reveal(existing); return; }
+    const panel = restoredPanel ?? vscode.window.createWebviewPanel('alwaygit.commitTree', this.text('tree.panelTitle', { oid: revision.slice(0, 8) }), vscode.ViewColumn.Active, this.webviewOptions());
+    panel.iconPath = vscode.Uri.joinPath(this.context.extensionUri, 'media', 'alwaygit.svg');
+    try { await this.attach(panel, 'editor', { repoId }, false, undefined, { commitTree: target }); }
+    catch (error) { panel.dispose(); throw error; }
+  }
   private async openTransferredEditor(transfer: WorkbenchTransfer, source: WorkbenchPanel): Promise<WorkbenchPanel> {
     // Always create a new regular Webview tab; never reveal or replace an existing editor.
     const panel = vscode.window.createWebviewPanel('alwaygit.workbench', 'AlwayGit', vscode.ViewColumn.Active, this.webviewOptions());
@@ -393,11 +408,11 @@ export class Workbench implements vscode.Disposable {
     try { return await this.attach(panel, 'editor', transfer.session, source.blank, transfer); }
     catch (error) { panel.dispose(); throw error; }
   }
-  private async attach(panel: WorkbenchSurface, kind: WorkbenchLocation, saved: SessionState, blank: boolean, transfer?: WorkbenchTransfer): Promise<WorkbenchPanel> {
+  private async attach(panel: WorkbenchSurface, kind: WorkbenchLocation, saved: SessionState, blank: boolean, transfer?: WorkbenchTransfer, commitTree?:CommitTreePanelState): Promise<WorkbenchPanel> {
     if (kind !== 'editor') this.releaseLauncher(panel as vscode.WebviewView);
     panel.webview.options = this.webviewOptions();
-    const entry: WorkbenchPanel = { panel, kind, ready: false, subscriptions: [], visible: panel.visible, activeRepository: saved.repoId, blank, savedSession: saved, session: saved };
-    this.panels.set(panel, entry); this.lastPanel = entry; this.updatePanelTitle(entry);
+    const entry: WorkbenchPanel = { panel, kind, commitTree, ready: false, subscriptions: [], visible: panel.visible, activeRepository: saved.repoId, blank, savedSession: saved, session: saved };
+    this.panels.set(panel, entry); if (!commitTree) this.lastPanel = entry; this.updatePanelTitle(entry);
     entry.subscriptions.push(panel.onDidDispose(() => this.release(entry, !this.disposed && (kind === 'auxiliary' || kind === 'panel') && !this.locations.enabled.includes(kind))));
     entry.subscriptions.push(panel.webview.onDidReceiveMessage(async (raw: unknown) => {
       const parsed = requestSchema.safeParse(raw);
@@ -418,7 +433,7 @@ export class Workbench implements vscode.Disposable {
     }));
     const changed = () => {
       const revealed = panel.visible && !entry.visible; entry.visible = panel.visible;
-      if (this.isActive(entry)) { this.lastPanel = entry; if (entry.session) void this.saveSessionBaseline(entry.session, entry).catch(error => this.output.appendLine('[session] ' + redactSecrets(String(error)))); }
+      if (this.isActive(entry) && !entry.commitTree) { this.lastPanel = entry; if (entry.session) void this.saveSessionBaseline(entry.session, entry).catch(error => this.output.appendLine('[session] ' + redactSecrets(String(error)))); }
       if (revealed) {
         if (entry.catalogDirty) { entry.catalogDirty = false; this.post({ type: 'repositoriesChanged' }, entry); }
         const pending = entry.pendingChanges; entry.pendingChanges = undefined;
@@ -428,7 +443,7 @@ export class Workbench implements vscode.Disposable {
     };
     entry.subscriptions.push('onDidChangeViewState' in panel ? panel.onDidChangeViewState(changed) : panel.onDidChangeVisibility(changed));
     try {
-      const markup = await this.html(panel.webview, saved.repoId, blank, saved, kind, transfer);
+      const markup = await this.html(panel.webview, saved.repoId, blank, saved, kind, transfer, commitTree);
       if (this.disposed || this.panels.get(panel) !== entry) throw new Error(this.text('workbenchEntry.captureFailed'));
       panel.webview.html = markup;
       this.presenceEmitter.fire(this.presence);
@@ -455,12 +470,12 @@ export class Workbench implements vscode.Disposable {
     for (const [id, scan] of this.repositoryDiscoveries) if (scan.source === entry) { scan.cancelled = true; this.repositoryDiscoveries.delete(id); }
     for (const subscription of entry.subscriptions) subscription.dispose();
     if (entry.kind !== 'editor' && this.dockedPanels.get(entry.kind) === entry) this.dockedPanels.delete(entry.kind);
-    if (this.lastPanel === entry) this.lastPanel = [...this.panels.values()].at(-1);
+    if (this.lastPanel === entry) this.lastPanel = [...this.panels.values()].filter(entry => !entry.commitTree).at(-1);
     this.presenceEmitter.fire(this.presence);
   }
   async requestTerminal(): Promise<void> {
     await this.show();
-    const target = this.openMode !== 'editor' ? this.dockedPanels.get(this.openMode) : [...this.panels.values()].find(entry => entry.kind === 'editor' && this.isActive(entry)) ?? this.lastPanel;
+    const target = this.openMode !== 'editor' ? this.dockedPanels.get(this.openMode) : [...this.panels.values()].find(entry => entry.kind === 'editor' && !entry.commitTree && this.isActive(entry)) ?? this.lastPanel;
     if (target) {
       if (target.session?.repoId) this.post({ type: 'terminalRequested' }, target);
       else target.pendingTerminal = true;
@@ -523,6 +538,15 @@ export class Workbench implements vscode.Disposable {
     return this.requestLanguage.run(this.panelLanguage(source), () => this.routeRequest(request, source));
   }
   private async routeRequest(request: RpcRequest, source?:WorkbenchPanel): Promise<unknown> {
+    if (source?.commitTree) {
+      const target = source.commitTree.commitTree;
+      const allowed = ['workbenchReady', 'cancelQuery', 'copyText', 'interfaceSettings', 'revisionTree', 'revisionTreeIndex', 'revisionTreeCommit', 'inspectDetails', 'isolatedDiffPreview', 'isolatedDiffPage', 'diffRelease', 'openRevision', 'diff', 'openFile', 'lfsHistoricalStatus'];
+      if (!allowed.includes(request.method) || request.repoId !== undefined && request.repoId !== target.repoId) throw new MessageError(message('tree.fixedPanel'));
+      const payload = request.payload as { revision?: string; oid?: string; kind?: string; left?: string; right?: string } | undefined;
+      if (['revisionTree', 'revisionTreeIndex', 'revisionTreeCommit', 'openRevision', 'lfsHistoricalStatus'].includes(request.method) && payload?.revision !== target.revision || request.method === 'inspectDetails' && payload?.oid !== target.revision) throw new MessageError(message('tree.fixedPanel'));
+      if (['isolatedDiffPreview', 'diff'].includes(request.method) && !(payload?.kind === 'revision' && payload.revision === target.revision || payload?.kind === 'commit' && payload.oid === target.revision || payload?.kind === 'comparison' && payload.left === target.revision && payload.right === target.revision)) throw new MessageError(message('tree.fixedPanel'));
+      request = { ...request, repoId: target.repoId };
+    }
     if(request.method==='cancelQuery'){this.queries.cancelOwner(source??this,cancelQuerySchema.parse(request.payload).requestId);return null;}
     const category=readQueryCategory(request.method);
     if(category)return this.queries.run(source??this,category,request.id,signal=>this.git.withReadSignal?this.git.withReadSignal(signal,()=>this.executeRequest(request,source)):this.executeRequest(request,source));
@@ -675,6 +699,9 @@ export class Workbench implements vscode.Disposable {
       case 'amendDetails':
       case 'inspectDetails':
       case 'details': { const data = detailsSchema.parse(request.payload); return this.git.details(repo, data.oid, data.parent); }
+      case 'openCommitTree': { const { revision } = revisionTreeIndexSchema.parse(request.payload); await this.openCommitTree(repo.id, revision); return null; }
+      case 'revisionTreeCommit': return this.git.revisionTreeCommit(repo, revisionTreeIndexSchema.parse(request.payload).revision);
+      case 'revisionTreeIndex': return this.git.revisionTree(repo, { ...revisionTreeIndexSchema.parse(request.payload), recursive: true });
       case 'revisionTree': return this.git.revisionTree(repo, revisionTreeSchema.parse(request.payload));
       case 'revisionTreeSearch': return this.git.searchRevisionTree(repo, revisionTreeSearchSchema.parse(request.payload));
       case 'stashDetails': { const data = detailsSchema.parse(request.payload); return this.git.stashDetails(repo, data.oid); }
@@ -778,7 +805,7 @@ export class Workbench implements vscode.Disposable {
     const { version: _version, ...state } = snapshot; const key = JSON.stringify(state); this.fingerprints.set(snapshot.repository.id, key); return key;
   }
   private async poll(): Promise<void> {
-    const ids=[...new Set([...this.panels.values()].filter(entry=>entry.panel.visible).map(entry=>entry.activeRepository).filter((id):id is string=>!!id))];
+    const ids=[...new Set([...this.panels.values()].filter(entry=>entry.panel.visible && !entry.commitTree).map(entry=>entry.activeRepository).filter((id):id is string=>!!id))];
     if (!ids.length || this.polling || !vscode.workspace.isTrusted) return;
     this.polling = true;
     try {
@@ -816,10 +843,11 @@ export class Workbench implements vscode.Disposable {
     this.externalRepositoryActivity(commonDir,false,activity.label);
   }
   externalRepositoryActivity(commonDir:string,busy:boolean,label:string):void {const key=this.repositoryKey(commonDir);if(busy)this.externalBusy.set(key,{label});else this.externalBusy.delete(key);for(const repo of this.repositories.list().filter(repo=>this.repositoryKey(repo.commonDir)===key)){this.post({type:'activity',repoId:repo.id,busy:this.isBusy(commonDir),label});if(!busy)this.post({type:'changed',repoId:repo.id});}}
-  private updatePanelTitle(entry:WorkbenchPanel):void {let name:string|undefined;try{name=entry.activeRepository?groupRepositories(this.repositories.list(),entry.activeRepository).find(group=>group.members.some(repo=>repo.id===entry.activeRepository))?.name:undefined;}catch{/* Repository discovery can remove a stale restored ID. */}entry.panel.title=name?translate('en', "host.alwayGit", { name: (name) }):'AlwayGit';}
+  private updatePanelTitle(entry:WorkbenchPanel):void {if(entry.commitTree){entry.panel.title=this.text('tree.panelTitle',{oid:entry.commitTree.commitTree.revision.slice(0,8)});return;}let name:string|undefined;try{name=entry.activeRepository?groupRepositories(this.repositories.list(),entry.activeRepository).find(group=>group.members.some(repo=>repo.id===entry.activeRepository))?.name:undefined;}catch{/* Repository discovery can remove a stale restored ID. */}entry.panel.title=name?translate('en', "host.alwayGit", { name: (name) }):'AlwayGit';}
   private post(message: HostMessage, target?: WorkbenchPanel): void {
     for (const entry of target ? [target] : this.panels.values()) {
       if (this.panels.get(entry.panel) !== entry) continue;
+      if (entry.commitTree && !['response', 'interfaceSettingsChanged'].includes(message.type)) continue;
       // Retain invalidation on the host: hidden Webviews need not receive or process these messages.
       if (!entry.panel.visible && message.type === 'repositoriesChanged') { entry.catalogDirty = true; continue; }
       if (!entry.panel.visible && message.type === 'changed') {
@@ -845,7 +873,7 @@ export class Workbench implements vscode.Disposable {
       } catch (error) { failed(error instanceof Error ? error.message : String(error)); }
     }
   }
-  private async html(webview: vscode.Webview,activeRepository?:string,blank=false,initialSession?:SessionState,kind:WorkbenchLocation='editor',transfer?:WorkbenchTransfer): Promise<string> {
+  private async html(webview: vscode.Webview,activeRepository?:string,blank=false,initialSession?:SessionState,kind:WorkbenchLocation='editor',transfer?:WorkbenchTransfer,commitTree?:CommitTreePanelState): Promise<string> {
     await this.migrateInterfaceSettings();
     const root = vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview');
     let html = await readFile(vscode.Uri.joinPath(root, 'index.html').fsPath, 'utf8');
@@ -856,7 +884,7 @@ export class Workbench implements vscode.Disposable {
     const preferences = this.interfaceSettings();
     const session = JSON.stringify(overlayInterfaceSettings(panelSession(saved,activeRepository,blank) as SessionState, preferences)).replace(/</g, '\\u003c');
     const settings = JSON.stringify(preferences).replace(/</g, '\\u003c');
-    html = html.replace('</head>', `<script nonce="${nonce}">window.__ALWAYGIT_HOST__="${kind}";window.__ALWAYGIT_TRANSFER__=${JSON.stringify(transfer ?? null).replace(/</g, '\\u003c')};window.__ALWAYGIT_SESSION__=${session};window.__ALWAYGIT_PREFERENCES__=${settings};</script></head>`);
+    html = html.replace('</head>', `<script nonce="${nonce}">window.__ALWAYGIT_COMMIT_TREE__=${JSON.stringify(commitTree ?? null).replace(/</g, '\\u003c')};window.__ALWAYGIT_HOST__="${kind}";window.__ALWAYGIT_TRANSFER__=${JSON.stringify(transfer ?? null).replace(/</g, '\\u003c')};window.__ALWAYGIT_SESSION__=${session};window.__ALWAYGIT_PREFERENCES__=${settings};</script></head>`);
     return html.replace('<head>', `<head><meta property="csp-nonce" nonce="${nonce}"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">`);
   }
   dispose(): void {
