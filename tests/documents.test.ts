@@ -100,7 +100,15 @@ describe('Complete Git Diff previews', () => {
       kind: 'text', left: 'saved revision', right: '', leftLabel: revision.slice(0, 8), rightLabel: 'Working Tree',
     });
     expect(await documents.revisionPreview(repo, { revision, path: 'historical.txt' })).toMatchObject({ kind: 'text', left: '', right: 'saved revision' });
+    expect(await documents.preview(repo, { kind: 'snapshot', revision, path: 'historical.txt' })).toMatchObject({ kind: 'text', left: '', right: 'saved revision', rightLabel: revision.slice(0, 8) });
+    await writeFile(path.join(root, 'historical.txt'), 'current unrelated content');
+    expect(await documents.preview(repo, { kind: 'snapshot', revision, path: 'historical.txt' })).toMatchObject({ kind: 'text', right: 'saved revision' });
+    await expect(documents.preview(repo, { kind: 'snapshot', revision: 'HEAD', path: 'historical.txt' })).rejects.toThrow('fixed Commit ID');
     await expect(documents.preview(repo, { kind: 'revision', revision: 'HEAD', path: 'historical.txt' })).rejects.toThrow('fixed Commit ID');
+    const next = await commit(root, 'new snapshot');
+    const gitDirectory = await git(root, 'rev-parse', '--absolute-git-dir');
+    await writeFile(path.join(gitDirectory, 'shallow'), `${next}\n`);
+    expect(await documents.preview(repo, { kind: 'commit', treeComparison: true, oid: next, parent: revision, path: 'historical.txt' })).toMatchObject({ kind: 'text', left: 'saved revision', right: 'current unrelated content' });
   });
 
   it('compares a saved untracked file with the existing working copy',async()=>{

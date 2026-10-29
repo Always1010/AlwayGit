@@ -272,16 +272,130 @@
     "review": "translated",
     "context": "Commit tree tab"
   },
-  "tree.unavailablePreview": {
-    "en": "Preview unavailable ({{reason}}).",
-    "zh-CN": "无法预览（{{reason}}）。",
-    "review": "translated",
-    "context": "Commit tree tab"
-  },
   "tree.noMatches": {
     "en": "No matching paths.",
     "zh-CN": "没有匹配的路径。",
     "review": "translated",
     "context": "Commit tree tab"
+  },
+  "tree.showChanges": {
+    "en": "Show Commit changes",
+    "zh-CN": "显示本次变更",
+    "review": "translated",
+    "context": "Commit tree changes overlay"
+  },
+  "tree.expandChanges": {
+    "en": "Expand directories containing changes",
+    "zh-CN": "展开到变更位置",
+    "review": "translated",
+    "context": "Commit tree changes overlay"
+  },
+  "tree.comparisonBase": {
+    "en": "Compared with",
+    "zh-CN": "比较基准",
+    "review": "translated",
+    "context": "Commit tree changes overlay"
+  },
+  "tree.parentOption": {
+    "en": "Parent {{index}} · {{oid}}",
+    "zh-CN": "父提交 {{index}} · {{oid}}",
+    "review": "translated",
+    "context": "Commit tree changes overlay"
+  },
+  "tree.emptyBase": {
+    "en": "Empty tree (first Commit)",
+    "zh-CN": "空树（首次提交）",
+    "review": "translated",
+    "context": "Commit tree changes overlay"
+  },
+  "tree.loadingChanges": {
+    "en": "Loading changes…",
+    "zh-CN": "正在读取本次变更…",
+    "review": "translated",
+    "context": "Commit tree changes overlay"
+  },
+  "tree.changesUnavailable": {
+    "en": "Changes unavailable; the snapshot remains browsable.",
+    "zh-CN": "无法读取变更，仍可浏览提交快照。",
+    "review": "translated",
+    "context": "Commit tree changes overlay"
+  },
+  "tree.changeSummary": {
+    "en": "Added {{added}} · Modified {{modified}} · Deleted {{deleted}} · Renamed {{renamed}} · Copied {{copied}} · Type changed {{typeChanged}}",
+    "zh-CN": "新增 {{added}} · 修改 {{modified}} · 删除 {{deleted}} · 重命名 {{renamed}} · 复制 {{copied}} · 类型变化 {{typeChanged}}",
+    "review": "translated",
+    "context": "Commit tree changes overlay"
+  },
+  "tree.deletedCountHint": {
+    "en": "Deleted entries are virtual and excluded from snapshot totals.",
+    "zh-CN": "删除项为虚拟条目，不计入快照文件数。",
+    "review": "translated",
+    "context": "Commit tree changes overlay"
+  },
+  "tree.statusAdded": {
+    "en": "Added",
+    "zh-CN": "新增",
+    "review": "translated",
+    "context": "Commit tree changes overlay"
+  },
+  "tree.statusModified": {
+    "en": "Modified content or mode",
+    "zh-CN": "内容或文件模式修改",
+    "review": "translated",
+    "context": "Commit tree changes overlay"
+  },
+  "tree.statusDeleted": {
+    "en": "Deleted",
+    "zh-CN": "删除",
+    "review": "translated",
+    "context": "Commit tree changes overlay"
+  },
+  "tree.statusRenamed": {
+    "en": "Renamed or moved",
+    "zh-CN": "重命名或移动",
+    "review": "translated",
+    "context": "Commit tree changes overlay"
+  },
+  "tree.statusCopied": {
+    "en": "Copied",
+    "zh-CN": "复制",
+    "review": "translated",
+    "context": "Commit tree changes overlay"
+  },
+  "tree.statusTypeChanged": {
+    "en": "File type changed",
+    "zh-CN": "文件类型变化",
+    "review": "translated",
+    "context": "Commit tree changes overlay"
+  },
+  "tree.fromPath": {
+    "en": "From {{path}}",
+    "zh-CN": "原路径：{{path}}",
+    "review": "translated",
+    "context": "Commit tree changes overlay"
+  },
+  "tree.virtualDeleted": {
+    "en": "Deleted · virtual entry",
+    "zh-CN": "已删除 · 虚拟条目",
+    "review": "translated",
+    "context": "Commit tree changes overlay"
+  },
+  "tree.deletedDirectory": {
+    "en": "Only deleted entries",
+    "zh-CN": "仅包含已删除项",
+    "review": "translated",
+    "context": "Commit tree changes overlay"
+  },
+  "tree.changePreview": {
+    "en": "Commit change preview",
+    "zh-CN": "本次提交变更预览",
+    "review": "translated",
+    "context": "Commit tree changes overlay"
+  },
+  "tree.selectFile": {
+    "en": "Select a file to preview.",
+    "zh-CN": "选择文件以预览。",
+    "review": "translated",
+    "context": "Commit tree changes overlay"
   }
 }

@@ -296,7 +296,12 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
     let left: Side;
     let right: Side;
     let label: string;
-    if (target.kind === 'revision') {
+    if (target.kind === 'snapshot') {
+      const revision = immutableRevision(target.revision);
+      left = { source: { kind: 'empty' }, label: translate('en', 'documents.empty'), path: target.path };
+      right = { source: { kind: 'revision', revision, path: target.path }, label: revision.slice(0, 8), path: target.path };
+      label = `${path.basename(target.path)} · ${revision.slice(0, 8)}`;
+    } else if (target.kind === 'revision') {
       const revision = immutableRevision(target.revision);
       left = { source: { kind: 'revision', revision, path: target.path }, label: revision.slice(0, 8), path: target.path };
       try { right = await this.workingSide(repo, target.path); }
@@ -317,7 +322,9 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
       catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; right = { source: { kind: 'empty' }, label: translate('en', "documents.workingTree"), path: target.path }; }
       label = translate('en', "documents.stashWorkingTree", { value: (path.basename(target.path)) });
     } else if (target.kind === 'commit') {
-      const details = await this.git.details(repo, target.oid, target.parent);
+      const details = target.treeComparison
+        ? await this.git.revisionTreeChanges(repo, target.oid, target.parent).then(result => ({ commit: { oid: result.revision }, parent: result.parent, files: result.files }))
+        : await this.git.details(repo, target.oid, target.parent);
       const file = details.files.find(f => f.path === target.path);
       if (!file) throw new MessageError(localizeMessage("documents.thisFileIsNotPartOfTheSelectedComparison"));
       const before = file.previousPath ?? file.path;

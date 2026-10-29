@@ -7058,13 +7058,89 @@ export const catalog = {
     "en": "Recorded submodule Commit:",
     "zh-CN": "记录的子模块提交："
   },
-  "tree.unavailablePreview": {
-    "en": "Preview unavailable ({{reason}}).",
-    "zh-CN": "无法预览（{{reason}}）。"
-  },
   "tree.noMatches": {
     "en": "No matching paths.",
     "zh-CN": "没有匹配的路径。"
+  },
+  "tree.showChanges": {
+    "en": "Show Commit changes",
+    "zh-CN": "显示本次变更"
+  },
+  "tree.expandChanges": {
+    "en": "Expand directories containing changes",
+    "zh-CN": "展开到变更位置"
+  },
+  "tree.comparisonBase": {
+    "en": "Compared with",
+    "zh-CN": "比较基准"
+  },
+  "tree.parentOption": {
+    "en": "Parent {{index}} · {{oid}}",
+    "zh-CN": "父提交 {{index}} · {{oid}}"
+  },
+  "tree.emptyBase": {
+    "en": "Empty tree (first Commit)",
+    "zh-CN": "空树（首次提交）"
+  },
+  "tree.loadingChanges": {
+    "en": "Loading changes…",
+    "zh-CN": "正在读取本次变更…"
+  },
+  "tree.changesUnavailable": {
+    "en": "Changes unavailable; the snapshot remains browsable.",
+    "zh-CN": "无法读取变更，仍可浏览提交快照。"
+  },
+  "tree.changeSummary": {
+    "en": "Added {{added}} · Modified {{modified}} · Deleted {{deleted}} · Renamed {{renamed}} · Copied {{copied}} · Type changed {{typeChanged}}",
+    "zh-CN": "新增 {{added}} · 修改 {{modified}} · 删除 {{deleted}} · 重命名 {{renamed}} · 复制 {{copied}} · 类型变化 {{typeChanged}}"
+  },
+  "tree.deletedCountHint": {
+    "en": "Deleted entries are virtual and excluded from snapshot totals.",
+    "zh-CN": "删除项为虚拟条目，不计入快照文件数。"
+  },
+  "tree.statusAdded": {
+    "en": "Added",
+    "zh-CN": "新增"
+  },
+  "tree.statusModified": {
+    "en": "Modified content or mode",
+    "zh-CN": "内容或文件模式修改"
+  },
+  "tree.statusDeleted": {
+    "en": "Deleted",
+    "zh-CN": "删除"
+  },
+  "tree.statusRenamed": {
+    "en": "Renamed or moved",
+    "zh-CN": "重命名或移动"
+  },
+  "tree.statusCopied": {
+    "en": "Copied",
+    "zh-CN": "复制"
+  },
+  "tree.statusTypeChanged": {
+    "en": "File type changed",
+    "zh-CN": "文件类型变化"
+  },
+  "tree.fromPath": {
+    "en": "From {{path}}",
+    "zh-CN": "原路径：{{path}}"
+  },
+  "tree.virtualDeleted": {
+    "en": "Deleted · virtual entry",
+    "zh-CN": "已删除 · 虚拟条目"
+  },
+  "tree.deletedDirectory": {
+    "en": "Only deleted entries",
+    "zh-CN": "仅包含已删除项"
+  },
+  "tree.changePreview": {
+    "en": "Commit change preview",
+    "zh-CN": "本次提交变更预览"
+  },
+  "tree.selectFile": {
+    "en": "Select a file to preview.",
+    "zh-CN": "选择文件以预览。"
   },
   "validation.checkoutRequiresExactlyOneBranch": {
     "en": "Checkout requires exactly one branch",
@@ -9301,8 +9377,27 @@ export interface MessageParameters {
   "tree.retry": {  };
   "tree.emptyFile": {  };
   "tree.submodulePointer": {  };
-  "tree.unavailablePreview": { reason: ParameterValue };
   "tree.noMatches": {  };
+  "tree.showChanges": {  };
+  "tree.expandChanges": {  };
+  "tree.comparisonBase": {  };
+  "tree.parentOption": { index: ParameterValue; oid: ParameterValue };
+  "tree.emptyBase": {  };
+  "tree.loadingChanges": {  };
+  "tree.changesUnavailable": {  };
+  "tree.changeSummary": { added: ParameterValue; modified: ParameterValue; deleted: ParameterValue; renamed: ParameterValue; copied: ParameterValue; typeChanged: ParameterValue };
+  "tree.deletedCountHint": {  };
+  "tree.statusAdded": {  };
+  "tree.statusModified": {  };
+  "tree.statusDeleted": {  };
+  "tree.statusRenamed": {  };
+  "tree.statusCopied": {  };
+  "tree.statusTypeChanged": {  };
+  "tree.fromPath": { path: ParameterValue };
+  "tree.virtualDeleted": {  };
+  "tree.deletedDirectory": {  };
+  "tree.changePreview": {  };
+  "tree.selectFile": {  };
   "validation.checkoutRequiresExactlyOneBranch": {  };
   "validation.stashRequiresCheckout": {  };
   "validation.chooseAnExistingGroupOrCreateANewOne": {  };

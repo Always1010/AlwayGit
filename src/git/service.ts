@@ -32,7 +32,7 @@ import { ConflictStore } from './conflicts';
 import { dropStash } from './stash-drop';
 import { NetworkProgressParser } from './network-progress';
 import { ReflogReader } from './reflog';
-import { RevisionTreeReader } from './tree';
+import { RevisionTreeReader, parseRevisionTreeChanges } from './tree';
 import { LfsManager } from './lfs';
 import { captureLfsDestinations } from './lfs-destination';
 import { lfsActionSchema, type LfsHistoricalRequest, type LfsTrackRequest } from '../protocol/lfs';
@@ -650,6 +650,14 @@ export class GitService implements GitServiceContract {
     const raw = (await this.run(repo, ['cat-file', 'commit', oid])).stdout.toString('utf8');
     commit.parents = [...raw.slice(0, raw.indexOf('\n\n')).matchAll(/^parent ([0-9a-f]+)$/gm)].map(match => match[1]);
     return { commit, body: data.slice(6).join('\0').trimEnd(), repository: { name: repo.name, root: repo.root } };
+  }
+  async revisionTreeChanges(repo: Repository, revision: string, parent?: string) {
+    const { commit } = await this.revisionTreeCommit(repo, revision);
+    const base = parent ?? commit.parents[0];
+    if (base && !commit.parents.includes(base)) throw new GitError(localizeMessage('service.selectedParentIsNotAParentOfThisCommit'), 'INVALID_PARENT');
+    if (base) await this.oid(repo, base);
+    const output = await this.run(repo, ['diff-tree', '--no-commit-id', '--raw', '--no-abbrev', '-z', '-r', '-M', ...(base ? [base, commit.oid] : ['--root', commit.oid]), '--']);
+    return { revision: commit.oid, ...(base ? { parent: base } : {}), files: parseRevisionTreeChanges(output.stdout) };
   }
   async searchRevisionTree(repo: Repository, request: RevisionTreeSearchRequest) {
     await this.verify(repo);
