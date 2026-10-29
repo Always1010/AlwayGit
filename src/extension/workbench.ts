@@ -39,7 +39,7 @@ import { captureWorkbenchSchema, readWorkbenchLocations, saveWorkbenchLocationsS
 import { workbenchContainerIds, workbenchLauncherHtml, workbenchLocationSettingsCommands, workbenchViewIds } from './workbench-launcher';
 
 import { commitTreeTargetSchema, type CommitTreePanelState } from '../protocol/tree';
-import { revisionTreeChangesSchema, revisionTreeIndexSchema } from '../protocol/validation';
+import { treeCompareOrderSchema, openCommitTreeSchema, revisionTreeCompareSchema, revisionTreeChangesSchema, revisionTreeIndexSchema } from '../protocol/validation';
 
 type WorkbenchSurface = vscode.WebviewPanel | vscode.WebviewView;
 interface WorkbenchPanel { treeParents?: string[]; commitTree?: CommitTreePanelState; isolatedDiffOwner?: object; panel: WorkbenchSurface; kind: WorkbenchLocation; ready: boolean; subscriptions: vscode.Disposable[]; visible: boolean; activeRepository?: string; blank: boolean; session?: SessionState; savedSession?: SessionState; pendingTerminal?: boolean; pendingChanges?: { repoId: string; changes?: RepositoryChanges }; catalogDirty?: boolean }
@@ -389,14 +389,14 @@ export class Workbench implements vscode.Disposable {
   private webviewOptions(): vscode.WebviewPanelOptions & vscode.WebviewOptions {
     return { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview')] };
   }
-  async openCommitTree(repoId: string, revision: string, restoredPanel?: vscode.WebviewPanel): Promise<void> {
+  async openCommitTree(repoId: string, revision: string, restoredPanel?: vscode.WebviewPanel, baseRevision?: string): Promise<void> {
     if (!vscode.workspace.isTrusted) throw new Error(this.text('host.gitExecutionRequiresATrustedWorkspace'));
-    const target = commitTreeTargetSchema.parse({ repoId, revision });
+    const target = commitTreeTargetSchema.parse({ repoId, revision, ...(baseRevision !== undefined ? { baseRevision } : {}) });
     await this.initializeRepositories();
     this.repositories.get(repoId);
-    const existing = [...this.panels.values()].find(entry => entry.commitTree?.commitTree.repoId === repoId && entry.commitTree.commitTree.revision === revision);
+    const existing = [...this.panels.values()].find(entry => entry.commitTree?.commitTree.repoId === repoId && entry.commitTree.commitTree.revision === revision && entry.commitTree.commitTree.baseRevision === baseRevision);
     if (existing && !restoredPanel) { this.reveal(existing); return; }
-    const panel = restoredPanel ?? vscode.window.createWebviewPanel('alwaygit.commitTree', this.text('tree.panelTitle', { oid: revision.slice(0, 8) }), vscode.ViewColumn.Active, this.webviewOptions());
+    const panel = restoredPanel ?? vscode.window.createWebviewPanel('alwaygit.commitTree', baseRevision ? this.text('treeCompareHost.panelTitle', { base: baseRevision.slice(0, 8), target: revision.slice(0, 8) }) : this.text('tree.panelTitle', { oid: revision.slice(0, 8) }), vscode.ViewColumn.Active, this.webviewOptions());
     panel.iconPath = vscode.Uri.joinPath(this.context.extensionUri, 'media', 'alwaygit.svg');
     try { await this.attach(panel, 'editor', { repoId }, false, undefined, { commitTree: target }); }
     catch (error) { panel.dispose(); throw error; }
@@ -540,12 +540,17 @@ export class Workbench implements vscode.Disposable {
   private async routeRequest(request: RpcRequest, source?:WorkbenchPanel): Promise<unknown> {
     if (source?.commitTree) {
       const target = source.commitTree.commitTree;
-      const allowed = ['workbenchReady', 'cancelQuery', 'copyText', 'interfaceSettings', 'revisionTreeChanges', 'revisionTree', 'revisionTreeIndex', 'revisionTreeCommit', 'isolatedDiffPreview', 'isolatedDiffPage', 'diffRelease', 'openRevision', 'diff', 'lfsHistoricalStatus'];
+      const allowed = ['workbenchReady', 'cancelQuery', 'copyText', 'interfaceSettings', 'revisionTreeChanges', 'revisionTreeCompare', 'openCommitTree', 'revisionTree', 'revisionTreeIndex', 'revisionTreeCommit', 'isolatedDiffPreview', 'isolatedDiffPage', 'diffRelease', 'openRevision', 'diff', 'lfsHistoricalStatus'];
       if (!allowed.includes(request.method) || request.repoId !== undefined && request.repoId !== target.repoId) throw new MessageError(message('tree.fixedPanel'));
-      const payload = request.payload as { revision?: string; oid?: string; kind?: string } | undefined;
-      const historicalParent = ['openRevision', 'lfsHistoricalStatus'].includes(request.method) && source.treeParents?.includes(payload?.revision ?? '');
+      const payload = request.payload as { revision?: string; baseRevision?: string; parent?: string; oid?: string; kind?: string; left?: string; right?: string } | undefined;
+      const pair = target.baseRevision !== undefined;
+      const historicalParent = ['openRevision', 'lfsHistoricalStatus'].includes(request.method) && (pair ? payload?.revision === target.baseRevision : source.treeParents?.includes(payload?.revision ?? ''));
       if (['revisionTree', 'revisionTreeChanges', 'revisionTreeIndex', 'revisionTreeCommit', 'openRevision', 'lfsHistoricalStatus'].includes(request.method) && payload?.revision !== target.revision && !historicalParent) throw new MessageError(message('tree.fixedPanel'));
-      const fixedPreview = payload?.kind === 'snapshot' && payload.revision === target.revision || payload?.kind === 'commit' && payload.oid === target.revision;
+      if (request.method === 'revisionTreeChanges' && pair || request.method === 'revisionTreeCompare' && (!pair || payload?.revision !== target.revision || payload?.baseRevision !== target.baseRevision)) throw new MessageError(message('tree.fixedPanel'));
+      if (request.method === 'openCommitTree' && (!pair || payload?.revision !== target.baseRevision || payload?.baseRevision !== target.revision)) throw new MessageError(message('tree.fixedPanel'));
+      const fixedPreview = payload?.kind === 'snapshot' && payload.revision === target.revision || (pair
+        ? payload?.kind === 'comparison' && payload.left === target.baseRevision && payload.right === target.revision
+        : payload?.kind === 'commit' && payload.oid === target.revision);
       if (['isolatedDiffPreview', 'diff'].includes(request.method) && !fixedPreview) throw new MessageError(message('tree.fixedPanel'));
       request = { ...request, repoId: target.repoId };
     }
@@ -701,7 +706,9 @@ export class Workbench implements vscode.Disposable {
       case 'amendDetails':
       case 'inspectDetails':
       case 'details': { const data = detailsSchema.parse(request.payload); return this.git.details(repo, data.oid, data.parent); }
-      case 'openCommitTree': { const { revision } = revisionTreeIndexSchema.parse(request.payload); await this.openCommitTree(repo.id, revision); return null; }
+      case 'treeCompareOrder': { const { left, right } = treeCompareOrderSchema.parse(request.payload); return this.git.compare(repo, left, right); }
+      case 'openCommitTree': { const { revision, baseRevision } = openCommitTreeSchema.parse(request.payload); await this.openCommitTree(repo.id, revision, undefined, baseRevision); return null; }
+      case 'revisionTreeCompare': { const { revision, baseRevision } = revisionTreeCompareSchema.parse(request.payload); return this.git.revisionTreeCompare(repo, revision, baseRevision); }
       case 'revisionTreeChanges': { const { revision, parent } = revisionTreeChangesSchema.parse(request.payload); return this.git.revisionTreeChanges(repo, revision, parent); }
       case 'revisionTreeCommit': { const result = await this.git.revisionTreeCommit(repo, revisionTreeIndexSchema.parse(request.payload).revision); if (source?.commitTree) source.treeParents = result.commit.parents; return result; }
       case 'revisionTreeIndex': return this.git.revisionTree(repo, { ...revisionTreeIndexSchema.parse(request.payload), recursive: true });
@@ -846,7 +853,7 @@ export class Workbench implements vscode.Disposable {
     this.externalRepositoryActivity(commonDir,false,activity.label);
   }
   externalRepositoryActivity(commonDir:string,busy:boolean,label:string):void {const key=this.repositoryKey(commonDir);if(busy)this.externalBusy.set(key,{label});else this.externalBusy.delete(key);for(const repo of this.repositories.list().filter(repo=>this.repositoryKey(repo.commonDir)===key)){this.post({type:'activity',repoId:repo.id,busy:this.isBusy(commonDir),label});if(!busy)this.post({type:'changed',repoId:repo.id});}}
-  private updatePanelTitle(entry:WorkbenchPanel):void {if(entry.commitTree){entry.panel.title=this.text('tree.panelTitle',{oid:entry.commitTree.commitTree.revision.slice(0,8)});return;}let name:string|undefined;try{name=entry.activeRepository?groupRepositories(this.repositories.list(),entry.activeRepository).find(group=>group.members.some(repo=>repo.id===entry.activeRepository))?.name:undefined;}catch{/* Repository discovery can remove a stale restored ID. */}entry.panel.title=name?translate('en', "host.alwayGit", { name: (name) }):'AlwayGit';}
+  private updatePanelTitle(entry:WorkbenchPanel):void {if(entry.commitTree){const target=entry.commitTree.commitTree;entry.panel.title=target.baseRevision?this.text('treeCompareHost.panelTitle',{base:target.baseRevision.slice(0,8),target:target.revision.slice(0,8)}):this.text('tree.panelTitle',{oid:target.revision.slice(0,8)});return;}let name:string|undefined;try{name=entry.activeRepository?groupRepositories(this.repositories.list(),entry.activeRepository).find(group=>group.members.some(repo=>repo.id===entry.activeRepository))?.name:undefined;}catch{/* Repository discovery can remove a stale restored ID. */}entry.panel.title=name?translate('en', "host.alwayGit", { name: (name) }):'AlwayGit';}
   private post(message: HostMessage, target?: WorkbenchPanel): void {
     for (const entry of target ? [target] : this.panels.values()) {
       if (this.panels.get(entry.panel) !== entry) continue;

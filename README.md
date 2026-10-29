@@ -27,7 +27,7 @@ Release packages target `win32-x64`, `linux-x64`, and `linux-arm64`. With Remote
 
 - Multiple repositories and Worktrees, confirmed recursive discovery, repository removal and custom groups, and independent Workbench tabs in one window.
 - Multiple-reference filters, recursive branch trees, paginated topological commit graphs, file history, combined author/date/path/code-change searches, and HEAD location.
-- Commit details, complete commit trees in independent tabs with optional change markers, Merge Parent selection, automatic two-commit and bidirectional branch comparison, file-path filtering, and read-only text/image diffs.
+- Commit details, complete commit trees and two-commit tree differences in independent tabs with optional change markers, Merge Parent selection, automatic two-commit and bidirectional branch comparison, file-path filtering, and read-only text/image diffs.
 - Shared bottom Diff and terminal tabs with Shell selection, renaming, termination/restart, collapse, and maximization.
 - Working Tree conflict, Unstaged, and Staged management; whole-file, Git-hunk, and bulk staging actions; Commit, Amend, and per-repository drafts.
 - Conflict-file navigation, native three-way merge editing with a manual fallback, complete-side selection, and reviewed staged results before continuation.

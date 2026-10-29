@@ -102,6 +102,63 @@ describe('Commit tree editor tabs', () => {
       expect(first.panel.webview.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'wrong-preview', error: expect.any(Object) }));
     }
   });
+  it('binds ordered comparison panels, restores targets and allows only the exact endpoint swap', async () => {
+    const repo = { id: 'repo', root: '/repo', commonDir: '/repo/.git', name: 'repo' };
+    const workbench = workbenchFixture(undefined, undefined, { list: () => [repo], get: () => repo });
+    const first = panelFixture(), second = panelFixture(), single = panelFixture(), restored = panelFixture();
+    vi.mocked(vscode.window.createWebviewPanel).mockReturnValueOnce(first.panel as never).mockReturnValueOnce(single.panel as never).mockReturnValueOnce(second.panel as never);
+    const revision = 'a'.repeat(40), baseRevision = 'b'.repeat(40), other = 'c'.repeat(40);
+    await workbench.openCommitTree(repo.id, revision, undefined, baseRevision);
+    await workbench.openCommitTree(repo.id, revision, undefined, baseRevision);
+    expect(first.panel.reveal).toHaveBeenCalledOnce();
+    await workbench.openCommitTree(repo.id, revision);
+    expect(vscode.window.createWebviewPanel).toHaveBeenCalledTimes(2);
+    const internals = workbench as unknown as { git: GitServiceContract; documents: { preview: ReturnType<typeof vi.fn>; openRevision: ReturnType<typeof vi.fn> }; projects: { openDiff: ReturnType<typeof vi.fn> }; panels: Map<unknown, { commitTree?: unknown }> };
+    internals.git.revisionTreeCompare = vi.fn(async () => ({ revision, baseRevision, files: [] }));
+    internals.git.compare = vi.fn(async () => ({ left: { oid: baseRevision }, right: { oid: revision }, files: [] } as never));
+    await workbench.handle({ id: 'order', method: 'treeCompareOrder', repoId: repo.id, payload: { left: revision, right: baseRevision } });
+    expect(internals.git.compare).toHaveBeenCalledWith(repo, revision, baseRevision);
+    internals.documents.preview = vi.fn(async () => ({ kind: 'text', left: 'base', right: 'target' }));
+    internals.documents.openRevision = vi.fn(async () => {});
+    internals.projects.openDiff = vi.fn(async () => {});
+    await first.receive({ id: 'pair', method: 'revisionTreeCompare', payload: { revision, baseRevision } });
+    expect(internals.git.revisionTreeCompare).toHaveBeenCalledWith(repo, revision, baseRevision);
+    const comparison = { kind: 'comparison', left: baseRevision, right: revision, path: 'file.txt' };
+    await first.receive({ id: 'preview', method: 'isolatedDiffPreview', payload: comparison });
+    expect(internals.documents.preview).toHaveBeenCalledWith(repo, comparison, expect.any(Object));
+    await first.receive({ id: 'native', method: 'diff', payload: comparison });
+    expect(internals.projects.openDiff).toHaveBeenCalledWith(repo.root, comparison);
+    await first.receive({ id: 'base-file', method: 'openRevision', payload: { revision: baseRevision, path: 'deleted.txt' } });
+    expect(internals.documents.openRevision).toHaveBeenCalledWith(repo, { revision: baseRevision, path: 'deleted.txt' });
+    for (const request of [
+      { method: 'revisionTreeCompare', repoId: 'other', payload: { revision, baseRevision } },
+      { method: 'revisionTreeCompare', payload: { revision: baseRevision, baseRevision: revision } },
+      { method: 'revisionTreeCompare', payload: { revision, baseRevision: other } },
+      { method: 'revisionTreeChanges', payload: { revision } },
+      { method: 'treeCompareOrder', payload: { left: baseRevision, right: revision } },
+      { method: 'revisionTreeIndex', payload: { revision: baseRevision } },
+      { method: 'openRevision', payload: { revision: other, path: 'file.txt' } },
+      { method: 'isolatedDiffPreview', payload: { ...comparison, left: revision, right: baseRevision } },
+      { method: 'diff', payload: { ...comparison, right: other } },
+      { method: 'diff', payload: { kind: 'commit', oid: revision, parent: baseRevision, treeComparison: true, path: 'file.txt' } },
+      { method: 'openCommitTree', payload: { revision, baseRevision } },
+      { method: 'openCommitTree', payload: { revision: other, baseRevision: revision } },
+      { method: 'action', payload: { type: 'stage', paths: ['file.txt'] } },
+    ]) {
+      await first.receive({ id: 'out-of-bounds', ...request });
+      expect(first.panel.webview.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'out-of-bounds', error: expect.any(Object) }));
+    }
+    await first.receive({ id: 'swap', method: 'openCommitTree', payload: { revision: baseRevision, baseRevision: revision } });
+    expect(vscode.window.createWebviewPanel).toHaveBeenCalledTimes(3);
+    expect(internals.panels.get(second.panel)?.commitTree).toEqual({ commitTree: { repoId: repo.id, revision: baseRevision, baseRevision: revision } });
+    await second.receive({ id: 'swap-back', method: 'openCommitTree', payload: { revision, baseRevision } });
+    expect(vscode.window.createWebviewPanel).toHaveBeenCalledTimes(3);
+    expect(first.panel.reveal).toHaveBeenCalledTimes(2);
+    await workbench.openCommitTree(repo.id, revision, restored.panel as never, baseRevision);
+    expect(internals.panels.get(restored.panel)?.commitTree).toEqual({ commitTree: { repoId: repo.id, revision, baseRevision } });
+    expect(restored.panel.title).toContain('bbbbbbbb'); expect(restored.panel.title).toContain('aaaaaaaa');
+  });
+
 });
 
 describe('Workbench entry presentation', () => {

@@ -7142,6 +7142,30 @@ export const catalog = {
     "en": "Select a file to preview.",
     "zh-CN": "选择文件以预览。"
   },
+  "treeCompare.browse": {
+    "en": "View file tree differences",
+    "zh-CN": "查看文件树差异"
+  },
+  "treeCompare.title": {
+    "en": "File Tree Comparison",
+    "zh-CN": "文件树比较"
+  },
+  "treeCompare.direction": {
+    "en": "Base {{base}} → Target {{target}}",
+    "zh-CN": "基准 {{base}} → 目标 {{target}}"
+  },
+  "treeCompare.reverse": {
+    "en": "Open reversed comparison in a comparison tab",
+    "zh-CN": "在比较标签页中打开反向比较"
+  },
+  "treeCompare.showChanges": {
+    "en": "Show comparison changes",
+    "zh-CN": "显示比较变更"
+  },
+  "treeCompareHost.panelTitle": {
+    "en": "Files · {{base}} → {{target}}",
+    "zh-CN": "文件树 · {{base}} → {{target}}"
+  },
   "treeViews.presentation": {
     "en": "File tree presentation",
     "zh-CN": "文件树展示方式"
@@ -9454,6 +9478,12 @@ export interface MessageParameters {
   "tree.deletedDirectory": {  };
   "tree.changePreview": {  };
   "tree.selectFile": {  };
+  "treeCompare.browse": {  };
+  "treeCompare.title": {  };
+  "treeCompare.direction": { base: ParameterValue; target: ParameterValue };
+  "treeCompare.reverse": {  };
+  "treeCompare.showChanges": {  };
+  "treeCompareHost.panelTitle": { base: ParameterValue; target: ParameterValue };
   "treeViews.presentation": {  };
   "treeViews.list": {  };
   "treeViews.horizontal": {  };

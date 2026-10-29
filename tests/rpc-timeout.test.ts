@@ -13,6 +13,19 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('host request timeouts', () => {
+  it('keeps comparison-tree ordering independent from active main details and comparisons', async () => {
+    const { rpc } = await import('../webview/rpc');
+    const { readQueryCategory } = await import('../src/protocol/queries');
+    expect(readQueryCategory('treeCompareOrder')).toBe('treeCompareOrder');
+    for (const method of ['details', 'compare'] as const) {
+      const main = rpc(method, 'repo', { left: 'base', right: 'target', oid: 'target' }), mainId = postMessage.mock.calls.at(-1)![0].id;
+      const order = rpc('treeCompareOrder', 'repo', { left: 'target', right: 'base' }), orderId = postMessage.mock.calls.at(-1)![0].id;
+      expect(postMessage.mock.calls.some(([request]) => request.method === 'cancelQuery')).toBe(false);
+      receive({ data: { type: 'response', id: orderId, result: 'ordered' } });
+      receive({ data: { type: 'response', id: mainId, result: 'details' } });
+      await expect(order).resolves.toBe('ordered'); await expect(main).resolves.toBe('details');
+    }
+  });
   it('keeps auxiliary commit reads independent while cancelling obsolete navigation', async () => {
     const { rpc } = await import('../webview/rpc');
     const requests = ['details', 'copyCommitDetails', 'tagTargetDetails', 'amendDetails', 'inspectDetails'] as const;

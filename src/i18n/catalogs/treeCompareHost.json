@@ -1,0 +1,8 @@
+{
+  "treeCompareHost.panelTitle": {
+    "en": "Files · {{base}} → {{target}}",
+    "zh-CN": "文件树 · {{base}} → {{target}}",
+    "review": "translated",
+    "context": "src/extension/workbench.ts / fixed comparison tab title"
+  }
+}

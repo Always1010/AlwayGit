@@ -1,6 +1,8 @@
 .commit-tree-page {--file-row-height:26px;}
 .commit-tree-header {display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-bottom:1px solid var(--section-border);min-width:0;}
 .commit-tree-header>div {display:flex;align-items:center;gap:7px;}
+.commit-tree-header>.commit-tree-direction {flex-wrap:wrap;}
+.commit-tree-direction>.hash {overflow-wrap:anywhere;}
 .commit-tree-header>.muted {font-size:11px;overflow-wrap:anywhere;}
 .commit-tree-toolbar {flex-wrap:wrap;}
 .commit-tree-toolbar .file-path-filter {max-width:480px;min-width:150px;flex:1;}
