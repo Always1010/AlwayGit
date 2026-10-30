@@ -291,8 +291,8 @@
     "context": "Commit tree preview divider"
   },
   "tree.expandChanges": {
-    "en": "Only expand changed files",
-    "zh-CN": "只展开修改文件",
+    "en": "Show changes only",
+    "zh-CN": "只显示变更",
     "review": "translated",
     "context": "Commit tree changes overlay"
   },

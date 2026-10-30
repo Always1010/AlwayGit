@@ -10,7 +10,7 @@ Workbench overview rendered with real UI components and an example repository. S
 
 Commit snapshots also offer visual file trees: the horizontal view shows where changes sit in the directory hierarchy, and the radial view shows the same revision's overall structure. Both figures use the manual's `AlwayGit-Demo` sample data.
 
-![AlwayGit-Demo commit snapshot in a horizontal tree, showing directories and the distribution of added and modified files](docs/images/user-manual/figure-51.png)
+![AlwayGit-Demo commit snapshot in a horizontal tree, showing only changed files and their necessary directories](docs/images/user-manual/figure-51.png)
 
 ![The same AlwayGit-Demo commit snapshot in a radial tree, showing its full directory and file structure](docs/images/user-manual/figure-52.png)
 

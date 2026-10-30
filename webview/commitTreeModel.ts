@@ -154,7 +154,7 @@ export function snapshotRows(
   nodes: SnapshotNode[],
   expanded: ReadonlySet<string>,
   query = '',
-  options: { changesOnly?: boolean; revealedDirectories?: ReadonlySet<string> } = {},
+  options: { changesOnly?: boolean } = {},
 ): SnapshotRow[] {
   const rows: SnapshotRow[] = [],
     needle = query.trim().toLocaleLowerCase();
@@ -167,11 +167,9 @@ export function snapshotRows(
     const status = node.change.status[0];
     return status in countKeys ? (status as SnapshotChangeHighlight) : 'M';
   };
-  const visit = (list: SnapshotNode[], guides: boolean[], revealUnchanged = false) => {
+  const visit = (list: SnapshotNode[], guides: boolean[]) => {
     const visible =
-      needle || !options.changesOnly || revealUnchanged
-        ? list
-        : list.filter((node) => node.entry.type === 'tree' || node.change);
+      needle || !options.changesOnly ? list : list.filter((node) => node.change || node.summary);
     visible.forEach((node, index) => {
       const last = index === visible.length - 1;
       if (needle) {
@@ -180,8 +178,7 @@ export function snapshotRows(
         visit(node.children, []);
       } else {
         rows.push({ node, depth: guides.length, guides, last, changeHighlight: highlight(node) });
-        if (expanded.has(node.id))
-          visit(node.children, [...guides, !last], options.revealedDirectories?.has(node.id));
+        if (expanded.has(node.id)) visit(node.children, [...guides, !last]);
       }
     });
   };
