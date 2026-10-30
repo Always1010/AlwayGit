@@ -36,8 +36,12 @@ export async function verifyTreeCanvas(browser, url) {
         preferences: { mode: 'expanded', overrides: {} },
       });
       window.acquireVsCodeApi = () => ({
-        getState: () => window.__ALWAYGIT_COMMIT_TREE__,
-        setState() {},
+        getState: () =>
+          JSON.parse(sessionStorage.getItem('tree-page-state') || 'null') ??
+          window.__ALWAYGIT_COMMIT_TREE__,
+        setState(value) {
+          sessionStorage.setItem('tree-page-state', JSON.stringify(value));
+        },
         postMessage(request) {
           fixture.calls.push(structuredClone(request));
           let result;
@@ -201,6 +205,67 @@ export async function verifyTreeCanvas(browser, url) {
       'Stacked preview stays within the available height',
     );
     await verifyTreeFocus(page);
+    const focus = page.locator(
+      '.commit-tree-secondary-controls button[aria-label="Show changes only"]',
+    );
+    await focus.click();
+    await page
+      .locator('.revision-tree-entry')
+      .filter({ hasText: /^Editor\.vue$/ })
+      .click();
+    await page.locator('.diff-preview').waitFor();
+    await page.locator('.commit-tree-view-select').selectOption('vertical');
+    await page.locator('.tree-graph-stage').press('+');
+    const stage = await page.locator('.tree-graph-stage').boundingBox();
+    await page.mouse.move(stage.x + 20, stage.y + 40);
+    await page.mouse.down();
+    await page.mouse.move(stage.x + 92, stage.y + 88, { steps: 5 });
+    await page.mouse.up();
+    const saved = await page.evaluate(() => JSON.parse(sessionStorage.getItem('tree-page-state')));
+    assert.equal(saved.view.viewMode, 'vertical');
+    assert.equal(saved.view.changesOnly, true);
+    assert.equal(saved.view.selected, 'src/components/Editor.vue');
+    await page.reload();
+    await page.locator('.tree-graph-stage svg > g').waitFor();
+    await page.waitForFunction((camera) => {
+      const view = JSON.parse(sessionStorage.getItem('tree-page-state')).view;
+      return view.cameras?.vertical && Math.abs(view.cameras.vertical.scale - camera.scale) < 1e-8;
+    }, saved.view.cameras.vertical);
+    const restored = await page.evaluate(() =>
+      JSON.parse(sessionStorage.getItem('tree-page-state')),
+    );
+    for (const field of [
+      'viewMode',
+      'changesOnly',
+      'showChanges',
+      'selected',
+      'previewOpen',
+      'previewSplit',
+      'expansion',
+    ])
+      assert.deepEqual(
+        restored.view[field],
+        saved.view[field],
+        `${field}: page recreation restores the complete snapshot`,
+      );
+    for (const field of ['centerX', 'centerY', 'scale'])
+      assert.ok(
+        Math.abs(restored.view.cameras.vertical[field] - saved.view.cameras.vertical[field]) < 0.01,
+        `${field}: restoration must not be overwritten by initial fit`,
+      );
+    assert.equal(await focus.getAttribute('aria-pressed'), 'true');
+    await page.locator('.diff-preview').waitFor();
+    await page.locator('.file-path-filter input').fill('Toolbar.vue');
+    await page.reload();
+    await page.locator('.file-path-filter input:enabled').waitFor();
+    assert.equal(await page.locator('.file-path-filter input').inputValue(), 'Toolbar.vue');
+    await page.getByRole('treeitem', { name: /^src\/components\/Toolbar\.vue/ }).waitFor();
+    await page.locator('.file-path-filter input').fill('');
+    await page.getByRole('treeitem', { name: /^src\/components\/Editor\.vue/ }).waitFor();
+    assert.equal(
+      await page.getByRole('treeitem', { name: /^src\/components\/Toolbar\.vue/ }).count(),
+      0,
+    );
     assert.deepEqual(errors, [], 'Tree canvas must not produce runtime errors');
   } catch (error) {
     console.error(await page.locator('.commit-tree-preview').innerHTML());

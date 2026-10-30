@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { TreeCameraState } from '../src/protocol/tree';
 import type { SnapshotNode, SnapshotRow } from './commitTreeModel';
 import { Button, Icon } from './ui';
 import { useTranslation } from './i18n';
@@ -33,6 +34,9 @@ export function CommitTreeGraph({
   openHistorical,
   context,
   useList,
+  initialCamera,
+  onCameraChange,
+  ready = true,
 }: {
   rows: SnapshotRow[];
   mode: TreeGraphMode;
@@ -46,6 +50,9 @@ export function CommitTreeGraph({
   openHistorical(node: SnapshotNode): void;
   context(node: SnapshotNode, x: number, y: number, anchor: HTMLElement): void;
   useList(): void;
+  initialCamera?: TreeCameraState;
+  onCameraChange?(camera: TreeCameraState): void;
+  ready?: boolean;
 }) {
   const t = useTranslation(),
     stage = useRef<HTMLDivElement>(null);
@@ -62,6 +69,9 @@ export function CommitTreeGraph({
     [size, setSize] = useState({ width: 800, height: 600 });
   const [camera, setCamera] = useState<TreeCamera>({ x: 30, y: 30, scale: 1 }),
     [focusId, setFocusId] = useState<string>();
+  const [positioned, setPositioned] = useState(false),
+    [measured, setMeasured] = useState(false);
+  const restoredCamera = useRef(initialCamera);
   const blocked = rows.length > graphReviewThreshold && !allowLarge;
   const layout = useMemo(
     () => layoutTree(blocked ? [] : rows, mode, !!query.trim()),
@@ -99,32 +109,51 @@ export function CommitTreeGraph({
   const fitRef = useRef(fit);
   fitRef.current = fit;
   useEffect(() => {
-    fitRef.current();
+    if (positioned) fitRef.current();
   }, [mode, query, blocked, fitRequest]);
   const previousSize = useRef(size);
   useEffect(() => {
     const previous = previousSize.current;
     previousSize.current = size;
     // Keep the same scale and canvas center while the preview divider is dragged.
-    setCamera((current) => ({
-      ...current,
-      x: current.x + (size.width - previous.width) / 2,
-      y: current.y + (size.height - previous.height) / 2,
-    }));
+    if (positioned)
+      setCamera((current) => ({
+        ...current,
+        x: current.x + (size.width - previous.width) / 2,
+        y: current.y + (size.height - previous.height) / 2,
+      }));
   }, [size]);
-  const firstLayout = useRef(false);
-  useEffect(() => {
-    if (!firstLayout.current && layout.nodes.length) {
-      firstLayout.current = true;
-      fitRef.current();
-    }
-  }, [layout]);
+  useLayoutEffect(() => {
+    if (positioned || !ready || !measured) return;
+    const saved = restoredCamera.current;
+    setCamera(
+      saved
+        ? {
+            x: size.width / 2 - saved.centerX * saved.scale,
+            y: size.height / 2 - saved.centerY * saved.scale,
+            scale: saved.scale,
+          }
+        : fitTree(layout.bounds, size.width, size.height),
+    );
+    setPositioned(true);
+  }, [ready, measured, positioned, layout, size]);
+  useLayoutEffect(() => {
+    if (positioned)
+      onCameraChange?.({
+        centerX: (size.width / 2 - camera.x) / camera.scale,
+        centerY: (size.height / 2 - camera.y) / camera.scale,
+        scale: camera.scale,
+      });
+  }, [camera, size, positioned, onCameraChange]);
   useEffect(() => {
     const element = stage.current;
     if (!element) return;
     const observer = new ResizeObserver((entries) => {
       const box = entries[0].contentRect;
-      if (box.width > 0 && box.height > 0) setSize({ width: box.width, height: box.height });
+      if (box.width > 0 && box.height > 0) {
+        setSize({ width: box.width, height: box.height });
+        setMeasured(true);
+      }
     });
     observer.observe(element);
     return () => observer.disconnect();

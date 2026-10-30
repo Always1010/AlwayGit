@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -15,7 +16,8 @@ import type {
   RevisionTreeListing,
 } from '../src/protocol/tree';
 import type { DiffTarget } from '../src/protocol/types';
-import { rpc, saveCommitTreeState } from './rpc';
+import { rpc } from './rpc';
+import { useCommitTreeState } from './useCommitTreeState';
 import { useWorkbenchFields } from './subscriptions';
 import { useResolvedTheme, diffRowHeight } from './appearance';
 import { useTranslation } from './i18n';
@@ -51,6 +53,8 @@ export function CommitTree({
   const t = useTranslation(),
     preferences = useWorkbenchFields('appearance', 'layout', 'language');
   const theme = useResolvedTheme(preferences.appearance.theme);
+  const pageState = useCommitTreeState({ repoId, revision, baseRevision }),
+    { initial, update: saveView } = pageState;
   const panelId = useId(),
     detailsId = `${panelId}-details`,
     statisticsId = `${panelId}-statistics`,
@@ -61,9 +65,9 @@ export function CommitTree({
   const [metadata, setMetadata] = useState<RevisionTreeCommit>(),
     [error, setError] = useState<string>(),
     [metadataError, setMetadataError] = useState<string>();
-  const [query, setQuery] = useState(''),
-    [selected, setSelected] = useState<string>();
-  const memory = useTreeExpansion(repoId);
+  const [query, setQuery] = useState(initial.query ?? ''),
+    [selected, setSelected] = useState(initial.selected);
+  const memory = useTreeExpansion(repoId, initial.expansion, true);
   const [hintDismissed, setHintDismissed] = useState<boolean>(),
     [hintBusy, setHintBusy] = useState(true),
     [hintError, setHintError] = useState<string>();
@@ -104,13 +108,16 @@ export function CommitTree({
   };
   const [temporaryExpanded, setTemporaryExpanded] = useState<Set<string>>();
   const [focusedChanges, setFocusedChanges] = useState<ChangeFocus>();
+  const [changesOnly, setChangesOnly] = useState(initial.changesOnly ?? false);
   const [fitRequest, setFitRequest] = useState(0);
-  const [previewOpen, setPreviewOpen] = useState(false),
+  const [previewOpen, setPreviewOpen] = useState(initial.previewOpen ?? false),
     [expanding, setExpanding] = useState<number>();
-  const [viewMode, setViewMode] = useState<TreeViewMode>('list');
+  const [viewMode, setViewMode] = useState<TreeViewMode>(initial.viewMode ?? 'list');
   const body = useRef<HTMLElement>(null);
   const [bodySize, setBodySize] = useState({ width: 0, height: 0, stacked: false });
-  const [previewSplit, setPreviewSplit] = useState<{ x?: number; y?: number }>({});
+  const [previewSplit, setPreviewSplit] = useState(initial.previewSplit ?? {});
+  const list = useRef<HTMLDivElement>(null);
+  const restoreList = useRef(initial.listScroll);
   useEffect(() => {
     const element = body.current;
     if (!element) return;
@@ -143,8 +150,10 @@ export function CommitTree({
     expansionEpoch = useRef(0);
   const [attempt, setAttempt] = useState(0),
     [changeAttempt, setChangeAttempt] = useState(0);
-  const [showChanges, setShowChanges] = useState(!!baseRevision),
-    [selectedParent, setSelectedParent] = useState<string>();
+  const [showChanges, setShowChanges] = useState(
+      initial.changesOnly || (initial.showChanges ?? !!baseRevision),
+    ),
+    [selectedParent, setSelectedParent] = useState(initial.selectedParent);
   const [changes, setChanges] = useState<RevisionTreeChanges>(),
     [changesLoading, setChangesLoading] = useState(false),
     [changesError, setChangesError] = useState<string>();
@@ -159,16 +168,40 @@ export function CommitTree({
     baselineReady = !!baseRevision || !!metadata;
   const comparisonKey = JSON.stringify([repoId, revision, baseRevision, parent]);
   useEffect(() => {
-    setFocusedChanges(undefined);
-  }, [comparisonKey, showChanges]);
+    document.documentElement.lang = preferences.language;
+  }, [preferences.language]);
   const fail = (cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause));
   const copy = (text: string) => void rpc('copyText', repoId, { text }).catch(fail);
-  useEffect(() => {
-    saveCommitTreeState({
-      commitTree: { repoId, revision, ...(baseRevision ? { baseRevision } : {}) },
+  useLayoutEffect(() => {
+    saveView({
+      viewMode,
+      showChanges,
+      changesOnly,
+      query,
+      selected,
+      selectedParent,
+      previewOpen,
+      previewSplit,
+      ...(!memory.loading || initial.expansion ? { expansion: memory.preferences } : {}),
+      ...(focusedChanges?.key === comparisonKey
+        ? { changeExpanded: [...focusedChanges.expanded] }
+        : {}),
     });
-    document.documentElement.lang = preferences.language;
-  }, [repoId, revision, baseRevision, preferences.language]);
+  }, [
+    viewMode,
+    showChanges,
+    changesOnly,
+    query,
+    selected,
+    selectedParent,
+    previewOpen,
+    previewSplit,
+    memory.preferences,
+    memory.loading,
+    focusedChanges,
+    comparisonKey,
+    saveView,
+  ]);
   useEffect(() => {
     const controller = new AbortController();
     indexController.current = controller;
@@ -264,8 +297,19 @@ export function CommitTree({
     [entries, activeChanges],
   );
   const flatNodes = useMemo(() => allSnapshotNodes(nodes), [nodes]);
-  const changeFocus =
-    activeChanges && focusedChanges?.key === comparisonKey ? focusedChanges : undefined;
+  const changeFocus = useMemo(() => {
+    if (!activeChanges || !changesOnly) return undefined;
+    if (focusedChanges?.key === comparisonKey) return focusedChanges;
+    return {
+      key: comparisonKey,
+      expanded: new Set(
+        pageState.saved.current.view?.changeExpanded ??
+          flatNodes
+            .filter((node) => node.entry.type === 'tree' && node.summary)
+            .map((node) => node.id),
+      ),
+    };
+  }, [activeChanges, changesOnly, focusedChanges, comparisonKey, flatNodes]);
   const expanded = useMemo(
     () =>
       changeFocus?.expanded ??
@@ -289,6 +333,15 @@ export function CommitTree({
     [nodes, expanded, query, changeFocus],
   );
   const counts = useMemo(() => snapshotCounts(entries), [entries]);
+  useLayoutEffect(() => {
+    if (!indexed || !list.current) return;
+    const saved = restoreList.current ?? pageState.saved.current.view?.listScroll;
+    if (saved) {
+      list.current.scrollTop = saved.top;
+      list.current.scrollLeft = saved.left;
+    }
+    restoreList.current = undefined;
+  }, [indexed, viewMode]);
   const summary = useMemo(() => changeCounts(activeChanges?.files ?? []), [activeChanges]);
   const selectedNode = flatNodes.find((node) => node.id === selected),
     selectedEntry = selectedNode?.entry;
@@ -311,6 +364,15 @@ export function CommitTree({
             previousPath: selectedNode.change.previousPath,
           }
       : undefined;
+  const previewKey = JSON.stringify([revision, baseRevision, parent, selected, !!diffTarget]);
+  const reading = {
+    value:
+      pageState.saved.current.view?.preview?.key === previewKey
+        ? pageState.saved.current.view.preview
+        : undefined,
+    onChange: (value: Omit<import('../src/protocol/tree').TreePreviewState, 'key'>) =>
+      saveView({ preview: { key: previewKey, ...value } }),
+  };
   const stopExpansion = () => {
     expansionEpoch.current++;
     setExpanding(undefined);
@@ -325,6 +387,7 @@ export function CommitTree({
       );
     setQuery('');
     setFocusedChanges(undefined);
+    setChangesOnly(false);
     setExpanding(0);
     for (let offset = 0; offset < folders.length; offset += 500) {
       if (epoch !== expansionEpoch.current) return;
@@ -343,6 +406,7 @@ export function CommitTree({
     stopExpansion();
     setQuery('');
     setFocusedChanges(undefined);
+    setChangesOnly(false);
     setTemporaryExpanded(undefined);
     memory.setMode('collapsed');
   };
@@ -350,8 +414,10 @@ export function CommitTree({
     stopExpansion();
     setQuery('');
     setTemporaryExpanded(undefined);
+    setChangesOnly(!changesOnly);
+    saveView({ changeExpanded: undefined });
     setFocusedChanges(
-      changeFocus
+      changesOnly
         ? undefined
         : {
             key: comparisonKey,
@@ -458,7 +524,7 @@ export function CommitTree({
           icon="list-selection"
           title={t('tree.expandChanges')}
           aria-label={t('tree.expandChanges')}
-          aria-pressed={!!changeFocus}
+          aria-pressed={changesOnly}
           disabled={!indexed || !activeChanges || !changeTotal}
           onClick={expandChanges}
         >
@@ -647,6 +713,7 @@ export function CommitTree({
                 stopExpansion();
                 setMenu(undefined);
                 setShowChanges(event.target.checked);
+                if (!event.target.checked) setChangesOnly(false);
               }}
             />
             {t('tree.changeMarkers')}
@@ -661,6 +728,8 @@ export function CommitTree({
                 stopExpansion();
                 setMenu(undefined);
                 setSelectedParent(event.target.value);
+                setFocusedChanges(undefined);
+                saveView({ changeExpanded: undefined });
               }}
             >
               {metadata.commit.parents.map((oid, index) => (
@@ -889,7 +958,17 @@ export function CommitTree({
       >
         {viewMode === 'list' ? (
           <div
+            ref={list}
             className="revision-tree-rows commit-tree-rows"
+            onScroll={(event) => {
+              if (indexed)
+                saveView({
+                  listScroll: {
+                    top: event.currentTarget.scrollTop,
+                    left: event.currentTarget.scrollLeft,
+                  },
+                });
+            }}
             role="tree"
             aria-label={t('tree.fullRepositoryTree')}
           >
@@ -1027,6 +1106,19 @@ export function CommitTree({
           </div>
         ) : (
           <CommitTreeGraph
+            key={viewMode}
+            initialCamera={pageState.saved.current.view?.cameras?.[viewMode]}
+            ready={
+              indexed && !memory.loading && (!showChanges || !!activeChanges || !!changesError)
+            }
+            onCameraChange={(camera) =>
+              saveView({
+                cameras: {
+                  ...pageState.saved.current.view?.cameras,
+                  [viewMode]: camera,
+                },
+              })
+            }
             rows={rows}
             mode={viewMode}
             query={query}
@@ -1074,6 +1166,8 @@ export function CommitTree({
                   />
                 </div>
                 <DiffPreview
+                  key={previewKey}
+                  reading={reading}
                   isolated={{ repoId, target: diffTarget, hideEdit: true }}
                   native={() => void rpc('diff', repoId, diffTarget).catch(fail)}
                   edit={() => {}}
@@ -1081,6 +1175,7 @@ export function CommitTree({
               </div>
             ) : selectedEntry && !selectedNode?.deleted ? (
               <SnapshotPreview
+                reading={reading}
                 repoId={repoId}
                 revision={revision}
                 path={selectedEntry.path}
@@ -1092,6 +1187,11 @@ export function CommitTree({
           </div>
         )}
       </main>
+      {pageState.saveError && (
+        <div role="alert" className="revision-tree-error">
+          {pageState.saveError}
+        </div>
+      )}
       {menu && (
         <ContextMenu
           x={menu.x}

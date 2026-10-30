@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-172：独立文件树重建后丢失显示选项和浏览现场
+
+- 日期：2026-10-30
+- 状态：已解决
+- 现象：文件树页跨窗口移动或重建后，图形、变更标记、只显示变更、搜索、选择、预览、分栏及画布位置回到初始状态。
+- 原因：面板只保存固定仓库与提交目标，其他状态留在组件内存；序列化恢复只传目标，初始化清理聚焦及首次适应全图还会覆盖恢复值。
+- 解决方案：统一保存完整页面现场，序列化透传，逐字段兼容校验；目录保留当前页副本，数据及视口就绪后恢复各图形中心与缩放、列表与预览阅读位置，移除初始化对恢复值的覆盖。
+- 验证方式：类型及双语资源检查通过；树模型、目录缓存、图形布局及宿主边界共 86 项单测通过；Webview 构建及 tree-canvas-only 无头回归验证页面重建后的图形、开关、选择、分栏、目录、画布与搜索恢复。未启动可见 VS Code 跨窗口拖动测试。
+- 相关文件：`src/protocol/tree.ts`、`src/extension/extension.ts`、`src/extension/workbench.ts`、`webview/rpc.ts`、`webview/useCommitTreeState.ts`、`webview/useTreeExpansion.ts`、`webview/CommitTree.tsx`、`webview/CommitTreeGraph.tsx`、`webview/preview-reading.ts`、`webview/SnapshotPreview.tsx`、`webview/DiffPreview.tsx`、`tests/commit-tree.test.ts`、`scripts/test-tree-canvas-ui.mjs`。
+
 ## BUG-171：文件树变更聚焦仍显示无关目录分支
 
 - 日期：2026-10-30
