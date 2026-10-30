@@ -9,212 +9,367 @@ const fixtures = gitFixtures('alwaygit-selected-commit-');
 afterEach(() => fixtures.cleanup());
 
 describe('selected file commits', () => {
-  it.each([false, true])('only reads a recreated rename source when explicitly selected (%s)', async includeSource => {
-    const { root, repo, service } = await fixtures.setup();
-    await commitFile(root, 'old.txt', 'original');
-    await commitFile(root, 'other.txt', 'other base');
-    await git(root, 'mv', 'old.txt', 'new.txt');
-    await writeFile(path.join(root, 'new.txt'), 'latest renamed');
-    await writeFile(path.join(root, 'old.txt'), 'independent new file');
-    await writeFile(path.join(root, 'other.txt'), 'other staged');
-    await git(root, 'add', 'other.txt');
-    await writeFile(path.join(root, 'other.txt'), 'other working');
-    const snapshot = await service.snapshot(repo);
-    const files: CommitSelection[] = [{ path: 'new.txt', area: 'unstaged' }, ...(includeSource ? [{ path: 'old.txt', area: 'unstaged' as const }] : [])];
-    await service.execute(repo, { type: 'commit', message: 'rename only', files, expectedHead: snapshot.head, expectedBranch: snapshot.branch });
-    expect(await git(root, 'show', 'HEAD:new.txt')).toBe('latest renamed');
-    expect((await git(root, 'ls-tree', '--name-only', 'HEAD')).split('\n').includes('old.txt')).toBe(includeSource);
-    if (includeSource) expect(await git(root, 'show', 'HEAD:old.txt')).toBe('independent new file');
-    else expect(await git(root, 'ls-files', '--others', '--exclude-standard')).toBe('old.txt');
-    expect(await readFile(path.join(root, 'old.txt'), 'utf8')).toBe('independent new file');
-    expect(await git(root, 'diff', '--cached', '--name-only')).toBe('other.txt');
-    expect(await git(root, 'show', ':other.txt')).toBe('other staged');
-    expect(await readFile(path.join(root, 'other.txt'), 'utf8')).toBe('other working');
-  });
-  it.each(['pre-commit', 'commit-msg'])('keeps unselected content out when %s stages it', async hookName => {
-    const { root, repo, service } = await fixtures.setup();
-    await commitFile(root, 'chosen.txt', 'base');
-    await commitFile(root, 'other.txt', 'other base');
-    await writeFile(path.join(root, 'chosen.txt'), 'chosen working');
-    await writeFile(path.join(root, 'other.txt'), 'other staged');
-    await git(root, 'add', 'other.txt');
-    await writeFile(path.join(root, 'other.txt'), 'other working');
-    const hook = path.join(repo.commonDir, 'hooks', hookName);
-    await writeFile(hook, '#!/bin/sh\ngit add other.txt\n'); await chmod(hook, 0o755);
-    const snapshot = await service.snapshot(repo), index = await readFile(path.join(repo.commonDir, 'index'));
-    const commit = service.execute(repo, { type: 'commit', message: 'chosen only', files: [{ path: 'chosen.txt', area: 'unstaged' }], expectedHead: snapshot.head, expectedBranch: snapshot.branch });
-    if (hookName === 'pre-commit') {
-      await expect(commit).rejects.toMatchObject({ code: 'HOOK_SCOPE_CHANGED' });
-      expect(await git(root, 'rev-parse', 'HEAD')).toBe(snapshot.head);
-      expect(await readFile(path.join(repo.commonDir, 'index'))).toEqual(index);
-    } else {
-      // Git freezes the tree before commit-msg: its late Index writes must not leak into HEAD or the real Index.
-      await commit;
-      expect(await git(root, 'diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD')).toBe('chosen.txt');
-      expect(await git(root, 'show', 'HEAD:other.txt')).toBe('other base');
+  it.each([false, true])(
+    'only reads a recreated rename source when explicitly selected (%s)',
+    async (includeSource) => {
+      const { root, repo, service } = await fixtures.setup();
+      await commitFile(root, 'old.txt', 'original');
+      await commitFile(root, 'other.txt', 'other base');
+      await git(root, 'mv', 'old.txt', 'new.txt');
+      await writeFile(path.join(root, 'new.txt'), 'latest renamed');
+      await writeFile(path.join(root, 'old.txt'), 'independent new file');
+      await writeFile(path.join(root, 'other.txt'), 'other staged');
+      await git(root, 'add', 'other.txt');
+      await writeFile(path.join(root, 'other.txt'), 'other working');
+      const snapshot = await service.snapshot(repo);
+      const files: CommitSelection[] = [
+        { path: 'new.txt', area: 'unstaged' },
+        ...(includeSource ? [{ path: 'old.txt', area: 'unstaged' as const }] : []),
+      ];
+      await service.execute(repo, {
+        type: 'commit',
+        message: 'rename only',
+        files,
+        expectedHead: snapshot.head,
+        expectedBranch: snapshot.branch,
+      });
+      expect(await git(root, 'show', 'HEAD:new.txt')).toBe('latest renamed');
+      expect(
+        (await git(root, 'ls-tree', '--name-only', 'HEAD')).split('\n').includes('old.txt'),
+      ).toBe(includeSource);
+      if (includeSource)
+        expect(await git(root, 'show', 'HEAD:old.txt')).toBe('independent new file');
+      else expect(await git(root, 'ls-files', '--others', '--exclude-standard')).toBe('old.txt');
+      expect(await readFile(path.join(root, 'old.txt'), 'utf8')).toBe('independent new file');
+      expect(await git(root, 'diff', '--cached', '--name-only')).toBe('other.txt');
       expect(await git(root, 'show', ':other.txt')).toBe('other staged');
-    }
-    expect(await readFile(path.join(root, 'other.txt'), 'utf8')).toBe('other working');
-    expect((await readdir(repo.commonDir)).filter(name => name.includes('alwaygit-') || name === 'index.lock')).toEqual([]);
-  });
+      expect(await readFile(path.join(root, 'other.txt'), 'utf8')).toBe('other working');
+    },
+  );
+  it.each(['pre-commit', 'commit-msg'])(
+    'keeps unselected content out when %s stages it',
+    async (hookName) => {
+      const { root, repo, service } = await fixtures.setup();
+      await commitFile(root, 'chosen.txt', 'base');
+      await commitFile(root, 'other.txt', 'other base');
+      await writeFile(path.join(root, 'chosen.txt'), 'chosen working');
+      await writeFile(path.join(root, 'other.txt'), 'other staged');
+      await git(root, 'add', 'other.txt');
+      await writeFile(path.join(root, 'other.txt'), 'other working');
+      const hook = path.join(repo.commonDir, 'hooks', hookName);
+      await writeFile(hook, '#!/bin/sh\ngit add other.txt\n');
+      await chmod(hook, 0o755);
+      const snapshot = await service.snapshot(repo),
+        index = await readFile(path.join(repo.commonDir, 'index'));
+      const commit = service.execute(repo, {
+        type: 'commit',
+        message: 'chosen only',
+        files: [{ path: 'chosen.txt', area: 'unstaged' }],
+        expectedHead: snapshot.head,
+        expectedBranch: snapshot.branch,
+      });
+      if (hookName === 'pre-commit') {
+        await expect(commit).rejects.toMatchObject({ code: 'HOOK_SCOPE_CHANGED' });
+        expect(await git(root, 'rev-parse', 'HEAD')).toBe(snapshot.head);
+        expect(await readFile(path.join(repo.commonDir, 'index'))).toEqual(index);
+      } else {
+        // Git freezes the tree before commit-msg: its late Index writes must not leak into HEAD or the real Index.
+        await commit;
+        expect(await git(root, 'diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD')).toBe(
+          'chosen.txt',
+        );
+        expect(await git(root, 'show', 'HEAD:other.txt')).toBe('other base');
+        expect(await git(root, 'show', ':other.txt')).toBe('other staged');
+      }
+      expect(await readFile(path.join(root, 'other.txt'), 'utf8')).toBe('other working');
+      expect(
+        (await readdir(repo.commonDir)).filter(
+          (name) => name.includes('alwaygit-') || name === 'index.lock',
+        ),
+      ).toEqual([]);
+    },
+  );
 
   it('preserves configured hooks, selected-file formatting, reference hook input and environment config', async () => {
     const { root, repo } = await fixtures.setup();
     await commitFile(root, 'chosen.txt', 'base');
     await writeFile(path.join(root, 'chosen.txt'), 'working');
-    const hooks = path.join(root, "custom hooks '中文"); await mkdir(hooks);
+    const hooks = path.join(root, "custom hooks '中文");
+    await mkdir(hooks);
     await git(root, 'config', 'core.hooksPath', hooks);
     const scripts: Record<string, string> = {
       'pre-commit': 'printf formatted > chosen.txt\ngit add chosen.txt',
       'prepare-commit-msg': 'printf "\\nprepared" >> "$1"',
       'commit-msg': 'printf "\\nreviewed" >> "$1"',
-      'reference-transaction': 'printf "%s\\n" "$1" >> .git/reference-events\ncat >> .git/reference-events',
+      'reference-transaction':
+        'printf "%s\\n" "$1" >> .git/reference-events\ncat >> .git/reference-events',
       'post-commit': 'printf completed > .git/post-commit-event',
     };
     for (const [name, script] of Object.entries(scripts)) {
-      const file = path.join(hooks, name); await writeFile(file, '#!/bin/sh\n' + script + '\n'); await chmod(file, 0o755);
+      const file = path.join(hooks, name);
+      await writeFile(file, '#!/bin/sh\n' + script + '\n');
+      await chmod(file, 0o755);
     }
-    const service = new GitService({ environment: { GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'user.name', GIT_CONFIG_VALUE_0: 'Config Env Author' } });
+    const service = new GitService({
+      environment: {
+        GIT_CONFIG_COUNT: '1',
+        GIT_CONFIG_KEY_0: 'user.name',
+        GIT_CONFIG_VALUE_0: 'Config Env Author',
+      },
+    });
     const snapshot = await service.snapshot(repo);
-    await service.execute(repo, { type: 'commit', message: 'selected', files: [{ path: 'chosen.txt', area: 'unstaged' }], expectedHead: snapshot.head, expectedBranch: snapshot.branch });
+    await service.execute(repo, {
+      type: 'commit',
+      message: 'selected',
+      files: [{ path: 'chosen.txt', area: 'unstaged' }],
+      expectedHead: snapshot.head,
+      expectedBranch: snapshot.branch,
+    });
     expect(await git(root, 'show', 'HEAD:chosen.txt')).toBe('formatted');
     expect(await git(root, 'log', '-1', '--format=%an')).toBe('Config Env Author');
     expect(await git(root, 'log', '-1', '--format=%B')).toContain('prepared\nreviewed');
     const refs = await readFile(path.join(repo.commonDir, 'reference-events'), 'utf8');
-    expect(refs).toContain('prepared'); expect(refs).toContain('committed'); expect(refs).toContain('refs/heads/main');
-    expect(await readFile(path.join(repo.commonDir, 'post-commit-event'), 'utf8')).toBe('completed');
+    expect(refs).toContain('prepared');
+    expect(refs).toContain('committed');
+    expect(refs).toContain('refs/heads/main');
+    expect(await readFile(path.join(repo.commonDir, 'post-commit-event'), 'utf8')).toBe(
+      'completed',
+    );
     expect(await git(root, 'config', 'core.hooksPath')).toBe(hooks);
-    expect((await readdir(repo.commonDir)).filter(name => name.includes('alwaygit-') || name === 'index.lock')).toEqual([]);
+    expect(
+      (await readdir(repo.commonDir)).filter(
+        (name) => name.includes('alwaygit-') || name === 'index.lock',
+      ),
+    ).toEqual([]);
   });
 
   it('publishes selections above the argv budget and retains unrelated staged content', async () => {
     const { root, repo, service } = await fixtures.setup();
     await commitFile(root, 'keep.txt', 'base');
-    const names = Array.from({ length: 220 }, (_, index) => `chosen-${index}-${'x'.repeat(140)} [literal].txt`);
-    await Promise.all(names.map(name => writeFile(path.join(root, name), 'selected disk')));
+    const names = Array.from(
+      { length: 220 },
+      (_, index) => `chosen-${index}-${'x'.repeat(140)} [literal].txt`,
+    );
+    await Promise.all(names.map((name) => writeFile(path.join(root, name), 'selected disk')));
     await writeFile(path.join(root, 'keep.txt'), 'keep staged');
     await git(root, 'add', 'keep.txt');
     await writeFile(path.join(root, 'keep.txt'), 'keep working');
     const snapshot = await service.snapshot(repo);
-    await service.execute(repo, { type: 'commit', message: 'large selection', files: names.map(name => ({ path: name, area: 'unstaged' })), expectedHead: snapshot.head, expectedBranch: snapshot.branch });
+    await service.execute(repo, {
+      type: 'commit',
+      message: 'large selection',
+      files: names.map((name) => ({ path: name, area: 'unstaged' })),
+      expectedHead: snapshot.head,
+      expectedBranch: snapshot.branch,
+    });
     expect(await git(root, 'show', `HEAD:${names.at(-1)}`)).toBe('selected disk');
     expect(await git(root, 'show', `:${names.at(-1)}`)).toBe('selected disk');
     expect(await git(root, 'diff', '--cached', '--name-only')).toBe('keep.txt');
     expect(await git(root, 'diff', '--name-only')).toBe('keep.txt');
     expect(await git(root, 'show', ':keep.txt')).toBe('keep staged');
     expect(await readFile(path.join(root, 'keep.txt'), 'utf8')).toBe('keep working');
-    expect((await readdir(repo.commonDir)).filter(name => name.includes('alwaygit-') || name === 'index.lock')).toEqual([]);
+    expect(
+      (await readdir(repo.commonDir)).filter(
+        (name) => name.includes('alwaygit-') || name === 'index.lock',
+      ),
+    ).toEqual([]);
   });
 
-  it.each(['staged', 'unstaged', 'both'] as const)('commits the %s version and preserves unrelated staged hunks and disk content', async area => {
-    const {root,repo,service} = await fixtures.setup();
-    await commitFile(root,'chosen.txt','base\n');
-    await commitFile(root,'other.txt','other base\n');
-    await writeFile(path.join(root,'chosen.txt'),'staged\n');
-    await writeFile(path.join(root,'other.txt'),'other staged\n');
-    await git(root,'add','.');
-    await writeFile(path.join(root,'chosen.txt'),'latest working\n');
-    await writeFile(path.join(root,'other.txt'),'other working\n');
-    const snapshot = await service.snapshot(repo);
-    const files: CommitSelection[] = area === 'both' ? [{path:'chosen.txt',area:'staged'},{path:'chosen.txt',area:'unstaged'}] : [{path:'chosen.txt',area}];
-    await service.execute(repo,{type:'commit',message:'selected',files,expectedHead:snapshot.head,expectedBranch:snapshot.branch});
-    expect(await git(root,'show','HEAD:chosen.txt')).toBe(area === 'staged' ? 'staged' : 'latest working');
-    expect(await git(root,'show','HEAD:other.txt')).toBe('other base');
-    expect(await git(root,'show',':other.txt')).toBe('other staged');
-    expect(await readFile(path.join(root,'other.txt'),'utf8')).toBe('other working\n');
-    expect(await readFile(path.join(root,'chosen.txt'),'utf8')).toBe('latest working\n');
-    expect(await git(root,'diff','--cached','--name-only')).toBe('other.txt');
-    expect(await readdir(repo.commonDir)).not.toContain('index.lock');
-  });
+  it.each(['staged', 'unstaged', 'both'] as const)(
+    'commits the %s version and preserves unrelated staged hunks and disk content',
+    async (area) => {
+      const { root, repo, service } = await fixtures.setup();
+      await commitFile(root, 'chosen.txt', 'base\n');
+      await commitFile(root, 'other.txt', 'other base\n');
+      await writeFile(path.join(root, 'chosen.txt'), 'staged\n');
+      await writeFile(path.join(root, 'other.txt'), 'other staged\n');
+      await git(root, 'add', '.');
+      await writeFile(path.join(root, 'chosen.txt'), 'latest working\n');
+      await writeFile(path.join(root, 'other.txt'), 'other working\n');
+      const snapshot = await service.snapshot(repo);
+      const files: CommitSelection[] =
+        area === 'both'
+          ? [
+              { path: 'chosen.txt', area: 'staged' },
+              { path: 'chosen.txt', area: 'unstaged' },
+            ]
+          : [{ path: 'chosen.txt', area }];
+      await service.execute(repo, {
+        type: 'commit',
+        message: 'selected',
+        files,
+        expectedHead: snapshot.head,
+        expectedBranch: snapshot.branch,
+      });
+      expect(await git(root, 'show', 'HEAD:chosen.txt')).toBe(
+        area === 'staged' ? 'staged' : 'latest working',
+      );
+      expect(await git(root, 'show', 'HEAD:other.txt')).toBe('other base');
+      expect(await git(root, 'show', ':other.txt')).toBe('other staged');
+      expect(await readFile(path.join(root, 'other.txt'), 'utf8')).toBe('other working\n');
+      expect(await readFile(path.join(root, 'chosen.txt'), 'utf8')).toBe('latest working\n');
+      expect(await git(root, 'diff', '--cached', '--name-only')).toBe('other.txt');
+      expect(await readdir(repo.commonDir)).not.toContain('index.lock');
+    },
+  );
 
   it('includes rename sources and deletions while keeping unselected changes', async () => {
-    const {root,repo,service} = await fixtures.setup();
-    for (const name of ['old.txt','deleted.txt','other.txt']) await commitFile(root,name,`${name}\n`);
-    await rename(path.join(root,'old.txt'),path.join(root,'new.txt'));
-    await rm(path.join(root,'deleted.txt'));
-    await writeFile(path.join(root,'other.txt'),'other staged\n');
-    await git(root,'add','-A');
-    await writeFile(path.join(root,'new.txt'),'new working\n');
+    const { root, repo, service } = await fixtures.setup();
+    for (const name of ['old.txt', 'deleted.txt', 'other.txt'])
+      await commitFile(root, name, `${name}\n`);
+    await rename(path.join(root, 'old.txt'), path.join(root, 'new.txt'));
+    await rm(path.join(root, 'deleted.txt'));
+    await writeFile(path.join(root, 'other.txt'), 'other staged\n');
+    await git(root, 'add', '-A');
+    await writeFile(path.join(root, 'new.txt'), 'new working\n');
     const snapshot = await service.snapshot(repo);
-    await service.execute(repo,{type:'commit',message:'rename and delete',files:[{path:'new.txt',area:'staged'},{path:'deleted.txt',area:'staged'}],expectedHead:snapshot.head,expectedBranch:snapshot.branch});
-    expect(await git(root,'ls-tree','--name-only','HEAD')).toBe('new.txt\nother.txt');
-    expect(await git(root,'show','HEAD:new.txt')).toBe('old.txt');
-    expect(await git(root,'diff','--cached','--name-only')).toBe('other.txt');
-    expect(await readFile(path.join(root,'new.txt'),'utf8')).toBe('new working\n');
+    await service.execute(repo, {
+      type: 'commit',
+      message: 'rename and delete',
+      files: [
+        { path: 'new.txt', area: 'staged' },
+        { path: 'deleted.txt', area: 'staged' },
+      ],
+      expectedHead: snapshot.head,
+      expectedBranch: snapshot.branch,
+    });
+    expect(await git(root, 'ls-tree', '--name-only', 'HEAD')).toBe('new.txt\nother.txt');
+    expect(await git(root, 'show', 'HEAD:new.txt')).toBe('old.txt');
+    expect(await git(root, 'diff', '--cached', '--name-only')).toBe('other.txt');
+    expect(await readFile(path.join(root, 'new.txt'), 'utf8')).toBe('new working\n');
   });
 
   it('supports unborn repositories and literal file names', async () => {
-    const {root,repo,service} = await fixtures.setup();
-    for (const name of ['[chosen].txt','other.txt']) await writeFile(path.join(root,name),name);
-    await git(root,'add','other.txt');
-    await service.execute(repo,{type:'commit',message:'initial selected',files:[{path:'[chosen].txt',area:'unstaged'}],expectedHead:'',expectedBranch:'main'});
-    expect(await git(root,'ls-tree','--name-only','HEAD')).toBe('[chosen].txt');
-    expect(await git(root,'diff','--cached','--name-only')).toBe('other.txt');
+    const { root, repo, service } = await fixtures.setup();
+    for (const name of ['[chosen].txt', 'other.txt']) await writeFile(path.join(root, name), name);
+    await git(root, 'add', 'other.txt');
+    await service.execute(repo, {
+      type: 'commit',
+      message: 'initial selected',
+      files: [{ path: '[chosen].txt', area: 'unstaged' }],
+      expectedHead: '',
+      expectedBranch: 'main',
+    });
+    expect(await git(root, 'ls-tree', '--name-only', 'HEAD')).toBe('[chosen].txt');
+    expect(await git(root, 'diff', '--cached', '--name-only')).toBe('other.txt');
   });
 
   it('commits latest renamed content and unstaged deletion together', async () => {
-    const {root,repo,service} = await fixtures.setup();
-    await commitFile(root,'old.txt','base'); await commitFile(root,'deleted.txt','base');
-    await git(root,'mv','old.txt','new.txt');
-    await writeFile(path.join(root,'new.txt'),'latest'); await rm(path.join(root,'deleted.txt'));
+    const { root, repo, service } = await fixtures.setup();
+    await commitFile(root, 'old.txt', 'base');
+    await commitFile(root, 'deleted.txt', 'base');
+    await git(root, 'mv', 'old.txt', 'new.txt');
+    await writeFile(path.join(root, 'new.txt'), 'latest');
+    await rm(path.join(root, 'deleted.txt'));
     const snapshot = await service.snapshot(repo);
-    await service.execute(repo,{type:'commit',message:'latest rename',files:[{path:'new.txt',area:'unstaged'},{path:'deleted.txt',area:'unstaged'}],expectedHead:snapshot.head,expectedBranch:snapshot.branch});
-    expect(await git(root,'ls-tree','--name-only','HEAD')).toBe('new.txt');
-    expect(await git(root,'show','HEAD:new.txt')).toBe('latest');
-    expect(await git(root,'status','--porcelain')).toBe('');
+    await service.execute(repo, {
+      type: 'commit',
+      message: 'latest rename',
+      files: [
+        { path: 'new.txt', area: 'unstaged' },
+        { path: 'deleted.txt', area: 'unstaged' },
+      ],
+      expectedHead: snapshot.head,
+      expectedBranch: snapshot.branch,
+    });
+    expect(await git(root, 'ls-tree', '--name-only', 'HEAD')).toBe('new.txt');
+    expect(await git(root, 'show', 'HEAD:new.txt')).toBe('latest');
+    expect(await git(root, 'status', '--porcelain')).toBe('');
   });
 
   it('allows a message-only amend without committing unchecked staged content', async () => {
-    const {root,repo,service} = await fixtures.setup();
-    await commitFile(root,'chosen.txt','base');
-    await writeFile(path.join(root,'chosen.txt'),'staged'); await git(root,'add','.');
-    const snapshot = await service.snapshot(repo), oldTree = await git(root,'rev-parse','HEAD^{tree}');
-    await service.execute(repo,{type:'commit',message:'new message',amend:true,files:[],expectedHead:snapshot.head,expectedBranch:snapshot.branch});
-    expect(await git(root,'rev-parse','HEAD^{tree}')).toBe(oldTree);
-    expect(await git(root,'log','-1','--format=%s')).toBe('new message');
-    expect(await git(root,'show',':chosen.txt')).toBe('staged');
+    const { root, repo, service } = await fixtures.setup();
+    await commitFile(root, 'chosen.txt', 'base');
+    await writeFile(path.join(root, 'chosen.txt'), 'staged');
+    await git(root, 'add', '.');
+    const snapshot = await service.snapshot(repo),
+      oldTree = await git(root, 'rev-parse', 'HEAD^{tree}');
+    await service.execute(repo, {
+      type: 'commit',
+      message: 'new message',
+      amend: true,
+      files: [],
+      expectedHead: snapshot.head,
+      expectedBranch: snapshot.branch,
+    });
+    expect(await git(root, 'rev-parse', 'HEAD^{tree}')).toBe(oldTree);
+    expect(await git(root, 'log', '-1', '--format=%s')).toBe('new message');
+    expect(await git(root, 'show', ':chosen.txt')).toBe('staged');
   });
 
   it('keeps the original index byte for byte when a hook rejects a working version', async () => {
-    const {root,repo,service} = await fixtures.setup();
-    await commitFile(root,'chosen.txt','base');
-    await writeFile(path.join(root,'chosen.txt'),'staged'); await git(root,'add','.');
-    await writeFile(path.join(root,'chosen.txt'),'working');
-    const hook = path.join(repo.commonDir,'hooks','pre-commit');
-    await writeFile(hook,'#!/bin/sh\necho rejected >&2\nexit 1\n'); await chmod(hook,0o755);
-    const snapshot = await service.snapshot(repo), index = await readFile(path.join(repo.commonDir,'index'));
-    await expect(service.execute(repo,{type:'commit',message:'rejected',files:[{path:'chosen.txt',area:'unstaged'}],expectedHead:snapshot.head,expectedBranch:snapshot.branch})).rejects.toThrow('rejected');
-    expect(await git(root,'rev-parse','HEAD')).toBe(snapshot.head);
-    expect(await readFile(path.join(repo.commonDir,'index'))).toEqual(index);
-    expect(await readFile(path.join(root,'chosen.txt'),'utf8')).toBe('working');
-    expect((await readdir(repo.commonDir)).filter(name => name.includes('alwaygit-') || name === 'index.lock')).toEqual([]);
+    const { root, repo, service } = await fixtures.setup();
+    await commitFile(root, 'chosen.txt', 'base');
+    await writeFile(path.join(root, 'chosen.txt'), 'staged');
+    await git(root, 'add', '.');
+    await writeFile(path.join(root, 'chosen.txt'), 'working');
+    const hook = path.join(repo.commonDir, 'hooks', 'pre-commit');
+    await writeFile(hook, '#!/bin/sh\necho rejected >&2\nexit 1\n');
+    await chmod(hook, 0o755);
+    const snapshot = await service.snapshot(repo),
+      index = await readFile(path.join(repo.commonDir, 'index'));
+    await expect(
+      service.execute(repo, {
+        type: 'commit',
+        message: 'rejected',
+        files: [{ path: 'chosen.txt', area: 'unstaged' }],
+        expectedHead: snapshot.head,
+        expectedBranch: snapshot.branch,
+      }),
+    ).rejects.toThrow('rejected');
+    expect(await git(root, 'rev-parse', 'HEAD')).toBe(snapshot.head);
+    expect(await readFile(path.join(repo.commonDir, 'index'))).toEqual(index);
+    expect(await readFile(path.join(root, 'chosen.txt'), 'utf8')).toBe('working');
+    expect(
+      (await readdir(repo.commonDir)).filter(
+        (name) => name.includes('alwaygit-') || name === 'index.lock',
+      ),
+    ).toEqual([]);
   });
 
   it('rejects a stale HEAD and an externally locked index without modifying content', async () => {
-    const {root,repo,service} = await fixtures.setup();
-    await commitFile(root,'chosen.txt','base');
-    await writeFile(path.join(root,'chosen.txt'),'working');
-    const snapshot = await service.snapshot(repo), action = {type:'commit' as const,message:'selected',files:[{path:'chosen.txt',area:'unstaged' as const}],expectedHead:snapshot.head,expectedBranch:snapshot.branch};
-    await expect(service.execute(repo,{...action,expectedHead:'a'.repeat(40)})).rejects.toMatchObject({code:'OPERATION_CHANGED'});
-    await writeFile(path.join(repo.commonDir,'index.lock'),'external');
-    await expect(service.execute(repo,action)).rejects.toMatchObject({code:'INDEX_LOCKED'});
-    expect(await readFile(path.join(repo.commonDir,'index.lock'),'utf8')).toBe('external');
-    expect(await git(root,'rev-parse','HEAD')).toBe(snapshot.head);
+    const { root, repo, service } = await fixtures.setup();
+    await commitFile(root, 'chosen.txt', 'base');
+    await writeFile(path.join(root, 'chosen.txt'), 'working');
+    const snapshot = await service.snapshot(repo),
+      action = {
+        type: 'commit' as const,
+        message: 'selected',
+        files: [{ path: 'chosen.txt', area: 'unstaged' as const }],
+        expectedHead: snapshot.head,
+        expectedBranch: snapshot.branch,
+      };
+    await expect(
+      service.execute(repo, { ...action, expectedHead: 'a'.repeat(40) }),
+    ).rejects.toMatchObject({ code: 'OPERATION_CHANGED' });
+    await writeFile(path.join(repo.commonDir, 'index.lock'), 'external');
+    await expect(service.execute(repo, action)).rejects.toMatchObject({ code: 'INDEX_LOCKED' });
+    expect(await readFile(path.join(repo.commonDir, 'index.lock'), 'utf8')).toBe('external');
+    expect(await git(root, 'rev-parse', 'HEAD')).toBe(snapshot.head);
   });
 
   it('uses the linked worktree index and preserves split-index staged entries', async () => {
-    const {root,service} = await fixtures.setup();
-    await commitFile(root,'chosen.txt','base'); await commitFile(root,'other.txt','other');
-    const worktree = path.join(root,'linked'); await git(root,'worktree','add','-b','linked',worktree);
+    const { root, service } = await fixtures.setup();
+    await commitFile(root, 'chosen.txt', 'base');
+    await commitFile(root, 'other.txt', 'other');
+    const worktree = path.join(root, 'linked');
+    await git(root, 'worktree', 'add', '-b', 'linked', worktree);
     const repo = await service.discover(worktree);
-    await writeFile(path.join(worktree,'other.txt'),'staged other'); await git(worktree,'add','other.txt');
-    await git(worktree,'update-index','--split-index');
-    await writeFile(path.join(worktree,'chosen.txt'),'working');
+    await writeFile(path.join(worktree, 'other.txt'), 'staged other');
+    await git(worktree, 'add', 'other.txt');
+    await git(worktree, 'update-index', '--split-index');
+    await writeFile(path.join(worktree, 'chosen.txt'), 'working');
     const snapshot = await service.snapshot(repo);
-    await service.execute(repo,{type:'commit',message:'worktree selected',files:[{path:'chosen.txt',area:'unstaged'}],expectedHead:snapshot.head,expectedBranch:snapshot.branch});
-    expect(await git(worktree,'show','HEAD:chosen.txt')).toBe('working');
-    expect(await git(worktree,'show',':other.txt')).toBe('staged other');
-    expect(await git(root,'show','HEAD:chosen.txt')).toBe('base');
-    expect(await git(root,'status','--porcelain')).toBe('?? linked/');
+    await service.execute(repo, {
+      type: 'commit',
+      message: 'worktree selected',
+      files: [{ path: 'chosen.txt', area: 'unstaged' }],
+      expectedHead: snapshot.head,
+      expectedBranch: snapshot.branch,
+    });
+    expect(await git(worktree, 'show', 'HEAD:chosen.txt')).toBe('working');
+    expect(await git(worktree, 'show', ':other.txt')).toBe('staged other');
+    expect(await git(root, 'show', 'HEAD:chosen.txt')).toBe('base');
+    expect(await git(root, 'status', '--porcelain')).toBe('?? linked/');
   });
 });

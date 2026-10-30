@@ -12,16 +12,28 @@ describe('cherry-pick ancestry protection', () => {
     await git(root, 'switch', '-c', 'topic');
     const topic = await commitFile(root, 'topic.txt', 'topic');
     await git(root, 'switch', 'main');
-    expect(await service.cherryPickCheck(repo, [head, first, topic])).toEqual({ head, branch: 'main', included: [head, first] });
+    expect(await service.cherryPickCheck(repo, [head, first, topic])).toEqual({
+      head,
+      branch: 'main',
+      included: [head, first],
+    });
     for (const action of [
       { commits: [head] },
       { commits: [head], allowIncluded: true, expectedHead: head, expectedBranch: 'main' },
       { commits: [topic, first] },
-    ]) await expect(service.execute(repo, { type: 'cherry-pick', ...action })).rejects.toMatchObject({ code: 'COMMIT_ALREADY_INCLUDED' });
+    ])
+      await expect(service.execute(repo, { type: 'cherry-pick', ...action })).rejects.toMatchObject(
+        { code: 'COMMIT_ALREADY_INCLUDED' },
+      );
     expect((await service.snapshot(repo)).operation.kind).toBeUndefined();
     expect(await git(root, 'rev-parse', 'HEAD')).toBe(head);
     expect(await git(root, 'status', '--porcelain')).toBe('');
-    await service.execute(repo, { type: 'cherry-pick', commits: [topic], expectedHead: head, expectedBranch: 'main' });
+    await service.execute(repo, {
+      type: 'cherry-pick',
+      commits: [topic],
+      expectedHead: head,
+      expectedBranch: 'main',
+    });
     expect(await git(root, 'show', 'HEAD:topic.txt')).toBe('topic');
   });
 
@@ -35,8 +47,12 @@ describe('cherry-pick ancestry protection', () => {
     await git(root, 'merge', '--no-ff', 'topic', '-m', 'merge topic');
     const head = await git(root, 'rev-parse', 'HEAD');
     expect((await service.cherryPickCheck(repo, [topic, head])).included).toEqual([topic, head]);
-    await expect(service.execute(repo, { type: 'cherry-pick', commits: [topic] })).rejects.toMatchObject({ code: 'COMMIT_ALREADY_INCLUDED' });
-    await expect(service.execute(repo, { type: 'cherry-pick', commits: [head], mainline: 1 })).rejects.toMatchObject({ code: 'COMMIT_ALREADY_INCLUDED' });
+    await expect(
+      service.execute(repo, { type: 'cherry-pick', commits: [topic] }),
+    ).rejects.toMatchObject({ code: 'COMMIT_ALREADY_INCLUDED' });
+    await expect(
+      service.execute(repo, { type: 'cherry-pick', commits: [head], mainline: 1 }),
+    ).rejects.toMatchObject({ code: 'COMMIT_ALREADY_INCLUDED' });
   });
 
   it('keeps Revert available and reapplies reverted changes only with explicit confirmation bound to HEAD', async () => {
@@ -46,10 +62,28 @@ describe('cherry-pick ancestry protection', () => {
     await service.execute(repo, { type: 'revert', commits: [feature] });
     const head = await git(root, 'rev-parse', 'HEAD');
     expect((await service.cherryPickCheck(repo, [feature])).included).toEqual([feature]);
-    await expect(service.execute(repo, { type: 'cherry-pick', commits: [feature] })).rejects.toMatchObject({ code: 'COMMIT_ALREADY_INCLUDED' });
-    await expect(service.execute(repo, { type: 'cherry-pick', commits: [feature], allowIncluded: true })).rejects.toMatchObject({ code: 'OPERATION_CHANGED' });
-    await expect(service.execute(repo, { type: 'cherry-pick', commits: [feature], allowIncluded: true, expectedHead: feature, expectedBranch: 'main' })).rejects.toMatchObject({ code: 'OPERATION_CHANGED' });
-    await service.execute(repo, { type: 'cherry-pick', commits: [feature], allowIncluded: true, expectedHead: head, expectedBranch: 'main' });
+    await expect(
+      service.execute(repo, { type: 'cherry-pick', commits: [feature] }),
+    ).rejects.toMatchObject({ code: 'COMMIT_ALREADY_INCLUDED' });
+    await expect(
+      service.execute(repo, { type: 'cherry-pick', commits: [feature], allowIncluded: true }),
+    ).rejects.toMatchObject({ code: 'OPERATION_CHANGED' });
+    await expect(
+      service.execute(repo, {
+        type: 'cherry-pick',
+        commits: [feature],
+        allowIncluded: true,
+        expectedHead: feature,
+        expectedBranch: 'main',
+      }),
+    ).rejects.toMatchObject({ code: 'OPERATION_CHANGED' });
+    await service.execute(repo, {
+      type: 'cherry-pick',
+      commits: [feature],
+      allowIncluded: true,
+      expectedHead: head,
+      expectedBranch: 'main',
+    });
     expect(await git(root, 'show', 'HEAD:feature.txt')).toBe('feature');
   });
 
@@ -57,12 +91,26 @@ describe('cherry-pick ancestry protection', () => {
     const { root, repo, service } = await fixtures.setup();
     const first = await commitFile(root, 'base.txt', 'base');
     const head = await commitFile(root, 'main.txt', 'main');
-    await expect(service.cherryPickCheck(repo, [first], { expectedHead: first, expectedBranch: 'main' })).rejects.toMatchObject({ code: 'OPERATION_CHANGED' });
+    await expect(
+      service.cherryPickCheck(repo, [first], { expectedHead: first, expectedBranch: 'main' }),
+    ).rejects.toMatchObject({ code: 'OPERATION_CHANGED' });
     await git(root, 'switch', '-c', 'other');
-    await expect(service.cherryPickCheck(repo, [first], { expectedHead: head, expectedBranch: 'main' })).rejects.toMatchObject({ code: 'OPERATION_CHANGED' });
-    await expect(service.execute(repo, { type: 'cherry-pick', commits: [first], allowIncluded: true, expectedHead: head, expectedBranch: 'main' })).rejects.toMatchObject({ code: 'OPERATION_CHANGED' });
+    await expect(
+      service.cherryPickCheck(repo, [first], { expectedHead: head, expectedBranch: 'main' }),
+    ).rejects.toMatchObject({ code: 'OPERATION_CHANGED' });
+    await expect(
+      service.execute(repo, {
+        type: 'cherry-pick',
+        commits: [first],
+        allowIncluded: true,
+        expectedHead: head,
+        expectedBranch: 'main',
+      }),
+    ).rejects.toMatchObject({ code: 'OPERATION_CHANGED' });
     await git(root, 'switch', '--detach', head);
-    await expect(service.execute(repo, { type: 'cherry-pick', commits: [first] })).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' });
+    await expect(
+      service.execute(repo, { type: 'cherry-pick', commits: [first] }),
+    ).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' });
     expect((await service.snapshot(repo)).operation.kind).toBeUndefined();
   });
 });

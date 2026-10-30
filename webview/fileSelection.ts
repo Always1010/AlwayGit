@@ -1,36 +1,71 @@
-export interface FileSelection { paths: string[]; anchor?: string }
+export interface FileSelection {
+  paths: string[];
+  anchor?: string;
+}
 
-export function filterFilesByPath<T extends { path: string }>(files: readonly T[], query: string): T[] {
+export function filterFilesByPath<T extends { path: string }>(
+  files: readonly T[],
+  query: string,
+): T[] {
   const needle = query.trim().toLowerCase();
-  return needle ? files.filter(file => file.path.toLowerCase().includes(needle)) : [...files];
+  return needle ? files.filter((file) => file.path.toLowerCase().includes(needle)) : [...files];
 }
 
 /** Git paths use forward slashes; preserve every parent segment and the original path. */
 export function filePathLabel(path: string): { name: string; parent: string } {
   const separator = path.lastIndexOf('/');
-  return { name: path.slice(separator + 1), parent: separator < 0 ? './' : `./${path.slice(0, separator)}` };
+  return {
+    name: path.slice(separator + 1),
+    parent: separator < 0 ? './' : `./${path.slice(0, separator)}`,
+  };
 }
 
-export function reconcileFileSelection(order: readonly string[], selection: FileSelection): FileSelection {
+export function reconcileFileSelection(
+  order: readonly string[],
+  selection: FileSelection,
+): FileSelection {
   const selected = new Set(selection.paths);
   if (!selected.size && !selection.anchor) return { paths: [] };
-  return { paths: [...new Set(order)].filter(path => selected.has(path)), anchor: selection.anchor && order.includes(selection.anchor) ? selection.anchor : undefined };
+  return {
+    paths: [...new Set(order)].filter((path) => selected.has(path)),
+    anchor: selection.anchor && order.includes(selection.anchor) ? selection.anchor : undefined,
+  };
 }
 
 /** Ordinary clicks can either establish a preview anchor or replace selection. */
-export function fileSelectionForClick(order: readonly string[], selection: FileSelection, path: string, modifiers: { toggle?: boolean; range?: boolean; replace?: boolean }): FileSelection {
+export function fileSelectionForClick(
+  order: readonly string[],
+  selection: FileSelection,
+  path: string,
+  modifiers: { toggle?: boolean; range?: boolean; replace?: boolean },
+): FileSelection {
   const current = reconcileFileSelection(order, selection);
   if (!order.includes(path)) return current;
   if (modifiers.range) {
-    const anchor = current.anchor ?? path, from = order.indexOf(anchor), to = order.indexOf(path);
+    const anchor = current.anchor ?? path,
+      from = order.indexOf(anchor),
+      to = order.indexOf(path);
     const range = order.slice(Math.min(from, to), Math.max(from, to) + 1);
-    return reconcileFileSelection(order, { paths: modifiers.toggle ? [...current.paths, ...range] : range, anchor });
+    return reconcileFileSelection(order, {
+      paths: modifiers.toggle ? [...current.paths, ...range] : range,
+      anchor,
+    });
   }
-  if (modifiers.toggle) return reconcileFileSelection(order, { paths: current.paths.includes(path) ? current.paths.filter(item => item !== path) : [...current.paths, path], anchor: path });
+  if (modifiers.toggle)
+    return reconcileFileSelection(order, {
+      paths: current.paths.includes(path)
+        ? current.paths.filter((item) => item !== path)
+        : [...current.paths, path],
+      anchor: path,
+    });
   return modifiers.replace ? { paths: [path], anchor: path } : { ...current, anchor: path };
 }
 
-export function fileSelectionTargets(order: readonly string[], selection: FileSelection, allWhenEmpty: boolean): string[] {
+export function fileSelectionTargets(
+  order: readonly string[],
+  selection: FileSelection,
+  allWhenEmpty: boolean,
+): string[] {
   const selected = reconcileFileSelection(order, selection).paths;
   return selected.length || !allWhenEmpty ? selected : [...new Set(order)];
 }

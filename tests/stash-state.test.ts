@@ -8,10 +8,13 @@ import { GitService } from '../src/git/service';
 
 const exec = promisify(execFile);
 const fixtures: string[] = [];
-const git = async (cwd: string, ...args: string[]) => (await exec('git', ['-C', cwd, ...args], {
-  windowsHide: true,
-  env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_EDITOR: 'true' },
-})).stdout.trim();
+const git = async (cwd: string, ...args: string[]) =>
+  (
+    await exec('git', ['-C', cwd, ...args], {
+      windowsHide: true,
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_EDITOR: 'true' },
+    })
+  ).stdout.trim();
 
 async function setup(files: Record<string, string>) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'alwaygit-stash-'));
@@ -38,7 +41,9 @@ async function state(root: string, files: string[]) {
     index: await git(root, 'ls-files', '--stage'),
     status: await git(root, 'status', '--porcelain=v1', '-uall'),
     stashes: await git(root, 'stash', 'list', '--format=%gd %H'),
-    files: await Promise.all(files.map(async name => [name, await readFile(path.join(root, name))])),
+    files: await Promise.all(
+      files.map(async (name) => [name, await readFile(path.join(root, name))]),
+    ),
   };
 }
 
@@ -53,7 +58,10 @@ afterEach(async () => {
 
 describe('Stash saved state and restore preflight', () => {
   it('saves only selected literal paths in both trees and leaves excluded local state untouched', async () => {
-    const { root, service, repo } = await setup({ 'selected [1].txt': 'selected base', 'other.txt': 'other base' });
+    const { root, service, repo } = await setup({
+      'selected [1].txt': 'selected base',
+      'other.txt': 'other base',
+    });
     await writeFile(path.join(root, 'selected [1].txt'), 'selected index');
     await writeFile(path.join(root, 'other.txt'), 'other index');
     await git(root, 'add', '-A');
@@ -61,7 +69,11 @@ describe('Stash saved state and restore preflight', () => {
     await writeFile(path.join(root, 'other.txt'), 'other worktree');
     await writeFile(path.join(root, 'selected 1.txt'), 'unselected untracked');
 
-    await service.execute(repo, { type: 'stash.create', paths: ['selected [1].txt'], includeUntracked: true });
+    await service.execute(repo, {
+      type: 'stash.create',
+      paths: ['selected [1].txt'],
+      includeUntracked: true,
+    });
     const saved = (await service.snapshot(repo)).stashes[0];
     expect(await git(root, 'show', `${saved.oid}^2:selected [1].txt`)).toBe('selected index');
     expect(await git(root, 'show', `${saved.oid}:selected [1].txt`)).toBe('selected worktree');
@@ -79,14 +91,24 @@ describe('Stash saved state and restore preflight', () => {
     const { root, service, repo } = await setup({ 'base.txt': 'base' });
     await writeFile(path.join(root, 'saved.txt'), 'saved notes');
     await writeFile(path.join(root, 'keep.txt'), 'keep notes');
-    await service.execute(repo, { type: 'stash.create', paths: ['saved.txt'], includeUntracked: true });
+    await service.execute(repo, {
+      type: 'stash.create',
+      paths: ['saved.txt'],
+      includeUntracked: true,
+    });
     const saved = (await service.snapshot(repo)).stashes[0];
     expect(await git(root, 'ls-tree', '--name-only', `${saved.oid}^3`)).toBe('saved.txt');
     await expect(readFile(path.join(root, 'saved.txt'))).rejects.toThrow();
     expect(await readFile(path.join(root, 'keep.txt'), 'utf8')).toBe('keep notes');
-    await service.execute(repo, { type: 'stash.apply', selector: saved.selector, expectedOid: saved.oid });
+    await service.execute(repo, {
+      type: 'stash.apply',
+      selector: saved.selector,
+      expectedOid: saved.oid,
+    });
     expect(await readFile(path.join(root, 'saved.txt'), 'utf8')).toBe('saved notes');
-    expect(await git(root, 'ls-files', '--others', '--exclude-standard')).toBe('keep.txt\nsaved.txt');
+    expect(await git(root, 'ls-files', '--others', '--exclude-standard')).toBe(
+      'keep.txt\nsaved.txt',
+    );
     expect((await service.snapshot(repo)).stashes).toEqual([saved]);
   });
 
@@ -97,10 +119,16 @@ describe('Stash saved state and restore preflight', () => {
     await writeFile(path.join(root, 'same.txt'), 'working content');
     await service.execute(repo, { type: 'stash.create' });
     const saved = (await service.snapshot(repo)).stashes[0];
-    await service.execute(repo, { type: 'stash.apply', selector: saved.selector, expectedOid: saved.oid });
+    await service.execute(repo, {
+      type: 'stash.apply',
+      selector: saved.selector,
+      expectedOid: saved.oid,
+    });
     expect(await git(root, 'show', ':same.txt')).toBe('staged content');
     expect(await readFile(path.join(root, 'same.txt'), 'utf8')).toBe('working content');
-    expect((await service.snapshot(repo)).changes).toEqual([expect.objectContaining({ path: 'same.txt', indexStatus: 'M', worktreeStatus: 'M' })]);
+    expect((await service.snapshot(repo)).changes).toEqual([
+      expect.objectContaining({ path: 'same.txt', indexStatus: 'M', worktreeStatus: 'M' }),
+    ]);
     expect((await service.snapshot(repo)).stashes).toEqual([saved]);
   });
 
@@ -114,11 +142,24 @@ describe('Stash saved state and restore preflight', () => {
     const saved = (await service.snapshot(repo)).stashes[0];
     expect(await readFile(path.join(root, 'old [1].txt'), 'utf8')).toBe(base);
     await expect(readFile(path.join(root, 'new [1].txt'))).rejects.toThrow();
-    await service.execute(repo, { type: 'stash.apply', selector: saved.selector, expectedOid: saved.oid });
+    await service.execute(repo, {
+      type: 'stash.apply',
+      selector: saved.selector,
+      expectedOid: saved.oid,
+    });
     await expect(readFile(path.join(root, 'old [1].txt'))).rejects.toThrow();
     expect(await git(root, 'show', ':new [1].txt')).toBe(base.trim());
-    expect(await readFile(path.join(root, 'new [1].txt'), 'utf8')).toBe(`${base}later working edit\n`);
-    expect((await service.snapshot(repo)).changes).toEqual([expect.objectContaining({ path: 'new [1].txt', originalPath: 'old [1].txt', indexStatus: 'R', worktreeStatus: 'M' })]);
+    expect(await readFile(path.join(root, 'new [1].txt'), 'utf8')).toBe(
+      `${base}later working edit\n`,
+    );
+    expect((await service.snapshot(repo)).changes).toEqual([
+      expect.objectContaining({
+        path: 'new [1].txt',
+        originalPath: 'old [1].txt',
+        indexStatus: 'R',
+        worktreeStatus: 'M',
+      }),
+    ]);
   });
 
   it('saves and restores an index-only difference when working contents equal HEAD', async () => {
@@ -132,13 +173,21 @@ describe('Stash saved state and restore preflight', () => {
     expect(await git(root, 'show', `${saved.oid}^2:same.txt`)).toBe('index edit');
     expect(await git(root, 'show', `${saved.oid}:same.txt`)).toBe('base');
     expect((await service.snapshot(repo)).changes).toEqual([]);
-    await service.execute(repo, { type: 'stash.apply', selector: saved.selector, expectedOid: saved.oid });
+    await service.execute(repo, {
+      type: 'stash.apply',
+      selector: saved.selector,
+      expectedOid: saved.oid,
+    });
     expect(await git(root, 'show', ':same.txt')).toBe('index edit');
     expect(await readFile(path.join(root, 'same.txt'), 'utf8')).toBe('base');
   });
 
   it('blocks a worktree merge conflict before restoring any clean neighboring file', async () => {
-    const { root, service, repo } = await setup({ 'a.txt': 'base a', 'b.txt': 'base b', 'local.txt': 'base local' });
+    const { root, service, repo } = await setup({
+      'a.txt': 'base a',
+      'b.txt': 'base b',
+      'local.txt': 'base local',
+    });
     await writeFile(path.join(root, 'a.txt'), 'saved a');
     await writeFile(path.join(root, 'b.txt'), 'saved b');
     await service.execute(repo, { type: 'stash.create' });
@@ -152,9 +201,24 @@ describe('Stash saved state and restore preflight', () => {
     await writeFile(path.join(root, 'notes.txt'), 'untracked notes');
     const files = ['a.txt', 'b.txt', 'local.txt', 'notes.txt'];
     const before = await state(root, files);
-    await expect(service.execute(repo, { type: 'stash.apply', selector: saved.selector, expectedOid: saved.oid })).rejects.toMatchObject({
+    await expect(
+      service.execute(repo, {
+        type: 'stash.apply',
+        selector: saved.selector,
+        expectedOid: saved.oid,
+      }),
+    ).rejects.toMatchObject({
       code: 'STASH_RESTORE_BLOCKED',
-      details: { kind: 'stash-apply', reason: 'restore-conflict', paths: ['a.txt', 'b.txt'], conflictPaths: ['a.txt'], output: expect.stringContaining('a.txt'), stashOid: saved.oid, workingTreeUnchanged: true, stashRetained: true },
+      details: {
+        kind: 'stash-apply',
+        reason: 'restore-conflict',
+        paths: ['a.txt', 'b.txt'],
+        conflictPaths: ['a.txt'],
+        output: expect.stringContaining('a.txt'),
+        stashOid: saved.oid,
+        workingTreeUnchanged: true,
+        stashRetained: true,
+      },
     });
     expect(await state(root, files)).toEqual(before);
   });
@@ -170,15 +234,31 @@ describe('Stash saved state and restore preflight', () => {
     await git(root, 'add', '--', 'same.txt');
     await writeFile(path.join(root, 'same.txt'), 'current working');
     const before = await state(root, ['same.txt', 'other.txt']);
-    await expect(service.execute(repo, { type: 'stash.apply', selector: saved.selector, expectedOid: saved.oid })).rejects.toMatchObject({
+    await expect(
+      service.execute(repo, {
+        type: 'stash.apply',
+        selector: saved.selector,
+        expectedOid: saved.oid,
+      }),
+    ).rejects.toMatchObject({
       code: 'STASH_RESTORE_BLOCKED',
-      details: { kind: 'stash-apply', reason: 'restore-blocked', conflictPaths: [], output: expect.stringContaining('same.txt'), workingTreeUnchanged: true, stashRetained: true },
+      details: {
+        kind: 'stash-apply',
+        reason: 'restore-blocked',
+        conflictPaths: [],
+        output: expect.stringContaining('same.txt'),
+        workingTreeUnchanged: true,
+        stashRetained: true,
+      },
     });
     expect(await state(root, ['same.txt', 'other.txt'])).toEqual(before);
   });
 
   it('blocks Git index restore failure caused by unrelated staged and working edits without changing them', async () => {
-    const { root, service, repo } = await setup({ 'saved.txt': 'base saved', 'local.txt': 'base local' });
+    const { root, service, repo } = await setup({
+      'saved.txt': 'base saved',
+      'local.txt': 'base local',
+    });
     await writeFile(path.join(root, 'saved.txt'), 'saved index');
     await git(root, 'add', '--', 'saved.txt');
     await writeFile(path.join(root, 'saved.txt'), 'saved working');
@@ -188,8 +268,22 @@ describe('Stash saved state and restore preflight', () => {
     await git(root, 'add', '--', 'staged-only.txt');
     await writeFile(path.join(root, 'local.txt'), 'local working');
     const before = await state(root, ['saved.txt', 'local.txt', 'staged-only.txt']);
-    await expect(service.execute(repo, { type: 'stash.apply', selector: saved.selector, expectedOid: saved.oid })).rejects.toMatchObject({
-      code: 'STASH_RESTORE_BLOCKED', details: { reason: 'restore-blocked', paths: ['saved.txt'], conflictPaths: [], output: expect.stringContaining('staged-only.txt'), workingTreeUnchanged: true, stashRetained: true },
+    await expect(
+      service.execute(repo, {
+        type: 'stash.apply',
+        selector: saved.selector,
+        expectedOid: saved.oid,
+      }),
+    ).rejects.toMatchObject({
+      code: 'STASH_RESTORE_BLOCKED',
+      details: {
+        reason: 'restore-blocked',
+        paths: ['saved.txt'],
+        conflictPaths: [],
+        output: expect.stringContaining('staged-only.txt'),
+        workingTreeUnchanged: true,
+        stashRetained: true,
+      },
     });
     expect(await state(root, ['saved.txt', 'local.txt', 'staged-only.txt'])).toEqual(before);
     expect(await git(root, 'show', ':staged-only.txt')).toBe('local index');
@@ -197,126 +291,199 @@ describe('Stash saved state and restore preflight', () => {
     expect((await service.snapshot(repo)).stashes).toEqual([saved]);
   });
 
-  it.each(['info', 'ignored-root', 'ignored-ancestor'] as const)('preserves UTF-16 raw working bytes and canonical blobs using %s attributes', async source => {
-    const { root, service, repo } = await setup({ 'base.txt': 'base' });
-    const file = source === 'ignored-ancestor' ? 'nested/deeper/encoded.txt' : 'encoded.txt';
-    const attributeFile = source === 'info' ? '.git/info/attributes' : source === 'ignored-root' ? '.gitattributes' : 'nested/.gitattributes';
-    const attributes = 'encoded.txt text working-tree-encoding=UTF-16LE-BOM eol=lf\n';
-    await mkdir(path.dirname(path.join(root, file)), { recursive: true });
-    await writeFile(path.join(root, '.git', 'info', 'exclude'), '.gitattributes\n');
-    await writeFile(path.join(root, attributeFile), attributes);
-    const encoded = (text: string) => Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(text, 'utf16le')]);
-    const base = encoded('原始内容\n'), staged = encoded('暂存内容\n'), working = encoded('现场内容\n');
-    await writeFile(path.join(root, file), base);
-    await git(root, 'add', '--', file);
-    await git(root, 'commit', '-m', 'encoded base');
-    await writeFile(path.join(root, file), staged);
-    await git(root, 'add', '--', file);
-    await writeFile(path.join(root, file), working);
+  it.each(['info', 'ignored-root', 'ignored-ancestor'] as const)(
+    'preserves UTF-16 raw working bytes and canonical blobs using %s attributes',
+    async (source) => {
+      const { root, service, repo } = await setup({ 'base.txt': 'base' });
+      const file = source === 'ignored-ancestor' ? 'nested/deeper/encoded.txt' : 'encoded.txt';
+      const attributeFile =
+        source === 'info'
+          ? '.git/info/attributes'
+          : source === 'ignored-root'
+            ? '.gitattributes'
+            : 'nested/.gitattributes';
+      const attributes = 'encoded.txt text working-tree-encoding=UTF-16LE-BOM eol=lf\n';
+      await mkdir(path.dirname(path.join(root, file)), { recursive: true });
+      await writeFile(path.join(root, '.git', 'info', 'exclude'), '.gitattributes\n');
+      await writeFile(path.join(root, attributeFile), attributes);
+      const encoded = (text: string) =>
+        Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(text, 'utf16le')]);
+      const base = encoded('原始内容\n'),
+        staged = encoded('暂存内容\n'),
+        working = encoded('现场内容\n');
+      await writeFile(path.join(root, file), base);
+      await git(root, 'add', '--', file);
+      await git(root, 'commit', '-m', 'encoded base');
+      await writeFile(path.join(root, file), staged);
+      await git(root, 'add', '--', file);
+      await writeFile(path.join(root, file), working);
 
-    await service.execute(repo, { type: 'stash.create', paths: [file] });
-    const saved = (await service.snapshot(repo)).stashes[0];
-    expect(await service.content(repo, { kind: 'revision', revision: `${saved.oid}^2`, path: file })).toEqual(Buffer.from('暂存内容\n'));
-    expect(await service.content(repo, { kind: 'revision', revision: saved.oid, path: file })).toEqual(Buffer.from('现场内容\n'));
-    expect(await readFile(path.join(root, file))).toEqual(base);
-    expect(await readFile(path.join(root, attributeFile), 'utf8')).toBe(attributes);
-    await service.execute(repo, { type: 'stash.apply', selector: saved.selector, expectedOid: saved.oid });
-    expect(await readFile(path.join(root, file))).toEqual(working);
-    expect(await service.content(repo, { kind: 'index', path: file })).toEqual(Buffer.from('暂存内容\n'));
-    expect(await readFile(path.join(root, attributeFile), 'utf8')).toBe(attributes);
-    expect((await service.snapshot(repo)).stashes).toEqual([saved]);
-  });
+      await service.execute(repo, { type: 'stash.create', paths: [file] });
+      const saved = (await service.snapshot(repo)).stashes[0];
+      expect(
+        await service.content(repo, { kind: 'revision', revision: `${saved.oid}^2`, path: file }),
+      ).toEqual(Buffer.from('暂存内容\n'));
+      expect(
+        await service.content(repo, { kind: 'revision', revision: saved.oid, path: file }),
+      ).toEqual(Buffer.from('现场内容\n'));
+      expect(await readFile(path.join(root, file))).toEqual(base);
+      expect(await readFile(path.join(root, attributeFile), 'utf8')).toBe(attributes);
+      await service.execute(repo, {
+        type: 'stash.apply',
+        selector: saved.selector,
+        expectedOid: saved.oid,
+      });
+      expect(await readFile(path.join(root, file))).toEqual(working);
+      expect(await service.content(repo, { kind: 'index', path: file })).toEqual(
+        Buffer.from('暂存内容\n'),
+      );
+      expect(await readFile(path.join(root, attributeFile), 'utf8')).toBe(attributes);
+      expect((await service.snapshot(repo)).stashes).toEqual([saved]);
+    },
+  );
 
-  it.each(['created', 'deleted', 'changed'] as const)('retains the saved Stash and skips cleanup when an ignored attribute source is %s', async change => {
-    const { root, service, repo } = await setup({ 'selected.txt': 'base' });
-    const attributeFile = path.join(root, '.gitattributes');
-    await writeFile(path.join(root, '.git', 'info', 'exclude'), '.gitattributes\n');
-    if (change !== 'created') await writeFile(attributeFile, '# initial context\n');
-    await writeFile(path.join(root, 'selected.txt'), 'saved index');
-    await git(root, 'add', '--', 'selected.txt');
-    await writeFile(path.join(root, 'selected.txt'), 'saved working');
-    const indexBefore = await git(root, 'ls-files', '--stage');
-    const changingService = new GitService({ environment: async (_repo, args) => {
-      if (args[0] === 'stash' && args[1] === 'store') {
-        if (change === 'deleted') await rm(attributeFile);
-        else await writeFile(attributeFile, '# updated context\n');
+  it.each(['created', 'deleted', 'changed'] as const)(
+    'retains the saved Stash and skips cleanup when an ignored attribute source is %s',
+    async (change) => {
+      const { root, service, repo } = await setup({ 'selected.txt': 'base' });
+      const attributeFile = path.join(root, '.gitattributes');
+      await writeFile(path.join(root, '.git', 'info', 'exclude'), '.gitattributes\n');
+      if (change !== 'created') await writeFile(attributeFile, '# initial context\n');
+      await writeFile(path.join(root, 'selected.txt'), 'saved index');
+      await git(root, 'add', '--', 'selected.txt');
+      await writeFile(path.join(root, 'selected.txt'), 'saved working');
+      const indexBefore = await git(root, 'ls-files', '--stage');
+      const changingService = new GitService({
+        environment: async (_repo, args) => {
+          if (args[0] === 'stash' && args[1] === 'store') {
+            if (change === 'deleted') await rm(attributeFile);
+            else await writeFile(attributeFile, '# updated context\n');
+          }
+          return {};
+        },
+      });
+      await expect(
+        changingService.execute(repo, { type: 'stash.create', paths: ['selected.txt'] }),
+      ).rejects.toMatchObject({ code: 'STASH_CLEANUP_FAILED' });
+      expect(await git(root, 'ls-files', '--stage')).toBe(indexBefore);
+      expect(await readFile(path.join(root, 'selected.txt'), 'utf8')).toBe('saved working');
+      const saved = (await service.snapshot(repo)).stashes[0];
+      expect(saved).toBeDefined();
+      expect(await git(root, 'show', `${saved.oid}^2:selected.txt`)).toBe('saved index');
+      expect(await git(root, 'show', `${saved.oid}:selected.txt`)).toBe('saved working');
+      if (change === 'deleted') await expect(readFile(attributeFile)).rejects.toThrow();
+      else expect(await readFile(attributeFile, 'utf8')).toBe('# updated context\n');
+    },
+  );
+
+  it.each(['leaf', 'ancestor'] as const)(
+    'rejects an attribute %s link while preserving the repository and outside files',
+    async (link) => {
+      const { root, service, repo } = await setup({ 'nested/selected.txt': 'base' });
+      const outside = await mkdtemp(path.join(os.tmpdir(), 'alwaygit-stash-'));
+      fixtures.push(outside);
+      await writeFile(path.join(outside, '.gitattributes'), 'selected.txt text\n');
+      await writeFile(path.join(outside, 'selected.txt'), 'outside working');
+      if (link === 'ancestor') await rm(path.join(root, 'nested'), { recursive: true });
+      else await writeFile(path.join(root, 'nested', 'selected.txt'), 'local working');
+      await symlink(
+        outside,
+        path.join(root, link === 'ancestor' ? 'nested' : '.gitattributes'),
+        process.platform === 'win32' ? 'junction' : 'dir',
+      );
+      const indexBefore = await readFile(path.join(root, '.git', 'index'));
+      await expect(
+        service.execute(repo, { type: 'stash.create', paths: ['nested/selected.txt'] }),
+      ).rejects.toMatchObject({ code: 'UNSUPPORTED_STASH_PATH' });
+      expect(await readFile(path.join(root, '.git', 'index'))).toEqual(indexBefore);
+      expect(await git(root, 'stash', 'list')).toBe('');
+      expect(await readFile(path.join(outside, '.gitattributes'), 'utf8')).toBe(
+        'selected.txt text\n',
+      );
+      expect(await readFile(path.join(outside, 'selected.txt'), 'utf8')).toBe('outside working');
+      expect(await readFile(path.join(root, 'nested', 'selected.txt'), 'utf8')).toBe(
+        link === 'ancestor' ? 'outside working' : 'local working',
+      );
+    },
+  );
+
+  it.each(['external-filter', 'merge-default'] as const)(
+    'blocks %s during restore inspection without changing project state',
+    async (driver) => {
+      const { root, service, repo } = await setup({
+        'saved.txt': 'base saved',
+        'local.txt': 'base local',
+      });
+      await writeFile(path.join(root, 'saved.txt'), 'saved working');
+      await service.execute(repo, { type: 'stash.create' });
+      const saved = (await service.snapshot(repo)).stashes[0];
+      await writeFile(path.join(root, 'local.txt'), 'local index');
+      await git(root, 'add', '--', 'local.txt');
+      await writeFile(path.join(root, 'local.txt'), 'local working');
+      await writeFile(path.join(root, 'notes.txt'), 'local notes');
+      if (driver === 'external-filter') {
+        await git(root, 'config', 'filter.external.clean', 'cat');
+        await git(root, 'config', 'filter.external.smudge', 'cat');
+        await writeFile(
+          path.join(root, '.git', 'info', 'attributes'),
+          'saved.txt filter=external\n',
+        );
+      } else {
+        await git(root, 'config', 'merge.default', 'external');
+        await git(root, 'config', 'merge.external.driver', 'true');
       }
-      return {};
-    } });
-    await expect(changingService.execute(repo, { type: 'stash.create', paths: ['selected.txt'] })).rejects.toMatchObject({ code: 'STASH_CLEANUP_FAILED' });
-    expect(await git(root, 'ls-files', '--stage')).toBe(indexBefore);
-    expect(await readFile(path.join(root, 'selected.txt'), 'utf8')).toBe('saved working');
-    const saved = (await service.snapshot(repo)).stashes[0];
-    expect(saved).toBeDefined();
-    expect(await git(root, 'show', `${saved.oid}^2:selected.txt`)).toBe('saved index');
-    expect(await git(root, 'show', `${saved.oid}:selected.txt`)).toBe('saved working');
-    if (change === 'deleted') await expect(readFile(attributeFile)).rejects.toThrow();
-    else expect(await readFile(attributeFile, 'utf8')).toBe('# updated context\n');
-  });
-
-  it.each(['leaf', 'ancestor'] as const)('rejects an attribute %s link while preserving the repository and outside files', async link => {
-    const { root, service, repo } = await setup({ 'nested/selected.txt': 'base' });
-    const outside = await mkdtemp(path.join(os.tmpdir(), 'alwaygit-stash-'));
-    fixtures.push(outside);
-    await writeFile(path.join(outside, '.gitattributes'), 'selected.txt text\n');
-    await writeFile(path.join(outside, 'selected.txt'), 'outside working');
-    if (link === 'ancestor') await rm(path.join(root, 'nested'), { recursive: true });
-    else await writeFile(path.join(root, 'nested', 'selected.txt'), 'local working');
-    await symlink(outside, path.join(root, link === 'ancestor' ? 'nested' : '.gitattributes'), process.platform === 'win32' ? 'junction' : 'dir');
-    const indexBefore = await readFile(path.join(root, '.git', 'index'));
-    await expect(service.execute(repo, { type: 'stash.create', paths: ['nested/selected.txt'] })).rejects.toMatchObject({ code: 'UNSUPPORTED_STASH_PATH' });
-    expect(await readFile(path.join(root, '.git', 'index'))).toEqual(indexBefore);
-    expect(await git(root, 'stash', 'list')).toBe('');
-    expect(await readFile(path.join(outside, '.gitattributes'), 'utf8')).toBe('selected.txt text\n');
-    expect(await readFile(path.join(outside, 'selected.txt'), 'utf8')).toBe('outside working');
-    expect(await readFile(path.join(root, 'nested', 'selected.txt'), 'utf8')).toBe(link === 'ancestor' ? 'outside working' : 'local working');
-  });
-
-  it.each(['external-filter', 'merge-default'] as const)('blocks %s during restore inspection without changing project state', async driver => {
-    const { root, service, repo } = await setup({ 'saved.txt': 'base saved', 'local.txt': 'base local' });
-    await writeFile(path.join(root, 'saved.txt'), 'saved working');
-    await service.execute(repo, { type: 'stash.create' });
-    const saved = (await service.snapshot(repo)).stashes[0];
-    await writeFile(path.join(root, 'local.txt'), 'local index');
-    await git(root, 'add', '--', 'local.txt');
-    await writeFile(path.join(root, 'local.txt'), 'local working');
-    await writeFile(path.join(root, 'notes.txt'), 'local notes');
-    if (driver === 'external-filter') {
-      await git(root, 'config', 'filter.external.clean', 'cat');
-      await git(root, 'config', 'filter.external.smudge', 'cat');
-      await writeFile(path.join(root, '.git', 'info', 'attributes'), 'saved.txt filter=external\n');
-    } else {
-      await git(root, 'config', 'merge.default', 'external');
-      await git(root, 'config', 'merge.external.driver', 'true');
-    }
-    const files = ['saved.txt', 'local.txt', 'notes.txt'];
-    const before = await state(root, files);
-    const index = await readFile(path.join(root, '.git', 'index'));
-    await expect(service.execute(repo, { type: 'stash.apply', selector: saved.selector, expectedOid: saved.oid })).rejects.toMatchObject({
-      code: 'STASH_RESTORE_BLOCKED',
-      details: { kind: 'stash-apply', reason: 'restore-blocked', workingTreeUnchanged: true, stashRetained: true },
-    });
-    expect(await readFile(path.join(root, '.git', 'index'))).toEqual(index);
-    expect(await state(root, files)).toEqual(before);
-  });
+      const files = ['saved.txt', 'local.txt', 'notes.txt'];
+      const before = await state(root, files);
+      const index = await readFile(path.join(root, '.git', 'index'));
+      await expect(
+        service.execute(repo, {
+          type: 'stash.apply',
+          selector: saved.selector,
+          expectedOid: saved.oid,
+        }),
+      ).rejects.toMatchObject({
+        code: 'STASH_RESTORE_BLOCKED',
+        details: {
+          kind: 'stash-apply',
+          reason: 'restore-blocked',
+          workingTreeUnchanged: true,
+          stashRetained: true,
+        },
+      });
+      expect(await readFile(path.join(root, '.git', 'index'))).toEqual(index);
+      expect(await state(root, files)).toEqual(before);
+    },
+  );
 
   it('saves and restores selected untracked files after an empty commit with no existing index', async () => {
     const { root, service, repo } = await setup({});
     await rm(path.join(root, '.git', 'index'), { force: true });
     await expect(readFile(path.join(root, '.git', 'index'))).rejects.toThrow();
     await writeFile(path.join(root, 'notes.txt'), 'saved notes');
-    await service.execute(repo, { type: 'stash.create', paths: ['notes.txt'], includeUntracked: true });
+    await service.execute(repo, {
+      type: 'stash.create',
+      paths: ['notes.txt'],
+      includeUntracked: true,
+    });
     const saved = (await service.snapshot(repo)).stashes[0];
     expect(await git(root, 'show', `${saved.oid}^3:notes.txt`)).toBe('saved notes');
     await expect(readFile(path.join(root, 'notes.txt'))).rejects.toThrow();
-    await service.execute(repo, { type: 'stash.apply', selector: saved.selector, expectedOid: saved.oid });
+    await service.execute(repo, {
+      type: 'stash.apply',
+      selector: saved.selector,
+      expectedOid: saved.oid,
+    });
     expect(await readFile(path.join(root, 'notes.txt'), 'utf8')).toBe('saved notes');
     expect(await git(root, 'ls-files', '--stage')).toBe('');
     expect((await service.snapshot(repo)).stashes).toEqual([saved]);
   });
 
   it('isolates a conflicting trial when the service environment points Git at the source index and worktree', async () => {
-    const { root, service, repo } = await setup({ 'a.txt': 'base a', 'b.txt': 'base b', 'local.txt': 'base local' });
+    const { root, service, repo } = await setup({
+      'a.txt': 'base a',
+      'b.txt': 'base b',
+      'local.txt': 'base local',
+    });
     await writeFile(path.join(root, 'a.txt'), 'saved a');
     await writeFile(path.join(root, 'b.txt'), 'saved b');
     await service.execute(repo, { type: 'stash.create' });
@@ -331,14 +498,27 @@ describe('Stash saved state and restore preflight', () => {
     const files = ['a.txt', 'b.txt', 'local.txt', 'notes.txt'];
     const before = await state(root, files);
     const index = await readFile(path.join(root, '.git', 'index'));
-    const directedService = new GitService({ environment: {
-      GIT_DIR: path.join(root, '.git'),
-      GIT_WORK_TREE: root,
-      GIT_INDEX_FILE: path.join(root, '.git', 'index'),
-    } });
-    await expect(directedService.execute(repo, { type: 'stash.apply', selector: saved.selector, expectedOid: saved.oid })).rejects.toMatchObject({
+    const directedService = new GitService({
+      environment: {
+        GIT_DIR: path.join(root, '.git'),
+        GIT_WORK_TREE: root,
+        GIT_INDEX_FILE: path.join(root, '.git', 'index'),
+      },
+    });
+    await expect(
+      directedService.execute(repo, {
+        type: 'stash.apply',
+        selector: saved.selector,
+        expectedOid: saved.oid,
+      }),
+    ).rejects.toMatchObject({
       code: 'STASH_RESTORE_BLOCKED',
-      details: { kind: 'stash-apply', reason: 'restore-conflict', workingTreeUnchanged: true, stashRetained: true },
+      details: {
+        kind: 'stash-apply',
+        reason: 'restore-conflict',
+        workingTreeUnchanged: true,
+        stashRetained: true,
+      },
     });
     expect(await readFile(path.join(root, '.git', 'index'))).toEqual(index);
     expect(await state(root, files)).toEqual(before);

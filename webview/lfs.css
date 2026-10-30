@@ -1,10 +1,48 @@
-.lfs-dialog { max-height:92vh; overflow:auto; }
-.lfs-files { max-height:35vh; overflow:auto; }
-.lfs-files table { border-collapse:collapse; width:100%; font-size:12px; }
-.lfs-files th, .lfs-files td { padding:6px; text-align:left; border-bottom:1px solid var(--border); vertical-align:top; }
-.lfs-files td:nth-child(2) { min-width:140px; overflow-wrap:anywhere; }
-.lfs-files code { display:block; overflow-wrap:anywhere; max-width:350px; }
-.lfs-files small { display:block; }
-.lfs-dialog pre { white-space:pre-wrap; overflow-wrap:anywhere; max-height:180px; overflow:auto; }
-.lfs-attributes { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; }
-@media(max-width:650px) { .lfs-attributes { grid-template-columns:1fr; } }
+.lfs-dialog {
+  max-height: 92vh;
+  overflow: auto;
+}
+.lfs-files {
+  max-height: 35vh;
+  overflow: auto;
+}
+.lfs-files table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+}
+.lfs-files th,
+.lfs-files td {
+  padding: 6px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.lfs-files td:nth-child(2) {
+  min-width: 140px;
+  overflow-wrap: anywhere;
+}
+.lfs-files code {
+  display: block;
+  overflow-wrap: anywhere;
+  max-width: 350px;
+}
+.lfs-files small {
+  display: block;
+}
+.lfs-dialog pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 180px;
+  overflow: auto;
+}
+.lfs-attributes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+@media (max-width: 650px) {
+  .lfs-attributes {
+    grid-template-columns: 1fr;
+  }
+}

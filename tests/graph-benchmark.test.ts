@@ -11,9 +11,16 @@ it('bounds graph page work over 100,000 seeded interleaved commits', () => {
   for (let index = 0; index < count; index++) {
     seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
     const parents = index + 1 < count ? [`c${index + 1}`] : [];
-    const side = index + 2 + seed % 30;
+    const side = index + 2 + (seed % 30);
     if (seed % 11 === 0 && side < count) parents.push(`c${side}`);
-    commits.push({ oid: `c${index}`, parents, author: 'Seeded', email: 'bench@example.com', timestamp: count - index, subject: `Commit ${index}` });
+    commits.push({
+      oid: `c${index}`,
+      parents,
+      author: 'Seeded',
+      email: 'bench@example.com',
+      timestamp: count - index,
+      subject: `Commit ${index}`,
+    });
   }
   let state: GraphState | undefined;
   let maxLanes = 0;
@@ -35,5 +42,17 @@ it('bounds graph page work over 100,000 seeded interleaved commits', () => {
   expect(totalRows).toBe(count);
   expect(maxLanes).toBeLessThanOrEqual(32);
   expect(state?.lanes).toEqual([]);
-  console.info(JSON.stringify({ benchmark: 'graph-100k-paged', commits: count, pageSize, maxLanes, totalSegments, totalMs: +(performance.now() - start).toFixed(2), medianPageMs: +durations[Math.floor(durations.length / 2)].toFixed(2), p95PageMs: +durations[Math.floor(durations.length * .95)].toFixed(2), maxPageMs: +durations[durations.length - 1].toFixed(2) }));
+  console.info(
+    JSON.stringify({
+      benchmark: 'graph-100k-paged',
+      commits: count,
+      pageSize,
+      maxLanes,
+      totalSegments,
+      totalMs: +(performance.now() - start).toFixed(2),
+      medianPageMs: +durations[Math.floor(durations.length / 2)].toFixed(2),
+      p95PageMs: +durations[Math.floor(durations.length * 0.95)].toFixed(2),
+      maxPageMs: +durations[durations.length - 1].toFixed(2),
+    }),
+  );
 }, 15_000);

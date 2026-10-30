@@ -6,34 +6,45 @@ import { isReadOnlyGitCommand } from '../src/git/command-kind';
 const fixtures = gitFixtures('alwaygit-reflog-');
 afterEach(fixtures.cleanup);
 it('pins pages as new records arrive and recovers a reset-away commit without changing the working tree', async () => {
-  const {root,repo,service}=await fixtures.setup();
-  const first=await commitFile(root,'a.txt','first','first'), lost=await commitFile(root,'a.txt','second','second');
-  await git(root,'reset','--hard',first);
-  await writeFile(path.join(root,'untracked.txt'),'keep');
-  const before=await git(root,'status','--porcelain=v2'), index=await readFile(path.join(root,'.git','index'));
-  const page=await service.reflog(repo,{limit:1});
-  expect(page.entries[0]).toMatchObject({oid:first,description:expect.stringContaining('reset')});
+  const { root, repo, service } = await fixtures.setup();
+  const first = await commitFile(root, 'a.txt', 'first', 'first'),
+    lost = await commitFile(root, 'a.txt', 'second', 'second');
+  await git(root, 'reset', '--hard', first);
+  await writeFile(path.join(root, 'untracked.txt'), 'keep');
+  const before = await git(root, 'status', '--porcelain=v2'),
+    index = await readFile(path.join(root, '.git', 'index'));
+  const page = await service.reflog(repo, { limit: 1 });
+  expect(page.entries[0]).toMatchObject({
+    oid: first,
+    description: expect.stringContaining('reset'),
+  });
   expect(page.entries[0].date).toMatch(/^\d{4}-\d\d-\d\dT/);
-  await git(root,'update-ref','-m','new record','HEAD',first);
-  const rest=await service.reflog(repo,{token:page.token,limit:100,offset:1});
-  expect(rest.entries.some(entry=>entry.oid===lost)).toBe(true);
-  await service.execute(repo,{type:'branch.create',name:'recovered',start:lost});
-  expect(await git(root,'rev-parse','recovered')).toBe(lost);
-  expect(await git(root,'rev-parse','HEAD')).toBe(first);
-  expect(await git(root,'status','--porcelain=v2')).toBe(before);
-  expect(await readFile(path.join(root,'.git','index'))).toEqual(index);
-  await expect(service.reflog(repo,{token:page.token,ref:'refs/heads/recovered'})).rejects.toMatchObject({code:'OPERATION_CHANGED'});
-  await expect(service.reflog(repo,{ref:'--all'})).rejects.toMatchObject({code:'INVALID_ARGUMENT'});
+  await git(root, 'update-ref', '-m', 'new record', 'HEAD', first);
+  const rest = await service.reflog(repo, { token: page.token, limit: 100, offset: 1 });
+  expect(rest.entries.some((entry) => entry.oid === lost)).toBe(true);
+  await service.execute(repo, { type: 'branch.create', name: 'recovered', start: lost });
+  expect(await git(root, 'rev-parse', 'recovered')).toBe(lost);
+  expect(await git(root, 'rev-parse', 'HEAD')).toBe(first);
+  expect(await git(root, 'status', '--porcelain=v2')).toBe(before);
+  expect(await readFile(path.join(root, '.git', 'index'))).toEqual(index);
+  await expect(
+    service.reflog(repo, { token: page.token, ref: 'refs/heads/recovered' }),
+  ).rejects.toMatchObject({ code: 'OPERATION_CHANGED' });
+  await expect(service.reflog(repo, { ref: '--all' })).rejects.toMatchObject({
+    code: 'INVALID_ARGUMENT',
+  });
 });
 it('reads the selected linked worktree HEAD log and shared branch logs, including an unborn repository', async () => {
-  const {root,repo,service}=await fixtures.setup();
+  const { root, repo, service } = await fixtures.setup();
   expect((await service.reflog(repo)).entries).toEqual([]);
-  await commitFile(root,'a.txt','base','base');
-  const linked=path.join(root,'linked');await git(root,'worktree','add','-b','topic',linked);
-  const linkedRepo=await service.discover(linked), topic=await commitFile(linked,'topic.txt','topic','linked-only');
+  await commitFile(root, 'a.txt', 'base', 'base');
+  const linked = path.join(root, 'linked');
+  await git(root, 'worktree', 'add', '-b', 'topic', linked);
+  const linkedRepo = await service.discover(linked),
+    topic = await commitFile(linked, 'topic.txt', 'topic', 'linked-only');
   expect((await service.reflog(linkedRepo)).entries[0].oid).toBe(topic);
-  expect((await service.reflog(repo)).entries.some(entry=>entry.oid===topic)).toBe(false);
-  expect((await service.reflog(repo,{ref:'refs/heads/topic'})).entries[0].oid).toBe(topic);
-  expect(isReadOnlyGitCommand(['reflog','show','HEAD'])).toBe(true);
-  expect(isReadOnlyGitCommand(['reflog','delete','HEAD@{0}'])).toBe(false);
+  expect((await service.reflog(repo)).entries.some((entry) => entry.oid === topic)).toBe(false);
+  expect((await service.reflog(repo, { ref: 'refs/heads/topic' })).entries[0].oid).toBe(topic);
+  expect(isReadOnlyGitCommand(['reflog', 'show', 'HEAD'])).toBe(true);
+  expect(isReadOnlyGitCommand(['reflog', 'delete', 'HEAD@{0}'])).toBe(false);
 });

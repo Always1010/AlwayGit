@@ -11,8 +11,13 @@ import type { WorkbenchTransfer } from '../../src/protocol/workbench-host';
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   if (!root || !path.basename(path.dirname(root)).startsWith('alwaygit-windows-test-')) return;
-  const name = path.basename(root), mailbox = path.join(path.dirname(root), 'mailbox');
-  const extension = vscode.extensions.getExtension<{ workbench: Workbench; manager: RepositoryManager; projects: ProjectWindows }>('alwaygit-dev.alwaygit');
+  const name = path.basename(root),
+    mailbox = path.join(path.dirname(root), 'mailbox');
+  const extension = vscode.extensions.getExtension<{
+    workbench: Workbench;
+    manager: RepositoryManager;
+    projects: ProjectWindows;
+  }>('alwaygit-dev.alwaygit');
   if (!extension) throw new Error('AlwayGit is missing from the isolated test profile');
   const api = await extension.activate();
   type Panel = { panel: vscode.WebviewPanel; ready?: boolean; session?: { repoId?: string } };
@@ -26,7 +31,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   if (!diagnostic.capture) {
     const original = diagnostic.html.bind(api.workbench);
     diagnostic.html = async (...args) => {
-      const html = await original(...args), nonce = html.match(/<meta property="csp-nonce" nonce="([^"]+)"/)?.[1];
+      const html = await original(...args),
+        nonce = html.match(/<meta property="csp-nonce" nonce="([^"]+)"/)?.[1];
       if (!nonce) throw new Error('Missing Webview CSP nonce');
       const script = `<script nonce="${nonce}">(() => {
         const acquire = window.acquireVsCodeApi, pending = new Map(); let sequence = 0;
@@ -59,45 +65,99 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       return html.replace('</head>', script + '</head>');
     };
   }
-  const captureLegacy = (panel: Panel, repoId: string): Promise<WorkbenchTransfer> => new Promise((resolve, reject) => {
-    const token = `${Date.now()}-${Math.random()}`;
-    const timer = setTimeout(() => { listener.dispose(); reject(new Error('Legacy panel transport probe timed out')); }, 15_000);
-    const listener = panel.panel.webview.onDidReceiveMessage(message => {
-      if (message?.id !== 'window-test-report' || message.payload?.probeToken !== token) return;
-      clearTimeout(timer); listener.dispose();
-      if (message.payload.error) reject(new Error(message.payload.error)); else resolve({ session: message.payload.session });
+  const captureLegacy = (panel: Panel, repoId: string): Promise<WorkbenchTransfer> =>
+    new Promise((resolve, reject) => {
+      const token = `${Date.now()}-${Math.random()}`;
+      const timer = setTimeout(() => {
+        listener.dispose();
+        reject(new Error('Legacy panel transport probe timed out'));
+      }, 15_000);
+      const listener = panel.panel.webview.onDidReceiveMessage((message) => {
+        if (message?.id !== 'window-test-report' || message.payload?.probeToken !== token) return;
+        clearTimeout(timer);
+        listener.dispose();
+        if (message.payload.error) reject(new Error(message.payload.error));
+        else resolve({ session: message.payload.session });
+      });
+      void panel.panel.webview.postMessage({ type: 'window-test-probe', token, repoId }).then(
+        (delivered) => {
+          if (!delivered) {
+            clearTimeout(timer);
+            listener.dispose();
+            reject(new Error('Legacy panel probe was not delivered'));
+          }
+        },
+        (error) => {
+          clearTimeout(timer);
+          listener.dispose();
+          reject(error);
+        },
+      );
     });
-    void panel.panel.webview.postMessage({ type: 'window-test-probe', token, repoId }).then(delivered => {
-      if (!delivered) { clearTimeout(timer); listener.dispose(); reject(new Error('Legacy panel probe was not delivered')); }
-    }, error => { clearTimeout(timer); listener.dispose(); reject(error); });
+  const sentinel = await vscode.workspace.openTextDocument({
+    content: 'Keep this unsaved editor\n',
+    language: 'plaintext',
   });
-  const sentinel = await vscode.workspace.openTextDocument({ content: 'Keep this unsaved editor\n', language: 'plaintext' });
-  await vscode.window.showTextDocument(sentinel, { preview: false, viewColumn: vscode.ViewColumn.One });
-  const edit = new vscode.WorkspaceEdit(); edit.insert(sentinel.uri, new vscode.Position(1, 0), 'Unsaved changes must survive\n'); await vscode.workspace.applyEdit(edit);
-  if (name === 'source') { const repository = await api.manager.add(root); await api.workbench.open(repository.id); }
+  await vscode.window.showTextDocument(sentinel, {
+    preview: false,
+    viewColumn: vscode.ViewColumn.One,
+  });
+  const edit = new vscode.WorkspaceEdit();
+  edit.insert(sentinel.uri, new vscode.Position(1, 0), 'Unsaved changes must survive\n');
+  await vscode.workspace.applyEdit(edit);
+  if (name === 'source') {
+    const repository = await api.manager.add(root);
+    await api.workbench.open(repository.id);
+  }
   const state = () => ({
-    ready: true, name, focused: vscode.window.state.focused, registry: api.projects.bridge.directory,
+    ready: true,
+    name,
+    focused: vscode.window.state.focused,
+    registry: api.projects.bridge.directory,
     webviewRequests: api.workbench.receivedWebviewRequests,
-    sentinel: { uri: sentinel.uri.toString(), dirty: sentinel.isDirty, text: sentinel.getText(), closed: sentinel.isClosed },
-    groups: vscode.window.tabGroups.all.map(group => ({ column: group.viewColumn, tabs: group.tabs.map(tab => ({
-      label: tab.label, preview: tab.isPreview, dirty: tab.isDirty,
-      ...(tab.input instanceof vscode.TabInputText ? { uri: tab.input.uri.toString() } : {}),
-      ...(tab.input instanceof vscode.TabInputTextDiff ? { left: tab.input.original.toString(), right: tab.input.modified.toString() } : {}),
-    })) })),
-    documents: vscode.workspace.textDocuments.filter(document => document.uri.scheme === 'alwaygit-content' || document.uri.scheme === 'file').map(document => ({ uri: document.uri.toString(), text: document.getText() })),
+    sentinel: {
+      uri: sentinel.uri.toString(),
+      dirty: sentinel.isDirty,
+      text: sentinel.getText(),
+      closed: sentinel.isClosed,
+    },
+    groups: vscode.window.tabGroups.all.map((group) => ({
+      column: group.viewColumn,
+      tabs: group.tabs.map((tab) => ({
+        label: tab.label,
+        preview: tab.isPreview,
+        dirty: tab.isDirty,
+        ...(tab.input instanceof vscode.TabInputText ? { uri: tab.input.uri.toString() } : {}),
+        ...(tab.input instanceof vscode.TabInputTextDiff
+          ? { left: tab.input.original.toString(), right: tab.input.modified.toString() }
+          : {}),
+      })),
+    })),
+    documents: vscode.workspace.textDocuments
+      .filter(
+        (document) => document.uri.scheme === 'alwaygit-content' || document.uri.scheme === 'file',
+      )
+      .map((document) => ({ uri: document.uri.toString(), text: document.getText() })),
   });
-  let busy = false, lastId = '';
+  let busy = false,
+    lastId = '';
   const poll = async () => {
     if (busy) return;
     busy = true;
     try {
       await writeFile(path.join(mailbox, name + '.state.json'), JSON.stringify(state()));
-      const action = await readFile(path.join(mailbox, name + '.action.json'), 'utf8').then(value => JSON.parse(value)).catch(() => undefined);
+      const action = await readFile(path.join(mailbox, name + '.action.json'), 'utf8')
+        .then((value) => JSON.parse(value))
+        .catch(() => undefined);
       if (!action || action.id === lastId) return;
       lastId = action.id;
       let error: string | undefined, probe: WorkbenchTransfer | undefined;
       try {
-        if (action.type === 'close') { await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor'); await vscode.commands.executeCommand('workbench.action.closeWindow'); return; }
+        if (action.type === 'close') {
+          await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+          await vscode.commands.executeCommand('workbench.action.closeWindow');
+          return;
+        }
         if (action.type === 'focus') {
           await api.projects.openProject(root);
         } else if (action.type === 'probe-workbench') {
@@ -108,23 +168,56 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           // handlers, rather than substituting a direct backend call for panel responsiveness.
           const deadline = Date.now() + 15_000;
           while (Date.now() < deadline) {
-            const panel = [...diagnostic.panels.values()].find(panel => (!diagnostic.capture || panel.ready) && panel.session?.repoId === repository.id);
+            const panel = [...diagnostic.panels.values()].find(
+              (panel) =>
+                (!diagnostic.capture || panel.ready) && panel.session?.repoId === repository.id,
+            );
             if (panel) {
-              probe = diagnostic.capture ? await diagnostic.capture(panel) : await captureLegacy(panel, repository.id);
-              if (probe.session.repoId === repository.id && probe.session.views?.[repository.id]?.checkedRefs?.includes('refs/heads/main')) break;
+              probe = diagnostic.capture
+                ? await diagnostic.capture(panel)
+                : await captureLegacy(panel, repository.id);
+              if (
+                probe.session.repoId === repository.id &&
+                probe.session.views?.[repository.id]?.checkedRefs?.includes('refs/heads/main')
+              )
+                break;
             }
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise((resolve) => setTimeout(resolve, 100));
           }
-          if (probe?.session.repoId !== repository.id || !probe.session.views?.[repository.id]?.checkedRefs?.includes('refs/heads/main')) throw new Error('The real panel did not acknowledge repository selection and snapshot state');
+          if (
+            probe?.session.repoId !== repository.id ||
+            !probe.session.views?.[repository.id]?.checkedRefs?.includes('refs/heads/main')
+          )
+            throw new Error(
+              'The real panel did not acknowledge repository selection and snapshot state',
+            );
         } else {
           const repository = await api.manager.add(action.root, false);
-          await api.workbench.handle({ id: action.id, method: action.method as RpcRequest['method'], repoId: repository.id, payload: action.payload });
+          await api.workbench.handle({
+            id: action.id,
+            method: action.method as RpcRequest['method'],
+            repoId: repository.id,
+            payload: action.payload,
+          });
         }
-      } catch (caught) { error = caught instanceof Error ? caught.message : String(caught); }
-      await writeFile(path.join(mailbox, name + '.result.json'), JSON.stringify({ id: action.id, error, probe, state: state() }));
-    } finally { busy = false; }
+      } catch (caught) {
+        error = caught instanceof Error ? caught.message : String(caught);
+      }
+      await writeFile(
+        path.join(mailbox, name + '.result.json'),
+        JSON.stringify({ id: action.id, error, probe, state: state() }),
+      );
+    } finally {
+      busy = false;
+    }
   };
-  const interval = setInterval(() => { void poll().catch(() => {}); }, 100);
-  context.subscriptions.push({ dispose() { clearInterval(interval); } });
+  const interval = setInterval(() => {
+    void poll().catch(() => {});
+  }, 100);
+  context.subscriptions.push({
+    dispose() {
+      clearInterval(interval);
+    },
+  });
   await poll();
 }

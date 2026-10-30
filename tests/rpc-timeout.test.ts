@@ -4,13 +4,20 @@ import type { HostMessage, RpcRequest } from '../src/protocol/types';
 let receive: (event: { data: HostMessage }) => void;
 const postMessage = vi.fn<(request: RpcRequest) => void>();
 beforeEach(() => {
-  vi.resetModules(); vi.useFakeTimers(); postMessage.mockClear();
+  vi.resetModules();
+  vi.useFakeTimers();
+  postMessage.mockClear();
   vi.stubGlobal('window', {
     acquireVsCodeApi: () => ({ postMessage }),
-    addEventListener: (_type: string, listener: typeof receive) => { receive = listener; },
+    addEventListener: (_type: string, listener: typeof receive) => {
+      receive = listener;
+    },
   });
 });
-afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
 
 describe('host request timeouts', () => {
   it('keeps comparison-tree ordering independent from active main details and comparisons', async () => {
@@ -18,42 +25,67 @@ describe('host request timeouts', () => {
     const { readQueryCategory } = await import('../src/protocol/queries');
     expect(readQueryCategory('treeCompareOrder')).toBe('treeCompareOrder');
     for (const method of ['details', 'compare'] as const) {
-      const main = rpc(method, 'repo', { left: 'base', right: 'target', oid: 'target' }), mainId = postMessage.mock.calls.at(-1)![0].id;
-      const order = rpc('treeCompareOrder', 'repo', { left: 'target', right: 'base' }), orderId = postMessage.mock.calls.at(-1)![0].id;
-      expect(postMessage.mock.calls.some(([request]) => request.method === 'cancelQuery')).toBe(false);
+      const main = rpc(method, 'repo', { left: 'base', right: 'target', oid: 'target' }),
+        mainId = postMessage.mock.calls.at(-1)![0].id;
+      const order = rpc('treeCompareOrder', 'repo', { left: 'target', right: 'base' }),
+        orderId = postMessage.mock.calls.at(-1)![0].id;
+      expect(postMessage.mock.calls.some(([request]) => request.method === 'cancelQuery')).toBe(
+        false,
+      );
       receive({ data: { type: 'response', id: orderId, result: 'ordered' } });
       receive({ data: { type: 'response', id: mainId, result: 'details' } });
-      await expect(order).resolves.toBe('ordered'); await expect(main).resolves.toBe('details');
+      await expect(order).resolves.toBe('ordered');
+      await expect(main).resolves.toBe('details');
     }
   });
   it('keeps auxiliary commit reads independent while cancelling obsolete navigation', async () => {
     const { rpc } = await import('../webview/rpc');
-    const requests = ['details', 'copyCommitDetails', 'tagTargetDetails', 'amendDetails', 'inspectDetails'] as const;
-    const reads = requests.map(method => ({ method, promise: rpc(method, 'repo', { oid: 'selected' }), id: postMessage.mock.calls.at(-1)![0].id }));
+    const requests = [
+      'details',
+      'copyCommitDetails',
+      'tagTargetDetails',
+      'amendDetails',
+      'inspectDetails',
+    ] as const;
+    const reads = requests.map((method) => ({
+      method,
+      promise: rpc(method, 'repo', { oid: 'selected' }),
+      id: postMessage.mock.calls.at(-1)![0].id,
+    }));
     expect(postMessage.mock.calls.map(([request]) => request.method)).toEqual(requests);
     const obsolete = expect(reads[0].promise).rejects.toMatchObject({ code: 'ABORTED' });
-    const next = rpc('details', 'repo', { oid: 'next' }), nextId = postMessage.mock.calls.at(-1)![0].id;
+    const next = rpc('details', 'repo', { oid: 'next' }),
+      nextId = postMessage.mock.calls.at(-1)![0].id;
     await obsolete;
-    for (const read of reads.slice(1)) receive({ data: { type: 'response', id: read.id, result: read.method } });
+    for (const read of reads.slice(1))
+      receive({ data: { type: 'response', id: read.id, result: read.method } });
     receive({ data: { type: 'response', id: nextId, result: 'next' } });
-    expect(await Promise.all(reads.slice(1).map(read => read.promise))).toEqual(requests.slice(1));
+    expect(await Promise.all(reads.slice(1).map((read) => read.promise))).toEqual(
+      requests.slice(1),
+    );
     await expect(next).resolves.toBe('next');
   });
   it('keeps page reads independent from the complete index request and cancels stale pages', async () => {
     const { rpc } = await import('../webview/rpc');
     const page = rpc('diffPage', 'repo', { token: 'old', start: 0, count: 128 });
     const rejected = expect(page).rejects.toMatchObject({ code: 'ABORTED' });
-    const preview = rpc('diffPreview', 'repo', { path: 'next' }), previewId = postMessage.mock.calls.at(-1)![0].id;
-    const nextPage = rpc('diffPage', 'repo', { token: 'new', start: 100000, count: 128 }), pageId = postMessage.mock.calls.at(-1)![0].id;
+    const preview = rpc('diffPreview', 'repo', { path: 'next' }),
+      previewId = postMessage.mock.calls.at(-1)![0].id;
+    const nextPage = rpc('diffPage', 'repo', { token: 'new', start: 100000, count: 128 }),
+      pageId = postMessage.mock.calls.at(-1)![0].id;
     await rejected;
     receive({ data: { type: 'response', id: previewId, result: 'complete' } });
     receive({ data: { type: 'response', id: pageId, result: 'tail' } });
-    await expect(preview).resolves.toBe('complete'); await expect(nextPage).resolves.toBe('tail');
+    await expect(preview).resolves.toBe('complete');
+    await expect(nextPage).resolves.toBe('tail');
   });
   it('reports an unacknowledged panel save without implying a Git operation failed', async () => {
     const { rpc } = await import('../webview/rpc');
-    const failed = expect(rpc('saveSession', undefined, { drafts: { repo: 'keep' } })).rejects.toMatchObject({
-      code: 'TIMEOUT', message: expect.stringContaining('panel state save timed out'),
+    const failed = expect(
+      rpc('saveSession', undefined, { drafts: { repo: 'keep' } }),
+    ).rejects.toMatchObject({
+      code: 'TIMEOUT',
+      message: expect.stringContaining('panel state save timed out'),
     });
     await vi.advanceTimersByTimeAsync(10_001);
     await failed;
@@ -65,8 +97,12 @@ describe('host request timeouts', () => {
     await expect(next).resolves.toBeNull();
   });
   it('uses a handoff session instead of the dock view stale local state and keeps ordinary restoration unchanged', async () => {
-    const local = { repoId: 'old', drafts: { old: 'keep' } }, transferred = { repoId: 'new', drafts: { new: 'latest' } };
-    Object.assign(window, { acquireVsCodeApi: () => ({ postMessage, getState: () => local }), __ALWAYGIT_TRANSFER__: { session: transferred } });
+    const local = { repoId: 'old', drafts: { old: 'keep' } },
+      transferred = { repoId: 'new', drafts: { new: 'latest' } };
+    Object.assign(window, {
+      acquireVsCodeApi: () => ({ postMessage, getState: () => local }),
+      __ALWAYGIT_TRANSFER__: { session: transferred },
+    });
     const { readSession } = await import('../webview/rpc');
     expect(readSession()).toMatchObject(transferred);
     window.__ALWAYGIT_TRANSFER__ = undefined;
@@ -77,8 +113,17 @@ describe('host request timeouts', () => {
     const pending = rpc('action', 'repo', { type: 'fetch' });
     await vi.advanceTimersByTimeAsync(600_001);
     expect(postMessage).toHaveBeenCalledTimes(1);
-    receive({ data: { type: 'response', id: postMessage.mock.calls[0][0].id, error: { code: 'TIMEOUT', message: 'Host network deadline exceeded' } } });
-    await expect(pending).rejects.toMatchObject({ code: 'TIMEOUT', message: 'Host network deadline exceeded' });
+    receive({
+      data: {
+        type: 'response',
+        id: postMessage.mock.calls[0][0].id,
+        error: { code: 'TIMEOUT', message: 'Host network deadline exceeded' },
+      },
+    });
+    await expect(pending).rejects.toMatchObject({
+      code: 'TIMEOUT',
+      message: 'Host network deadline exceeded',
+    });
   });
   it('lets the cancellable directory scan finish after the normal Git timeout', async () => {
     const { rpc } = await import('../webview/rpc');
@@ -94,33 +139,81 @@ describe('host request timeouts', () => {
     await vi.advanceTimersByTimeAsync(180_001);
     await rejected;
   });
-  it('replaces obsolete reads and keeps write requests pending',async()=>{
-    const {rpc}=await import('../webview/rpc');
-    const write=rpc('action','repo',{type:'fetch'}),writeId=postMessage.mock.calls.at(-1)![0].id;
-    const old=rpc('details','repo',{oid:'old'}),oldId=postMessage.mock.calls.at(-1)![0].id;
-    const rejected=expect(old).rejects.toMatchObject({code:'ABORTED'}),latest=rpc('stashDetails','repo',{oid:'new'}),latestId=postMessage.mock.calls.at(-1)![0].id;
-    await rejected;expect(postMessage.mock.calls.map(([request])=>request)).toContainEqual(expect.objectContaining({method:'cancelQuery',payload:{requestId:oldId}}));
-    receive({data:{type:'response',id:oldId,result:'obsolete'}});
-    receive({data:{type:'response',id:latestId,result:'latest'}});receive({data:{type:'response',id:writeId,result:'written'}});
-    await expect(latest).resolves.toBe('latest');await expect(write).resolves.toBe('written');
+  it('replaces obsolete reads and keeps write requests pending', async () => {
+    const { rpc } = await import('../webview/rpc');
+    const write = rpc('action', 'repo', { type: 'fetch' }),
+      writeId = postMessage.mock.calls.at(-1)![0].id;
+    const old = rpc('details', 'repo', { oid: 'old' }),
+      oldId = postMessage.mock.calls.at(-1)![0].id;
+    const rejected = expect(old).rejects.toMatchObject({ code: 'ABORTED' }),
+      latest = rpc('stashDetails', 'repo', { oid: 'new' }),
+      latestId = postMessage.mock.calls.at(-1)![0].id;
+    await rejected;
+    expect(postMessage.mock.calls.map(([request]) => request)).toContainEqual(
+      expect.objectContaining({ method: 'cancelQuery', payload: { requestId: oldId } }),
+    );
+    receive({ data: { type: 'response', id: oldId, result: 'obsolete' } });
+    receive({ data: { type: 'response', id: latestId, result: 'latest' } });
+    receive({ data: { type: 'response', id: writeId, result: 'written' } });
+    await expect(latest).resolves.toBe('latest');
+    await expect(write).resolves.toBe('written');
   });
-  it('cancels an explicitly aborted preview and a read timeout at the host',async()=>{
-    const {rpc}=await import('../webview/rpc'),controller=new AbortController();
-    const pending=rpc('diffPreview','repo',{kind:'commit',oid:'old',path:'file'},{signal:controller.signal}),id=postMessage.mock.calls.at(-1)![0].id;
-    const rejected=expect(pending).rejects.toMatchObject({code:'ABORTED'});controller.abort();await rejected;
-    expect(postMessage.mock.calls.at(-1)![0]).toMatchObject({method:'cancelQuery',payload:{requestId:id}});
-    const timed=rpc('history','repo'),historyId=postMessage.mock.calls.at(-1)![0].id,timeout=expect(timed).rejects.toMatchObject({code:'TIMEOUT'});
-    await vi.advanceTimersByTimeAsync(180_001);await timeout;
-    expect(postMessage.mock.calls.at(-1)![0]).toMatchObject({method:'cancelQuery',payload:{requestId:historyId}});
+  it('cancels an explicitly aborted preview and a read timeout at the host', async () => {
+    const { rpc } = await import('../webview/rpc'),
+      controller = new AbortController();
+    const pending = rpc(
+        'diffPreview',
+        'repo',
+        { kind: 'commit', oid: 'old', path: 'file' },
+        { signal: controller.signal },
+      ),
+      id = postMessage.mock.calls.at(-1)![0].id;
+    const rejected = expect(pending).rejects.toMatchObject({ code: 'ABORTED' });
+    controller.abort();
+    await rejected;
+    expect(postMessage.mock.calls.at(-1)![0]).toMatchObject({
+      method: 'cancelQuery',
+      payload: { requestId: id },
+    });
+    const timed = rpc('history', 'repo'),
+      historyId = postMessage.mock.calls.at(-1)![0].id,
+      timeout = expect(timed).rejects.toMatchObject({ code: 'TIMEOUT' });
+    await vi.advanceTimersByTimeAsync(180_001);
+    await timeout;
+    expect(postMessage.mock.calls.at(-1)![0]).toMatchObject({
+      method: 'cancelQuery',
+      payload: { requestId: historyId },
+    });
   });
-  it('cancels reads from the previous repository when the new snapshot starts',async()=>{
-    const {rpc}=await import('../webview/rpc'),old=rpc('history','old'),rejected=expect(old).rejects.toMatchObject({code:'ABORTED'});
-    const snapshot=rpc('snapshot','new'),id=postMessage.mock.calls.at(-1)![0].id;await rejected;
-    receive({data:{type:'response',id,result:'new'}});await expect(snapshot).resolves.toBe('new');
+  it('cancels reads from the previous repository when the new snapshot starts', async () => {
+    const { rpc } = await import('../webview/rpc'),
+      old = rpc('history', 'old'),
+      rejected = expect(old).rejects.toMatchObject({ code: 'ABORTED' });
+    const snapshot = rpc('snapshot', 'new'),
+      id = postMessage.mock.calls.at(-1)![0].id;
+    await rejected;
+    receive({ data: { type: 'response', id, result: 'new' } });
+    await expect(snapshot).resolves.toBe('new');
   });
-  it('keeps Demo read requests compatible with optional cancellation',async()=>{
-    vi.stubGlobal('window',{addEventListener:()=>{}});vi.stubGlobal('location',{search:'?demo=1'});vi.stubGlobal('localStorage',{getItem:()=>null});
-    const {rpc}=await import('../webview/rpc');const history=rpc<{commits:unknown[]}>('history','demo-alwaygit');await vi.advanceTimersByTimeAsync(111);expect((await history).commits.length).toBeGreaterThan(0);
-    const controller=new AbortController(),preview=rpc('diffPreview','demo-alwaygit',{path:'sample.ts'},{signal:controller.signal}),rejected=expect(preview).rejects.toMatchObject({code:'ABORTED'});controller.abort();await vi.advanceTimersByTimeAsync(111);await rejected;expect(postMessage).not.toHaveBeenCalled();
+  it('keeps Demo read requests compatible with optional cancellation', async () => {
+    vi.stubGlobal('window', { addEventListener: () => {} });
+    vi.stubGlobal('location', { search: '?demo=1' });
+    vi.stubGlobal('localStorage', { getItem: () => null });
+    const { rpc } = await import('../webview/rpc');
+    const history = rpc<{ commits: unknown[] }>('history', 'demo-alwaygit');
+    await vi.advanceTimersByTimeAsync(111);
+    expect((await history).commits.length).toBeGreaterThan(0);
+    const controller = new AbortController(),
+      preview = rpc(
+        'diffPreview',
+        'demo-alwaygit',
+        { path: 'sample.ts' },
+        { signal: controller.signal },
+      ),
+      rejected = expect(preview).rejects.toMatchObject({ code: 'ABORTED' });
+    controller.abort();
+    await vi.advanceTimersByTimeAsync(111);
+    await rejected;
+    expect(postMessage).not.toHaveBeenCalled();
   });
 });

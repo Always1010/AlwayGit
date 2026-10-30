@@ -1,305 +1,1387 @@
 import type { RebasePlan } from '../src/protocol/interactive-rebase';
-import { legacyInterfaceSettings, mergeInterfaceSettings, type InterfacePreferences, type InterfacePreferencesUpdate } from '../src/protocol/interface-settings';
+import {
+  legacyInterfaceSettings,
+  mergeInterfaceSettings,
+  type InterfacePreferences,
+  type InterfacePreferencesUpdate,
+} from '../src/protocol/interface-settings';
 import { groupRepositories } from '../src/protocol/repositories';
 import { branchNameConflict, branchNameConflictMessage } from '../src/protocol/ref-name';
 import { reconcileRepositoryOrder } from '../src/protocol/repository-order';
-import type { RepositoryOrder, ReorderRepository, BranchComparison, BranchComparisonQuery, Commit, CommitComparison, CommitDetails, GitAction, HistoryPage, HistoryQuery, HostMessage, Repository, RepositoryCollection, RepositoryStatus, RpcRequest, Snapshot, OperationSettings, StashDetails, DiscardPlan, DiscardRequest } from '../src/protocol/types';
+import type {
+  RepositoryOrder,
+  ReorderRepository,
+  BranchComparison,
+  BranchComparisonQuery,
+  Commit,
+  CommitComparison,
+  CommitDetails,
+  GitAction,
+  HistoryPage,
+  HistoryQuery,
+  HostMessage,
+  Repository,
+  RepositoryCollection,
+  RepositoryStatus,
+  RpcRequest,
+  Snapshot,
+  OperationSettings,
+  StashDetails,
+  DiscardPlan,
+  DiscardRequest,
+} from '../src/protocol/types';
 import { RpcError } from './rpc-error';
 import type { TerminalSnapshot, TerminalShell } from '../src/protocol/terminal';
-import { readWorkbenchLocations, saveWorkbenchLocationsSchema } from '../src/protocol/workbench-host';
+import {
+  readWorkbenchLocations,
+  saveWorkbenchLocationsSchema,
+} from '../src/protocol/workbench-host';
 
 /** Construct sample state only when the explicit Demo transport is used. */
 export function createDemoRequest(emit: (event: HostMessage) => void) {
-let appliedLocation: string | undefined;
-const noRemoteDemo = new URLSearchParams(location.search).get('noRemote') === '1';
-const rebasePlans=new Map<string,RebasePlan>();
-const rebaseRecoveries:{ref:string;oid:string}[]=[];
-const discardPlans = new Map<string, DiscardPlan>();
-const terminals = new Map<string, TerminalSnapshot>();
-const repo: Repository = { id: 'demo-alwaygit', root: 'D:\\Examples\\AlwayGit-Demo', commonDir: 'D:\\Examples\\AlwayGit-Demo\\.git', name: 'AlwayGit-Demo' };
-const subjects = ['Polish repository workbench interactions', 'Add native diff integration', 'Merge branch feature/history-graph', 'Render commit graph with stable lanes', 'Keep commit drafts when switching repositories', 'Handle renamed files in changes', 'Improve keyboard navigation', 'Add worktree discovery', 'Show upstream tracking status', 'Update development dependencies', 'Fix status refresh after checkout', 'Introduce Git operation progress'];
-const authors = ['Alex Chen', 'Morgan Lee', 'Sam Rivera', 'Jamie Park'];
-const oid = (n: number) => (0x9a73ed + n * 98761).toString(16).padStart(8, '0') + 'c42d9918a6bc5e4791033ad7e6f202cc';
-const commits: Commit[] = Array.from({ length: 180 }, (_, n) => {
-  // A topic branch contributes two commits; main stays at their common base.
-  const branchTip = oid(n + 1), branchBase = oid(n + 3);
-  const parents = n === 179 ? [] : n % 12 === 2 ? [branchBase, branchTip] : [oid(n + 1)];
-  return { oid: oid(n), parents, author: authors[n % 4], email: `${authors[n % 4].split(' ')[0].toLowerCase()}@example.com`, timestamp: 1790715600 - n * 13800, subject: subjects[n % subjects.length], pushed: n >= 2 };
-});
-let demoSnapshot: Snapshot = { repository: repo, branch: 'main', head: commits[0].oid, upstream: 'origin/main', defaultBranch: 'main', pushTarget: { localBranch: 'main', remote: 'origin', remoteBranch: 'main', configured: true }, ahead: 2, behind: 0, changes: [
-  { path: 'webview/App.tsx', indexStatus: 'M', worktreeStatus: ' ', conflict: false, untracked: false },
-  { path: 'webview/styles.css', indexStatus: ' ', worktreeStatus: 'M', conflict: false, untracked: false },
-  { path: 'src/git/service.ts', indexStatus: ' ', worktreeStatus: 'M', conflict: false, untracked: false },
-  { path: 'docs/workbench-notes.md', indexStatus: '?', worktreeStatus: '?', conflict: false, untracked: true },
-], refs: [
-  { name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commits[0].oid, upstream: 'origin/main' },
-  { name: 'feature/history-graph', fullName: 'refs/heads/feature/history-graph', kind: 'local', oid: commits[3].oid },
-  { name: 'feature/login/api', fullName: 'refs/heads/feature/login/api', kind: 'local', oid: commits[5].oid },
-  { name: 'feature/test', fullName: 'refs/heads/feature/test', kind: 'local', oid: commits[7].oid },
-  { name: 'fix/status-refresh', fullName: 'refs/heads/fix/status-refresh', kind: 'local', oid: commits[8].oid },
-  { name: 'origin/main', fullName: 'refs/remotes/origin/main', kind: 'remote', oid: commits[2].oid },
-  { name: 'origin/develop', fullName: 'refs/remotes/origin/develop', kind: 'remote', oid: commits[6].oid },
-  { name: 'origin/feature/checkout', fullName: 'refs/remotes/origin/feature/checkout', kind: 'remote', oid: commits[7].oid },
-  { name: 'origin/feature/subtree/api', fullName: 'refs/remotes/origin/feature/subtree/api', kind: 'remote', oid: commits[8].oid },
-  { name: 'v0.1.0', fullName: 'refs/tags/v0.1.0', kind: 'tag', oid: commits[14].oid, refOid: commits[14].oid },
-], stashes: [{ selector: 'stash@{0}', oid: commits[9].oid, subject: 'WIP: repository picker styling' }], worktrees: [{ path: repo.root, head: commits[0].oid, branch: 'refs/heads/main', bare: false, detached: false }, { path: repo.root+'-graph', head: commits[3].oid, branch: 'refs/heads/feature/history-graph', bare: false, detached: false }], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 1 };
-const website:Repository={id:'demo-website',root:'D:\\Examples\\website',commonDir:'D:\\Examples\\website\\.git',name:'website'};
-const publishedTags = new Map<string, Record<string, string>>();
-const demoStores:Record<string,{snapshot:Snapshot;commits:Commit[];saved:Map<string,Snapshot['changes']>}>=Object.fromEntries([repo,website].map(repository=>[
-  repository.id,
-  {snapshot:{...structuredClone(demoSnapshot),repository,remotes:['origin'],worktrees:demoSnapshot.worktrees.map((tree,i)=>({...tree,path:i?repository.root+'-graph':repository.root}))},commits:structuredClone(commits),saved:new Map([[commits[9].oid,[{path:'notes.txt',indexStatus:'?',worktreeStatus:'?',conflict:false,untracked:true}] ]])},
-]));
-if(new URLSearchParams(location.search).get('interactiveRebase')==='1')for(const store of Object.values(demoStores)){store.snapshot.changes=[];for(let i=0;i<6;i++)store.commits[i].parents=[store.commits[i+1].oid];const remote=store.snapshot.refs.find(ref=>ref.name==='origin/main');if(remote)remote.oid=store.commits[3].oid;store.commits.forEach((commit,index)=>commit.pushed=index>=3);}
-const skipContexts=new Map<string,{operation:Snapshot['operation'];key:string;token:string}>();
-function refreshSkipToken(snapshot:Snapshot):void {
-  const operation=snapshot.operation,id=snapshot.repository.id;
-  if(!operation.kind||!operation.canSkip){delete operation.skipToken;skipContexts.delete(id);return;}
-  const key=JSON.stringify([snapshot.branch,snapshot.head,operation.kind,operation.originalHead,operation.managedRebase?.backupRef,operation.managedRebase?.step,operation.managedRebase?.stoppedOid]);
-  let context=skipContexts.get(id);
-  if(!context||context.operation!==operation||context.key!==key){context={operation,key,token:(crypto.randomUUID()+crypto.randomUUID()).replaceAll('-','')};skipContexts.set(id,context);}
-  operation.skipToken=context.token;
-}
-for (const { snapshot } of Object.values(demoStores)) publishedTags.set(`${snapshot.repository.id}:origin`, Object.fromEntries(snapshot.refs.filter(ref => ref.kind === 'tag').map(ref => [ref.fullName, ref.refOid ?? ref.oid])));
-if(noRemoteDemo)for(const store of Object.values(demoStores)){store.snapshot.remotes=[];store.snapshot.refs=store.snapshot.refs.filter(ref=>ref.kind!=='remote');delete store.snapshot.upstream;delete store.snapshot.pushTarget;}
-const demoCollections:RepositoryCollection[]=[];
-let demoOrder:RepositoryOrder|undefined;
-const storedResetMode=localStorage.getItem('alwaygit.demo-defaultResetMode');
-let demoOperationSettings: OperationSettings = { allowDetachedHead: localStorage.getItem('alwaygit.demo-allowDetachedHead') === 'true', pushFollowTags: localStorage.getItem('alwaygit.demo-pushFollowTags') === 'true', pushTagAfterCreate: localStorage.getItem('alwaygit.demo-pushTagAfterCreate') === 'true', forceDeleteUnmergedBranches: localStorage.getItem('alwaygit.demo-forceDeleteUnmergedBranches')==='true', forceRemoveDirtyWorktrees: localStorage.getItem('alwaygit.demo-forceRemoveDirtyWorktrees')==='true', defaultResetMode: storedResetMode==='soft'||storedResetMode==='hard'?storedResetMode:'mixed', scope: 'workspace' };
-const operationSettingKeys = ['allowDetachedHead', 'pushFollowTags', 'pushTagAfterCreate', 'defaultResetMode', 'forceDeleteUnmergedBranches', 'forceRemoveDirtyWorktrees'] as const;
-let demoWorkspaceOverrides = operationSettingKeys.some(key => localStorage.getItem(`alwaygit.demo-${key}`) !== null);
-let demoUserOperationSettings: OperationSettings = { allowDetachedHead: false, pushFollowTags: false, pushTagAfterCreate: false, forceDeleteUnmergedBranches:false,forceRemoveDirtyWorktrees:false,defaultResetMode: 'mixed', scope: 'user' };
-try { demoUserOperationSettings = { ...demoUserOperationSettings, ...JSON.parse(localStorage.getItem('alwaygit.demo-userOperationSettings') ?? '{}'), scope: 'user' }; } catch { /* Use defaults. */ }
-const effectiveDemoOperationSettings = (): OperationSettings => ({ ...demoUserOperationSettings, ...Object.fromEntries(operationSettingKeys.filter(key => localStorage.getItem(`alwaygit.demo-${key}`)!==null).map(key => [key,demoOperationSettings[key]])),
-  forceDeleteUnmergedBranches: localStorage.getItem('alwaygit.demo-forceDeleteUnmergedBranches')!==null?demoOperationSettings.forceDeleteUnmergedBranches:demoUserOperationSettings.forceDeleteUnmergedBranches,
-  forceRemoveDirtyWorktrees: localStorage.getItem('alwaygit.demo-forceRemoveDirtyWorktrees')!==null?demoOperationSettings.forceRemoveDirtyWorktrees:demoUserOperationSettings.forceRemoveDirtyWorktrees,
-  deletionDefaultScopes:{branch:localStorage.getItem('alwaygit.demo-forceDeleteUnmergedBranches')!==null?'workspace':'user',worktree:localStorage.getItem('alwaygit.demo-forceRemoveDirtyWorktrees')!==null?'workspace':'user'}, scope: 'workspace', workspaceAvailable: true });
-async function demoRequest(method: RpcRequest['method'], payload: unknown, repoId?:string): Promise<unknown> {
-  await new Promise(resolve => setTimeout(resolve, 110));
-  const data=demoStores[repoId??repo.id]??demoStores[repo.id],demoSnapshot=data.snapshot,commits=data.commits;
-  refreshSkipToken(demoSnapshot);
-  if (method === 'worktreeOverview') {
-    const paths = (payload as { paths?: string[] } | undefined)?.paths;
-    return demoSnapshot.worktrees.filter(tree => !paths || paths.includes(tree.path)).map(tree => {
-      const changes = tree.path === demoSnapshot.repository.root ? demoSnapshot.changes : [];
-      return { ...tree, branch: tree.branch?.replace(/^refs\/heads\//, ''), state: paths ? 'ready' : 'pending', ...(paths ? { refreshedAt: Date.now(), staged: changes.filter(change => !change.untracked && !change.conflict && change.indexStatus !== ' ').length, unstaged: changes.filter(change => !change.untracked && !change.conflict && change.worktreeStatus !== ' ').length, untracked: changes.filter(change => change.untracked).length, conflicts: changes.filter(change => change.conflict).length } : {}) };
-    });
-  }
-
-  const resolve=(ref:string)=>ref==='HEAD'?demoSnapshot.head!:demoSnapshot.refs.find(r=>r.name===ref||r.fullName===ref)?.oid??ref;
-  if (method === 'workbenchOpenModeSettings' || method === 'saveWorkbenchLocations') {
-    if (method === 'saveWorkbenchLocations') {
-      const settings = saveWorkbenchLocationsSchema.parse(payload);
-      localStorage.setItem('alwaygit.demo-workbenchLocations', JSON.stringify(settings)); appliedLocation = settings.default; return settings;
-    }
-    let saved: unknown;
-    try { saved = JSON.parse(localStorage.getItem('alwaygit.demo-workbenchLocations') ?? 'null'); } catch { /* Use the legacy default. */ }
-    const language = document.documentElement.lang === 'zh-CN' ? 'zh-CN' : 'en';
-    emit({ type: 'showWorkbenchLocations', locations: readWorkbenchLocations(saved), language }); return null;
-  }
-  if (method === 'workbenchLocationsClosed') {
-    if (appliedLocation) localStorage.setItem('alwaygit.demo-openedLocation', appliedLocation);
-    appliedLocation = undefined; return null;
-  }
-  if (method === 'interfaceSettings' || method === 'saveInterfaceSettings') {
-    let settings: InterfacePreferences = {};
-    try { settings = JSON.parse(localStorage.getItem('alwaygit.demo-interfaceSettings') ?? 'null') ?? legacyInterfaceSettings(JSON.parse(localStorage.getItem('alwaygit.demo-session') ?? '{}')); } catch { /* Start with default preferences. */ }
-    if (method === 'saveInterfaceSettings') {
-      settings = mergeInterfaceSettings(settings, payload as InterfacePreferencesUpdate);
-      localStorage.setItem('alwaygit.demo-interfaceSettings', JSON.stringify(settings));
-      emit({ type: 'interfaceSettingsChanged', settings });
-    }
-    return settings;
-  }
-  if (method === 'terminalList') return [...terminals.values()].map(({ output, sequence, ...session }) => session);
-  if (method === 'terminalCreate') {
-    const shell = (payload as { shell: TerminalShell }).shell;
-    const session: TerminalSnapshot = { id: crypto.randomUUID(), repoId: demoSnapshot.repository.id, cwd: demoSnapshot.repository.root,
-      shell, title: `${shell === 'default' ? 'PowerShell' : shell} ${terminals.size + 1}`, status: 'running', sequence: 0,
-      output: 'Demo terminal — input is displayed here; no commands are executed.\r\n> ' };
-    terminals.set(session.id, session); return session;
-  }
-  if (method.startsWith('terminal')) {
-    const data = payload as { sessionId: string; data?: string; title?: string }, session = terminals.get(data.sessionId);
-    if (!session) throw new Error('Demo terminal is closed.');
-    if (method === 'terminalClipboard') return navigator.clipboard.readText();
-    if (method === 'terminalSync') return { ...session };
-    if (method === 'terminalInput') {
-      const output = data.data!.replace(/\r/g, '\r\n> '); session.output += output;
-      emit({ type: 'terminalOutput', sessionId: session.id, sequence: ++session.sequence, data: output });
-    }
-    if (method === 'terminalRename') { session.title = data.title!; emit({ type: 'terminalUpdated', session: { ...session } }); }
-    if (method === 'terminalStop') { session.status = 'exited'; session.exitCode = 0; emit({ type: 'terminalUpdated', session: { ...session } }); }
-    if (method === 'terminalClose') { terminals.delete(session.id); emit({ type: 'terminalClosed', sessionId: session.id }); }
-    if (method === 'terminalRestart') {
-      terminals.delete(session.id); emit({ type: 'terminalClosed', sessionId: session.id });
-      const restarted = { ...session, id: crypto.randomUUID(), status: 'running' as const, exitCode: undefined, sequence: 0, output: '> ' };
-      terminals.set(restarted.id, restarted); return restarted;
-    }
-    return null;
-  }
-  if (method === 'operationSettings') return (payload as { scope?: string } | undefined)?.scope === 'user' ? { ...demoUserOperationSettings, workspaceAvailable: true, overridden: demoWorkspaceOverrides } : effectiveDemoOperationSettings();
-  if (method === 'saveOperationSettings') {
-    const update = payload as OperationSettings;
-    if (update.scope === 'user') { demoUserOperationSettings = { ...demoUserOperationSettings, ...update, scope: 'user' }; localStorage.setItem('alwaygit.demo-userOperationSettings', JSON.stringify(demoUserOperationSettings)); }
-    else {
-      demoWorkspaceOverrides = true; demoOperationSettings = { ...demoOperationSettings, ...update, scope: 'workspace' };
-      for (const key of operationSettingKeys) if(update[key]!==undefined)localStorage.setItem(`alwaygit.demo-${key}`, String(demoOperationSettings[key]));
-    }
-    emit({ type: 'operationSettingsChanged', settings: effectiveDemoOperationSettings() });
-    return update.scope === 'user' ? { ...demoUserOperationSettings, workspaceAvailable: true, overridden: demoWorkspaceOverrides } : effectiveDemoOperationSettings();
-  }
-  if (method === 'repositories') return [repo,website];
-  if(method==='pickRepositoryDirectory')return 'D:\\Examples';
-  if(method==='discoverRepositories'){const scanId=(payload as {scanId:string}).scanId;return {scanId,root:'D:\\Examples',scanned:8,found:3,cancelled:false,candidates:[{key:'demo-existing',name:repo.name,path:repo.root,existing:true},{key:'demo-notes',name:'NotesAnywhere',path:'D:\\Examples\\NotesAnywhere',existing:false},{key:'demo-resume',name:'SwiftResume',path:'D:\\Examples\\SwiftResume',existing:false}],issues:[]};}
-  if(method==='cancelRepositoryDiscovery')return null;
-  if(method==='addRepository')return {added:2,existing:0,skipped:0};
-  if(method==='repositoryCollections')return demoCollections;
-  if(method==='repositoryOrder'||method==='reorderRepository'){
-    demoOrder=reconcileRepositoryOrder(groupRepositories([repo,website]),demoCollections,demoOrder);
-    if(method==='reorderRepository'){const {key,targetKey,position}=payload as ReorderRepository,entries=demoOrder.root.filter(entry=>entry!==key);entries.splice(entries.indexOf(targetKey)+Number(position==='after'),0,key);demoOrder.root=entries;}
-    return structuredClone(demoOrder);
-  }
-  if(method==='createRepositoryCollection'){const collection={id:`demo-group-${demoCollections.length+1}`,name:(payload as {name:string}).name};demoCollections.push(collection);return collection;}
-  if (method === 'repositoryStatuses') return Object.values(demoStores).map(({ snapshot }) => ({ repositoryId: snapshot.repository.id, branch: snapshot.branch, upstream: snapshot.upstream, ahead: snapshot.ahead, unpushed: snapshot.unpushed ?? snapshot.ahead } satisfies RepositoryStatus));
-  if (method === 'snapshot') return structuredClone({
-    ...demoSnapshot,
-    remoteDestinations: Object.fromEntries((demoSnapshot.remotes ?? []).map(remote => [remote, 'd'.repeat(64)])),
-    remoteReadDestinations: Object.fromEntries((demoSnapshot.remotes ?? []).map(remote => [remote, `demo:${remote}`])),
+  let appliedLocation: string | undefined;
+  const noRemoteDemo = new URLSearchParams(location.search).get('noRemote') === '1';
+  const rebasePlans = new Map<string, RebasePlan>();
+  const rebaseRecoveries: { ref: string; oid: string }[] = [];
+  const discardPlans = new Map<string, DiscardPlan>();
+  const terminals = new Map<string, TerminalSnapshot>();
+  const repo: Repository = {
+    id: 'demo-alwaygit',
+    root: 'D:\\Examples\\AlwayGit-Demo',
+    commonDir: 'D:\\Examples\\AlwayGit-Demo\\.git',
+    name: 'AlwayGit-Demo',
+  };
+  const subjects = [
+    'Polish repository workbench interactions',
+    'Add native diff integration',
+    'Merge branch feature/history-graph',
+    'Render commit graph with stable lanes',
+    'Keep commit drafts when switching repositories',
+    'Handle renamed files in changes',
+    'Improve keyboard navigation',
+    'Add worktree discovery',
+    'Show upstream tracking status',
+    'Update development dependencies',
+    'Fix status refresh after checkout',
+    'Introduce Git operation progress',
+  ];
+  const authors = ['Alex Chen', 'Morgan Lee', 'Sam Rivera', 'Jamie Park'];
+  const oid = (n: number) =>
+    (0x9a73ed + n * 98761).toString(16).padStart(8, '0') + 'c42d9918a6bc5e4791033ad7e6f202cc';
+  const commits: Commit[] = Array.from({ length: 180 }, (_, n) => {
+    // A topic branch contributes two commits; main stays at their common base.
+    const branchTip = oid(n + 1),
+      branchBase = oid(n + 3);
+    const parents = n === 179 ? [] : n % 12 === 2 ? [branchBase, branchTip] : [oid(n + 1)];
+    return {
+      oid: oid(n),
+      parents,
+      author: authors[n % 4],
+      email: `${authors[n % 4].split(' ')[0].toLowerCase()}@example.com`,
+      timestamp: 1790715600 - n * 13800,
+      subject: subjects[n % subjects.length],
+      pushed: n >= 2,
+    };
   });
-  if (method === 'remoteTags') { const remote = (payload as { remote: string }).remote; return { remote, destination: `demo:${remote}`, separatePush: false, refs: { ...(publishedTags.get(`${demoSnapshot.repository.id}:${remote}`) ?? {}) }, checkedAt: Date.now() }; }
-  if (method === 'prepareDiscard') {
-    const request = payload as DiscardRequest, selected = request.paths && new Set(request.paths);
-    if (request.scope === 'all' && (demoSnapshot.operation.kind || demoSnapshot.operation.conflicts)) throw new Error('Finish or abort the active operation before discarding all changes.');
-    const changes = demoSnapshot.changes.filter(change => !change.conflict && (request.scope === 'all' || change.untracked || change.worktreeStatus !== ' ') && (!selected || selected.has(change.path)));
-    const plan: DiscardPlan = { token: crypto.randomUUID(), scope: request.scope === 'all' ? 'all' : 'unstaged', paths: changes.map(change => change.path), tracked: changes.filter(change => !change.untracked).length, untracked: changes.filter(change => change.untracked).length, staged: changes.filter(change => !change.untracked && change.indexStatus !== ' ').length, branch: demoSnapshot.branch, head: demoSnapshot.head };
-    discardPlans.set(plan.token, plan); return structuredClone(plan);
-  }
-  if (method === 'history') {
-    const query = (payload ?? {}) as HistoryQuery;
-    const tips=[...new Set(query.tips?.map(resolve)??(query.ref?[resolve(query.ref)]:demoSnapshot.refs.map(r=>r.oid)))],byId=new Map(commits.map(c=>[c.oid,c])),seen=new Set<string>(),pending=[...tips];
-    while(pending.length){const id=pending.pop()!;if(seen.has(id))continue;seen.add(id);pending.push(...(byId.get(id)?.parents??[]));}
-    const filePaths = ['webview/App.tsx', 'webview/styles.css', 'src/git/service.ts'];
-    const result=commits.filter(c=>seen.has(c.oid)&&(!query.file||filePaths.includes(query.file.anchorPath??query.file.path))&&(!query.search||c.subject.toLowerCase().includes(query.search.toLowerCase()))).map(commit=>query.file?{...commit,fileHistory:{paths:[query.file.path],graphParents:commit.parents,parent:commit.parents[0]}}:commit);
-    const offset = query.offset ?? 0, limit = query.limit ?? 100;
-    const visible=result.slice(offset,offset+limit),head=commits.find(commit=>commit.oid===demoSnapshot.head);
-    return { commits: visible, nextOffset: offset + Math.min(limit,result.length-offset), hasMore: offset + limit < result.length, tips, ...(query.file?{filePaths:[query.file.path]}:head?{head}: {}) } satisfies HistoryPage;
-  }
-  if(method==='prepareInteractiveRebase') {
-    if(demoSnapshot.changes.length||demoSnapshot.operation.kind)throw new Error('Commit or stash changes before Rebase.');
-    const start=(payload as {start?:string})?.start,index=start?commits.findIndex(commit=>commit.oid===start):Math.min(19,commits.findIndex(commit=>commit.pushed)-1);
-    const scope=commits.slice(0,index+1);if(index<0||scope.some(commit=>commit.parents.length!==1))throw new Error('Choose a linear range excluding merge and root commits.');
-    const plan:RebasePlan={token:crypto.randomUUID(),branch:demoSnapshot.branch,head:demoSnapshot.head!,base:scope.at(-1)!.parents[0],expires:Date.now()+900000,commits:scope.slice().reverse().map(commit=>({oid:commit.oid,subject:commit.subject,message:commit.subject})),published:scope.filter(commit=>commit.pushed).map(commit=>commit.oid)};rebasePlans.set(plan.token,plan);return plan;
-  }
-  if (method === 'reflog') return {token:'11111111-1111-4111-8111-111111111111',ref:(payload as {ref?:string})?.ref??'HEAD',entries:commits.map((commit,index)=>({oid:commit.oid,selector:`HEAD@{${index}}`,description:`commit: ${commit.subject}`,actor:commit.author,email:commit.email,date:new Date(commit.timestamp*1000).toISOString()})),recoveries:rebaseRecoveries,nextOffset:commits.length,hasMore:false,truncated:false,checkedAt:Date.now()};
-  if (['copyCommitDetails', 'tagTargetDetails', 'amendDetails', 'inspectDetails', 'details'].includes(method)) {
-    const request = payload as { oid: string; parent?: string }; const commit = commits.find(c => c.oid === resolve(request.oid)) ?? commits[0];
-    return { commit, body: `${commit.subject}\n\nImprove the repository experience with clear status feedback and consistent navigation.\n\nCloses #24`, parent: request.parent ?? commit.parents[0], files: [{ path: 'webview/App.tsx', status: 'M' }, { path: 'webview/styles.css', status: 'M' }, { path: 'src/git/service.ts', status: 'A' }] } satisfies CommitDetails;
-  }
-  if (method === 'stashDetails') {
-    const request=payload as {oid:string},stash=demoSnapshot.stashes.find(item=>item.oid===request.oid)??demoSnapshot.stashes[0],saved=data.saved.get(stash?.oid??'')??[];
-    const base=commits[0],indexCommit={...base,oid:'e'.repeat(40),parents:[base.oid],subject:`index on ${demoSnapshot.branch}`},untrackedCommit={...base,oid:'f'.repeat(40),parents:[],subject:`untracked files on ${demoSnapshot.branch}`},stashCommit={...base,oid:stash?.oid??request.oid,parents:[base.oid,indexCommit.oid,...(saved.some(file=>file.untracked)?[untrackedCommit.oid]:[])],subject:stash?.subject??'WIP'};
-    const detail=(commit:Commit,parent:string|undefined,files:typeof saved):CommitDetails=>({commit,body:commit.subject,...(parent?{parent}:{}),files:files.map(file=>({path:file.path,status:file.untracked?'A':file.indexStatus!==' '&&file.indexStatus!=='?'?file.indexStatus:file.worktreeStatus}))});
-    const working=detail(stashCommit,indexCommit.oid,saved.filter(file=>!file.untracked&&file.worktreeStatus!==' ')),index=detail(indexCommit,base.oid,saved.filter(file=>!file.untracked&&file.indexStatus!==' '&&file.indexStatus!=='?')),untracked=saved.some(file=>file.untracked)?detail(untrackedCommit,undefined,saved.filter(file=>file.untracked)):undefined;
-    return {commit:stashCommit,body:stashCommit.subject,sections:{working,index,...(untracked?{untracked}:{})},totalFiles:new Set(saved.map(file=>file.path)).size} satisfies StashDetails;
-  }
-  if (method === 'branchComparison') {
-    const query = payload as BranchComparisonQuery, baseOid = query.baseOid ?? resolve(query.baseRef), targetOid = query.targetOid ?? resolve(query.targetRef);
-    const reachable = (oid: string) => { const seen = new Set<string>(), pending = [oid]; while (pending.length) { const id = pending.pop()!; if (seen.has(id)) continue; seen.add(id); pending.push(...(commits.find(commit => commit.oid === id)?.parents ?? [])); } return seen; };
-    const baseReachable = reachable(baseOid), targetReachable = reachable(targetOid), mergeBase = commits.find(commit => baseReachable.has(commit.oid) && targetReachable.has(commit.oid))?.oid;
-    const page = (tip: Set<string>, other: Set<string>, offset = 0) => { const all = commits.filter(commit => tip.has(commit.oid) && !other.has(commit.oid)), items = all.slice(offset, offset + (query.limit ?? 50)); return { commits: items, total: all.length, nextOffset: offset + items.length, hasMore: offset + items.length < all.length }; };
-    const mode = query.mode ?? 'review', diffBase = mode === 'snapshot' ? baseOid : mergeBase;
-    return { baseRef: query.baseRef, targetRef: query.targetRef, baseOid, targetOid, mode, mergeBases: mergeBase ? [mergeBase] : [], mergeBase, diffBase, base: page(baseReachable, targetReachable, query.baseOffset), target: page(targetReachable, baseReachable, query.targetOffset), files: diffBase === targetOid ? [] : [{path:'webview/App.tsx',status:'M'},{path:'webview/styles.css',status:'M'}] } satisfies BranchComparison;
-  }
-  if(method==='compare'){const request=payload as {left:string;right:string},left=commits.find(commit=>commit.oid===resolve(request.left))??commits[1],right=commits.find(commit=>commit.oid===resolve(request.right))??commits[0];return {left,right,files:[{path:'webview/App.tsx',status:'M'},{path:'webview/styles.css',status:'M'},{path:'src/git/service.ts',status:'A'}]} satisfies CommitComparison;}
-  if (method === 'cherryPickCheck') {
-    const {commits:selected}=payload as {commits:string[]};
-    const byId=new Map(commits.map(commit=>[commit.oid,commit])),included=new Set<string>(),pending=demoSnapshot.head?[demoSnapshot.head]:[];
-    while(pending.length){const oid=pending.pop()!;if(included.has(oid))continue;included.add(oid);pending.push(...(byId.get(oid)?.parents??[]));}
-    return {head:demoSnapshot.head,branch:demoSnapshot.branch,included:selected.filter(oid=>included.has(oid))};
-  }
-  if (method === 'operationReview') return { kind: demoSnapshot.operation.kind, token: `demo-${demoSnapshot.version}`, files: demoSnapshot.changes.filter(file=>file.indexStatus!==' '&&!file.untracked).map(file=>({path:file.path,lines:[]})) };
-  if (method === 'pickWorktree') return repo.root+'-new';
-  if(method==='diffPreview'||method==='isolatedDiffPreview'){const target=payload as {path:string;kind:string;area?:string;oid?:string;parent?:string;left?:string;right?:string};return {kind:'text',path:target.path,leftLabel:target.kind==='comparison'?target.left?.slice(0,8):target.kind==='commit'?'Parent '+(target.parent??'').slice(0,8):target.area==='staged'?'HEAD':'Index',rightLabel:target.kind==='comparison'?target.right?.slice(0,8):target.kind==='commit'?target.oid?.slice(0,8):target.area==='staged'?'Index':'Working Tree',left:'export function Workbench() {\n  return <HistoryPanel />;\n}\n',right:'export function Workbench() {\n  return (\n    <WorkbenchLayout>\n      <HistoryPanel />\n      <CommitDetails />\n    </WorkbenchLayout>\n  );\n}\n'};}
-  if(method==='copyText'){const {text}=payload as {text:string};if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(text);else throw new Error('Clipboard is unavailable in this browser.');return null;}
-  if (method === 'action') {
-    const action = payload as GitAction;
-    if(action.type==='operation.skip') {
-      const operation=demoSnapshot.operation;
-      if(!operation.canSkip||operation.kind!==action.kind||!action.skipToken||action.skipToken!==operation.skipToken)throw new RpcError('The selected Git operation changed. Refresh and confirm Skip again.','OPERATION_CHANGED');
-      if(operation.managedRebase&&operation.managedRebase.step<operation.managedRebase.total){operation.managedRebase.step++;operation.managedRebase.stoppedOid=commits[operation.managedRebase.step]?.oid;}
-      else {demoSnapshot.operation={conflicts:0,canContinue:false,canAbort:false,canSkip:false};demoSnapshot.changes=demoSnapshot.changes.filter(change=>!change.conflict);}
+  let demoSnapshot: Snapshot = {
+    repository: repo,
+    branch: 'main',
+    head: commits[0].oid,
+    upstream: 'origin/main',
+    defaultBranch: 'main',
+    pushTarget: { localBranch: 'main', remote: 'origin', remoteBranch: 'main', configured: true },
+    ahead: 2,
+    behind: 0,
+    changes: [
+      {
+        path: 'webview/App.tsx',
+        indexStatus: 'M',
+        worktreeStatus: ' ',
+        conflict: false,
+        untracked: false,
+      },
+      {
+        path: 'webview/styles.css',
+        indexStatus: ' ',
+        worktreeStatus: 'M',
+        conflict: false,
+        untracked: false,
+      },
+      {
+        path: 'src/git/service.ts',
+        indexStatus: ' ',
+        worktreeStatus: 'M',
+        conflict: false,
+        untracked: false,
+      },
+      {
+        path: 'docs/workbench-notes.md',
+        indexStatus: '?',
+        worktreeStatus: '?',
+        conflict: false,
+        untracked: true,
+      },
+    ],
+    refs: [
+      {
+        name: 'main',
+        fullName: 'refs/heads/main',
+        kind: 'local',
+        oid: commits[0].oid,
+        upstream: 'origin/main',
+      },
+      {
+        name: 'feature/history-graph',
+        fullName: 'refs/heads/feature/history-graph',
+        kind: 'local',
+        oid: commits[3].oid,
+      },
+      {
+        name: 'feature/login/api',
+        fullName: 'refs/heads/feature/login/api',
+        kind: 'local',
+        oid: commits[5].oid,
+      },
+      {
+        name: 'feature/test',
+        fullName: 'refs/heads/feature/test',
+        kind: 'local',
+        oid: commits[7].oid,
+      },
+      {
+        name: 'fix/status-refresh',
+        fullName: 'refs/heads/fix/status-refresh',
+        kind: 'local',
+        oid: commits[8].oid,
+      },
+      {
+        name: 'origin/main',
+        fullName: 'refs/remotes/origin/main',
+        kind: 'remote',
+        oid: commits[2].oid,
+      },
+      {
+        name: 'origin/develop',
+        fullName: 'refs/remotes/origin/develop',
+        kind: 'remote',
+        oid: commits[6].oid,
+      },
+      {
+        name: 'origin/feature/checkout',
+        fullName: 'refs/remotes/origin/feature/checkout',
+        kind: 'remote',
+        oid: commits[7].oid,
+      },
+      {
+        name: 'origin/feature/subtree/api',
+        fullName: 'refs/remotes/origin/feature/subtree/api',
+        kind: 'remote',
+        oid: commits[8].oid,
+      },
+      {
+        name: 'v0.1.0',
+        fullName: 'refs/tags/v0.1.0',
+        kind: 'tag',
+        oid: commits[14].oid,
+        refOid: commits[14].oid,
+      },
+    ],
+    stashes: [
+      { selector: 'stash@{0}', oid: commits[9].oid, subject: 'WIP: repository picker styling' },
+    ],
+    worktrees: [
+      {
+        path: repo.root,
+        head: commits[0].oid,
+        branch: 'refs/heads/main',
+        bare: false,
+        detached: false,
+      },
+      {
+        path: repo.root + '-graph',
+        head: commits[3].oid,
+        branch: 'refs/heads/feature/history-graph',
+        bare: false,
+        detached: false,
+      },
+    ],
+    operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false },
+    version: 1,
+  };
+  const website: Repository = {
+    id: 'demo-website',
+    root: 'D:\\Examples\\website',
+    commonDir: 'D:\\Examples\\website\\.git',
+    name: 'website',
+  };
+  const publishedTags = new Map<string, Record<string, string>>();
+  const demoStores: Record<
+    string,
+    { snapshot: Snapshot; commits: Commit[]; saved: Map<string, Snapshot['changes']> }
+  > = Object.fromEntries(
+    [repo, website].map((repository) => [
+      repository.id,
+      {
+        snapshot: {
+          ...structuredClone(demoSnapshot),
+          repository,
+          remotes: ['origin'],
+          worktrees: demoSnapshot.worktrees.map((tree, i) => ({
+            ...tree,
+            path: i ? repository.root + '-graph' : repository.root,
+          })),
+        },
+        commits: structuredClone(commits),
+        saved: new Map([
+          [
+            commits[9].oid,
+            [
+              {
+                path: 'notes.txt',
+                indexStatus: '?',
+                worktreeStatus: '?',
+                conflict: false,
+                untracked: true,
+              },
+            ],
+          ],
+        ]),
+      },
+    ]),
+  );
+  if (new URLSearchParams(location.search).get('interactiveRebase') === '1')
+    for (const store of Object.values(demoStores)) {
+      store.snapshot.changes = [];
+      for (let i = 0; i < 6; i++) store.commits[i].parents = [store.commits[i + 1].oid];
+      const remote = store.snapshot.refs.find((ref) => ref.name === 'origin/main');
+      if (remote) remote.oid = store.commits[3].oid;
+      store.commits.forEach((commit, index) => (commit.pushed = index >= 3));
     }
-    if(action.type==='rebase.interactive'){const plan=rebasePlans.get(action.token);if(!plan||plan.head!==demoSnapshot.head||plan.published.length&&!action.acknowledgePublished)throw new Error('Rebase plan changed or requires acknowledgement.');rebaseRecoveries.unshift({ref:'refs/alwaygit/rebase-backups/demo-'+Date.now(),oid:plan.head});rebasePlans.delete(action.token);}
-    if (action.type === 'discard' && action.planToken) { const plan = discardPlans.get(action.planToken); if (!plan) throw new Error('Discard plan expired.'); action.paths = plan.paths; action.mode = plan.scope === 'all' ? 'all' : undefined; discardPlans.delete(action.planToken); }
-    if (action.type === 'stage' || action.type === 'resolve-and-stage' || action.type === 'unstage' || action.type === 'discard') {
-      demoSnapshot.changes = demoSnapshot.changes.flatMap(change => {
-        if (!action.paths.includes(change.path)) return [change];
-        if (action.type === 'discard') return action.mode === 'all' || change.indexStatus === ' ' || change.untracked ? [] : [{ ...change, worktreeStatus: ' ' }];
-        return [{ ...change, indexStatus: action.type !== 'unstage' ? 'M' : ' ', worktreeStatus: action.type !== 'unstage' ? ' ' : 'M', conflict: false, untracked: false }];
-      });
-    } else if (action.type === 'commit') {
-      const commit = { ...commits[0], oid: oid(999 + demoSnapshot.version), parents: action.amend ? commits[0].parents : [commits[0].oid], subject: action.message.split('\n')[0], timestamp: Math.floor(Date.now() / 1000), pushed: false }; if (action.amend) commits.shift(); commits.unshift(commit);
-      demoSnapshot.head = commit.oid;const branch=demoSnapshot.refs.find(r=>r.kind==='local'&&r.name===demoSnapshot.branch);if(branch)branch.oid=commit.oid; demoSnapshot.changes = demoSnapshot.changes.flatMap(c => {
-        const selected = action.files?.find(file => file.path === c.path);
-        if (action.files && !selected) return [c];
-        if (selected?.area === 'unstaged') return [];
-        return c.worktreeStatus !== ' ' || c.untracked ? [{...c,indexStatus:' '}] : [];
-      }); demoSnapshot.ahead++;
-    } else if (action.type === 'branch.checkout'||action.type==='commit.checkout'||action.type==='checkout.stash') {
-      if ((action.type === 'commit.checkout' || action.type === 'checkout.stash' && action.detached) && !demoOperationSettings.allowDetachedHead) throw new RpcError('Direct Detached HEAD Checkout is disabled. Create and switch to a branch.', 'DETACHED_HEAD_DISABLED');
-      const detached=action.type==='commit.checkout'||action.type==='checkout.stash'&&action.detached,target=action.type==='branch.checkout'?action.name:action.target;
-      const occupied=demoSnapshot.worktrees.find(tree=>tree.branch?.replace(/^refs\/heads\//,'')===target&&tree.path!==demoSnapshot.repository.root);
-      if(!detached&&occupied)throw new RpcError('Branch is in use by another Worktree.','WORKTREE_OCCUPIED',{reason:'worktree-occupied',target,paths:[],worktreePath:occupied.path});
-      if(action.type==='checkout.stash'){const stash={selector:'stash@{0}',oid:oid(2000+demoSnapshot.version),subject:'WIP before Checkout'};data.saved.set(stash.oid,structuredClone(demoSnapshot.changes));demoSnapshot.stashes.unshift(stash);demoSnapshot.changes=[];}
-      demoSnapshot.branch=detached?'':target;demoSnapshot.head=resolve(target);const tree=demoSnapshot.worktrees[0];if(tree){tree.branch=detached?undefined:target;tree.detached=!!detached;tree.head=demoSnapshot.head;}
+  const skipContexts = new Map<
+    string,
+    { operation: Snapshot['operation']; key: string; token: string }
+  >();
+  function refreshSkipToken(snapshot: Snapshot): void {
+    const operation = snapshot.operation,
+      id = snapshot.repository.id;
+    if (!operation.kind || !operation.canSkip) {
+      delete operation.skipToken;
+      skipContexts.delete(id);
+      return;
     }
-    else if (action.type === 'branch.track') {
-      const branches=action.branches.map(branch=>{const source=demoSnapshot.refs.find(ref=>ref.kind==='remote'&&ref.fullName===branch.source),existing=demoSnapshot.refs.find(ref=>ref.kind==='local'&&ref.name===branch.name);if(!source||source.symbolicTarget||branch.expectedOid&&source.oid!==branch.expectedOid)throw new Error('Remote branch changed. Refresh and retry.');if(existing&&existing.upstream!==source.name)throw new Error('Local branch has a different upstream.');return {branch,source,existing};});
-      const target=branches[0]?.branch.name,occupied=action.checkout&&demoSnapshot.worktrees.find(tree=>tree.branch?.replace(/^refs\/heads\//,'')===target&&tree.path!==demoSnapshot.repository.root);
-      if(occupied)throw new RpcError('Branch is in use by another Worktree.','WORKTREE_OCCUPIED',{reason:'worktree-occupied',target:target!,paths:[],worktreePath:occupied.path});
-      for(const {branch,source,existing} of branches)if(!existing)demoSnapshot.refs.push({name:branch.name,fullName:'refs/heads/'+branch.name,kind:'local',oid:source.oid,upstream:source.name});
-      if(action.checkout&&branches[0]){demoSnapshot.branch=target!;demoSnapshot.head=branches[0].existing?.oid??branches[0].source.oid;demoSnapshot.upstream=branches[0].source.name;const tree=demoSnapshot.worktrees[0];if(tree){tree.branch='refs/heads/'+target;tree.detached=false;tree.head=demoSnapshot.head;}}
+    const key = JSON.stringify([
+      snapshot.branch,
+      snapshot.head,
+      operation.kind,
+      operation.originalHead,
+      operation.managedRebase?.backupRef,
+      operation.managedRebase?.step,
+      operation.managedRebase?.stoppedOid,
+    ]);
+    let context = skipContexts.get(id);
+    if (!context || context.operation !== operation || context.key !== key) {
+      context = {
+        operation,
+        key,
+        token: (crypto.randomUUID() + crypto.randomUUID()).replaceAll('-', ''),
+      };
+      skipContexts.set(id, context);
     }
-    else if (action.type === 'branch.create') {const collision=branchNameConflict(action.name,demoSnapshot.refs.filter(ref=>ref.kind==='local').map(ref=>ref.name));if(collision)throw new RpcError(branchNameConflictMessage(action.name,collision),'BRANCH_EXISTS');const target=resolve(action.start??'HEAD');demoSnapshot.refs.push({ name: action.name, fullName: `refs/heads/${action.name}`, kind: 'local', oid: target,upstream:action.start?.startsWith('refs/remotes/')?action.start.slice(13):undefined }); if (action.checkout){demoSnapshot.branch = action.name;demoSnapshot.head=target;} }
-    else if (action.type === 'branch.delete') demoSnapshot.refs = demoSnapshot.refs.filter(r => !(r.kind === 'local' && action.names.includes(r.name)));
-    else if(action.type==='remote.add'){demoSnapshot.remotes=[...new Set([...(demoSnapshot.remotes??[]),action.name])];}
-    else if(action.type==='remote.delete')demoSnapshot.refs=demoSnapshot.refs.filter(r=>!(r.kind==='remote'&&action.branches.some(branch=>r.name===`${action.remote}/${branch}`)));
-    else if (action.type === 'tag.create') { const oid=resolve(action.target??'HEAD'); demoSnapshot.refs.push({ name: action.name, fullName: `refs/tags/${action.name}`, kind: 'tag', oid, refOid: oid }); if (action.pushRemote) { const key = `${demoSnapshot.repository.id}:${action.pushRemote}`; publishedTags.set(key, { ...publishedTags.get(key), [`refs/tags/${action.name}`]: oid }); } }
-    else if (action.type === 'tag.push') { const key = `${demoSnapshot.repository.id}:${action.remote}`; publishedTags.set(key, { ...publishedTags.get(key), ...Object.fromEntries(demoSnapshot.refs.filter(ref => ref.kind === 'tag' && action.names.includes(ref.name)).map(ref => [ref.fullName, ref.refOid ?? ref.oid])) }); }
-    else if (action.type === 'tag.delete') {
-      const tag=demoSnapshot.refs.find(r=>r.kind==='tag'&&r.name===action.name);
-      if(action.expectedOid&&tag?.refOid!==action.expectedOid)throw new RpcError('The Tag changed. Refresh and reopen the deletion dialog.','OPERATION_CHANGED');
-      if(action.remote){const key=`${demoSnapshot.repository.id}:${action.remote}`,published=publishedTags.get(key)??{},ref=`refs/tags/${action.name}`;if(!action.expectedRemoteOid||published[ref]!==action.expectedRemoteOid)throw new RpcError('The remote Tag changed. Check it again before deletion.','OPERATION_CHANGED');const next={...published};delete next[ref];publishedTags.set(key,next);}
-      if(action.expectedOid)demoSnapshot.refs=demoSnapshot.refs.filter(r=>r!==tag);
-    }
-    else if (action.type === 'stash.create') {
-      if(action.paths&&!action.paths.length)throw new Error('Select at least one file to Stash.');
-      if(demoSnapshot.operation.kind||demoSnapshot.operation.conflicts)throw new Error('Resolve the current Git operation or conflicts before Stash.');
-      const selected=new Set(action.paths),saved=demoSnapshot.changes.filter(change=>(!action.paths||selected.has(change.path))&&(!change.untracked||!!action.paths||!!action.includeUntracked));
-      if(saved.length){const stash={selector:'stash@{0}',oid:oid(2000+demoSnapshot.version),subject:action.message||'WIP on '+demoSnapshot.branch};data.saved.set(stash.oid,structuredClone(saved));demoSnapshot.stashes.unshift(stash);const savedPaths=new Set(saved.map(change=>change.path));demoSnapshot.changes=demoSnapshot.changes.filter(change=>!savedPaths.has(change.path));}
-    }
-    else if(action.type==='stash.apply'||action.type==='stash.drop'){
-      const stash=demoSnapshot.stashes.find(s=>s.selector===action.selector);
-      if(!stash||action.expectedOid&&stash.oid!==action.expectedOid)throw new RpcError('Stash changed. Refresh and retry.','STASH_CHANGED');
-      if(action.type==='stash.apply'){
-        const saved=data.saved.get(stash.oid)??[{path:'webview/styles.css',indexStatus:' ',worktreeStatus:'M',conflict:false,untracked:false}],collisions=saved.filter(file=>file.untracked&&demoSnapshot.changes.some(change=>change.path===file.path));
-        if(collisions.length)throw new RpcError(`Cannot restore the Stash because the project already contains ${collisions[0].path}. Existing files were not overwritten, and the Stash is still saved.`,'STASH_UNTRACKED_CONFLICT',{kind:'stash-apply',reason:'untracked-path-exists',paths:collisions.map(file=>file.path),selector:stash.selector,stashOid:stash.oid,stashRetained:true,workingTreeUnchanged:true});
-        const overlaps=saved.filter(file=>demoSnapshot.changes.some(change=>change.path===file.path));
-        if(overlaps.length)throw new RpcError('Preflight found conflicting local changes. Restore stopped; the Index and Working Tree are unchanged and the Stash is still saved.','STASH_RESTORE_CONFLICT',{kind:'stash-apply',reason:'restore-conflict',paths:saved.map(file=>file.path),conflictPaths:overlaps.map(file=>file.path),selector:stash.selector,stashOid:stash.oid,stashRetained:true,workingTreeUnchanged:true});
-        if(demoSnapshot.operation.kind||demoSnapshot.operation.conflicts)throw new RpcError('Resolve the current Git operation or conflicts before restoring this Stash.','STASH_RESTORE_BLOCKED',{kind:'stash-apply',reason:'restore-blocked',paths:demoSnapshot.changes.filter(change=>change.conflict).map(change=>change.path),selector:stash.selector,stashOid:stash.oid,stashRetained:true,workingTreeUnchanged:true});
-        demoSnapshot.changes.push(...structuredClone(saved));
-      }
-      if(action.type==='stash.drop'||action.pop)demoSnapshot.stashes=demoSnapshot.stashes.filter(s=>s.oid!==stash.oid);
-    }
-    else if (action.type === 'worktree.add') { if ((action.detach || !action.branch && !action.newBranch && action.start) && !demoOperationSettings.allowDetachedHead) throw new RpcError('Detached Worktrees are disabled. Choose a branch.', 'DETACHED_HEAD_DISABLED'); demoSnapshot.worktrees.push({ path: action.path, head: commits[0].oid, branch: action.branch || action.newBranch, bare: false, detached: !!action.detach || !action.branch && !action.newBranch && !!action.start }); }
-    else if (action.type === 'worktree.remove') demoSnapshot.worktrees = demoSnapshot.worktrees.filter(w => !(action.paths ?? [action.path]).includes(w.path));
-    else if (action.type === 'push') { demoSnapshot.ahead = 0; commits.forEach(commit => { commit.pushed = true; }); }
-    else if (action.type === 'pull') demoSnapshot.behind = 0;
-    demoSnapshot.stashes.forEach((stash,index)=>stash.selector=`stash@{${index}}`);
-    demoSnapshot.version++; refreshSkipToken(demoSnapshot); return structuredClone(demoSnapshot);
+    operation.skipToken = context.token;
   }
-  return undefined;
-}
+  for (const { snapshot } of Object.values(demoStores))
+    publishedTags.set(
+      `${snapshot.repository.id}:origin`,
+      Object.fromEntries(
+        snapshot.refs
+          .filter((ref) => ref.kind === 'tag')
+          .map((ref) => [ref.fullName, ref.refOid ?? ref.oid]),
+      ),
+    );
+  if (noRemoteDemo)
+    for (const store of Object.values(demoStores)) {
+      store.snapshot.remotes = [];
+      store.snapshot.refs = store.snapshot.refs.filter((ref) => ref.kind !== 'remote');
+      delete store.snapshot.upstream;
+      delete store.snapshot.pushTarget;
+    }
+  const demoCollections: RepositoryCollection[] = [];
+  let demoOrder: RepositoryOrder | undefined;
+  const storedResetMode = localStorage.getItem('alwaygit.demo-defaultResetMode');
+  let demoOperationSettings: OperationSettings = {
+    allowDetachedHead: localStorage.getItem('alwaygit.demo-allowDetachedHead') === 'true',
+    pushFollowTags: localStorage.getItem('alwaygit.demo-pushFollowTags') === 'true',
+    pushTagAfterCreate: localStorage.getItem('alwaygit.demo-pushTagAfterCreate') === 'true',
+    forceDeleteUnmergedBranches:
+      localStorage.getItem('alwaygit.demo-forceDeleteUnmergedBranches') === 'true',
+    forceRemoveDirtyWorktrees:
+      localStorage.getItem('alwaygit.demo-forceRemoveDirtyWorktrees') === 'true',
+    defaultResetMode:
+      storedResetMode === 'soft' || storedResetMode === 'hard' ? storedResetMode : 'mixed',
+    scope: 'workspace',
+  };
+  const operationSettingKeys = [
+    'allowDetachedHead',
+    'pushFollowTags',
+    'pushTagAfterCreate',
+    'defaultResetMode',
+    'forceDeleteUnmergedBranches',
+    'forceRemoveDirtyWorktrees',
+  ] as const;
+  let demoWorkspaceOverrides = operationSettingKeys.some(
+    (key) => localStorage.getItem(`alwaygit.demo-${key}`) !== null,
+  );
+  let demoUserOperationSettings: OperationSettings = {
+    allowDetachedHead: false,
+    pushFollowTags: false,
+    pushTagAfterCreate: false,
+    forceDeleteUnmergedBranches: false,
+    forceRemoveDirtyWorktrees: false,
+    defaultResetMode: 'mixed',
+    scope: 'user',
+  };
+  try {
+    demoUserOperationSettings = {
+      ...demoUserOperationSettings,
+      ...JSON.parse(localStorage.getItem('alwaygit.demo-userOperationSettings') ?? '{}'),
+      scope: 'user',
+    };
+  } catch {
+    /* Use defaults. */
+  }
+  const effectiveDemoOperationSettings = (): OperationSettings => ({
+    ...demoUserOperationSettings,
+    ...Object.fromEntries(
+      operationSettingKeys
+        .filter((key) => localStorage.getItem(`alwaygit.demo-${key}`) !== null)
+        .map((key) => [key, demoOperationSettings[key]]),
+    ),
+    forceDeleteUnmergedBranches:
+      localStorage.getItem('alwaygit.demo-forceDeleteUnmergedBranches') !== null
+        ? demoOperationSettings.forceDeleteUnmergedBranches
+        : demoUserOperationSettings.forceDeleteUnmergedBranches,
+    forceRemoveDirtyWorktrees:
+      localStorage.getItem('alwaygit.demo-forceRemoveDirtyWorktrees') !== null
+        ? demoOperationSettings.forceRemoveDirtyWorktrees
+        : demoUserOperationSettings.forceRemoveDirtyWorktrees,
+    deletionDefaultScopes: {
+      branch:
+        localStorage.getItem('alwaygit.demo-forceDeleteUnmergedBranches') !== null
+          ? 'workspace'
+          : 'user',
+      worktree:
+        localStorage.getItem('alwaygit.demo-forceRemoveDirtyWorktrees') !== null
+          ? 'workspace'
+          : 'user',
+    },
+    scope: 'workspace',
+    workspaceAvailable: true,
+  });
+  async function demoRequest(
+    method: RpcRequest['method'],
+    payload: unknown,
+    repoId?: string,
+  ): Promise<unknown> {
+    await new Promise((resolve) => setTimeout(resolve, 110));
+    const data = demoStores[repoId ?? repo.id] ?? demoStores[repo.id],
+      demoSnapshot = data.snapshot,
+      commits = data.commits;
+    refreshSkipToken(demoSnapshot);
+    if (method === 'worktreeOverview') {
+      const paths = (payload as { paths?: string[] } | undefined)?.paths;
+      return demoSnapshot.worktrees
+        .filter((tree) => !paths || paths.includes(tree.path))
+        .map((tree) => {
+          const changes = tree.path === demoSnapshot.repository.root ? demoSnapshot.changes : [];
+          return {
+            ...tree,
+            branch: tree.branch?.replace(/^refs\/heads\//, ''),
+            state: paths ? 'ready' : 'pending',
+            ...(paths
+              ? {
+                  refreshedAt: Date.now(),
+                  staged: changes.filter(
+                    (change) => !change.untracked && !change.conflict && change.indexStatus !== ' ',
+                  ).length,
+                  unstaged: changes.filter(
+                    (change) =>
+                      !change.untracked && !change.conflict && change.worktreeStatus !== ' ',
+                  ).length,
+                  untracked: changes.filter((change) => change.untracked).length,
+                  conflicts: changes.filter((change) => change.conflict).length,
+                }
+              : {}),
+          };
+        });
+    }
 
-return demoRequest;
+    const resolve = (ref: string) =>
+      ref === 'HEAD'
+        ? demoSnapshot.head!
+        : (demoSnapshot.refs.find((r) => r.name === ref || r.fullName === ref)?.oid ?? ref);
+    if (method === 'workbenchOpenModeSettings' || method === 'saveWorkbenchLocations') {
+      if (method === 'saveWorkbenchLocations') {
+        const settings = saveWorkbenchLocationsSchema.parse(payload);
+        localStorage.setItem('alwaygit.demo-workbenchLocations', JSON.stringify(settings));
+        appliedLocation = settings.default;
+        return settings;
+      }
+      let saved: unknown;
+      try {
+        saved = JSON.parse(localStorage.getItem('alwaygit.demo-workbenchLocations') ?? 'null');
+      } catch {
+        /* Use the legacy default. */
+      }
+      const language = document.documentElement.lang === 'zh-CN' ? 'zh-CN' : 'en';
+      emit({ type: 'showWorkbenchLocations', locations: readWorkbenchLocations(saved), language });
+      return null;
+    }
+    if (method === 'workbenchLocationsClosed') {
+      if (appliedLocation) localStorage.setItem('alwaygit.demo-openedLocation', appliedLocation);
+      appliedLocation = undefined;
+      return null;
+    }
+    if (method === 'interfaceSettings' || method === 'saveInterfaceSettings') {
+      let settings: InterfacePreferences = {};
+      try {
+        settings =
+          JSON.parse(localStorage.getItem('alwaygit.demo-interfaceSettings') ?? 'null') ??
+          legacyInterfaceSettings(
+            JSON.parse(localStorage.getItem('alwaygit.demo-session') ?? '{}'),
+          );
+      } catch {
+        /* Start with default preferences. */
+      }
+      if (method === 'saveInterfaceSettings') {
+        settings = mergeInterfaceSettings(settings, payload as InterfacePreferencesUpdate);
+        localStorage.setItem('alwaygit.demo-interfaceSettings', JSON.stringify(settings));
+        emit({ type: 'interfaceSettingsChanged', settings });
+      }
+      return settings;
+    }
+    if (method === 'terminalList')
+      return [...terminals.values()].map(({ output, sequence, ...session }) => session);
+    if (method === 'terminalCreate') {
+      const shell = (payload as { shell: TerminalShell }).shell;
+      const session: TerminalSnapshot = {
+        id: crypto.randomUUID(),
+        repoId: demoSnapshot.repository.id,
+        cwd: demoSnapshot.repository.root,
+        shell,
+        title: `${shell === 'default' ? 'PowerShell' : shell} ${terminals.size + 1}`,
+        status: 'running',
+        sequence: 0,
+        output: 'Demo terminal — input is displayed here; no commands are executed.\r\n> ',
+      };
+      terminals.set(session.id, session);
+      return session;
+    }
+    if (method.startsWith('terminal')) {
+      const data = payload as { sessionId: string; data?: string; title?: string },
+        session = terminals.get(data.sessionId);
+      if (!session) throw new Error('Demo terminal is closed.');
+      if (method === 'terminalClipboard') return navigator.clipboard.readText();
+      if (method === 'terminalSync') return { ...session };
+      if (method === 'terminalInput') {
+        const output = data.data!.replace(/\r/g, '\r\n> ');
+        session.output += output;
+        emit({
+          type: 'terminalOutput',
+          sessionId: session.id,
+          sequence: ++session.sequence,
+          data: output,
+        });
+      }
+      if (method === 'terminalRename') {
+        session.title = data.title!;
+        emit({ type: 'terminalUpdated', session: { ...session } });
+      }
+      if (method === 'terminalStop') {
+        session.status = 'exited';
+        session.exitCode = 0;
+        emit({ type: 'terminalUpdated', session: { ...session } });
+      }
+      if (method === 'terminalClose') {
+        terminals.delete(session.id);
+        emit({ type: 'terminalClosed', sessionId: session.id });
+      }
+      if (method === 'terminalRestart') {
+        terminals.delete(session.id);
+        emit({ type: 'terminalClosed', sessionId: session.id });
+        const restarted = {
+          ...session,
+          id: crypto.randomUUID(),
+          status: 'running' as const,
+          exitCode: undefined,
+          sequence: 0,
+          output: '> ',
+        };
+        terminals.set(restarted.id, restarted);
+        return restarted;
+      }
+      return null;
+    }
+    if (method === 'operationSettings')
+      return (payload as { scope?: string } | undefined)?.scope === 'user'
+        ? {
+            ...demoUserOperationSettings,
+            workspaceAvailable: true,
+            overridden: demoWorkspaceOverrides,
+          }
+        : effectiveDemoOperationSettings();
+    if (method === 'saveOperationSettings') {
+      const update = payload as OperationSettings;
+      if (update.scope === 'user') {
+        demoUserOperationSettings = { ...demoUserOperationSettings, ...update, scope: 'user' };
+        localStorage.setItem(
+          'alwaygit.demo-userOperationSettings',
+          JSON.stringify(demoUserOperationSettings),
+        );
+      } else {
+        demoWorkspaceOverrides = true;
+        demoOperationSettings = { ...demoOperationSettings, ...update, scope: 'workspace' };
+        for (const key of operationSettingKeys)
+          if (update[key] !== undefined)
+            localStorage.setItem(`alwaygit.demo-${key}`, String(demoOperationSettings[key]));
+      }
+      emit({ type: 'operationSettingsChanged', settings: effectiveDemoOperationSettings() });
+      return update.scope === 'user'
+        ? {
+            ...demoUserOperationSettings,
+            workspaceAvailable: true,
+            overridden: demoWorkspaceOverrides,
+          }
+        : effectiveDemoOperationSettings();
+    }
+    if (method === 'repositories') return [repo, website];
+    if (method === 'pickRepositoryDirectory') return 'D:\\Examples';
+    if (method === 'discoverRepositories') {
+      const scanId = (payload as { scanId: string }).scanId;
+      return {
+        scanId,
+        root: 'D:\\Examples',
+        scanned: 8,
+        found: 3,
+        cancelled: false,
+        candidates: [
+          { key: 'demo-existing', name: repo.name, path: repo.root, existing: true },
+          {
+            key: 'demo-notes',
+            name: 'NotesAnywhere',
+            path: 'D:\\Examples\\NotesAnywhere',
+            existing: false,
+          },
+          {
+            key: 'demo-resume',
+            name: 'SwiftResume',
+            path: 'D:\\Examples\\SwiftResume',
+            existing: false,
+          },
+        ],
+        issues: [],
+      };
+    }
+    if (method === 'cancelRepositoryDiscovery') return null;
+    if (method === 'addRepository') return { added: 2, existing: 0, skipped: 0 };
+    if (method === 'repositoryCollections') return demoCollections;
+    if (method === 'repositoryOrder' || method === 'reorderRepository') {
+      demoOrder = reconcileRepositoryOrder(
+        groupRepositories([repo, website]),
+        demoCollections,
+        demoOrder,
+      );
+      if (method === 'reorderRepository') {
+        const { key, targetKey, position } = payload as ReorderRepository,
+          entries = demoOrder.root.filter((entry) => entry !== key);
+        entries.splice(entries.indexOf(targetKey) + Number(position === 'after'), 0, key);
+        demoOrder.root = entries;
+      }
+      return structuredClone(demoOrder);
+    }
+    if (method === 'createRepositoryCollection') {
+      const collection = {
+        id: `demo-group-${demoCollections.length + 1}`,
+        name: (payload as { name: string }).name,
+      };
+      demoCollections.push(collection);
+      return collection;
+    }
+    if (method === 'repositoryStatuses')
+      return Object.values(demoStores).map(
+        ({ snapshot }) =>
+          ({
+            repositoryId: snapshot.repository.id,
+            branch: snapshot.branch,
+            upstream: snapshot.upstream,
+            ahead: snapshot.ahead,
+            unpushed: snapshot.unpushed ?? snapshot.ahead,
+          }) satisfies RepositoryStatus,
+      );
+    if (method === 'snapshot')
+      return structuredClone({
+        ...demoSnapshot,
+        remoteDestinations: Object.fromEntries(
+          (demoSnapshot.remotes ?? []).map((remote) => [remote, 'd'.repeat(64)]),
+        ),
+        remoteReadDestinations: Object.fromEntries(
+          (demoSnapshot.remotes ?? []).map((remote) => [remote, `demo:${remote}`]),
+        ),
+      });
+    if (method === 'remoteTags') {
+      const remote = (payload as { remote: string }).remote;
+      return {
+        remote,
+        destination: `demo:${remote}`,
+        separatePush: false,
+        refs: { ...(publishedTags.get(`${demoSnapshot.repository.id}:${remote}`) ?? {}) },
+        checkedAt: Date.now(),
+      };
+    }
+    if (method === 'prepareDiscard') {
+      const request = payload as DiscardRequest,
+        selected = request.paths && new Set(request.paths);
+      if (
+        request.scope === 'all' &&
+        (demoSnapshot.operation.kind || demoSnapshot.operation.conflicts)
+      )
+        throw new Error('Finish or abort the active operation before discarding all changes.');
+      const changes = demoSnapshot.changes.filter(
+        (change) =>
+          !change.conflict &&
+          (request.scope === 'all' || change.untracked || change.worktreeStatus !== ' ') &&
+          (!selected || selected.has(change.path)),
+      );
+      const plan: DiscardPlan = {
+        token: crypto.randomUUID(),
+        scope: request.scope === 'all' ? 'all' : 'unstaged',
+        paths: changes.map((change) => change.path),
+        tracked: changes.filter((change) => !change.untracked).length,
+        untracked: changes.filter((change) => change.untracked).length,
+        staged: changes.filter((change) => !change.untracked && change.indexStatus !== ' ').length,
+        branch: demoSnapshot.branch,
+        head: demoSnapshot.head,
+      };
+      discardPlans.set(plan.token, plan);
+      return structuredClone(plan);
+    }
+    if (method === 'history') {
+      const query = (payload ?? {}) as HistoryQuery;
+      const tips = [
+          ...new Set(
+            query.tips?.map(resolve) ??
+              (query.ref ? [resolve(query.ref)] : demoSnapshot.refs.map((r) => r.oid)),
+          ),
+        ],
+        byId = new Map(commits.map((c) => [c.oid, c])),
+        seen = new Set<string>(),
+        pending = [...tips];
+      while (pending.length) {
+        const id = pending.pop()!;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        pending.push(...(byId.get(id)?.parents ?? []));
+      }
+      const filePaths = ['webview/App.tsx', 'webview/styles.css', 'src/git/service.ts'];
+      const result = commits
+        .filter(
+          (c) =>
+            seen.has(c.oid) &&
+            (!query.file || filePaths.includes(query.file.anchorPath ?? query.file.path)) &&
+            (!query.search || c.subject.toLowerCase().includes(query.search.toLowerCase())),
+        )
+        .map((commit) =>
+          query.file
+            ? {
+                ...commit,
+                fileHistory: {
+                  paths: [query.file.path],
+                  graphParents: commit.parents,
+                  parent: commit.parents[0],
+                },
+              }
+            : commit,
+        );
+      const offset = query.offset ?? 0,
+        limit = query.limit ?? 100;
+      const visible = result.slice(offset, offset + limit),
+        head = commits.find((commit) => commit.oid === demoSnapshot.head);
+      return {
+        commits: visible,
+        nextOffset: offset + Math.min(limit, result.length - offset),
+        hasMore: offset + limit < result.length,
+        tips,
+        ...(query.file ? { filePaths: [query.file.path] } : head ? { head } : {}),
+      } satisfies HistoryPage;
+    }
+    if (method === 'prepareInteractiveRebase') {
+      if (demoSnapshot.changes.length || demoSnapshot.operation.kind)
+        throw new Error('Commit or stash changes before Rebase.');
+      const start = (payload as { start?: string })?.start,
+        index = start
+          ? commits.findIndex((commit) => commit.oid === start)
+          : Math.min(19, commits.findIndex((commit) => commit.pushed) - 1);
+      const scope = commits.slice(0, index + 1);
+      if (index < 0 || scope.some((commit) => commit.parents.length !== 1))
+        throw new Error('Choose a linear range excluding merge and root commits.');
+      const plan: RebasePlan = {
+        token: crypto.randomUUID(),
+        branch: demoSnapshot.branch,
+        head: demoSnapshot.head!,
+        base: scope.at(-1)!.parents[0],
+        expires: Date.now() + 900000,
+        commits: scope
+          .slice()
+          .reverse()
+          .map((commit) => ({ oid: commit.oid, subject: commit.subject, message: commit.subject })),
+        published: scope.filter((commit) => commit.pushed).map((commit) => commit.oid),
+      };
+      rebasePlans.set(plan.token, plan);
+      return plan;
+    }
+    if (method === 'reflog')
+      return {
+        token: '11111111-1111-4111-8111-111111111111',
+        ref: (payload as { ref?: string })?.ref ?? 'HEAD',
+        entries: commits.map((commit, index) => ({
+          oid: commit.oid,
+          selector: `HEAD@{${index}}`,
+          description: `commit: ${commit.subject}`,
+          actor: commit.author,
+          email: commit.email,
+          date: new Date(commit.timestamp * 1000).toISOString(),
+        })),
+        recoveries: rebaseRecoveries,
+        nextOffset: commits.length,
+        hasMore: false,
+        truncated: false,
+        checkedAt: Date.now(),
+      };
+    if (
+      [
+        'copyCommitDetails',
+        'tagTargetDetails',
+        'amendDetails',
+        'inspectDetails',
+        'details',
+      ].includes(method)
+    ) {
+      const request = payload as { oid: string; parent?: string };
+      const commit = commits.find((c) => c.oid === resolve(request.oid)) ?? commits[0];
+      return {
+        commit,
+        body: `${commit.subject}\n\nImprove the repository experience with clear status feedback and consistent navigation.\n\nCloses #24`,
+        parent: request.parent ?? commit.parents[0],
+        files: [
+          { path: 'webview/App.tsx', status: 'M' },
+          { path: 'webview/styles.css', status: 'M' },
+          { path: 'src/git/service.ts', status: 'A' },
+        ],
+      } satisfies CommitDetails;
+    }
+    if (method === 'stashDetails') {
+      const request = payload as { oid: string },
+        stash =
+          demoSnapshot.stashes.find((item) => item.oid === request.oid) ?? demoSnapshot.stashes[0],
+        saved = data.saved.get(stash?.oid ?? '') ?? [];
+      const base = commits[0],
+        indexCommit = {
+          ...base,
+          oid: 'e'.repeat(40),
+          parents: [base.oid],
+          subject: `index on ${demoSnapshot.branch}`,
+        },
+        untrackedCommit = {
+          ...base,
+          oid: 'f'.repeat(40),
+          parents: [],
+          subject: `untracked files on ${demoSnapshot.branch}`,
+        },
+        stashCommit = {
+          ...base,
+          oid: stash?.oid ?? request.oid,
+          parents: [
+            base.oid,
+            indexCommit.oid,
+            ...(saved.some((file) => file.untracked) ? [untrackedCommit.oid] : []),
+          ],
+          subject: stash?.subject ?? 'WIP',
+        };
+      const detail = (
+        commit: Commit,
+        parent: string | undefined,
+        files: typeof saved,
+      ): CommitDetails => ({
+        commit,
+        body: commit.subject,
+        ...(parent ? { parent } : {}),
+        files: files.map((file) => ({
+          path: file.path,
+          status: file.untracked
+            ? 'A'
+            : file.indexStatus !== ' ' && file.indexStatus !== '?'
+              ? file.indexStatus
+              : file.worktreeStatus,
+        })),
+      });
+      const working = detail(
+          stashCommit,
+          indexCommit.oid,
+          saved.filter((file) => !file.untracked && file.worktreeStatus !== ' '),
+        ),
+        index = detail(
+          indexCommit,
+          base.oid,
+          saved.filter(
+            (file) => !file.untracked && file.indexStatus !== ' ' && file.indexStatus !== '?',
+          ),
+        ),
+        untracked = saved.some((file) => file.untracked)
+          ? detail(
+              untrackedCommit,
+              undefined,
+              saved.filter((file) => file.untracked),
+            )
+          : undefined;
+      return {
+        commit: stashCommit,
+        body: stashCommit.subject,
+        sections: { working, index, ...(untracked ? { untracked } : {}) },
+        totalFiles: new Set(saved.map((file) => file.path)).size,
+      } satisfies StashDetails;
+    }
+    if (method === 'branchComparison') {
+      const query = payload as BranchComparisonQuery,
+        baseOid = query.baseOid ?? resolve(query.baseRef),
+        targetOid = query.targetOid ?? resolve(query.targetRef);
+      const reachable = (oid: string) => {
+        const seen = new Set<string>(),
+          pending = [oid];
+        while (pending.length) {
+          const id = pending.pop()!;
+          if (seen.has(id)) continue;
+          seen.add(id);
+          pending.push(...(commits.find((commit) => commit.oid === id)?.parents ?? []));
+        }
+        return seen;
+      };
+      const baseReachable = reachable(baseOid),
+        targetReachable = reachable(targetOid),
+        mergeBase = commits.find(
+          (commit) => baseReachable.has(commit.oid) && targetReachable.has(commit.oid),
+        )?.oid;
+      const page = (tip: Set<string>, other: Set<string>, offset = 0) => {
+        const all = commits.filter((commit) => tip.has(commit.oid) && !other.has(commit.oid)),
+          items = all.slice(offset, offset + (query.limit ?? 50));
+        return {
+          commits: items,
+          total: all.length,
+          nextOffset: offset + items.length,
+          hasMore: offset + items.length < all.length,
+        };
+      };
+      const mode = query.mode ?? 'review',
+        diffBase = mode === 'snapshot' ? baseOid : mergeBase;
+      return {
+        baseRef: query.baseRef,
+        targetRef: query.targetRef,
+        baseOid,
+        targetOid,
+        mode,
+        mergeBases: mergeBase ? [mergeBase] : [],
+        mergeBase,
+        diffBase,
+        base: page(baseReachable, targetReachable, query.baseOffset),
+        target: page(targetReachable, baseReachable, query.targetOffset),
+        files:
+          diffBase === targetOid
+            ? []
+            : [
+                { path: 'webview/App.tsx', status: 'M' },
+                { path: 'webview/styles.css', status: 'M' },
+              ],
+      } satisfies BranchComparison;
+    }
+    if (method === 'compare') {
+      const request = payload as { left: string; right: string },
+        left = commits.find((commit) => commit.oid === resolve(request.left)) ?? commits[1],
+        right = commits.find((commit) => commit.oid === resolve(request.right)) ?? commits[0];
+      return {
+        left,
+        right,
+        files: [
+          { path: 'webview/App.tsx', status: 'M' },
+          { path: 'webview/styles.css', status: 'M' },
+          { path: 'src/git/service.ts', status: 'A' },
+        ],
+      } satisfies CommitComparison;
+    }
+    if (method === 'cherryPickCheck') {
+      const { commits: selected } = payload as { commits: string[] };
+      const byId = new Map(commits.map((commit) => [commit.oid, commit])),
+        included = new Set<string>(),
+        pending = demoSnapshot.head ? [demoSnapshot.head] : [];
+      while (pending.length) {
+        const oid = pending.pop()!;
+        if (included.has(oid)) continue;
+        included.add(oid);
+        pending.push(...(byId.get(oid)?.parents ?? []));
+      }
+      return {
+        head: demoSnapshot.head,
+        branch: demoSnapshot.branch,
+        included: selected.filter((oid) => included.has(oid)),
+      };
+    }
+    if (method === 'operationReview')
+      return {
+        kind: demoSnapshot.operation.kind,
+        token: `demo-${demoSnapshot.version}`,
+        files: demoSnapshot.changes
+          .filter((file) => file.indexStatus !== ' ' && !file.untracked)
+          .map((file) => ({ path: file.path, lines: [] })),
+      };
+    if (method === 'pickWorktree') return repo.root + '-new';
+    if (method === 'diffPreview' || method === 'isolatedDiffPreview') {
+      const target = payload as {
+        path: string;
+        kind: string;
+        area?: string;
+        oid?: string;
+        parent?: string;
+        left?: string;
+        right?: string;
+      };
+      return {
+        kind: 'text',
+        path: target.path,
+        leftLabel:
+          target.kind === 'comparison'
+            ? target.left?.slice(0, 8)
+            : target.kind === 'commit'
+              ? 'Parent ' + (target.parent ?? '').slice(0, 8)
+              : target.area === 'staged'
+                ? 'HEAD'
+                : 'Index',
+        rightLabel:
+          target.kind === 'comparison'
+            ? target.right?.slice(0, 8)
+            : target.kind === 'commit'
+              ? target.oid?.slice(0, 8)
+              : target.area === 'staged'
+                ? 'Index'
+                : 'Working Tree',
+        left: 'export function Workbench() {\n  return <HistoryPanel />;\n}\n',
+        right:
+          'export function Workbench() {\n  return (\n    <WorkbenchLayout>\n      <HistoryPanel />\n      <CommitDetails />\n    </WorkbenchLayout>\n  );\n}\n',
+      };
+    }
+    if (method === 'copyText') {
+      const { text } = payload as { text: string };
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(text);
+      else throw new Error('Clipboard is unavailable in this browser.');
+      return null;
+    }
+    if (method === 'action') {
+      const action = payload as GitAction;
+      if (action.type === 'operation.skip') {
+        const operation = demoSnapshot.operation;
+        if (
+          !operation.canSkip ||
+          operation.kind !== action.kind ||
+          !action.skipToken ||
+          action.skipToken !== operation.skipToken
+        )
+          throw new RpcError(
+            'The selected Git operation changed. Refresh and confirm Skip again.',
+            'OPERATION_CHANGED',
+          );
+        if (
+          operation.managedRebase &&
+          operation.managedRebase.step < operation.managedRebase.total
+        ) {
+          operation.managedRebase.step++;
+          operation.managedRebase.stoppedOid = commits[operation.managedRebase.step]?.oid;
+        } else {
+          demoSnapshot.operation = {
+            conflicts: 0,
+            canContinue: false,
+            canAbort: false,
+            canSkip: false,
+          };
+          demoSnapshot.changes = demoSnapshot.changes.filter((change) => !change.conflict);
+        }
+      }
+      if (action.type === 'rebase.interactive') {
+        const plan = rebasePlans.get(action.token);
+        if (
+          !plan ||
+          plan.head !== demoSnapshot.head ||
+          (plan.published.length && !action.acknowledgePublished)
+        )
+          throw new Error('Rebase plan changed or requires acknowledgement.');
+        rebaseRecoveries.unshift({
+          ref: 'refs/alwaygit/rebase-backups/demo-' + Date.now(),
+          oid: plan.head,
+        });
+        rebasePlans.delete(action.token);
+      }
+      if (action.type === 'discard' && action.planToken) {
+        const plan = discardPlans.get(action.planToken);
+        if (!plan) throw new Error('Discard plan expired.');
+        action.paths = plan.paths;
+        action.mode = plan.scope === 'all' ? 'all' : undefined;
+        discardPlans.delete(action.planToken);
+      }
+      if (
+        action.type === 'stage' ||
+        action.type === 'resolve-and-stage' ||
+        action.type === 'unstage' ||
+        action.type === 'discard'
+      ) {
+        demoSnapshot.changes = demoSnapshot.changes.flatMap((change) => {
+          if (!action.paths.includes(change.path)) return [change];
+          if (action.type === 'discard')
+            return action.mode === 'all' || change.indexStatus === ' ' || change.untracked
+              ? []
+              : [{ ...change, worktreeStatus: ' ' }];
+          return [
+            {
+              ...change,
+              indexStatus: action.type !== 'unstage' ? 'M' : ' ',
+              worktreeStatus: action.type !== 'unstage' ? ' ' : 'M',
+              conflict: false,
+              untracked: false,
+            },
+          ];
+        });
+      } else if (action.type === 'commit') {
+        const commit = {
+          ...commits[0],
+          oid: oid(999 + demoSnapshot.version),
+          parents: action.amend ? commits[0].parents : [commits[0].oid],
+          subject: action.message.split('\n')[0],
+          timestamp: Math.floor(Date.now() / 1000),
+          pushed: false,
+        };
+        if (action.amend) commits.shift();
+        commits.unshift(commit);
+        demoSnapshot.head = commit.oid;
+        const branch = demoSnapshot.refs.find(
+          (r) => r.kind === 'local' && r.name === demoSnapshot.branch,
+        );
+        if (branch) branch.oid = commit.oid;
+        demoSnapshot.changes = demoSnapshot.changes.flatMap((c) => {
+          const selected = action.files?.find((file) => file.path === c.path);
+          if (action.files && !selected) return [c];
+          if (selected?.area === 'unstaged') return [];
+          return c.worktreeStatus !== ' ' || c.untracked ? [{ ...c, indexStatus: ' ' }] : [];
+        });
+        demoSnapshot.ahead++;
+      } else if (
+        action.type === 'branch.checkout' ||
+        action.type === 'commit.checkout' ||
+        action.type === 'checkout.stash'
+      ) {
+        if (
+          (action.type === 'commit.checkout' ||
+            (action.type === 'checkout.stash' && action.detached)) &&
+          !demoOperationSettings.allowDetachedHead
+        )
+          throw new RpcError(
+            'Direct Detached HEAD Checkout is disabled. Create and switch to a branch.',
+            'DETACHED_HEAD_DISABLED',
+          );
+        const detached =
+            action.type === 'commit.checkout' ||
+            (action.type === 'checkout.stash' && action.detached),
+          target = action.type === 'branch.checkout' ? action.name : action.target;
+        const occupied = demoSnapshot.worktrees.find(
+          (tree) =>
+            tree.branch?.replace(/^refs\/heads\//, '') === target &&
+            tree.path !== demoSnapshot.repository.root,
+        );
+        if (!detached && occupied)
+          throw new RpcError('Branch is in use by another Worktree.', 'WORKTREE_OCCUPIED', {
+            reason: 'worktree-occupied',
+            target,
+            paths: [],
+            worktreePath: occupied.path,
+          });
+        if (action.type === 'checkout.stash') {
+          const stash = {
+            selector: 'stash@{0}',
+            oid: oid(2000 + demoSnapshot.version),
+            subject: 'WIP before Checkout',
+          };
+          data.saved.set(stash.oid, structuredClone(demoSnapshot.changes));
+          demoSnapshot.stashes.unshift(stash);
+          demoSnapshot.changes = [];
+        }
+        demoSnapshot.branch = detached ? '' : target;
+        demoSnapshot.head = resolve(target);
+        const tree = demoSnapshot.worktrees[0];
+        if (tree) {
+          tree.branch = detached ? undefined : target;
+          tree.detached = !!detached;
+          tree.head = demoSnapshot.head;
+        }
+      } else if (action.type === 'branch.track') {
+        const branches = action.branches.map((branch) => {
+          const source = demoSnapshot.refs.find(
+              (ref) => ref.kind === 'remote' && ref.fullName === branch.source,
+            ),
+            existing = demoSnapshot.refs.find(
+              (ref) => ref.kind === 'local' && ref.name === branch.name,
+            );
+          if (
+            !source ||
+            source.symbolicTarget ||
+            (branch.expectedOid && source.oid !== branch.expectedOid)
+          )
+            throw new Error('Remote branch changed. Refresh and retry.');
+          if (existing && existing.upstream !== source.name)
+            throw new Error('Local branch has a different upstream.');
+          return { branch, source, existing };
+        });
+        const target = branches[0]?.branch.name,
+          occupied =
+            action.checkout &&
+            demoSnapshot.worktrees.find(
+              (tree) =>
+                tree.branch?.replace(/^refs\/heads\//, '') === target &&
+                tree.path !== demoSnapshot.repository.root,
+            );
+        if (occupied)
+          throw new RpcError('Branch is in use by another Worktree.', 'WORKTREE_OCCUPIED', {
+            reason: 'worktree-occupied',
+            target: target!,
+            paths: [],
+            worktreePath: occupied.path,
+          });
+        for (const { branch, source, existing } of branches)
+          if (!existing)
+            demoSnapshot.refs.push({
+              name: branch.name,
+              fullName: 'refs/heads/' + branch.name,
+              kind: 'local',
+              oid: source.oid,
+              upstream: source.name,
+            });
+        if (action.checkout && branches[0]) {
+          demoSnapshot.branch = target!;
+          demoSnapshot.head = branches[0].existing?.oid ?? branches[0].source.oid;
+          demoSnapshot.upstream = branches[0].source.name;
+          const tree = demoSnapshot.worktrees[0];
+          if (tree) {
+            tree.branch = 'refs/heads/' + target;
+            tree.detached = false;
+            tree.head = demoSnapshot.head;
+          }
+        }
+      } else if (action.type === 'branch.create') {
+        const collision = branchNameConflict(
+          action.name,
+          demoSnapshot.refs.filter((ref) => ref.kind === 'local').map((ref) => ref.name),
+        );
+        if (collision)
+          throw new RpcError(branchNameConflictMessage(action.name, collision), 'BRANCH_EXISTS');
+        const target = resolve(action.start ?? 'HEAD');
+        demoSnapshot.refs.push({
+          name: action.name,
+          fullName: `refs/heads/${action.name}`,
+          kind: 'local',
+          oid: target,
+          upstream: action.start?.startsWith('refs/remotes/') ? action.start.slice(13) : undefined,
+        });
+        if (action.checkout) {
+          demoSnapshot.branch = action.name;
+          demoSnapshot.head = target;
+        }
+      } else if (action.type === 'branch.delete')
+        demoSnapshot.refs = demoSnapshot.refs.filter(
+          (r) => !(r.kind === 'local' && action.names.includes(r.name)),
+        );
+      else if (action.type === 'remote.add') {
+        demoSnapshot.remotes = [...new Set([...(demoSnapshot.remotes ?? []), action.name])];
+      } else if (action.type === 'remote.delete')
+        demoSnapshot.refs = demoSnapshot.refs.filter(
+          (r) =>
+            !(
+              r.kind === 'remote' &&
+              action.branches.some((branch) => r.name === `${action.remote}/${branch}`)
+            ),
+        );
+      else if (action.type === 'tag.create') {
+        const oid = resolve(action.target ?? 'HEAD');
+        demoSnapshot.refs.push({
+          name: action.name,
+          fullName: `refs/tags/${action.name}`,
+          kind: 'tag',
+          oid,
+          refOid: oid,
+        });
+        if (action.pushRemote) {
+          const key = `${demoSnapshot.repository.id}:${action.pushRemote}`;
+          publishedTags.set(key, { ...publishedTags.get(key), [`refs/tags/${action.name}`]: oid });
+        }
+      } else if (action.type === 'tag.push') {
+        const key = `${demoSnapshot.repository.id}:${action.remote}`;
+        publishedTags.set(key, {
+          ...publishedTags.get(key),
+          ...Object.fromEntries(
+            demoSnapshot.refs
+              .filter((ref) => ref.kind === 'tag' && action.names.includes(ref.name))
+              .map((ref) => [ref.fullName, ref.refOid ?? ref.oid]),
+          ),
+        });
+      } else if (action.type === 'tag.delete') {
+        const tag = demoSnapshot.refs.find((r) => r.kind === 'tag' && r.name === action.name);
+        if (action.expectedOid && tag?.refOid !== action.expectedOid)
+          throw new RpcError(
+            'The Tag changed. Refresh and reopen the deletion dialog.',
+            'OPERATION_CHANGED',
+          );
+        if (action.remote) {
+          const key = `${demoSnapshot.repository.id}:${action.remote}`,
+            published = publishedTags.get(key) ?? {},
+            ref = `refs/tags/${action.name}`;
+          if (!action.expectedRemoteOid || published[ref] !== action.expectedRemoteOid)
+            throw new RpcError(
+              'The remote Tag changed. Check it again before deletion.',
+              'OPERATION_CHANGED',
+            );
+          const next = { ...published };
+          delete next[ref];
+          publishedTags.set(key, next);
+        }
+        if (action.expectedOid) demoSnapshot.refs = demoSnapshot.refs.filter((r) => r !== tag);
+      } else if (action.type === 'stash.create') {
+        if (action.paths && !action.paths.length)
+          throw new Error('Select at least one file to Stash.');
+        if (demoSnapshot.operation.kind || demoSnapshot.operation.conflicts)
+          throw new Error('Resolve the current Git operation or conflicts before Stash.');
+        const selected = new Set(action.paths),
+          saved = demoSnapshot.changes.filter(
+            (change) =>
+              (!action.paths || selected.has(change.path)) &&
+              (!change.untracked || !!action.paths || !!action.includeUntracked),
+          );
+        if (saved.length) {
+          const stash = {
+            selector: 'stash@{0}',
+            oid: oid(2000 + demoSnapshot.version),
+            subject: action.message || 'WIP on ' + demoSnapshot.branch,
+          };
+          data.saved.set(stash.oid, structuredClone(saved));
+          demoSnapshot.stashes.unshift(stash);
+          const savedPaths = new Set(saved.map((change) => change.path));
+          demoSnapshot.changes = demoSnapshot.changes.filter(
+            (change) => !savedPaths.has(change.path),
+          );
+        }
+      } else if (action.type === 'stash.apply' || action.type === 'stash.drop') {
+        const stash = demoSnapshot.stashes.find((s) => s.selector === action.selector);
+        if (!stash || (action.expectedOid && stash.oid !== action.expectedOid))
+          throw new RpcError('Stash changed. Refresh and retry.', 'STASH_CHANGED');
+        if (action.type === 'stash.apply') {
+          const saved = data.saved.get(stash.oid) ?? [
+              {
+                path: 'webview/styles.css',
+                indexStatus: ' ',
+                worktreeStatus: 'M',
+                conflict: false,
+                untracked: false,
+              },
+            ],
+            collisions = saved.filter(
+              (file) =>
+                file.untracked && demoSnapshot.changes.some((change) => change.path === file.path),
+            );
+          if (collisions.length)
+            throw new RpcError(
+              `Cannot restore the Stash because the project already contains ${collisions[0].path}. Existing files were not overwritten, and the Stash is still saved.`,
+              'STASH_UNTRACKED_CONFLICT',
+              {
+                kind: 'stash-apply',
+                reason: 'untracked-path-exists',
+                paths: collisions.map((file) => file.path),
+                selector: stash.selector,
+                stashOid: stash.oid,
+                stashRetained: true,
+                workingTreeUnchanged: true,
+              },
+            );
+          const overlaps = saved.filter((file) =>
+            demoSnapshot.changes.some((change) => change.path === file.path),
+          );
+          if (overlaps.length)
+            throw new RpcError(
+              'Preflight found conflicting local changes. Restore stopped; the Index and Working Tree are unchanged and the Stash is still saved.',
+              'STASH_RESTORE_CONFLICT',
+              {
+                kind: 'stash-apply',
+                reason: 'restore-conflict',
+                paths: saved.map((file) => file.path),
+                conflictPaths: overlaps.map((file) => file.path),
+                selector: stash.selector,
+                stashOid: stash.oid,
+                stashRetained: true,
+                workingTreeUnchanged: true,
+              },
+            );
+          if (demoSnapshot.operation.kind || demoSnapshot.operation.conflicts)
+            throw new RpcError(
+              'Resolve the current Git operation or conflicts before restoring this Stash.',
+              'STASH_RESTORE_BLOCKED',
+              {
+                kind: 'stash-apply',
+                reason: 'restore-blocked',
+                paths: demoSnapshot.changes
+                  .filter((change) => change.conflict)
+                  .map((change) => change.path),
+                selector: stash.selector,
+                stashOid: stash.oid,
+                stashRetained: true,
+                workingTreeUnchanged: true,
+              },
+            );
+          demoSnapshot.changes.push(...structuredClone(saved));
+        }
+        if (action.type === 'stash.drop' || action.pop)
+          demoSnapshot.stashes = demoSnapshot.stashes.filter((s) => s.oid !== stash.oid);
+      } else if (action.type === 'worktree.add') {
+        if (
+          (action.detach || (!action.branch && !action.newBranch && action.start)) &&
+          !demoOperationSettings.allowDetachedHead
+        )
+          throw new RpcError(
+            'Detached Worktrees are disabled. Choose a branch.',
+            'DETACHED_HEAD_DISABLED',
+          );
+        demoSnapshot.worktrees.push({
+          path: action.path,
+          head: commits[0].oid,
+          branch: action.branch || action.newBranch,
+          bare: false,
+          detached: !!action.detach || (!action.branch && !action.newBranch && !!action.start),
+        });
+      } else if (action.type === 'worktree.remove')
+        demoSnapshot.worktrees = demoSnapshot.worktrees.filter(
+          (w) => !(action.paths ?? [action.path]).includes(w.path),
+        );
+      else if (action.type === 'push') {
+        demoSnapshot.ahead = 0;
+        commits.forEach((commit) => {
+          commit.pushed = true;
+        });
+      } else if (action.type === 'pull') demoSnapshot.behind = 0;
+      demoSnapshot.stashes.forEach((stash, index) => (stash.selector = `stash@{${index}}`));
+      demoSnapshot.version++;
+      refreshSkipToken(demoSnapshot);
+      return structuredClone(demoSnapshot);
+    }
+    return undefined;
+  }
+
+  return demoRequest;
 }

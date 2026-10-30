@@ -3,225 +3,736 @@ import assert from 'node:assert/strict';
 /** Old sessions contain separate Worktree IDs; grouping must not lose their state. */
 export async function verifyWorktrees(browser, url) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-  const errors = []; page.on('pageerror', error => errors.push(error.message));
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
   try {
     await page.addInitScript(() => {
-      const main = { id: 'main', root: 'D:/Projects/App', commonDir: 'D:/Projects/App/.git', name: 'App', mainRoot: 'D:/Projects/App', collectionId: 'client' };
-      const linked = { ...main, id: 'linked', root: 'D:/Projects/App-feature', name: 'App-feature' };
-      const clone = { id: 'clone', root: 'D:/Other/App', commonDir: 'D:/Other/App/.git', name: 'App', mainRoot: 'D:/Other/App' };
+      const main = {
+        id: 'main',
+        root: 'D:/Projects/App',
+        commonDir: 'D:/Projects/App/.git',
+        name: 'App',
+        mainRoot: 'D:/Projects/App',
+        collectionId: 'client',
+      };
+      const linked = {
+        ...main,
+        id: 'linked',
+        root: 'D:/Projects/App-feature',
+        name: 'App-feature',
+      };
+      const clone = {
+        id: 'clone',
+        root: 'D:/Other/App',
+        commonDir: 'D:/Other/App/.git',
+        name: 'App',
+        mainRoot: 'D:/Other/App',
+      };
       const repositories = [linked, main, clone];
-      const session = { version: 2, repoId: linked.id, drafts: { main: 'Main draft', linked: 'Linked draft' }, views: { main: { tab: 'changes', search: '' }, linked: { tab: 'changes', search: '' }, clone: { tab: 'history', search: '', selectedOid: 'c'.repeat(40) } } };
-      const collections=[{id:'client',name:'Client Project'}];
-      const fixture = window.__worktreeFixture = { session, calls: [], version: 0, order:{root:['repository:d:/other/app/.git','collection:client'],collections:{client:['repository:d:/projects/app/.git']}} };
-      window.acquireVsCodeApi = () => ({ getState: () => fixture.session, setState: value => { fixture.session = value; }, postMessage(request) {
-        if (request.method === 'saveSession') { setTimeout(() => window.postMessage({ type: 'response', id: request.id, result: null }, '*'), 0); return; }
-        fixture.calls.push(request);
-        const repo = repositories.find(repo => repo.id === request.repoId) ?? linked;
-        const branch = repo.id === linked.id ? 'feature' : 'main';
-        const worktrees = repo.id === clone.id ? [] : [{ path: main.root, branch: 'main', head: 'a'.repeat(40), bare: false, detached: false }, { path: linked.root, branch: 'feature', head: 'b'.repeat(40), bare: false, detached: false }];
-        let result;
-        if (request.method === 'repositories') result = repositories;
-        if (request.method === 'repositoryCollections') result = structuredClone(collections);
-        if(request.method==='createRepositoryCollection'){const collection={id:'empty-group',name:request.payload.name};collections.push(collection);fixture.order.root.push('collection:'+collection.id);fixture.order.collections[collection.id]=[];result=collection;}
-        if(request.method==='repositoryOrder')result=structuredClone(fixture.order);
-        if(request.method==='reorderRepository'){const {key,targetKey,position}=request.payload,entries=fixture.order.root.filter(entry=>entry!==key);entries.splice(entries.indexOf(targetKey)+Number(position==='after'),0,key);fixture.order.root=entries;result=structuredClone(fixture.order);}
-        if (request.method === 'pickRepositoryDirectory') result = 'D:/Scan';
-        if (request.method === 'discoverRepositories') result = { scanId: request.payload.scanId, root: request.payload.path, scanned: 8, found: 4, cancelled: false, candidates: [{ key: 'existing-app', name: 'App', path: 'D:/Projects/App', existing: true }, { key: 'notes', name: 'NotesAnywhere', path: 'D:/Scan/NotesAnywhere', existing: false }, { key: 'schedule', name: 'SchedulePin', path: 'D:/Scan/SchedulePin', existing: false }, { key: 'resume', name: 'SwiftResume', path: 'D:/Scan/SwiftResume', existing: false }], issues: [{ path: 'D:/Scan/broken', message: 'Invalid Git directory' }] };
-        if (request.method === 'cancelRepositoryDiscovery') result = null;
-        if (request.method === 'addRepository') result = { added: request.payload.keys.length, existing: 0, skipped: 1, collection: request.payload.newCollectionName ? { id: 'created', name: request.payload.newCollectionName } : undefined };
-        if (request.method === 'removeRepositories') result = request.payload.keys.length;
-        if (request.method === 'snapshot') result = { repository: repo, branch, head: undefined, ahead: 0, behind: 0, changes: [{ path: `${repo.id}.txt`, indexStatus: ' ', worktreeStatus: 'M', untracked: false, conflict: false }], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: 'a'.repeat(40) }, { name: 'feature', fullName: 'refs/heads/feature', kind: 'local', oid: 'b'.repeat(40) }], stashes: [], worktrees, operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: ++fixture.version };
-        if (request.method === 'history') result = { commits: [], tips: [], nextOffset: 0, hasMore: false };
-        if (request.method === 'diffPreview') result = { kind: 'text', path: request.payload.path, leftLabel: 'Index', rightLabel: 'Working Tree', left: 'before', right: repo.id };
-        if (request.method === 'openWorktree') {
-          const target = repositories.find(repo => repo.root === request.payload.path);
-          setTimeout(() => window.postMessage({ type: 'selectRepository', repoId: target.id }, '*'), 5);
-        }
-        if(request.method==='discoverRepositories'&&fixture.holdScan){fixture.pendingScan=()=>window.postMessage({type:'response',id:request.id,result},'*');return;}
-        setTimeout(() => window.postMessage({ type: 'response', id: request.id, result }, '*'), 5);
-      } });
+      const session = {
+        version: 2,
+        repoId: linked.id,
+        drafts: { main: 'Main draft', linked: 'Linked draft' },
+        views: {
+          main: { tab: 'changes', search: '' },
+          linked: { tab: 'changes', search: '' },
+          clone: { tab: 'history', search: '', selectedOid: 'c'.repeat(40) },
+        },
+      };
+      const collections = [{ id: 'client', name: 'Client Project' }];
+      const fixture = (window.__worktreeFixture = {
+        session,
+        calls: [],
+        version: 0,
+        order: {
+          root: ['repository:d:/other/app/.git', 'collection:client'],
+          collections: { client: ['repository:d:/projects/app/.git'] },
+        },
+      });
+      window.acquireVsCodeApi = () => ({
+        getState: () => fixture.session,
+        setState: (value) => {
+          fixture.session = value;
+        },
+        postMessage(request) {
+          if (request.method === 'saveSession') {
+            setTimeout(
+              () => window.postMessage({ type: 'response', id: request.id, result: null }, '*'),
+              0,
+            );
+            return;
+          }
+          fixture.calls.push(request);
+          const repo = repositories.find((repo) => repo.id === request.repoId) ?? linked;
+          const branch = repo.id === linked.id ? 'feature' : 'main';
+          const worktrees =
+            repo.id === clone.id
+              ? []
+              : [
+                  {
+                    path: main.root,
+                    branch: 'main',
+                    head: 'a'.repeat(40),
+                    bare: false,
+                    detached: false,
+                  },
+                  {
+                    path: linked.root,
+                    branch: 'feature',
+                    head: 'b'.repeat(40),
+                    bare: false,
+                    detached: false,
+                  },
+                ];
+          let result;
+          if (request.method === 'repositories') result = repositories;
+          if (request.method === 'repositoryCollections') result = structuredClone(collections);
+          if (request.method === 'createRepositoryCollection') {
+            const collection = { id: 'empty-group', name: request.payload.name };
+            collections.push(collection);
+            fixture.order.root.push('collection:' + collection.id);
+            fixture.order.collections[collection.id] = [];
+            result = collection;
+          }
+          if (request.method === 'repositoryOrder') result = structuredClone(fixture.order);
+          if (request.method === 'reorderRepository') {
+            const { key, targetKey, position } = request.payload,
+              entries = fixture.order.root.filter((entry) => entry !== key);
+            entries.splice(entries.indexOf(targetKey) + Number(position === 'after'), 0, key);
+            fixture.order.root = entries;
+            result = structuredClone(fixture.order);
+          }
+          if (request.method === 'pickRepositoryDirectory') result = 'D:/Scan';
+          if (request.method === 'discoverRepositories')
+            result = {
+              scanId: request.payload.scanId,
+              root: request.payload.path,
+              scanned: 8,
+              found: 4,
+              cancelled: false,
+              candidates: [
+                { key: 'existing-app', name: 'App', path: 'D:/Projects/App', existing: true },
+                {
+                  key: 'notes',
+                  name: 'NotesAnywhere',
+                  path: 'D:/Scan/NotesAnywhere',
+                  existing: false,
+                },
+                {
+                  key: 'schedule',
+                  name: 'SchedulePin',
+                  path: 'D:/Scan/SchedulePin',
+                  existing: false,
+                },
+                {
+                  key: 'resume',
+                  name: 'SwiftResume',
+                  path: 'D:/Scan/SwiftResume',
+                  existing: false,
+                },
+              ],
+              issues: [{ path: 'D:/Scan/broken', message: 'Invalid Git directory' }],
+            };
+          if (request.method === 'cancelRepositoryDiscovery') result = null;
+          if (request.method === 'addRepository')
+            result = {
+              added: request.payload.keys.length,
+              existing: 0,
+              skipped: 1,
+              collection: request.payload.newCollectionName
+                ? { id: 'created', name: request.payload.newCollectionName }
+                : undefined,
+            };
+          if (request.method === 'removeRepositories') result = request.payload.keys.length;
+          if (request.method === 'snapshot')
+            result = {
+              repository: repo,
+              branch,
+              head: undefined,
+              ahead: 0,
+              behind: 0,
+              changes: [
+                {
+                  path: `${repo.id}.txt`,
+                  indexStatus: ' ',
+                  worktreeStatus: 'M',
+                  untracked: false,
+                  conflict: false,
+                },
+              ],
+              refs: [
+                { name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: 'a'.repeat(40) },
+                {
+                  name: 'feature',
+                  fullName: 'refs/heads/feature',
+                  kind: 'local',
+                  oid: 'b'.repeat(40),
+                },
+              ],
+              stashes: [],
+              worktrees,
+              operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false },
+              version: ++fixture.version,
+            };
+          if (request.method === 'history')
+            result = { commits: [], tips: [], nextOffset: 0, hasMore: false };
+          if (request.method === 'diffPreview')
+            result = {
+              kind: 'text',
+              path: request.payload.path,
+              leftLabel: 'Index',
+              rightLabel: 'Working Tree',
+              left: 'before',
+              right: repo.id,
+            };
+          if (request.method === 'openWorktree') {
+            const target = repositories.find((repo) => repo.root === request.payload.path);
+            setTimeout(
+              () => window.postMessage({ type: 'selectRepository', repoId: target.id }, '*'),
+              5,
+            );
+          }
+          if (request.method === 'discoverRepositories' && fixture.holdScan) {
+            fixture.pendingScan = () =>
+              window.postMessage({ type: 'response', id: request.id, result }, '*');
+            return;
+          }
+          setTimeout(
+            () => window.postMessage({ type: 'response', id: request.id, result }, '*'),
+            5,
+          );
+        },
+      });
     });
     await page.goto(url);
-    const groups = page.locator('[data-repository-group]'), draft = page.getByRole('textbox', { name: 'Commit message', exact: true });
-    const readDraft = () => page.evaluate(() => { const session = window.__worktreeFixture.session; return session.drafts[session.repoId]; });
-    const expectDraft = async message => { await page.locator('.toolbar .commit-trigger').click(); assert.equal(await draft.inputValue(), message); await page.keyboard.press('Escape'); };
+    const groups = page.locator('[data-repository-group]'),
+      draft = page.getByRole('textbox', { name: 'Commit message', exact: true });
+    const readDraft = () =>
+      page.evaluate(() => {
+        const session = window.__worktreeFixture.session;
+        return session.drafts[session.repoId];
+      });
+    const expectDraft = async (message) => {
+      await page.locator('.toolbar .commit-trigger').click();
+      assert.equal(await draft.inputValue(), message);
+      await page.keyboard.press('Escape');
+    };
     await expectDraft('Linked draft');
-    assert.equal(await groups.count(), 2, 'Main and linked directory share one entry; a separate clone keeps its own entry');
+    assert.equal(
+      await groups.count(),
+      2,
+      'Main and linked directory share one entry; a separate clone keeps its own entry',
+    );
     const sidebar = page.getByTestId('sidebar');
     await sidebar.locator('.repository-collection-heading').waitFor();
-    assert.equal(await sidebar.locator('.codicon-ellipsis').count(), 0, 'Repository rows and groups retain their original context-menu controls');
-    assert.equal(await sidebar.getByText('Ungrouped',{exact:true}).count(),0,'Repositories without a group stay at the root without an Ungrouped folder');
-    const app = sidebar.locator('.repository-collection-members [data-repository-group] .repository-item');
+    assert.equal(
+      await sidebar.locator('.codicon-ellipsis').count(),
+      0,
+      'Repository rows and groups retain their original context-menu controls',
+    );
+    assert.equal(
+      await sidebar.getByText('Ungrouped', { exact: true }).count(),
+      0,
+      'Repositories without a group stay at the root without an Ungrouped folder',
+    );
+    const app = sidebar.locator(
+      '.repository-collection-members [data-repository-group] .repository-item',
+    );
     const clone = page.locator('[data-repository-group] .repository-item[title^="D:/Other/App"]');
-    assert.equal(await app.innerText(), 'App'); assert.equal((await app.getAttribute('title'))?.split('\n')[0], 'D:/Projects/App-feature');
-    assert.equal(await app.getAttribute('aria-current'), 'true'); assert.equal(await app.locator('.repository-icon').count(), 1);
-    assert.equal(await sidebar.getByRole('button', { name: 'Branch feature', exact: true }).getAttribute('aria-current'), 'true');
-    assert.equal(await sidebar.getByRole('button', { name: 'Branch feature', exact: true }).innerText(), 'feature', 'The current branch uses an icon instead of a Current label');
-    assert.equal(await sidebar.locator('[data-worktree-path="D:/Projects/App-feature"]').getAttribute('aria-current'), 'true');
+    assert.equal(await app.innerText(), 'App');
+    assert.equal((await app.getAttribute('title'))?.split('\n')[0], 'D:/Projects/App-feature');
+    assert.equal(await app.getAttribute('aria-current'), 'true');
+    assert.equal(await app.locator('.repository-icon').count(), 1);
+    assert.equal(
+      await sidebar
+        .getByRole('button', { name: 'Branch feature', exact: true })
+        .getAttribute('aria-current'),
+      'true',
+    );
+    assert.equal(
+      await sidebar.getByRole('button', { name: 'Branch feature', exact: true }).innerText(),
+      'feature',
+      'The current branch uses an icon instead of a Current label',
+    );
+    assert.equal(
+      await sidebar
+        .locator('[data-worktree-path="D:/Projects/App-feature"]')
+        .getAttribute('aria-current'),
+      'true',
+    );
     assert.equal(await readDraft(), 'Linked draft');
     await app.click({ button: 'right' });
     await page.getByRole('menuitem', { name: 'Open in New AlwayGit Tab', exact: true }).click();
-    await page.waitForFunction(() => window.__worktreeFixture.calls.some(call => call.method === 'openRepository' && call.payload.newTab === true));
-    assert.equal(await page.evaluate(() => window.__worktreeFixture.calls.find(call => call.method === 'openRepository' && call.payload.newTab === true).repoId), 'linked');
+    await page.waitForFunction(() =>
+      window.__worktreeFixture.calls.some(
+        (call) => call.method === 'openRepository' && call.payload.newTab === true,
+      ),
+    );
+    assert.equal(
+      await page.evaluate(
+        () =>
+          window.__worktreeFixture.calls.find(
+            (call) => call.method === 'openRepository' && call.payload.newTab === true,
+          ).repoId,
+      ),
+      'linked',
+    );
     await app.click({ button: 'right' });
     await page.getByRole('menuitem', { name: 'Copy Repository Path', exact: true }).click();
-    await page.waitForFunction(() => window.__worktreeFixture.calls.some(call => call.method === 'copyText'));
-    assert.equal(await page.evaluate(() => window.__worktreeFixture.calls.find(call => call.method === 'copyText').payload.text), 'D:/Projects/App-feature');
-    await page.locator('.toolbar .commit-trigger').click(); await draft.fill('Edited linked draft'); await page.keyboard.press('Escape');
+    await page.waitForFunction(() =>
+      window.__worktreeFixture.calls.some((call) => call.method === 'copyText'),
+    );
+    assert.equal(
+      await page.evaluate(
+        () =>
+          window.__worktreeFixture.calls.find((call) => call.method === 'copyText').payload.text,
+      ),
+      'D:/Projects/App-feature',
+    );
+    await page.locator('.toolbar .commit-trigger').click();
+    await draft.fill('Edited linked draft');
+    await page.keyboard.press('Escape');
     await clone.click();
     await page.waitForTimeout(30);
-    assert.equal(await page.evaluate(() => window.__worktreeFixture.session.repoId), 'linked', 'Single-clicking a repository must not switch it');
-    assert.equal(await clone.locator('..').getAttribute('aria-selected'), 'true', 'Single-click selects a repository for actions');
+    assert.equal(
+      await page.evaluate(() => window.__worktreeFixture.session.repoId),
+      'linked',
+      'Single-clicking a repository must not switch it',
+    );
+    assert.equal(
+      await clone.locator('..').getAttribute('aria-selected'),
+      'true',
+      'Single-click selects a repository for actions',
+    );
     assert.equal(await app.locator('..').getAttribute('aria-selected'), 'false');
     assert.equal(await readDraft(), 'Edited linked draft');
     await clone.press('Control+a');
-    assert.equal(await page.locator('.repository-list [aria-selected="true"]').count(), await groups.count(), 'Ctrl+A selects every logical repository group');
-    assert.equal(await page.evaluate(() => window.getSelection()?.toString()), '', 'Repository Ctrl+A must not select page text');
+    assert.equal(
+      await page.locator('.repository-list [aria-selected="true"]').count(),
+      await groups.count(),
+      'Ctrl+A selects every logical repository group',
+    );
+    assert.equal(
+      await page.evaluate(() => window.getSelection()?.toString()),
+      '',
+      'Repository Ctrl+A must not select page text',
+    );
     await clone.press('Escape');
-    assert.equal(await page.locator('.repository-list [aria-selected="true"]').count(), 0, 'Escape clears Ctrl+A repository selection');
+    assert.equal(
+      await page.locator('.repository-list [aria-selected="true"]').count(),
+      0,
+      'Escape clears Ctrl+A repository selection',
+    );
     await clone.click();
     await app.click({ modifiers: ['Control'] });
-    assert.equal(await page.locator('.repository-list [aria-selected="true"]').count(), 2, 'Ctrl+click toggles repository action selection');
+    assert.equal(
+      await page.locator('.repository-list [aria-selected="true"]').count(),
+      2,
+      'Ctrl+click toggles repository action selection',
+    );
     await app.click({ button: 'right' });
-    const batchMenu=page.getByTestId('context-menu');
-    assert.deepEqual((await batchMenu.getByRole('menuitem').allTextContents()).map(value=>value.trim()),['Fetch 2 Repositories…','Refresh Status for 2 Repositories','Copy 2 Repository Paths','Move to Repository Group…','Remove from AlwayGit…']);
-    await batchMenu.getByRole('menuitem',{name:'Fetch 2 Repositories…',exact:true}).click();
-    const fetchDialog=page.getByRole('dialog',{name:'Fetch 2 Repositories',exact:true});
-    await fetchDialog.getByText('D:/Projects/App-feature',{exact:true}).waitFor();
-    await fetchDialog.getByText('D:/Other/App',{exact:true}).waitFor();
-    await fetchDialog.getByRole('button',{name:'Fetch',exact:true}).click();
-    await page.getByText('Fetched 2 repositories.',{exact:true}).waitFor();
-    assert.deepEqual(await page.evaluate(() => window.__worktreeFixture.calls.filter(call=>call.method==='action'&&call.payload.type==='fetch').map(call=>call.repoId).sort()),['clone','linked'],'Batch Fetch targets the selected logical repositories');
-    assert.equal(await page.evaluate(() => window.__worktreeFixture.session.repoId),'linked','Batch Fetch does not switch the current repository');
+    const batchMenu = page.getByTestId('context-menu');
+    assert.deepEqual(
+      (await batchMenu.getByRole('menuitem').allTextContents()).map((value) => value.trim()),
+      [
+        'Fetch 2 Repositories…',
+        'Refresh Status for 2 Repositories',
+        'Copy 2 Repository Paths',
+        'Move to Repository Group…',
+        'Remove from AlwayGit…',
+      ],
+    );
+    await batchMenu.getByRole('menuitem', { name: 'Fetch 2 Repositories…', exact: true }).click();
+    const fetchDialog = page.getByRole('dialog', { name: 'Fetch 2 Repositories', exact: true });
+    await fetchDialog.getByText('D:/Projects/App-feature', { exact: true }).waitFor();
+    await fetchDialog.getByText('D:/Other/App', { exact: true }).waitFor();
+    await fetchDialog.getByRole('button', { name: 'Fetch', exact: true }).click();
+    await page.getByText('Fetched 2 repositories.', { exact: true }).waitFor();
+    assert.deepEqual(
+      await page.evaluate(() =>
+        window.__worktreeFixture.calls
+          .filter((call) => call.method === 'action' && call.payload.type === 'fetch')
+          .map((call) => call.repoId)
+          .sort(),
+      ),
+      ['clone', 'linked'],
+      'Batch Fetch targets the selected logical repositories',
+    );
+    assert.equal(
+      await page.evaluate(() => window.__worktreeFixture.session.repoId),
+      'linked',
+      'Batch Fetch does not switch the current repository',
+    );
     await clone.press('Escape');
-    assert.equal(await page.locator('.repository-list [aria-selected="true"]').count(),0,'Escape clears repository action selection');
+    assert.equal(
+      await page.locator('.repository-list [aria-selected="true"]').count(),
+      0,
+      'Escape clears repository action selection',
+    );
     await app.click();
-    await clone.click({modifiers:['Shift']});
-    assert.equal(await page.locator('.repository-list [aria-selected="true"]').count(),2,'Shift+click selects the repository range');
+    await clone.click({ modifiers: ['Shift'] });
+    assert.equal(
+      await page.locator('.repository-list [aria-selected="true"]').count(),
+      2,
+      'Shift+click selects the repository range',
+    );
     await clone.dblclick();
     await page.waitForFunction(() => window.__worktreeFixture.session.repoId === 'clone');
-    assert.equal(await clone.getAttribute('aria-current'), 'true', 'The current repository marker follows a double-click switch');
-    assert.equal(await page.getByTestId('history').locator('[data-working-tree]').getAttribute('aria-selected'), 'true', 'Repository switches select the Working Tree graph node instead of restoring a Commit');
+    assert.equal(
+      await clone.getAttribute('aria-current'),
+      'true',
+      'The current repository marker follows a double-click switch',
+    );
+    assert.equal(
+      await page
+        .getByTestId('history')
+        .locator('[data-working-tree]')
+        .getAttribute('aria-selected'),
+      'true',
+      'Repository switches select the Working Tree graph node instead of restoring a Commit',
+    );
     await page.getByTestId('details').getByText('Working Tree Status', { exact: true }).waitFor();
     await app.press('Enter');
-    await page.waitForFunction(() => window.__worktreeFixture.session.repoId === 'main'); await expectDraft('Main draft');
-    assert.equal(await groups.count(), 2); assert.equal((await app.getAttribute('title'))?.split('\n')[0], 'D:/Projects/App');
+    await page.waitForFunction(() => window.__worktreeFixture.session.repoId === 'main');
+    await expectDraft('Main draft');
+    assert.equal(await groups.count(), 2);
+    assert.equal((await app.getAttribute('title'))?.split('\n')[0], 'D:/Projects/App');
     const mainWorktree = sidebar.locator('[data-worktree-path="D:/Projects/App"]');
     const featureWorktree = sidebar.locator('[data-worktree-path="D:/Projects/App-feature"]');
     assert.equal(await mainWorktree.getAttribute('aria-current'), 'true');
     await featureWorktree.click();
     await page.waitForTimeout(30);
-    assert.equal(await page.evaluate(() => window.__worktreeFixture.session.repoId), 'main', 'Single-clicking a Worktree must not switch it');
+    assert.equal(
+      await page.evaluate(() => window.__worktreeFixture.session.repoId),
+      'main',
+      'Single-clicking a Worktree must not switch it',
+    );
     assert.equal(await readDraft(), 'Main draft');
-    assert.equal(await page.locator('.repository-list [aria-selected="true"]').count(),0,'Selecting a Worktree action scope clears Repository action selection');
+    assert.equal(
+      await page.locator('.repository-list [aria-selected="true"]').count(),
+      0,
+      'Selecting a Worktree action scope clears Repository action selection',
+    );
     await clone.click();
-    assert.equal(await page.locator('.worktree-list [aria-selected="true"]').count(),0,'Selecting a Repository action scope clears Worktree action selection');
+    assert.equal(
+      await page.locator('.worktree-list [aria-selected="true"]').count(),
+      0,
+      'Selecting a Repository action scope clears Worktree action selection',
+    );
     await featureWorktree.press('Control+a');
-    assert.equal(await page.locator('.worktree-list [aria-selected="true"]').count(), 2, 'Ctrl+A selects every Worktree without switching');
-    assert.equal(await page.locator('.repository-list [aria-selected="true"]').count(),0,'Worktree Ctrl+A leaves no stale Repository action selection');
-    assert.equal(await page.evaluate(() => window.getSelection()?.toString()), '', 'Worktree Ctrl+A must not select page text');
+    assert.equal(
+      await page.locator('.worktree-list [aria-selected="true"]').count(),
+      2,
+      'Ctrl+A selects every Worktree without switching',
+    );
+    assert.equal(
+      await page.locator('.repository-list [aria-selected="true"]').count(),
+      0,
+      'Worktree Ctrl+A leaves no stale Repository action selection',
+    );
+    assert.equal(
+      await page.evaluate(() => window.getSelection()?.toString()),
+      '',
+      'Worktree Ctrl+A must not select page text',
+    );
     await featureWorktree.press('Escape');
-    assert.equal(await page.locator('.worktree-list [aria-selected="true"]').count(), 0, 'Escape clears Worktree selection');
+    assert.equal(
+      await page.locator('.worktree-list [aria-selected="true"]').count(),
+      0,
+      'Escape clears Worktree selection',
+    );
     await featureWorktree.dblclick();
-    await page.waitForFunction(() => window.__worktreeFixture.session.repoId === 'linked'); await expectDraft('Edited linked draft');
-    assert.equal(await featureWorktree.getAttribute('aria-current'), 'true', 'The current Worktree marker follows a double-click switch');
+    await page.waitForFunction(() => window.__worktreeFixture.session.repoId === 'linked');
+    await expectDraft('Edited linked draft');
+    assert.equal(
+      await featureWorktree.getAttribute('aria-current'),
+      'true',
+      'The current Worktree marker follows a double-click switch',
+    );
     await mainWorktree.press('Enter');
-    await page.waitForFunction(() => window.__worktreeFixture.session.repoId === 'main'); await expectDraft('Main draft');
-    assert.equal(await page.evaluate(() => window.__worktreeFixture.session.repoId), 'main', 'Enter is the keyboard equivalent for switching Worktrees');
+    await page.waitForFunction(() => window.__worktreeFixture.session.repoId === 'main');
+    await expectDraft('Main draft');
+    assert.equal(
+      await page.evaluate(() => window.__worktreeFixture.session.repoId),
+      'main',
+      'Enter is the keyboard equivalent for switching Worktrees',
+    );
     await featureWorktree.dblclick();
-    await page.waitForFunction(() => window.__worktreeFixture.session.repoId === 'linked'); await expectDraft('Edited linked draft');
+    await page.waitForFunction(() => window.__worktreeFixture.session.repoId === 'linked');
+    await expectDraft('Edited linked draft');
     assert.equal(await groups.count(), 2);
     // Refreshing registered paths must not reset the selected Worktree.
-    await page.evaluate(() => { window.postMessage({ type: 'repositoriesChanged' }, '*'); });
+    await page.evaluate(() => {
+      window.postMessage({ type: 'repositoriesChanged' }, '*');
+    });
     await page.waitForTimeout(80);
     assert.equal(await readDraft(), 'Edited linked draft');
     assert.equal(await page.evaluate(() => window.__worktreeFixture.session.repoId), 'linked');
-    assert.equal(await page.evaluate(() => window.__worktreeFixture.session.drafts.main), 'Main draft');
-    const currentBeforeOrder=await page.evaluate(()=>window.__worktreeFixture.session.repoId);
-    const collectionHeading=sidebar.locator('.repository-collection-heading');
-    const collectionRow=collectionHeading.locator('..');
-    const collectionBox=await collectionRow.boundingBox();
-    await clone.locator('..').locator('.repository-drag-handle').dragTo(collectionRow,{targetPosition:{x:10,y:collectionBox.height-2}});
-    await page.waitForFunction(()=>window.__worktreeFixture.order.root[0]==='collection:client');
-    await page.waitForFunction(()=>document.querySelector('[data-repository-order-key]')?.getAttribute('data-repository-order-key')==='collection:client');
-    assert.equal(await sidebar.locator('[data-repository-order-key]').first().getAttribute('data-repository-order-key'),'collection:client','Dragging persists mixed root order');
-    assert.equal(await page.evaluate(()=>window.__worktreeFixture.session.repoId),currentBeforeOrder,'Sorting does not switch the active repository');
+    assert.equal(
+      await page.evaluate(() => window.__worktreeFixture.session.drafts.main),
+      'Main draft',
+    );
+    const currentBeforeOrder = await page.evaluate(() => window.__worktreeFixture.session.repoId);
+    const collectionHeading = sidebar.locator('.repository-collection-heading');
+    const collectionRow = collectionHeading.locator('..');
+    const collectionBox = await collectionRow.boundingBox();
+    await clone
+      .locator('..')
+      .locator('.repository-drag-handle')
+      .dragTo(collectionRow, { targetPosition: { x: 10, y: collectionBox.height - 2 } });
+    await page.waitForFunction(
+      () => window.__worktreeFixture.order.root[0] === 'collection:client',
+    );
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector('[data-repository-order-key]')
+          ?.getAttribute('data-repository-order-key') === 'collection:client',
+    );
+    assert.equal(
+      await sidebar
+        .locator('[data-repository-order-key]')
+        .first()
+        .getAttribute('data-repository-order-key'),
+      'collection:client',
+      'Dragging persists mixed root order',
+    );
+    assert.equal(
+      await page.evaluate(() => window.__worktreeFixture.session.repoId),
+      currentBeforeOrder,
+      'Sorting does not switch the active repository',
+    );
     await collectionRow.locator('.repository-drag-handle').press('Alt+ArrowDown');
-    await page.waitForFunction(()=>window.__worktreeFixture.order.root[0]==='repository:d:/other/app/.git');
-    await page.waitForFunction(()=>document.querySelector('[data-repository-order-key]')?.getAttribute('data-repository-order-key')==='repository:d:/other/app/.git');
-    assert.equal(await sidebar.locator('[data-repository-order-key]').first().getAttribute('data-repository-order-key'),'repository:d:/other/app/.git','Keyboard movement shares the persisted drag order');
+    await page.waitForFunction(
+      () => window.__worktreeFixture.order.root[0] === 'repository:d:/other/app/.git',
+    );
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector('[data-repository-order-key]')
+          ?.getAttribute('data-repository-order-key') === 'repository:d:/other/app/.git',
+    );
+    assert.equal(
+      await sidebar
+        .locator('[data-repository-order-key]')
+        .first()
+        .getAttribute('data-repository-order-key'),
+      'repository:d:/other/app/.git',
+      'Keyboard movement shares the persisted drag order',
+    );
 
-    assert.deepEqual(await sidebar.locator('.sidebar-heading').first().locator('.sidebar-actions button').evaluateAll(buttons=>buttons.map(button=>button.getAttribute('aria-label'))),['Add…','Refresh repository list and status badges'],'One plus handles repositories and groups');
-    await sidebar.getByRole('button',{name:'Add…',exact:true}).click();
-    const groupDialog=page.getByRole('dialog',{name:'Add',exact:true});
-    await groupDialog.getByRole('tab',{name:'Add Group',exact:true}).click();
-    const groupName=groupDialog.getByLabel('Group name',{exact:true}),createButton=groupDialog.getByRole('button',{name:'Create Group',exact:true});
-    assert.equal(await createButton.isDisabled(),true,'Empty group names cannot submit');
+    assert.deepEqual(
+      await sidebar
+        .locator('.sidebar-heading')
+        .first()
+        .locator('.sidebar-actions button')
+        .evaluateAll((buttons) => buttons.map((button) => button.getAttribute('aria-label'))),
+      ['Add…', 'Refresh repository list and status badges'],
+      'One plus handles repositories and groups',
+    );
+    await sidebar.getByRole('button', { name: 'Add…', exact: true }).click();
+    const groupDialog = page.getByRole('dialog', { name: 'Add', exact: true });
+    await groupDialog.getByRole('tab', { name: 'Add Group', exact: true }).click();
+    const groupName = groupDialog.getByLabel('Group name', { exact: true }),
+      createButton = groupDialog.getByRole('button', { name: 'Create Group', exact: true });
+    assert.equal(await createButton.isDisabled(), true, 'Empty group names cannot submit');
     await groupName.fill('client project');
-    await groupDialog.getByText('A group with this name already exists.',{exact:true}).waitFor();
-    assert.equal(await createButton.isDisabled(),true,'Duplicate group names show an inline error');
+    await groupDialog
+      .getByText('A group with this name already exists.', { exact: true })
+      .waitFor();
+    assert.equal(
+      await createButton.isDisabled(),
+      true,
+      'Duplicate group names show an inline error',
+    );
     await groupName.fill('Other');
-    await groupDialog.getByRole('tab',{name:'Add Repository',exact:true}).click();
-    await groupDialog.getByText('Choose a folder containing repositories',{exact:true}).waitFor();
-    await groupDialog.getByRole('tab',{name:'Add Group',exact:true}).click();
-    assert.equal(await groupName.inputValue(),'Other','Type switching preserves the group draft');
+    await groupDialog.getByRole('tab', { name: 'Add Repository', exact: true }).click();
+    await groupDialog
+      .getByText('Choose a folder containing repositories', { exact: true })
+      .waitFor();
+    await groupDialog.getByRole('tab', { name: 'Add Group', exact: true }).click();
+    assert.equal(await groupName.inputValue(), 'Other', 'Type switching preserves the group draft');
     await groupName.press('Enter');
-    await groupDialog.waitFor({state:'hidden'});
-    await sidebar.locator('.repository-collection-heading').filter({hasText:'Other'}).waitFor();
-    assert.equal(await sidebar.locator('[data-repository-order-key]').last().getAttribute('data-repository-order-key'),'collection:empty-group','New empty groups append below existing root entries');
-    assert.equal(await page.evaluate(()=>window.__worktreeFixture.calls.some(call=>['pickRepositoryDirectory','discoverRepositories','addRepository'].includes(call.method))),false,'Creating an empty group never scans or adds repositories');
-    assert.equal(await page.evaluate(()=>window.__worktreeFixture.session.repoId),currentBeforeOrder,'Creating a group preserves the active Worktree');
-    await sidebar.getByRole('button',{name:'Add…',exact:true}).click();
-    const repositoryDialog=page.getByRole('dialog',{name:'Add',exact:true});
-    await repositoryDialog.getByRole('button',{name:'Choose Folder…',exact:true}).click();
-    await repositoryDialog.getByText('NotesAnywhere',{exact:true}).waitFor();
-    assert.equal(await repositoryDialog.getByRole('checkbox').count(),5,'Result list exposes select-all plus one checkbox per repository');
-    assert.equal(await repositoryDialog.getByRole('checkbox',{name:/App/}).isDisabled(),true,'Already-added repositories are disabled');
-    assert.equal(await repositoryDialog.locator('.repository-candidate[aria-selected="true"]').count(),3,'Available repositories are selected by default');
-    await repositoryDialog.getByRole('checkbox',{name:/NotesAnywhere/}).click();
-    assert.equal(await repositoryDialog.locator('.repository-candidate[aria-selected="true"]').count(),2,'A checkbox click removes only that candidate from the selection');
-    assert.equal(await repositoryDialog.getByRole('checkbox',{name:/NotesAnywhere/}).isChecked(),false,'The browser must not roll back a checkbox toggle after click handling');
-    assert.deepEqual(await repositoryDialog.locator('.repository-candidate').evaluateAll(rows=>rows.map(row=>[row.querySelector('input').checked,row.getAttribute('aria-selected')==='true'])),[[false,false],[false,false],[true,true],[true,true]],'Native checkbox states agree with the actual selection');
-    await repositoryDialog.getByRole('checkbox',{name:/SwiftResume/}).click({modifiers:['Shift']});
-    assert.equal(await repositoryDialog.locator('.repository-candidate[aria-selected="true"]').count(),3,'Shift selects the complete visible candidate range');
-    await repositoryDialog.getByRole('tab',{name:'Add Group',exact:true}).click();
-    await repositoryDialog.getByRole('tab',{name:'Add Repository',exact:true}).click();
-    assert.equal(await repositoryDialog.locator('.repository-candidate[aria-selected="true"]').count(),3,'Type switching preserves completed scan selections');
-    await repositoryDialog.getByRole('button',{name:'New Group',exact:true}).click();
-    await repositoryDialog.getByLabel('New group name',{exact:true}).fill('Imported');
-    const checkedKeys=await repositoryDialog.locator('.repository-candidate input:checked').evaluateAll(inputs=>inputs.map(input=>({NotesAnywhere:'notes',SchedulePin:'schedule',SwiftResume:'resume'}[input.closest('label').querySelector('strong').textContent])));
-    await repositoryDialog.getByRole('button',{name:'Add 3 Repositories',exact:true}).click();
-    await repositoryDialog.waitFor({state:'hidden'});
-    const addCall=await page.evaluate(() => window.__worktreeFixture.calls.find(call=>call.method==='addRepository'));
-    assert.deepEqual(addCall.payload.keys,['notes','schedule','resume']);assert.equal(addCall.payload.newCollectionName,'Imported');
-    assert.deepEqual(addCall.payload.keys,checkedKeys,'The submitted repositories exactly match the visible checked boxes');
-    await page.getByText('Added 3 repositories to Imported. Skipped 1.',{exact:true}).waitFor();
-    await page.evaluate(()=>{window.__worktreeFixture.holdScan=true;});
-    await sidebar.getByRole('button',{name:'Add…',exact:true}).click();
-    await repositoryDialog.getByRole('button',{name:'Choose Folder…',exact:true}).click();
-    await repositoryDialog.getByText('Scanning for Git repositories…',{exact:true}).waitFor();
-    await page.waitForFunction(()=>!!window.__worktreeFixture.pendingScan);
-    await repositoryDialog.getByRole('tab',{name:'Add Group',exact:true}).click();
-    await page.waitForFunction(()=>window.__worktreeFixture.calls.some(call=>call.method==='cancelRepositoryDiscovery'));
-    await page.evaluate(()=>window.__worktreeFixture.pendingScan());
-    await repositoryDialog.getByLabel('Group name',{exact:true}).fill('Cancelled draft');
-    await repositoryDialog.getByRole('tab',{name:'Add Repository',exact:true}).click();
-    await repositoryDialog.getByText('Choose another folder or scan this folder again.',{exact:true}).waitFor();
-    assert.equal(await repositoryDialog.locator('.repository-candidate').count(),0,'A cancelled late scan cannot restore its candidate list');
+    await groupDialog.waitFor({ state: 'hidden' });
+    await sidebar.locator('.repository-collection-heading').filter({ hasText: 'Other' }).waitFor();
+    assert.equal(
+      await sidebar
+        .locator('[data-repository-order-key]')
+        .last()
+        .getAttribute('data-repository-order-key'),
+      'collection:empty-group',
+      'New empty groups append below existing root entries',
+    );
+    assert.equal(
+      await page.evaluate(() =>
+        window.__worktreeFixture.calls.some((call) =>
+          ['pickRepositoryDirectory', 'discoverRepositories', 'addRepository'].includes(
+            call.method,
+          ),
+        ),
+      ),
+      false,
+      'Creating an empty group never scans or adds repositories',
+    );
+    assert.equal(
+      await page.evaluate(() => window.__worktreeFixture.session.repoId),
+      currentBeforeOrder,
+      'Creating a group preserves the active Worktree',
+    );
+    await sidebar.getByRole('button', { name: 'Add…', exact: true }).click();
+    const repositoryDialog = page.getByRole('dialog', { name: 'Add', exact: true });
+    await repositoryDialog.getByRole('button', { name: 'Choose Folder…', exact: true }).click();
+    await repositoryDialog.getByText('NotesAnywhere', { exact: true }).waitFor();
+    assert.equal(
+      await repositoryDialog.getByRole('checkbox').count(),
+      5,
+      'Result list exposes select-all plus one checkbox per repository',
+    );
+    assert.equal(
+      await repositoryDialog.getByRole('checkbox', { name: /App/ }).isDisabled(),
+      true,
+      'Already-added repositories are disabled',
+    );
+    assert.equal(
+      await repositoryDialog.locator('.repository-candidate[aria-selected="true"]').count(),
+      3,
+      'Available repositories are selected by default',
+    );
+    await repositoryDialog.getByRole('checkbox', { name: /NotesAnywhere/ }).click();
+    assert.equal(
+      await repositoryDialog.locator('.repository-candidate[aria-selected="true"]').count(),
+      2,
+      'A checkbox click removes only that candidate from the selection',
+    );
+    assert.equal(
+      await repositoryDialog.getByRole('checkbox', { name: /NotesAnywhere/ }).isChecked(),
+      false,
+      'The browser must not roll back a checkbox toggle after click handling',
+    );
+    assert.deepEqual(
+      await repositoryDialog
+        .locator('.repository-candidate')
+        .evaluateAll((rows) =>
+          rows.map((row) => [
+            row.querySelector('input').checked,
+            row.getAttribute('aria-selected') === 'true',
+          ]),
+        ),
+      [
+        [false, false],
+        [false, false],
+        [true, true],
+        [true, true],
+      ],
+      'Native checkbox states agree with the actual selection',
+    );
+    await repositoryDialog
+      .getByRole('checkbox', { name: /SwiftResume/ })
+      .click({ modifiers: ['Shift'] });
+    assert.equal(
+      await repositoryDialog.locator('.repository-candidate[aria-selected="true"]').count(),
+      3,
+      'Shift selects the complete visible candidate range',
+    );
+    await repositoryDialog.getByRole('tab', { name: 'Add Group', exact: true }).click();
+    await repositoryDialog.getByRole('tab', { name: 'Add Repository', exact: true }).click();
+    assert.equal(
+      await repositoryDialog.locator('.repository-candidate[aria-selected="true"]').count(),
+      3,
+      'Type switching preserves completed scan selections',
+    );
+    await repositoryDialog.getByRole('button', { name: 'New Group', exact: true }).click();
+    await repositoryDialog.getByLabel('New group name', { exact: true }).fill('Imported');
+    const checkedKeys = await repositoryDialog
+      .locator('.repository-candidate input:checked')
+      .evaluateAll((inputs) =>
+        inputs.map(
+          (input) =>
+            ({ NotesAnywhere: 'notes', SchedulePin: 'schedule', SwiftResume: 'resume' })[
+              input.closest('label').querySelector('strong').textContent
+            ],
+        ),
+      );
+    await repositoryDialog.getByRole('button', { name: 'Add 3 Repositories', exact: true }).click();
+    await repositoryDialog.waitFor({ state: 'hidden' });
+    const addCall = await page.evaluate(() =>
+      window.__worktreeFixture.calls.find((call) => call.method === 'addRepository'),
+    );
+    assert.deepEqual(addCall.payload.keys, ['notes', 'schedule', 'resume']);
+    assert.equal(addCall.payload.newCollectionName, 'Imported');
+    assert.deepEqual(
+      addCall.payload.keys,
+      checkedKeys,
+      'The submitted repositories exactly match the visible checked boxes',
+    );
+    await page.getByText('Added 3 repositories to Imported. Skipped 1.', { exact: true }).waitFor();
+    await page.evaluate(() => {
+      window.__worktreeFixture.holdScan = true;
+    });
+    await sidebar.getByRole('button', { name: 'Add…', exact: true }).click();
+    await repositoryDialog.getByRole('button', { name: 'Choose Folder…', exact: true }).click();
+    await repositoryDialog.getByText('Scanning for Git repositories…', { exact: true }).waitFor();
+    await page.waitForFunction(() => !!window.__worktreeFixture.pendingScan);
+    await repositoryDialog.getByRole('tab', { name: 'Add Group', exact: true }).click();
+    await page.waitForFunction(() =>
+      window.__worktreeFixture.calls.some((call) => call.method === 'cancelRepositoryDiscovery'),
+    );
+    await page.evaluate(() => window.__worktreeFixture.pendingScan());
+    await repositoryDialog.getByLabel('Group name', { exact: true }).fill('Cancelled draft');
+    await repositoryDialog.getByRole('tab', { name: 'Add Repository', exact: true }).click();
+    await repositoryDialog
+      .getByText('Choose another folder or scan this folder again.', { exact: true })
+      .waitFor();
+    assert.equal(
+      await repositoryDialog.locator('.repository-candidate').count(),
+      0,
+      'A cancelled late scan cannot restore its candidate list',
+    );
     await repositoryDialog.press('Escape');
-    await repositoryDialog.waitFor({state:'hidden'});
-    assert.equal(await page.evaluate(()=>window.__worktreeFixture.calls.filter(call=>call.method==='addRepository').length),1,'Switching or cancelling never adds partial scan results');
-    assert.equal(await page.evaluate(()=>window.__worktreeFixture.calls.filter(call=>call.method==='createRepositoryCollection').length),1,'Closing the group draft never creates a second group');
-    await clone.click({button:'right'});
-    await page.getByRole('menuitem',{name:'Remove from AlwayGit…',exact:true}).click();
-    const removeDialog=page.getByRole('dialog',{name:'Remove Repository',exact:true});
-    await removeDialog.getByText('Files on disk and Git history will not be deleted. You can add these repositories again later.',{exact:true}).waitFor();
-    await removeDialog.getByRole('button',{name:'Remove Repository',exact:true}).click();
-    await removeDialog.waitFor({state:'hidden'});
-    const removeCall=await page.evaluate(() => window.__worktreeFixture.calls.find(call=>call.method==='removeRepositories'));
-    assert.equal(removeCall.payload.keys.length,1,'Embedded removal confirmation submits only the reviewed repository');
-    await page.getByText('Removed 1 repository from AlwayGit.',{exact:true}).waitFor();
+    await repositoryDialog.waitFor({ state: 'hidden' });
+    assert.equal(
+      await page.evaluate(
+        () =>
+          window.__worktreeFixture.calls.filter((call) => call.method === 'addRepository').length,
+      ),
+      1,
+      'Switching or cancelling never adds partial scan results',
+    );
+    assert.equal(
+      await page.evaluate(
+        () =>
+          window.__worktreeFixture.calls.filter(
+            (call) => call.method === 'createRepositoryCollection',
+          ).length,
+      ),
+      1,
+      'Closing the group draft never creates a second group',
+    );
+    await clone.click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Remove from AlwayGit…', exact: true }).click();
+    const removeDialog = page.getByRole('dialog', { name: 'Remove Repository', exact: true });
+    await removeDialog
+      .getByText(
+        'Files on disk and Git history will not be deleted. You can add these repositories again later.',
+        { exact: true },
+      )
+      .waitFor();
+    await removeDialog.getByRole('button', { name: 'Remove Repository', exact: true }).click();
+    await removeDialog.waitFor({ state: 'hidden' });
+    const removeCall = await page.evaluate(() =>
+      window.__worktreeFixture.calls.find((call) => call.method === 'removeRepositories'),
+    );
+    assert.equal(
+      removeCall.payload.keys.length,
+      1,
+      'Embedded removal confirmation submits only the reviewed repository',
+    );
+    await page.getByText('Removed 1 repository from AlwayGit.', { exact: true }).waitFor();
     assert.deepEqual(errors, []);
-    console.log('ALWAYGIT_WORKTREES_UI_TESTS_PASSED: grouped repository entries, double-click switching, keyboard switching, current markers, legacy Worktree drafts and repository refresh');
-  } finally { await page.close(); }
+    console.log(
+      'ALWAYGIT_WORKTREES_UI_TESTS_PASSED: grouped repository entries, double-click switching, keyboard switching, current markers, legacy Worktree drafts and repository refresh',
+    );
+  } finally {
+    await page.close();
+  }
 }

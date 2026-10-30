@@ -12,43 +12,78 @@ describe('remote Tag status', () => {
     const { root, service, repo } = await fixtures.setup();
     await commitFile(root, 'base.txt', 'base');
     const bare = path.join(root, 'remote.git');
-    await mkdir(bare); await git(bare, 'init', '--bare'); await git(root, 'remote', 'add', 'origin', bare);
-    await git(root, 'tag', 'light'); await git(root, 'tag', '-a', 'annotated', '-m', 'published');
-    await git(root, 'push', 'origin', '--tags'); await git(root, 'tag', 'local');
+    await mkdir(bare);
+    await git(bare, 'init', '--bare');
+    await git(root, 'remote', 'add', 'origin', bare);
+    await git(root, 'tag', 'light');
+    await git(root, 'tag', '-a', 'annotated', '-m', 'published');
+    await git(root, 'push', 'origin', '--tags');
+    await git(root, 'tag', 'local');
     await git(root, 'tag', '-f', '-a', 'annotated', '-m', 'changed annotation');
     const snapshot = await service.snapshot(repo);
-    const result = await service.withReadSignal(new AbortController().signal, () => service.remoteTags(repo, 'origin', snapshot.remoteReadDestinations!.origin));
+    const result = await service.withReadSignal(new AbortController().signal, () =>
+      service.remoteTags(repo, 'origin', snapshot.remoteReadDestinations!.origin),
+    );
     const query = { result, loading: false, attemptedAt: result.checkedAt };
-    const states = Object.fromEntries(snapshot.refs.filter(ref => ref.kind === 'tag').map(ref => [ref.name, tagState(ref, 'origin', query)]));
+    const states = Object.fromEntries(
+      snapshot.refs
+        .filter((ref) => ref.kind === 'tag')
+        .map((ref) => [ref.name, tagState(ref, 'origin', query)]),
+    );
     expect(states).toEqual({ annotated: 'different', light: 'synced', local: 'local' });
-    const entries = tagListEntries(snapshot.refs.filter(ref => ref.kind === 'tag'), 'origin', { ...query, result: { ...result, refs: { ...result.refs, 'refs/tags/remote-only': 'c'.repeat(40) } } });
-    expect(entries.map(entry => [entry.name, entry.state])).toEqual([
-      ['annotated', 'different'], ['light', 'synced'], ['local', 'local'], ['remote-only', 'remote'],
+    const entries = tagListEntries(
+      snapshot.refs.filter((ref) => ref.kind === 'tag'),
+      'origin',
+      {
+        ...query,
+        result: { ...result, refs: { ...result.refs, 'refs/tags/remote-only': 'c'.repeat(40) } },
+      },
+    );
+    expect(entries.map((entry) => [entry.name, entry.state])).toEqual([
+      ['annotated', 'different'],
+      ['light', 'synced'],
+      ['local', 'local'],
+      ['remote-only', 'remote'],
     ]);
-    expect(entries.find(entry => entry.name === 'remote-only')?.remoteOid).toBe('c'.repeat(40));
-    expect(entries.find(entry => entry.name === 'remote-only')?.local).toBeUndefined();
-    expect(Object.keys(result.refs)).toEqual(expect.arrayContaining(['refs/tags/light', 'refs/tags/annotated']));
-    expect(Object.keys(result.refs).some(ref => ref.endsWith('^{}'))).toBe(false);
-    const light = snapshot.refs.find(ref => ref.name === 'light')!;
+    expect(entries.find((entry) => entry.name === 'remote-only')?.remoteOid).toBe('c'.repeat(40));
+    expect(entries.find((entry) => entry.name === 'remote-only')?.local).toBeUndefined();
+    expect(Object.keys(result.refs)).toEqual(
+      expect.arrayContaining(['refs/tags/light', 'refs/tags/annotated']),
+    );
+    expect(Object.keys(result.refs).some((ref) => ref.endsWith('^{}'))).toBe(false);
+    const light = snapshot.refs.find((ref) => ref.name === 'light')!;
     expect(tagState(light, 'origin', { ...query, error: 'offline' })).toBe('synced');
-    expect(tagState(light, 'origin', { ...query, result: { ...result, checkedAt: 0 } })).toBe('synced');
-    expect(await git(root, 'rev-parse', 'annotated^{}')).toBe(await git(bare, 'rev-parse', 'annotated^{}'));
+    expect(tagState(light, 'origin', { ...query, result: { ...result, checkedAt: 0 } })).toBe(
+      'synced',
+    );
+    expect(await git(root, 'rev-parse', 'annotated^{}')).toBe(
+      await git(bare, 'rev-parse', 'annotated^{}'),
+    );
   });
 
   it('handles empty remotes, separate push addresses, address changes and failed queries without changing local Tags', async () => {
     const { root, service, repo } = await fixtures.setup();
-    await commitFile(root, 'base.txt', 'base'); await git(root, 'tag', 'v1');
-    const bare = path.join(root, 'remote.git'); await mkdir(bare); await git(bare, 'init', '--bare');
+    await commitFile(root, 'base.txt', 'base');
+    await git(root, 'tag', 'v1');
+    const bare = path.join(root, 'remote.git');
+    await mkdir(bare);
+    await git(bare, 'init', '--bare');
     await git(root, 'remote', 'add', 'origin', bare);
     await git(root, 'remote', 'set-url', '--push', 'origin', path.join(root, 'publish.git'));
-    const snapshot = await service.snapshot(repo), before = await git(root, 'show-ref', '--tags');
+    const snapshot = await service.snapshot(repo),
+      before = await git(root, 'show-ref', '--tags');
     const empty = await service.remoteTags(repo, 'origin', snapshot.remoteReadDestinations!.origin);
-    expect(empty.refs).toEqual({}); expect(empty.separatePush).toBe(true);
+    expect(empty.refs).toEqual({});
+    expect(empty.separatePush).toBe(true);
     expect(JSON.stringify(empty)).not.toContain(bare.replace(/\\/g, '/'));
     await git(root, 'remote', 'set-url', 'origin', path.join(root, 'missing.git'));
-    await expect(service.remoteTags(repo, 'origin', snapshot.remoteReadDestinations!.origin)).rejects.toMatchObject({ code: 'OPERATION_CHANGED' });
+    await expect(
+      service.remoteTags(repo, 'origin', snapshot.remoteReadDestinations!.origin),
+    ).rejects.toMatchObject({ code: 'OPERATION_CHANGED' });
     const moved = await service.snapshot(repo);
-    await expect(service.remoteTags(repo, 'origin', moved.remoteReadDestinations!.origin)).rejects.toThrow();
+    await expect(
+      service.remoteTags(repo, 'origin', moved.remoteReadDestinations!.origin),
+    ).rejects.toThrow();
     expect(await git(root, 'show-ref', '--tags')).toBe(before);
   });
 });

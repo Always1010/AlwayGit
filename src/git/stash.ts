@@ -1,138 +1,374 @@
 import { translate, message as localizeMessage, MessageError } from '../i18n/index';
 import { createHash } from 'node:crypto';
-import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, readlink, rm, symlink, writeFile } from 'node:fs/promises';
+import {
+  chmod,
+  lstat,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  readlink,
+  rm,
+  symlink,
+  writeFile,
+} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import type { Change, OperationState, Repository, StashApplyBlocker } from '../protocol/types';
 import { requireExactFileScope } from './file-scope';
 
-export interface StashExecution { root?: string; env?: NodeJS.ProcessEnv; config?: Record<string, string>; input?: Buffer; silent?: boolean; isolated?: boolean; allowFailure?: boolean }
+export interface StashExecution {
+  root?: string;
+  env?: NodeJS.ProcessEnv;
+  config?: Record<string, string>;
+  input?: Buffer;
+  silent?: boolean;
+  isolated?: boolean;
+  allowFailure?: boolean;
+}
 type Result = { stdout: Buffer; stderr: Buffer; code: number };
 type Run = (args: string[], execution?: StashExecution) => Promise<Result>;
-type FileState = { kind: 'missing' | 'directory' | 'file' | 'link'; mode?: number; bytes?: Buffer; link?: string; children?: string[] };
-type Captured = { head: string; gitDir: string; index?: Buffer; shared: Map<string, Buffer>; files: Map<string, FileState>; config: string; attributes: Map<string, Buffer>; fingerprint: string };
+type FileState = {
+  kind: 'missing' | 'directory' | 'file' | 'link';
+  mode?: number;
+  bytes?: Buffer;
+  link?: string;
+  children?: string[];
+};
+type Captured = {
+  head: string;
+  gitDir: string;
+  index?: Buffer;
+  shared: Map<string, Buffer>;
+  files: Map<string, FileState>;
+  config: string;
+  attributes: Map<string, Buffer>;
+  fingerprint: string;
+};
 type TreeEntry = { mode: string; oid: string };
 
 export class StashStateError extends Error {
-  constructor(message: string, public readonly code: string, public readonly stdout = '', public readonly stderr = '', public readonly details?: StashApplyBlocker) { super(message); this.name = 'StashStateError'; }
+  constructor(
+    message: string,
+    public readonly code: string,
+    public readonly stdout = '',
+    public readonly stderr = '',
+    public readonly details?: StashApplyBlocker,
+  ) {
+    super(message);
+    this.name = 'StashStateError';
+  }
 }
 
 function paths(buffer: Buffer): string[] {
-  try { return new TextDecoder('utf-8', { fatal: true }).decode(buffer).split('\0').filter(Boolean); }
-  catch { throw new StashStateError(translate('en', "stash.stashRequiresRepositoryPathsEncodedAsUTF8"), 'UNSUPPORTED_PATH_ENCODING'); }
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(buffer).split('\0').filter(Boolean);
+  } catch {
+    throw new StashStateError(
+      translate('en', 'stash.stashRequiresRepositoryPathsEncodedAsUTF8'),
+      'UNSUPPORTED_PATH_ENCODING',
+    );
+  }
 }
 function treeEntries(buffer: Buffer): Map<string, TreeEntry> {
-  return new Map(paths(buffer).map(record => { const tab = record.indexOf('\t'), [mode, , oid] = record.slice(0, tab).split(' '); return [record.slice(tab + 1), { mode, oid }]; }));
+  return new Map(
+    paths(buffer).map((record) => {
+      const tab = record.indexOf('\t'),
+        [mode, , oid] = record.slice(0, tab).split(' ');
+      return [record.slice(tab + 1), { mode, oid }];
+    }),
+  );
 }
-function indexPaths(buffer: Buffer): string[] { return paths(buffer).map(record => record.slice(record.indexOf('\t') + 1)); }
-async function text(run: Run, args: string[], execution?: StashExecution): Promise<string> { return (await run(args, execution)).stdout.toString('utf8').trim(); }
-const absent = (error: unknown) => ['ENOENT', 'ENOTDIR'].includes((error as NodeJS.ErrnoException).code ?? '');
+function indexPaths(buffer: Buffer): string[] {
+  return paths(buffer).map((record) => record.slice(record.indexOf('\t') + 1));
+}
+async function text(run: Run, args: string[], execution?: StashExecution): Promise<string> {
+  return (await run(args, execution)).stdout.toString('utf8').trim();
+}
+const absent = (error: unknown) =>
+  ['ENOENT', 'ENOTDIR'].includes((error as NodeJS.ErrnoException).code ?? '');
 
 // Never follow a working-tree directory symlink while copying the trial state.
 async function fileState(root: string, name: string): Promise<FileState> {
   const parts = name.split('/');
   for (let i = 1; i < parts.length; i++) {
-    try { if ((await lstat(path.join(root, ...parts.slice(0, i)))).isSymbolicLink()) throw new StashStateError(translate('en', "stash.cannotSafelyInspectAPathBelowASymbolicLink", { name: (name) }), 'UNSUPPORTED_STASH_PATH'); }
-    catch (error) { if (absent(error)) return { kind: 'missing' }; throw error; }
+    try {
+      if ((await lstat(path.join(root, ...parts.slice(0, i)))).isSymbolicLink())
+        throw new StashStateError(
+          translate('en', 'stash.cannotSafelyInspectAPathBelowASymbolicLink', { name: name }),
+          'UNSUPPORTED_STASH_PATH',
+        );
+    } catch (error) {
+      if (absent(error)) return { kind: 'missing' };
+      throw error;
+    }
   }
   const target = path.join(root, name);
   try {
     const stat = await lstat(target);
     if (stat.isSymbolicLink()) return { kind: 'link', link: await readlink(target) };
     if (stat.isDirectory()) return { kind: 'directory', children: (await readdir(target)).sort() };
-    if (!stat.isFile() || stat.size > 32 * 1024 * 1024) throw new StashStateError(translate('en', "stash.cannotSafelySnapshotThisFileUnsupportedTypeOrLarger", { name: (name) }), 'UNSUPPORTED_STASH_PATH');
+    if (!stat.isFile() || stat.size > 32 * 1024 * 1024)
+      throw new StashStateError(
+        translate('en', 'stash.cannotSafelySnapshotThisFileUnsupportedTypeOrLarger', {
+          name: name,
+        }),
+        'UNSUPPORTED_STASH_PATH',
+      );
     return { kind: 'file', bytes: await readFile(target), mode: stat.mode & 0o777 };
-  } catch (error) { if (absent(error)) return { kind: 'missing' }; throw error; }
+  } catch (error) {
+    if (absent(error)) return { kind: 'missing' };
+    throw error;
+  }
 }
 
 async function capture(repo: Repository, extraPaths: string[], run: Run): Promise<Captured> {
   const head = await text(run, ['rev-parse', '--verify', 'HEAD']);
   const gitDir = await text(run, ['rev-parse', '--path-format=absolute', '--git-dir']);
   const [headFiles, indexFiles, otherFiles, occupied, configResult] = await Promise.all([
-    run(['ls-tree', '-r', '-z', head]), run(['ls-files', '--stage', '-z']),
+    run(['ls-tree', '-r', '-z', head]),
+    run(['ls-files', '--stage', '-z']),
     run(['ls-files', '--others', '--exclude-standard', '-z']),
-    extraPaths.length ? run(['ls-files', '--others', '-z', '--', ...extraPaths]) : Promise.resolve({ stdout: Buffer.alloc(0) }),
+    extraPaths.length
+      ? run(['ls-files', '--others', '-z', '--', ...extraPaths])
+      : Promise.resolve({ stdout: Buffer.alloc(0) }),
     run(['config', '--null', '--list']),
   ]);
   const config = configResult.stdout.toString('utf8');
-  if (config.split('\0').some(entry => /^core\.sparsecheckout\n(?:true|1|yes|on)$/i.test(entry))) throw new StashStateError(translate('en', "stash.stashPreflightIsNotSupportedInASparseCheckout"), 'UNSUPPORTED_STASH_STATE');
-  const tree = treeEntries(headFiles.stdout), listedNames = [...new Set([...tree.keys(), ...indexPaths(indexFiles.stdout), ...paths(otherFiles.stdout), ...paths(occupied.stdout), ...extraPaths])];
+  if (config.split('\0').some((entry) => /^core\.sparsecheckout\n(?:true|1|yes|on)$/i.test(entry)))
+    throw new StashStateError(
+      translate('en', 'stash.stashPreflightIsNotSupportedInASparseCheckout'),
+      'UNSUPPORTED_STASH_STATE',
+    );
+  const tree = treeEntries(headFiles.stdout),
+    listedNames = [
+      ...new Set([
+        ...tree.keys(),
+        ...indexPaths(indexFiles.stdout),
+        ...paths(otherFiles.stdout),
+        ...paths(occupied.stdout),
+        ...extraPaths,
+      ]),
+    ];
   // Attribute context applies even when it is ignored or outside the selected scope.
   // Record absent sources too, so creating an attribute file invalidates cleanup.
   const attributeNames = new Set(['.gitattributes']);
   for (const name of listedNames) {
     const parts = name.split('/');
-    for (let i = 1; i < parts.length; i++) attributeNames.add(`${parts.slice(0, i).join('/')}/.gitattributes`);
+    for (let i = 1; i < parts.length; i++)
+      attributeNames.add(`${parts.slice(0, i).join('/')}/.gitattributes`);
   }
   const names = [...new Set([...listedNames, ...attributeNames])].sort();
-  const gitlinks = new Set([...tree].filter(([, entry]) => entry.mode === '160000').map(([name]) => name));
-  for (const record of paths(indexFiles.stdout)) if (record.startsWith('160000 ')) gitlinks.add(record.slice(record.indexOf('\t') + 1));
-  if (extraPaths.some(name => gitlinks.has(name))) throw new StashStateError(translate('en', "stash.stashIsolationCannotSaveOrRestoreASubmoduleState"), 'UNSUPPORTED_STASH_STATE');
+  const gitlinks = new Set(
+    [...tree].filter(([, entry]) => entry.mode === '160000').map(([name]) => name),
+  );
+  for (const record of paths(indexFiles.stdout))
+    if (record.startsWith('160000 ')) gitlinks.add(record.slice(record.indexOf('\t') + 1));
+  if (extraPaths.some((name) => gitlinks.has(name)))
+    throw new StashStateError(
+      translate('en', 'stash.stashIsolationCannotSaveOrRestoreASubmoduleState'),
+      'UNSUPPORTED_STASH_STATE',
+    );
   let index: Buffer | undefined;
-  try { index = await readFile(await text(run, ['rev-parse', '--path-format=absolute', '--git-path', 'index'])); } catch (error) { if (!absent(error)) throw error; }
+  try {
+    index = await readFile(
+      await text(run, ['rev-parse', '--path-format=absolute', '--git-path', 'index']),
+    );
+  } catch (error) {
+    if (!absent(error)) throw error;
+  }
   const attributes = new Map<string, Buffer>();
   for (const variable of ['GIT_ATTR_SYSTEM', 'GIT_ATTR_GLOBAL']) {
     const result = await run(['var', variable], { allowFailure: true });
-    if (result.code && result.stderr.length) throw new StashStateError(translate('en', "stash.stashIsolationNeedsGit243OrNewerTo"), 'UNSUPPORTED_STASH_STATE');
+    if (result.code && result.stderr.length)
+      throw new StashStateError(
+        translate('en', 'stash.stashIsolationNeedsGit243OrNewerTo'),
+        'UNSUPPORTED_STASH_STATE',
+      );
     const sources = result.stdout.toString('utf8').trim().split(/\r?\n/).filter(Boolean);
     const chunks: Buffer[] = [];
-    for (const source of sources.reverse()) try { const bytes = await readFile(path.resolve(repo.root, source)); attributes.set(source, bytes); chunks.push(bytes, Buffer.from('\n')); } catch (error) { if (!absent(error)) throw error; }
+    for (const source of sources.reverse())
+      try {
+        const bytes = await readFile(path.resolve(repo.root, source));
+        attributes.set(source, bytes);
+        chunks.push(bytes, Buffer.from('\n'));
+      } catch (error) {
+        if (!absent(error)) throw error;
+      }
     attributes.set(variable, Buffer.concat(chunks));
   }
-  const infoAttributes = await text(run, ['rev-parse', '--path-format=absolute', '--git-path', 'info/attributes']);
-  try { attributes.set('info', await readFile(infoAttributes)); } catch (error) { if (!absent(error)) throw error; }
+  const infoAttributes = await text(run, [
+    'rev-parse',
+    '--path-format=absolute',
+    '--git-path',
+    'info/attributes',
+  ]);
+  try {
+    attributes.set('info', await readFile(infoAttributes));
+  } catch (error) {
+    if (!absent(error)) throw error;
+  }
   const shared = new Map<string, Buffer>();
   for (const directory of [...new Set([gitDir, repo.commonDir])]) {
-    for (const name of await readdir(directory)) if (/^sharedindex\.[a-f0-9]+$/.test(name)) shared.set(name, await readFile(path.join(directory, name)));
+    for (const name of await readdir(directory))
+      if (/^sharedindex\.[a-f0-9]+$/.test(name))
+        shared.set(name, await readFile(path.join(directory, name)));
   }
-  const files = new Map<string, FileState>(), hash = createHash('sha256').update(head).update(index ?? '<missing-index>').update(config);
+  const files = new Map<string, FileState>(),
+    hash = createHash('sha256')
+      .update(head)
+      .update(index ?? '<missing-index>')
+      .update(config);
   let size = 0;
   for (const name of names) {
     // Gitlinks refer to separate repositories; their inner contents are never copied.
     if (gitlinks.has(name)) continue;
-    const state = await fileState(repo.root, name); files.set(name, state);
-    if (attributeNames.has(name) && state.kind === 'link') throw new StashStateError(translate('en', "stash.cannotSafelySnapshotASymbolicLinkUsedAsAn", { name: (name) }), 'UNSUPPORTED_STASH_PATH');
-    if (extraPaths.includes(name) && state.kind === 'directory' && state.children?.some(child => !names.some(candidate => candidate === `${name}/${child}` || candidate.startsWith(`${name}/${child}/`)))) throw new StashStateError(translate('en', "stash.cannotSafelyInspectTheDirectoryOccupyingMoveItBefore", { name: (name) }), 'UNSUPPORTED_STASH_PATH');
+    const state = await fileState(repo.root, name);
+    files.set(name, state);
+    if (attributeNames.has(name) && state.kind === 'link')
+      throw new StashStateError(
+        translate('en', 'stash.cannotSafelySnapshotASymbolicLinkUsedAsAn', { name: name }),
+        'UNSUPPORTED_STASH_PATH',
+      );
+    if (
+      extraPaths.includes(name) &&
+      state.kind === 'directory' &&
+      state.children?.some(
+        (child) =>
+          !names.some(
+            (candidate) =>
+              candidate === `${name}/${child}` || candidate.startsWith(`${name}/${child}/`),
+          ),
+      )
+    )
+      throw new StashStateError(
+        translate('en', 'stash.cannotSafelyInspectTheDirectoryOccupyingMoveItBefore', {
+          name: name,
+        }),
+        'UNSUPPORTED_STASH_PATH',
+      );
     size += state.bytes?.length ?? 0;
-    if (size > 128 * 1024 * 1024) throw new StashStateError(translate('en', "stash.theWorkingStateIsLargerThanThe128MiB"), 'UNSUPPORTED_STASH_STATE');
-    hash.update(JSON.stringify([name, state.kind, state.mode, state.link, state.children])); if (state.bytes) hash.update(state.bytes);
+    if (size > 128 * 1024 * 1024)
+      throw new StashStateError(
+        translate('en', 'stash.theWorkingStateIsLargerThanThe128MiB'),
+        'UNSUPPORTED_STASH_STATE',
+      );
+    hash.update(JSON.stringify([name, state.kind, state.mode, state.link, state.children]));
+    if (state.bytes) hash.update(state.bytes);
   }
   for (const [name, bytes] of shared) hash.update(name).update(bytes);
   for (const [name, bytes] of attributes) hash.update(name).update(bytes);
-  return { head, gitDir, index, shared, files, config, attributes, fingerprint: hash.digest('hex') };
+  return {
+    head,
+    gitDir,
+    index,
+    shared,
+    files,
+    config,
+    attributes,
+    fingerprint: hash.digest('hex'),
+  };
 }
 
 async function checkAttributes(names: string[], run: Run, source?: string): Promise<void> {
   if (!names.length) return;
-  const values = paths((await run(['check-attr', ...(source ? [`--source=${source}`] : []), '-z', 'filter', 'merge', '--', ...names])).stdout);
+  const values = paths(
+    (
+      await run([
+        'check-attr',
+        ...(source ? [`--source=${source}`] : []),
+        '-z',
+        'filter',
+        'merge',
+        '--',
+        ...names,
+      ])
+    ).stdout,
+  );
   for (let i = 0; i < values.length; i += 3) {
     const [name, attribute, value] = values.slice(i, i + 3);
-    if ((attribute === 'filter' && !['unspecified', 'unset'].includes(value)) || (attribute === 'merge' && !['unspecified', 'unset', 'set', 'text', 'binary', 'union'].includes(value))) {
-      throw new StashStateError(translate('en', "stash.stashIsolationCannotSafelyRunAnExternalDriverFor", { attribute: (attribute), name: (name) }), 'UNSUPPORTED_STASH_STATE');
+    if (
+      (attribute === 'filter' && !['unspecified', 'unset'].includes(value)) ||
+      (attribute === 'merge' &&
+        !['unspecified', 'unset', 'set', 'text', 'binary', 'union'].includes(value))
+    ) {
+      throw new StashStateError(
+        translate('en', 'stash.stashIsolationCannotSafelyRunAnExternalDriverFor', {
+          attribute: attribute,
+          name: name,
+        }),
+        'UNSUPPORTED_STASH_STATE',
+      );
     }
   }
 }
 
-async function makeSandbox(repo: Repository, state: Captured, run: Run): Promise<{ root: string; git: Run; dispose(): Promise<void> }> {
-  const base = path.resolve(os.tmpdir()), root = await mkdtemp(path.join(base, 'alwaygit-stash-'));
+async function makeSandbox(
+  repo: Repository,
+  state: Captured,
+  run: Run,
+): Promise<{ root: string; git: Run; dispose(): Promise<void> }> {
+  const base = path.resolve(os.tmpdir()),
+    root = await mkdtemp(path.join(base, 'alwaygit-stash-'));
   const dispose = async () => {
-    if (path.dirname(path.resolve(root)) !== base || !path.basename(root).startsWith('alwaygit-stash-')) throw new MessageError(localizeMessage("stash.unsafeStashTemporaryDirectory"));
+    if (
+      path.dirname(path.resolve(root)) !== base ||
+      !path.basename(root).startsWith('alwaygit-stash-')
+    )
+      throw new MessageError(localizeMessage('stash.unsafeStashTemporaryDirectory'));
     await rm(root, { recursive: true, force: true, maxRetries: 5 });
   };
-  const git: Run = (args, execution = {}) => run(args, { ...execution, root, silent: true, isolated: true, env: { GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: path.join(root, 'no-global-config'), GIT_ATTR_NOSYSTEM: '1', ...execution.env } });
+  const git: Run = (args, execution = {}) =>
+    run(args, {
+      ...execution,
+      root,
+      silent: true,
+      isolated: true,
+      env: {
+        GIT_CONFIG_NOSYSTEM: '1',
+        GIT_CONFIG_GLOBAL: path.join(root, 'no-global-config'),
+        GIT_ATTR_NOSYSTEM: '1',
+        ...execution.env,
+      },
+    });
   try {
     const format = await text(run, ['rev-parse', '--show-object-format']);
     await git(['init', '--quiet', '--template=', `--object-format=${format}`]);
-    const objects = await text(run, ['rev-parse', '--path-format=absolute', '--git-path', 'objects']);
-    await writeFile(path.join(root, '.git', 'objects', 'info', 'alternates'), `${JSON.stringify(objects.replace(/\\/g, '/'))}\n`);
+    const objects = await text(run, [
+      'rev-parse',
+      '--path-format=absolute',
+      '--git-path',
+      'objects',
+    ]);
+    await writeFile(
+      path.join(root, '.git', 'objects', 'info', 'alternates'),
+      `${JSON.stringify(objects.replace(/\\/g, '/'))}\n`,
+    );
     await writeFile(path.join(root, '.git', 'HEAD'), `${state.head}\n`);
     for (const entry of state.config.split('\0').filter(Boolean)) {
-      const split = entry.indexOf('\n'), key = split < 0 ? entry : entry.slice(0, split), value = split < 0 ? 'true' : entry.slice(split + 1);
-      if (key.toLowerCase() === 'merge.default' && !['text', 'binary', 'union'].includes(value)) throw new StashStateError(translate('en', "stash.stashIsolationCannotRunAnExternalDefaultMergeDriver"), 'UNSUPPORTED_STASH_STATE');
-      if (/^(?:user\.(?:name|email)|core\.(?:autocrlf|eol|safecrlf|filemode|symlinks|ignorecase|precomposeunicode|checkroundtripencoding)|merge\.(?:default|conflictstyle|renamelimit|renames|renormalize))$/i.test(key)) await git(['config', '--local', '--replace-all', key, value]);
+      const split = entry.indexOf('\n'),
+        key = split < 0 ? entry : entry.slice(0, split),
+        value = split < 0 ? 'true' : entry.slice(split + 1);
+      if (key.toLowerCase() === 'merge.default' && !['text', 'binary', 'union'].includes(value))
+        throw new StashStateError(
+          translate('en', 'stash.stashIsolationCannotRunAnExternalDefaultMergeDriver'),
+          'UNSUPPORTED_STASH_STATE',
+        );
+      if (
+        /^(?:user\.(?:name|email)|core\.(?:autocrlf|eol|safecrlf|filemode|symlinks|ignorecase|precomposeunicode|checkroundtripencoding)|merge\.(?:default|conflictstyle|renamelimit|renames|renormalize))$/i.test(
+          key,
+        )
+      )
+        await git(['config', '--local', '--replace-all', key, value]);
     }
     const globalAttributes = path.join(root, '.git', 'global-attributes');
-    await writeFile(globalAttributes, Buffer.concat([state.attributes.get('GIT_ATTR_SYSTEM') ?? Buffer.alloc(0), state.attributes.get('GIT_ATTR_GLOBAL') ?? Buffer.alloc(0)]));
+    await writeFile(
+      globalAttributes,
+      Buffer.concat([
+        state.attributes.get('GIT_ATTR_SYSTEM') ?? Buffer.alloc(0),
+        state.attributes.get('GIT_ATTR_GLOBAL') ?? Buffer.alloc(0),
+      ]),
+    );
     await git(['config', '--local', 'core.attributesFile', globalAttributes]);
     if (state.attributes.has('info')) {
       await mkdir(path.join(root, '.git', 'info'), { recursive: true });
@@ -153,16 +389,51 @@ async function makeSandbox(repo: Repository, state: Captured, run: Run): Promise
       await mkdir(path.dirname(target), { recursive: true });
       if (file.kind === 'directory') await mkdir(target, { recursive: true });
       else if (file.kind === 'link') await symlink(file.link!, target);
-      else { await writeFile(target, file.bytes!); if (process.platform !== 'win32') await chmod(target, file.mode!); }
+      else {
+        await writeFile(target, file.bytes!);
+        if (process.platform !== 'win32') await chmod(target, file.mode!);
+      }
     }
     await git(['update-index', '--refresh'], { allowFailure: true });
     return { root, git, dispose };
-  } catch (error) { await dispose(); throw error; }
+  } catch (error) {
+    await dispose();
+    throw error;
+  }
 }
 
-export async function preflightStash(repo: Repository, selector: string, stashOid: string, affected: string[], operation: OperationState, run: Run): Promise<void> {
-  const block = (reason: StashApplyBlocker['reason'], names: string[], message: string, output = '', conflictPaths?: string[]) => new StashStateError(message, 'STASH_RESTORE_BLOCKED', '', output, { kind: 'stash-apply', reason, paths: names, ...(conflictPaths ? { conflictPaths } : {}), selector, stashOid, stashRetained: true, workingTreeUnchanged: true, ...(output ? { output } : {}) });
-  if (operation.kind || operation.conflicts) throw block('restore-blocked', affected, translate('en', "stash.finishTheActiveGitOperationOrResolveExistingConflicts"));
+export async function preflightStash(
+  repo: Repository,
+  selector: string,
+  stashOid: string,
+  affected: string[],
+  operation: OperationState,
+  run: Run,
+): Promise<void> {
+  const block = (
+    reason: StashApplyBlocker['reason'],
+    names: string[],
+    message: string,
+    output = '',
+    conflictPaths?: string[],
+  ) =>
+    new StashStateError(message, 'STASH_RESTORE_BLOCKED', '', output, {
+      kind: 'stash-apply',
+      reason,
+      paths: names,
+      ...(conflictPaths ? { conflictPaths } : {}),
+      selector,
+      stashOid,
+      stashRetained: true,
+      workingTreeUnchanged: true,
+      ...(output ? { output } : {}),
+    });
+  if (operation.kind || operation.conflicts)
+    throw block(
+      'restore-blocked',
+      affected,
+      translate('en', 'stash.finishTheActiveGitOperationOrResolveExistingConflicts'),
+    );
   let sandbox: Awaited<ReturnType<typeof makeSandbox>> | undefined;
   try {
     await checkAttributes(affected, run);
@@ -170,74 +441,192 @@ export async function preflightStash(repo: Repository, selector: string, stashOi
     await checkAttributes(affected, run, `${stashOid}^2`);
     const before = await capture(repo, affected, run);
     sandbox = await makeSandbox(repo, before, run);
-    try { await sandbox.git(['stash', 'apply', '--index', stashOid]); }
-    catch (error) {
+    try {
+      await sandbox.git(['stash', 'apply', '--index', stashOid]);
+    } catch (error) {
       const failure = error as { stdout?: string; stderr?: string; message?: string };
-      const output = [failure.stdout, failure.stderr].filter(Boolean).join('\n') || failure.message || translate('en', "stash.stashRestorationFailedInTheIsolatedTrial");
-      const conflicts = paths((await sandbox.git(['diff', '--name-only', '--diff-filter=U', '-z'])).stdout);
-      throw block(conflicts.length ? 'restore-conflict' : 'restore-blocked', affected, translate('en', "stash.theStashCouldNotBeRestoredInTheIsolated"), output, conflicts);
+      const output =
+        [failure.stdout, failure.stderr].filter(Boolean).join('\n') ||
+        failure.message ||
+        translate('en', 'stash.stashRestorationFailedInTheIsolatedTrial');
+      const conflicts = paths(
+        (await sandbox.git(['diff', '--name-only', '--diff-filter=U', '-z'])).stdout,
+      );
+      throw block(
+        conflicts.length ? 'restore-conflict' : 'restore-blocked',
+        affected,
+        translate('en', 'stash.theStashCouldNotBeRestoredInTheIsolated'),
+        output,
+        conflicts,
+      );
     }
-    if (before.fingerprint !== (await capture(repo, affected, run)).fingerprint) throw block('state-changed', affected, translate('en', "stash.theProjectChangedDuringStashInspectionRefreshAndRetry"));
+    if (before.fingerprint !== (await capture(repo, affected, run)).fingerprint)
+      throw block(
+        'state-changed',
+        affected,
+        translate('en', 'stash.theProjectChangedDuringStashInspectionRefreshAndRetry'),
+      );
   } catch (error) {
     if (error instanceof StashStateError && error.details) throw error;
     const failure = error as { stdout?: string; stderr?: string };
-    const output = [failure?.stdout, failure?.stderr].filter(Boolean).join('\n') || (error instanceof Error ? error.message : String(error));
-    throw block('restore-blocked', affected, translate('en', "stash.stashPreflightCouldNotCompleteTheIndexAndWorking"), output);
-  } finally { await sandbox?.dispose(); }
+    const output =
+      [failure?.stdout, failure?.stderr].filter(Boolean).join('\n') ||
+      (error instanceof Error ? error.message : String(error));
+    throw block(
+      'restore-blocked',
+      affected,
+      translate('en', 'stash.stashPreflightCouldNotCompleteTheIndexAndWorking'),
+      output,
+    );
+  } finally {
+    await sandbox?.dispose();
+  }
 }
 
-async function scopedTree(git: Run, head: string, source: string, names: string[], indexFile: string): Promise<string> {
+async function scopedTree(
+  git: Run,
+  head: string,
+  source: string,
+  names: string[],
+  indexFile: string,
+): Promise<string> {
   const env = { GIT_INDEX_FILE: indexFile };
   await git(['read-tree', head], { env });
   const entries = treeEntries((await git(['ls-tree', '-r', '-z', source])).stdout);
   const zero = '0'.repeat(head.length);
-  const records = names.map(name => { const entry = entries.get(name); return `${entry ? `${entry.mode} ${entry.oid}` : `0 ${zero}`}\t${name}\0`; });
+  const records = names.map((name) => {
+    const entry = entries.get(name);
+    return `${entry ? `${entry.mode} ${entry.oid}` : `0 ${zero}`}\t${name}\0`;
+  });
   await git(['update-index', '-z', '--index-info'], { env, input: Buffer.from(records.join('')) });
-  return text(git, [translate('en', "stash.writeTree")], { env });
+  return text(git, [translate('en', 'stash.writeTree')], { env });
 }
 
-export async function createSelectedStash(repo: Repository, selected: string[], message: string | undefined, changes: Change[], run: Run): Promise<void> {
+export async function createSelectedStash(
+  repo: Repository,
+  selected: string[],
+  message: string | undefined,
+  changes: Change[],
+  run: Run,
+): Promise<void> {
   const names = new Set(selected);
-  for (const name of selected) if (!changes.some(change => change.path === name || change.originalPath === name)) throw new StashStateError(translate('en', "stash.theSelectedFileNoLongerHasChangesRefreshAnd", { name: (name) }), 'STASH_SELECTION_CHANGED');
+  for (const name of selected)
+    if (!changes.some((change) => change.path === name || change.originalPath === name))
+      throw new StashStateError(
+        translate('en', 'stash.theSelectedFileNoLongerHasChangesRefreshAnd', { name: name }),
+        'STASH_SELECTION_CHANGED',
+      );
   // A rename is a pair of paths even when the file list displays only its destination.
-  for (const change of changes) if (change.originalPath && (names.has(change.path) || names.has(change.originalPath))) { names.add(change.path); names.add(change.originalPath); }
+  for (const change of changes)
+    if (change.originalPath && (names.has(change.path) || names.has(change.originalPath))) {
+      names.add(change.path);
+      names.add(change.originalPath);
+    }
   const scope = [...names].sort();
-  await checkAttributes([...new Set([...changes.filter(change => !change.untracked).map(change => change.path), ...scope])], run);
+  await checkAttributes(
+    [
+      ...new Set([
+        ...changes.filter((change) => !change.untracked).map((change) => change.path),
+        ...scope,
+      ]),
+    ],
+    run,
+  );
   const before = await capture(repo, scope, run);
   await requireExactFileScope(repo, scope, run, before.head);
   const sandbox = await makeSandbox(repo, before, run);
   let saved = false;
   try {
-    const full = changes.some(change => !change.untracked) ? await text(sandbox.git, ['stash', 'create']) : '';
-    const indexSource = full ? `${full}^2` : before.head, workingSource = full || before.head;
+    const full = changes.some((change) => !change.untracked)
+      ? await text(sandbox.git, ['stash', 'create'])
+      : '';
+    const indexSource = full ? `${full}^2` : before.head,
+      workingSource = full || before.head;
     const indexFile = path.join(sandbox.root, '.git', 'scope-index');
     const indexTree = await scopedTree(sandbox.git, before.head, indexSource, scope, indexFile);
     const workingTree = await scopedTree(sandbox.git, before.head, workingSource, scope, indexFile);
-    const indexCommit = await text(sandbox.git, [translate('en', "stash.commitTree"), indexTree, translate('en', "stash.p"), before.head, translate('en', "stash.m"), translate('en', "stash.alwayGitSavedIndex")]);
-    const untracked = [...new Set(changes.filter(change => change.untracked && names.has(change.path)).map(change => change.path))];
+    const indexCommit = await text(sandbox.git, [
+      translate('en', 'stash.commitTree'),
+      indexTree,
+      translate('en', 'stash.p'),
+      before.head,
+      translate('en', 'stash.m'),
+      translate('en', 'stash.alwayGitSavedIndex'),
+    ]);
+    const untracked = [
+      ...new Set(
+        changes
+          .filter((change) => change.untracked && names.has(change.path))
+          .map((change) => change.path),
+      ),
+    ];
     let untrackedCommit: string | undefined;
     if (untracked.length) {
       const env = { GIT_INDEX_FILE: indexFile };
       await sandbox.git(['read-tree', '--empty'], { env });
       await sandbox.git(['add', '-f', '--', ...untracked], { env });
-      untrackedCommit = await text(sandbox.git, [translate('en', "stash.commitTree"), await text(sandbox.git, [translate('en', "stash.writeTree")], { env }), translate('en', "stash.m"), translate('en', "stash.alwayGitSavedUntrackedFiles")]);
+      untrackedCommit = await text(sandbox.git, [
+        translate('en', 'stash.commitTree'),
+        await text(sandbox.git, [translate('en', 'stash.writeTree')], { env }),
+        translate('en', 'stash.m'),
+        translate('en', 'stash.alwayGitSavedUntrackedFiles'),
+      ]);
     }
-    const stashMessage = message?.trim() || translate('en', "stash.alwayGitSelectedFiles");
-    const stashOid = await text(sandbox.git, [translate('en', "stash.commitTree"), workingTree, translate('en', "stash.p"), before.head, translate('en', "stash.p"), indexCommit, ...(untrackedCommit ? [translate('en', "stash.p"), untrackedCommit] : []), translate('en', "stash.m"), stashMessage]);
-    if (before.fingerprint !== (await capture(repo, scope, run)).fingerprint) throw new StashStateError(translate('en', "stash.theProjectChangedWhileCreatingTheStashNoFiles"), 'STASH_SELECTION_CHANGED');
+    const stashMessage = message?.trim() || translate('en', 'stash.alwayGitSelectedFiles');
+    const stashOid = await text(sandbox.git, [
+      translate('en', 'stash.commitTree'),
+      workingTree,
+      translate('en', 'stash.p'),
+      before.head,
+      translate('en', 'stash.p'),
+      indexCommit,
+      ...(untrackedCommit ? [translate('en', 'stash.p'), untrackedCommit] : []),
+      translate('en', 'stash.m'),
+      stashMessage,
+    ]);
+    if (before.fingerprint !== (await capture(repo, scope, run)).fingerprint)
+      throw new StashStateError(
+        translate('en', 'stash.theProjectChangedWhileCreatingTheStashNoFiles'),
+        'STASH_SELECTION_CHANGED',
+      );
     // Transfer only this immutable snapshot; no source branch or FETCH_HEAD is changed.
-    await run(['fetch', '--quiet', '--no-tags', '--no-recurse-submodules', '--no-write-fetch-head', sandbox.root, stashOid], { silent: true });
-    await run(['stash', 'store', translate('en', "stash.m"), stashMessage, stashOid]); saved = true;
-    if (before.fingerprint !== (await capture(repo, scope, run)).fingerprint) throw new StashStateError(translate('en', "stash.theStashWasSavedButTheProjectChangedBefore"), 'STASH_CLEANUP_FAILED');
+    await run(
+      [
+        'fetch',
+        '--quiet',
+        '--no-tags',
+        '--no-recurse-submodules',
+        '--no-write-fetch-head',
+        sandbox.root,
+        stashOid,
+      ],
+      { silent: true },
+    );
+    await run(['stash', 'store', translate('en', 'stash.m'), stashMessage, stashOid]);
+    saved = true;
+    if (before.fingerprint !== (await capture(repo, scope, run)).fingerprint)
+      throw new StashStateError(
+        translate('en', 'stash.theStashWasSavedButTheProjectChangedBefore'),
+        'STASH_CLEANUP_FAILED',
+      );
     const headEntries = treeEntries((await run(['ls-tree', '-r', '-z', before.head])).stdout);
     const indexNames = new Set(indexPaths((await run(['ls-files', '--stage', '-z'])).stdout));
-    const tracked = scope.filter(name => headEntries.has(name) || indexNames.has(name));
+    const tracked = scope.filter((name) => headEntries.has(name) || indexNames.has(name));
     await requireExactFileScope(repo, scope, run, before.head);
-    if (tracked.length) await run(['restore', `--source=${before.head}`, '--staged', '--worktree', '--', ...tracked]);
-    const removable = untracked.filter(name => !headEntries.has(name));
+    if (tracked.length)
+      await run(['restore', `--source=${before.head}`, '--staged', '--worktree', '--', ...tracked]);
+    const removable = untracked.filter((name) => !headEntries.has(name));
     if (removable.length) await run(['clean', '-f', '--', ...removable]);
   } catch (error) {
-    if (saved && !(error instanceof StashStateError && error.code === 'STASH_CLEANUP_FAILED')) throw new StashStateError(translate('en', "stash.theStashWasSavedAndRetainedButCleanupDid", { value: (error instanceof Error ? error.message : String(error)) }), 'STASH_CLEANUP_FAILED');
+    if (saved && !(error instanceof StashStateError && error.code === 'STASH_CLEANUP_FAILED'))
+      throw new StashStateError(
+        translate('en', 'stash.theStashWasSavedAndRetainedButCleanupDid', {
+          value: error instanceof Error ? error.message : String(error),
+        }),
+        'STASH_CLEANUP_FAILED',
+      );
     throw error;
-  } finally { await sandbox.dispose(); }
+  } finally {
+    await sandbox.dispose();
+  }
 }

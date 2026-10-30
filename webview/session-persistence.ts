@@ -8,7 +8,10 @@ export class SessionPersistence<T> {
   private timer?: ReturnType<typeof setTimeout>;
   private onError?: (error: Error) => void;
 
-  constructor(private readonly saveLocal: (value: T) => void, private readonly saveHost: (value: T) => Promise<void>) {}
+  constructor(
+    private readonly saveLocal: (value: T) => void,
+    private readonly saveHost: (value: T) => Promise<void>,
+  ) {}
 
   save(value: T, onError?: (error: Error) => void): void {
     this.onError = onError;
@@ -16,8 +19,12 @@ export class SessionPersistence<T> {
     if (serialized === this.local) return;
     // Detach mutable per-repository views from a request already being persisted.
     const copy = JSON.parse(serialized) as T;
-    try { this.saveLocal(copy); this.local = serialized; }
-    catch (error) { onError?.(error instanceof Error ? error : new Error(String(error))); }
+    try {
+      this.saveLocal(copy);
+      this.local = serialized;
+    } catch (error) {
+      onError?.(error instanceof Error ? error : new Error(String(error)));
+    }
     this.desired = { value: copy, serialized };
     this.failures = 0;
     if (!this.writing) this.schedule(200);
@@ -25,7 +32,9 @@ export class SessionPersistence<T> {
 
   private schedule(delay: number): void {
     clearTimeout(this.timer);
-    this.timer = setTimeout(() => { void this.flush(); }, delay);
+    this.timer = setTimeout(() => {
+      void this.flush();
+    }, delay);
   }
 
   /** Closing an editor sends its pending draft without waiting for the debounce. */
@@ -39,10 +48,14 @@ export class SessionPersistence<T> {
     if (this.writing || !next || next.serialized === this.acknowledged) return;
     this.writing = true;
     let failed = false;
-    try { await this.saveHost(next.value); this.acknowledged = next.serialized; this.failures = 0; }
-    catch (error) {
+    try {
+      await this.saveHost(next.value);
+      this.acknowledged = next.serialized;
+      this.failures = 0;
+    } catch (error) {
       failed = true;
-      if (this.desired === next && ++this.failures > 2) this.onError?.(error instanceof Error ? error : new Error(String(error)));
+      if (this.desired === next && ++this.failures > 2)
+        this.onError?.(error instanceof Error ? error : new Error(String(error)));
     } finally {
       this.writing = false;
       if (this.desired !== next) this.schedule(0);

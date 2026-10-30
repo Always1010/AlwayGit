@@ -4,113 +4,326 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import type * as vscode from 'vscode';
-import type { Commit, ContentSource, GitServiceContract, Repository, Snapshot } from '../src/protocol/types';
-import type { LfsCachedObject, LfsHistoricalObject, LfsIndexObject, LfsIndexRequest } from '../src/protocol/lfs';
+import type {
+  Commit,
+  ContentSource,
+  GitServiceContract,
+  Repository,
+  Snapshot,
+} from '../src/protocol/types';
+import type {
+  LfsCachedObject,
+  LfsHistoricalObject,
+  LfsIndexObject,
+  LfsIndexRequest,
+} from '../src/protocol/lfs';
 import { GitDocuments } from '../src/editor/documents';
 
 const editor = vi.hoisted(() => ({ execute: vi.fn(), show: vi.fn() }));
 vi.mock('vscode', () => ({
   Uri: {
     file: (fsPath: string) => ({ scheme: 'file', fsPath, toString: () => `file:${fsPath}` }),
-    from: (parts: { scheme: string; path: string; query: string }) => ({ ...parts, toString: () => `${parts.scheme}:${parts.path}?${parts.query}` }),
-  }, ViewColumn: { Active: 1 }, commands: { executeCommand: editor.execute }, window: { showTextDocument: editor.show },
+    from: (parts: { scheme: string; path: string; query: string }) => ({
+      ...parts,
+      toString: () => `${parts.scheme}:${parts.path}?${parts.query}`,
+    }),
+  },
+  ViewColumn: { Active: 1 },
+  commands: { executeCommand: editor.execute },
+  window: { showTextDocument: editor.show },
 }));
-const revision = 'a'.repeat(40), previous = 'b'.repeat(40);
-const repo: Repository = { id: 'lfs-preview', root: '/fixture', commonDir: '/fixture/.git', name: 'Fixture' };
-const commit = (oid: string): Commit => ({ oid, parents: oid === revision ? [previous] : [], author: 'Fixture', email: 'fixture@example.com', subject: 'LFS fixture', timestamp: 0 });
+const revision = 'a'.repeat(40),
+  previous = 'b'.repeat(40);
+const repo: Repository = {
+  id: 'lfs-preview',
+  root: '/fixture',
+  commonDir: '/fixture/.git',
+  name: 'Fixture',
+};
+const commit = (oid: string): Commit => ({
+  oid,
+  parents: oid === revision ? [previous] : [],
+  author: 'Fixture',
+  email: 'fixture@example.com',
+  subject: 'LFS fixture',
+  timestamp: 0,
+});
 const roots: string[] = [];
 afterEach(async () => {
   vi.clearAllMocks();
   for (const root of roots.splice(0)) {
-    if (path.dirname(root) !== path.resolve(os.tmpdir()) || !path.basename(root).startsWith('alwaygit-lfs-preview-')) throw new Error('Unsafe cleanup target');
+    if (
+      path.dirname(root) !== path.resolve(os.tmpdir()) ||
+      !path.basename(root).startsWith('alwaygit-lfs-preview-')
+    )
+      throw new Error('Unsafe cleanup target');
     await rm(root, { recursive: true, force: true, maxRetries: 5 });
   }
 });
 function pointer(bytes: Buffer, size = bytes.length) {
   const oid = createHash('sha256').update(bytes).digest('hex');
-  return { oid, size, bytes: Buffer.from(`version https://git-lfs.github.com/spec/v1\noid sha256:${oid}\nsize ${size}\n`) };
+  return {
+    oid,
+    size,
+    bytes: Buffer.from(
+      `version https://git-lfs.github.com/spec/v1\noid sha256:${oid}\nsize ${size}\n`,
+    ),
+  };
 }
 function snapshot(changes: Snapshot['changes']): Snapshot {
-  return { repository: repo, branch: 'main', head: previous, ahead: 0, behind: 0, changes, refs: [], stashes: [], worktrees: [],
-    operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 1 };
+  return {
+    repository: repo,
+    branch: 'main',
+    head: previous,
+    ahead: 0,
+    behind: 0,
+    changes,
+    refs: [],
+    stashes: [],
+    worktrees: [],
+    operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false },
+    version: 1,
+  };
 }
-function fixture(bytes: Buffer, localObject: LfsHistoricalObject['localObject'] = 'available', declaredSize = bytes.length) {
+function fixture(
+  bytes: Buffer,
+  localObject: LfsHistoricalObject['localObject'] = 'available',
+  declaredSize = bytes.length,
+) {
   const object = pointer(bytes, declaredSize);
-  const content = vi.fn(async (_repo: Repository, source: ContentSource, maxBytes: number = Infinity) => source.kind === 'empty' ? Buffer.alloc(0) : object.bytes.subarray(0, maxBytes));
-  const cached = vi.fn(async (_repo: Repository, request: { revision: string; path: string }, maxBytes: number = 0): Promise<LfsHistoricalObject> => ({ ...request, oid: object.oid, size: object.size, localObject,
-    ...(localObject === 'available' && object.size <= maxBytes ? { content: bytes } : {}) }));
-  const index = vi.fn(async (_repo: Repository, request: LfsIndexRequest, maxBytes: number = 0): Promise<LfsIndexObject> => ({ ...request, oid: object.oid, size: object.size, localObject,
-    ...(localObject === 'available' && object.size <= maxBytes ? { content: bytes } : {}) }));
-  const local = vi.fn(async (_repo: Repository, request: { oid: string; size: number }, maxBytes: number = 0): Promise<LfsCachedObject> => ({ ...request, localObject,
-    ...(localObject === 'available' && object.size <= maxBytes ? { content: bytes } : {}) }));
+  const content = vi.fn(
+    async (_repo: Repository, source: ContentSource, maxBytes: number = Infinity) =>
+      source.kind === 'empty' ? Buffer.alloc(0) : object.bytes.subarray(0, maxBytes),
+  );
+  const cached = vi.fn(
+    async (
+      _repo: Repository,
+      request: { revision: string; path: string },
+      maxBytes: number = 0,
+    ): Promise<LfsHistoricalObject> => ({
+      ...request,
+      oid: object.oid,
+      size: object.size,
+      localObject,
+      ...(localObject === 'available' && object.size <= maxBytes ? { content: bytes } : {}),
+    }),
+  );
+  const index = vi.fn(
+    async (
+      _repo: Repository,
+      request: LfsIndexRequest,
+      maxBytes: number = 0,
+    ): Promise<LfsIndexObject> => ({
+      ...request,
+      oid: object.oid,
+      size: object.size,
+      localObject,
+      ...(localObject === 'available' && object.size <= maxBytes ? { content: bytes } : {}),
+    }),
+  );
+  const local = vi.fn(
+    async (
+      _repo: Repository,
+      request: { oid: string; size: number },
+      maxBytes: number = 0,
+    ): Promise<LfsCachedObject> => ({
+      ...request,
+      localObject,
+      ...(localObject === 'available' && object.size <= maxBytes ? { content: bytes } : {}),
+    }),
+  );
   const execute = vi.fn(async () => undefined);
-  const service = { content, lfsHistoricalObject: cached, lfsIndexObject: index, lfsCachedObject: local, execute,
-    snapshot: async () => snapshot([{ path: 'asset', indexStatus: 'M', worktreeStatus: 'M', untracked: false, conflict: false }]),
-    details: async (_repo: Repository, oid: string) => ({ commit: commit(oid), parent: previous, body: '', files: [{ path: 'asset', status: 'M' }] }),
-    compare: async () => ({ left: commit(previous), right: commit(revision), files: [{ path: 'asset', status: 'M' }] }),
+  const service = {
+    content,
+    lfsHistoricalObject: cached,
+    lfsIndexObject: index,
+    lfsCachedObject: local,
+    execute,
+    snapshot: async () =>
+      snapshot([
+        { path: 'asset', indexStatus: 'M', worktreeStatus: 'M', untracked: false, conflict: false },
+      ]),
+    details: async (_repo: Repository, oid: string) => ({
+      commit: commit(oid),
+      parent: previous,
+      body: '',
+      files: [{ path: 'asset', status: 'M' }],
+    }),
+    compare: async () => ({
+      left: commit(previous),
+      right: commit(revision),
+      files: [{ path: 'asset', status: 'M' }],
+    }),
   } satisfies Partial<GitServiceContract>;
-  return { object, content, cached, index, local, execute, service, documents: new GitDocuments(service as unknown as GitServiceContract) };
+  return {
+    object,
+    content,
+    cached,
+    index,
+    local,
+    execute,
+    service,
+    documents: new GitDocuments(service as unknown as GitServiceContract),
+  };
 }
 
 it('resolves cached historical text once, including complete content beyond the initial prefix, without executing a download', async () => {
-  const bytes = Buffer.from('verified historical content\n'.repeat(14000)), test = fixture(bytes);
+  const bytes = Buffer.from('verified historical content\n'.repeat(14000)),
+    test = fixture(bytes);
   const preview = await test.documents.revisionPreview(repo, { revision, path: 'asset' });
-  expect(preview).toMatchObject({ kind: 'text', left: '', right: bytes.toString('utf8'), lfs: [{ side: 'right', oid: test.object.oid, size: bytes.length, localObject: 'available', resolved: true }] });
-  expect(test.cached).toHaveBeenCalledExactlyOnceWith(repo, { revision, path: 'asset' }, 32 * 1024 * 1024);
-  expect(test.content.mock.calls.filter(([, source]) => source.kind === 'revision')).toHaveLength(1);
+  expect(preview).toMatchObject({
+    kind: 'text',
+    left: '',
+    right: bytes.toString('utf8'),
+    lfs: [
+      {
+        side: 'right',
+        oid: test.object.oid,
+        size: bytes.length,
+        localObject: 'available',
+        resolved: true,
+      },
+    ],
+  });
+  expect(test.cached).toHaveBeenCalledExactlyOnceWith(
+    repo,
+    { revision, path: 'asset' },
+    32 * 1024 * 1024,
+  );
+  expect(test.content.mock.calls.filter(([, source]) => source.kind === 'revision')).toHaveLength(
+    1,
+  );
   expect(test.execute).not.toHaveBeenCalled();
 });
 
 it('classifies cached PNG bytes as an image and preserves the existing image limit', async () => {
-  const png = Buffer.alloc(32); Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(png); png.write('IHDR', 12); png.writeUInt32BE(2, 16); png.writeUInt32BE(3, 20);
-  const small = fixture(png), preview = await small.documents.revisionPreview(repo, { revision, path: 'asset' });
-  expect(preview).toMatchObject({ kind: 'image', right: { mimeType: 'image/png', width: 2, height: 3, byteLength: 32 }, lfs: [{ resolved: true }] });
+  const png = Buffer.alloc(32);
+  Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(png);
+  png.write('IHDR', 12);
+  png.writeUInt32BE(2, 16);
+  png.writeUInt32BE(3, 20);
+  const small = fixture(png),
+    preview = await small.documents.revisionPreview(repo, { revision, path: 'asset' });
+  expect(preview).toMatchObject({
+    kind: 'image',
+    right: { mimeType: 'image/png', width: 2, height: 3, byteLength: 32 },
+    lfs: [{ resolved: true }],
+  });
   const large = fixture(Buffer.concat([png, Buffer.alloc(4 * 1024 * 1024)]));
-  expect(await large.documents.revisionPreview(repo, { revision, path: 'asset' })).toMatchObject({ kind: 'binary', reason: 'image-too-large', lfs: [{ resolved: true }] });
-  expect(large.cached).toHaveBeenCalledTimes(1); expect(large.execute).not.toHaveBeenCalled();
+  expect(await large.documents.revisionPreview(repo, { revision, path: 'asset' })).toMatchObject({
+    kind: 'binary',
+    reason: 'image-too-large',
+    lfs: [{ resolved: true }],
+  });
+  expect(large.cached).toHaveBeenCalledTimes(1);
+  expect(large.execute).not.toHaveBeenCalled();
 });
 
-it.each(['missing', 'unknown'] as const)('shows a complete-comparison placeholder for %s local objects without exposing pointer text', async state => {
-  const test = fixture(Buffer.from('real object'), state);
-  const preview = await test.documents.preview(repo, { kind: 'comparison', left: previous, right: revision, path: 'asset' });
-  expect(preview).toMatchObject({ kind: 'binary', reason: state === 'missing' ? 'lfs-missing' : 'lfs-unavailable', lfs: [{ side: 'left', resolved: false }, { side: 'right', resolved: false }] });
-  expect(preview).not.toHaveProperty('left'); expect(preview).not.toHaveProperty('right');
-  expect(test.execute).not.toHaveBeenCalled();
-});
+it.each(['missing', 'unknown'] as const)(
+  'shows a complete-comparison placeholder for %s local objects without exposing pointer text',
+  async (state) => {
+    const test = fixture(Buffer.from('real object'), state);
+    const preview = await test.documents.preview(repo, {
+      kind: 'comparison',
+      left: previous,
+      right: revision,
+      path: 'asset',
+    });
+    expect(preview).toMatchObject({
+      kind: 'binary',
+      reason: state === 'missing' ? 'lfs-missing' : 'lfs-unavailable',
+      lfs: [
+        { side: 'left', resolved: false },
+        { side: 'right', resolved: false },
+      ],
+    });
+    expect(preview).not.toHaveProperty('left');
+    expect(preview).not.toHaveProperty('right');
+    expect(test.execute).not.toHaveBeenCalled();
+  },
+);
 
 it('checks oversized pointer metadata without requesting its bytes and tolerates a host without cache support', async () => {
   const test = fixture(Buffer.from('oversized'), 'available', 32 * 1024 * 1024 + 1);
-  expect(await test.documents.revisionPreview(repo, { revision, path: 'asset' })).toMatchObject({ kind: 'binary', reason: 'lfs-too-large', lfs: [{ size: 32 * 1024 * 1024 + 1, resolved: false }] });
+  expect(await test.documents.revisionPreview(repo, { revision, path: 'asset' })).toMatchObject({
+    kind: 'binary',
+    reason: 'lfs-too-large',
+    lfs: [{ size: 32 * 1024 * 1024 + 1, resolved: false }],
+  });
   expect(test.cached).toHaveBeenCalledExactlyOnceWith(repo, { revision, path: 'asset' }, 0);
-  const oldHost = new GitDocuments({ content: fixture(Buffer.from('small')).content } as unknown as GitServiceContract);
-  expect(await oldHost.revisionPreview(repo, { revision, path: 'asset' })).toMatchObject({ kind: 'binary', reason: 'lfs-unavailable', lfs: [{ downloadable: false }] });
+  const oldHost = new GitDocuments({
+    content: fixture(Buffer.from('small')).content,
+  } as unknown as GitServiceContract);
+  expect(await oldHost.revisionPreview(repo, { revision, path: 'asset' })).toMatchObject({
+    kind: 'binary',
+    reason: 'lfs-unavailable',
+    lfs: [{ downloadable: false }],
+  });
 });
 
 it('re-reads the identical historical target after an explicit cache fill instead of retaining a missing-object result', async () => {
-  const bytes = Buffer.from('downloaded historical text\n'), test = fixture(bytes, 'missing'), target = { revision, path: 'asset' };
-  expect(await test.documents.revisionPreview(repo, target)).toMatchObject({ kind: 'binary', reason: 'lfs-missing' });
-  test.cached.mockImplementation(async (_repo, request) => ({ ...request, oid: test.object.oid, size: bytes.length, localObject: 'available', content: bytes }));
-  expect(await test.documents.revisionPreview(repo, target)).toMatchObject({ kind: 'text', right: bytes.toString('utf8'), lfs: [{ revision, path: 'asset', resolved: true }] });
+  const bytes = Buffer.from('downloaded historical text\n'),
+    test = fixture(bytes, 'missing'),
+    target = { revision, path: 'asset' };
+  expect(await test.documents.revisionPreview(repo, target)).toMatchObject({
+    kind: 'binary',
+    reason: 'lfs-missing',
+  });
+  test.cached.mockImplementation(async (_repo, request) => ({
+    ...request,
+    oid: test.object.oid,
+    size: bytes.length,
+    localObject: 'available',
+    content: bytes,
+  }));
+  expect(await test.documents.revisionPreview(repo, target)).toMatchObject({
+    kind: 'text',
+    right: bytes.toString('utf8'),
+    lfs: [{ revision, path: 'asset', resolved: true }],
+  });
   expect(test.cached.mock.calls.map(([, request]) => request)).toEqual([target, target]);
   expect(test.execute).not.toHaveBeenCalled();
 });
 
 it('keeps ordinary blobs and pointer-shaped symbolic-link targets as ordinary immutable text', async () => {
   const test = fixture(Buffer.from('object'));
-  test.content.mockImplementation(async (_repo, source) => source.kind === 'empty' ? Buffer.alloc(0) : Buffer.from('ordinary text'));
-  expect(await test.documents.revisionPreview(repo, { revision, path: 'asset' })).toMatchObject({ kind: 'text', right: 'ordinary text' });
+  test.content.mockImplementation(async (_repo, source) =>
+    source.kind === 'empty' ? Buffer.alloc(0) : Buffer.from('ordinary text'),
+  );
+  expect(await test.documents.revisionPreview(repo, { revision, path: 'asset' })).toMatchObject({
+    kind: 'text',
+    right: 'ordinary text',
+  });
   expect(test.cached).not.toHaveBeenCalled();
-  test.content.mockImplementation(async (_repo, source) => source.kind === 'empty' ? Buffer.alloc(0) : test.object.bytes);
-  test.cached.mockRejectedValue(Object.assign(new Error('Not a regular file'), { code: 'INVALID_PATH' }));
+  test.content.mockImplementation(async (_repo, source) =>
+    source.kind === 'empty' ? Buffer.alloc(0) : test.object.bytes,
+  );
+  test.cached.mockRejectedValue(
+    Object.assign(new Error('Not a regular file'), { code: 'INVALID_PATH' }),
+  );
   const link = await test.documents.revisionPreview(repo, { revision, path: 'link' });
-  expect(link).toMatchObject({ kind: 'text', right: test.object.bytes.toString('utf8') }); expect(link.lfs).toBeUndefined();
+  expect(link).toMatchObject({ kind: 'text', right: test.object.bytes.toString('utf8') });
+  expect(link.lfs).toBeUndefined();
 });
 
 it('resolves both commit/parent sources and uses resolved immutable text in native Diff while retaining the real working-file URI', async () => {
   const test = fixture(Buffer.from('resolved cache text\n'));
-  const historical = await test.documents.preview(repo, { kind: 'commit', oid: revision, path: 'asset' });
-  expect(historical).toMatchObject({ kind: 'text', left: 'resolved cache text\n', right: 'resolved cache text\n', lfs: [{ side: 'left', revision: previous }, { side: 'right', revision }] });
-  const root = path.resolve(await mkdtemp(path.join(os.tmpdir(), 'alwaygit-lfs-preview-'))); roots.push(root);
+  const historical = await test.documents.preview(repo, {
+    kind: 'commit',
+    oid: revision,
+    path: 'asset',
+  });
+  expect(historical).toMatchObject({
+    kind: 'text',
+    left: 'resolved cache text\n',
+    right: 'resolved cache text\n',
+    lfs: [
+      { side: 'left', revision: previous },
+      { side: 'right', revision },
+    ],
+  });
+  const root = path.resolve(await mkdtemp(path.join(os.tmpdir(), 'alwaygit-lfs-preview-')));
+  roots.push(root);
   await writeFile(path.join(root, 'asset'), 'unsaved-on-disk comparison\n');
   const localRepo = { ...repo, root, commonDir: path.join(root, '.git') };
   await test.documents.diff(localRepo, { kind: 'revision', revision, path: 'asset' });
@@ -118,74 +331,196 @@ it('resolves both commit/parent sources and uses resolved immutable text in nati
   expect(command).toBe('vscode.diff');
   expect(right).toMatchObject({ scheme: 'file', fsPath: path.join(root, 'asset') });
   const calls = test.content.mock.calls.length;
-  expect(await test.documents.provideTextDocumentContent(left as vscode.Uri)).toBe('resolved cache text\n');
+  expect(await test.documents.provideTextDocumentContent(left as vscode.Uri)).toBe(
+    'resolved cache text\n',
+  );
   expect(test.content.mock.calls).toHaveLength(calls);
   await test.documents.openRevision(localRepo, { revision, path: 'asset' });
-  expect(await test.documents.provideTextDocumentContent(editor.show.mock.calls.at(-1)![0] as vscode.Uri)).toBe('resolved cache text\n');
+  expect(
+    await test.documents.provideTextDocumentContent(
+      editor.show.mock.calls.at(-1)![0] as vscode.Uri,
+    ),
+  ).toBe('resolved cache text\n');
   expect(test.execute).not.toHaveBeenCalled();
 });
 
 it('compares staged HEAD and Index entities and keeps resolved Index text in native Diff', async () => {
-  const before = Buffer.from('old cached content\n'), after = Buffer.from('new staged cached content\n');
-  const test = fixture(before), staged = pointer(after);
-  test.content.mockImplementation(async (_repo, source) => source.kind === 'empty' ? Buffer.alloc(0) : source.kind === 'index' ? staged.bytes : test.object.bytes);
-  test.index.mockImplementation(async (_repo, request) => ({ ...request, oid: staged.oid, size: after.length, localObject: 'available', content: after }));
+  const before = Buffer.from('old cached content\n'),
+    after = Buffer.from('new staged cached content\n');
+  const test = fixture(before),
+    staged = pointer(after);
+  test.content.mockImplementation(async (_repo, source) =>
+    source.kind === 'empty'
+      ? Buffer.alloc(0)
+      : source.kind === 'index'
+        ? staged.bytes
+        : test.object.bytes,
+  );
+  test.index.mockImplementation(async (_repo, request) => ({
+    ...request,
+    oid: staged.oid,
+    size: after.length,
+    localObject: 'available',
+    content: after,
+  }));
   const target = { kind: 'change', area: 'staged', path: 'asset' } as const;
-  expect(await test.documents.preview(repo, target)).toMatchObject({ kind: 'text', left: before.toString(), right: after.toString(),
-    lfs: [{ side: 'left', revision: previous, resolved: true, downloadable: true }, { side: 'right', resolved: true, downloadable: false }] });
+  expect(await test.documents.preview(repo, target)).toMatchObject({
+    kind: 'text',
+    left: before.toString(),
+    right: after.toString(),
+    lfs: [
+      { side: 'left', revision: previous, resolved: true, downloadable: true },
+      { side: 'right', resolved: true, downloadable: false },
+    ],
+  });
   await test.documents.diff(repo, target);
   const [, left, right] = editor.execute.mock.calls.at(-1)!;
-  expect(await test.documents.provideTextDocumentContent(left as vscode.Uri)).toBe(before.toString());
-  expect(await test.documents.provideTextDocumentContent(right as vscode.Uri)).toBe(after.toString());
+  expect(await test.documents.provideTextDocumentContent(left as vscode.Uri)).toBe(
+    before.toString(),
+  );
+  expect(await test.documents.provideTextDocumentContent(right as vscode.Uri)).toBe(
+    after.toString(),
+  );
   expect(test.execute).not.toHaveBeenCalled();
 });
 
-it.each(['M', 'A'])('classifies staged LFS images with Index status %s', async indexStatus => {
-  const png = Buffer.alloc(32); Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(png); png.write('IHDR', 12); png.writeUInt32BE(2, 16); png.writeUInt32BE(3, 20);
+it.each(['M', 'A'])('classifies staged LFS images with Index status %s', async (indexStatus) => {
+  const png = Buffer.alloc(32);
+  Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(png);
+  png.write('IHDR', 12);
+  png.writeUInt32BE(2, 16);
+  png.writeUInt32BE(3, 20);
   const test = fixture(png);
-  test.service.snapshot = async () => snapshot([{ path: 'asset', indexStatus, worktreeStatus: ' ', untracked: false, conflict: false }]);
-  const preview = await test.documents.preview(repo, { kind: 'change', area: 'staged', path: 'asset' });
-  expect(preview).toMatchObject({ kind: 'image', right: { mimeType: 'image/png', width: 2, height: 3 } });
-  expect(preview.lfs).toContainEqual({ side: 'right', path: 'asset', oid: test.object.oid, size: png.length, localObject: 'available', resolved: true, downloadable: false });
-  expect(test.index).toHaveBeenCalledExactlyOnceWith(repo, { path: 'asset', stage: undefined }, 32 * 1024 * 1024);
-  if (indexStatus === 'A') { expect(preview).toHaveProperty('left', undefined); expect(test.cached).not.toHaveBeenCalled(); }
+  test.service.snapshot = async () =>
+    snapshot([
+      { path: 'asset', indexStatus, worktreeStatus: ' ', untracked: false, conflict: false },
+    ]);
+  const preview = await test.documents.preview(repo, {
+    kind: 'change',
+    area: 'staged',
+    path: 'asset',
+  });
+  expect(preview).toMatchObject({
+    kind: 'image',
+    right: { mimeType: 'image/png', width: 2, height: 3 },
+  });
+  expect(preview.lfs).toContainEqual({
+    side: 'right',
+    path: 'asset',
+    oid: test.object.oid,
+    size: png.length,
+    localObject: 'available',
+    resolved: true,
+    downloadable: false,
+  });
+  expect(test.index).toHaveBeenCalledExactlyOnceWith(
+    repo,
+    { path: 'asset', stage: undefined },
+    32 * 1024 * 1024,
+  );
+  if (indexStatus === 'A') {
+    expect(preview).toHaveProperty('left', undefined);
+    expect(test.cached).not.toHaveBeenCalled();
+  }
 });
 
-it.each(['missing', 'unknown'] as const)('keeps the whole staged comparison unavailable for %s Index cache entries', async localObject => {
-  const test = fixture(Buffer.from('cached HEAD\n'));
-  test.index.mockImplementation(async (_repo, request) => ({ ...request, oid: test.object.oid, size: test.object.size, localObject }));
-  const preview = await test.documents.preview(repo, { kind: 'change', area: 'staged', path: 'asset' });
-  expect(preview).toMatchObject({ kind: 'binary', reason: localObject === 'missing' ? 'lfs-missing' : 'lfs-unavailable',
-    lfs: [{ side: 'left', resolved: true }, { side: 'right', resolved: false, downloadable: false }] });
-  expect(preview).not.toHaveProperty('left'); expect(preview).not.toHaveProperty('right');
-  expect(test.execute).not.toHaveBeenCalled();
-});
+it.each(['missing', 'unknown'] as const)(
+  'keeps the whole staged comparison unavailable for %s Index cache entries',
+  async (localObject) => {
+    const test = fixture(Buffer.from('cached HEAD\n'));
+    test.index.mockImplementation(async (_repo, request) => ({
+      ...request,
+      oid: test.object.oid,
+      size: test.object.size,
+      localObject,
+    }));
+    const preview = await test.documents.preview(repo, {
+      kind: 'change',
+      area: 'staged',
+      path: 'asset',
+    });
+    expect(preview).toMatchObject({
+      kind: 'binary',
+      reason: localObject === 'missing' ? 'lfs-missing' : 'lfs-unavailable',
+      lfs: [
+        { side: 'left', resolved: true },
+        { side: 'right', resolved: false, downloadable: false },
+      ],
+    });
+    expect(preview).not.toHaveProperty('left');
+    expect(preview).not.toHaveProperty('right');
+    expect(test.execute).not.toHaveBeenCalled();
+  },
+);
 
 it('resolves unstaged Index and working pointers from cache and preserves a real edited working file', async () => {
-  const bytes = Buffer.from('cached file content\n'), test = fixture(bytes);
-  const root = path.resolve(await mkdtemp(path.join(os.tmpdir(), 'alwaygit-lfs-preview-'))); roots.push(root);
-  const localRepo = { ...repo, root, commonDir: path.join(root, '.git') }, target = { kind: 'change', area: 'unstaged', path: 'asset' } as const;
+  const bytes = Buffer.from('cached file content\n'),
+    test = fixture(bytes);
+  const root = path.resolve(await mkdtemp(path.join(os.tmpdir(), 'alwaygit-lfs-preview-')));
+  roots.push(root);
+  const localRepo = { ...repo, root, commonDir: path.join(root, '.git') },
+    target = { kind: 'change', area: 'unstaged', path: 'asset' } as const;
   await writeFile(path.join(root, 'asset'), 'edited working content\n');
-  expect(await test.documents.preview(localRepo, target)).toMatchObject({ kind: 'text', left: bytes.toString(), right: 'edited working content\n', lfs: [{ side: 'left', resolved: true, downloadable: false }] });
+  expect(await test.documents.preview(localRepo, target)).toMatchObject({
+    kind: 'text',
+    left: bytes.toString(),
+    right: 'edited working content\n',
+    lfs: [{ side: 'left', resolved: true, downloadable: false }],
+  });
   await writeFile(path.join(root, 'asset'), test.object.bytes);
-  expect(await test.documents.preview(localRepo, target)).toMatchObject({ kind: 'text', left: bytes.toString(), right: bytes.toString(), lfs: [{ side: 'left', resolved: true }, { side: 'right', resolved: true, downloadable: false }] });
-  expect(test.local).toHaveBeenCalledExactlyOnceWith(localRepo, { oid: test.object.oid, size: bytes.length }, 32 * 1024 * 1024);
+  expect(await test.documents.preview(localRepo, target)).toMatchObject({
+    kind: 'text',
+    left: bytes.toString(),
+    right: bytes.toString(),
+    lfs: [
+      { side: 'left', resolved: true },
+      { side: 'right', resolved: true, downloadable: false },
+    ],
+  });
+  expect(test.local).toHaveBeenCalledExactlyOnceWith(
+    localRepo,
+    { oid: test.object.oid, size: bytes.length },
+    32 * 1024 * 1024,
+  );
   await test.documents.diff(localRepo, target);
   const [, left, right] = editor.execute.mock.calls.at(-1)!;
-  expect(await test.documents.provideTextDocumentContent(left as vscode.Uri)).toBe(bytes.toString());
-  expect(await test.documents.provideTextDocumentContent(right as vscode.Uri)).toBe(bytes.toString());
+  expect(await test.documents.provideTextDocumentContent(left as vscode.Uri)).toBe(
+    bytes.toString(),
+  );
+  expect(await test.documents.provideTextDocumentContent(right as vscode.Uri)).toBe(
+    bytes.toString(),
+  );
   test.local.mockImplementation(async (_repo, request) => ({ ...request, localObject: 'missing' }));
-  expect(await test.documents.preview(localRepo, target)).toMatchObject({ kind: 'binary', reason: 'lfs-missing' });
+  expect(await test.documents.preview(localRepo, target)).toMatchObject({
+    kind: 'binary',
+    reason: 'lfs-missing',
+  });
   expect(test.execute).not.toHaveBeenCalled();
 });
 
 it('resolves both conflict Index stages and leaves pointer-shaped Index symlinks as ordinary text', async () => {
-  const bytes = Buffer.from('conflict cache bytes\n'), test = fixture(bytes);
-  test.service.snapshot = async () => snapshot([{ path: 'asset', indexStatus: 'U', worktreeStatus: 'U', untracked: false, conflict: true }]);
-  expect(await test.documents.preview(repo, { kind: 'change', area: 'conflict', path: 'asset' })).toMatchObject({ kind: 'text', left: bytes.toString(), right: bytes.toString() });
+  const bytes = Buffer.from('conflict cache bytes\n'),
+    test = fixture(bytes);
+  test.service.snapshot = async () =>
+    snapshot([
+      { path: 'asset', indexStatus: 'U', worktreeStatus: 'U', untracked: false, conflict: true },
+    ]);
+  expect(
+    await test.documents.preview(repo, { kind: 'change', area: 'conflict', path: 'asset' }),
+  ).toMatchObject({ kind: 'text', left: bytes.toString(), right: bytes.toString() });
   expect(test.index.mock.calls.map(([, request]) => request.stage).sort()).toEqual([2, 3]);
-  test.index.mockRejectedValue(Object.assign(new Error('Not a regular file'), { code: 'INVALID_PATH' }));
-  const preview = await test.documents.preview(repo, { kind: 'change', area: 'conflict', path: 'asset' });
-  expect(preview).toMatchObject({ kind: 'text', left: test.object.bytes.toString(), right: test.object.bytes.toString() });
+  test.index.mockRejectedValue(
+    Object.assign(new Error('Not a regular file'), { code: 'INVALID_PATH' }),
+  );
+  const preview = await test.documents.preview(repo, {
+    kind: 'change',
+    area: 'conflict',
+    path: 'asset',
+  });
+  expect(preview).toMatchObject({
+    kind: 'text',
+    left: test.object.bytes.toString(),
+    right: test.object.bytes.toString(),
+  });
   expect(preview.lfs).toBeUndefined();
 });

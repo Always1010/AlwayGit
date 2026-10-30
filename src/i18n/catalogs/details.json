@@ -301,9 +301,7 @@
     "context": "webview/Details.tsx / WorkingTree",
     "omitParameters": {
       "en": [],
-      "zh-CN": [
-        "value3"
-      ]
+      "zh-CN": ["value3"]
     }
   },
   "details.untrackedVariant2": {

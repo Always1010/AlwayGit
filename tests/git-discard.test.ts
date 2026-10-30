@@ -13,25 +13,34 @@ it.each([
   { tracked: false, scope: 'unstaged' as const },
   { tracked: true, scope: 'all' as const },
   { tracked: false, scope: 'all' as const },
-])('rejects a $scope plan when a tracked=$tracked file changes without changing Git status', async ({ tracked, scope }) => {
-  const { root, repo, service } = await fixtures.setup();
-  if (tracked) {
-    await writeFile(path.join(root, 'selected.txt'), 'base');
-    await git(root, 'add', 'selected.txt'); await git(root, 'commit', '-m', 'base');
-  }
-  await writeFile(path.join(root, 'selected.txt'), 'first edit');
-  const before = (await service.snapshot(repo)).changes;
-  const plan = await service.prepareDiscard(repo, { scope });
-  // Equal byte lengths ensure the guard checks content, rather than just size.
-  await writeFile(path.join(root, 'selected.txt'), 'later edit');
-  expect((await service.snapshot(repo)).changes).toEqual(before);
-  await expect(service.execute(repo, { type: 'discard', paths: [], planToken: plan.token })).rejects.toMatchObject({ code: 'DISCARD_CHANGED' });
-  expect(await readFile(path.join(root, 'selected.txt'), 'utf8')).toBe('later edit');
-  const fresh = await service.prepareDiscard(repo, { scope });
-  await service.execute(repo, { type: 'discard', paths: [], planToken: fresh.token });
-  if (tracked) expect(await readFile(path.join(root, 'selected.txt'), 'utf8')).toBe('base');
-  else await expect(readFile(path.join(root, 'selected.txt'))).rejects.toMatchObject({ code: 'ENOENT' });
-});
+])(
+  'rejects a $scope plan when a tracked=$tracked file changes without changing Git status',
+  async ({ tracked, scope }) => {
+    const { root, repo, service } = await fixtures.setup();
+    if (tracked) {
+      await writeFile(path.join(root, 'selected.txt'), 'base');
+      await git(root, 'add', 'selected.txt');
+      await git(root, 'commit', '-m', 'base');
+    }
+    await writeFile(path.join(root, 'selected.txt'), 'first edit');
+    const before = (await service.snapshot(repo)).changes;
+    const plan = await service.prepareDiscard(repo, { scope });
+    // Equal byte lengths ensure the guard checks content, rather than just size.
+    await writeFile(path.join(root, 'selected.txt'), 'later edit');
+    expect((await service.snapshot(repo)).changes).toEqual(before);
+    await expect(
+      service.execute(repo, { type: 'discard', paths: [], planToken: plan.token }),
+    ).rejects.toMatchObject({ code: 'DISCARD_CHANGED' });
+    expect(await readFile(path.join(root, 'selected.txt'), 'utf8')).toBe('later edit');
+    const fresh = await service.prepareDiscard(repo, { scope });
+    await service.execute(repo, { type: 'discard', paths: [], planToken: fresh.token });
+    if (tracked) expect(await readFile(path.join(root, 'selected.txt'), 'utf8')).toBe('base');
+    else
+      await expect(readFile(path.join(root, 'selected.txt'))).rejects.toMatchObject({
+        code: 'ENOENT',
+      });
+  },
+);
 
 it('keeps a selected-path plan valid when only an unselected working file changes', async () => {
   const { root, repo, service } = await fixtures.setup();
@@ -51,7 +60,16 @@ it('discards more than 10,000 tracked files in one planned operation while retai
   await service.execute(repo, { type: 'stage', paths: [names[0]] });
   await service.execute(repo, { type: 'commit', message: 'base' });
   const blob = await git(root, 'rev-parse', `HEAD:${names[0]}`);
-  await runGitProcess({ args: ['-C', root, 'update-index', '--index-info'], env: process.env, input: Buffer.from(names.slice(1).map(name => `100644 ${blob}\t${name}\n`).join('')) });
+  await runGitProcess({
+    args: ['-C', root, 'update-index', '--index-info'],
+    env: process.env,
+    input: Buffer.from(
+      names
+        .slice(1)
+        .map((name) => `100644 ${blob}\t${name}\n`)
+        .join(''),
+    ),
+  });
   await service.execute(repo, { type: 'commit', message: 'large tree' });
   await writeFile(path.join(root, names[0]), 'staged');
   await service.execute(repo, { type: 'stage', paths: [names[0]] });
@@ -61,14 +79,20 @@ it('discards more than 10,000 tracked files in one planned operation while retai
   const plan = await service.prepareDiscard(repo, { scope: 'unstaged' });
   expect(plan).toMatchObject({ tracked: 10001, untracked: 1, staged: 1 });
   const updates: FileOperationProgress[] = [];
-  await service.execute(repo, { type: 'discard', paths: [], planToken: plan.token }, progress => updates.push(progress));
+  await service.execute(repo, { type: 'discard', paths: [], planToken: plan.token }, (progress) =>
+    updates.push(progress),
+  );
   expect(await readFile(path.join(root, names[0]), 'utf8')).toBe('staged');
   expect(await readFile(path.join(root, names.at(-1)!), 'utf8')).toBe('base');
-  await expect(readFile(path.join(root, 'untracked [1].txt'))).rejects.toMatchObject({ code: 'ENOENT' });
+  await expect(readFile(path.join(root, 'untracked [1].txt'))).rejects.toMatchObject({
+    code: 'ENOENT',
+  });
   expect(await git(root, 'diff', '--name-only')).toBe('');
   expect(await git(root, 'diff', '--cached', '--name-only')).toBe(names[0]);
   expect(updates.at(-1)).toMatchObject({ completed: 10002, total: 10002, phase: 'cleaning' });
-  await expect(service.execute(repo, { type: 'discard', paths: [], planToken: plan.token })).rejects.toMatchObject({ code: 'DISCARD_CHANGED' });
+  await expect(
+    service.execute(repo, { type: 'discard', paths: [], planToken: plan.token }),
+  ).rejects.toMatchObject({ code: 'DISCARD_CHANGED' });
 }, 120000);
 
 it('binds Discard to its repository and selection, and rejects changed Index content with the same status', async () => {
@@ -82,11 +106,15 @@ it('binds Discard to its repository and selection, and rejects changed Index con
   await writeFile(path.join(root, 'selected.txt'), 'unstaged');
   await writeFile(path.join(root, 'keep.txt'), 'keep');
   const plan = await service.prepareDiscard(repo, { paths: ['selected.txt'] });
-  await expect(service.execute(other.repo, { type: 'discard', paths: [], planToken: plan.token })).rejects.toMatchObject({ code: 'DISCARD_CHANGED' });
+  await expect(
+    service.execute(other.repo, { type: 'discard', paths: [], planToken: plan.token }),
+  ).rejects.toMatchObject({ code: 'DISCARD_CHANGED' });
   await writeFile(path.join(root, 'selected.txt'), 'new staged');
   await service.execute(repo, { type: 'stage', paths: ['selected.txt'] });
   await writeFile(path.join(root, 'selected.txt'), 'new unstaged');
-  await expect(service.execute(repo, { type: 'discard', paths: [], planToken: plan.token })).rejects.toMatchObject({ code: 'DISCARD_CHANGED' });
+  await expect(
+    service.execute(repo, { type: 'discard', paths: [], planToken: plan.token }),
+  ).rejects.toMatchObject({ code: 'DISCARD_CHANGED' });
   expect(await readFile(path.join(root, 'selected.txt'), 'utf8')).toBe('new unstaged');
   const current = await service.prepareDiscard(repo, { paths: ['selected.txt'] });
   await service.execute(repo, { type: 'discard', paths: ['keep.txt'], planToken: current.token });
@@ -97,8 +125,10 @@ it('binds Discard to its repository and selection, and rejects changed Index con
 
 it('discards the Index and Working Tree including staged additions, deletions and renames without moving HEAD', async () => {
   const { root, repo, service } = await fixtures.setup();
-  for (const name of ['edit.txt', 'old [1].txt', 'deleted.txt']) await writeFile(path.join(root, name), 'base');
-  await git(root, 'add', '-A'); await git(root, 'commit', '-m', 'base');
+  for (const name of ['edit.txt', 'old [1].txt', 'deleted.txt'])
+    await writeFile(path.join(root, name), 'base');
+  await git(root, 'add', '-A');
+  await git(root, 'commit', '-m', 'base');
   const head = await git(root, 'rev-parse', 'HEAD');
   await writeFile(path.join(root, 'edit.txt'), 'staged');
   await rename(path.join(root, 'old [1].txt'), path.join(root, 'new [1].txt'));
@@ -111,11 +141,17 @@ it('discards the Index and Working Tree including staged additions, deletions an
   await writeFile(path.join(root, 'ignored.txt'), 'keep');
   const plan = await service.prepareDiscard(repo, { scope: 'all' });
   expect(plan.paths).toContain('old [1].txt');
-  const action = await service.prepareAction(repo, { type: 'discard', paths: [], planToken: plan.token });
+  const action = await service.prepareAction(repo, {
+    type: 'discard',
+    paths: [],
+    planToken: plan.token,
+  });
   expect(action).toMatchObject({ mode: 'all' });
   await service.execute(repo, action);
-  for (const name of ['edit.txt', 'old [1].txt', 'deleted.txt']) expect(await readFile(path.join(root, name), 'utf8')).toBe('base');
-  for (const name of ['added.txt', 'new [1].txt', 'untracked.txt']) await expect(readFile(path.join(root, name))).rejects.toMatchObject({ code: 'ENOENT' });
+  for (const name of ['edit.txt', 'old [1].txt', 'deleted.txt'])
+    expect(await readFile(path.join(root, name), 'utf8')).toBe('base');
+  for (const name of ['added.txt', 'new [1].txt', 'untracked.txt'])
+    await expect(readFile(path.join(root, name))).rejects.toMatchObject({ code: 'ENOENT' });
   expect(await readFile(path.join(root, 'ignored.txt'), 'utf8')).toBe('keep');
   expect(await git(root, 'status', '--porcelain')).toBe('');
   expect(await git(root, 'rev-parse', 'HEAD')).toBe(head);
@@ -133,7 +169,9 @@ it('clears an unborn Index and deletes staged ignored additions while retaining 
   await service.execute(repo, { type: 'discard', paths: [], planToken: plan.token });
   expect(await git(root, 'ls-files')).toBe('');
   await expect(readFile(path.join(root, 'added.cache'))).rejects.toMatchObject({ code: 'ENOENT' });
-  await expect(readFile(path.join(root, 'untracked.txt'))).rejects.toMatchObject({ code: 'ENOENT' });
+  await expect(readFile(path.join(root, 'untracked.txt'))).rejects.toMatchObject({
+    code: 'ENOENT',
+  });
   expect(await readFile(path.join(root, 'keep.cache'), 'utf8')).toBe('keep');
 });
 
@@ -141,12 +179,18 @@ it('blocks global staged-content discard during an operation and reports protect
   const { root, repo, service } = await fixtures.setup();
   await writeFile(path.join(root, 'untracked.txt'), 'keep');
   await writeFile(path.join(root, '.git', 'MERGE_HEAD'), 'a'.repeat(40));
-  await expect(service.prepareDiscard(repo, { scope: 'all' })).rejects.toMatchObject({ code: 'OPERATION_ACTIVE' });
+  await expect(service.prepareDiscard(repo, { scope: 'all' })).rejects.toMatchObject({
+    code: 'OPERATION_ACTIVE',
+  });
   expect(await readFile(path.join(root, 'untracked.txt'), 'utf8')).toBe('keep');
-  const other = await fixtures.setup(), nested = path.join(other.root, 'nested');
-  await mkdir(nested); await git(nested, 'init', '-b', 'main');
+  const other = await fixtures.setup(),
+    nested = path.join(other.root, 'nested');
+  await mkdir(nested);
+  await git(nested, 'init', '-b', 'main');
   await writeFile(path.join(nested, 'keep.txt'), 'nested repository');
   const plan = await other.service.prepareDiscard(other.repo, { scope: 'all' });
-  await expect(other.service.execute(other.repo, { type: 'discard', paths: [], planToken: plan.token })).rejects.toMatchObject({ message: expect.stringContaining('nested') });
+  await expect(
+    other.service.execute(other.repo, { type: 'discard', paths: [], planToken: plan.token }),
+  ).rejects.toMatchObject({ message: expect.stringContaining('nested') });
   expect(await readFile(path.join(nested, 'keep.txt'), 'utf8')).toBe('nested repository');
 });

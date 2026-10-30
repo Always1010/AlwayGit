@@ -1,13 +1,18 @@
 import assert from 'node:assert/strict';
 
 async function verifyFilePathDisplay(page, list, virtual = false, scrollTop = 18000) {
-  const readingPosition = () => list.evaluate(element => {
-    const top = element.getBoundingClientRect().top;
-    const row = [...element.querySelectorAll('.file-item,.change-file')].find(row => row.getBoundingClientRect().bottom > top);
-    return row?.querySelector('.file-name')?.getAttribute('aria-label');
-  });
+  const readingPosition = () =>
+    list.evaluate((element) => {
+      const top = element.getBoundingClientRect().top;
+      const row = [...element.querySelectorAll('.file-item,.change-file')].find(
+        (row) => row.getBoundingClientRect().bottom > top,
+      );
+      return row?.querySelector('.file-name')?.getAttribute('aria-label');
+    });
   if (virtual) {
-    await list.evaluate((element, offset) => { element.scrollTop = offset; }, scrollTop);
+    await list.evaluate((element, offset) => {
+      element.scrollTop = offset;
+    }, scrollTop);
     await page.waitForTimeout(100);
   }
   const anchor = await readingPosition();
@@ -15,45 +20,105 @@ async function verifyFilePathDisplay(page, list, virtual = false, scrollTop = 18
   const dialog = page.getByRole('dialog', { name: 'Settings', exact: true });
   await dialog.getByRole('button', { name: 'File list', exact: true }).click();
   const modes = dialog.locator('input[name="file-path-display"]');
-  for (const [index, display] of [[1, 'inline'], [2, 'name-only'], [0, 'stacked']]) {
+  for (const [index, display] of [
+    [1, 'inline'],
+    [2, 'name-only'],
+    [0, 'stacked'],
+  ]) {
     await modes.nth(index).check();
     await list.locator(`.file-label[data-path-display="${display}"]`).first().waitFor();
     await page.waitForTimeout(100);
-    const geometry = await list.locator('.file-item,.change-file').evaluateAll(rows => rows.map(row => {
-      const box = row.getBoundingClientRect(), name = row.querySelector('.file-basename').getBoundingClientRect();
-      const path = row.querySelector('.file-parent-path')?.getBoundingClientRect();
-      const group = [...row.closest('[role="listbox"]').querySelectorAll('.virtual-file-spacer')].indexOf(row.closest('.virtual-file-spacer'));
-      return { top: box.top, bottom: box.bottom, height: box.height, group, sameLine: !path || Math.abs((path.top + path.bottom - name.top - name.bottom) / 2) < 1 };
-    }));
-    assert.ok(geometry.length && geometry.every(row => row.height === (display === 'stacked' ? 36 : 29)), 'File row heights follow the selected display mode');
-    if (display !== 'stacked') assert.ok(geometry.every(row => row.sameLine), 'Single-line paths stay beside file names');
-    assert.equal(await list.locator('.file-parent-path').count(), display === 'name-only' ? 0 : geometry.length);
+    const geometry = await list.locator('.file-item,.change-file').evaluateAll((rows) =>
+      rows.map((row) => {
+        const box = row.getBoundingClientRect(),
+          name = row.querySelector('.file-basename').getBoundingClientRect();
+        const path = row.querySelector('.file-parent-path')?.getBoundingClientRect();
+        const group = [
+          ...row.closest('[role="listbox"]').querySelectorAll('.virtual-file-spacer'),
+        ].indexOf(row.closest('.virtual-file-spacer'));
+        return {
+          top: box.top,
+          bottom: box.bottom,
+          height: box.height,
+          group,
+          sameLine: !path || Math.abs((path.top + path.bottom - name.top - name.bottom) / 2) < 1,
+        };
+      }),
+    );
+    assert.ok(
+      geometry.length && geometry.every((row) => row.height === (display === 'stacked' ? 36 : 29)),
+      'File row heights follow the selected display mode',
+    );
+    if (display !== 'stacked')
+      assert.ok(
+        geometry.every((row) => row.sameLine),
+        'Single-line paths stay beside file names',
+      );
+    assert.equal(
+      await list.locator('.file-parent-path').count(),
+      display === 'name-only' ? 0 : geometry.length,
+    );
     const button = list.locator('.file-name').first();
-    assert.ok((await button.getAttribute('title')).includes(await button.getAttribute('aria-label')), 'Full paths remain available in hover text');
+    assert.ok(
+      (await button.getAttribute('title')).includes(await button.getAttribute('aria-label')),
+      'Full paths remain available in hover text',
+    );
     if (virtual) {
-      assert.equal(await readingPosition(), anchor, 'Switching file layout retains the top visible file');
+      assert.equal(
+        await readingPosition(),
+        anchor,
+        'Switching file layout retains the top visible file',
+      );
       assert.ok(geometry.length < 200, 'Layout changes retain virtualization');
-      assert.ok(geometry.slice(1).every((row, i) => row.group !== geometry[i].group || Math.abs(row.top - geometry[i].bottom) < 1), 'Remeasured virtual rows have no overlaps or stale gaps');
+      assert.ok(
+        geometry
+          .slice(1)
+          .every(
+            (row, i) =>
+              row.group !== geometry[i].group || Math.abs(row.top - geometry[i].bottom) < 1,
+          ),
+        'Remeasured virtual rows have no overlaps or stale gaps',
+      );
     }
   }
   await modes.nth(2).check();
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
   await list.locator('.file-label[data-path-display="stacked"]').first().waitFor();
   if (virtual) {
-    assert.equal(await readingPosition(), anchor, 'Cancel restores layout without losing the reading position');
-    await list.evaluate(element => { element.scrollTop = 0; });
+    assert.equal(
+      await readingPosition(),
+      anchor,
+      'Cancel restores layout without losing the reading position',
+    );
+    await list.evaluate((element) => {
+      element.scrollTop = 0;
+    });
   }
 }
 
 // Shared by Working Tree, Commit Details, and Commit comparison regressions.
 async function verifyFileSelectionPreview(page, list, screenshotPath) {
-  const rows = list.locator('.file-item,.change-file'), first = rows.nth(0), second = rows.nth(1), third = rows.nth(2);
-  const labels = await rows.locator('.file-basename').evaluateAll(names => names.map(name => {
-    const range = document.createRange(); range.selectNodeContents(name);
-    const text = range.getBoundingClientRect(), box = name.getBoundingClientRect(), path = name.nextElementSibling.getBoundingClientRect();
-    return { fits: text.top >= box.top - 0.1 && text.bottom <= box.bottom + 0.1, gap: path.top - box.bottom };
-  }));
-  assert.ok(labels.length && labels.every(label => label.fits && label.gap >= 0.9), 'File names retain complete descenders and stay separate from parent paths');
+  const rows = list.locator('.file-item,.change-file'),
+    first = rows.nth(0),
+    second = rows.nth(1),
+    third = rows.nth(2);
+  const labels = await rows.locator('.file-basename').evaluateAll((names) =>
+    names.map((name) => {
+      const range = document.createRange();
+      range.selectNodeContents(name);
+      const text = range.getBoundingClientRect(),
+        box = name.getBoundingClientRect(),
+        path = name.nextElementSibling.getBoundingClientRect();
+      return {
+        fits: text.top >= box.top - 0.1 && text.bottom <= box.bottom + 0.1,
+        gap: path.top - box.bottom,
+      };
+    }),
+  );
+  assert.ok(
+    labels.length && labels.every((label) => label.fits && label.gap >= 0.9),
+    'File names retain complete descenders and stay separate from parent paths',
+  );
   const click = (row, modifiers = []) => row.locator('.file-name').click({ modifiers });
   const selectedCount = () => list.locator('[role="option"][aria-selected="true"]').count();
   const heading = page.getByTestId('diff-preview').locator('.diff-file-identity');
@@ -62,25 +127,41 @@ async function verifyFileSelectionPreview(page, list, screenshotPath) {
   assert.equal(await selectedCount(), 1);
   assert.equal(await first.getAttribute('aria-current'), 'true');
   const previewTitle = await heading.innerText();
-  const previewReads = () => page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'diffPreview').length);
+  const previewReads = () =>
+    page.evaluate(
+      () => window.__filesFixture.calls.filter((call) => call.method === 'diffPreview').length,
+    );
   const reads = await previewReads();
-  const selectedBackground = await first.evaluate(row => getComputedStyle(row).backgroundColor);
+  const selectedBackground = await first.evaluate((row) => getComputedStyle(row).backgroundColor);
   const unchanged = async () => {
-    assert.equal(await heading.innerText(), previewTitle, 'Batch selection must keep the current Diff');
-    assert.equal(await first.getAttribute('aria-current'), 'true', 'The preview marker stays on the viewed file');
+    assert.equal(
+      await heading.innerText(),
+      previewTitle,
+      'Batch selection must keep the current Diff',
+    );
+    assert.equal(
+      await first.getAttribute('aria-current'),
+      'true',
+      'The preview marker stays on the viewed file',
+    );
     assert.equal(await previewReads(), reads, 'Batch selection must not fetch another Diff');
   };
-  const outlined = row => row.evaluate(element => getComputedStyle(element).outlineStyle !== 'none');
+  const outlined = (row) =>
+    row.evaluate((element) => getComputedStyle(element).outlineStyle !== 'none');
   const listBox = await list.boundingBox();
   await list.click({ position: { x: listBox.width - 2, y: listBox.height - 2 } });
   assert.equal(await selectedCount(), 0, 'Empty file-list space clears operation selection');
-  assert.equal(await first.locator('.file-name').evaluate(element => element === document.activeElement), true);
+  assert.equal(
+    await first.locator('.file-name').evaluate((element) => element === document.activeElement),
+    true,
+  );
   assert.equal(await outlined(first), true, 'Deselection retains only the real row focus outline');
   await unchanged();
   await heading.click();
   assert.equal(await outlined(first), false, 'Leaving the file area removes the focus outline');
   await unchanged();
-  await click(first); await click(second, ['Control']);
+  await click(first);
+  await click(second, ['Control']);
   await heading.click();
   assert.equal(await selectedCount(), 0, 'Leaving the file area also clears a bulk selection');
   await unchanged();
@@ -91,20 +172,35 @@ async function verifyFileSelectionPreview(page, list, screenshotPath) {
   await click(second, ['Control']);
   assert.equal(await selectedCount(), 2);
   assert.equal(await second.getAttribute('aria-current'), null);
-  assert.equal(await first.evaluate(row => getComputedStyle(row).backgroundColor), selectedBackground, 'Hover must not change selection colors');
+  assert.equal(
+    await first.evaluate((row) => getComputedStyle(row).backgroundColor),
+    selectedBackground,
+    'Hover must not change selection colors',
+  );
   await unchanged();
   await click(first, ['Control']);
   assert.equal(await first.getAttribute('aria-selected'), 'false');
   assert.equal(await selectedCount(), 1);
   await unchanged();
-  const clearedBackground = await first.evaluate(row => getComputedStyle(row).backgroundColor);
-  assert.notEqual(clearedBackground, selectedBackground, 'Deselecting the viewed file must remove its selection background');
-  const marker = await first.locator('.file-status').evaluate(icon => ({ width: getComputedStyle(icon, '::before').width, color: getComputedStyle(icon, '::before').backgroundColor }));
+  const clearedBackground = await first.evaluate((row) => getComputedStyle(row).backgroundColor);
+  assert.notEqual(
+    clearedBackground,
+    selectedBackground,
+    'Deselecting the viewed file must remove its selection background',
+  );
+  const marker = await first.locator('.file-status').evaluate((icon) => ({
+    width: getComputedStyle(icon, '::before').width,
+    color: getComputedStyle(icon, '::before').backgroundColor,
+  }));
   assert.equal(marker.width, '4px', 'The current Diff uses a small icon marker');
   assert.notEqual(marker.color, 'rgba(0, 0, 0, 0)');
   if (screenshotPath) await page.screenshot({ path: screenshotPath });
   await third.locator('.file-name').hover();
-  assert.equal(await third.evaluate(row => getComputedStyle(row).backgroundColor), clearedBackground, 'Viewed and other unselected rows have the same hover background');
+  assert.equal(
+    await third.evaluate((row) => getComputedStyle(row).backgroundColor),
+    clearedBackground,
+    'Viewed and other unselected rows have the same hover background',
+  );
   await click(second, ['Meta']);
   assert.equal(await selectedCount(), 0, 'Cmd toggles selection on macOS');
   await unchanged();
@@ -122,89 +218,238 @@ async function verifyFileSelectionPreview(page, list, screenshotPath) {
   await unchanged();
   await page.keyboard.press('Escape');
   assert.equal(await selectedCount(), 0);
-  assert.equal(await outlined(second), true, 'Escape retains keyboard focus independently of selection');
+  assert.equal(
+    await outlined(second),
+    true,
+    'Escape retains keyboard focus independently of selection',
+  );
   await unchanged();
-  await click(first); await click(second, ['Control']);
+  await click(first);
+  await click(second, ['Control']);
   await second.locator('.file-status').click({ button: 'right' });
   const menu = page.getByRole('menu');
   await menu.waitFor();
   assert.equal(await selectedCount(), 2, 'File context menus retain the complete multi-selection');
-  assert.equal(await menu.evaluate(element=>element.contains(document.activeElement)),true,'File menu owns keyboard focus');
+  assert.equal(
+    await menu.evaluate((element) => element.contains(document.activeElement)),
+    true,
+    'File menu owns keyboard focus',
+  );
   await page.keyboard.press('Escape');
   assert.equal(await selectedCount(), 2);
-  assert.equal(await second.locator('.file-name').evaluate(element => element === document.activeElement), true, 'Closing the file menu restores focus to its row');
+  assert.equal(
+    await second.locator('.file-name').evaluate((element) => element === document.activeElement),
+    true,
+    'Closing the file menu restores focus to its row',
+  );
   // Right-click retains the existing preview behavior; restore the fixture's preview before checking it.
   await click(first);
   await click(second);
   assert.equal(await selectedCount(), 1);
-  assert.equal(await second.getAttribute('aria-current'), 'true', 'An ordinary click switches the preview');
+  assert.equal(
+    await second.getAttribute('aria-current'),
+    'true',
+    'An ordinary click switches the preview',
+  );
   assert.notEqual(await heading.innerText(), previewTitle);
 }
 
 export async function verifyFiles(browser, url) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
-  page.on('pageerror', error => errors.push(error.message));
+  page.on('pageerror', (error) => errors.push(error.message));
   try {
     await page.addInitScript(() => {
       const repo = { id: 'files', root: '/files', commonDir: '/files/.git', name: 'File fixture' };
-      const parent = { oid: 'c'.repeat(40), parents: [], author: 'Fixture', email: 'test@example.com', timestamp: 0, subject: 'Parent fixture' };
-      const commit = { ...parent, oid: 'a'.repeat(40), parents: [parent.oid], subject: 'File selection' };
-      const paths = ['src/features/auth/login.ts', 'src/services/auth/login.ts', 'README.md'];
-      const fixture = window.__filesFixture = { calls: [], paths,
-        holdDetails: false, heldDetails: [], snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 0, behind: 0, changes: paths.map((path, i) => ({ path, indexStatus: i === 2 ? '?' : 'M', worktreeStatus: i === 2 ? '?' : 'M', conflict: false, untracked: i === 2 })), refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
+      const parent = {
+        oid: 'c'.repeat(40),
+        parents: [],
+        author: 'Fixture',
+        email: 'test@example.com',
+        timestamp: 0,
+        subject: 'Parent fixture',
       };
-      window.acquireVsCodeApi = () => ({ getState: () => JSON.parse(localStorage.getItem('files-session') || '{}'), setState: session => { fixture.session = structuredClone(session); localStorage.setItem('files-session', JSON.stringify(session)); }, postMessage(request) {
-        if (request.method === 'saveSession') { setTimeout(() => window.postMessage({ type: 'response', id: request.id, result: null }, '*'), 0); return; }
-        fixture.calls.push(request);
-        if (request.method === 'action' && request.payload.type === 'commit' && fixture.failCommit) {
-          setTimeout(() => window.postMessage({ type: 'response', id: request.id, error: { message: 'hook rejected' } }, '*'), 10); return;
-        }
-        let result;
-        if (request.method === 'interfaceSettings' || request.method === 'saveInterfaceSettings') {
-          const preferences = JSON.parse(localStorage.getItem('files-preferences') || '{"changeListMode":"split"}');
-          result = request.method === 'saveInterfaceSettings' ? { ...preferences, ...request.payload } : preferences;
-          if (request.method === 'saveInterfaceSettings') localStorage.setItem('files-preferences', JSON.stringify(result));
-        }
-        if (request.method === 'action' && request.payload.type === 'commit') {
-          fixture.snapshot.head = 'b'.repeat(40);
-          fixture.snapshot.changes = fixture.snapshot.changes.flatMap(file => {
-            const selected = request.payload.files?.find(item => item.path === file.path);
-            if (request.payload.files && !selected) return [file];
-            if (selected?.area === 'unstaged') return [];
-            return [{...file,indexStatus:file.untracked?'?':' '}];
-          });
-          result = structuredClone({ ...fixture.snapshot, version: ++fixture.snapshot.version });
-        }
-        if (request.method === 'repositories') result = [repo];
-        if (request.method === 'snapshot') result = structuredClone({ ...fixture.snapshot, version: ++fixture.snapshot.version });
-        if (request.method === 'prepareDiscard') {
-          const selected = request.payload.paths && new Set(request.payload.paths);
-          const changes = fixture.snapshot.changes.filter(file => !file.conflict && (request.payload.scope === 'all' || file.untracked || file.worktreeStatus !== ' ') && (!selected || selected.has(file.path)));
-          fixture.discardPlan = { token: 'files-discard-plan', scope: request.payload.scope === 'all' ? 'all' : 'unstaged', paths: changes.map(file => file.path), tracked: changes.filter(file => !file.untracked).length, untracked: changes.filter(file => file.untracked).length, staged: changes.filter(file => !file.untracked && file.indexStatus !== ' ').length, branch: 'main', head: fixture.snapshot.head };
-          result = fixture.discardPlan;
-        }
-        if (request.method === 'history') result = { commits: [commit, parent], tips: [commit.oid], nextOffset: 2, hasMore: false };
-        if (request.method === 'details' || request.method === 'amendDetails') result = { commit: request.payload.oid === parent.oid ? parent : commit, body: '', files: paths.map(path => ({ path, status: 'M' })) };
-        if (request.method === 'compare') result = { left: parent, right: commit, files: paths.map(path => ({ path, status: 'M' })) };
-        if (request.method === 'diffPreview') result = { kind: 'text', path: request.payload.path, leftLabel: 'Before', rightLabel: 'After', left: 'before', right: 'after' };
-        if (request.method === 'amendDetails' && fixture.holdDetails) { fixture.heldDetails.push({ type: 'response', id: request.id, result }); return; }
-        setTimeout(() => window.postMessage({ type: 'response', id: request.id, result }, '*'), 10);
-      } });
+      const commit = {
+        ...parent,
+        oid: 'a'.repeat(40),
+        parents: [parent.oid],
+        subject: 'File selection',
+      };
+      const paths = ['src/features/auth/login.ts', 'src/services/auth/login.ts', 'README.md'];
+      const fixture = (window.__filesFixture = {
+        calls: [],
+        paths,
+        holdDetails: false,
+        heldDetails: [],
+        snapshot: {
+          repository: repo,
+          branch: 'main',
+          head: commit.oid,
+          ahead: 0,
+          behind: 0,
+          changes: paths.map((path, i) => ({
+            path,
+            indexStatus: i === 2 ? '?' : 'M',
+            worktreeStatus: i === 2 ? '?' : 'M',
+            conflict: false,
+            untracked: i === 2,
+          })),
+          refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }],
+          stashes: [],
+          worktrees: [],
+          operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false },
+          version: 0,
+        },
+      });
+      window.acquireVsCodeApi = () => ({
+        getState: () => JSON.parse(localStorage.getItem('files-session') || '{}'),
+        setState: (session) => {
+          fixture.session = structuredClone(session);
+          localStorage.setItem('files-session', JSON.stringify(session));
+        },
+        postMessage(request) {
+          if (request.method === 'saveSession') {
+            setTimeout(
+              () => window.postMessage({ type: 'response', id: request.id, result: null }, '*'),
+              0,
+            );
+            return;
+          }
+          fixture.calls.push(request);
+          if (
+            request.method === 'action' &&
+            request.payload.type === 'commit' &&
+            fixture.failCommit
+          ) {
+            setTimeout(
+              () =>
+                window.postMessage(
+                  { type: 'response', id: request.id, error: { message: 'hook rejected' } },
+                  '*',
+                ),
+              10,
+            );
+            return;
+          }
+          let result;
+          if (
+            request.method === 'interfaceSettings' ||
+            request.method === 'saveInterfaceSettings'
+          ) {
+            const preferences = JSON.parse(
+              localStorage.getItem('files-preferences') || '{"changeListMode":"split"}',
+            );
+            result =
+              request.method === 'saveInterfaceSettings'
+                ? { ...preferences, ...request.payload }
+                : preferences;
+            if (request.method === 'saveInterfaceSettings')
+              localStorage.setItem('files-preferences', JSON.stringify(result));
+          }
+          if (request.method === 'action' && request.payload.type === 'commit') {
+            fixture.snapshot.head = 'b'.repeat(40);
+            fixture.snapshot.changes = fixture.snapshot.changes.flatMap((file) => {
+              const selected = request.payload.files?.find((item) => item.path === file.path);
+              if (request.payload.files && !selected) return [file];
+              if (selected?.area === 'unstaged') return [];
+              return [{ ...file, indexStatus: file.untracked ? '?' : ' ' }];
+            });
+            result = structuredClone({ ...fixture.snapshot, version: ++fixture.snapshot.version });
+          }
+          if (request.method === 'repositories') result = [repo];
+          if (request.method === 'snapshot')
+            result = structuredClone({ ...fixture.snapshot, version: ++fixture.snapshot.version });
+          if (request.method === 'prepareDiscard') {
+            const selected = request.payload.paths && new Set(request.payload.paths);
+            const changes = fixture.snapshot.changes.filter(
+              (file) =>
+                !file.conflict &&
+                (request.payload.scope === 'all' ||
+                  file.untracked ||
+                  file.worktreeStatus !== ' ') &&
+                (!selected || selected.has(file.path)),
+            );
+            fixture.discardPlan = {
+              token: 'files-discard-plan',
+              scope: request.payload.scope === 'all' ? 'all' : 'unstaged',
+              paths: changes.map((file) => file.path),
+              tracked: changes.filter((file) => !file.untracked).length,
+              untracked: changes.filter((file) => file.untracked).length,
+              staged: changes.filter((file) => !file.untracked && file.indexStatus !== ' ').length,
+              branch: 'main',
+              head: fixture.snapshot.head,
+            };
+            result = fixture.discardPlan;
+          }
+          if (request.method === 'history')
+            result = {
+              commits: [commit, parent],
+              tips: [commit.oid],
+              nextOffset: 2,
+              hasMore: false,
+            };
+          if (request.method === 'details' || request.method === 'amendDetails')
+            result = {
+              commit: request.payload.oid === parent.oid ? parent : commit,
+              body: '',
+              files: paths.map((path) => ({ path, status: 'M' })),
+            };
+          if (request.method === 'compare')
+            result = {
+              left: parent,
+              right: commit,
+              files: paths.map((path) => ({ path, status: 'M' })),
+            };
+          if (request.method === 'diffPreview')
+            result = {
+              kind: 'text',
+              path: request.payload.path,
+              leftLabel: 'Before',
+              rightLabel: 'After',
+              left: 'before',
+              right: 'after',
+            };
+          if (request.method === 'amendDetails' && fixture.holdDetails) {
+            fixture.heldDetails.push({ type: 'response', id: request.id, result });
+            return;
+          }
+          setTimeout(
+            () => window.postMessage({ type: 'response', id: request.id, result }, '*'),
+            10,
+          );
+        },
+      });
     });
     await page.goto(url);
     await page.getByRole('option', { name: 'File fixture' }).dblclick();
     const historyCommits = page.getByTestId('history').locator('[data-oid]');
     await historyCommits.first().click();
-    const details = page.getByTestId('details'), panel = details.locator('.file-selection-panel');
+    const details = page.getByTestId('details'),
+      panel = details.locator('.file-selection-panel');
     await panel.getByText('./src/features/auth', { exact: true }).waitFor();
     await panel.getByText('./src/services/auth', { exact: true }).waitFor();
     await panel.getByText('./', { exact: true }).waitFor();
-    assert.equal(await panel.locator('.file-status[aria-label="Modified"]').count(), 3, 'File states expose accessible status labels');
-    assert.equal((await panel.locator('.file-status-badge').first().innerText()).trim(), 'M', 'Modification status appears in the file icon corner');
-    assert.equal(await panel.locator('.file-item > .codicon').count(), 0, 'Each row uses one file icon with a status badge');
+    assert.equal(
+      await panel.locator('.file-status[aria-label="Modified"]').count(),
+      3,
+      'File states expose accessible status labels',
+    );
+    assert.equal(
+      (await panel.locator('.file-status-badge').first().innerText()).trim(),
+      'M',
+      'Modification status appears in the file icon corner',
+    );
+    assert.equal(
+      await panel.locator('.file-item > .codicon').count(),
+      0,
+      'Each row uses one file icon with a status badge',
+    );
     const compactRow = await panel.locator('.file-item').first().boundingBox();
-    assert.equal(compactRow?.height, 36, 'Default two-line rows reserve space for complete file-name glyphs');
+    assert.equal(
+      compactRow?.height,
+      36,
+      'Default two-line rows reserve space for complete file-name glyphs',
+    );
     await verifyFilePathDisplay(page, panel.locator('.detail-files'));
     await verifyFileSelectionPreview(page, panel.locator('.detail-files'));
     await historyCommits.nth(1).click({ modifiers: ['Control'] });
@@ -214,103 +459,261 @@ export async function verifyFiles(browser, url) {
     await details.locator('.commit-metadata').waitFor();
     const filter = panel.getByRole('searchbox', { name: 'Filter changed file paths', exact: true });
     await filter.fill(' FEATURES/AUTH ');
-    assert.equal(await panel.locator('.file-item').count(), 1, 'Directory fragments must filter the complete relative path case-insensitively');
+    assert.equal(
+      await panel.locator('.file-item').count(),
+      1,
+      'Directory fragments must filter the complete relative path case-insensitively',
+    );
     await panel.getByText('1 / 3', { exact: true }).waitFor();
-    await filter.press('Control+a'); await filter.type('services/auth');
-    assert.equal(await filter.inputValue(), 'services/auth', 'Ctrl+A in the filter must keep native text editing');
+    await filter.press('Control+a');
+    await filter.type('services/auth');
+    assert.equal(
+      await filter.inputValue(),
+      'services/auth',
+      'Ctrl+A in the filter must keep native text editing',
+    );
     await panel.getByRole('button', { name: 'src/services/auth/login.ts', exact: true }).click();
     await page.keyboard.press('Control+a');
-    assert.equal(await panel.locator('.file-item[aria-selected="true"]').count(), 1, 'Select All must stay within filtered files');
+    assert.equal(
+      await panel.locator('.file-item[aria-selected="true"]').count(),
+      1,
+      'Select All must stay within filtered files',
+    );
     await panel.getByRole('button', { name: 'Copy Paths (1)', exact: true }).click();
-    await page.waitForFunction(() => window.__filesFixture.calls.some(call => call.method === 'copyText'));
-    assert.equal(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'copyText').at(-1).payload.text), 'src/services/auth/login.ts');
+    await page.waitForFunction(() =>
+      window.__filesFixture.calls.some((call) => call.method === 'copyText'),
+    );
+    assert.equal(
+      await page.evaluate(
+        () =>
+          window.__filesFixture.calls.filter((call) => call.method === 'copyText').at(-1).payload
+            .text,
+      ),
+      'src/services/auth/login.ts',
+    );
     await filter.fill('missing/directory');
     await panel.getByText('No files match this path filter', { exact: true }).waitFor();
     await filter.fill('');
-    await panel.locator('.detail-files').focus(); await page.keyboard.press('Escape');
+    await panel.locator('.detail-files').focus();
+    await page.keyboard.press('Escape');
     await panel.getByRole('button', { name: 'src/features/auth/login.ts', exact: true }).click();
     await page.keyboard.press('Control+a');
     assert.equal(await panel.locator('.file-item[aria-selected="true"]').count(), 3);
-    assert.equal(await page.evaluate(() => window.getSelection().toString()), '', 'Ctrl+A must not select page text');
+    assert.equal(
+      await page.evaluate(() => window.getSelection().toString()),
+      '',
+      'Ctrl+A must not select page text',
+    );
     await panel.getByRole('button', { name: 'Copy Paths (3)', exact: true }).click();
-    await page.waitForFunction(() => window.__filesFixture.calls.filter(call => call.method === 'copyText').length === 2);
-    assert.equal(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'copyText').at(-1).payload.text), 'src/features/auth/login.ts\nsrc/services/auth/login.ts\nREADME.md');
+    await page.waitForFunction(
+      () => window.__filesFixture.calls.filter((call) => call.method === 'copyText').length === 2,
+    );
+    assert.equal(
+      await page.evaluate(
+        () =>
+          window.__filesFixture.calls.filter((call) => call.method === 'copyText').at(-1).payload
+            .text,
+      ),
+      'src/features/auth/login.ts\nsrc/services/auth/login.ts\nREADME.md',
+    );
     await page.keyboard.press('Escape');
     assert.equal(await panel.locator('.file-item[aria-selected="true"]').count(), 0);
-    await panel.getByRole('button', { name: 'README.md', exact: true }).click({ modifiers: ['Control'] });
+    await panel
+      .getByRole('button', { name: 'README.md', exact: true })
+      .click({ modifiers: ['Control'] });
     assert.equal(await panel.locator('.file-item[aria-selected="true"]').count(), 1);
     await panel.getByRole('button', { name: 'README.md', exact: true }).click({ button: 'right' });
     const menu = page.getByTestId('context-menu');
     await menu.waitFor();
-    assert.deepEqual((await menu.getByRole('menuitem').allTextContents()).map(value=>value.trim()), ['Git LFS','Open Diff in VS Code','Open File in VS Code','Show File History','Copy Path']);
+    assert.deepEqual(
+      (await menu.getByRole('menuitem').allTextContents()).map((value) => value.trim()),
+      ['Git LFS', 'Open Diff in VS Code', 'Open File in VS Code', 'Show File History', 'Copy Path'],
+    );
     await menu.getByRole('menuitem', { name: 'Copy Path', exact: true }).click();
-    await page.waitForFunction(() => window.__filesFixture.calls.filter(call => call.method === 'copyText').length === 3);
-    assert.equal(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'copyText').at(-1).payload.text), 'README.md');
+    await page.waitForFunction(
+      () => window.__filesFixture.calls.filter((call) => call.method === 'copyText').length === 3,
+    );
+    assert.equal(
+      await page.evaluate(
+        () =>
+          window.__filesFixture.calls.filter((call) => call.method === 'copyText').at(-1).payload
+            .text,
+      ),
+      'README.md',
+    );
     await page.waitForTimeout(50);
-    assert.equal(await page.locator('.banner.notice').count(), 0, 'Successful copy actions must not create a global notice');
+    assert.equal(
+      await page.locator('.banner.notice').count(),
+      0,
+      'Successful copy actions must not create a global notice',
+    );
     const workingNode = page.getByTestId('history').locator('[data-working-tree]');
     await workingNode.click({ button: 'right' });
-    assert.deepEqual((await menu.getByRole('menuitem').allTextContents()).map(value => value.trim()), ['Stage All', 'Unstage All', 'Stash All Changes…', 'Discard All Unstaged Changes…', 'Discard All Changes…']);
-    assert.equal(await panel.isVisible(), true, 'Opening the Working Tree menu must retain the current details view');
+    assert.deepEqual(
+      (await menu.getByRole('menuitem').allTextContents()).map((value) => value.trim()),
+      [
+        'Stage All',
+        'Unstage All',
+        'Stash All Changes…',
+        'Discard All Unstaged Changes…',
+        'Discard All Changes…',
+      ],
+    );
+    assert.equal(
+      await panel.isVisible(),
+      true,
+      'Opening the Working Tree menu must retain the current details view',
+    );
     await menu.getByRole('menuitem', { name: 'Stage All', exact: true }).click();
     const nodeStageDialog = page.getByRole('dialog', { name: 'Stage All', exact: true });
-    await nodeStageDialog.getByText('Apply to all 3 files in the current repository, independently of file filters and selection.', { exact: true }).waitFor();
+    await nodeStageDialog
+      .getByText(
+        'Apply to all 3 files in the current repository, independently of file filters and selection.',
+        { exact: true },
+      )
+      .waitFor();
     await nodeStageDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     await workingNode.press('Shift+F10');
     await menu.getByRole('menuitem', { name: 'Discard All Changes…', exact: true }).click();
     const allChangesDialog = page.getByRole('dialog', { name: 'Discard All Changes', exact: true });
-    await allChangesDialog.getByText('Discard ALL staged and unstaged changes and delete untracked files. Restore tracked content to the current commit; newly added files will be removed. Committed history and ignored files remain.', { exact: true }).waitFor();
-    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'prepareDiscard').at(-1).payload), { scope: 'all' });
+    await allChangesDialog
+      .getByText(
+        'Discard ALL staged and unstaged changes and delete untracked files. Restore tracked content to the current commit; newly added files will be removed. Committed history and ignored files remain.',
+        { exact: true },
+      )
+      .waitFor();
+    assert.deepEqual(
+      await page.evaluate(
+        () =>
+          window.__filesFixture.calls.filter((call) => call.method === 'prepareDiscard').at(-1)
+            .payload,
+      ),
+      { scope: 'all' },
+    );
     await allChangesDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     await page.getByTestId('history').locator('[data-working-tree]').click();
-    const groups = details.locator('.change-groups'), unstaged = groups.locator('.change-group:has(.change-heading-unstaged)'), staged = groups.locator('.change-group:has(.change-heading-staged)');
+    const groups = details.locator('.change-groups'),
+      unstaged = groups.locator('.change-group:has(.change-heading-unstaged)'),
+      staged = groups.locator('.change-group:has(.change-heading-staged)');
     const stageAll = unstaged.getByRole('button', { name: 'Stage All', exact: true });
     await stageAll.waitFor();
     await verifyFileSelectionPreview(page, groups, 'artifacts/file-selection-preview.png');
     await unstaged.getByRole('button', { name: 'Collapse Unstaged', exact: true }).click();
     assert.equal(await unstaged.locator('.change-file').first().isVisible(), false);
-    await groups.focus(); await page.keyboard.press('Control+a');
-    assert.equal(await staged.locator('.change-file[aria-selected="true"]').count(), 2, 'Select All excludes collapsed groups');
+    await groups.focus();
+    await page.keyboard.press('Control+a');
+    assert.equal(
+      await staged.locator('.change-file[aria-selected="true"]').count(),
+      2,
+      'Select All excludes collapsed groups',
+    );
     await page.keyboard.press('Escape');
     await unstaged.getByRole('button', { name: 'Expand Unstaged', exact: true }).click();
     assert.equal(await unstaged.locator('.change-file').first().isVisible(), true);
     await unstaged.locator('.file-status[aria-label="Untracked"]').waitFor();
     const discardAll = unstaged.getByRole('button', { name: 'Discard All…', exact: true });
     const unstageAll = staged.getByRole('button', { name: 'Unstage All', exact: true });
-    assert.equal(await stageAll.innerText(), '', 'Stage uses an icon with its action name exposed accessibly');
+    assert.equal(
+      await stageAll.innerText(),
+      '',
+      'Stage uses an icon with its action name exposed accessibly',
+    );
     assert.equal(await stageAll.getAttribute('title'), 'Stage All · A');
     assert.equal(await unstageAll.getAttribute('title'), 'Unstage All · U');
     assert.equal(await stageAll.locator('.stage-inbox-icon').count(), 1);
-    assert.equal(await unstageAll.locator('.codicon-discard').count(), 1, 'Unstage keeps the slanted rollback arrow');
+    assert.equal(
+      await unstageAll.locator('.codicon-discard').count(),
+      1,
+      'Unstage keeps the slanted rollback arrow',
+    );
     assert.equal(await discardAll.locator('.codicon-trash').count(), 1);
-    const actionColors = await groups.locator('.change-actions').evaluateAll(actions => actions.flatMap(group => [...group.querySelectorAll('button')].map(button => getComputedStyle(button).color)));
-    assert.notEqual(actionColors[0], actionColors[1], 'Stage and Discard have different semantic colors');
-    assert.equal(actionColors[1], actionColors[2], 'Unstage and Discard share the red action color');
-    assert.equal(await discardAll.isDisabled(), false, 'Discard All does not require a file selection');
+    const actionColors = await groups
+      .locator('.change-actions')
+      .evaluateAll((actions) =>
+        actions.flatMap((group) =>
+          [...group.querySelectorAll('button')].map((button) => getComputedStyle(button).color),
+        ),
+      );
+    assert.notEqual(
+      actionColors[0],
+      actionColors[1],
+      'Stage and Discard have different semantic colors',
+    );
+    assert.equal(
+      actionColors[1],
+      actionColors[2],
+      'Unstage and Discard share the red action color',
+    );
+    assert.equal(
+      await discardAll.isDisabled(),
+      false,
+      'Discard All does not require a file selection',
+    );
     await discardAll.click();
     let discardDialog = page.getByRole('dialog', { name: 'Discard Changes', exact: true });
     await discardDialog.locator('.discard-paths').waitFor();
-    assert.deepEqual(await discardDialog.locator('.discard-paths > div').allTextContents(), await page.evaluate(() => window.__filesFixture.paths));
-    await discardDialog.getByText('Discard Unstaged Changes and selected untracked files. Staged Changes remain in the Index.', { exact: true }).waitFor();
+    assert.deepEqual(
+      await discardDialog.locator('.discard-paths > div').allTextContents(),
+      await page.evaluate(() => window.__filesFixture.paths),
+    );
+    await discardDialog
+      .getByText(
+        'Discard Unstaged Changes and selected untracked files. Staged Changes remain in the Index.',
+        { exact: true },
+      )
+      .waitFor();
     await discardDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
-    assert.equal(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action').length), 0, 'Cancelling Discard All must not issue an action');
+    assert.equal(
+      await page.evaluate(
+        () => window.__filesFixture.calls.filter((call) => call.method === 'action').length,
+      ),
+      0,
+      'Cancelling Discard All must not issue an action',
+    );
     await stageAll.click();
     let bulkDialog = page.getByRole('dialog', { name: 'Stage all 3 files?', exact: true });
     await bulkDialog.waitFor();
-    assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), 'Stage All', 'Bulk confirmation focuses the affirmative action');
+    assert.equal(
+      await page.evaluate(() => document.activeElement?.textContent?.trim()),
+      'Stage All',
+      'Bulk confirmation focuses the affirmative action',
+    );
     await page.keyboard.press('Escape');
-    assert.equal(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action').length), 0, 'Escape cancels Stage All');
+    assert.equal(
+      await page.evaluate(
+        () => window.__filesFixture.calls.filter((call) => call.method === 'action').length,
+      ),
+      0,
+      'Escape cancels Stage All',
+    );
     await stageAll.click();
     bulkDialog = page.getByRole('dialog', { name: 'Stage all 3 files?', exact: true });
     await bulkDialog.waitFor();
     await page.keyboard.press('Enter');
-    await page.waitForFunction(() => window.__filesFixture.calls.filter(call => call.method === 'action').length === 1);
-    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action')[0].payload), { type: 'stage', paths: ['src/features/auth/login.ts', 'src/services/auth/login.ts', 'README.md'] });
-    await page.getByTestId('action-feedback').getByText('Stage completed', { exact: true }).waitFor();
+    await page.waitForFunction(
+      () => window.__filesFixture.calls.filter((call) => call.method === 'action').length === 1,
+    );
+    assert.deepEqual(
+      await page.evaluate(
+        () => window.__filesFixture.calls.filter((call) => call.method === 'action')[0].payload,
+      ),
+      {
+        type: 'stage',
+        paths: ['src/features/auth/login.ts', 'src/services/auth/login.ts', 'README.md'],
+      },
+    );
+    await page
+      .getByTestId('action-feedback')
+      .getByText('Stage completed', { exact: true })
+      .waitFor();
     await staged.getByRole('button', { name: 'Unstage All', exact: true }).click();
     bulkDialog = page.getByRole('dialog', { name: 'Unstage all 2 files?', exact: true });
     await bulkDialog.waitFor();
-    assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), 'Unstage All', 'Unstage All uses the same affirmative default focus');
+    assert.equal(
+      await page.evaluate(() => document.activeElement?.textContent?.trim()),
+      'Unstage All',
+      'Unstage All uses the same affirmative default focus',
+    );
     await bulkDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     await unstaged.getByRole('button', { name: 'src/features/auth/login.ts', exact: true }).click();
     await page.keyboard.press('Control+a');
@@ -321,301 +724,760 @@ export async function verifyFiles(browser, url) {
     await stageAll.click();
     bulkDialog = page.getByRole('dialog', { name: 'Stage all 3 files?', exact: true });
     await bulkDialog.waitFor();
-    assert.equal(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action').length), 1, 'A partial selection still requires Stage All confirmation');
+    assert.equal(
+      await page.evaluate(
+        () => window.__filesFixture.calls.filter((call) => call.method === 'action').length,
+      ),
+      1,
+      'A partial selection still requires Stage All confirmation',
+    );
     await bulkDialog.getByRole('button', { name: 'Stage All', exact: true }).click();
-    await page.waitForFunction(() => window.__filesFixture.calls.filter(call => call.method === 'action').length === 2);
-    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action')[1].payload), { type: 'stage', paths: ['src/features/auth/login.ts', 'src/services/auth/login.ts', 'README.md'] });
-    await page.getByTestId('action-feedback').getByText('Stage completed', { exact: true }).waitFor();
+    await page.waitForFunction(
+      () => window.__filesFixture.calls.filter((call) => call.method === 'action').length === 2,
+    );
+    assert.deepEqual(
+      await page.evaluate(
+        () => window.__filesFixture.calls.filter((call) => call.method === 'action')[1].payload,
+      ),
+      {
+        type: 'stage',
+        paths: ['src/features/auth/login.ts', 'src/services/auth/login.ts', 'README.md'],
+      },
+    );
+    await page
+      .getByTestId('action-feedback')
+      .getByText('Stage completed', { exact: true })
+      .waitFor();
     await staged.getByRole('button', { name: 'src/features/auth/login.ts', exact: true }).click();
     assert.equal(await staged.locator('.change-file[aria-selected="true"]').count(), 1);
     await unstageAll.click();
     bulkDialog = page.getByRole('dialog', { name: 'Unstage all 2 files?', exact: true });
     await bulkDialog.waitFor();
     await bulkDialog.getByRole('button', { name: 'Unstage All', exact: true }).click();
-    await page.waitForFunction(() => window.__filesFixture.calls.filter(call => call.method === 'action').length === 3);
-    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action')[2].payload), { type: 'unstage', paths: ['src/features/auth/login.ts', 'src/services/auth/login.ts'] }, 'Unstage All ignores a partial selection');
-    await page.getByTestId('action-feedback').getByText('Unstage completed', { exact: true }).waitFor();
-    await groups.focus(); await page.keyboard.press('Escape');
+    await page.waitForFunction(
+      () => window.__filesFixture.calls.filter((call) => call.method === 'action').length === 3,
+    );
+    assert.deepEqual(
+      await page.evaluate(
+        () => window.__filesFixture.calls.filter((call) => call.method === 'action')[2].payload,
+      ),
+      { type: 'unstage', paths: ['src/features/auth/login.ts', 'src/services/auth/login.ts'] },
+      'Unstage All ignores a partial selection',
+    );
+    await page
+      .getByTestId('action-feedback')
+      .getByText('Unstage completed', { exact: true })
+      .waitFor();
+    await groups.focus();
+    await page.keyboard.press('Escape');
     assert.equal(await groups.locator('.change-file[aria-selected="true"]').count(), 0);
-    await unstaged.getByRole('button', { name: 'README.md', exact: true }).click({ modifiers: ['Control'] });
+    await unstaged
+      .getByRole('button', { name: 'README.md', exact: true })
+      .click({ modifiers: ['Control'] });
     await discardAll.click();
     const dialog = page.getByRole('dialog');
     await dialog.locator('.discard-paths').waitFor();
-    assert.deepEqual(await dialog.locator('.discard-paths > div').allTextContents(), await page.evaluate(() => window.__filesFixture.paths), 'Discard All includes every Unstaged path even with a partial selection');
+    assert.deepEqual(
+      await dialog.locator('.discard-paths > div').allTextContents(),
+      await page.evaluate(() => window.__filesFixture.paths),
+      'Discard All includes every Unstaged path even with a partial selection',
+    );
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     const commitTrigger = staged.getByRole('button', { name: 'Commit…', exact: true });
-    assert.equal(await details.locator('textarea').count(), 0, 'Working Tree no longer reserves space for a Commit form');
-    assert.equal(await commitTrigger.evaluate(element => element.previousElementSibling.classList.contains('change-action-staged')), true, 'Commit follows Unstage in the Staged heading');
+    assert.equal(
+      await details.locator('textarea').count(),
+      0,
+      'Working Tree no longer reserves space for a Commit form',
+    );
+    assert.equal(
+      await commitTrigger.evaluate((element) =>
+        element.previousElementSibling.classList.contains('change-action-staged'),
+      ),
+      true,
+      'Commit follows Unstage in the Staged heading',
+    );
     await page.getByRole('separator', { name: 'Resize details panel', exact: true }).press('Home');
-    const headingBox = await staged.locator('.change-heading').boundingBox(), triggerBox = await commitTrigger.boundingBox();
-    assert.ok(triggerBox.x + triggerBox.width <= headingBox.x + headingBox.width + 1, 'Commit fits the narrowest details panel');
-    assert.equal(await groups.locator('.change-file[aria-selected="true"]').count(), 0, 'Moving keyboard focus to the panel divider clears file selection');
+    const headingBox = await staged.locator('.change-heading').boundingBox(),
+      triggerBox = await commitTrigger.boundingBox();
+    assert.ok(
+      triggerBox.x + triggerBox.width <= headingBox.x + headingBox.width + 1,
+      'Commit fits the narrowest details panel',
+    );
+    assert.equal(
+      await groups.locator('.change-file[aria-selected="true"]').count(),
+      0,
+      'Moving keyboard focus to the panel divider clears file selection',
+    );
     await unstaged.getByRole('button', { name: 'README.md', exact: true }).click();
     await commitTrigger.click();
-    const commitDialog = page.getByRole('dialog', { name: 'Commit', exact: true }), draft = commitDialog.getByRole('textbox', { name: 'Commit message' });
+    const commitDialog = page.getByRole('dialog', { name: 'Commit', exact: true }),
+      draft = commitDialog.getByRole('textbox', { name: 'Commit message' });
     await draft.fill('saved draft\nwith body');
     await commitDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     assert.equal(await commitTrigger.locator('.commit-draft-dot').count(), 1);
-    await commitTrigger.click(); assert.equal(await draft.inputValue(), 'saved draft\nwith body', 'Cancel preserves the complete message');
-    await page.keyboard.press('Escape');
-    assert.equal(await commitTrigger.evaluate(element => element === document.activeElement), true, 'Closing Commit restores focus to its trigger');
     await commitTrigger.click();
-    assert.equal(await draft.inputValue(), 'saved draft\nwith body', 'Escape also preserves the draft');
-    await draft.fill('draft stays editable'); await draft.press('Control+a'); await draft.press('Backspace');
+    assert.equal(
+      await draft.inputValue(),
+      'saved draft\nwith body',
+      'Cancel preserves the complete message',
+    );
+    await page.keyboard.press('Escape');
+    assert.equal(
+      await commitTrigger.evaluate((element) => element === document.activeElement),
+      true,
+      'Closing Commit restores focus to its trigger',
+    );
+    await commitTrigger.click();
+    assert.equal(
+      await draft.inputValue(),
+      'saved draft\nwith body',
+      'Escape also preserves the draft',
+    );
+    await draft.fill('draft stays editable');
+    await draft.press('Control+a');
+    await draft.press('Backspace');
     assert.equal(await draft.inputValue(), '', 'Text area keeps native Select All');
-    await page.evaluate(() => { window.__filesFixture.holdDetails = true; });
+    await page.evaluate(() => {
+      window.__filesFixture.holdDetails = true;
+    });
     const amend = commitDialog.getByRole('checkbox', { name: 'Amend last Commit', exact: true });
     await amend.check();
     await page.waitForFunction(() => window.__filesFixture.heldDetails.length === 1);
     await amend.uncheck();
-    await page.evaluate(() => { for (const response of window.__filesFixture.heldDetails.splice(0)) window.postMessage(response, '*'); });
+    await page.evaluate(() => {
+      for (const response of window.__filesFixture.heldDetails.splice(0))
+        window.postMessage(response, '*');
+    });
     await page.waitForTimeout(50);
-    assert.equal(await draft.inputValue(), '', 'Cancelled Amend must ignore a delayed HEAD message');
+    assert.equal(
+      await draft.inputValue(),
+      '',
+      'Cancelled Amend must ignore a delayed HEAD message',
+    );
     await amend.check();
     await page.waitForFunction(() => window.__filesFixture.heldDetails.length === 1);
     await draft.fill('my newer message');
-    await page.evaluate(() => { for (const response of window.__filesFixture.heldDetails.splice(0)) window.postMessage(response, '*'); });
+    await page.evaluate(() => {
+      for (const response of window.__filesFixture.heldDetails.splice(0))
+        window.postMessage(response, '*');
+    });
     await page.waitForTimeout(50);
-    assert.equal(await draft.inputValue(), 'my newer message', 'Amend must preserve text entered while details load');
-    await amend.uncheck(); await draft.fill('');
-    await page.evaluate(() => { window.__filesFixture.holdDetails = false; });
+    assert.equal(
+      await draft.inputValue(),
+      'my newer message',
+      'Amend must preserve text entered while details load',
+    );
+    await amend.uncheck();
+    await draft.fill('');
+    await page.evaluate(() => {
+      window.__filesFixture.holdDetails = false;
+    });
     await page.keyboard.press('Escape');
 
-    assert.equal(await groups.locator('.change-file[aria-selected="true"]').count(), 1, 'Editing Ctrl+A must not change file selection');
-    await unstaged.getByRole('button', { name: 'README.md', exact: true }).click({ button: 'right' });
+    assert.equal(
+      await groups.locator('.change-file[aria-selected="true"]').count(),
+      1,
+      'Editing Ctrl+A must not change file selection',
+    );
+    await unstaged
+      .getByRole('button', { name: 'README.md', exact: true })
+      .click({ button: 'right' });
     await menu.waitFor();
-    assert.deepEqual((await menu.getByRole('menuitem').allTextContents()).map(value=>value.trim()), ['Git LFS','Open Diff in VS Code','Open File in VS Code','Show File History','Stage 1 File','Stash Selected Files…','Discard 1 File…','Copy Path']);
+    assert.deepEqual(
+      (await menu.getByRole('menuitem').allTextContents()).map((value) => value.trim()),
+      [
+        'Git LFS',
+        'Open Diff in VS Code',
+        'Open File in VS Code',
+        'Show File History',
+        'Stage 1 File',
+        'Stash Selected Files…',
+        'Discard 1 File…',
+        'Copy Path',
+      ],
+    );
     await page.keyboard.press('Escape');
-    await commitTrigger.click(); await draft.click({ button: 'right' });
+    await commitTrigger.click();
+    await draft.click({ button: 'right' });
     assert.equal(await menu.isVisible(), false, 'Editable text keeps the native context menu');
     await commitDialog.locator('.modal-heading button').click();
     await discardAll.click();
     discardDialog = page.getByRole('dialog', { name: 'Discard Changes', exact: true });
     await discardDialog.locator('.discard-paths').waitFor();
     await discardDialog.locator('button.danger').click();
-    await page.waitForFunction(() => window.__filesFixture.calls.filter(call => call.method === 'action').length === 4);
-    assert.deepEqual(await page.evaluate(() => window.__filesFixture.discardPlan.paths), ['src/features/auth/login.ts', 'src/services/auth/login.ts', 'README.md'], 'Confirmed Discard All includes every Unstaged path');
-    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action')[3].payload), { type: 'discard', paths: [], planToken: 'files-discard-plan' });
-    const workingFilter = details.getByRole('searchbox', { name: 'Filter working tree file paths', exact: true });
+    await page.waitForFunction(
+      () => window.__filesFixture.calls.filter((call) => call.method === 'action').length === 4,
+    );
+    assert.deepEqual(
+      await page.evaluate(() => window.__filesFixture.discardPlan.paths),
+      ['src/features/auth/login.ts', 'src/services/auth/login.ts', 'README.md'],
+      'Confirmed Discard All includes every Unstaged path',
+    );
+    assert.deepEqual(
+      await page.evaluate(
+        () => window.__filesFixture.calls.filter((call) => call.method === 'action')[3].payload,
+      ),
+      { type: 'discard', paths: [], planToken: 'files-discard-plan' },
+    );
+    const workingFilter = details.getByRole('searchbox', {
+      name: 'Filter working tree file paths',
+      exact: true,
+    });
     await workingFilter.fill(' FEATURES/AUTH ');
     await details.getByText('1 / 3', { exact: true }).waitFor();
-    assert.equal(await groups.locator('.change-file').count(), 2, 'Working filter retains separate Staged and Unstaged entries for one matching path');
-    await groups.focus(); await page.keyboard.press('Control+a');
-    assert.equal(await groups.locator('.change-file[aria-selected="true"]').count(), 2, 'Select All excludes paths outside the working filter');
+    assert.equal(
+      await groups.locator('.change-file').count(),
+      2,
+      'Working filter retains separate Staged and Unstaged entries for one matching path',
+    );
+    await groups.focus();
+    await page.keyboard.press('Control+a');
+    assert.equal(
+      await groups.locator('.change-file[aria-selected="true"]').count(),
+      2,
+      'Select All excludes paths outside the working filter',
+    );
     await details.getByText('Staged 2 · Unstaged 3', { exact: true }).waitFor();
     await unstaged.getByRole('button', { name: 'Stage Matching (1)', exact: true }).click();
     bulkDialog = page.getByRole('dialog', { name: 'Stage 1 matching file?', exact: true });
     await bulkDialog.getByRole('button', { name: 'Stage Matching', exact: true }).click();
-    await page.getByTestId('action-feedback').getByText('Stage completed', { exact: true }).waitFor();
-    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action').at(-1).payload), { type: 'stage', paths: ['src/features/auth/login.ts'] }, 'Filtered Stage excludes hidden paths');
+    await page
+      .getByTestId('action-feedback')
+      .getByText('Stage completed', { exact: true })
+      .waitFor();
+    assert.deepEqual(
+      await page.evaluate(
+        () => window.__filesFixture.calls.filter((call) => call.method === 'action').at(-1).payload,
+      ),
+      { type: 'stage', paths: ['src/features/auth/login.ts'] },
+      'Filtered Stage excludes hidden paths',
+    );
     await staged.getByRole('button', { name: 'Unstage Matching (1)', exact: true }).click();
     bulkDialog = page.getByRole('dialog', { name: 'Unstage 1 matching file?', exact: true });
     await bulkDialog.getByRole('button', { name: 'Unstage Matching', exact: true }).click();
-    await page.getByTestId('action-feedback').getByText('Unstage completed', { exact: true }).waitFor();
-    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action').at(-1).payload), { type: 'unstage', paths: ['src/features/auth/login.ts'] }, 'Filtered Unstage excludes hidden paths');
+    await page
+      .getByTestId('action-feedback')
+      .getByText('Unstage completed', { exact: true })
+      .waitFor();
+    assert.deepEqual(
+      await page.evaluate(
+        () => window.__filesFixture.calls.filter((call) => call.method === 'action').at(-1).payload,
+      ),
+      { type: 'unstage', paths: ['src/features/auth/login.ts'] },
+      'Filtered Unstage excludes hidden paths',
+    );
     await unstaged.getByRole('button', { name: 'Discard Matching (1)…', exact: true }).click();
     discardDialog = page.getByRole('dialog', { name: 'Discard Changes', exact: true });
     await discardDialog.locator('.discard-paths').waitFor();
-    assert.deepEqual(await discardDialog.locator('.discard-paths > div').allTextContents(), ['src/features/auth/login.ts']);
+    assert.deepEqual(await discardDialog.locator('.discard-paths > div').allTextContents(), [
+      'src/features/auth/login.ts',
+    ]);
     await discardDialog.locator('button.danger').click();
-    await page.getByTestId('action-feedback').getByText('Discard completed', { exact: true }).waitFor();
-    assert.deepEqual(await page.evaluate(() => window.__filesFixture.discardPlan.paths), ['src/features/auth/login.ts'], 'Filtered Discard excludes hidden paths');
-    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action').at(-1).payload), { type: 'discard', paths: [], planToken: 'files-discard-plan' });
+    await page
+      .getByTestId('action-feedback')
+      .getByText('Discard completed', { exact: true })
+      .waitFor();
+    assert.deepEqual(
+      await page.evaluate(() => window.__filesFixture.discardPlan.paths),
+      ['src/features/auth/login.ts'],
+      'Filtered Discard excludes hidden paths',
+    );
+    assert.deepEqual(
+      await page.evaluate(
+        () => window.__filesFixture.calls.filter((call) => call.method === 'action').at(-1).payload,
+      ),
+      { type: 'discard', paths: [], planToken: 'files-discard-plan' },
+    );
     await workingFilter.fill('missing/path');
     assert.equal(await groups.locator('.change-file').count(), 0);
-    assert.equal(await groups.locator('.change-heading-staged').isVisible(), true, 'Staged heading stays available with no matching files');
-    assert.equal(await staged.getByRole('button', { name: 'Unstage Matching (0)', exact: true }).isDisabled(), true);
+    assert.equal(
+      await groups.locator('.change-heading-staged').isVisible(),
+      true,
+      'Staged heading stays available with no matching files',
+    );
+    assert.equal(
+      await staged.getByRole('button', { name: 'Unstage Matching (0)', exact: true }).isDisabled(),
+      true,
+    );
     await workingNode.click({ button: 'right' });
-    assert.equal(await menu.getByRole('menuitem', { name: 'Stage All', exact: true }).isEnabled(), true, 'Node actions ignore the right-side path filter');
+    assert.equal(
+      await menu.getByRole('menuitem', { name: 'Stage All', exact: true }).isEnabled(),
+      true,
+      'Node actions ignore the right-side path filter',
+    );
     await page.keyboard.press('Escape');
-    assert.equal(await commitTrigger.isDisabled(), false, 'Commit opens even when the path filter has no matches');
+    assert.equal(
+      await commitTrigger.isDisabled(),
+      false,
+      'Commit opens even when the path filter has no matches',
+    );
     await commitTrigger.click();
     await commitDialog.getByText('All staged files selected by default', { exact: true }).waitFor();
-    assert.deepEqual(await commitDialog.locator('.commit-file-path').allTextContents(), ['src/features/auth/login.ts','src/services/auth/login.ts'], 'Default Commit includes staged files hidden by the filter');
+    assert.deepEqual(
+      await commitDialog.locator('.commit-file-path').allTextContents(),
+      ['src/features/auth/login.ts', 'src/services/auth/login.ts'],
+      'Default Commit includes staged files hidden by the filter',
+    );
     await draft.fill('persistent message\nmessage body');
     await commitDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     await details.getByRole('button', { name: 'Clear file filter', exact: true }).click();
     assert.equal(await groups.locator('.change-file').count(), 5);
     await page.reload();
     await workingFilter.waitFor();
-    assert.equal(await workingFilter.inputValue(), '', 'Working path filters start empty after reopening');
-    assert.equal(await commitDialog.count(), 0, 'Reopening restores drafts without opening a modal automatically');
+    assert.equal(
+      await workingFilter.inputValue(),
+      '',
+      'Working path filters start empty after reopening',
+    );
+    assert.equal(
+      await commitDialog.count(),
+      0,
+      'Reopening restores drafts without opening a modal automatically',
+    );
     await commitTrigger.click();
-    assert.equal(await draft.inputValue(), 'persistent message\nmessage body', 'Saved message survives a full Webview reload');
+    assert.equal(
+      await draft.inputValue(),
+      'persistent message\nmessage body',
+      'Saved message survives a full Webview reload',
+    );
     await page.screenshot({ path: 'artifacts/commit-dialog.png' });
     await page.setViewportSize({ width: 380, height: 650 });
-    assert.ok(await commitDialog.evaluate(element => element.scrollWidth <= element.clientWidth + 1), 'Commit dialog fits narrow windows');
+    assert.ok(
+      await commitDialog.evaluate((element) => element.scrollWidth <= element.clientWidth + 1),
+      'Commit dialog fits narrow windows',
+    );
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.evaluate(() => { window.__filesFixture.failCommit = true; });
+    await page.evaluate(() => {
+      window.__filesFixture.failCommit = true;
+    });
     await commitDialog.getByRole('button', { name: 'Commit', exact: true }).click();
     await commitDialog.getByRole('alert').getByText('hook rejected', { exact: true }).waitFor();
-    assert.equal(await draft.inputValue(), 'persistent message\nmessage body', 'Rejected Commit keeps the modal and message');
+    assert.equal(
+      await draft.inputValue(),
+      'persistent message\nmessage body',
+      'Rejected Commit keeps the modal and message',
+    );
     await commitDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     await page.evaluate(() => {
-      const fixture = window.__filesFixture; fixture.failCommit = false;
-      fixture.snapshot.changes.push({ path: 'hidden-conflict.txt', indexStatus: 'U', worktreeStatus: 'U', conflict: true, untracked: false });
+      const fixture = window.__filesFixture;
+      fixture.failCommit = false;
+      fixture.snapshot.changes.push({
+        path: 'hidden-conflict.txt',
+        indexStatus: 'U',
+        worktreeStatus: 'U',
+        conflict: true,
+        untracked: false,
+      });
       fixture.snapshot.operation.conflicts = 1;
       window.postMessage({ type: 'changed', repoId: 'files' }, '*');
     });
     await workingFilter.fill('features/auth');
-    await details.getByText('1 conflicts are hidden by the filter. Resolve all conflicts before Commit.', { exact: true }).waitFor();
+    await details
+      .getByText('1 conflicts are hidden by the filter. Resolve all conflicts before Commit.', {
+        exact: true,
+      })
+      .waitFor();
     await commitTrigger.click();
-    await commitDialog.getByText('Resolve all 1 conflicts before Commit.', { exact: true }).waitFor();
-    assert.equal(await commitDialog.getByRole('button', { name: 'Commit', exact: true }).isDisabled(), true, 'Hidden conflicts still block Commit');
+    await commitDialog
+      .getByText('Resolve all 1 conflicts before Commit.', { exact: true })
+      .waitFor();
+    assert.equal(
+      await commitDialog.getByRole('button', { name: 'Commit', exact: true }).isDisabled(),
+      true,
+      'Hidden conflicts still block Commit',
+    );
     await page.evaluate(() => {
-      const fixture = window.__filesFixture; fixture.snapshot.changes = fixture.snapshot.changes.filter(file => !file.conflict);
-      fixture.snapshot.operation.conflicts = 0; window.postMessage({ type: 'changed', repoId: 'files' }, '*');
+      const fixture = window.__filesFixture;
+      fixture.snapshot.changes = fixture.snapshot.changes.filter((file) => !file.conflict);
+      fixture.snapshot.operation.conflicts = 0;
+      window.postMessage({ type: 'changed', repoId: 'files' }, '*');
     });
     await commitDialog.getByRole('button', { name: 'Commit', exact: true }).waitFor();
-    await page.waitForFunction(() => !document.querySelector('.commit-dialog .modal-footer .primary').disabled);
-    await draft.press('Control+Enter'); await commitDialog.waitFor({ state: 'hidden' });
-    assert.equal(await page.evaluate(() => window.__filesFixture.session.drafts.files), '', 'Successful Commit clears only the used draft');
-    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action').at(-1).payload), { type: 'commit', message: 'persistent message\nmessage body', amend: false, files:[{path:'src/features/auth/login.ts',area:'staged'},{path:'src/services/auth/login.ts',area:'staged'}],expectedHead:'a'.repeat(40),expectedBranch:'main' });
+    await page.waitForFunction(
+      () => !document.querySelector('.commit-dialog .modal-footer .primary').disabled,
+    );
+    await draft.press('Control+Enter');
+    await commitDialog.waitFor({ state: 'hidden' });
+    assert.equal(
+      await page.evaluate(() => window.__filesFixture.session.drafts.files),
+      '',
+      'Successful Commit clears only the used draft',
+    );
+    assert.deepEqual(
+      await page.evaluate(
+        () => window.__filesFixture.calls.filter((call) => call.method === 'action').at(-1).payload,
+      ),
+      {
+        type: 'commit',
+        message: 'persistent message\nmessage body',
+        amend: false,
+        files: [
+          { path: 'src/features/auth/login.ts', area: 'staged' },
+          { path: 'src/services/auth/login.ts', area: 'staged' },
+        ],
+        expectedHead: 'a'.repeat(40),
+        expectedBranch: 'main',
+      },
+    );
     assert.equal(await commitTrigger.locator('.commit-draft-dot').count(), 0);
     await commitTrigger.click();
     await draft.fill('amend message');
-    assert.equal(await commitDialog.getByRole('button', { name: 'Commit', exact: true }).isDisabled(), true, 'Zero Staged files allow drafting but block an ordinary Commit');
+    assert.equal(
+      await commitDialog.getByRole('button', { name: 'Commit', exact: true }).isDisabled(),
+      true,
+      'Zero Staged files allow drafting but block an ordinary Commit',
+    );
     await amend.check();
-    assert.equal(await draft.inputValue(), 'amend message', 'Amend never overwrites an existing draft');
+    assert.equal(
+      await draft.inputValue(),
+      'amend message',
+      'Amend never overwrites an existing draft',
+    );
     await commitDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await commitTrigger.click(); assert.equal(await amend.isChecked(), false, 'Amend defaults off when reopened');
-    await amend.check(); await draft.press('Control+Enter'); await commitDialog.waitFor({ state: 'hidden' });
+    await commitTrigger.click();
+    assert.equal(await amend.isChecked(), false, 'Amend defaults off when reopened');
+    await amend.check();
+    await draft.press('Control+Enter');
+    await commitDialog.waitFor({ state: 'hidden' });
     assert.equal(await page.evaluate(() => window.__filesFixture.session.drafts.files), '');
-    assert.equal(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action').at(-1).payload.amend), true, 'Message-only Amend works with no Staged files');
+    assert.equal(
+      await page.evaluate(
+        () =>
+          window.__filesFixture.calls.filter((call) => call.method === 'action').at(-1).payload
+            .amend,
+      ),
+      true,
+      'Message-only Amend works with no Staged files',
+    );
     await details.getByRole('button', { name: 'Clear file filter', exact: true }).click();
     await page.screenshot({ path: 'artifacts/working-tree-search.png' });
     // Unified mode shares the existing file selection but keeps each Git area distinct.
     await page.evaluate(() => {
       const fixture = window.__filesFixture;
-      fixture.snapshot.changes = fixture.paths.map((path,i) => ({path,indexStatus:i === 2 ? '?' : 'M',worktreeStatus:i === 2 ? '?' : 'M',untracked:i === 2,conflict:false}));
-      window.postMessage({type:'changed',repoId:'files'},'*');
+      fixture.snapshot.changes = fixture.paths.map((path, i) => ({
+        path,
+        indexStatus: i === 2 ? '?' : 'M',
+        worktreeStatus: i === 2 ? '?' : 'M',
+        untracked: i === 2,
+        conflict: false,
+      }));
+      window.postMessage({ type: 'changed', repoId: 'files' }, '*');
     });
     await groups.locator('.change-file').nth(4).waitFor();
-    const settingsTrigger = page.getByRole('button',{name:'Settings',exact:true});
+    const settingsTrigger = page.getByRole('button', { name: 'Settings', exact: true });
     await settingsTrigger.click();
-    let settingsDialog = page.getByRole('dialog',{name:'Settings',exact:true});
-    await settingsDialog.getByRole('button',{name:'File list',exact:true}).click();
-    await settingsDialog.getByRole('radio',{name:/Unified list/}).check();
+    let settingsDialog = page.getByRole('dialog', { name: 'Settings', exact: true });
+    await settingsDialog.getByRole('button', { name: 'File list', exact: true }).click();
+    await settingsDialog.getByRole('radio', { name: /Unified list/ }).check();
     await details.locator('.unified-change-heading').waitFor();
-    await settingsDialog.getByRole('button',{name:'Cancel',exact:true}).click();
-    assert.equal(await details.locator('.unified-change-heading').count(),0,'Cancel restores split mode');
+    await settingsDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    assert.equal(
+      await details.locator('.unified-change-heading').count(),
+      0,
+      'Cancel restores split mode',
+    );
     await settingsTrigger.click();
-    await settingsDialog.getByRole('button',{name:'File list',exact:true}).click();
-    await settingsDialog.getByRole('radio',{name:/Unified list/}).check();
-    await settingsDialog.getByRole('button',{name:'Apply',exact:true}).click();
-    await settingsDialog.waitFor({state:'hidden'});
-    assert.equal(await groups.locator('.change-actions').count(),0,'Unified list has no group action buttons');
-    assert.deepEqual(await groups.locator('.change-area-label').allTextContents(),['Unstaged','Unstaged','Unstaged','Staged','Staged']);
-    assert.deepEqual(await groups.locator('.file-name').evaluateAll(rows => rows.map(row => row.getAttribute('aria-label'))),['src/features/auth/login.ts','src/services/auth/login.ts','README.md','src/features/auth/login.ts','src/services/auth/login.ts']);
+    await settingsDialog.getByRole('button', { name: 'File list', exact: true }).click();
+    await settingsDialog.getByRole('radio', { name: /Unified list/ }).check();
+    await settingsDialog.getByRole('button', { name: 'Apply', exact: true }).click();
+    await settingsDialog.waitFor({ state: 'hidden' });
+    assert.equal(
+      await groups.locator('.change-actions').count(),
+      0,
+      'Unified list has no group action buttons',
+    );
+    assert.deepEqual(await groups.locator('.change-area-label').allTextContents(), [
+      'Unstaged',
+      'Unstaged',
+      'Unstaged',
+      'Staged',
+      'Staged',
+    ]);
+    assert.deepEqual(
+      await groups
+        .locator('.file-name')
+        .evaluateAll((rows) => rows.map((row) => row.getAttribute('aria-label'))),
+      [
+        'src/features/auth/login.ts',
+        'src/services/auth/login.ts',
+        'README.md',
+        'src/features/auth/login.ts',
+        'src/services/auth/login.ts',
+      ],
+    );
     const toolbar = page.locator('.toolbar');
-    const unifiedStage = toolbar.getByRole('button',{name:'Stage All',exact:true});
-    assert.equal((await unifiedStage.innerText()).trim(),'Stage All','Global actions include visible text');
+    const unifiedStage = toolbar.getByRole('button', { name: 'Stage All', exact: true });
+    assert.equal(
+      (await unifiedStage.innerText()).trim(),
+      'Stage All',
+      'Global actions include visible text',
+    );
     await workingFilter.fill('features/auth');
-    await groups.click(); await page.keyboard.press('a');
-    await page.getByRole('dialog',{name:'Stage All',exact:true}).getByRole('button',{name:'Cancel',exact:true}).click();
+    await groups.click();
+    await page.keyboard.press('a');
+    await page
+      .getByRole('dialog', { name: 'Stage All', exact: true })
+      .getByRole('button', { name: 'Cancel', exact: true })
+      .click();
     await unifiedStage.click();
-    bulkDialog = page.getByRole('dialog',{name:'Stage All',exact:true});
-    await bulkDialog.getByRole('button',{name:'Stage All',exact:true}).click();
-    await page.getByTestId('action-feedback').getByText('Stage completed',{exact:true}).waitFor();
-    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action').at(-1).payload.paths),await page.evaluate(() => window.__filesFixture.paths),'Unified Stage ignores the path filter');
-    await toolbar.getByRole('button',{name:'Unstage All',exact:true}).click();
-    bulkDialog = page.getByRole('dialog',{name:'Unstage All',exact:true});
-    await bulkDialog.getByRole('button',{name:'Unstage All',exact:true}).click();
-    await page.getByTestId('action-feedback').getByText('Unstage completed',{exact:true}).waitFor();
-    assert.equal(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action').at(-1).payload.paths.length),2);
-    await toolbar.getByRole('button',{name:'Discard All…',exact:true}).click();
+    bulkDialog = page.getByRole('dialog', { name: 'Stage All', exact: true });
+    await bulkDialog.getByRole('button', { name: 'Stage All', exact: true }).click();
+    await page
+      .getByTestId('action-feedback')
+      .getByText('Stage completed', { exact: true })
+      .waitFor();
+    assert.deepEqual(
+      await page.evaluate(
+        () =>
+          window.__filesFixture.calls.filter((call) => call.method === 'action').at(-1).payload
+            .paths,
+      ),
+      await page.evaluate(() => window.__filesFixture.paths),
+      'Unified Stage ignores the path filter',
+    );
+    await toolbar.getByRole('button', { name: 'Unstage All', exact: true }).click();
+    bulkDialog = page.getByRole('dialog', { name: 'Unstage All', exact: true });
+    await bulkDialog.getByRole('button', { name: 'Unstage All', exact: true }).click();
+    await page
+      .getByTestId('action-feedback')
+      .getByText('Unstage completed', { exact: true })
+      .waitFor();
+    assert.equal(
+      await page.evaluate(
+        () =>
+          window.__filesFixture.calls.filter((call) => call.method === 'action').at(-1).payload
+            .paths.length,
+      ),
+      2,
+    );
+    await toolbar.getByRole('button', { name: 'Discard All…', exact: true }).click();
     await discardDialog.locator('.discard-paths').waitFor();
-    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'prepareDiscard').at(-1).payload),{scope:'unstaged'});
-    await discardDialog.getByRole('button',{name:'Cancel',exact:true}).click();
-    await details.getByRole('button',{name:'Clear file filter',exact:true}).click();
-    const featureRows = groups.getByRole('button',{name:'src/features/auth/login.ts',exact:true});
+    assert.deepEqual(
+      await page.evaluate(
+        () =>
+          window.__filesFixture.calls.filter((call) => call.method === 'prepareDiscard').at(-1)
+            .payload,
+      ),
+      { scope: 'unstaged' },
+    );
+    await discardDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await details.getByRole('button', { name: 'Clear file filter', exact: true }).click();
+    const featureRows = groups.getByRole('button', {
+      name: 'src/features/auth/login.ts',
+      exact: true,
+    });
     await verifyFileSelectionPreview(page, groups);
     await featureRows.first().click();
-    await featureRows.last().click({modifiers:['Control']});
-    assert.equal(await featureRows.first().locator('..').getAttribute('aria-current'), 'true', 'Selecting the staged version keeps the unstaged Diff');
-    assert.equal(await featureRows.last().locator('..').getAttribute('aria-current'), null, 'Only the previewed Git area has the current marker');
-    await featureRows.first().click({button:'right'});
-    const beforeSelected = await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action').length);
-    await menu.getByRole('menuitem',{name:'Commit Selected…',exact:true}).click();
+    await featureRows.last().click({ modifiers: ['Control'] });
+    assert.equal(
+      await featureRows.first().locator('..').getAttribute('aria-current'),
+      'true',
+      'Selecting the staged version keeps the unstaged Diff',
+    );
+    assert.equal(
+      await featureRows.last().locator('..').getAttribute('aria-current'),
+      null,
+      'Only the previewed Git area has the current marker',
+    );
+    await featureRows.first().click({ button: 'right' });
+    const beforeSelected = await page.evaluate(
+      () => window.__filesFixture.calls.filter((call) => call.method === 'action').length,
+    );
+    await menu.getByRole('menuitem', { name: 'Commit Selected…', exact: true }).click();
     await commitDialog.waitFor();
-    assert.equal(await commitDialog.locator('.commit-file').count(),1,'Both versions of one path become one checklist row');
-    await commitDialog.getByText('Combined',{exact:true}).waitFor();
-    await commitDialog.getByText('Combined includes both unstaged and staged changes in the same file.',{exact:true}).waitFor();
-    assert.equal(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action').length),beforeSelected,'Opening selected Commit does not stage files');
-    await commitDialog.getByRole('checkbox',{name:'src/features/auth/login.ts',exact:true}).uncheck();
-    assert.equal(await commitDialog.locator('.commit-combined-note').count(),0,'The shared notice follows checked files');
-    await commitDialog.getByRole('button',{name:'Cancel',exact:true}).click();
+    assert.equal(
+      await commitDialog.locator('.commit-file').count(),
+      1,
+      'Both versions of one path become one checklist row',
+    );
+    await commitDialog.getByText('Combined', { exact: true }).waitFor();
+    await commitDialog
+      .getByText('Combined includes both unstaged and staged changes in the same file.', {
+        exact: true,
+      })
+      .waitFor();
+    assert.equal(
+      await page.evaluate(
+        () => window.__filesFixture.calls.filter((call) => call.method === 'action').length,
+      ),
+      beforeSelected,
+      'Opening selected Commit does not stage files',
+    );
+    await commitDialog
+      .getByRole('checkbox', { name: 'src/features/auth/login.ts', exact: true })
+      .uncheck();
+    assert.equal(
+      await commitDialog.locator('.commit-combined-note').count(),
+      0,
+      'The shared notice follows checked files',
+    );
+    await commitDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     await featureRows.last().click();
-    await featureRows.last().click({button:'right'});
-    await menu.getByRole('menuitem',{name:'Commit Selected…',exact:true}).click();
-    assert.equal(await commitDialog.locator('.commit-file').count(),1);
-    assert.equal(await commitDialog.locator('.commit-combined-note').count(),0,'Staged-only choices need no combined notice');
-    await commitDialog.locator('.commit-file-source').getByText('Staged',{exact:true}).waitFor();
-    await commitDialog.getByRole('button',{name:'Cancel',exact:true}).click();
+    await featureRows.last().click({ button: 'right' });
+    await menu.getByRole('menuitem', { name: 'Commit Selected…', exact: true }).click();
+    assert.equal(await commitDialog.locator('.commit-file').count(), 1);
+    assert.equal(
+      await commitDialog.locator('.commit-combined-note').count(),
+      0,
+      'Staged-only choices need no combined notice',
+    );
+    await commitDialog
+      .locator('.commit-file-source')
+      .getByText('Staged', { exact: true })
+      .waitFor();
+    await commitDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     await featureRows.first().click();
-    await groups.getByRole('button',{name:'src/services/auth/login.ts',exact:true}).last().click({modifiers:['Control']});
-    await featureRows.first().click({button:'right'});
-    await menu.getByRole('menuitem',{name:'Commit Selected…',exact:true}).click();
-    assert.equal(await commitDialog.locator('.commit-file').count(),2,'Only the initial two paths are listed');
-    await commitDialog.getByRole('checkbox',{name:'src/services/auth/login.ts',exact:true}).uncheck();
+    await groups
+      .getByRole('button', { name: 'src/services/auth/login.ts', exact: true })
+      .last()
+      .click({ modifiers: ['Control'] });
+    await featureRows.first().click({ button: 'right' });
+    await menu.getByRole('menuitem', { name: 'Commit Selected…', exact: true }).click();
+    assert.equal(
+      await commitDialog.locator('.commit-file').count(),
+      2,
+      'Only the initial two paths are listed',
+    );
+    await commitDialog
+      .getByRole('checkbox', { name: 'src/services/auth/login.ts', exact: true })
+      .uncheck();
     await draft.fill('selected working version');
-    await page.setViewportSize({width:380,height:650});
-    assert.ok(await commitDialog.evaluate(element => element.scrollWidth <= element.clientWidth + 1),'Compact checklist fits narrow windows');
-    await page.setViewportSize({width:1440,height:900});
-    await page.screenshot({path:'artifacts/commit-selected-dialog.png'});
-    await commitDialog.getByRole('checkbox',{name:'src/features/auth/login.ts',exact:true}).press('Control+Enter');
-    await commitDialog.waitFor({state:'hidden'});
-    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'action').at(-1).payload.files),[{path:'src/features/auth/login.ts',area:'unstaged'}]);
+    await page.setViewportSize({ width: 380, height: 650 });
+    assert.ok(
+      await commitDialog.evaluate((element) => element.scrollWidth <= element.clientWidth + 1),
+      'Compact checklist fits narrow windows',
+    );
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.screenshot({ path: 'artifacts/commit-selected-dialog.png' });
+    await commitDialog
+      .getByRole('checkbox', { name: 'src/features/auth/login.ts', exact: true })
+      .press('Control+Enter');
+    await commitDialog.waitFor({ state: 'hidden' });
+    assert.deepEqual(
+      await page.evaluate(
+        () =>
+          window.__filesFixture.calls.filter((call) => call.method === 'action').at(-1).payload
+            .files,
+      ),
+      [{ path: 'src/features/auth/login.ts', area: 'unstaged' }],
+    );
     await page.waitForFunction(() => document.querySelectorAll('.change-file').length === 3);
-    await toolbar.getByRole('button',{name:'Commit',exact:true}).click();
-    assert.deepEqual(await commitDialog.locator('.commit-file-path').allTextContents(),['src/services/auth/login.ts'],'Ordinary Commit selects the remaining staged files');
-    await commitDialog.getByRole('button',{name:'Cancel',exact:true}).click();
+    await toolbar.getByRole('button', { name: 'Commit', exact: true }).click();
+    assert.deepEqual(
+      await commitDialog.locator('.commit-file-path').allTextContents(),
+      ['src/services/auth/login.ts'],
+      'Ordinary Commit selects the remaining staged files',
+    );
+    await commitDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     await page.reload();
     await details.locator('.unified-change-heading').waitFor();
-    assert.equal(await page.evaluate(() => window.__filesFixture.session.changeListMode),'unified','Applied mode survives reopening');
-    await page.screenshot({path:'artifacts/working-tree-unified.png'});
+    assert.equal(
+      await page.evaluate(() => window.__filesFixture.session.changeListMode),
+      'unified',
+      'Applied mode survives reopening',
+    );
+    await page.screenshot({ path: 'artifacts/working-tree-unified.png' });
     await settingsTrigger.click();
-    await settingsDialog.getByRole('button',{name:'File list',exact:true}).click();
-    await settingsDialog.getByRole('radio',{name:/Split list/}).check();
-    await settingsDialog.getByRole('button',{name:'Apply',exact:true}).click();
-    await settingsDialog.waitFor({state:'hidden'});
+    await settingsDialog.getByRole('button', { name: 'File list', exact: true }).click();
+    await settingsDialog.getByRole('radio', { name: /Split list/ }).check();
+    await settingsDialog.getByRole('button', { name: 'Apply', exact: true }).click();
+    await settingsDialog.waitFor({ state: 'hidden' });
 
     // Large fixtures protect logical selection across rows that are not mounted.
     await page.evaluate(() => {
       const fixture = window.__filesFixture;
-      fixture.snapshot.changes = Array.from({ length: 41210 }, (_, index) => ({ path: `large/${String(index).padStart(5, '0')}.txt`, indexStatus: 'M', worktreeStatus: 'M', conflict: false, untracked: false }));
+      fixture.snapshot.changes = Array.from({ length: 41210 }, (_, index) => ({
+        path: `large/${String(index).padStart(5, '0')}.txt`,
+        indexStatus: 'M',
+        worktreeStatus: 'M',
+        conflict: false,
+        untracked: false,
+      }));
       window.postMessage({ type: 'changed', repoId: 'files' }, '*');
     });
     await details.getByText('Staged 41210 · Unstaged 41210', { exact: true }).waitFor();
     await verifyFilePathDisplay(page, groups, true);
-    await verifyFilePathDisplay(page, groups, true, await groups.evaluate(element => Math.round(element.scrollHeight * .7)));
-    await page.locator('.toolbar').getByRole('button',{name:'Commit',exact:true}).click();
-    await commitDialog.getByText('Files to commit · 41210',{exact:true}).waitFor();
-    assert.ok(await commitDialog.locator('.commit-file').count() < 100,'Large commit checklists mount only visible rows');
-    await commitDialog.locator('.commit-files').evaluate(element => {element.scrollTop = element.scrollHeight;});
-    await commitDialog.getByRole('checkbox',{name:'large/41209.txt',exact:true}).uncheck();
-    await commitDialog.getByText('Files to commit · 41209',{exact:true}).waitFor();
-    await commitDialog.getByRole('button',{name:'Cancel',exact:true}).click();
-    assert.ok(await groups.locator('.change-file').count() < 200, '82,420 logical rows must not create a full DOM');
-    await groups.focus(); await page.keyboard.press('Control+a');
+    await verifyFilePathDisplay(
+      page,
+      groups,
+      true,
+      await groups.evaluate((element) => Math.round(element.scrollHeight * 0.7)),
+    );
+    await page.locator('.toolbar').getByRole('button', { name: 'Commit', exact: true }).click();
+    await commitDialog.getByText('Files to commit · 41210', { exact: true }).waitFor();
+    assert.ok(
+      (await commitDialog.locator('.commit-file').count()) < 100,
+      'Large commit checklists mount only visible rows',
+    );
+    await commitDialog.locator('.commit-files').evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    await commitDialog.getByRole('checkbox', { name: 'large/41209.txt', exact: true }).uncheck();
+    await commitDialog.getByText('Files to commit · 41209', { exact: true }).waitFor();
+    await commitDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    assert.ok(
+      (await groups.locator('.change-file').count()) < 200,
+      '82,420 logical rows must not create a full DOM',
+    );
+    await groups.focus();
+    await page.keyboard.press('Control+a');
     await groups.getByText('41210 selected', { exact: true }).waitFor();
     await groups.locator('.change-file .file-name').first().click({ button: 'right' });
     await page.getByRole('menuitem', { name: 'Copy 41210 Paths', exact: true }).click();
-    assert.equal((await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'copyText').at(-1).payload.text)).split('\n').length, 41210, 'Select All includes unmounted files and deduplicates both areas');
+    assert.equal(
+      (
+        await page.evaluate(
+          () =>
+            window.__filesFixture.calls.filter((call) => call.method === 'copyText').at(-1).payload
+              .text,
+        )
+      ).split('\n').length,
+      41210,
+      'Select All includes unmounted files and deduplicates both areas',
+    );
     await unstaged.getByRole('button', { name: 'Collapse Unstaged', exact: true }).click();
-    assert.equal(await unstaged.locator('.change-file').count(), 0, 'Collapsed groups do not mount file rows');
-    await groups.evaluate(element => { element.scrollTop = element.scrollHeight; });
+    assert.equal(
+      await unstaged.locator('.change-file').count(),
+      0,
+      'Collapsed groups do not mount file rows',
+    );
+    await groups.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
     await staged.getByRole('button', { name: 'large/41209.txt', exact: true }).waitFor();
     await workingFilter.fill('large/41209');
-    assert.equal(await groups.locator('.change-file').count(), 1, 'Filtering searches the full list beyond the viewport');
+    assert.equal(
+      await groups.locator('.change-file').count(),
+      1,
+      'Filtering searches the full list beyond the viewport',
+    );
     await details.getByRole('button', { name: 'Clear file filter', exact: true }).click();
     await discardAll.click();
     discardDialog = page.getByRole('dialog', { name: 'Discard Changes', exact: true });
-    await discardDialog.getByText('41210 files: restore 41210 tracked files; delete 0 untracked files.', { exact: true }).waitFor();
-    assert.ok(await discardDialog.locator('.virtual-file-row').count() < 100, 'Large Discard previews must not mount all paths');
-    assert.deepEqual(await page.evaluate(() => window.__filesFixture.calls.filter(call => call.method === 'prepareDiscard').at(-1).payload), { scope: 'unstaged' }, 'Global Discard sends scope rather than a giant path array');
+    await discardDialog
+      .getByText('41210 files: restore 41210 tracked files; delete 0 untracked files.', {
+        exact: true,
+      })
+      .waitFor();
+    assert.ok(
+      (await discardDialog.locator('.virtual-file-row').count()) < 100,
+      'Large Discard previews must not mount all paths',
+    );
+    assert.deepEqual(
+      await page.evaluate(
+        () =>
+          window.__filesFixture.calls.filter((call) => call.method === 'prepareDiscard').at(-1)
+            .payload,
+      ),
+      { scope: 'unstaged' },
+      'Global Discard sends scope rather than a giant path array',
+    );
     await discardDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     assert.deepEqual(errors, []);
-    console.log('ALWAYGIT_FILES_UI_TESTS_PASSED: independent selection/preview in Commit, comparison and split/unified Working Tree, deselection/hover colors, Git-area markers, working path filtering and action scope, narrow Staged Commit entry, cancel/reload draft recovery, failures, hidden conflicts, Commit/Amend and native text editing');
-  } finally { await page.close(); }
+    console.log(
+      'ALWAYGIT_FILES_UI_TESTS_PASSED: independent selection/preview in Commit, comparison and split/unified Working Tree, deselection/hover colors, Git-area markers, working path filtering and action scope, narrow Staged Commit entry, cancel/reload draft recovery, failures, hidden conflicts, Commit/Amend and native text editing',
+    );
+  } finally {
+    await page.close();
+  }
 }

@@ -4,7 +4,11 @@ import { parseManual } from './help-content';
 import type { Language } from './i18n';
 
 export const manuals = { en: parseManual(english), 'zh-CN': parseManual(chinese) };
-const images = import.meta.glob<string>('../docs/images/user-manual/*.png', { eager: true, query: '?url', import: 'default' });
+const images = import.meta.glob<string>('../docs/images/user-manual/*.png', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+});
 export function manualImage(source: string): string | undefined {
   return source.startsWith('images/user-manual/') ? images[`../docs/${source}`] : undefined;
 }

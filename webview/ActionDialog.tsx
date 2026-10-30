@@ -5,7 +5,11 @@ import { RemoteTrackingDialog } from './RemoteTrackingDialog';
 import { uiText } from './text';
 import { useEffect, useRef, useState } from 'react';
 import type { CommitDetails, GitAction, Snapshot } from '../src/protocol/types';
-import { branchNameConflict, branchNameProblem, type BranchNameProblem } from '../src/protocol/ref-name';
+import {
+  branchNameConflict,
+  branchNameProblem,
+  type BranchNameProblem,
+} from '../src/protocol/ref-name';
 import { remoteNameProblem, remoteUrlProblem } from '../src/protocol/remote';
 import { captureActionContext, isActionContextCurrent, useWorkbench } from './store';
 import { demoMode, rpc } from './rpc';
@@ -18,230 +22,1898 @@ import { DiscardDialog } from './DiscardDialog';
 import { blocksWorkbench, networkCommand } from './actionFeedback';
 import { NetworkProgress } from './NetworkProgress';
 import { selectedTagRemote, tagQueryKey } from './tagStatus';
-import { captureTagDeleteLease, completeTagDeleteLease, tagDeleteLeaseProblem, updateTagDeleteLease } from './tagDeleteLease';
+import {
+  captureTagDeleteLease,
+  completeTagDeleteLease,
+  tagDeleteLeaseProblem,
+  updateTagDeleteLease,
+} from './tagDeleteLease';
 
 export type ActionType = GitAction['type'];
-interface FixedTagTarget { oid:string; subject:string }
-export interface DialogRequest { type: ActionType; target?: string; fixedTagTarget?:FixedTagTarget; sources?: string[]; batch?: boolean; paths?: string[]; discardScope?: 'unstaged' | 'all'; names?:string[]; expectedOids?:Record<string,string>; expectedDestination?:string; expectedRemoteOid?:string; remoteBranches?:string[]; pop?: boolean; expectedOid?: string; remote?: string; deleteLocal?:boolean; branch?: string; checkout?: boolean; candidates?: string[]; returnTo?:'pull'|'push'|'tag.push'|'tag.create'; tagDraft?:{name:string;target:string;message:string;pushAfterCreate:boolean;rememberDefault:boolean;fixedTarget?:FixedTagTarget}; requireCheckout?:boolean; reapply?:boolean }
-export const actionTitles: Partial<Record<ActionType, StaticMessageKey>> = { 'branch.create': "actions.createBranch", 'branch.checkout': "actions.checkout", 'commit.checkout': "actions.checkoutToDetachedHEAD", 'branch.delete': "actions.deleteBranch", 'remote.add':"actions.addRemoteVariant2", 'remote.delete':"actions.deleteRemoteBranches", 'tag.create': "actions.createTag", 'tag.push': "actions.pushTag", 'tag.delete': "actions.deleteTag", 'stash.create': "actions.stashChanges", 'stash.apply': "actions.applyStash", 'stash.drop': "actions.dropStash", 'worktree.add': "actions.addWorktree", 'worktree.remove': "actions.removeWorktree", merge: "actions.merge", rebase: "actions.rebase", 'cherry-pick': "actions.cherryPick", revert: "actions.revert", reset: "common.reset", fetch: "actions.fetch", pull: "actions.pull", push: "actions.push", discard: "actions.discardChanges", 'operation.abort': "actions.abortVariant2" };
+interface FixedTagTarget {
+  oid: string;
+  subject: string;
+}
+export interface DialogRequest {
+  type: ActionType;
+  target?: string;
+  fixedTagTarget?: FixedTagTarget;
+  sources?: string[];
+  batch?: boolean;
+  paths?: string[];
+  discardScope?: 'unstaged' | 'all';
+  names?: string[];
+  expectedOids?: Record<string, string>;
+  expectedDestination?: string;
+  expectedRemoteOid?: string;
+  remoteBranches?: string[];
+  pop?: boolean;
+  expectedOid?: string;
+  remote?: string;
+  deleteLocal?: boolean;
+  branch?: string;
+  checkout?: boolean;
+  candidates?: string[];
+  returnTo?: 'pull' | 'push' | 'tag.push' | 'tag.create';
+  tagDraft?: {
+    name: string;
+    target: string;
+    message: string;
+    pushAfterCreate: boolean;
+    rememberDefault: boolean;
+    fixedTarget?: FixedTagTarget;
+  };
+  requireCheckout?: boolean;
+  reapply?: boolean;
+}
+export const actionTitles: Partial<Record<ActionType, StaticMessageKey>> = {
+  'branch.create': 'actions.createBranch',
+  'branch.checkout': 'actions.checkout',
+  'commit.checkout': 'actions.checkoutToDetachedHEAD',
+  'branch.delete': 'actions.deleteBranch',
+  'remote.add': 'actions.addRemoteVariant2',
+  'remote.delete': 'actions.deleteRemoteBranches',
+  'tag.create': 'actions.createTag',
+  'tag.push': 'actions.pushTag',
+  'tag.delete': 'actions.deleteTag',
+  'stash.create': 'actions.stashChanges',
+  'stash.apply': 'actions.applyStash',
+  'stash.drop': 'actions.dropStash',
+  'worktree.add': 'actions.addWorktree',
+  'worktree.remove': 'actions.removeWorktree',
+  merge: 'actions.merge',
+  rebase: 'actions.rebase',
+  'cherry-pick': 'actions.cherryPick',
+  revert: 'actions.revert',
+  reset: 'common.reset',
+  fetch: 'actions.fetch',
+  pull: 'actions.pull',
+  push: 'actions.push',
+  discard: 'actions.discardChanges',
+  'operation.abort': 'actions.abortVariant2',
+};
 function pushDefaults(snapshot: Snapshot, dialog: DialogRequest) {
-  const localBranch=dialog.branch??snapshot.branch,ref=snapshot.refs.find(item=>item.kind==='local'&&item.name===localBranch),upstream=ref?.upstream;
-  const upstreamRemote=(snapshot.remotes??[]).slice().sort((a,b)=>b.length-a.length).find(remote=>upstream?.startsWith(`${remote}/`));
-  const current=localBranch===snapshot.pushTarget?.localBranch?snapshot.pushTarget:undefined;
-  const remote=dialog.remote??current?.remote??upstreamRemote??((snapshot.remotes?.length??0)===1?snapshot.remotes![0]:'');
-  const remoteBranch=current?.remoteBranch??(upstreamRemote?upstream!.slice(upstreamRemote.length+1):localBranch);
-  return {localBranch,remote,remoteBranch,configured:current?.configured??!!upstream};
+  const localBranch = dialog.branch ?? snapshot.branch,
+    ref = snapshot.refs.find((item) => item.kind === 'local' && item.name === localBranch),
+    upstream = ref?.upstream;
+  const upstreamRemote = (snapshot.remotes ?? [])
+    .slice()
+    .sort((a, b) => b.length - a.length)
+    .find((remote) => upstream?.startsWith(`${remote}/`));
+  const current =
+    localBranch === snapshot.pushTarget?.localBranch ? snapshot.pushTarget : undefined;
+  const remote =
+    dialog.remote ??
+    current?.remote ??
+    upstreamRemote ??
+    ((snapshot.remotes?.length ?? 0) === 1 ? snapshot.remotes![0] : '');
+  const remoteBranch =
+    current?.remoteBranch ??
+    (upstreamRemote ? upstream!.slice(upstreamRemote.length + 1) : localBranch);
+  return { localBranch, remote, remoteBranch, configured: current?.configured ?? !!upstream };
 }
 function pullDefaults(snapshot: Snapshot, dialog: DialogRequest) {
-  const upstream = snapshot.refs.find(ref => ref.kind === 'local' && ref.name === snapshot.branch)?.upstream ?? snapshot.upstream;
-  const upstreamRemote = [...(snapshot.remotes ?? [])].sort((a,b) => b.length-a.length).find(remote => upstream?.startsWith(`${remote}/`));
-  const configured = snapshot.pullTarget?.localBranch === snapshot.branch ? snapshot.pullTarget : undefined;
-  const remote = dialog.remote ?? configured?.remote ?? upstreamRemote ?? ((snapshot.remotes?.length ?? 0) === 1 ? snapshot.remotes![0] : '');
-  const remoteBranch = remote === configured?.remote ? configured.remoteBranch : remote === upstreamRemote ? upstream!.slice(remote.length+1) : '';
+  const upstream =
+    snapshot.refs.find((ref) => ref.kind === 'local' && ref.name === snapshot.branch)?.upstream ??
+    snapshot.upstream;
+  const upstreamRemote = [...(snapshot.remotes ?? [])]
+    .sort((a, b) => b.length - a.length)
+    .find((remote) => upstream?.startsWith(`${remote}/`));
+  const configured =
+    snapshot.pullTarget?.localBranch === snapshot.branch ? snapshot.pullTarget : undefined;
+  const remote =
+    dialog.remote ??
+    configured?.remote ??
+    upstreamRemote ??
+    ((snapshot.remotes?.length ?? 0) === 1 ? snapshot.remotes![0] : '');
+  const remoteBranch =
+    remote === configured?.remote
+      ? configured.remoteBranch
+      : remote === upstreamRemote
+        ? upstream!.slice(remote.length + 1)
+        : '';
   return { remote, remoteBranch };
 }
-function branchStartLabel(snapshot:Snapshot,start:string,t:Translator):string {
-  const ref=snapshot.refs.find(item=>item.fullName===start);
-  if(ref?.kind==='local')return ref.name===snapshot.branch?t("actions.currentBranchCurrentVersion", { name: (ref.name) }):t("actions.branch", { name: (ref.name) });
-  if(ref?.kind==='remote')return t("actions.remoteBranch", { name: (ref.name) });
-  if(ref?.kind==='tag')return uiText("actions.tagVariant2", { name: (ref.name) });
-  if(start==='HEAD'||start===snapshot.head)return snapshot.branch?t("actions.currentBranchCurrentVersionVariant2", { branch: (snapshot.branch) }):t("actions.currentCommit");
-  return uiText("actions.commit", { value: (start.slice(0,12)) });
+function branchStartLabel(snapshot: Snapshot, start: string, t: Translator): string {
+  const ref = snapshot.refs.find((item) => item.fullName === start);
+  if (ref?.kind === 'local')
+    return ref.name === snapshot.branch
+      ? t('actions.currentBranchCurrentVersion', { name: ref.name })
+      : t('actions.branch', { name: ref.name });
+  if (ref?.kind === 'remote') return t('actions.remoteBranch', { name: ref.name });
+  if (ref?.kind === 'tag') return uiText('actions.tagVariant2', { name: ref.name });
+  if (start === 'HEAD' || start === snapshot.head)
+    return snapshot.branch
+      ? t('actions.currentBranchCurrentVersionVariant2', { branch: snapshot.branch })
+      : t('actions.currentCommit');
+  return uiText('actions.commit', { value: start.slice(0, 12) });
 }
-export function ActionDialog({ dialog, onClose, openAbort, replaceDialog }: { dialog: DialogRequest; onClose(): void; openAbort(): void; replaceDialog(dialog:DialogRequest):void }) {
-  if(dialog.type==='rebase.interactive')return <InteractiveRebaseDialog start={dialog.target} onClose={onClose}/>;
-  if(dialog.type==='discard')return <DiscardDialog dialog={dialog} onClose={onClose}/>;
-  if(dialog.type==='branch.track')return <RemoteTrackingDialog dialog={dialog} onClose={onClose}/>;
-  return <StandardActionDialog dialog={dialog} onClose={onClose} openAbort={openAbort} replaceDialog={replaceDialog}/>;
+export function ActionDialog({
+  dialog,
+  onClose,
+  openAbort,
+  replaceDialog,
+}: {
+  dialog: DialogRequest;
+  onClose(): void;
+  openAbort(): void;
+  replaceDialog(dialog: DialogRequest): void;
+}) {
+  if (dialog.type === 'rebase.interactive')
+    return <InteractiveRebaseDialog start={dialog.target} onClose={onClose} />;
+  if (dialog.type === 'discard') return <DiscardDialog dialog={dialog} onClose={onClose} />;
+  if (dialog.type === 'branch.track')
+    return <RemoteTrackingDialog dialog={dialog} onClose={onClose} />;
+  return (
+    <StandardActionDialog
+      dialog={dialog}
+      onClose={onClose}
+      openAbort={openAbort}
+      replaceDialog={replaceDialog}
+    />
+  );
 }
-function StandardActionDialog({ dialog, onClose: closeDialog, openAbort, replaceDialog: changeDialog }: { dialog: DialogRequest; onClose(): void; openAbort(): void; replaceDialog(dialog:DialogRequest):void }) {
-  const state = useWorkbench(), snapshot = state.snapshot!, t = useTranslation(), { type } = dialog;
+function StandardActionDialog({
+  dialog,
+  onClose: closeDialog,
+  openAbort,
+  replaceDialog: changeDialog,
+}: {
+  dialog: DialogRequest;
+  onClose(): void;
+  openAbort(): void;
+  replaceDialog(dialog: DialogRequest): void;
+}) {
+  const state = useWorkbench(),
+    snapshot = state.snapshot!,
+    t = useTranslation(),
+    { type } = dialog;
   const [repositoryContext] = useState(captureActionContext);
-  const mounted = useRef(false), submission = useRef(0), pending = useRef(false);
+  const mounted = useRef(false),
+    submission = useRef(0),
+    pending = useRef(false);
   const [submitting, setSubmitting] = useState(false);
-  const invalidate = () => { ++submission.current; ++tagTargetRequest.current; };
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; invalidate(); }; }, [dialog]);
-  const onClose = () => { invalidate(); closeDialog(); };
-  const replaceDialog = (next: DialogRequest) => { invalidate(); changeDialog(next); };
-  const fixedTagTarget=dialog.fixedTagTarget??dialog.tagDraft?.fixedTarget;
-  const local = snapshot.refs.filter(r => r.kind === 'local'), tags = snapshot.refs.filter(r => r.kind === 'tag');
-  const push=pushDefaults(snapshot,dialog);
-  const [pull] = useState(() => pullDefaults(snapshot,dialog));
-  const stashPaths=type==='stash.create'&&dialog.paths!==undefined?[...new Set(dialog.paths)]:undefined;
-  const [stashChoices] = useState(() => snapshot.stashes);
-  const [actionContext] = useState(() => ({ expectedHead: snapshot.head ?? '', expectedBranch: snapshot.branch }));
-  const [tagChoices] = useState(() => tags.map(tag => ({ ...tag, ...(tag.name === dialog.target && dialog.expectedOid ? { refOid: dialog.expectedOid } : {}) })));
-  const deleteLocal=type!=='tag.delete'||dialog.deleteLocal!==false,preferredTagRemote=selectedTagRemote(snapshot,state.tagRemote);
-  const [values, setValues] = useState<Record<string, string>>({
-    target: type==='tag.create'?(dialog.tagDraft?.target??fixedTagTarget?.oid??dialog.target??''):dialog.target ?? state.selectedOid ?? snapshot.head ?? 'HEAD', start: dialog.target ?? snapshot.head ?? 'HEAD',
-    name: type==='remote.add'?'origin':type==='tag.create'?dialog.tagDraft?.name??'':['branch.checkout','branch.delete','tag.delete'].includes(type) ? dialog.target ?? (type === 'tag.delete' ? tagChoices[0]?.name : local.find(r => r.name !== snapshot.branch)?.name) ?? '' : '',
-    selector: dialog.target ?? snapshot.stashes[0]?.selector ?? '', path: type === 'worktree.remove' ? dialog.target ?? '' : '',
-    strategy: 'ff-only', mode:type==='reset'?state.operationSettings.defaultResetMode:'mixed', remote:type==='pull'?pull.remote:type==='tag.delete'?dialog.remote??preferredTagRemote??'':['push','tag.push','tag.create'].includes(type)?dialog.remote??push.remote:dialog.remote ?? '', branch: type==='push'?push.localBranch:dialog.branch ?? '', remoteBranch:type==='pull'?pull.remoteBranch:type==='push'?push.remoteBranch:'', newBranch: '', message: dialog.tagDraft?.message??'', mainline: '', url:'',
-  });
-  const [deletionDefaultScope] = useState(() => type === 'branch.delete' ? state.operationSettings.deletionDefaultScopes?.branch ?? 'user' : state.operationSettings.deletionDefaultScopes?.worktree ?? 'user');
-  const [checks, setChecks] = useState<Record<string, boolean>>({ force: type==='branch.delete'?state.operationSettings.forceDeleteUnmergedBranches:type==='worktree.remove'?state.operationSettings.forceRemoveDirtyWorktrees:false, checkout: dialog.checkout ?? false, includeUntracked: true, pop: !!dialog.pop, followTags:state.operationSettings.pushFollowTags,pushAfterCreate:dialog.tagDraft?.pushAfterCreate??state.operationSettings.pushTagAfterCreate,rememberDefault:dialog.tagDraft?.rememberDefault??false,deleteRemote:type==='tag.delete'&&!deleteLocal });
-  const [customizePush,setCustomizePush]=useState(()=>type==='push'&&!push.remote);
-  const [customizePull,setCustomizePull]=useState(()=>type==='pull'&&(!pull.remote||!pull.remoteBranch));
-  const pushUnavailable = type === 'push' && (!values.branch || !values.remote || !!branchNameProblem(values.remoteBranch));
-  const pullRemoteMissing = !values.remote || values.remote !== '.' && !snapshot.remotes?.includes(values.remote);
-  const pullUnavailable = type === 'pull' && (!actionContext.expectedBranch || !values.remote || !!branchNameProblem(values.remoteBranch) || values.remote !== '.' && !snapshot.remotes?.includes(values.remote));
-  const pullBranches = snapshot.refs.filter(ref => !ref.symbolicTarget && (values.remote === '.' ? ref.kind === 'local' : ref.kind === 'remote' && ref.name.startsWith(`${values.remote}/`) && [...(snapshot.remotes ?? [])].sort((a,b)=>b.length-a.length).find(remote=>ref.name.startsWith(`${remote}/`)) === values.remote)).map(ref => values.remote === '.' ? ref.name : ref.name.slice(values.remote.length+1));
-  const [pushLease, setPushLease] = useState(() => captureRemoteLease(snapshot, push.remote, push.remoteBranch));
-  const [tagDeleteLease, setTagDeleteLease] = useState(() => captureTagDeleteLease(snapshot, state.tagQueries, values.remote, values.name,
-    dialog.remote?.trim() === values.remote.trim() && dialog.target?.trim() === values.name.trim() ? dialog : undefined));
+  const invalidate = () => {
+    ++submission.current;
+    ++tagTargetRequest.current;
+  };
   useEffect(() => {
-    if (type === 'tag.delete') setTagDeleteLease(previous => completeTagDeleteLease(previous, snapshot, state.tagQueries));
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      invalidate();
+    };
+  }, [dialog]);
+  const onClose = () => {
+    invalidate();
+    closeDialog();
+  };
+  const replaceDialog = (next: DialogRequest) => {
+    invalidate();
+    changeDialog(next);
+  };
+  const fixedTagTarget = dialog.fixedTagTarget ?? dialog.tagDraft?.fixedTarget;
+  const local = snapshot.refs.filter((r) => r.kind === 'local'),
+    tags = snapshot.refs.filter((r) => r.kind === 'tag');
+  const push = pushDefaults(snapshot, dialog);
+  const [pull] = useState(() => pullDefaults(snapshot, dialog));
+  const stashPaths =
+    type === 'stash.create' && dialog.paths !== undefined ? [...new Set(dialog.paths)] : undefined;
+  const [stashChoices] = useState(() => snapshot.stashes);
+  const [actionContext] = useState(() => ({
+    expectedHead: snapshot.head ?? '',
+    expectedBranch: snapshot.branch,
+  }));
+  const [tagChoices] = useState(() =>
+    tags.map((tag) => ({
+      ...tag,
+      ...(tag.name === dialog.target && dialog.expectedOid ? { refOid: dialog.expectedOid } : {}),
+    })),
+  );
+  const deleteLocal = type !== 'tag.delete' || dialog.deleteLocal !== false,
+    preferredTagRemote = selectedTagRemote(snapshot, state.tagRemote);
+  const [values, setValues] = useState<Record<string, string>>({
+    target:
+      type === 'tag.create'
+        ? (dialog.tagDraft?.target ?? fixedTagTarget?.oid ?? dialog.target ?? '')
+        : (dialog.target ?? state.selectedOid ?? snapshot.head ?? 'HEAD'),
+    start: dialog.target ?? snapshot.head ?? 'HEAD',
+    name:
+      type === 'remote.add'
+        ? 'origin'
+        : type === 'tag.create'
+          ? (dialog.tagDraft?.name ?? '')
+          : ['branch.checkout', 'branch.delete', 'tag.delete'].includes(type)
+            ? (dialog.target ??
+              (type === 'tag.delete'
+                ? tagChoices[0]?.name
+                : local.find((r) => r.name !== snapshot.branch)?.name) ??
+              '')
+            : '',
+    selector: dialog.target ?? snapshot.stashes[0]?.selector ?? '',
+    path: type === 'worktree.remove' ? (dialog.target ?? '') : '',
+    strategy: 'ff-only',
+    mode: type === 'reset' ? state.operationSettings.defaultResetMode : 'mixed',
+    remote:
+      type === 'pull'
+        ? pull.remote
+        : type === 'tag.delete'
+          ? (dialog.remote ?? preferredTagRemote ?? '')
+          : ['push', 'tag.push', 'tag.create'].includes(type)
+            ? (dialog.remote ?? push.remote)
+            : (dialog.remote ?? ''),
+    branch: type === 'push' ? push.localBranch : (dialog.branch ?? ''),
+    remoteBranch: type === 'pull' ? pull.remoteBranch : type === 'push' ? push.remoteBranch : '',
+    newBranch: '',
+    message: dialog.tagDraft?.message ?? '',
+    mainline: '',
+    url: '',
+  });
+  const [deletionDefaultScope] = useState(() =>
+    type === 'branch.delete'
+      ? (state.operationSettings.deletionDefaultScopes?.branch ?? 'user')
+      : (state.operationSettings.deletionDefaultScopes?.worktree ?? 'user'),
+  );
+  const [checks, setChecks] = useState<Record<string, boolean>>({
+    force:
+      type === 'branch.delete'
+        ? state.operationSettings.forceDeleteUnmergedBranches
+        : type === 'worktree.remove'
+          ? state.operationSettings.forceRemoveDirtyWorktrees
+          : false,
+    checkout: dialog.checkout ?? false,
+    includeUntracked: true,
+    pop: !!dialog.pop,
+    followTags: state.operationSettings.pushFollowTags,
+    pushAfterCreate: dialog.tagDraft?.pushAfterCreate ?? state.operationSettings.pushTagAfterCreate,
+    rememberDefault: dialog.tagDraft?.rememberDefault ?? false,
+    deleteRemote: type === 'tag.delete' && !deleteLocal,
+  });
+  const [customizePush, setCustomizePush] = useState(() => type === 'push' && !push.remote);
+  const [customizePull, setCustomizePull] = useState(
+    () => type === 'pull' && (!pull.remote || !pull.remoteBranch),
+  );
+  const pushUnavailable =
+    type === 'push' &&
+    (!values.branch || !values.remote || !!branchNameProblem(values.remoteBranch));
+  const pullRemoteMissing =
+    !values.remote || (values.remote !== '.' && !snapshot.remotes?.includes(values.remote));
+  const pullUnavailable =
+    type === 'pull' &&
+    (!actionContext.expectedBranch ||
+      !values.remote ||
+      !!branchNameProblem(values.remoteBranch) ||
+      (values.remote !== '.' && !snapshot.remotes?.includes(values.remote)));
+  const pullBranches = snapshot.refs
+    .filter(
+      (ref) =>
+        !ref.symbolicTarget &&
+        (values.remote === '.'
+          ? ref.kind === 'local'
+          : ref.kind === 'remote' &&
+            ref.name.startsWith(`${values.remote}/`) &&
+            [...(snapshot.remotes ?? [])]
+              .sort((a, b) => b.length - a.length)
+              .find((remote) => ref.name.startsWith(`${remote}/`)) === values.remote),
+    )
+    .map((ref) => (values.remote === '.' ? ref.name : ref.name.slice(values.remote.length + 1)));
+  const [pushLease, setPushLease] = useState(() =>
+    captureRemoteLease(snapshot, push.remote, push.remoteBranch),
+  );
+  const [tagDeleteLease, setTagDeleteLease] = useState(() =>
+    captureTagDeleteLease(
+      snapshot,
+      state.tagQueries,
+      values.remote,
+      values.name,
+      dialog.remote?.trim() === values.remote.trim() && dialog.target?.trim() === values.name.trim()
+        ? dialog
+        : undefined,
+    ),
+  );
+  useEffect(() => {
+    if (type === 'tag.delete')
+      setTagDeleteLease((previous) => completeTagDeleteLease(previous, snapshot, state.tagQueries));
   }, [type, snapshot, state.tagQueries]);
   const [validation, setValidation] = useState<string>();
-  const [tagTargetDetails,setTagTargetDetails]=useState<FixedTagTarget|undefined>(fixedTagTarget);
-  const [tagTargetError,setTagTargetError]=useState<string>();
-  const tagTargetRequest=useRef(0);
-  const [branchTouched,setBranchTouched]=useState(false),branchInput=useRef<HTMLInputElement>(null);
-  const set = (key: string, value: string) => { if(type==='cherry-pick'&&(key==='target'||key==='mainline'))setChecks(old=>({...old,allowIncluded:false})); if(type==='tag.create'&&key==='target'&&!fixedTagTarget){tagTargetRequest.current++;setTagTargetDetails(undefined);setTagTargetError(undefined);}if(key==='selector')useWorkbench.setState({stashApplyFailure:undefined,error:undefined});if(type==='push'&&(key==='remote'||key==='remoteBranch'))setPushLease(previous=>updateRemoteLease(previous,snapshot,key==='remote'?value:values.remote,key==='remoteBranch'?value:values.remoteBranch));if(type==='tag.delete'&&(key==='remote'||key==='name'))setTagDeleteLease(previous=>updateTagDeleteLease(previous,snapshot,state.tagQueries,key==='remote'?value:values.remote,key==='name'?value:values.name));setValues(old => ({ ...old, [key]: value }));if(type==='tag.delete'&&key==='remote')void state.loadTagStatuses(false,value.trim()); };
-  const field = (key: string, labelKey: StaticMessageKey, options?: { value: string; label: string }[], required = false, hint?: string) => <label className="form-field"><span>{t(labelKey)}</span>{options ? <select data-autofocus={type==='push'&&key==='remote'&&!values.remote||undefined} aria-label={t(labelKey)} required={required} disabled={state.busy} value={values[key]} onChange={e => set(key,e.target.value)}>{!options.length && <option value="">{t("actions.noneAvailable")}</option>}{options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select> : <input data-autofocus={type==='push'&&key==='remoteBranch'&&!!values.remote&&!!branchNameProblem(values.remoteBranch)||undefined} aria-label={t(labelKey)} required={required} disabled={state.busy} value={values[key]} onChange={e => set(key,e.target.value)} placeholder={hint} />}{hint && <small className="muted">{hint}</small>}</label>;
-  const checkbox = (key: string, labelKey: StaticMessageKey) => <label className="form-checkbox"><input type="checkbox" checked={!!checks[key]} disabled={state.busy} onChange={e => setChecks(old => ({ ...old,[key]:e.target.checked }))} />{t(labelKey)}</label>;
-  const title = type==='stage'?t('details.stageAll'):type==='unstage'?t('details.unstageAll'):type==='cherry-pick'&&dialog.reapply?t('menus.cherryPickReapply'):type==='stash.create'?stashPaths?t("actions.stashSelectedFiles"):t("actions.stashAllChanges"):type === 'branch.create' && dialog.requireCheckout ? t("actions.createBranchAndCheckout") : type === 'stash.apply' && checks.pop ? uiText("actions.popStash") : type==='worktree.remove'&&(dialog.paths?.length??0)>1?t('actions.removeWorktrees',{count:dialog.paths!.length}):type==='branch.delete'&&(dialog.names?.length??0)>1?uiText("actions.deleteBranches"):type==='tag.push'&&(dialog.names?.length??0)>1?t("actions.pushTags",{count:dialog.names!.length}):actionTitles[type] ? t(actionTitles[type]!) : type;
-  const stashFailure=type==='stash.apply'&&state.stashApplyFailure?.selector===values.selector?state.stashApplyFailure:undefined;
+  const [tagTargetDetails, setTagTargetDetails] = useState<FixedTagTarget | undefined>(
+    fixedTagTarget,
+  );
+  const [tagTargetError, setTagTargetError] = useState<string>();
+  const tagTargetRequest = useRef(0);
+  const [branchTouched, setBranchTouched] = useState(false),
+    branchInput = useRef<HTMLInputElement>(null);
+  const set = (key: string, value: string) => {
+    if (type === 'cherry-pick' && (key === 'target' || key === 'mainline'))
+      setChecks((old) => ({ ...old, allowIncluded: false }));
+    if (type === 'tag.create' && key === 'target' && !fixedTagTarget) {
+      tagTargetRequest.current++;
+      setTagTargetDetails(undefined);
+      setTagTargetError(undefined);
+    }
+    if (key === 'selector')
+      useWorkbench.setState({ stashApplyFailure: undefined, error: undefined });
+    if (type === 'push' && (key === 'remote' || key === 'remoteBranch'))
+      setPushLease((previous) =>
+        updateRemoteLease(
+          previous,
+          snapshot,
+          key === 'remote' ? value : values.remote,
+          key === 'remoteBranch' ? value : values.remoteBranch,
+        ),
+      );
+    if (type === 'tag.delete' && (key === 'remote' || key === 'name'))
+      setTagDeleteLease((previous) =>
+        updateTagDeleteLease(
+          previous,
+          snapshot,
+          state.tagQueries,
+          key === 'remote' ? value : values.remote,
+          key === 'name' ? value : values.name,
+        ),
+      );
+    setValues((old) => ({ ...old, [key]: value }));
+    if (type === 'tag.delete' && key === 'remote') void state.loadTagStatuses(false, value.trim());
+  };
+  const field = (
+    key: string,
+    labelKey: StaticMessageKey,
+    options?: { value: string; label: string }[],
+    required = false,
+    hint?: string,
+  ) => (
+    <label className="form-field">
+      <span>{t(labelKey)}</span>
+      {options ? (
+        <select
+          data-autofocus={(type === 'push' && key === 'remote' && !values.remote) || undefined}
+          aria-label={t(labelKey)}
+          required={required}
+          disabled={state.busy}
+          value={values[key]}
+          onChange={(e) => set(key, e.target.value)}
+        >
+          {!options.length && <option value="">{t('actions.noneAvailable')}</option>}
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          data-autofocus={
+            (type === 'push' &&
+              key === 'remoteBranch' &&
+              !!values.remote &&
+              !!branchNameProblem(values.remoteBranch)) ||
+            undefined
+          }
+          aria-label={t(labelKey)}
+          required={required}
+          disabled={state.busy}
+          value={values[key]}
+          onChange={(e) => set(key, e.target.value)}
+          placeholder={hint}
+        />
+      )}
+      {hint && <small className="muted">{hint}</small>}
+    </label>
+  );
+  const checkbox = (key: string, labelKey: StaticMessageKey) => (
+    <label className="form-checkbox">
+      <input
+        type="checkbox"
+        checked={!!checks[key]}
+        disabled={state.busy}
+        onChange={(e) => setChecks((old) => ({ ...old, [key]: e.target.checked }))}
+      />
+      {t(labelKey)}
+    </label>
+  );
+  const title =
+    type === 'stage'
+      ? t('details.stageAll')
+      : type === 'unstage'
+        ? t('details.unstageAll')
+        : type === 'cherry-pick' && dialog.reapply
+          ? t('menus.cherryPickReapply')
+          : type === 'stash.create'
+            ? stashPaths
+              ? t('actions.stashSelectedFiles')
+              : t('actions.stashAllChanges')
+            : type === 'branch.create' && dialog.requireCheckout
+              ? t('actions.createBranchAndCheckout')
+              : type === 'stash.apply' && checks.pop
+                ? uiText('actions.popStash')
+                : type === 'worktree.remove' && (dialog.paths?.length ?? 0) > 1
+                  ? t('actions.removeWorktrees', { count: dialog.paths!.length })
+                  : type === 'branch.delete' && (dialog.names?.length ?? 0) > 1
+                    ? uiText('actions.deleteBranches')
+                    : type === 'tag.push' && (dialog.names?.length ?? 0) > 1
+                      ? t('actions.pushTags', { count: dialog.names!.length })
+                      : actionTitles[type]
+                        ? t(actionTitles[type]!)
+                        : type;
+  const stashFailure =
+    type === 'stash.apply' && state.stashApplyFailure?.selector === values.selector
+      ? state.stashApplyFailure
+      : undefined;
   const stashConflictPaths = stashFailure?.conflictPaths ?? [];
-  const stashFailurePaths = stashConflictPaths.length ? stashConflictPaths : stashFailure?.paths ?? [];
-  const guardedContext = type === 'merge' || type === 'rebase' || type === 'reset' || type === 'cherry-pick' || type === 'pull';
-  const branch = (guardedContext ? actionContext.expectedBranch : snapshot.branch) || uiText("actions.detachedHEAD");
-  const displayTarget = snapshot.refs.find(r => r.fullName === values.target)?.name ?? values.target;
-  const branchProblem=type==='branch.create'?branchNameProblem(values.name):undefined;
-  const branchConflict=type==='branch.create'&&!branchProblem?branchNameConflict(values.name,local.map(ref=>ref.name)):undefined;
-  const missingRemote=(type==='pull'&&!!actionContext.expectedBranch&&pull.remote!=='.'||type==='push'||type==='tag.push'||type==='tag.create'&&checks.pushAfterCreate)&&!(snapshot.remotes?.length);
-  const deleteTagRemote=type==='tag.delete'?values.remote:undefined,deleteTagKey=deleteTagRemote?tagQueryKey(snapshot,deleteTagRemote):undefined,deleteTagQuery=deleteTagKey?state.tagQueries[deleteTagKey]:undefined;
-  const deleteRemoteOid=type==='tag.delete'?tagDeleteLease.expectedRemoteOid:undefined;
-  const deleteRemoteSeparate=!!deleteTagQuery?.result?.separatePush,deleteRemoteDestination=tagDeleteLease.expectedDestination;
-  const deleteRemoteProblem=type==='tag.delete'?tagDeleteLeaseProblem(tagDeleteLease,snapshot,state.tagQueries,values.remote,values.name):undefined;
-  const deleteRemoteUnavailable=type==='tag.delete'&&checks.deleteRemote&&!!deleteRemoteProblem;
-  const branchProblemText=(problem:BranchNameProblem)=>{
-    switch(problem){
-      case 'empty':return t("actions.enterABranchName");
-      case 'leading-hyphen':return t("actions.branchNamesCannotStartWithAHyphen");
-      case 'space':return t("actions.branchNamesCannotContainSpacesTryFeatureUxFlow");
-      case 'control':return t("actions.branchNamesCannotContainControlCharacters");
-      case 'invalid-character':return t("actions.branchNamesCannotContainOrBackslash");
-      case 'double-dot':return t("actions.branchNamesCannotContainTwoConsecutiveDots");
-      case 'reflog':return t("actions.branchNamesCannotContain");
-      case 'slash':return t("actions.branchNamesCannotStartOrEndWithASlash");
-      case 'dot-component':return t("actions.branchNameSegmentsCannotStartWithADot");
-      case 'lock-suffix':return t("actions.branchNameSegmentsCannotEndWithLock");
-      case 'trailing-dot':return t("actions.branchNamesCannotEndWithADot");
-      case 'single-at':return t("actions.aBranchNameCannotBeOnly");
+  const stashFailurePaths = stashConflictPaths.length
+    ? stashConflictPaths
+    : (stashFailure?.paths ?? []);
+  const guardedContext =
+    type === 'merge' ||
+    type === 'rebase' ||
+    type === 'reset' ||
+    type === 'cherry-pick' ||
+    type === 'pull';
+  const branch =
+    (guardedContext ? actionContext.expectedBranch : snapshot.branch) ||
+    uiText('actions.detachedHEAD');
+  const displayTarget =
+    snapshot.refs.find((r) => r.fullName === values.target)?.name ?? values.target;
+  const branchProblem = type === 'branch.create' ? branchNameProblem(values.name) : undefined;
+  const branchConflict =
+    type === 'branch.create' && !branchProblem
+      ? branchNameConflict(
+          values.name,
+          local.map((ref) => ref.name),
+        )
+      : undefined;
+  const missingRemote =
+    ((type === 'pull' && !!actionContext.expectedBranch && pull.remote !== '.') ||
+      type === 'push' ||
+      type === 'tag.push' ||
+      (type === 'tag.create' && checks.pushAfterCreate)) &&
+    !snapshot.remotes?.length;
+  const deleteTagRemote = type === 'tag.delete' ? values.remote : undefined,
+    deleteTagKey = deleteTagRemote ? tagQueryKey(snapshot, deleteTagRemote) : undefined,
+    deleteTagQuery = deleteTagKey ? state.tagQueries[deleteTagKey] : undefined;
+  const deleteRemoteOid = type === 'tag.delete' ? tagDeleteLease.expectedRemoteOid : undefined;
+  const deleteRemoteSeparate = !!deleteTagQuery?.result?.separatePush,
+    deleteRemoteDestination = tagDeleteLease.expectedDestination;
+  const deleteRemoteProblem =
+    type === 'tag.delete'
+      ? tagDeleteLeaseProblem(
+          tagDeleteLease,
+          snapshot,
+          state.tagQueries,
+          values.remote,
+          values.name,
+        )
+      : undefined;
+  const deleteRemoteUnavailable =
+    type === 'tag.delete' && checks.deleteRemote && !!deleteRemoteProblem;
+  const branchProblemText = (problem: BranchNameProblem) => {
+    switch (problem) {
+      case 'empty':
+        return t('actions.enterABranchName');
+      case 'leading-hyphen':
+        return t('actions.branchNamesCannotStartWithAHyphen');
+      case 'space':
+        return t('actions.branchNamesCannotContainSpacesTryFeatureUxFlow');
+      case 'control':
+        return t('actions.branchNamesCannotContainControlCharacters');
+      case 'invalid-character':
+        return t('actions.branchNamesCannotContainOrBackslash');
+      case 'double-dot':
+        return t('actions.branchNamesCannotContainTwoConsecutiveDots');
+      case 'reflog':
+        return t('actions.branchNamesCannotContain');
+      case 'slash':
+        return t('actions.branchNamesCannotStartOrEndWithASlash');
+      case 'dot-component':
+        return t('actions.branchNameSegmentsCannotStartWithADot');
+      case 'lock-suffix':
+        return t('actions.branchNameSegmentsCannotEndWithLock');
+      case 'trailing-dot':
+        return t('actions.branchNamesCannotEndWithADot');
+      case 'single-at':
+        return t('actions.aBranchNameCannotBeOnly');
     }
   };
-  const branchValidation=branchProblem?branchProblemText(branchProblem):branchConflict?branchConflict.kind==='exists'?t("actions.localBranchAlreadyExistsChooseAnotherBranchName", { name: (branchConflict.name) }):t("actions.branchNameConflictsWithExistingLocalBranchChooseAnother", { name: (branchConflict.name) }):undefined;
-  async function resolveTagTarget(input:string,showError=true):Promise<FixedTagTarget|undefined>{
-    const target=input.trim();
-    if(fixedTagTarget)return fixedTagTarget;
-    const request=++tagTargetRequest.current;
-    if(!target){setTagTargetDetails(undefined);setTagTargetError(undefined);return;}
-    try{
-      const details=await rpc<CommitDetails>('tagTargetDetails',state.repoId,{oid:target}),resolved={oid:details.commit.oid,subject:details.commit.subject};
-      if(mounted.current&&isActionContextCurrent(repositoryContext)&&request===tagTargetRequest.current){setTagTargetDetails(resolved);setTagTargetError(undefined);}
+  const branchValidation = branchProblem
+    ? branchProblemText(branchProblem)
+    : branchConflict
+      ? branchConflict.kind === 'exists'
+        ? t('actions.localBranchAlreadyExistsChooseAnotherBranchName', {
+            name: branchConflict.name,
+          })
+        : t('actions.branchNameConflictsWithExistingLocalBranchChooseAnother', {
+            name: branchConflict.name,
+          })
+      : undefined;
+  async function resolveTagTarget(
+    input: string,
+    showError = true,
+  ): Promise<FixedTagTarget | undefined> {
+    const target = input.trim();
+    if (fixedTagTarget) return fixedTagTarget;
+    const request = ++tagTargetRequest.current;
+    if (!target) {
+      setTagTargetDetails(undefined);
+      setTagTargetError(undefined);
+      return;
+    }
+    try {
+      const details = await rpc<CommitDetails>('tagTargetDetails', state.repoId, { oid: target }),
+        resolved = { oid: details.commit.oid, subject: details.commit.subject };
+      if (
+        mounted.current &&
+        isActionContextCurrent(repositoryContext) &&
+        request === tagTargetRequest.current
+      ) {
+        setTagTargetDetails(resolved);
+        setTagTargetError(undefined);
+      }
       return resolved;
-    }catch(error){
-      if(mounted.current&&isActionContextCurrent(repositoryContext)&&request===tagTargetRequest.current){setTagTargetDetails(undefined);if(showError)setTagTargetError(t('actions.enterACommitIDThatExistsInThisRepository'));}
+    } catch (error) {
+      if (
+        mounted.current &&
+        isActionContextCurrent(repositoryContext) &&
+        request === tagTargetRequest.current
+      ) {
+        setTagTargetDetails(undefined);
+        if (showError) setTagTargetError(t('actions.enterACommitIDThatExistsInThisRepository'));
+      }
       return;
     }
   }
-  async function executeAction(branchCheckout?:boolean) {
+  async function executeAction(branchCheckout?: boolean) {
     if (pending.current || state.busy || !isActionContextCurrent(repositoryContext)) return;
-    pending.current = true; setSubmitting(true);
+    pending.current = true;
+    setSubmitting(true);
     const request = ++submission.current;
-    const active = () => mounted.current && request === submission.current && isActionContextCurrent(repositoryContext);
+    const active = () =>
+      mounted.current &&
+      request === submission.current &&
+      isActionContextCurrent(repositoryContext);
     try {
-    setValidation(undefined); const v = Object.fromEntries(Object.entries(values).map(([key,value]) => [key,type==='branch.create'&&key==='name'?value:value.trim()])); let action: GitAction;
-    if(type==='branch.create'&&branchValidation){setBranchTouched(true);setValidation(branchValidation);branchInput.current?.focus();return;}
-    switch(type) {
-      case 'fetch': action={type,remote:v.remote || undefined}; break;
-      case 'pull': if(pullUnavailable){setValidation(t('actions.selectPullSource'));return;} action={type,remote:v.remote,remoteBranch:v.remoteBranch,strategy:v.strategy as 'ff-only'|'merge'|'rebase',...actionContext}; break;
-      case 'push': if(pushUnavailable||!v.branch||!v.remote||!v.remoteBranch){setValidation(t("actions.selectALocalBranchRemoteAndRemoteBranch"));return;}if(checks.forceWithLease&&(!pushLease.expectedDestination||pushLease.remote!==v.remote||pushLease.remoteBranch!==v.remoteBranch)){setValidation(t("actions.refreshAndReopenTheRemoteTargetConfirmationBeforeForce"));return;} action={type,remote:v.remote,branch:v.branch,remoteBranch:v.remoteBranch,setUpstream:!push.configured,followTags:!!checks.followTags,forceWithLease:!!checks.forceWithLease,...(checks.forceWithLease?{expectedOid:pushLease.expectedOid,expectedDestination:pushLease.expectedDestination}:{})}; break;
-      case 'remote.add': if(remoteNameProblem(v.name)){setValidation(t("actions.enterARemoteNameWithoutSpacesSuchAsOrigin"));return;}if(remoteUrlProblem(v.url)){setValidation(t("actions.enterTheRemoteRepositoryURL"));return;}action={type,name:v.name,url:v.url};break;
-      case 'branch.create': action={type,name:v.name,start:v.start || undefined,checkout:dialog.requireCheckout?true:branchCheckout??true}; break;
-      case 'branch.checkout': action={type,name:v.name}; break;
-      case 'commit.checkout': if(!state.operationSettings.allowDetachedHead){setValidation(t("actions.directDetachedHEADCheckoutIsDisabledCreateAndSwitch"));return;} action={type,target:v.target}; break;
-      case 'branch.delete': action={type,names:dialog.names?.length?dialog.names:[v.name],force:!!checks.force,expectedOids:dialog.expectedOids}; break;
-      case 'remote.delete': if(!dialog.remote||!dialog.remoteBranches?.length)return;action={type,remote:dialog.remote,branches:dialog.remoteBranches,expectedOids:dialog.expectedOids,expectedDestination:dialog.expectedDestination};break;
-      case 'tag.create': { if(!v.target){setValidation(t('actions.enterATargetCommit'));return;}const target=await resolveTagTarget(v.target);if(!active())return;if(!target){setValidation(t('actions.enterACommitIDThatExistsInThisRepository'));return;}if(checks.pushAfterCreate&&!v.remote){setValidation(t("actions.selectARemoteForTheNewTag"));return;}action={type,name:v.name,target:target.oid,message:v.message || undefined,pushRemote:checks.pushAfterCreate?v.remote:undefined}; break; }
-      case 'tag.push': if(!v.remote||!dialog.names?.length||!dialog.expectedOids){setValidation(t("actions.selectTagsAndRemote"));return;}action={type,remote:v.remote,names:dialog.names,expectedOids:dialog.expectedOids};break;
-      case 'tag.delete': { const expectedOid=deleteLocal?tagChoices.find(tag=>tag.name===v.name)?.refOid:undefined;if(deleteLocal&&!expectedOid){setValidation(t("actions.refreshAndReopenTheTagDeletionDialog"));return;}const current=useWorkbench.getState(),remoteProblem=checks.deleteRemote?current.snapshot?tagDeleteLeaseProblem(tagDeleteLease,current.snapshot,current.tagQueries,v.remote,v.name):'changed':undefined;if(remoteProblem){setValidation(t(remoteProblem==='separate'?'actions.remoteTagDeletionRequiresMatchingAddresses':remoteProblem==='changed'?'actions.refreshAndReopenTheTagDeletionDialog':'actions.checkTheRemoteTagBeforeDeletingIt'));return;} action={type,name:v.name,...(expectedOid?{expectedOid}:{}),...(checks.deleteRemote?{remote:v.remote,expectedRemoteOid:deleteRemoteOid!,expectedDestination:deleteRemoteDestination!}:{})}; break; }
-      case 'stash.create': if(stashPaths&&!stashPaths.length){setValidation(t("actions.selectAtLeastOneFileToStash"));return;}action={type,message:v.message || undefined,includeUntracked:stashPaths?true:!!checks.includeUntracked,...(stashPaths?{paths:stashPaths}:{})}; break;
-      case 'stash.apply': case 'stash.drop': { const stash=stashChoices.find(s => s.selector===v.selector),expectedOid=v.selector===dialog.target?dialog.expectedOid??stash?.oid:stash?.oid; if(!expectedOid){setValidation(t("actions.selectAStashAndTryAgain"));return;} action=type==='stash.apply'?{type,selector:v.selector,pop:!!checks.pop,expectedOid}:{type,selector:v.selector,expectedOid}; break; }
-      case 'worktree.add':
-        if(!state.operationSettings.allowDetachedHead && (checks.detach || !v.branch && !v.newBranch)){setValidation(t("actions.chooseAnExistingBranchOrEnterANewBranch"));return;}
-        if (v.branch && v.newBranch || checks.detach && (v.branch || v.newBranch)) { setValidation(t("actions.chooseAnExistingBranchANewBranchOrDetached")); return; }
-        action={type,path:v.path,branch:v.branch || undefined,newBranch:v.newBranch || undefined,start:v.start || undefined,detach:!!checks.detach}; break;
-      case 'worktree.remove': action=dialog.paths?.length?{type,paths:dialog.paths,force:!!checks.force}:{type,path:v.path,force:!!checks.force}; break;
-      case 'merge': case 'rebase': action={type,target:v.target,...actionContext}; break;
-      case 'cherry-pick': case 'revert': { if(type==='cherry-pick'&&dialog.reapply&&!checks.allowIncluded){setValidation(t('actions.cherryPickReapplyConfirm'));return;} const mainline=v.mainline?Number(v.mainline):undefined; if(mainline!==undefined && (!Number.isInteger(mainline)||mainline<1)){setValidation(t("actions.mainlineParentMustBeAPositiveInteger"));return;} action={type,commits:v.target.split(/[\s,]+/).filter(Boolean),mainline,...(type==='cherry-pick'?actionContext:{expectedHead:snapshot.head,expectedBranch:snapshot.branch||undefined}),...(type==='cherry-pick'&&dialog.reapply?{allowIncluded:!!checks.allowIncluded}:{})}; break; }
-      case 'reset': action={type,target:v.target,mode:v.mode as 'soft'|'mixed'|'hard',...actionContext}; break;
-      case 'stage': case 'unstage': action={type,paths:dialog.paths ?? []}; break;
-      case 'operation.abort': if(!snapshot.operation.kind)return; action={type,kind:snapshot.operation.kind}; break;
-      default: return;
+      setValidation(undefined);
+      const v = Object.fromEntries(
+        Object.entries(values).map(([key, value]) => [
+          key,
+          type === 'branch.create' && key === 'name' ? value : value.trim(),
+        ]),
+      );
+      let action: GitAction;
+      if (type === 'branch.create' && branchValidation) {
+        setBranchTouched(true);
+        setValidation(branchValidation);
+        branchInput.current?.focus();
+        return;
+      }
+      switch (type) {
+        case 'fetch':
+          action = { type, remote: v.remote || undefined };
+          break;
+        case 'pull':
+          if (pullUnavailable) {
+            setValidation(t('actions.selectPullSource'));
+            return;
+          }
+          action = {
+            type,
+            remote: v.remote,
+            remoteBranch: v.remoteBranch,
+            strategy: v.strategy as 'ff-only' | 'merge' | 'rebase',
+            ...actionContext,
+          };
+          break;
+        case 'push':
+          if (pushUnavailable || !v.branch || !v.remote || !v.remoteBranch) {
+            setValidation(t('actions.selectALocalBranchRemoteAndRemoteBranch'));
+            return;
+          }
+          if (
+            checks.forceWithLease &&
+            (!pushLease.expectedDestination ||
+              pushLease.remote !== v.remote ||
+              pushLease.remoteBranch !== v.remoteBranch)
+          ) {
+            setValidation(t('actions.refreshAndReopenTheRemoteTargetConfirmationBeforeForce'));
+            return;
+          }
+          action = {
+            type,
+            remote: v.remote,
+            branch: v.branch,
+            remoteBranch: v.remoteBranch,
+            setUpstream: !push.configured,
+            followTags: !!checks.followTags,
+            forceWithLease: !!checks.forceWithLease,
+            ...(checks.forceWithLease
+              ? {
+                  expectedOid: pushLease.expectedOid,
+                  expectedDestination: pushLease.expectedDestination,
+                }
+              : {}),
+          };
+          break;
+        case 'remote.add':
+          if (remoteNameProblem(v.name)) {
+            setValidation(t('actions.enterARemoteNameWithoutSpacesSuchAsOrigin'));
+            return;
+          }
+          if (remoteUrlProblem(v.url)) {
+            setValidation(t('actions.enterTheRemoteRepositoryURL'));
+            return;
+          }
+          action = { type, name: v.name, url: v.url };
+          break;
+        case 'branch.create':
+          action = {
+            type,
+            name: v.name,
+            start: v.start || undefined,
+            checkout: dialog.requireCheckout ? true : (branchCheckout ?? true),
+          };
+          break;
+        case 'branch.checkout':
+          action = { type, name: v.name };
+          break;
+        case 'commit.checkout':
+          if (!state.operationSettings.allowDetachedHead) {
+            setValidation(t('actions.directDetachedHEADCheckoutIsDisabledCreateAndSwitch'));
+            return;
+          }
+          action = { type, target: v.target };
+          break;
+        case 'branch.delete':
+          action = {
+            type,
+            names: dialog.names?.length ? dialog.names : [v.name],
+            force: !!checks.force,
+            expectedOids: dialog.expectedOids,
+          };
+          break;
+        case 'remote.delete':
+          if (!dialog.remote || !dialog.remoteBranches?.length) return;
+          action = {
+            type,
+            remote: dialog.remote,
+            branches: dialog.remoteBranches,
+            expectedOids: dialog.expectedOids,
+            expectedDestination: dialog.expectedDestination,
+          };
+          break;
+        case 'tag.create': {
+          if (!v.target) {
+            setValidation(t('actions.enterATargetCommit'));
+            return;
+          }
+          const target = await resolveTagTarget(v.target);
+          if (!active()) return;
+          if (!target) {
+            setValidation(t('actions.enterACommitIDThatExistsInThisRepository'));
+            return;
+          }
+          if (checks.pushAfterCreate && !v.remote) {
+            setValidation(t('actions.selectARemoteForTheNewTag'));
+            return;
+          }
+          action = {
+            type,
+            name: v.name,
+            target: target.oid,
+            message: v.message || undefined,
+            pushRemote: checks.pushAfterCreate ? v.remote : undefined,
+          };
+          break;
+        }
+        case 'tag.push':
+          if (!v.remote || !dialog.names?.length || !dialog.expectedOids) {
+            setValidation(t('actions.selectTagsAndRemote'));
+            return;
+          }
+          action = {
+            type,
+            remote: v.remote,
+            names: dialog.names,
+            expectedOids: dialog.expectedOids,
+          };
+          break;
+        case 'tag.delete': {
+          const expectedOid = deleteLocal
+            ? tagChoices.find((tag) => tag.name === v.name)?.refOid
+            : undefined;
+          if (deleteLocal && !expectedOid) {
+            setValidation(t('actions.refreshAndReopenTheTagDeletionDialog'));
+            return;
+          }
+          const current = useWorkbench.getState(),
+            remoteProblem = checks.deleteRemote
+              ? current.snapshot
+                ? tagDeleteLeaseProblem(
+                    tagDeleteLease,
+                    current.snapshot,
+                    current.tagQueries,
+                    v.remote,
+                    v.name,
+                  )
+                : 'changed'
+              : undefined;
+          if (remoteProblem) {
+            setValidation(
+              t(
+                remoteProblem === 'separate'
+                  ? 'actions.remoteTagDeletionRequiresMatchingAddresses'
+                  : remoteProblem === 'changed'
+                    ? 'actions.refreshAndReopenTheTagDeletionDialog'
+                    : 'actions.checkTheRemoteTagBeforeDeletingIt',
+              ),
+            );
+            return;
+          }
+          action = {
+            type,
+            name: v.name,
+            ...(expectedOid ? { expectedOid } : {}),
+            ...(checks.deleteRemote
+              ? {
+                  remote: v.remote,
+                  expectedRemoteOid: deleteRemoteOid!,
+                  expectedDestination: deleteRemoteDestination!,
+                }
+              : {}),
+          };
+          break;
+        }
+        case 'stash.create':
+          if (stashPaths && !stashPaths.length) {
+            setValidation(t('actions.selectAtLeastOneFileToStash'));
+            return;
+          }
+          action = {
+            type,
+            message: v.message || undefined,
+            includeUntracked: stashPaths ? true : !!checks.includeUntracked,
+            ...(stashPaths ? { paths: stashPaths } : {}),
+          };
+          break;
+        case 'stash.apply':
+        case 'stash.drop': {
+          const stash = stashChoices.find((s) => s.selector === v.selector),
+            expectedOid =
+              v.selector === dialog.target ? (dialog.expectedOid ?? stash?.oid) : stash?.oid;
+          if (!expectedOid) {
+            setValidation(t('actions.selectAStashAndTryAgain'));
+            return;
+          }
+          action =
+            type === 'stash.apply'
+              ? { type, selector: v.selector, pop: !!checks.pop, expectedOid }
+              : { type, selector: v.selector, expectedOid };
+          break;
+        }
+        case 'worktree.add':
+          if (
+            !state.operationSettings.allowDetachedHead &&
+            (checks.detach || (!v.branch && !v.newBranch))
+          ) {
+            setValidation(t('actions.chooseAnExistingBranchOrEnterANewBranch'));
+            return;
+          }
+          if ((v.branch && v.newBranch) || (checks.detach && (v.branch || v.newBranch))) {
+            setValidation(t('actions.chooseAnExistingBranchANewBranchOrDetached'));
+            return;
+          }
+          action = {
+            type,
+            path: v.path,
+            branch: v.branch || undefined,
+            newBranch: v.newBranch || undefined,
+            start: v.start || undefined,
+            detach: !!checks.detach,
+          };
+          break;
+        case 'worktree.remove':
+          action = dialog.paths?.length
+            ? { type, paths: dialog.paths, force: !!checks.force }
+            : { type, path: v.path, force: !!checks.force };
+          break;
+        case 'merge':
+        case 'rebase':
+          action = { type, target: v.target, ...actionContext };
+          break;
+        case 'cherry-pick':
+        case 'revert': {
+          if (type === 'cherry-pick' && dialog.reapply && !checks.allowIncluded) {
+            setValidation(t('actions.cherryPickReapplyConfirm'));
+            return;
+          }
+          const mainline = v.mainline ? Number(v.mainline) : undefined;
+          if (mainline !== undefined && (!Number.isInteger(mainline) || mainline < 1)) {
+            setValidation(t('actions.mainlineParentMustBeAPositiveInteger'));
+            return;
+          }
+          action = {
+            type,
+            commits: v.target.split(/[\s,]+/).filter(Boolean),
+            mainline,
+            ...(type === 'cherry-pick'
+              ? actionContext
+              : { expectedHead: snapshot.head, expectedBranch: snapshot.branch || undefined }),
+            ...(type === 'cherry-pick' && dialog.reapply
+              ? { allowIncluded: !!checks.allowIncluded }
+              : {}),
+          };
+          break;
+        }
+        case 'reset':
+          action = {
+            type,
+            target: v.target,
+            mode: v.mode as 'soft' | 'mixed' | 'hard',
+            ...actionContext,
+          };
+          break;
+        case 'stage':
+        case 'unstage':
+          action = { type, paths: dialog.paths ?? [] };
+          break;
+        case 'operation.abort':
+          if (!snapshot.operation.kind) return;
+          action = { type, kind: snapshot.operation.kind };
+          break;
+        default:
+          return;
+      }
+      if (
+        (type === 'push' || type === 'tag.create' || type === 'reset') &&
+        checks.rememberDefault
+      ) {
+        try {
+          await state.saveOperationSettings({
+            allowDetachedHead: state.operationSettings.allowDetachedHead,
+            pushFollowTags:
+              type === 'push' ? !!checks.followTags : state.operationSettings.pushFollowTags,
+            pushTagAfterCreate:
+              type === 'tag.create'
+                ? !!checks.pushAfterCreate
+                : state.operationSettings.pushTagAfterCreate,
+            defaultResetMode:
+              type === 'reset'
+                ? (v.mode as 'soft' | 'mixed' | 'hard')
+                : state.operationSettings.defaultResetMode,
+          });
+        } catch (error) {
+          if (active()) setValidation(error instanceof Error ? error.message : String(error));
+          return;
+        }
+      }
+      if (!active()) return;
+      const completed = await state.execute(action, repositoryContext);
+      if (
+        active() &&
+        checks.rememberDefault &&
+        (action.type === 'branch.delete' || action.type === 'worktree.remove')
+      )
+        await state.rememberDeletionDefault(action, deletionDefaultScope, repositoryContext);
+      if (completed) {
+        if (!active()) return;
+        if (
+          ['branch.checkout', 'commit.checkout'].includes(action.type) ||
+          (action.type === 'branch.create' && action.checkout)
+        ) {
+          const latest = useWorkbench.getState();
+          if (latest.repoId === state.repoId && latest.snapshot?.head)
+            void latest.selectCommit(latest.snapshot.head);
+        }
+        if (action.type === 'remote.add' && dialog.returnTo === 'pull')
+          replaceDialog({ type: 'pull' });
+        else if (action.type === 'remote.add' && dialog.returnTo === 'push')
+          replaceDialog({ type: 'push', branch: dialog.branch });
+        else if (action.type === 'remote.add' && dialog.returnTo === 'tag.push')
+          replaceDialog({
+            type: 'tag.push',
+            names: dialog.names,
+            expectedOids: dialog.expectedOids,
+          });
+        else if (action.type === 'remote.add' && dialog.returnTo === 'tag.create')
+          replaceDialog({ type: 'tag.create', tagDraft: dialog.tagDraft });
+        else onClose();
+      }
+    } finally {
+      pending.current = false;
+      if (mounted.current && request === submission.current) setSubmitting(false);
     }
-    if((type==='push'||type==='tag.create'||type==='reset')&&checks.rememberDefault){try{await state.saveOperationSettings({allowDetachedHead:state.operationSettings.allowDetachedHead,pushFollowTags:type==='push'?!!checks.followTags:state.operationSettings.pushFollowTags,pushTagAfterCreate:type==='tag.create'?!!checks.pushAfterCreate:state.operationSettings.pushTagAfterCreate,defaultResetMode:type==='reset'?v.mode as 'soft'|'mixed'|'hard':state.operationSettings.defaultResetMode});}catch(error){if(active())setValidation(error instanceof Error?error.message:String(error));return;}}
-    if(!active())return;
-    const completed = await state.execute(action, repositoryContext);
-    if(active()&&checks.rememberDefault&&(action.type==='branch.delete'||action.type==='worktree.remove'))await state.rememberDeletionDefault(action,deletionDefaultScope,repositoryContext);
-    if(completed){if(!active())return;if(['branch.checkout','commit.checkout'].includes(action.type)||action.type==='branch.create'&&action.checkout){const latest=useWorkbench.getState();if(latest.repoId===state.repoId&&latest.snapshot?.head)void latest.selectCommit(latest.snapshot.head);}if(action.type==='remote.add'&&dialog.returnTo==='pull')replaceDialog({type:'pull'});else if(action.type==='remote.add'&&dialog.returnTo==='push')replaceDialog({type:'push',branch:dialog.branch});else if(action.type==='remote.add'&&dialog.returnTo==='tag.push')replaceDialog({type:'tag.push',names:dialog.names,expectedOids:dialog.expectedOids});else if(action.type==='remote.add'&&dialog.returnTo==='tag.create')replaceDialog({type:'tag.create',tagDraft:dialog.tagDraft});else onClose();}
-    } finally { pending.current = false; if(mounted.current && request === submission.current)setSubmitting(false); }
   }
-  const submit=(event:React.FormEvent)=>{event.preventDefault();void executeAction(type==='branch.create'?true:undefined);};
-  if (submitting && state.actionFeedback?.status === 'running' && state.actionFeedback.action.type === type && networkCommand(state.actionFeedback.action) && !blocksWorkbench(state.actionFeedback.action)) {
-    return <Modal title={title} onClose={onClose} className="network-operation-dialog" footer={<Button icon="chevron-down" title={t('feedback.network.minimize')} aria-label={t('feedback.network.minimize')} onClick={onClose}/>}>
-      <Icon name="loading" className="feedback-spinner"/>
-      <p className="muted">{state.actionFeedback.target}</p><NetworkProgress feedback={state.actionFeedback}/>
-    </Modal>;
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    void executeAction(type === 'branch.create' ? true : undefined);
+  };
+  if (
+    submitting &&
+    state.actionFeedback?.status === 'running' &&
+    state.actionFeedback.action.type === type &&
+    networkCommand(state.actionFeedback.action) &&
+    !blocksWorkbench(state.actionFeedback.action)
+  ) {
+    return (
+      <Modal
+        title={title}
+        onClose={onClose}
+        className="network-operation-dialog"
+        footer={
+          <Button
+            icon="chevron-down"
+            title={t('feedback.network.minimize')}
+            aria-label={t('feedback.network.minimize')}
+            onClick={onClose}
+          />
+        }
+      >
+        <Icon name="loading" className="feedback-spinner" />
+        <p className="muted">{state.actionFeedback.target}</p>
+        <NetworkProgress feedback={state.actionFeedback} />
+      </Modal>
+    );
   }
-  const destructive = ['discard','branch.delete','remote.delete','tag.delete','stash.drop','worktree.remove','operation.abort'].includes(type) || type==='reset' && values.mode==='hard';
-  const submitLabel=type==='tag.delete'?!deleteLocal?t('actions.deleteRemoteTag'):checks.deleteRemote?t('actions.deleteLocalAndRemoteTag'):t('actions.deleteLocalTag'):title;
-  if (snapshot.operation.kind && ['merge','rebase','cherry-pick','revert','pull'].includes(type)) {
-    const kind=snapshot.operation.kind, files=snapshot.changes.filter(file=>file.conflict);
-    return <Modal title={t("actions.paused", { kind: (kind) })} busy={state.busy} onClose={onClose} footer={<>
-      <Button disabled={state.busy} onClick={onClose}>{t("actions.closeThisWindow")}</Button>
-      <Button className="danger" disabled={state.busy} onClick={openAbort}>{t("actions.abort", { kind: (kind) })}</Button>
-      <Button className="primary" icon="files" disabled={state.busy} onClick={()=>{onClose();state.selectWorking();const file=files[0]??snapshot.changes.find(file=>file.indexStatus!==' '&&!file.untracked);if(file)state.selectFile({kind:'change',path:file.path,area:file.conflict?'conflict':'staged'});state.setLayout({diffCollapsed:false});}}>{files.length?t("actions.viewHandleConflicts"):t("actions.reviewStagedResult")}</Button>
-    </>}><p>{snapshot.repository.name} · {branch}</p><p>{t("actions.closingThisWindowLeavesTheGitOperationPausedEdit")}</p>{state.error&&<details><summary>{t("common.gitDetails")}</summary><pre>{state.error}</pre></details>}</Modal>;
+  const destructive =
+    [
+      'discard',
+      'branch.delete',
+      'remote.delete',
+      'tag.delete',
+      'stash.drop',
+      'worktree.remove',
+      'operation.abort',
+    ].includes(type) ||
+    (type === 'reset' && values.mode === 'hard');
+  const submitLabel =
+    type === 'tag.delete'
+      ? !deleteLocal
+        ? t('actions.deleteRemoteTag')
+        : checks.deleteRemote
+          ? t('actions.deleteLocalAndRemoteTag')
+          : t('actions.deleteLocalTag')
+      : title;
+  if (
+    snapshot.operation.kind &&
+    ['merge', 'rebase', 'cherry-pick', 'revert', 'pull'].includes(type)
+  ) {
+    const kind = snapshot.operation.kind,
+      files = snapshot.changes.filter((file) => file.conflict);
+    return (
+      <Modal
+        title={t('actions.paused', { kind: kind })}
+        busy={state.busy}
+        onClose={onClose}
+        footer={
+          <>
+            <Button disabled={state.busy} onClick={onClose}>
+              {t('actions.closeThisWindow')}
+            </Button>
+            <Button className="danger" disabled={state.busy} onClick={openAbort}>
+              {t('actions.abort', { kind: kind })}
+            </Button>
+            <Button
+              className="primary"
+              icon="files"
+              disabled={state.busy}
+              onClick={() => {
+                onClose();
+                state.selectWorking();
+                const file =
+                  files[0] ??
+                  snapshot.changes.find((file) => file.indexStatus !== ' ' && !file.untracked);
+                if (file)
+                  state.selectFile({
+                    kind: 'change',
+                    path: file.path,
+                    area: file.conflict ? 'conflict' : 'staged',
+                  });
+                state.setLayout({ diffCollapsed: false });
+              }}
+            >
+              {files.length ? t('actions.viewHandleConflicts') : t('actions.reviewStagedResult')}
+            </Button>
+          </>
+        }
+      >
+        <p>
+          {snapshot.repository.name} · {branch}
+        </p>
+        <p>{t('actions.closingThisWindowLeavesTheGitOperationPausedEdit')}</p>
+        {state.error && (
+          <details>
+            <summary>{t('common.gitDetails')}</summary>
+            <pre>{state.error}</pre>
+          </details>
+        )}
+      </Modal>
+    );
   }
-  return <Modal title={title} busy={state.busy} onClose={onClose} footer={stashFailure?<Button onClick={onClose} disabled={state.busy}>{t("actions.cancelAndKeepCurrentState")}</Button>:missingRemote?<><Button onClick={onClose} disabled={state.busy}>{t("common.cancel")}</Button><Button data-autofocus={type==='pull'||type==='push'||undefined} className="primary" icon="cloud-upload" disabled={state.busy} onClick={()=>replaceDialog({type:'remote.add',returnTo:type==='pull'?'pull':type==='tag.push'?'tag.push':type==='tag.create'?'tag.create':'push',branch:values.branch,names:dialog.names,expectedOids:dialog.expectedOids,...(type==='tag.create'?{tagDraft:{name:values.name,target:values.target,message:values.message,pushAfterCreate:!!checks.pushAfterCreate,rememberDefault:!!checks.rememberDefault,fixedTarget:fixedTagTarget}}:{})})}>{t("actions.addRemote")}</Button></>:type==='branch.create'?<><Button onClick={onClose} disabled={state.busy}>{t("common.cancel")}</Button>{!dialog.requireCheckout&&<Button type="button" disabled={state.busy||submitting||!!branchValidation} onClick={()=>void executeAction(false)}>{t("actions.createOnly")}</Button>}<Button type="submit" form="ag-action-form" className="primary" disabled={state.busy||submitting||!!branchValidation}>{state.busy?t("common.working"):t("actions.createAndCheckout")}</Button></>:<><Button data-autofocus={type==='pull'&&!actionContext.expectedBranch||undefined} onClick={onClose} disabled={state.busy}>{t("common.cancel")}</Button><Button data-autofocus={type==='pull'&&!pullUnavailable||type==='push'&&!pushUnavailable||undefined} type="submit" form="ag-action-form" className={destructive?'danger':'primary'} disabled={state.busy||submitting||pullUnavailable||pushUnavailable||deleteRemoteUnavailable||type==='cherry-pick'&&!!dialog.reapply&&!checks.allowIncluded}>{state.busy?t("common.working"):submitLabel}</Button></>}><form id="ag-action-form" className="action-form" onSubmit={submit}><fieldset style={{display:'contents'}} disabled={state.busy||submitting}>
-    <p className="muted">{snapshot.repository.name} · {branch}{guardedContext && type!=='pull' && <>{uiText("actions.hEAD")}<code>{actionContext.expectedHead || '(unborn)'}</code></>}</p>
-    {type==='branch.create' && <><label className="form-field"><span>{t("actions.branchName")}</span><input ref={branchInput} aria-label={t("actions.branchNameVariant2")} aria-invalid={branchTouched&&!!branchValidation||undefined} aria-describedby={branchTouched&&branchValidation?'branch-name-error':undefined} required disabled={state.busy} value={values.name} onChange={event=>{setBranchTouched(true);setValidation(undefined);set('name',event.target.value);}} placeholder={uiText("actions.featureMyChange")}/>{branchTouched&&branchValidation&&<small id="branch-name-error" role="alert" className="form-error">{branchValidation}</small>}</label><div className="branch-start-point"><span>{t("actions.startPoint")}</span><strong>{branchStartLabel(snapshot,values.start,t)}</strong>{state.commits.find(commit=>commit.oid===values.start)&&<small>{state.commits.find(commit=>commit.oid===values.start)!.subject}</small>}<small>{dialog.requireCheckout?t("actions.createAndSwitchToABranchToWorkOn"):t("actions.theNewBranchStartsFromThisSelectedVersion")}</small><details><summary>{t("common.gitDetails")}</summary><code>{values.start}</code></details></div></>}
-    {(type==='branch.checkout'||type==='branch.delete') && <>{type==='branch.delete'&&dialog.names?.length?<div className="discard-paths">{dialog.names.map(name=><div key={name}>{name}</div>)}</div>:field('name', "actions.branchVariant2", (dialog.candidates ? local.filter(r=>dialog.candidates!.includes(r.name)) : local.filter(r=>type!=='branch.delete'||r.name!==snapshot.branch)).map(r=>({value:r.name,label:r.name})), true)}{type==='branch.delete'&&<>{checkbox('force', "actions.forceDeletionOfUnmergedBranches")}{checks.force&&<p className="warning-text">{t('confirm.forceDeleteBranches')}</p>}</>}{type==='branch.checkout'&&<p>{t("actions.checkoutPreservesChangesWhenPossibleGitStopsIfThey")}</p>}</>}
-    {(type==='branch.delete'||type==='worktree.remove')&&<>{checkbox('rememberDefault','actions.rememberDeletionDefault')}<small className="muted">{deletionDefaultScope==='workspace'?t('actions.rememberDeletionWorkspaceScope'):t('actions.rememberDeletionUserScope')}</small></>}
-    {type==='remote.delete'&&<><strong>{t("actions.deleteFrom", { remote: (dialog.remote) })}</strong><div className="discard-paths">{dialog.remoteBranches?.map(name=><div key={name}>{name}</div>)}</div><p className="warning-text">{t("actions.thisDeletesBranchesFromTheSharedRemoteRepository")}</p></>}
-    {type==='remote.add'&&<><p>{t("actions.connectThisLocalRepositoryToARemoteRepositoryYour")}</p>{field('name', "actions.remoteName", undefined, true, 'origin')}{field('url', "actions.repositoryURL", undefined, true, 'https://example.com/owner/repository.git')}</>}
-    {type==='commit.checkout'&&<><strong>{uiText("actions.checkoutVariant2")}{displayTarget.length===40?displayTarget.slice(0,12):displayTarget}</strong><p>{t("actions.thisDirectlyEntersDetachedHEADTheOriginalBranchStays")}</p>{!state.operationSettings.allowDetachedHead&&<p role="alert">{t("actions.directDetachedHEADCheckoutIsNowDisabled")}</p>}</>}
-    {type==='tag.create'&&<>{field('name', "actions.tagName", undefined, true)}<label className="form-field"><span>{t('actions.targetCommit')}</span><input aria-label={t('actions.targetCommit')} required readOnly={!!fixedTagTarget} disabled={state.busy} value={values.target} onChange={event=>set('target',event.target.value)} onBlur={()=>void resolveTagTarget(values.target)} placeholder={fixedTagTarget?undefined:t('actions.commitIDPlaceholder')} />{!fixedTagTarget&&<small className="muted">{t('actions.noCommitIsSelectedAutomatically')}</small>}{tagTargetError&&<small className="form-error" role="alert">{tagTargetError}</small>}</label>{tagTargetDetails&&<div className="tag-target-summary"><span>{t('commit.commitMessage')}</span><strong>{tagTargetDetails.subject}</strong><small><code>{tagTargetDetails.oid.slice(0,12)}</code>{fixedTagTarget?` · ${t('actions.fixedToTheSelectedCommit')}`:''}</small></div>}{field('message', "actions.annotationOptional")}{checkbox('pushAfterCreate', "actions.pushThisTagAfterCreation")}{checks.pushAfterCreate&&field('remote', "actions.remote", (snapshot.remotes??[]).map(remote=>({value:remote,label:remote})), true)}{checkbox('rememberDefault', "actions.rememberTagCreatePushChoiceAsDefault")}{checks.pushAfterCreate&&<p className="muted">{t("actions.theTagRemainsLocalIfTheRemotePushFails")}</p>}</>}
-    {type==='tag.push'&&<><strong>{t("actions.selectedTags",{count:dialog.names?.length??0})}</strong><div className="discard-paths">{dialog.names?.map(name=><div key={name}>{name}</div>)}</div>{field('remote', "actions.remote", (snapshot.remotes??[]).map(remote=>({value:remote,label:remote})), true)}<p>{t("actions.pushesOnlyTheListedTags")}</p></>}
-    {type==='tag.delete'&&<>{deleteLocal?field('name', "actions.tag", tagChoices.map(r=>({value:r.name,label:r.name})), true):<div className="form-field"><span>{t('actions.tag')}</span><strong>{values.name}</strong></div>}{deleteLocal&&!!snapshot.remotes?.length&&<label className="form-checkbox"><input type="checkbox" checked={!!checks.deleteRemote} disabled={state.busy} onChange={event=>{setChecks(old=>({...old,deleteRemote:event.target.checked}));if(event.target.checked&&values.remote)void state.loadTagStatuses(true,values.remote);}}/>{t('actions.alsoDeleteFromRemote')}</label>}{checks.deleteRemote&&<>{field('remote', "actions.remote", (snapshot.remotes??[]).map(remote=>({value:remote,label:remote})), true)}<p className="warning-text">{deleteRemoteSeparate?t('actions.remoteTagDeletionRequiresMatchingAddresses'):deleteRemoteOid?t('actions.thisDeletesTheTagFromTheSharedRemoteRepository',{remote:values.remote}):t('actions.checkTheRemoteTagBeforeDeletingIt')}</p>{deleteLocal&&deleteRemoteOid&&tagChoices.find(tag=>tag.name===values.name)?.refOid!==deleteRemoteOid&&<p className="warning-text">{t('actions.localAndRemoteTagsIdentifyDifferentObjects')}</p>}</>}</>}
-    {type==='tag.delete'&&checks.deleteRemote&&deleteRemoteProblem==='changed'&&<p role="alert" className="form-error">{t('actions.refreshAndReopenTheTagDeletionDialog')}</p>}
-    {type==='stash.create'&&<>{stashPaths&&<><strong>{t("actions.selectedFiles", { count: (stashPaths.length) })}</strong><div className="discard-paths">{stashPaths.map(path=><div key={path}>{path}</div>)}</div></>}{field('message', "actions.descriptionOptional")}{!stashPaths&&checkbox('includeUntracked', "actions.includeUntrackedFiles")}<p>{stashPaths?t("actions.saveEachSelectedFileSCompleteIndexAndWorking"):t("actions.saveAllTrackedFilesIndexAndWorkingTreeChanges")}</p></>}
-    {(type==='stash.apply'||type==='stash.drop')&&<>{field('selector', "actions.stash", stashChoices.map(s=>({value:s.selector,label:`${s.selector}: ${s.subject}`})), true)}<p>{type==='stash.drop'?t("actions.removeThisEntryItsSavedChangesMayBecomeUnreachable"):checks.pop?t("actions.restoreTheSavedIndexAndWorkingTreeStateThen"):t("actions.restoreTheSavedIndexAndWorkingTreeStateAnd")}</p>{stashFailure&&<section className="stash-apply-blocker" role="alert"><strong>{stashFailure.reason==='untracked-path-exists'?t("actions.cannotRestoreBecauseTheseFilesAlreadyExistInThe"):stashFailure.reason==='restore-conflict'?t("actions.restoreStoppedBecausePreflightFoundConflicts"):stashFailure.reason==='state-changed'?t("actions.restoreStoppedBecauseTheProjectChangedDuringPreflight"):t("actions.restoreStoppedBecausePreflightCouldNotRestoreTheSaved")}</strong><p>{t("actions.thisRestoreDidNotChangeTheIndexOrWorking")}</p><strong>{stashFailure.reason==='untracked-path-exists'?t("actions.existingPathsBlockingThisRestore"):stashConflictPaths.length?t("actions.confirmedConflictingFiles"):t("actions.filesIncludedInThisRestore")}</strong><div className="stash-conflict-files">{stashFailurePaths.map(path=><div className="stash-conflict-file" key={path}><code>{path}</code><div><Button type="button" className="icon-only" icon="diff" title={t("actions.compareSavedAndExistingFile")} aria-label={`${t("actions.compareSavedAndExistingFile")}: ${path}`} onClick={()=>void rpc('diff',state.repoId,{kind:'stash-working',stashOid:stashFailure.stashOid,path}).catch(state.report)}/><Button type="button" className="icon-only" icon="go-to-file" title={t("actions.openExistingFile")} aria-label={`${t("actions.openExistingFile")}: ${path}`} onClick={()=>void rpc('openFile',state.repoId,{path}).catch(state.report)}/></div></div>)}</div><p className="muted">{t("actions.resolveTheBlockerThenCloseAndRetryTheRestore")}</p>{(stashFailure.output||state.error)&&<details><summary>{t("common.gitDetails")}</summary><pre>{stashFailure.output||state.error}</pre></details>}</section>}</>}
-    {type==='worktree.add'&&<>{field('path', "actions.worktreeFolder", undefined, true)}<Button type="button" icon="folder-opened" onClick={()=>void rpc<string|undefined>('pickWorktree',state.repoId,{}).then(path=>{if(path)set('path',path);}).catch(state.report)}>{t("actions.browse")}</Button>{field('branch', "actions.existingBranch", [{value:'',label:t("common.none")},...local.map(r=>({value:r.name,label:r.name}))])}{field('newBranch', state.operationSettings.allowDetachedHead ? "actions.newBranchOptional" : "actions.newBranch")}{field('start', "actions.startPoint")}{state.operationSettings.allowDetachedHead?checkbox('detach', "actions.detachedHEAD"):<p className="muted">{t("actions.chooseAnExistingBranchOrCreateANewOne")}</p>}</>}
-    {type==='worktree.remove'&&<>{dialog.paths?.length?<div className="discard-paths">{dialog.paths.map(treePath=><div key={treePath}><strong>{snapshot.worktrees.find(tree=>samePath(tree.path,treePath))?.branch?.replace(/^refs\/heads\//,'')||t('sidebar.detachedHEAD')}</strong><div>{treePath}</div></div>)}</div>:field('path', "actions.worktree", snapshot.worktrees.filter(w=>!samePath(w.path,snapshot.repository.root)&&!w.locked&&w!==snapshot.worktrees[0]).map(w=>({value:w.path,label:w.path})), true)}{checkbox('force', "actions.removeEvenWithUncommittedChanges")}<p>{t('actions.worktreeRemovalEffect')}</p>{checks.force&&<p className="warning-text">{t('confirm.forceRemoveWorktree')}</p>}</>}
-    {(type==='merge'||type==='rebase')&&<>{field('target', type==='merge' ? "actions.mergeSource" : "actions.newBase", undefined, true)}<strong>{type==='merge'?uiText("actions.mergeInto", { displayTarget: (displayTarget), branch: (branch) }):uiText("actions.rebaseOnto", { branch: (branch), displayTarget: (displayTarget) })}</strong><p>{type==='merge'?t("actions.bringSelectedHistoryIntoTheCurrentBranch"):t("actions.replayCurrentBranchCommitsOntoTheSelectedBaseReplayed")}</p></>}
-    {(type==='cherry-pick'||type==='revert')&&<>{type==='cherry-pick'&&dialog.reapply&&<><p className="warning-text">{t('actions.cherryPickReapplyWarning')}</p>{checkbox('allowIncluded','actions.cherryPickReapplyConfirm')}</>}{field('target', "actions.commitIDs", undefined, true)}{field('mainline', "actions.mainlineParentMergeCommitsOnly")}<strong>{type==='cherry-pick'?t("actions.cherryPickOnto", {target:displayTarget,branch}):uiText("actions.revertOn", { displayTarget: (displayTarget), branch: (branch) })}</strong><p>{type==='revert'?t("actions.createNewCommitsReversingTheseChanges"):t("actions.applyTheseCommitsToTheCurrentBranchInThe")}</p></>}
-    {type==='reset'&&<>{field('target', "actions.targetCommit", undefined, true)}{field('mode', "actions.resetMode", [{value:'soft',label:uiText("actions.soft")},{value:'mixed',label:uiText("actions.mixed")},{value:'hard',label:uiText("actions.hard")}])}{checkbox('rememberDefault', "actions.rememberResetModeAsDefault")}<strong>{t("actions.resetBranchToTarget", {branch, target:displayTarget})}</strong><p className={values.mode==='hard'?'warning-text':''}>{values.mode==='soft'?t("actions.keepIndexAndWorkingTreeChanges"):values.mode==='mixed'?t("actions.resetIndexKeepWorkingTreeChanges"):t("actions.resetIndexAndTrackedWorkingTreeFilesUncommittedTracked")}</p></>}
-    {type==='fetch'&&field('remote', "actions.remoteOptional")}
-    {type==='pull'&&<>
-      <div className="push-target"><span>{t('actions.pullSource')}</span><strong>{values.remote&&values.remoteBranch?`${values.remote==='.'?t('actions.localRepository'):values.remote}/${values.remoteBranch}`:t('actions.selectPullSource')} <span aria-hidden="true">→</span> {branch}</strong></div>
-      {!actionContext.expectedBranch?<p role="alert" className="form-error">{t('actions.pullRequiresLocalBranch')}</p>:<>
-        {!(snapshot.remotes?.length)&&pull.remote!=='.'?<p role="status">{t('actions.noRemoteRepositoryIsConnectedYet')}</p>:<>
-          {!!pull.remoteBranch&&<Button type="button" className="icon-only" icon="settings-gear" aria-label={customizePull?t('actions.useDefaultPullSource'):t('actions.changePullSource')} title={customizePull?t('actions.useDefaultPullSource'):t('actions.changePullSource')} onClick={()=>{setCustomizePull(value=>!value);if(customizePull)setValues(old=>({...old,remote:pull.remote,remoteBranch:pull.remoteBranch}));}}/>}
-          {customizePull&&<>
-            <label className="form-field"><span>{t('actions.remote')}</span><select data-autofocus={pullRemoteMissing||undefined} aria-label={t('actions.remote')} required disabled={state.busy} value={values.remote} onChange={event=>setValues(old=>({...old,remote:event.target.value,remoteBranch:''}))}><option value="">{t('actions.selectRemoteVariant2')}</option>{[...new Set([...(snapshot.remotes??[]),...(pull.remote==='.'?['.']:[])])].map(remote=><option key={remote} value={remote}>{remote==='.'?t('actions.localRepository'):remote}</option>)}</select></label>
-            <label className="form-field"><span>{t('actions.sourceBranch')}</span><input data-autofocus={!pullRemoteMissing&&!!branchNameProblem(values.remoteBranch)||undefined} aria-label={t('actions.sourceBranch')} required disabled={state.busy||!values.remote} value={values.remoteBranch} list="ag-pull-branches" onChange={event=>set('remoteBranch',event.target.value)} placeholder={t('actions.chooseOrEnterSourceBranch')}/><datalist id="ag-pull-branches">{pullBranches.map(name=><option key={name} value={name}/>)}</datalist><small className="muted">{t('actions.pullSourceIsOneTime')}</small></label>
-            {!pull.remoteBranch&&<p className="muted">{t('actions.noPullUpstream')}</p>}
-          </>}
-        </>}
-      </>}
-      {field('strategy', "actions.pullStrategy", [{value:'ff-only',label:uiText("actions.fastForwardOnly")},{value:'merge',label:uiText("actions.merge")},{value:'rebase',label:uiText("actions.rebase")}])}
-    </>}
-    {type==='push'&&(missingRemote?<section className="push-prerequisite" role="status"><strong>{t("actions.noRemoteRepositoryIsConnectedYet")}</strong><p>{t("actions.yourCommitsAreSavedLocallyAddARemoteAddress")}</p></section>:<><div className="push-target"><span>{t("actions.pushTarget")}</span><strong>{values.branch} <span aria-hidden="true">→</span> {values.remote?`${values.remote}/${values.remoteBranch}`:t("actions.selectRemote")}</strong><dl><div><dt>{t("actions.localBranch")}</dt><dd>{values.branch}</dd></div><div><dt>{t("actions.remote")}</dt><dd>{values.remote||'—'}</dd></div><div><dt>{t("actions.remoteBranchVariant2")}</dt><dd>{values.remoteBranch||'—'}</dd></div></dl></div>{(!customizePush||!!push.remote)&&<Button type="button" icon="settings-gear" onClick={()=>{setCustomizePush(value=>!value);if(customizePush){setValues(old=>({...old,remote:push.remote,remoteBranch:push.remoteBranch}));setPushLease(previous=>updateRemoteLease(previous,snapshot,push.remote,push.remoteBranch));}}}>{customizePush?t("actions.useDefaultTarget"):t("actions.changeTarget")}</Button>}{customizePush&&<>{field('remote', "actions.remote", [{value:'',label:t("actions.selectRemoteVariant2")},...[...new Set([values.remote,...(snapshot.remotes??[])].filter(Boolean))].map(remote=>({value:remote,label:remote}))], true)}{field('remoteBranch', "actions.remoteBranchVariant2", undefined, true)}</>}<details className="advanced-options"><summary>{t("actions.advancedOptions")}</summary>{checkbox('followTags', "actions.pushRelatedAnnotatedTags")}{checkbox('rememberDefault', "actions.rememberPushTagChoiceAsDefault")}{checks.followTags&&<p className="muted">{t("actions.followTagsDoesNotPushLightweightOrUnrelatedTags")}</p>}{checkbox('forceWithLease', "actions.forceWithLease")}{checks.forceWithLease&&<><p className="warning-text">{t("actions.thisMayReplaceRemoteBranchHistoryButOnlyIf")}</p><p>{pushLease.expectedOid?<>{t("actions.expectedRemoteCommit")}<code>{pushLease.expectedOid.slice(0,12)}</code></>:t("actions.createOnlyIfThisRemoteBranchIsStillAbsent")}</p></>}</details>{!push.configured&&<p className="muted">{t("actions.thisPushWillSetTheSelectedTargetAsThe")}</p>}</>)}
-    {(type==='stage'||type==='unstage')&&<p>{t('actions.batchFileCount',{count:dialog.paths?.length??0})}</p>}
-    {type==='operation.abort'&&<><p className="warning-text">{t("actions.abortTheActiveEditsMadeWhileResolvingConflictsMay", { kind: (snapshot.operation.kind) })}</p>{snapshot.operation.originalHead&&<p>{t("actions.gitWillAttemptToRestoreTheOperationStartState")}<code>{snapshot.operation.originalHead}</code>{t("actions.preExistingLocalChangesMayPreventAFullRestoration")}</p>}</>}
-    {validation&&!(type==='branch.create'&&branchValidation)&&<p role="alert" className="form-error">{validation}</p>}{state.error&&!stashFailure&&(type==='branch.create'?<details><summary>{t("common.gitDetails")}</summary><pre>{state.error}</pre></details>:<p role="alert" className="form-error">{state.error}</p>)}{demoMode&&<p className="muted">{t("actions.demoSampleDataOnly")}</p>}
-  </fieldset></form></Modal>;
+  return (
+    <Modal
+      title={title}
+      busy={state.busy}
+      onClose={onClose}
+      footer={
+        stashFailure ? (
+          <Button onClick={onClose} disabled={state.busy}>
+            {t('actions.cancelAndKeepCurrentState')}
+          </Button>
+        ) : missingRemote ? (
+          <>
+            <Button onClick={onClose} disabled={state.busy}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              data-autofocus={type === 'pull' || type === 'push' || undefined}
+              className="primary"
+              icon="cloud-upload"
+              disabled={state.busy}
+              onClick={() =>
+                replaceDialog({
+                  type: 'remote.add',
+                  returnTo:
+                    type === 'pull'
+                      ? 'pull'
+                      : type === 'tag.push'
+                        ? 'tag.push'
+                        : type === 'tag.create'
+                          ? 'tag.create'
+                          : 'push',
+                  branch: values.branch,
+                  names: dialog.names,
+                  expectedOids: dialog.expectedOids,
+                  ...(type === 'tag.create'
+                    ? {
+                        tagDraft: {
+                          name: values.name,
+                          target: values.target,
+                          message: values.message,
+                          pushAfterCreate: !!checks.pushAfterCreate,
+                          rememberDefault: !!checks.rememberDefault,
+                          fixedTarget: fixedTagTarget,
+                        },
+                      }
+                    : {}),
+                })
+              }
+            >
+              {t('actions.addRemote')}
+            </Button>
+          </>
+        ) : type === 'branch.create' ? (
+          <>
+            <Button onClick={onClose} disabled={state.busy}>
+              {t('common.cancel')}
+            </Button>
+            {!dialog.requireCheckout && (
+              <Button
+                type="button"
+                disabled={state.busy || submitting || !!branchValidation}
+                onClick={() => void executeAction(false)}
+              >
+                {t('actions.createOnly')}
+              </Button>
+            )}
+            <Button
+              type="submit"
+              form="ag-action-form"
+              className="primary"
+              disabled={state.busy || submitting || !!branchValidation}
+            >
+              {state.busy ? t('common.working') : t('actions.createAndCheckout')}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              data-autofocus={(type === 'pull' && !actionContext.expectedBranch) || undefined}
+              onClick={onClose}
+              disabled={state.busy}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              data-autofocus={
+                (type === 'pull' && !pullUnavailable) ||
+                (type === 'push' && !pushUnavailable) ||
+                undefined
+              }
+              type="submit"
+              form="ag-action-form"
+              className={destructive ? 'danger' : 'primary'}
+              disabled={
+                state.busy ||
+                submitting ||
+                pullUnavailable ||
+                pushUnavailable ||
+                deleteRemoteUnavailable ||
+                (type === 'cherry-pick' && !!dialog.reapply && !checks.allowIncluded)
+              }
+            >
+              {state.busy ? t('common.working') : submitLabel}
+            </Button>
+          </>
+        )
+      }
+    >
+      <form id="ag-action-form" className="action-form" onSubmit={submit}>
+        <fieldset style={{ display: 'contents' }} disabled={state.busy || submitting}>
+          <p className="muted">
+            {snapshot.repository.name} · {branch}
+            {guardedContext && type !== 'pull' && (
+              <>
+                {uiText('actions.hEAD')}
+                <code>{actionContext.expectedHead || '(unborn)'}</code>
+              </>
+            )}
+          </p>
+          {type === 'branch.create' && (
+            <>
+              <label className="form-field">
+                <span>{t('actions.branchName')}</span>
+                <input
+                  ref={branchInput}
+                  aria-label={t('actions.branchNameVariant2')}
+                  aria-invalid={(branchTouched && !!branchValidation) || undefined}
+                  aria-describedby={
+                    branchTouched && branchValidation ? 'branch-name-error' : undefined
+                  }
+                  required
+                  disabled={state.busy}
+                  value={values.name}
+                  onChange={(event) => {
+                    setBranchTouched(true);
+                    setValidation(undefined);
+                    set('name', event.target.value);
+                  }}
+                  placeholder={uiText('actions.featureMyChange')}
+                />
+                {branchTouched && branchValidation && (
+                  <small id="branch-name-error" role="alert" className="form-error">
+                    {branchValidation}
+                  </small>
+                )}
+              </label>
+              <div className="branch-start-point">
+                <span>{t('actions.startPoint')}</span>
+                <strong>{branchStartLabel(snapshot, values.start, t)}</strong>
+                {state.commits.find((commit) => commit.oid === values.start) && (
+                  <small>
+                    {state.commits.find((commit) => commit.oid === values.start)!.subject}
+                  </small>
+                )}
+                <small>
+                  {dialog.requireCheckout
+                    ? t('actions.createAndSwitchToABranchToWorkOn')
+                    : t('actions.theNewBranchStartsFromThisSelectedVersion')}
+                </small>
+                <details>
+                  <summary>{t('common.gitDetails')}</summary>
+                  <code>{values.start}</code>
+                </details>
+              </div>
+            </>
+          )}
+          {(type === 'branch.checkout' || type === 'branch.delete') && (
+            <>
+              {type === 'branch.delete' && dialog.names?.length ? (
+                <div className="discard-paths">
+                  {dialog.names.map((name) => (
+                    <div key={name}>{name}</div>
+                  ))}
+                </div>
+              ) : (
+                field(
+                  'name',
+                  'actions.branchVariant2',
+                  (dialog.candidates
+                    ? local.filter((r) => dialog.candidates!.includes(r.name))
+                    : local.filter((r) => type !== 'branch.delete' || r.name !== snapshot.branch)
+                  ).map((r) => ({ value: r.name, label: r.name })),
+                  true,
+                )
+              )}
+              {type === 'branch.delete' && (
+                <>
+                  {checkbox('force', 'actions.forceDeletionOfUnmergedBranches')}
+                  {checks.force && (
+                    <p className="warning-text">{t('confirm.forceDeleteBranches')}</p>
+                  )}
+                </>
+              )}
+              {type === 'branch.checkout' && (
+                <p>{t('actions.checkoutPreservesChangesWhenPossibleGitStopsIfThey')}</p>
+              )}
+            </>
+          )}
+          {(type === 'branch.delete' || type === 'worktree.remove') && (
+            <>
+              {checkbox('rememberDefault', 'actions.rememberDeletionDefault')}
+              <small className="muted">
+                {deletionDefaultScope === 'workspace'
+                  ? t('actions.rememberDeletionWorkspaceScope')
+                  : t('actions.rememberDeletionUserScope')}
+              </small>
+            </>
+          )}
+          {type === 'remote.delete' && (
+            <>
+              <strong>{t('actions.deleteFrom', { remote: dialog.remote })}</strong>
+              <div className="discard-paths">
+                {dialog.remoteBranches?.map((name) => (
+                  <div key={name}>{name}</div>
+                ))}
+              </div>
+              <p className="warning-text">
+                {t('actions.thisDeletesBranchesFromTheSharedRemoteRepository')}
+              </p>
+            </>
+          )}
+          {type === 'remote.add' && (
+            <>
+              <p>{t('actions.connectThisLocalRepositoryToARemoteRepositoryYour')}</p>
+              {field('name', 'actions.remoteName', undefined, true, 'origin')}
+              {field(
+                'url',
+                'actions.repositoryURL',
+                undefined,
+                true,
+                'https://example.com/owner/repository.git',
+              )}
+            </>
+          )}
+          {type === 'commit.checkout' && (
+            <>
+              <strong>
+                {uiText('actions.checkoutVariant2')}
+                {displayTarget.length === 40 ? displayTarget.slice(0, 12) : displayTarget}
+              </strong>
+              <p>{t('actions.thisDirectlyEntersDetachedHEADTheOriginalBranchStays')}</p>
+              {!state.operationSettings.allowDetachedHead && (
+                <p role="alert">{t('actions.directDetachedHEADCheckoutIsNowDisabled')}</p>
+              )}
+            </>
+          )}
+          {type === 'tag.create' && (
+            <>
+              {field('name', 'actions.tagName', undefined, true)}
+              <label className="form-field">
+                <span>{t('actions.targetCommit')}</span>
+                <input
+                  aria-label={t('actions.targetCommit')}
+                  required
+                  readOnly={!!fixedTagTarget}
+                  disabled={state.busy}
+                  value={values.target}
+                  onChange={(event) => set('target', event.target.value)}
+                  onBlur={() => void resolveTagTarget(values.target)}
+                  placeholder={fixedTagTarget ? undefined : t('actions.commitIDPlaceholder')}
+                />
+                {!fixedTagTarget && (
+                  <small className="muted">{t('actions.noCommitIsSelectedAutomatically')}</small>
+                )}
+                {tagTargetError && (
+                  <small className="form-error" role="alert">
+                    {tagTargetError}
+                  </small>
+                )}
+              </label>
+              {tagTargetDetails && (
+                <div className="tag-target-summary">
+                  <span>{t('commit.commitMessage')}</span>
+                  <strong>{tagTargetDetails.subject}</strong>
+                  <small>
+                    <code>{tagTargetDetails.oid.slice(0, 12)}</code>
+                    {fixedTagTarget ? ` · ${t('actions.fixedToTheSelectedCommit')}` : ''}
+                  </small>
+                </div>
+              )}
+              {field('message', 'actions.annotationOptional')}
+              {checkbox('pushAfterCreate', 'actions.pushThisTagAfterCreation')}
+              {checks.pushAfterCreate &&
+                field(
+                  'remote',
+                  'actions.remote',
+                  (snapshot.remotes ?? []).map((remote) => ({ value: remote, label: remote })),
+                  true,
+                )}
+              {checkbox('rememberDefault', 'actions.rememberTagCreatePushChoiceAsDefault')}
+              {checks.pushAfterCreate && (
+                <p className="muted">{t('actions.theTagRemainsLocalIfTheRemotePushFails')}</p>
+              )}
+            </>
+          )}
+          {type === 'tag.push' && (
+            <>
+              <strong>{t('actions.selectedTags', { count: dialog.names?.length ?? 0 })}</strong>
+              <div className="discard-paths">
+                {dialog.names?.map((name) => (
+                  <div key={name}>{name}</div>
+                ))}
+              </div>
+              {field(
+                'remote',
+                'actions.remote',
+                (snapshot.remotes ?? []).map((remote) => ({ value: remote, label: remote })),
+                true,
+              )}
+              <p>{t('actions.pushesOnlyTheListedTags')}</p>
+            </>
+          )}
+          {type === 'tag.delete' && (
+            <>
+              {deleteLocal ? (
+                field(
+                  'name',
+                  'actions.tag',
+                  tagChoices.map((r) => ({ value: r.name, label: r.name })),
+                  true,
+                )
+              ) : (
+                <div className="form-field">
+                  <span>{t('actions.tag')}</span>
+                  <strong>{values.name}</strong>
+                </div>
+              )}
+              {deleteLocal && !!snapshot.remotes?.length && (
+                <label className="form-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={!!checks.deleteRemote}
+                    disabled={state.busy}
+                    onChange={(event) => {
+                      setChecks((old) => ({ ...old, deleteRemote: event.target.checked }));
+                      if (event.target.checked && values.remote)
+                        void state.loadTagStatuses(true, values.remote);
+                    }}
+                  />
+                  {t('actions.alsoDeleteFromRemote')}
+                </label>
+              )}
+              {checks.deleteRemote && (
+                <>
+                  {field(
+                    'remote',
+                    'actions.remote',
+                    (snapshot.remotes ?? []).map((remote) => ({ value: remote, label: remote })),
+                    true,
+                  )}
+                  <p className="warning-text">
+                    {deleteRemoteSeparate
+                      ? t('actions.remoteTagDeletionRequiresMatchingAddresses')
+                      : deleteRemoteOid
+                        ? t('actions.thisDeletesTheTagFromTheSharedRemoteRepository', {
+                            remote: values.remote,
+                          })
+                        : t('actions.checkTheRemoteTagBeforeDeletingIt')}
+                  </p>
+                  {deleteLocal &&
+                    deleteRemoteOid &&
+                    tagChoices.find((tag) => tag.name === values.name)?.refOid !==
+                      deleteRemoteOid && (
+                      <p className="warning-text">
+                        {t('actions.localAndRemoteTagsIdentifyDifferentObjects')}
+                      </p>
+                    )}
+                </>
+              )}
+            </>
+          )}
+          {type === 'tag.delete' && checks.deleteRemote && deleteRemoteProblem === 'changed' && (
+            <p role="alert" className="form-error">
+              {t('actions.refreshAndReopenTheTagDeletionDialog')}
+            </p>
+          )}
+          {type === 'stash.create' && (
+            <>
+              {stashPaths && (
+                <>
+                  <strong>{t('actions.selectedFiles', { count: stashPaths.length })}</strong>
+                  <div className="discard-paths">
+                    {stashPaths.map((path) => (
+                      <div key={path}>{path}</div>
+                    ))}
+                  </div>
+                </>
+              )}
+              {field('message', 'actions.descriptionOptional')}
+              {!stashPaths && checkbox('includeUntracked', 'actions.includeUntrackedFiles')}
+              <p>
+                {stashPaths
+                  ? t('actions.saveEachSelectedFileSCompleteIndexAndWorking')
+                  : t('actions.saveAllTrackedFilesIndexAndWorkingTreeChanges')}
+              </p>
+            </>
+          )}
+          {(type === 'stash.apply' || type === 'stash.drop') && (
+            <>
+              {field(
+                'selector',
+                'actions.stash',
+                stashChoices.map((s) => ({
+                  value: s.selector,
+                  label: `${s.selector}: ${s.subject}`,
+                })),
+                true,
+              )}
+              <p>
+                {type === 'stash.drop'
+                  ? t('actions.removeThisEntryItsSavedChangesMayBecomeUnreachable')
+                  : checks.pop
+                    ? t('actions.restoreTheSavedIndexAndWorkingTreeStateThen')
+                    : t('actions.restoreTheSavedIndexAndWorkingTreeStateAnd')}
+              </p>
+              {stashFailure && (
+                <section className="stash-apply-blocker" role="alert">
+                  <strong>
+                    {stashFailure.reason === 'untracked-path-exists'
+                      ? t('actions.cannotRestoreBecauseTheseFilesAlreadyExistInThe')
+                      : stashFailure.reason === 'restore-conflict'
+                        ? t('actions.restoreStoppedBecausePreflightFoundConflicts')
+                        : stashFailure.reason === 'state-changed'
+                          ? t('actions.restoreStoppedBecauseTheProjectChangedDuringPreflight')
+                          : t('actions.restoreStoppedBecausePreflightCouldNotRestoreTheSaved')}
+                  </strong>
+                  <p>{t('actions.thisRestoreDidNotChangeTheIndexOrWorking')}</p>
+                  <strong>
+                    {stashFailure.reason === 'untracked-path-exists'
+                      ? t('actions.existingPathsBlockingThisRestore')
+                      : stashConflictPaths.length
+                        ? t('actions.confirmedConflictingFiles')
+                        : t('actions.filesIncludedInThisRestore')}
+                  </strong>
+                  <div className="stash-conflict-files">
+                    {stashFailurePaths.map((path) => (
+                      <div className="stash-conflict-file" key={path}>
+                        <code>{path}</code>
+                        <div>
+                          <Button
+                            type="button"
+                            className="icon-only"
+                            icon="diff"
+                            title={t('actions.compareSavedAndExistingFile')}
+                            aria-label={`${t('actions.compareSavedAndExistingFile')}: ${path}`}
+                            onClick={() =>
+                              void rpc('diff', state.repoId, {
+                                kind: 'stash-working',
+                                stashOid: stashFailure.stashOid,
+                                path,
+                              }).catch(state.report)
+                            }
+                          />
+                          <Button
+                            type="button"
+                            className="icon-only"
+                            icon="go-to-file"
+                            title={t('actions.openExistingFile')}
+                            aria-label={`${t('actions.openExistingFile')}: ${path}`}
+                            onClick={() =>
+                              void rpc('openFile', state.repoId, { path }).catch(state.report)
+                            }
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="muted">
+                    {t('actions.resolveTheBlockerThenCloseAndRetryTheRestore')}
+                  </p>
+                  {(stashFailure.output || state.error) && (
+                    <details>
+                      <summary>{t('common.gitDetails')}</summary>
+                      <pre>{stashFailure.output || state.error}</pre>
+                    </details>
+                  )}
+                </section>
+              )}
+            </>
+          )}
+          {type === 'worktree.add' && (
+            <>
+              {field('path', 'actions.worktreeFolder', undefined, true)}
+              <Button
+                type="button"
+                icon="folder-opened"
+                onClick={() =>
+                  void rpc<string | undefined>('pickWorktree', state.repoId, {})
+                    .then((path) => {
+                      if (path) set('path', path);
+                    })
+                    .catch(state.report)
+                }
+              >
+                {t('actions.browse')}
+              </Button>
+              {field('branch', 'actions.existingBranch', [
+                { value: '', label: t('common.none') },
+                ...local.map((r) => ({ value: r.name, label: r.name })),
+              ])}
+              {field(
+                'newBranch',
+                state.operationSettings.allowDetachedHead
+                  ? 'actions.newBranchOptional'
+                  : 'actions.newBranch',
+              )}
+              {field('start', 'actions.startPoint')}
+              {state.operationSettings.allowDetachedHead ? (
+                checkbox('detach', 'actions.detachedHEAD')
+              ) : (
+                <p className="muted">{t('actions.chooseAnExistingBranchOrCreateANewOne')}</p>
+              )}
+            </>
+          )}
+          {type === 'worktree.remove' && (
+            <>
+              {dialog.paths?.length ? (
+                <div className="discard-paths">
+                  {dialog.paths.map((treePath) => (
+                    <div key={treePath}>
+                      <strong>
+                        {snapshot.worktrees
+                          .find((tree) => samePath(tree.path, treePath))
+                          ?.branch?.replace(/^refs\/heads\//, '') || t('sidebar.detachedHEAD')}
+                      </strong>
+                      <div>{treePath}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                field(
+                  'path',
+                  'actions.worktree',
+                  snapshot.worktrees
+                    .filter(
+                      (w) =>
+                        !samePath(w.path, snapshot.repository.root) &&
+                        !w.locked &&
+                        w !== snapshot.worktrees[0],
+                    )
+                    .map((w) => ({ value: w.path, label: w.path })),
+                  true,
+                )
+              )}
+              {checkbox('force', 'actions.removeEvenWithUncommittedChanges')}
+              <p>{t('actions.worktreeRemovalEffect')}</p>
+              {checks.force && <p className="warning-text">{t('confirm.forceRemoveWorktree')}</p>}
+            </>
+          )}
+          {(type === 'merge' || type === 'rebase') && (
+            <>
+              {field(
+                'target',
+                type === 'merge' ? 'actions.mergeSource' : 'actions.newBase',
+                undefined,
+                true,
+              )}
+              <strong>
+                {type === 'merge'
+                  ? uiText('actions.mergeInto', { displayTarget: displayTarget, branch: branch })
+                  : uiText('actions.rebaseOnto', { branch: branch, displayTarget: displayTarget })}
+              </strong>
+              <p>
+                {type === 'merge'
+                  ? t('actions.bringSelectedHistoryIntoTheCurrentBranch')
+                  : t('actions.replayCurrentBranchCommitsOntoTheSelectedBaseReplayed')}
+              </p>
+            </>
+          )}
+          {(type === 'cherry-pick' || type === 'revert') && (
+            <>
+              {type === 'cherry-pick' && dialog.reapply && (
+                <>
+                  <p className="warning-text">{t('actions.cherryPickReapplyWarning')}</p>
+                  {checkbox('allowIncluded', 'actions.cherryPickReapplyConfirm')}
+                </>
+              )}
+              {field('target', 'actions.commitIDs', undefined, true)}
+              {field('mainline', 'actions.mainlineParentMergeCommitsOnly')}
+              <strong>
+                {type === 'cherry-pick'
+                  ? t('actions.cherryPickOnto', { target: displayTarget, branch })
+                  : uiText('actions.revertOn', { displayTarget: displayTarget, branch: branch })}
+              </strong>
+              <p>
+                {type === 'revert'
+                  ? t('actions.createNewCommitsReversingTheseChanges')
+                  : t('actions.applyTheseCommitsToTheCurrentBranchInThe')}
+              </p>
+            </>
+          )}
+          {type === 'reset' && (
+            <>
+              {field('target', 'actions.targetCommit', undefined, true)}
+              {field('mode', 'actions.resetMode', [
+                { value: 'soft', label: uiText('actions.soft') },
+                { value: 'mixed', label: uiText('actions.mixed') },
+                { value: 'hard', label: uiText('actions.hard') },
+              ])}
+              {checkbox('rememberDefault', 'actions.rememberResetModeAsDefault')}
+              <strong>{t('actions.resetBranchToTarget', { branch, target: displayTarget })}</strong>
+              <p className={values.mode === 'hard' ? 'warning-text' : ''}>
+                {values.mode === 'soft'
+                  ? t('actions.keepIndexAndWorkingTreeChanges')
+                  : values.mode === 'mixed'
+                    ? t('actions.resetIndexKeepWorkingTreeChanges')
+                    : t('actions.resetIndexAndTrackedWorkingTreeFilesUncommittedTracked')}
+              </p>
+            </>
+          )}
+          {type === 'fetch' && field('remote', 'actions.remoteOptional')}
+          {type === 'pull' && (
+            <>
+              <div className="push-target">
+                <span>{t('actions.pullSource')}</span>
+                <strong>
+                  {values.remote && values.remoteBranch
+                    ? `${values.remote === '.' ? t('actions.localRepository') : values.remote}/${values.remoteBranch}`
+                    : t('actions.selectPullSource')}{' '}
+                  <span aria-hidden="true">→</span> {branch}
+                </strong>
+              </div>
+              {!actionContext.expectedBranch ? (
+                <p role="alert" className="form-error">
+                  {t('actions.pullRequiresLocalBranch')}
+                </p>
+              ) : (
+                <>
+                  {!snapshot.remotes?.length && pull.remote !== '.' ? (
+                    <p role="status">{t('actions.noRemoteRepositoryIsConnectedYet')}</p>
+                  ) : (
+                    <>
+                      {!!pull.remoteBranch && (
+                        <Button
+                          type="button"
+                          className="icon-only"
+                          icon="settings-gear"
+                          aria-label={
+                            customizePull
+                              ? t('actions.useDefaultPullSource')
+                              : t('actions.changePullSource')
+                          }
+                          title={
+                            customizePull
+                              ? t('actions.useDefaultPullSource')
+                              : t('actions.changePullSource')
+                          }
+                          onClick={() => {
+                            setCustomizePull((value) => !value);
+                            if (customizePull)
+                              setValues((old) => ({
+                                ...old,
+                                remote: pull.remote,
+                                remoteBranch: pull.remoteBranch,
+                              }));
+                          }}
+                        />
+                      )}
+                      {customizePull && (
+                        <>
+                          <label className="form-field">
+                            <span>{t('actions.remote')}</span>
+                            <select
+                              data-autofocus={pullRemoteMissing || undefined}
+                              aria-label={t('actions.remote')}
+                              required
+                              disabled={state.busy}
+                              value={values.remote}
+                              onChange={(event) =>
+                                setValues((old) => ({
+                                  ...old,
+                                  remote: event.target.value,
+                                  remoteBranch: '',
+                                }))
+                              }
+                            >
+                              <option value="">{t('actions.selectRemoteVariant2')}</option>
+                              {[
+                                ...new Set([
+                                  ...(snapshot.remotes ?? []),
+                                  ...(pull.remote === '.' ? ['.'] : []),
+                                ]),
+                              ].map((remote) => (
+                                <option key={remote} value={remote}>
+                                  {remote === '.' ? t('actions.localRepository') : remote}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="form-field">
+                            <span>{t('actions.sourceBranch')}</span>
+                            <input
+                              data-autofocus={
+                                (!pullRemoteMissing && !!branchNameProblem(values.remoteBranch)) ||
+                                undefined
+                              }
+                              aria-label={t('actions.sourceBranch')}
+                              required
+                              disabled={state.busy || !values.remote}
+                              value={values.remoteBranch}
+                              list="ag-pull-branches"
+                              onChange={(event) => set('remoteBranch', event.target.value)}
+                              placeholder={t('actions.chooseOrEnterSourceBranch')}
+                            />
+                            <datalist id="ag-pull-branches">
+                              {pullBranches.map((name) => (
+                                <option key={name} value={name} />
+                              ))}
+                            </datalist>
+                            <small className="muted">{t('actions.pullSourceIsOneTime')}</small>
+                          </label>
+                          {!pull.remoteBranch && (
+                            <p className="muted">{t('actions.noPullUpstream')}</p>
+                          )}
+                        </>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+              {field('strategy', 'actions.pullStrategy', [
+                { value: 'ff-only', label: uiText('actions.fastForwardOnly') },
+                { value: 'merge', label: uiText('actions.merge') },
+                { value: 'rebase', label: uiText('actions.rebase') },
+              ])}
+            </>
+          )}
+          {type === 'push' &&
+            (missingRemote ? (
+              <section className="push-prerequisite" role="status">
+                <strong>{t('actions.noRemoteRepositoryIsConnectedYet')}</strong>
+                <p>{t('actions.yourCommitsAreSavedLocallyAddARemoteAddress')}</p>
+              </section>
+            ) : (
+              <>
+                <div className="push-target">
+                  <span>{t('actions.pushTarget')}</span>
+                  <strong>
+                    {values.branch} <span aria-hidden="true">→</span>{' '}
+                    {values.remote
+                      ? `${values.remote}/${values.remoteBranch}`
+                      : t('actions.selectRemote')}
+                  </strong>
+                  <dl>
+                    <div>
+                      <dt>{t('actions.localBranch')}</dt>
+                      <dd>{values.branch}</dd>
+                    </div>
+                    <div>
+                      <dt>{t('actions.remote')}</dt>
+                      <dd>{values.remote || '—'}</dd>
+                    </div>
+                    <div>
+                      <dt>{t('actions.remoteBranchVariant2')}</dt>
+                      <dd>{values.remoteBranch || '—'}</dd>
+                    </div>
+                  </dl>
+                </div>
+                {(!customizePush || !!push.remote) && (
+                  <Button
+                    type="button"
+                    icon="settings-gear"
+                    onClick={() => {
+                      setCustomizePush((value) => !value);
+                      if (customizePush) {
+                        setValues((old) => ({
+                          ...old,
+                          remote: push.remote,
+                          remoteBranch: push.remoteBranch,
+                        }));
+                        setPushLease((previous) =>
+                          updateRemoteLease(previous, snapshot, push.remote, push.remoteBranch),
+                        );
+                      }
+                    }}
+                  >
+                    {customizePush ? t('actions.useDefaultTarget') : t('actions.changeTarget')}
+                  </Button>
+                )}
+                {customizePush && (
+                  <>
+                    {field(
+                      'remote',
+                      'actions.remote',
+                      [
+                        { value: '', label: t('actions.selectRemoteVariant2') },
+                        ...[
+                          ...new Set([values.remote, ...(snapshot.remotes ?? [])].filter(Boolean)),
+                        ].map((remote) => ({ value: remote, label: remote })),
+                      ],
+                      true,
+                    )}
+                    {field('remoteBranch', 'actions.remoteBranchVariant2', undefined, true)}
+                  </>
+                )}
+                <details className="advanced-options">
+                  <summary>{t('actions.advancedOptions')}</summary>
+                  {checkbox('followTags', 'actions.pushRelatedAnnotatedTags')}
+                  {checkbox('rememberDefault', 'actions.rememberPushTagChoiceAsDefault')}
+                  {checks.followTags && (
+                    <p className="muted">
+                      {t('actions.followTagsDoesNotPushLightweightOrUnrelatedTags')}
+                    </p>
+                  )}
+                  {checkbox('forceWithLease', 'actions.forceWithLease')}
+                  {checks.forceWithLease && (
+                    <>
+                      <p className="warning-text">
+                        {t('actions.thisMayReplaceRemoteBranchHistoryButOnlyIf')}
+                      </p>
+                      <p>
+                        {pushLease.expectedOid ? (
+                          <>
+                            {t('actions.expectedRemoteCommit')}
+                            <code>{pushLease.expectedOid.slice(0, 12)}</code>
+                          </>
+                        ) : (
+                          t('actions.createOnlyIfThisRemoteBranchIsStillAbsent')
+                        )}
+                      </p>
+                    </>
+                  )}
+                </details>
+                {!push.configured && (
+                  <p className="muted">{t('actions.thisPushWillSetTheSelectedTargetAsThe')}</p>
+                )}
+              </>
+            ))}
+          {(type === 'stage' || type === 'unstage') && (
+            <p>{t('actions.batchFileCount', { count: dialog.paths?.length ?? 0 })}</p>
+          )}
+          {type === 'operation.abort' && (
+            <>
+              <p className="warning-text">
+                {t('actions.abortTheActiveEditsMadeWhileResolvingConflictsMay', {
+                  kind: snapshot.operation.kind,
+                })}
+              </p>
+              {snapshot.operation.originalHead && (
+                <p>
+                  {t('actions.gitWillAttemptToRestoreTheOperationStartState')}
+                  <code>{snapshot.operation.originalHead}</code>
+                  {t('actions.preExistingLocalChangesMayPreventAFullRestoration')}
+                </p>
+              )}
+            </>
+          )}
+          {validation && !(type === 'branch.create' && branchValidation) && (
+            <p role="alert" className="form-error">
+              {validation}
+            </p>
+          )}
+          {state.error &&
+            !stashFailure &&
+            (type === 'branch.create' ? (
+              <details>
+                <summary>{t('common.gitDetails')}</summary>
+                <pre>{state.error}</pre>
+              </details>
+            ) : (
+              <p role="alert" className="form-error">
+                {state.error}
+              </p>
+            ))}
+          {demoMode && <p className="muted">{t('actions.demoSampleDataOnly')}</p>}
+        </fieldset>
+      </form>
+    </Modal>
+  );
 }
