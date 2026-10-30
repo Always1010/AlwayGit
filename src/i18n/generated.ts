@@ -7199,12 +7199,12 @@ export const catalog = {
     "zh-CN": "适应完整树（0）"
   },
   "treeViews.canvas": {
-    "en": "Tree canvas: drag to pan, wheel or +/- to zoom, 0 to fit, Down to focus nodes",
-    "zh-CN": "树画布：拖动平移，滚轮或加减号缩放，0 适应完整树，下方向键聚焦节点"
+    "en": "Tree canvas: drag to pan, wheel to pan vertically, Shift+wheel to pan horizontally, Ctrl+wheel to zoom at pointer, +/- to zoom, 0 to fit, Down to focus nodes",
+    "zh-CN": "树画布：拖动平移，滚轮上下平移，Shift+滚轮左右平移，Ctrl+滚轮以鼠标位置缩放，加减号缩放，0 适应完整树，下方向键聚焦节点"
   },
   "treeViews.navigationHint": {
-    "en": "Drag to pan · Scroll to zoom · 0 to fit",
-    "zh-CN": "拖动平移 · 滚轮缩放 · 0 适应完整树"
+    "en": "Drag to pan · Wheel ↑↓ · Shift+wheel ←→ · Ctrl+wheel zoom · 0 to fit",
+    "zh-CN": "拖动平移 · 滚轮上下 · Shift+滚轮左右 · Ctrl+滚轮缩放 · 0 适应完整树"
   },
   "treeViews.largeGraph": {
     "en": "This tree has {{count}} expanded nodes. Drawing all nodes can be expensive. Collapse folders or use the directory list for a large repository, or explicitly draw the complete graph. No nodes will be omitted.",

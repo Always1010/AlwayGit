@@ -1,12 +1,32 @@
 import { describe, expect, it } from 'vitest';
 import type { SnapshotRow } from '../webview/commitTreeModel';
 import { fitTree, graphNodeHeight, intersects, layoutTree, treeEdge, zoomTree, type TreeGraphMode } from '../webview/treeLayout';
+import { wheelTree } from '../webview/treeWheel';
 
 function row(path: string, depth: number, folder = false): SnapshotRow {
   return { node: { id: path, entry: { path, name: path.split('/').at(-1)!, type: folder ? 'tree' : 'blob', mode: folder ? '040000' : '100644', oid: 'abc' }, children: [] }, depth, guides: [], last: false };
 }
 const modes: TreeGraphMode[] = ['horizontal', 'radial', 'vertical'];
 describe('repository tree layouts', () => {
+  it('pans wheel and touchpad deltas in screen pixels, maps Shift vertically, and normalizes wheel units', () => {
+    const camera = { x: 30, y: 40, scale: 2 }, viewport = { width: 800, height: 500 }, pointer = { x: 123, y: 234 };
+    const input = { deltaX: 7, deltaY: 30, deltaMode: 0, ctrlKey: false, shiftKey: false };
+    expect(wheelTree(camera, input, viewport, pointer)).toEqual({ x: 23, y: 10, scale: 2 });
+    expect(wheelTree(camera, { ...input, shiftKey: true }, viewport, pointer)).toEqual({ x: -7, y: 40, scale: 2 });
+    expect(wheelTree(camera, { ...input, deltaY: 0, shiftKey: true }, viewport, pointer)).toEqual({ x: 23, y: 40, scale: 2 });
+    expect(wheelTree(camera, { ...input, deltaX: -2, deltaY: -3, deltaMode: 1 }, viewport, pointer)).toEqual({ x: 62, y: 88, scale: 2 });
+    expect(wheelTree(camera, { ...input, deltaX: 1, deltaY: -1, deltaMode: 2 }, viewport, pointer)).toEqual({ x: -770, y: 540, scale: 2 });
+  });
+  it('gives Ctrl priority over Shift and anchors normalized wheel zoom at the pointer', () => {
+    const camera = { x: 30, y: 40, scale: 1 }, viewport = { width: 800, height: 500 }, pointer = { x: 123, y: 234 };
+    const input = { deltaX: 7, deltaY: -3, deltaMode: 1, ctrlKey: true, shiftKey: true };
+    const zoomed = wheelTree(camera, input, viewport, pointer);
+    expect(zoomed).toEqual(wheelTree(camera, { ...input, deltaY: -48, deltaMode: 0, shiftKey: false }, viewport, pointer));
+    expect(zoomed.scale).toBeGreaterThan(camera.scale);
+    expect((pointer.x - zoomed.x) / zoomed.scale).toBeCloseTo((pointer.x - camera.x) / camera.scale);
+    expect((pointer.y - zoomed.y) / zoomed.scale).toBeCloseTo((pointer.y - camera.y) / camera.scale);
+    expect(wheelTree(camera, { ...input, deltaY: 1, deltaMode: 2 }, viewport, pointer).scale).toBeLessThan(camera.scale);
+  });
   it.each(modes)('handles empty and single-path %s layouts with finite bounds and complete fitting', mode => {
     const empty = layoutTree([], mode);
     expect(empty.nodes).toEqual([]);
