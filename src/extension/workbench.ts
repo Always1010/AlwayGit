@@ -1,3 +1,5 @@
+import { TreeExpansionMemory } from '../application/tree-expansion-persistence';
+import { treeExpansionPatchSchema } from '../protocol/tree-expansion';
 import { prepareRebaseSchema } from '../protocol/interactive-rebase';
 import { message, MessageError } from '../i18n';
 import { translate, type MessageKey, type MessageArgs } from '../i18n/index';
@@ -97,6 +99,7 @@ export class Workbench implements vscode.Disposable {
   private initialScan?: Promise<void>;
   private preferenceMigration?: Promise<void>;
   private preferenceWrites: Promise<unknown> = Promise.resolve();
+  private readonly treeExpansionMemory: TreeExpansionMemory;
   private interfaceSettings(): InterfacePreferences {
     const configuration = vscode.workspace.getConfiguration('alwaygit');
     const parsed = interfaceSettingsSchema.safeParse(configuration.get('interfaceSettings', {}));
@@ -141,6 +144,7 @@ export class Workbench implements vscode.Disposable {
   private repositoryKey(commonDir: string): string { const resolved=path.resolve(commonDir);return process.platform==='win32'?resolved.toLowerCase():resolved; }
   private isBusy(commonDir: string): boolean { const key=this.repositoryKey(commonDir);return this.busy.has(key)||this.externalBusy.has(key); }
   constructor(private readonly context: vscode.ExtensionContext, private readonly git: GitServiceContract, private readonly repositories: RepositoryManager, private readonly documents: GitDocuments, private readonly output: vscode.OutputChannel, private readonly projects: ProjectWindows) {
+    this.treeExpansionMemory = new TreeExpansionMemory(context.workspaceState);
     this.disposables.push(repositories.onDidChange(event => { this.snapshots.invalidate(event.repoId); this.post({ type: 'changed', ...event }); }), repositories.onDidChangeRepositories(() => {
       for (const entry of this.panels.values()) this.updatePanelTitle(entry);
       this.post({ type: 'repositoriesChanged' });
@@ -540,7 +544,7 @@ export class Workbench implements vscode.Disposable {
   private async routeRequest(request: RpcRequest, source?:WorkbenchPanel): Promise<unknown> {
     if (source?.commitTree) {
       const target = source.commitTree.commitTree;
-      const allowed = ['workbenchReady', 'cancelQuery', 'copyText', 'interfaceSettings', 'revisionTreeChanges', 'revisionTreeCompare', 'openCommitTree', 'revisionTree', 'revisionTreeIndex', 'revisionTreeCommit', 'isolatedDiffPreview', 'isolatedDiffPage', 'diffRelease', 'openRevision', 'diff', 'lfsHistoricalStatus'];
+      const allowed = ['treeExpansionRead', 'treeExpansionPatch', 'treeExpansionReset', 'workbenchReady', 'cancelQuery', 'copyText', 'interfaceSettings', 'revisionTreeChanges', 'revisionTreeCompare', 'openCommitTree', 'revisionTree', 'revisionTreeIndex', 'revisionTreeCommit', 'isolatedDiffPreview', 'isolatedDiffPage', 'diffRelease', 'openRevision', 'diff', 'lfsHistoricalStatus'];
       if (!allowed.includes(request.method) || request.repoId !== undefined && request.repoId !== target.repoId) throw new MessageError(message('tree.fixedPanel'));
       const payload = request.payload as { revision?: string; baseRevision?: string; parent?: string; oid?: string; kind?: string; left?: string; right?: string } | undefined;
       const pair = target.baseRevision !== undefined;
@@ -680,6 +684,15 @@ export class Workbench implements vscode.Disposable {
     }
     const repo = this.repositories.get(request.repoId);
     switch (request.method) {
+      case 'treeExpansionRead': return this.treeExpansionMemory.read(repo.id);
+      case 'treeExpansionPatch':
+      case 'treeExpansionReset': {
+        const preferences = request.method === 'treeExpansionReset'
+          ? await this.treeExpansionMemory.reset(repo.id)
+          : await this.treeExpansionMemory.patch(repo.id, treeExpansionPatchSchema.parse(request.payload));
+        for (const panel of this.panels.values()) if (panel.commitTree?.commitTree.repoId === repo.id) this.post({ type: 'treeExpansionChanged', repoId: repo.id, preferences }, panel);
+        return preferences;
+      }
       case 'snapshot': {
         if (source?.pendingTerminal) { source.pendingTerminal = false; this.post({ type: 'terminalRequested' }, source); }
         if(source&&source.activeRepository!==repo.id)this.queries.cancelOwner(source);
@@ -857,7 +870,7 @@ export class Workbench implements vscode.Disposable {
   private post(message: HostMessage, target?: WorkbenchPanel): void {
     for (const entry of target ? [target] : this.panels.values()) {
       if (this.panels.get(entry.panel) !== entry) continue;
-      if (entry.commitTree && !['response', 'interfaceSettingsChanged'].includes(message.type)) continue;
+      if (entry.commitTree && !['response', 'interfaceSettingsChanged', 'treeExpansionChanged'].includes(message.type)) continue;
       // Retain invalidation on the host: hidden Webviews need not receive or process these messages.
       if (!entry.panel.visible && message.type === 'repositoriesChanged') { entry.catalogDirty = true; continue; }
       if (!entry.panel.visible && message.type === 'changed') {

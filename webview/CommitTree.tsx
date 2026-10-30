@@ -14,13 +14,18 @@ import { allSnapshotNodes, changeCounts, snapshotCounts, snapshotNodes, snapshot
 import { CommitTreeGraph } from './CommitTreeGraph';
 import type { TreeViewMode } from './treeLayout';
 import './commit-tree.css';
+import { useTreeExpansion } from './useTreeExpansion';
+import { TreeExpansionMemory } from './TreeExpansionMemory';
+import { treeDirectoryExpanded } from '../src/protocol/tree-expansion';
 
 export function CommitTree({ target: { repoId, revision, baseRevision } }: { target: CommitTreeTarget }) {
   const t = useTranslation(), preferences = useWorkbenchFields('appearance', 'layout', 'language');
   const theme = useResolvedTheme(preferences.appearance.theme);
   const [entries, setEntries] = useState<RevisionTreeEntry[]>([]), [indexed, setIndexed] = useState(false), [loading, setLoading] = useState(true);
   const [metadata, setMetadata] = useState<RevisionTreeCommit>(), [error, setError] = useState<string>(), [metadataError, setMetadataError] = useState<string>();
-  const [expanded, setExpanded] = useState(new Set<string>()), [query, setQuery] = useState(''), [selected, setSelected] = useState<string>();
+  const [query, setQuery] = useState(''), [selected, setSelected] = useState<string>();
+  const memory = useTreeExpansion(repoId);
+  const [temporaryExpanded, setTemporaryExpanded] = useState<Set<string>>();
   const [previewOpen, setPreviewOpen] = useState(false), [expanding, setExpanding] = useState<number>();
   const [viewMode, setViewMode] = useState<TreeViewMode>('list');
   const indexController = useRef<AbortController | undefined>(undefined), expansionEpoch = useRef(0);
@@ -39,12 +44,11 @@ export function CommitTree({ target: { repoId, revision, baseRevision } }: { tar
   useEffect(() => {
     const controller = new AbortController(); indexController.current = controller;
     let live = true, complete = false;
-    setLoading(true); setError(undefined); setIndexed(false); setEntries([]); setExpanded(new Set());
+    setLoading(true); setError(undefined); setIndexed(false); setEntries([]); setTemporaryExpanded(undefined);
     void rpc<RevisionTreeListing>('revisionTree', repoId, { revision }).then(result => { if (live && !complete) setEntries(result.entries); }).catch(() => {});
     void rpc<RevisionTreeListing>('revisionTreeIndex', repoId, { revision }, { signal: controller.signal }).then(result => {
       if (!live || controller.signal.aborted) return;
       complete = true; setEntries(result.entries); setIndexed(true);
-      setExpanded(current => new Set([...current, ...result.entries.filter(entry => entry.type === 'tree' && (result.entries.length <= 5000 || !entry.path.includes('/'))).map(entry => entry.path)]));
     }).catch(error => { if (live) setError(controller.signal.aborted ? t('tree.indexCancelled') : error.message); }).finally(() => { if (live) setLoading(false); });
     void rpc<RevisionTreeCommit>('revisionTreeCommit', repoId, { revision }).then(result => { if (live) { setMetadata(result); setMetadataError(undefined); } }).catch(error => { if (live) setMetadataError(error.message); });
     return () => { live = false; controller.abort(); expansionEpoch.current++; };
@@ -60,17 +64,14 @@ export function CommitTree({ target: { repoId, revision, baseRevision } }: { tar
     void request.then(result => {
       if (controller.signal.aborted) return;
       setChanges(result);
-      setExpanded(current => {
-        const next = new Set(current);
-        for (const node of allSnapshotNodes(snapshotNodes(entries, result.files))) if (node.deleted && node.entry.type === 'tree') next.add(node.id);
-        return next;
-      });
     }).catch(error => { if (!controller.signal.aborted) setChangesError(error.message); }).finally(() => { if (!controller.signal.aborted) setChangesLoading(false); });
     return () => controller.abort();
   }, [repoId, revision, baseRevision, parent, showChanges, baselineReady, changeAttempt]);
   const activeChanges = showChanges && changes?.revision === revision && (baseRevision ? changes.baseRevision === baseRevision : !changes.baseRevision && changes.parent === parent) ? changes : undefined;
   const nodes = useMemo(() => snapshotNodes(entries, activeChanges?.files), [entries, activeChanges]);
   const flatNodes = useMemo(() => allSnapshotNodes(nodes), [nodes]);
+  const expanded = useMemo(() => new Set(flatNodes.filter(node => node.entry.type === 'tree' && (temporaryExpanded?.has(node.entry.path) || treeDirectoryExpanded(memory.preferences, node.entry.path, entries.length))).map(node => node.id)), [flatNodes, memory.preferences, temporaryExpanded, entries.length]);
+  const directories = useMemo(() => new Set(entries.filter(entry => entry.type === 'tree').map(entry => entry.path)), [entries]);
   const rows = useMemo(() => snapshotRows(nodes, expanded, query), [nodes, expanded, query]);
   const counts = useMemo(() => snapshotCounts(entries), [entries]);
   const summary = useMemo(() => changeCounts(activeChanges?.files ?? []), [activeChanges]);
@@ -80,22 +81,25 @@ export function CommitTree({ target: { repoId, revision, baseRevision } }: { tar
     : { kind: 'commit', treeComparison: true, oid: revision, path: selectedNode.entry.path, parent: activeChanges.parent, previousPath: selectedNode.change.previousPath } : undefined;
   const stopExpansion = () => { expansionEpoch.current++; setExpanding(undefined); };
   const expandAll = async () => {
-    const epoch = ++expansionEpoch.current, folders = flatNodes.filter(node => node.entry.type === 'tree').map(node => node.id), next = new Set(expanded);
+    const epoch = ++expansionEpoch.current, folders = flatNodes.filter(node => node.entry.type === 'tree').map(node => node.entry.path), next = new Set(flatNodes.filter(node => expanded.has(node.id)).map(node => node.entry.path));
     setQuery(''); setExpanding(0);
     for (let offset = 0; offset < folders.length; offset += 500) {
       if (epoch !== expansionEpoch.current) return;
       folders.slice(offset, offset + 500).forEach(id => next.add(id));
-      setExpanded(new Set(next)); setExpanding(Math.min(offset + 500, folders.length));
+      setTemporaryExpanded(new Set(next)); setExpanding(Math.min(offset + 500, folders.length));
       await new Promise(resolve => setTimeout(resolve, 0));
     }
-    if (epoch === expansionEpoch.current) setExpanding(undefined);
+    if (epoch === expansionEpoch.current) { memory.setMode('expanded'); setTemporaryExpanded(undefined); setExpanding(undefined); }
   };
-  const collapse = () => { stopExpansion(); setQuery(''); setExpanded(new Set()); };
-  const expandChanges = () => { stopExpansion(); setQuery(''); setExpanded(current => new Set([...current, ...flatNodes.filter(node => node.summary).map(node => node.id)])); };
+  const collapse = () => { stopExpansion(); setQuery(''); setTemporaryExpanded(undefined); memory.setMode('collapsed'); };
+  const expandChanges = () => { stopExpansion(); setQuery(''); setTemporaryExpanded(current => new Set([...(current ?? []), ...flatNodes.filter(node => node.entry.type === 'tree' && node.summary).map(node => node.entry.path)])); };
   const openEntry = (node: SnapshotNode) => {
     const entry = node.entry;
     if (entry.type === 'tree') {
-      setExpanded(current => { const next = new Set(current); if (!next.delete(node.id)) next.add(node.id); return next; });
+      stopExpansion();
+      const opened = !expanded.has(node.id);
+      setTemporaryExpanded(current => { if (!current?.has(entry.path)) return current; const next = new Set(current); next.delete(entry.path); return next; });
+      memory.setDirectory(entry.path, opened);
       if (!indexed && !node.deleted) void rpc<RevisionTreeListing>('revisionTree', repoId, { revision, path: entry.path }).then(result => setEntries(current => { const byPath = new Map(current.map(item => [item.path, item])); result.entries.forEach(item => byPath.set(item.path, item)); return [...byPath.values()]; })).catch(fail);
     } else { setSelected(node.id); setPreviewOpen(true); }
   };
@@ -120,6 +124,7 @@ export function CommitTree({ target: { repoId, revision, baseRevision } }: { tar
       <Button className="icon-only" icon="expand-all" title={t('tree.expandAll')} aria-label={t('tree.expandAll')} disabled={!indexed || expanding !== undefined} onClick={() => void expandAll()}/><Button className="icon-only" icon="collapse-all" title={t('tree.collapseAll')} aria-label={t('tree.collapseAll')} onClick={collapse}/>
       <label className="commit-tree-changes-toggle"><input type="checkbox" checked={showChanges} disabled={!indexed} onChange={event => { stopExpansion(); setMenu(undefined); setShowChanges(event.target.checked); }}/>{t(baseRevision ? 'treeCompare.showChanges' : 'tree.showChanges')}</label>
       {showChanges && <Button className="icon-only" icon="list-selection" title={t('tree.expandChanges')} aria-label={t('tree.expandChanges')} disabled={!activeChanges} onClick={expandChanges}/>}
+      <TreeExpansionMemory preferences={memory.preferences} directories={directories} indexed={indexed} loading={memory.loading} error={memory.error} reload={memory.reload} remove={path => { stopExpansion(); setTemporaryExpanded(undefined); memory.remove(path); }} setMode={mode => { stopExpansion(); setTemporaryExpanded(undefined); memory.setMode(mode); }} reset={() => { stopExpansion(); setTemporaryExpanded(undefined); memory.reset(); }}/>
       <Button className="icon-only" icon="open-preview" title={t('tree.togglePreview')} aria-label={t('tree.togglePreview')} aria-pressed={previewOpen} onClick={() => setPreviewOpen(value => !value)}/>
     </div>
     <div className="revision-tree-status" role="status">

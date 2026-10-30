@@ -10,6 +10,7 @@ import type { SessionState } from '../src/protocol/session';
 import { readWorkbenchLocations, type WorkbenchLocation } from '../src/protocol/workbench-host';
 import { affectsWorkingDiff } from '../webview/refresh';
 import { TerminalSessions } from '../src/application/terminal-sessions';
+import { TreeExpansionMemory } from '../src/application/tree-expansion-persistence';
 
 vi.mock('vscode', () => {
   class EventEmitter<T> {
@@ -101,6 +102,34 @@ describe('Commit tree editor tabs', () => {
       await first.receive({ id: 'wrong-preview', method: 'isolatedDiffPreview', repoId: repo.id, payload });
       expect(first.panel.webview.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'wrong-preview', error: expect.any(Object) }));
     }
+  });
+  it('shares only repository expansion preferences between fixed tree tabs', async () => {
+    const repo = { id: 'repo', root: '/repo', commonDir: '/repo/.git', name: 'repo' };
+    const otherRepo = { ...repo, id: 'other' };
+    const workbench = workbenchFixture(undefined, undefined, { list: () => [repo, otherRepo], get: id => id === 'other' ? otherRepo : repo });
+    const normal = panelFixture(), first = panelFixture(), second = panelFixture(), other = panelFixture();
+    vi.mocked(vscode.window.createWebviewPanel).mockReturnValueOnce(normal.panel as never).mockReturnValueOnce(first.panel as never).mockReturnValueOnce(second.panel as never).mockReturnValueOnce(other.panel as never);
+    const values = new Map<string, unknown>();
+    const storage = { get: <T>(key: string, fallback: T) => (values.get(key) ?? fallback) as T, update: async (key: string, value: unknown) => { values.set(key, value); } };
+    (workbench as unknown as { treeExpansionMemory: TreeExpansionMemory }).treeExpansionMemory = new TreeExpansionMemory(storage);
+    await workbench.open(repo.id);
+    await workbench.openCommitTree(repo.id, 'a'.repeat(40));
+    await workbench.openCommitTree(repo.id, 'b'.repeat(40), undefined, 'a'.repeat(40));
+    await workbench.openCommitTree(otherRepo.id, 'a'.repeat(40));
+    await Promise.all([
+      first.receive({ id: 'path-a', method: 'treeExpansionPatch', payload: { kind: 'directory', path: 'src', expanded: false } }),
+      second.receive({ id: 'path-b', method: 'treeExpansionPatch', payload: { kind: 'directory', path: 'docs', expanded: true } }),
+    ]);
+    const preferences = { mode: 'auto', overrides: { src: false, docs: true } };
+    await first.receive({ id: 'read', method: 'treeExpansionRead' });
+    expect(first.panel.webview.postMessage).toHaveBeenLastCalledWith({ type: 'response', id: 'read', result: preferences });
+    expect(second.panel.webview.postMessage).toHaveBeenCalledWith({ type: 'treeExpansionChanged', repoId: repo.id, preferences });
+    for (const fixture of [normal, other]) expect(fixture.panel.webview.postMessage.mock.calls.some(([event]) => (event as { type: string }).type === 'treeExpansionChanged')).toBe(false);
+    await first.receive({ id: 'wrong-repo', method: 'treeExpansionReset', repoId: otherRepo.id });
+    expect(first.panel.webview.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'wrong-repo', error: expect.any(Object) }));
+    await second.receive({ id: 'reset', method: 'treeExpansionReset' });
+    expect(first.panel.webview.postMessage).toHaveBeenCalledWith({ type: 'treeExpansionChanged', repoId: repo.id, preferences: { mode: 'auto', overrides: {} } });
+    expect(values.get('alwaygit.treeExpansion.repo')).toBeUndefined();
   });
   it('binds ordered comparison panels, restores targets and allows only the exact endpoint swap', async () => {
     const repo = { id: 'repo', root: '/repo', commonDir: '/repo/.git', name: 'repo' };
