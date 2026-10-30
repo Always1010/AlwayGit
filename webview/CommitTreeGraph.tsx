@@ -4,6 +4,8 @@ import { Button, Icon } from './ui';
 import { useTranslation } from './i18n';
 import { fitTree, graphNodeHeight, radialNodeHeight, intersects, layoutTree, treeEdge, zoomTree, type TreeCamera, type TreeGraphMode, type TreeGraphNode } from './treeLayout';
 import { wheelTree } from './treeWheel';
+import { useWorkbenchFields } from './subscriptions';
+import { errorMessage } from './rpc-error';
 import './commit-tree-graph.css';
 
 const graphReviewThreshold = 6000;
@@ -14,6 +16,9 @@ export function CommitTreeGraph({ rows, mode, query, expanded, selected, nodeHin
   context(node: SnapshotNode, x: number, y: number, anchor: HTMLElement): void; useList(): void;
 }) {
   const t = useTranslation(), stage = useRef<HTMLDivElement>(null);
+  const { treeWheelMode, treeWheelModeSaving, setTreeWheelMode, language } = useWorkbenchFields('treeWheelMode', 'treeWheelModeSaving', 'setTreeWheelMode', 'language');
+  const [wheelError, setWheelError] = useState<string>();
+  const wheelModeRef = useRef(treeWheelMode); wheelModeRef.current = treeWheelMode;
   const [allowLarge, setAllowLarge] = useState(false), [size, setSize] = useState({ width: 800, height: 600 });
   const [camera, setCamera] = useState<TreeCamera>({ x: 30, y: 30, scale: 1 }), [focusId, setFocusId] = useState<string>();
   const blocked = rows.length > graphReviewThreshold && !allowLarge;
@@ -44,7 +49,7 @@ export function CommitTreeGraph({ rows, mode, query, expanded, selected, nodeHin
     const wheel = (event: WheelEvent) => {
       event.preventDefault();
       const box = element.getBoundingClientRect();
-      setCamera(current => wheelTree(current, event, box, { x: event.clientX - box.left, y: event.clientY - box.top }));
+      setCamera(current => wheelTree(current, event, box, { x: event.clientX - box.left, y: event.clientY - box.top }, wheelModeRef.current));
     };
     element.addEventListener('wheel', wheel, { passive: false }); return () => element.removeEventListener('wheel', wheel);
   }, []);
@@ -64,9 +69,17 @@ export function CommitTreeGraph({ rows, mode, query, expanded, selected, nodeHin
       <span className="tree-graph-scale">{Math.round(camera.scale * 1000) / 10}%</span>
       <Button className="icon-only" icon="zoom-in" title={t('treeViews.zoomIn')} aria-label={t('treeViews.zoomIn')} disabled={blocked} onClick={() => zoom(1.3)}/>
       <Button className="icon-only" icon="screen-full" title={t('treeViews.fit')} aria-label={t('treeViews.fit')} disabled={blocked} onClick={fit}/>
-      <span className="muted">{t('treeViews.navigationHint')}</span>
+      <div className="tree-wheel-mode" role="group" aria-label={t('treeViews.wheelMode')} aria-busy={treeWheelModeSaving}>
+        <span>{t('treeViews.wheelMode')}</span>
+        {(['zoom', 'scroll'] as const).map(value => <Button key={value} aria-pressed={treeWheelMode === value} disabled={treeWheelModeSaving} title={value === 'zoom' ? t('treeViews.wheelZoomHint') : t('treeViews.wheelScrollHint')} onClick={() => {
+          setWheelError(undefined);
+          void setTreeWheelMode(value).catch(error => setWheelError(errorMessage(error, language)));
+        }}>{value === 'zoom' ? t('treeViews.wheelZoom') : t('treeViews.wheelScroll')}</Button>)}
+      </div>
+      <span className="muted">{treeWheelMode === 'zoom' ? t('treeViews.navigationHintZoom') : t('treeViews.navigationHint')}</span>
     </div>
-    <div className="tree-graph-stage" ref={stage} tabIndex={0} aria-label={t('treeViews.canvas')} onKeyDown={event => {
+    {wheelError && <div className="tree-wheel-error" role="alert">{t('treeViews.wheelSaveFailed', { error: wheelError })}</div>}
+    <div className="tree-graph-stage" ref={stage} tabIndex={0} aria-label={treeWheelMode === 'zoom' ? t('treeViews.canvasZoom') : t('treeViews.canvas')} onKeyDown={event => {
       if (event.target !== event.currentTarget) return;
       if (event.key === '+' || event.key === '=') { event.preventDefault(); zoom(1.3); }
       else if (event.key === '-') { event.preventDefault(); zoom(1 / 1.3); }

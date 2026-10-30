@@ -10,7 +10,7 @@ import type { ActionResponse, HostingRepository, CheckoutBlocker, Commit, Commit
 import { demoMode, readSession, rpc, saveSession, subscribe } from './rpc';
 import type { LayoutState, SessionState } from './rpc';
 import type { DiffNavigationScope } from '../src/protocol/session';
-import { defaultLayout, interfaceSettingsSchema, overlayInterfaceSettings, type InterfacePreferences, type InterfacePreferencesUpdate } from '../src/protocol/interface-settings';
+import { defaultLayout, interfaceSettingsSchema, overlayInterfaceSettings, type InterfacePreferences, type InterfacePreferencesUpdate, type TreeWheelMode } from '../src/protocol/interface-settings';
 import type { Language } from './i18n';
 import { folderKeys } from './refTree';
 import { affectsWorkingDiff, diffKey, fileHistoryChanges, historyKey, mergeChanges, shareSnapshot, shareValue, workingTarget } from './refresh';
@@ -60,6 +60,7 @@ function rememberHistory(): void {
   useWorkbench.setState({ historyBackDepth: stack.length });
 }
 interface WorkbenchState {
+  treeWheelMode: TreeWheelMode; treeWheelModeSaving: boolean; setTreeWheelMode(mode: TreeWheelMode): Promise<void>;
   tagRemote?: string; tagQueries: Record<string, TagQuery>;
   setTagRemote(remote: string): void; loadTagStatuses(force?: boolean, remote?: string): Promise<void>;
   catalogState: 'loading' | 'ready' | 'error'; catalogError?: string;
@@ -115,6 +116,7 @@ function settingsState(settings: InterfaceSettings, current: WorkbenchState): Pa
   return { ...rest, layout: layout({ ...current.layout, font, row }) };
 }
 function synchronizeInterfaceSettings(preferences: InterfacePreferences): void {
+  useWorkbench.setState({ treeWheelMode: preferences.treeWheelMode ?? 'zoom' });
   const current = useWorkbench.getState();
   const saved = overlayInterfaceSettings({ layout: current.layout }, preferences);
   const baseline: InterfaceSettings = { language: saved.language === 'zh-CN' ? 'zh-CN' : 'en', font: saved.layout!.font, row: saved.layout!.row,
@@ -129,6 +131,21 @@ const initialLayout = layout(session.layout);
 // Only the old default density migrates; custom dimensions and drafts are kept.
 if (!session.appearance && initialLayout.row === 26) initialLayout.row = 24;
 export const useWorkbench = create<WorkbenchState>((set, get) => ({
+  treeWheelMode: typeof window !== 'undefined' ? window.__ALWAYGIT_PREFERENCES__?.treeWheelMode ?? 'zoom' : 'zoom', treeWheelModeSaving: false,
+  async setTreeWheelMode(mode) {
+    const previous = get().treeWheelMode;
+    if (get().treeWheelModeSaving || mode === previous) return;
+    ++preferencesEpoch;
+    set({ treeWheelMode: mode, treeWheelModeSaving: true });
+    try {
+      const saved = interfaceSettingsSchema.parse(await rpc<InterfacePreferences>('saveInterfaceSettings', undefined, { treeWheelMode: mode }));
+      ++preferencesEpoch;
+      synchronizeInterfaceSettings(saved);
+    } catch (error) {
+      set({ treeWheelMode: previous });
+      throw error;
+    } finally { set({ treeWheelModeSaving: false }); }
+  },
   tagQueries: {},
   setTagRemote(remote) {
     if (!get().snapshot?.remotes?.includes(remote)) return;

@@ -7419,6 +7419,38 @@ export const catalog = {
     "en": "Fit entire tree (0)",
     "zh-CN": "适应完整树（0）"
   },
+  "treeViews.wheelMode": {
+    "en": "Wheel",
+    "zh-CN": "滚轮"
+  },
+  "treeViews.wheelZoom": {
+    "en": "Zoom",
+    "zh-CN": "缩放"
+  },
+  "treeViews.wheelScroll": {
+    "en": "Scroll",
+    "zh-CN": "滚动"
+  },
+  "treeViews.wheelZoomHint": {
+    "en": "Wheel zooms at the pointer; Shift+wheel pans horizontally. Remembered across repositories and tree layouts.",
+    "zh-CN": "滚轮以鼠标位置为中心缩放；Shift+滚轮左右移动。跨仓库和树布局记住选择。"
+  },
+  "treeViews.wheelScrollHint": {
+    "en": "Wheel scrolls vertically; Ctrl+wheel zooms at the pointer. Remembered across repositories and tree layouts.",
+    "zh-CN": "滚轮上下移动；Ctrl+滚轮以鼠标位置为中心缩放。跨仓库和树布局记住选择。"
+  },
+  "treeViews.wheelSaveFailed": {
+    "en": "Could not save the wheel mode; the previous mode was restored: {{error}}",
+    "zh-CN": "无法保存滚轮模式，已恢复之前的模式：{{error}}"
+  },
+  "treeViews.canvasZoom": {
+    "en": "Tree canvas: drag to pan, wheel to zoom at pointer, Shift+wheel to pan horizontally, Ctrl+wheel to zoom at pointer, +/- to zoom, 0 to fit, Down to focus nodes",
+    "zh-CN": "树画布：拖动平移，滚轮以鼠标位置缩放，Shift+滚轮左右平移，Ctrl+滚轮以鼠标位置缩放，加减号缩放，0 适应完整树，下方向键聚焦节点"
+  },
+  "treeViews.navigationHintZoom": {
+    "en": "Drag to pan · Wheel zoom · Shift+wheel ←→ · 0 to fit",
+    "zh-CN": "拖动平移 · 滚轮缩放 · Shift+滚轮左右 · 0 适应完整树"
+  },
   "treeViews.canvas": {
     "en": "Tree canvas: drag to pan, wheel to pan vertically, Shift+wheel to pan horizontally, Ctrl+wheel to zoom at pointer, +/- to zoom, 0 to fit, Down to focus nodes",
     "zh-CN": "树画布：拖动平移，滚轮上下平移，Shift+滚轮左右平移，Ctrl+滚轮以鼠标位置缩放，加减号缩放，0 适应完整树，下方向键聚焦节点"
@@ -9766,6 +9798,14 @@ export interface MessageParameters {
   "treeViews.zoomOut": {  };
   "treeViews.zoomIn": {  };
   "treeViews.fit": {  };
+  "treeViews.wheelMode": {  };
+  "treeViews.wheelZoom": {  };
+  "treeViews.wheelScroll": {  };
+  "treeViews.wheelZoomHint": {  };
+  "treeViews.wheelScrollHint": {  };
+  "treeViews.wheelSaveFailed": { error: ParameterValue };
+  "treeViews.canvasZoom": {  };
+  "treeViews.navigationHintZoom": {  };
   "treeViews.canvas": {  };
   "treeViews.navigationHint": {  };
   "treeViews.largeGraph": { count: number };

@@ -1,6 +1,11 @@
 .commit-tree-graph {display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;overflow:hidden;}
 .tree-graph-toolbar {display:flex;align-items:center;gap:5px;padding:4px 8px;border-bottom:1px solid var(--row-border);flex-wrap:wrap;}
-.tree-graph-toolbar>.muted {font-size:11px;margin-left:auto;}
+.tree-graph-toolbar>.muted {font-size:11px;margin-left:auto;flex:1 1 220px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right;}
+.tree-wheel-mode {display:flex;align-items:center;gap:2px;flex:none;}
+.tree-wheel-mode>span {font-size:11px;color:var(--muted);margin:0 4px;}
+.tree-wheel-mode .button {padding:2px 6px;font-size:11px;}
+.tree-wheel-mode .button[aria-pressed=true] {background:var(--selected);color:var(--selected-fg);border-color:var(--accent);}
+.tree-wheel-error {padding:4px 8px;color:var(--vscode-errorForeground,var(--fg));font-size:11px;}
 .tree-graph-scale {font-size:11px;min-width:42px;text-align:center;font-variant-numeric:tabular-nums;}
 .tree-graph-stage {flex:1;min-height:80px;overflow:hidden;touch-action:none;cursor:grab;position:relative;}
 .tree-graph-stage.dragging {cursor:grabbing;user-select:none;}

@@ -546,8 +546,10 @@ export class Workbench implements vscode.Disposable {
   private async routeRequest(request: RpcRequest, source?:WorkbenchPanel): Promise<unknown> {
     if (source?.commitTree) {
       const target = source.commitTree.commitTree;
-      const allowed = ['treeExpansionHintRead', 'treeExpansionHintDismiss', 'treeExpansionRead', 'treeExpansionPatch', 'treeExpansionReset', 'workbenchReady', 'cancelQuery', 'copyText', 'interfaceSettings', 'revisionTreeChanges', 'revisionTreeCompare', 'openCommitTree', 'revisionTree', 'revisionTreeIndex', 'revisionTreeCommit', 'isolatedDiffPreview', 'isolatedDiffPage', 'diffRelease', 'openRevision', 'diff', 'lfsHistoricalStatus'];
+      const allowed = ['treeExpansionHintRead', 'treeExpansionHintDismiss', 'treeExpansionRead', 'treeExpansionPatch', 'treeExpansionReset', 'workbenchReady', 'cancelQuery', 'copyText', 'interfaceSettings', 'saveInterfaceSettings', 'revisionTreeChanges', 'revisionTreeCompare', 'openCommitTree', 'revisionTree', 'revisionTreeIndex', 'revisionTreeCommit', 'isolatedDiffPreview', 'isolatedDiffPage', 'diffRelease', 'openRevision', 'diff', 'lfsHistoricalStatus'];
       if (!allowed.includes(request.method) || request.repoId !== undefined && request.repoId !== target.repoId) throw new MessageError(message('tree.fixedPanel'));
+      // Fixed tree tabs may change their wheel preference, but no other workbench settings.
+      if (request.method === 'saveInterfaceSettings') interfaceSettingsSchema.pick({ treeWheelMode: true }).required().parse(request.payload);
       const payload = request.payload as { revision?: string; baseRevision?: string; parent?: string; oid?: string; kind?: string; left?: string; right?: string } | undefined;
       const pair = target.baseRevision !== undefined;
       const historicalParent = ['openRevision', 'lfsHistoricalStatus'].includes(request.method) && (pair ? payload?.revision === target.baseRevision : source.treeParents?.includes(payload?.revision ?? ''));
