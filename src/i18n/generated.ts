@@ -7166,6 +7166,70 @@ export const catalog = {
     "en": "Files · {{base}} → {{target}}",
     "zh-CN": "文件树 · {{base}} → {{target}}"
   },
+  "treeMemory.manage": {
+    "en": "Manage folder expansion memory",
+    "zh-CN": "管理目录展开记忆"
+  },
+  "treeMemory.clear": {
+    "en": "Clear this repository’s expansion memory",
+    "zh-CN": "清除本仓库全部展开记忆"
+  },
+  "treeMemory.close": {
+    "en": "Close expansion memory",
+    "zh-CN": "关闭展开记忆管理"
+  },
+  "treeMemory.scope": {
+    "en": "Shared across Commit and comparison trees for this repository in the current VS Code workspace. Search and Expand to changes are temporary.",
+    "zh-CN": "在当前 VS Code 工作区内，供本仓库的提交和比较文件树共享。搜索与展开到变更位置仅临时生效。"
+  },
+  "treeMemory.mode": {
+    "en": "Default expansion",
+    "zh-CN": "整体展开方式"
+  },
+  "treeMemory.auto": {
+    "en": "Automatic (small trees expanded; large trees at top level)",
+    "zh-CN": "自动（小树全展，大树仅顶层）"
+  },
+  "treeMemory.expanded": {
+    "en": "Expanded",
+    "zh-CN": "展开"
+  },
+  "treeMemory.collapsed": {
+    "en": "Collapsed",
+    "zh-CN": "收起"
+  },
+  "treeMemory.search": {
+    "en": "Search remembered paths",
+    "zh-CN": "搜索记忆路径"
+  },
+  "treeMemory.loading": {
+    "en": "Loading expansion memory…",
+    "zh-CN": "正在读取展开记忆…"
+  },
+  "treeMemory.absent": {
+    "en": "Absent from this snapshot",
+    "zh-CN": "当前快照不存在"
+  },
+  "treeMemory.remove": {
+    "en": "Forget expansion for {{path}}",
+    "zh-CN": "删除 {{path}} 的展开记忆"
+  },
+  "treeMemory.noMatches": {
+    "en": "No remembered paths match.",
+    "zh-CN": "没有匹配的记忆路径。"
+  },
+  "treeMemory.empty": {
+    "en": "No individual folder overrides.",
+    "zh-CN": "没有单独记忆的目录。"
+  },
+  "treeMemory.unavailable": {
+    "en": "Expansion memory is unavailable; temporary browsing remains available.",
+    "zh-CN": "展开记忆不可用，仍可临时浏览。"
+  },
+  "treeMemory.unchecked": {
+    "en": "Not yet checked against this snapshot",
+    "zh-CN": "尚未核对当前快照"
+  },
   "treeViews.presentation": {
     "en": "File tree presentation",
     "zh-CN": "文件树展示方式"
@@ -9484,6 +9548,22 @@ export interface MessageParameters {
   "treeCompare.reverse": {  };
   "treeCompare.showChanges": {  };
   "treeCompareHost.panelTitle": { base: ParameterValue; target: ParameterValue };
+  "treeMemory.manage": {  };
+  "treeMemory.clear": {  };
+  "treeMemory.close": {  };
+  "treeMemory.scope": {  };
+  "treeMemory.mode": {  };
+  "treeMemory.auto": {  };
+  "treeMemory.expanded": {  };
+  "treeMemory.collapsed": {  };
+  "treeMemory.search": {  };
+  "treeMemory.loading": {  };
+  "treeMemory.absent": {  };
+  "treeMemory.remove": { path: ParameterValue };
+  "treeMemory.noMatches": {  };
+  "treeMemory.empty": {  };
+  "treeMemory.unavailable": {  };
+  "treeMemory.unchecked": {  };
   "treeViews.presentation": {  };
   "treeViews.list": {  };
   "treeViews.horizontal": {  };
