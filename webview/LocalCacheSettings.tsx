@@ -49,14 +49,10 @@ export function LocalCacheSettings({ onBusyChange }: { onBusyChange(busy: boolea
   const busy = loading || clearing;
   const allSelected = entries.length > 0 && entries.every(entry => selected.has(entry.repoId));
   return <section className="settings-page local-cache-settings" aria-label={t('localCache.title')}>
-    <p className="local-cache-immediate"><Icon name="info"/>{t('localCache.immediate')}</p>
-    <p className="settings-note">{t('localCache.scope')}</p>
-    <p className="settings-note">{t('localCache.effect')}</p>
     <div className="local-cache-actions">
       <Button className="icon-only" icon="refresh" title={t('localCache.refresh')} aria-label={t('localCache.refresh')} disabled={busy || !!target} onClick={() => void load()}/>
       <Button disabled={busy || !!target || !entries.some(entry => !entry.registered && !entry.registrationUnknown)} onClick={() => setSelected(new Set(entries.filter(entry => !entry.registered && !entry.registrationUnknown).map(entry => entry.repoId)))}>{t('localCache.selectRemoved')}</Button>
       <Button disabled={busy || !!target || !selected.size} onClick={() => requestClear({ kind: 'repositories', repoIds: [...selected] })}>{t('localCache.clearSelected', { count: selected.size })}</Button>
-      <Button disabled={busy || !!target || !entries.length} onClick={() => requestClear({ kind: 'all' })}>{t('localCache.clearAll')}</Button>
     </div>
     {loading && <p role="status">{t('localCache.loading')}</p>}
     {message && <p role="status" className="local-cache-result"><Icon name="check"/>{message}</p>}
@@ -74,9 +70,10 @@ export function LocalCacheSettings({ onBusyChange }: { onBusyChange(busy: boolea
         <td className="local-cache-select"><input type="checkbox" aria-label={t('localCache.selectRepository', { name: describe(entry) })} checked={selected.has(entry.repoId)} disabled={busy || !!target} onChange={event => setSelected(current => { const next = new Set(current); if (event.target.checked) next.add(entry.repoId); else next.delete(entry.repoId); return next; })}/></td>
         <td className="local-cache-repository"><strong>{describe(entry)}</strong><span title={entry.root}>{entry.root || t('localCache.unknownPath')}</span>{(!entry.root || !entry.name) && <code>{entry.repoId}</code>}</td>
         <td><span className={entry.registered ? '' : 'muted'}>{t(entry.registrationUnknown ? 'localCache.registrationUnknown' : entry.registered ? 'localCache.registered' : 'localCache.removed')}</span></td>
-        <td><span>{t('localCache.directoryExpansion')}</span><small>{entry.invalid ? t('localCache.invalid') : <>{t(entry.mode === 'expanded' ? 'localCache.expanded' : entry.mode === 'collapsed' ? 'localCache.collapsed' : 'localCache.automatic')} · {t('localCache.directoryCount', { count: entry.directories })}</>}</small></td>
+        <td>{entry.invalid ? <span className="muted">{t('localCache.invalid')}</span> : <span className="local-cache-count" tabIndex={0} title={t('localCache.directoryDetails', { mode: t(entry.mode === 'expanded' ? 'localCache.expanded' : entry.mode === 'collapsed' ? 'localCache.collapsed' : 'localCache.automatic'), count: entry.directories })} aria-label={t('localCache.directoryDetails', { mode: t(entry.mode === 'expanded' ? 'localCache.expanded' : entry.mode === 'collapsed' ? 'localCache.collapsed' : 'localCache.automatic'), count: entry.directories })}>{t('localCache.directoryCount', { count: entry.directories })}</span>}</td>
         <td><Button className="icon-only" icon="trash" title={t('localCache.clearRepository', { name: describe(entry) })} aria-label={t('localCache.clearRepository', { name: describe(entry) })} disabled={busy || !!target} onClick={() => requestClear({ kind: 'repositories', repoIds: [entry.repoId] })}/></td>
       </tr>)}</tbody>
     </table></div>}
+    {!!entries.length && <div className="local-cache-secondary-actions"><Button disabled={busy || !!target} onClick={() => requestClear({ kind: 'all' })}>{t('localCache.clearAll')}</Button></div>}
   </section>;
 }
