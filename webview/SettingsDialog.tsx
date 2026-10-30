@@ -1,5 +1,6 @@
 import { ShortcutSettings } from './ShortcutSettings';
 import { LocalCacheSettings } from './LocalCacheSettings';
+import { FileLabel } from './FileLabel';
 import { BranchIcon, Button, Icon, Modal } from './ui';
 
 import { RepositoryIcon } from './RepositoryIcon';
@@ -147,6 +148,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
     catch (error) { setSaveError(error instanceof Error ? error.message : String(error)); }
     finally { setSaving(false); }
   };
+  const filePreviewPath = `${uiText("settings.webview").replace(/^\.\//, '')}/${uiText("settings.appTsx")}`;
   const densityOptions = [22, 24, 28];
   if (!densityOptions.includes(layout.row)) densityOptions.push(layout.row);
   const updateAppearance = (next: typeof appearance) => state.previewSettings({ appearance: next });
@@ -185,12 +187,16 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
             <h3 id="file-list-display-heading">{t('changes.displayMode')}</h3>
             {(['split','unified'] as const).map(mode => <label key={mode} className="change-list-mode-option"><input type="radio" name="change-list-mode" checked={state.changeListMode === mode} onChange={() => state.previewSettings({changeListMode:mode})}/><span><strong>{t(mode === 'split' ? 'changes.split' : 'changes.unified')}</strong><small>{t(mode === 'split' ? 'changes.splitDescription' : 'changes.unifiedDescription')}</small></span></label>)}
           </section>
+          <section className="settings-section" aria-labelledby="file-path-display-heading">
+            <h3 id="file-path-display-heading">{t('settings.filePathDisplay')}</h3>
+            {(['stacked', 'inline', 'name-only'] as const).map(display => <label key={display} className="change-list-mode-option"><input type="radio" name="file-path-display" checked={appearance.filePathDisplay === display} onChange={() => updateAppearance({ ...appearance, filePathDisplay: display })}/><span><strong>{t(display === 'stacked' ? 'settings.filePathStacked' : display === 'inline' ? 'settings.filePathInline' : 'settings.filePathNameOnly')}</strong><small>{t(display === 'stacked' ? 'settings.filePathStackedDescription' : display === 'inline' ? 'settings.filePathInlineDescription' : 'settings.filePathNameOnlyDescription')}</small></span></label>)}
+          </section>
           <section className="settings-section" aria-labelledby="file-list-spacing-heading">
             <h3 id="file-list-spacing-heading">{t('settings.fileListSpacing')}</h3>
             <div className="settings-grid"><FileSpacingField value={appearance.fileSpacing} onChange={fileSpacing => updateAppearance({ ...appearance, fileSpacing })}/></div>
             <figure className="settings-preview">
               <figcaption>{t("settings.preview")}</figcaption>
-              <div className="file-item settings-file-preview"><span className="file-status status-M" title={t("settings.modified")} role="img" aria-label={t("settings.modified")}><Icon name="file-code"/><span className="file-status-badge" aria-hidden="true">{uiText("settings.m")}</span></span><span className="file-label"><span className="file-basename">{uiText("settings.appTsx")}</span><span className="file-parent-path">{uiText("settings.webview")}</span></span><span className="muted">{fileRowHeight(layout.font, appearance.fileSpacing)}{uiText("settings.px")}</span></div>
+              <div className="file-item settings-file-preview" title={filePreviewPath}><span className="file-status status-M" title={t("settings.modified")} role="img" aria-label={t("settings.modified")}><Icon name="file-code"/><span className="file-status-badge" aria-hidden="true">{uiText("settings.m")}</span></span><FileLabel path={filePreviewPath} display={appearance.filePathDisplay}/><span className="muted">{fileRowHeight(layout.font, appearance.fileSpacing, appearance.filePathDisplay)}{uiText("settings.px")}</span></div>
             </figure>
             <p className="settings-note">{t("settings.fileSpacingSetsThePaddingAboveAndBelowEach")}</p>
             <p className="settings-note">{t("settings.rowHeightGrowsWithLargerTextToKeepEvery")}</p>

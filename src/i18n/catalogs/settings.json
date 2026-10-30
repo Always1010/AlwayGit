@@ -1228,5 +1228,47 @@
     "zh-CN": "两个默认值独立控制单项与批量操作的初始选择，可单次覆盖。仍需核对目标并完成最终确认。",
     "review": "translated",
     "context": "Deletion operation preferences"
+  },
+  "settings.filePathDisplay": {
+    "en": "File path display",
+    "zh-CN": "文件路径显示",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / file path display"
+  },
+  "settings.filePathStacked": {
+    "en": "Two lines (default)",
+    "zh-CN": "两行显示（默认）",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / file path display"
+  },
+  "settings.filePathInline": {
+    "en": "Single line",
+    "zh-CN": "单行显示",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / file path display"
+  },
+  "settings.filePathNameOnly": {
+    "en": "File name only",
+    "zh-CN": "仅显示文件名",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / file path display"
+  },
+  "settings.filePathStackedDescription": {
+    "en": "Show the file name above its repository-relative parent directory.",
+    "zh-CN": "第一行显示文件名，第二行显示仓库相对父目录。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / file path display"
+  },
+  "settings.filePathInlineDescription": {
+    "en": "Show the file name followed by its parent directory on one line.",
+    "zh-CN": "文件名在前，父目录在后，合并为一行显示。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / file path display"
+  },
+  "settings.filePathNameOnlyDescription": {
+    "en": "Hide the parent directory. Hover to see the full repository-relative file path.",
+    "zh-CN": "隐藏父目录，鼠标悬浮时查看包含文件名的完整仓库相对路径。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / file path display"
   }
 }

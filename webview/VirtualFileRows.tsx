@@ -28,11 +28,37 @@ function LargeFileRows<T>({ items, getKey, children, scrollParent, estimateSize,
     overscan: 8, scrollMargin: margin,
   });
   const rows = virtual.getVirtualItems();
+  const measuredSize = useRef(estimateSize);
+  // Capture the reading position before row refs measure the new layout.
+  const resizeAnchor = useRef<{ index: number; offset: number } | undefined>(undefined);
+  if (measuredSize.current !== estimateSize) {
+    const pane = viewport(), top = pane ? pane.getBoundingClientRect().top + pane.clientTop : 0;
+    const anchor = [...(spacer.current?.querySelectorAll<HTMLElement>('.virtual-file-row') ?? [])]
+      .find(row => { const box = row.getBoundingClientRect(); return box.top <= top && box.bottom > top; });
+    resizeAnchor.current = anchor ? { index: Number(anchor.dataset.index), offset: top - anchor.getBoundingClientRect().top } : undefined;
+    measuredSize.current = estimateSize;
+  }
   const updateMargin = () => {
     const pane = viewport(), element = spacer.current;
     if (pane && element) setMargin(element.getBoundingClientRect().top - pane.getBoundingClientRect().top + pane.scrollTop - pane.clientTop);
   };
   useLayoutEffect(updateMargin);
+  useLayoutEffect(() => {
+    const anchor = resizeAnchor.current;
+    resizeAnchor.current = undefined;
+    virtual.measure();
+    if (!spacer.current) return;
+    // Update the scroll extent before restoring an offset into the resized row.
+    spacer.current.style.height = `${virtual.getTotalSize()}px`;
+    if (!anchor) return;
+    const pane = viewport();
+    if (!pane) return;
+    // Earlier groups resize in the same commit; their new height is not yet in
+    // the virtualizer's scrollMargin, so restore against the actual DOM margin.
+    const actualMargin = spacer.current.getBoundingClientRect().top - pane.getBoundingClientRect().top + pane.scrollTop - pane.clientTop;
+    const start = virtual.getOffsetForIndex(anchor.index, 'start')?.[0];
+    if (start !== undefined) virtual.scrollToOffset(start + actualMargin - virtual.options.scrollMargin + Math.min(anchor.offset, (estimateSize ?? 34) - 1));
+  }, [estimateSize]);
   useLayoutEffect(() => {
     const pane = viewport(); if (!pane) return;
     let width = pane.clientWidth;

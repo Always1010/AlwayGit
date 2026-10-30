@@ -2,7 +2,7 @@ import type { ShortcutOverrides } from '../src/protocol/shortcuts';
 import { useEffect, useState } from 'react';
 import type { LayoutState } from './rpc';
 import type { Language } from './i18n';
-import type { DiffNavigationScope } from '../src/protocol/session';
+import type { DiffNavigationScope, FilePathDisplay } from '../src/protocol/session';
 import { getGraphPalette, type GraphPaletteColors, type GraphPaletteId } from './graph/palettes';
 
 export const themePreferences = ['system', 'light', 'paper', 'mist', 'dark', 'midnight', 'graphite', 'forest', 'berry', 'contrast'] as const;
@@ -17,6 +17,7 @@ export interface Appearance {
   historyRowSeparators: boolean;
   historyAlternateRows: boolean;
   fileSpacing: number;
+  filePathDisplay: FilePathDisplay;
   badgeColor: string;
   currentBranchColor: string;
   currentRepositoryColor: string;
@@ -37,7 +38,7 @@ export function presetColors(id: GraphPaletteId): GraphPaletteColors {
 }
 
 export const defaultAppearance: Appearance = {
-  theme: 'system', palette: 'vivid', codeFont: 12, codeRowHeight: 18, diffRowSeparators: false, historyRowSeparators: false, historyAlternateRows: false, fileSpacing: 1, badgeColor: defaultBadgeColor, currentBranchColor: defaultCurrentBranchColor, currentRepositoryColor: defaultCurrentRepositoryColor, colors: presetColors('vivid'), mainColors: { ...defaultMainColors },
+  theme: 'system', palette: 'vivid', codeFont: 12, codeRowHeight: 18, diffRowSeparators: false, historyRowSeparators: false, historyAlternateRows: false, fileSpacing: 1, filePathDisplay: 'stacked', badgeColor: defaultBadgeColor, currentBranchColor: defaultCurrentBranchColor, currentRepositoryColor: defaultCurrentRepositoryColor, colors: presetColors('vivid'), mainColors: { ...defaultMainColors },
 };
 
 function normalizeColors(value: Partial<GraphPaletteColors> | undefined, palette: GraphPaletteId): GraphPaletteColors {
@@ -58,6 +59,7 @@ export function normalizeAppearance(value: Partial<Appearance> = {}): Appearance
     historyRowSeparators: value.historyRowSeparators === true,
     historyAlternateRows: value.historyAlternateRows === true,
     fileSpacing: Number.isFinite(value.fileSpacing) ? Math.round(Math.max(0, Math.min(8, value.fileSpacing!))) : 1,
+    filePathDisplay: value.filePathDisplay === 'inline' || value.filePathDisplay === 'name-only' ? value.filePathDisplay : 'stacked',
     badgeColor: hexColor.test(value.badgeColor ?? '') ? value.badgeColor!.toUpperCase() : defaultBadgeColor,
     currentBranchColor: hexColor.test(value.currentBranchColor ?? '') ? value.currentBranchColor!.toUpperCase() : defaultCurrentBranchColor,
     currentRepositoryColor: hexColor.test(value.currentRepositoryColor ?? '') ? value.currentRepositoryColor!.toUpperCase() : defaultCurrentRepositoryColor,
@@ -71,7 +73,8 @@ export function normalizeAppearance(value: Partial<Appearance> = {}): Appearance
 export const effectiveRowHeight = (layout: Pick<LayoutState, 'font' | 'row'>) => Math.max(layout.row, Math.round(layout.font * 1.35) + 6);
 export const diffRowHeight = (font: number, row = 18) => Math.max(row, font + 4);
 // Match the name/path line boxes, their gap, vertical padding, and row border.
-export const fileRowHeight = (font: number, spacing: number) => Math.ceil(font * 1.4 + 11 * 1.2 + 1) + spacing * 2 + 1;
+export const fileRowHeight = (font: number, spacing: number, display: FilePathDisplay = 'stacked') =>
+  Math.ceil(display === 'stacked' ? font * 1.4 + 11 * 1.2 + 1 : Math.max(26, font * 1.4)) + spacing * 2 + 1;
 export const revisionTreeRowHeight = (font: number, spacing: number) => Math.max(24, Math.ceil(font * 1.4) + 4 + spacing * 2);
 export const isLightTheme = (theme: ResolvedTheme) => ['light', 'paper', 'mist', 'hc-light'].includes(theme);
 export function textColorForBackground(hex: string): '#000000' | '#FFFFFF' {

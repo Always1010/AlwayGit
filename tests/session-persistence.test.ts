@@ -15,7 +15,7 @@ it('restores latest user preferences over an old panel without changing geometry
   expect(restored).toMatchObject({ language: 'en', layout: { sidebar: 230, diff: 720, font: 13, row: 24 }, singleKeyShortcuts: true,
     appearance: { theme: 'forest' }, repoId: 'a', drafts: old.drafts, views: old.views });
   expect(overlayInterfaceSettings({}, { font: 16, row: 28 }).layout).toMatchObject({ font: 16, row: 28 });
-  expect(mergeInterfaceSettings({ appearance: old.appearance, font: 16 }, { appearance: { theme: 'dark' } })).toMatchObject({ appearance: { theme: 'dark', codeFont: 15 }, font: 16 });
+  expect(mergeInterfaceSettings({ appearance: { ...old.appearance!, filePathDisplay: 'inline' }, font: 16 }, { appearance: { theme: 'dark' } })).toMatchObject({ appearance: { theme: 'dark', codeFont: 15, filePathDisplay: 'inline' }, font: 16 });
 });
 const deferred = () => { let resolve!: () => void; const promise = new Promise<void>(done => { resolve = done; }); return { promise, resolve }; };
 
