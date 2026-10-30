@@ -134,9 +134,9 @@ export function CommitTree({ target: { repoId, revision, baseRevision } }: { tar
     {(error || metadataError) && <div className="revision-tree-error" role="alert">{error || metadataError}<Button className="icon-only" icon="refresh" title={t('tree.retry')} aria-label={t('tree.retry')} onClick={() => setAttempt(value => value + 1)}/></div>}
     <main className={`commit-tree-body${previewOpen ? ' with-preview' : ''}`}>
       {viewMode === 'list' ? <div className="revision-tree-rows commit-tree-rows" role="tree" aria-label={t('tree.fullRepositoryTree')}>
-        <VirtualFileRows items={rows} getKey={row => row.node.id} scrollParent=".commit-tree-rows" estimateSize={26} focusSelector=".revision-tree-entry">{({ node, depth, guides, last }) => {
+        <VirtualFileRows items={rows} getKey={row => row.node.id} scrollParent=".commit-tree-rows" estimateSize={26} focusSelector=".revision-tree-entry">{({ node, depth, guides, last, changeHighlight }) => {
           const entry = node.entry, folder = entry.type === 'tree', opened = expanded.has(node.id), status = node.change?.status[0];
-          return <div className={`revision-tree-row${selected === node.id ? ' selected' : ''}${node.deleted ? ' snapshot-deleted' : ''}`} data-status={status} role="treeitem" aria-label={nodeHint(node)} aria-level={query ? 1 : depth + 1} aria-expanded={folder ? opened : undefined} aria-selected={selected === node.id} onContextMenu={event => { event.preventDefault(); setMenu({ node, x: event.clientX, y: event.clientY, anchor: event.currentTarget }); }}>
+          return <div className={`revision-tree-row${selected === node.id ? ' selected' : ''}${node.deleted ? ' snapshot-deleted' : ''}`} data-status={status} data-change-highlight={changeHighlight} role="treeitem" aria-label={nodeHint(node)} aria-level={query ? 1 : depth + 1} aria-expanded={folder ? opened : undefined} aria-selected={selected === node.id} onContextMenu={event => { event.preventDefault(); setMenu({ node, x: event.clientX, y: event.clientY, anchor: event.currentTarget }); }}>
             <button className="revision-tree-entry" title={nodeHint(node)} onClick={() => openEntry(node)} onDoubleClick={() => { if (!folder && entry.type !== 'gitlink') openHistorical(node); }} onKeyDown={event => {
               if (event.key === 'ArrowRight' && folder && !opened || event.key === 'ArrowLeft' && folder && opened) { event.preventDefault(); openEntry(node); }
               if (event.key === 'ContextMenu' || event.shiftKey && event.key === 'F10') { event.preventDefault(); const rect = event.currentTarget.getBoundingClientRect(); setMenu({ node, x: rect.left + 24, y: rect.bottom, anchor: event.currentTarget }); }
@@ -146,7 +146,7 @@ export function CommitTree({ target: { repoId, revision, baseRevision } }: { tar
             </button>
             {node.change?.previousPath && <span className="snapshot-origin" title={nodeHint(node)}>← {node.change.previousPath}</span>}
             {node.deleted && <span className="snapshot-deleted-label">{t(folder ? 'tree.deletedDirectory' : 'tree.virtualDeleted')}</span>}
-            {node.summary && <span className="snapshot-directory-status" title={t('tree.changeSummary', node.summary)} aria-label={t('tree.changeSummary', node.summary)}><Icon name="circle-filled"/></span>}
+            {node.summary && <span className="snapshot-directory-status" title={t('tree.changeSummary', node.summary)} aria-label={t('tree.changeSummary', node.summary)}><Icon name="circle-filled"/><span>{Object.values(node.summary).reduce((sum, count) => sum + count, 0)}</span></span>}
             {status && <span className={`snapshot-badge status-${status}`} title={statusName(status)} aria-label={statusName(status)}>{status}</span>}
             {entry.type === 'gitlink' && <span className="revision-tree-meta hash" title={entry.oid}>{entry.oid.slice(0, 8)}</span>}
           </div>;

@@ -8,7 +8,8 @@ export interface SnapshotNode {
   change?: RevisionTreeChange;
   summary?: ChangeCounts;
 }
-export interface SnapshotRow { node: SnapshotNode; depth: number; guides: boolean[]; last: boolean }
+export type SnapshotChangeHighlight = 'A' | 'M' | 'D' | 'R' | 'C' | 'T' | 'summary';
+export interface SnapshotRow { node: SnapshotNode; depth: number; guides: boolean[]; last: boolean; changeHighlight?: SnapshotChangeHighlight }
 export interface ChangeCounts { added: number; modified: number; deleted: number; renamed: number; copied: number; typeChanged: number }
 const emptyCounts = (): ChangeCounts => ({ added: 0, modified: 0, deleted: 0, renamed: 0, copied: 0, typeChanged: 0 });
 const countKeys: Record<string, keyof ChangeCounts> = { A: 'added', M: 'modified', D: 'deleted', R: 'renamed', C: 'copied', T: 'typeChanged' };
@@ -74,14 +75,22 @@ export function allSnapshotNodes(nodes: SnapshotNode[]): SnapshotNode[] {
 
 export function snapshotRows(nodes: SnapshotNode[], expanded: ReadonlySet<string>, query = ''): SnapshotRow[] {
   const rows: SnapshotRow[] = [], needle = query.trim().toLocaleLowerCase();
+  // Highlight follows the expanded structure, before any list or canvas viewport culling.
+  // In flat search a matching directory represents its own explicit summary only.
+  const highlight = (node: SnapshotNode): SnapshotChangeHighlight | undefined => {
+    if (node.entry.type === 'tree') return node.summary && (needle || !expanded.has(node.id)) ? 'summary' : undefined;
+    if (!node.change) return;
+    const status = node.change.status[0];
+    return status in countKeys ? status as SnapshotChangeHighlight : 'M';
+  };
   const visit = (list: SnapshotNode[], guides: boolean[]) => {
     list.forEach((node, index) => {
       const last = index === list.length - 1;
       if (needle) {
-        if (node.entry.path.toLocaleLowerCase().includes(needle)) rows.push({ node, depth: 0, guides: [], last: true });
+        if (node.entry.path.toLocaleLowerCase().includes(needle)) rows.push({ node, depth: 0, guides: [], last: true, changeHighlight: highlight(node) });
         visit(node.children, []);
       } else {
-        rows.push({ node, depth: guides.length, guides, last });
+        rows.push({ node, depth: guides.length, guides, last, changeHighlight: highlight(node) });
         if (expanded.has(node.id)) visit(node.children, [...guides, !last]);
       }
     });
