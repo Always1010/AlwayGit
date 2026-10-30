@@ -429,7 +429,7 @@ describe('repository UI consistency', () => {
     const commitActions=()=>menuFor(target,api).items.filter(item=>item.label!==translate(store.getState().language,'tree.browseRepositoryTree'));
     for (const language of ['en','zh-CN'] as const) {
       store.setState({language});
-      expect(menuFor(target,api).items.some(item=>item.label===translate(language,'tree.browseRepositoryTree'))).toBe(true);
+      expect(menuFor(target,api).items.at(-1)).toMatchObject({label:translate(language,'tree.browseRepositoryTree'),separatorBefore:true});
       const menu=commitActions();
       expect(menu[0]).toMatchObject({disabled:true});
       expect(menu[0].label).toContain('Detached HEAD');
@@ -458,6 +458,25 @@ describe('repository UI consistency', () => {
     expect(commitActions()[0]).toMatchObject({disabled:true,reason:'This is the current branch.'});
     store.setState({snapshot:{...snapshot(a),refs:[{name:'topic',fullName:'refs/heads/topic',kind:'local',oid:'old'},{name:'other',fullName:'refs/heads/other',kind:'local',oid:'old'}]}});
     expect(commitActions()[0]).toMatchObject({label:'Choose Branch to Checkout…',disabled:false});
+    store.setState({operationSettings:{...store.getState().operationSettings,allowDetachedHead:true}});
+    expect(commitActions().slice(0,3).map(item=>item.label)).toEqual(['Checkout to Detached HEAD…','Choose Branch to Checkout…','Create Branch…']);
+    expect(menuFor(target,api).items.at(-1)).toMatchObject({label:translate('en','tree.browseRepositoryTree'),separatorBefore:true});
+  });
+
+  it('places the two-commit tree comparison last after a separator and preserves other multi-commit actions', async () => {
+    const { menuFor } = await import('../webview/menus');
+    const noop=vi.fn(),browseComparisonTree=vi.fn(),api={startCommit:noop,open:noop,checkout:noop,openDiff:noop,editFile:noop,host:vi.fn(),addRepository:vi.fn(),removeRepositories:noop,fetchRepositories:noop};
+    store.setState({language:'en',repoId:a.id,snapshot:snapshot(a),commits:['base','target','third'].map(oid=>({...commit,oid})),browseComparisonTree});
+    const target={kind:'commit' as const,oid:'target',oids:['target','base']};
+    const menu=menuFor(target,api,{included:['base']}).items;
+    expect(menu.map(item=>item.label)).toEqual(['Compare Commits',expect.stringContaining('Cherry-pick'),'Reapply Historical Commits…','Copy Commit IDs',translate('en','treeCompare.browse')]);
+    expect(menu.at(-1)).toMatchObject({separatorBefore:true});
+    expect(menu.slice(0,-1).some(item=>item.separatorBefore)).toBe(false);
+    menu.at(-1)!.run();
+    expect(browseComparisonTree).toHaveBeenCalledWith('target','base');
+    const multiple=menuFor({...target,oids:['target','base','third']},api,{included:[]}).items;
+    expect(multiple.map(item=>item.label)).toEqual([expect.stringContaining('Cherry-pick'),'Copy Commit IDs']);
+    expect(multiple.some(item=>item.separatorBefore)).toBe(false);
   });
 
   it('disables already-included cherry-picks, waits for ancestry and keeps deliberate historical reapplication separate', async () => {

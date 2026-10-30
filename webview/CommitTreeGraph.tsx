@@ -3,6 +3,7 @@ import type { SnapshotNode, SnapshotRow } from './commitTreeModel';
 import { Button, Icon } from './ui';
 import { useTranslation } from './i18n';
 import { fitTree, graphNodeHeight, radialNodeHeight, intersects, layoutTree, treeEdge, zoomTree, type TreeCamera, type TreeGraphMode, type TreeGraphNode } from './treeLayout';
+import { wheelTree } from './treeWheel';
 import './commit-tree-graph.css';
 
 const graphReviewThreshold = 6000;
@@ -40,9 +41,13 @@ export function CommitTreeGraph({ rows, mode, query, expanded, selected, nodeHin
   const zoom = useCallback((factor: number, x = size.width / 2, y = size.height / 2) => setCamera(current => zoomTree(current, factor, x, y)), [size]);
   useEffect(() => {
     const element = stage.current; if (!element) return;
-    const wheel = (event: WheelEvent) => { event.preventDefault(); const box = element.getBoundingClientRect(); zoom(Math.exp(-Math.max(-120, Math.min(120, event.deltaY)) * .002), event.clientX - box.left, event.clientY - box.top); };
+    const wheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const box = element.getBoundingClientRect();
+      setCamera(current => wheelTree(current, event, box, { x: event.clientX - box.left, y: event.clientY - box.top }));
+    };
     element.addEventListener('wheel', wheel, { passive: false }); return () => element.removeEventListener('wheel', wheel);
-  }, [zoom]);
+  }, []);
   const viewport = { x: -camera.x / camera.scale - 80, y: -camera.y / camera.scale - 80, width: size.width / camera.scale + 160, height: size.height / camera.scale + 160 };
   const visible = layout.nodes.filter(node => intersects(node, viewport));
   const hasVisibleFocus = visible.some(node => node.row.node.id === focusId);
