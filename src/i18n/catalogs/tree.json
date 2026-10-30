@@ -392,6 +392,48 @@
     "review": "translated",
     "context": "Commit tree changes overlay"
   },
+  "tree.details": {
+    "en": "Snapshot details",
+    "zh-CN": "快照详情",
+    "review": "translated",
+    "context": "Commit tree compact header / full commit message, author, date, IDs and repository path"
+  },
+  "tree.statistics": {
+    "en": "Snapshot and change statistics",
+    "zh-CN": "快照与变更统计",
+    "review": "translated",
+    "context": "Commit tree toolbar / open complete counts and comparison baseline"
+  },
+  "tree.moreActions": {
+    "en": "More tree actions",
+    "zh-CN": "更多文件树操作",
+    "review": "translated",
+    "context": "Commit tree narrow toolbar / expansion, preview and memory information"
+  },
+  "tree.changeMarkers": {
+    "en": "Change markers",
+    "zh-CN": "变更标记",
+    "review": "translated",
+    "context": "Commit tree compact toggle / decorates the full snapshot without filtering unchanged files"
+  },
+  "tree.compactFiles": {
+    "en": { "one": "{{count}} file", "other": "{{count}} files" },
+    "zh-CN": "{{count}} 文件",
+    "review": "translated",
+    "context": "Commit tree toolbar / real snapshot file count"
+  },
+  "tree.compactSubmodules": {
+    "en": { "one": "{{count}} submodule", "other": "{{count}} submodules" },
+    "zh-CN": "{{count}} 子模块",
+    "review": "translated",
+    "context": "Commit tree toolbar / omitted when the snapshot has no submodules"
+  },
+  "tree.compactChanges": {
+    "en": { "one": "{{count}} change", "other": "{{count}} changes" },
+    "zh-CN": "变更 {{count}}",
+    "review": "translated",
+    "context": "Commit tree narrow toolbar / count of changed entries"
+  },
   "tree.selectFile": {
     "en": "Select a file to preview.",
     "zh-CN": "选择文件以预览。",
