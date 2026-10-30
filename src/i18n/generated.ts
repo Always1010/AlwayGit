@@ -7235,8 +7235,8 @@ export const catalog = {
     "zh-CN": "调整文件树与预览大小"
   },
   "tree.expandChanges": {
-    "en": "Expand directories containing changes",
-    "zh-CN": "展开到变更位置"
+    "en": "Only expand changed files",
+    "zh-CN": "只展开修改文件"
   },
   "tree.comparisonBase": {
     "en": "Compared with",
