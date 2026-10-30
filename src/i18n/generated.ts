@@ -3628,25 +3628,17 @@ export const catalog = {
     "en": "Local cache",
     "zh-CN": "本地缓存"
   },
-  "localCache.immediate": {
-    "en": "Clearing takes effect immediately. Apply is not required, and Cancel will not restore cleared cache.",
-    "zh-CN": "清理立即生效，无需点击「应用」；关闭设置或点击「取消」也不会恢复已清理的缓存。"
-  },
   "localCache.immediateShort": {
     "en": "Clearing takes effect immediately",
     "zh-CN": "清理立即生效"
   },
-  "localCache.footerHint": {
-    "en": "Cache clearing is immediate and cannot be undone with Cancel.",
-    "zh-CN": "缓存清理立即生效，「取消」无法撤回。"
+  "localCache.about": {
+    "en": "About local cache",
+    "zh-CN": "本地缓存说明"
   },
   "localCache.scope": {
-    "en": "Lists folder expansion cache saved by this extension for the current VS Code user profile, including removed repositories. Legacy workspace records migrate when their workspace is opened; cleared records are not imported again. Other local data is not included.",
-    "zh-CN": "列出当前 VS Code 用户配置下本扩展保存的目录展开缓存，包括已移除的仓库。旧工作区记录在打开对应工作区后迁移，已清理的记录不会重新导入；此处不包含其他本地数据。"
-  },
-  "localCache.effect": {
-    "en": "Clearing forgets folder expansion and collapse choices. The next tree starts with its default expansion. Repository files and Git history are preserved.",
-    "zh-CN": "清理会忘记目录展开与收缩状态，下次打开文件树时使用默认展开方式；不会删除仓库文件或 Git 历史。"
+    "en": "Saved folder expansion state for repositories, including removed repositories.",
+    "zh-CN": "保存各仓库的目录展开状态，包括已移除的仓库。"
   },
   "localCache.refresh": {
     "en": "Refresh cache list",
@@ -3669,8 +3661,8 @@ export const catalog = {
     "zh-CN": "正在读取已保存缓存…"
   },
   "localCache.cleared": {
-    "en": "Cache cleared. Cleared repositories use the default expansion the next time their tree opens.",
-    "zh-CN": "缓存已清理。下次打开已清理仓库的文件树时，将使用默认展开方式。"
+    "en": "Cache cleared.",
+    "zh-CN": "缓存已清理。"
   },
   "localCache.confirmAll": {
     "en": "Clear all saved repository cache ({{count}})?",
@@ -3681,16 +3673,16 @@ export const catalog = {
     "zh-CN": "确认清理以下 {{count}} 个仓库的缓存？"
   },
   "localCache.irreversible": {
-    "en": "Folder expansion state for the repositories below will be cleared immediately. This cannot be undone. Repository files and Git history will be preserved.",
-    "zh-CN": "以下仓库的目录展开状态将立即清理，无法撤回。仓库文件和 Git 历史会保留。"
+    "en": "Clearing resets folder expansion to defaults on the next visit and cannot be undone. Repository files and Git history are preserved.",
+    "zh-CN": "清理后，下次打开时恢复默认展开方式。此操作无法撤回，仓库文件和 Git 历史不受影响。"
   },
   "localCache.clearing": {
     "en": "Clearing…",
     "zh-CN": "正在清理…"
   },
   "localCache.confirmClear": {
-    "en": "Confirm clearing",
-    "zh-CN": "确认清理"
+    "en": "Clear cache",
+    "zh-CN": "清理缓存"
   },
   "localCache.empty": {
     "en": "No saved repository cache.",
@@ -3709,8 +3701,8 @@ export const catalog = {
     "zh-CN": "状态"
   },
   "localCache.data": {
-    "en": "Cached data",
-    "zh-CN": "缓存数据"
+    "en": "Folder state",
+    "zh-CN": "目录状态"
   },
   "localCache.actions": {
     "en": "Actions",
@@ -3736,13 +3728,13 @@ export const catalog = {
     "en": "Select cache for {{name}}",
     "zh-CN": "选择 {{name}} 的缓存"
   },
-  "localCache.directoryExpansion": {
-    "en": "Folder expansion state",
-    "zh-CN": "目录展开状态"
-  },
   "localCache.directoryCount": {
-    "en": "{{count}} individual folder choices",
-    "zh-CN": "{{count}} 个单独目录状态"
+    "en": "{{count}} entries",
+    "zh-CN": "{{count}} 项"
+  },
+  "localCache.directoryDetails": {
+    "en": "{{mode}}; individual expansion choices for {{count}} folders.",
+    "zh-CN": "{{mode}}；单独记录了 {{count}} 个目录的展开状态。"
   },
   "localCache.invalid": {
     "en": "Record cannot be fully read; clear it to start fresh.",
@@ -8772,11 +8764,9 @@ export interface MessageParameters {
   "lfs.after": {  };
   "lfs.apply": {  };
   "localCache.title": {  };
-  "localCache.immediate": {  };
   "localCache.immediateShort": {  };
-  "localCache.footerHint": {  };
+  "localCache.about": {  };
   "localCache.scope": {  };
-  "localCache.effect": {  };
   "localCache.refresh": {  };
   "localCache.selectRemoved": {  };
   "localCache.clearSelected": { count: number };
@@ -8799,8 +8789,8 @@ export interface MessageParameters {
   "localCache.registered": {  };
   "localCache.removed": {  };
   "localCache.selectRepository": { name: ParameterValue };
-  "localCache.directoryExpansion": {  };
   "localCache.directoryCount": { count: number };
+  "localCache.directoryDetails": { mode: ParameterValue; count: number };
   "localCache.invalid": {  };
   "localCache.clearRepository": { name: ParameterValue };
   "localCache.expanded": {  };
