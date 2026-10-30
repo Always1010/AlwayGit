@@ -27,10 +27,12 @@ export function useTreeExpansion(repoId: string) {
       const events = owner.events, patch = operation.patch;
       try {
         const preferences = await rpc<TreeExpansionPreferences>(patch ? 'treeExpansionPatch' : 'treeExpansionReset', owner.repoId, patch);
+        if (!owner.pending.includes(operation)) return;
         if (owner.events === events) owner.base = preferences;
         owner.pending = owner.pending.filter(item => item.id !== operation.id);
         if (!owner.pending.some(item => item.failed)) owner.error = undefined;
       } catch (error) {
+        if (!owner.pending.includes(operation)) return;
         operation.failed = true;
         owner.error = error instanceof Error ? error.message : String(error);
       }
@@ -57,6 +59,9 @@ export function useTreeExpansion(repoId: string) {
     return subscribe(event => {
       if (event.type !== 'treeExpansionChanged' || event.repoId !== state.repoId) return;
       state.events++; state.base = event.preferences;
+      if (event.cleared) {
+        state.changes++; state.pending = []; state.error = undefined; state.loading = false;
+      }
       render(state);
     });
   }, [state, reload, render]);

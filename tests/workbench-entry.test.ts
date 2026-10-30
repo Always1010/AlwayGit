@@ -55,7 +55,7 @@ afterEach(() => { for (const workbench of workbenches.splice(0)) workbench.dispo
 
 function workbenchFixture(output = { appendLine: vi.fn() }, events?: { changes: vscode.EventEmitter<{ repoId: string; changes?: RepositoryChanges }>; catalog: vscode.EventEmitter<void> }, overrides: Partial<Pick<RepositoryManager, 'scan' | 'list' | 'collections' | 'order' | 'get'>> = {}) {
   const repositories = { scan: vi.fn(async () => {}), list: () => [], onDidChange: events?.changes.event ?? (() => ({ dispose() {} })), onDidChangeRepositories: events?.catalog.event ?? (() => ({ dispose() {} })), ...overrides };
-  const workbench = new Workbench({ extensionUri: {}, workspaceState: { get: (_key: string, fallback: unknown) => fallback, update: async () => {} } } as unknown as vscode.ExtensionContext, {} as never, repositories as never, { releaseDiffOwner: vi.fn() } as never, output as never, {} as never);
+  const workbench = new Workbench({ extensionUri: {}, globalState: { keys: () => [], get: (_key: string, fallback: unknown) => fallback, update: async () => {} }, workspaceState: { keys: () => [], get: (_key: string, fallback: unknown) => fallback, update: async () => {} } } as unknown as vscode.ExtensionContext, {} as never, repositories as never, { releaseDiffOwner: vi.fn() } as never, output as never, {} as never);
   vi.spyOn(workbench as unknown as { html(): Promise<string> }, 'html').mockResolvedValue('<html></html>');
   workbenches.push(workbench);
   return workbench;
@@ -81,6 +81,8 @@ describe('Commit tree editor tabs', () => {
       { method: 'action', payload: { type: 'stage', paths: ['x'] } },
       { method: 'saveSession', payload: { drafts: { repo: 'overwrite' } } },
       { method: 'snapshot' },
+      { method: 'localCacheList' },
+      { method: 'localCacheClear', payload: { kind: 'all' } },
       { method: 'revisionTree', repoId: 'other', payload: { revision } },
       { method: 'revisionTreeIndex', payload: { revision: 'b'.repeat(40) } },
     ]) {
@@ -110,7 +112,7 @@ describe('Commit tree editor tabs', () => {
     const normal = panelFixture(), first = panelFixture(), second = panelFixture(), other = panelFixture();
     vi.mocked(vscode.window.createWebviewPanel).mockReturnValueOnce(normal.panel as never).mockReturnValueOnce(first.panel as never).mockReturnValueOnce(second.panel as never).mockReturnValueOnce(other.panel as never);
     const values = new Map<string, unknown>();
-    const storage = { get: <T>(key: string, fallback: T) => (values.get(key) ?? fallback) as T, update: async (key: string, value: unknown) => { values.set(key, value); } };
+    const storage = { keys: () => [...values.keys()], get: <T>(key: string, fallback: T) => (values.get(key) ?? fallback) as T, update: async (key: string, value: unknown) => { if (value === undefined) values.delete(key); else values.set(key, value); } };
     (workbench as unknown as { treeExpansionMemory: TreeExpansionMemory }).treeExpansionMemory = new TreeExpansionMemory(storage);
     await workbench.open(repo.id);
     await workbench.openCommitTree(repo.id, 'a'.repeat(40));
@@ -127,9 +129,30 @@ describe('Commit tree editor tabs', () => {
     for (const fixture of [normal, other]) expect(fixture.panel.webview.postMessage.mock.calls.some(([event]) => (event as { type: string }).type === 'treeExpansionChanged')).toBe(false);
     await first.receive({ id: 'wrong-repo', method: 'treeExpansionReset', repoId: otherRepo.id });
     expect(first.panel.webview.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'wrong-repo', error: expect.any(Object) }));
+    await normal.receive({ id: 'cache-list', method: 'localCacheList' });
+    expect(normal.panel.webview.postMessage).toHaveBeenLastCalledWith({ type: 'response', id: 'cache-list', result: [{ repoId: repo.id, name: repo.name, root: repo.root, registered: true, directories: 2, mode: 'auto' }] });
+    await normal.receive({ id: 'clear-global', method: 'localCacheClear', payload: { kind: 'repositories', repoIds: [repo.id] } });
+    expect(normal.panel.webview.postMessage).toHaveBeenLastCalledWith({ type: 'response', id: 'clear-global', result: [] });
+    expect(first.panel.webview.postMessage).toHaveBeenCalledWith({ type: 'treeExpansionChanged', repoId: repo.id, preferences: { mode: 'auto', overrides: {} }, cleared: true });
     await second.receive({ id: 'reset', method: 'treeExpansionReset' });
     expect(first.panel.webview.postMessage).toHaveBeenCalledWith({ type: 'treeExpansionChanged', repoId: repo.id, preferences: { mode: 'auto', overrides: {} } });
     expect(values.get('alwaygit.treeExpansion.repo')).toBeUndefined();
+  });
+  it('manages removed and corrupt local cache entries without a current repository', async () => {
+    const get = vi.fn(() => { throw new Error('no repository'); }), workbench = workbenchFixture(undefined, undefined, { get });
+    const values = new Map<string, unknown>([['alwaygit.treeExpansion.removed', { preferences: { mode: 'collapsed', overrides: { src: true } }, name: 'Removed', root: '/removed' }], ['alwaygit.treeExpansion.corrupt', null]]);
+    const memory = new TreeExpansionMemory({ keys: () => [...values.keys()], get: <T>(key: string, fallback: T) => (values.has(key) ? values.get(key) : fallback) as T, update: async (key, value) => { if (value === undefined) values.delete(key); else values.set(key, value); } });
+    (workbench as unknown as { treeExpansionMemory: TreeExpansionMemory }).treeExpansionMemory = memory;
+    expect(await workbench.handle({ id: 'list', method: 'localCacheList' })).toEqual([
+      { repoId: 'removed', name: 'Removed', root: '/removed', registered: false, registrationUnknown: true, directories: 1, mode: 'collapsed' },
+      { repoId: 'corrupt', registered: false, registrationUnknown: true, directories: 0, mode: 'auto', invalid: true },
+    ].sort((a, b) => (a.name ?? a.repoId).localeCompare(b.name ?? b.repoId)));
+    expect(await workbench.handle({ id: 'clear', method: 'localCacheClear', payload: { kind: 'all' } })).toEqual([]);
+    expect(await workbench.handle({ id: 'hint', method: 'treeExpansionHintRead' })).toBe(false);
+    expect(await workbench.handle({ id: 'dismiss', method: 'treeExpansionHintDismiss' })).toBe(true);
+    expect(await workbench.handle({ id: 'clear-again', method: 'localCacheClear', payload: { kind: 'all' } })).toEqual([]);
+    expect(await workbench.handle({ id: 'hint-again', method: 'treeExpansionHintRead' })).toBe(true);
+    expect(get).not.toHaveBeenCalled();
   });
   it('binds ordered comparison panels, restores targets and allows only the exact endpoint swap', async () => {
     const repo = { id: 'repo', root: '/repo', commonDir: '/repo/.git', name: 'repo' };

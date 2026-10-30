@@ -3624,6 +3624,154 @@ export const catalog = {
     "en": "Apply attributes preview",
     "zh-CN": "应用属性预览"
   },
+  "localCache.title": {
+    "en": "Local cache",
+    "zh-CN": "本地缓存"
+  },
+  "localCache.immediate": {
+    "en": "Clearing takes effect immediately. Apply is not required, and Cancel will not restore cleared cache.",
+    "zh-CN": "清理立即生效，无需点击「应用」；关闭设置或点击「取消」也不会恢复已清理的缓存。"
+  },
+  "localCache.immediateShort": {
+    "en": "Clearing takes effect immediately",
+    "zh-CN": "清理立即生效"
+  },
+  "localCache.footerHint": {
+    "en": "Cache clearing is immediate and cannot be undone with Cancel.",
+    "zh-CN": "缓存清理立即生效，「取消」无法撤回。"
+  },
+  "localCache.scope": {
+    "en": "Lists folder expansion cache saved by this extension for the current VS Code user profile, including removed repositories. Legacy workspace records migrate when their workspace is opened; cleared records are not imported again. Other local data is not included.",
+    "zh-CN": "列出当前 VS Code 用户配置下本扩展保存的目录展开缓存，包括已移除的仓库。旧工作区记录在打开对应工作区后迁移，已清理的记录不会重新导入；此处不包含其他本地数据。"
+  },
+  "localCache.effect": {
+    "en": "Clearing forgets folder expansion and collapse choices. The next tree starts with its default expansion. Repository files and Git history are preserved.",
+    "zh-CN": "清理会忘记目录展开与收缩状态，下次打开文件树时使用默认展开方式；不会删除仓库文件或 Git 历史。"
+  },
+  "localCache.refresh": {
+    "en": "Refresh cache list",
+    "zh-CN": "刷新缓存列表"
+  },
+  "localCache.selectRemoved": {
+    "en": "Select removed repositories",
+    "zh-CN": "选择已移除仓库"
+  },
+  "localCache.clearSelected": {
+    "en": "Clear selected ({{count}})",
+    "zh-CN": "清理所选（{{count}}）"
+  },
+  "localCache.clearAll": {
+    "en": "Clear all cache",
+    "zh-CN": "清理全部缓存"
+  },
+  "localCache.loading": {
+    "en": "Loading saved cache…",
+    "zh-CN": "正在读取已保存缓存…"
+  },
+  "localCache.cleared": {
+    "en": "Cache cleared. Cleared repositories use the default expansion the next time their tree opens.",
+    "zh-CN": "缓存已清理。下次打开已清理仓库的文件树时，将使用默认展开方式。"
+  },
+  "localCache.confirmAll": {
+    "en": "Clear all saved repository cache ({{count}})?",
+    "zh-CN": "确认清理全部仓库缓存（{{count}} 个）？"
+  },
+  "localCache.confirmSelected": {
+    "en": "Clear cache for these {{count}} repositories?",
+    "zh-CN": "确认清理以下 {{count}} 个仓库的缓存？"
+  },
+  "localCache.irreversible": {
+    "en": "Folder expansion state for the repositories below will be cleared immediately. This cannot be undone. Repository files and Git history will be preserved.",
+    "zh-CN": "以下仓库的目录展开状态将立即清理，无法撤回。仓库文件和 Git 历史会保留。"
+  },
+  "localCache.clearing": {
+    "en": "Clearing…",
+    "zh-CN": "正在清理…"
+  },
+  "localCache.confirmClear": {
+    "en": "Confirm clearing",
+    "zh-CN": "确认清理"
+  },
+  "localCache.empty": {
+    "en": "No saved repository cache.",
+    "zh-CN": "没有已保存的仓库缓存。"
+  },
+  "localCache.selectAll": {
+    "en": "Select all cached repositories",
+    "zh-CN": "选择全部有缓存的仓库"
+  },
+  "localCache.repository": {
+    "en": "Repository / path",
+    "zh-CN": "仓库 / 路径"
+  },
+  "localCache.status": {
+    "en": "Status",
+    "zh-CN": "状态"
+  },
+  "localCache.data": {
+    "en": "Cached data",
+    "zh-CN": "缓存数据"
+  },
+  "localCache.actions": {
+    "en": "Actions",
+    "zh-CN": "操作"
+  },
+  "localCache.unknownRepository": {
+    "en": "Unknown repository",
+    "zh-CN": "未知仓库"
+  },
+  "localCache.unknownPath": {
+    "en": "Path unavailable",
+    "zh-CN": "路径未知"
+  },
+  "localCache.registered": {
+    "en": "Added",
+    "zh-CN": "已添加"
+  },
+  "localCache.removed": {
+    "en": "Removed",
+    "zh-CN": "已移除"
+  },
+  "localCache.selectRepository": {
+    "en": "Select cache for {{name}}",
+    "zh-CN": "选择 {{name}} 的缓存"
+  },
+  "localCache.directoryExpansion": {
+    "en": "Folder expansion state",
+    "zh-CN": "目录展开状态"
+  },
+  "localCache.directoryCount": {
+    "en": "{{count}} individual folder choices",
+    "zh-CN": "{{count}} 个单独目录状态"
+  },
+  "localCache.invalid": {
+    "en": "Record cannot be fully read; clear it to start fresh.",
+    "zh-CN": "记录无法完整读取，可清理后重新记住。"
+  },
+  "localCache.clearRepository": {
+    "en": "Clear cache for {{name}}",
+    "zh-CN": "清理 {{name}} 的缓存"
+  },
+  "localCache.expanded": {
+    "en": "Expand all",
+    "zh-CN": "整体展开"
+  },
+  "localCache.collapsed": {
+    "en": "Collapse all",
+    "zh-CN": "整体收起"
+  },
+  "localCache.automatic": {
+    "en": "Automatic expansion",
+    "zh-CN": "自动展开"
+  },
+  "localCache.registrationUnknown": {
+    "en": "Status not yet confirmed",
+    "zh-CN": "状态尚未确认"
+  },
+  "localCache.refreshFailed": {
+    "en": "Could not refresh the remaining cache: {{error}}",
+    "zh-CN": "未能刷新剩余缓存：{{error}}"
+  },
   "manager.theRepositoryOrGroupNoLongerExists": {
     "en": "The repository or group no longer exists.",
     "zh-CN": "仓库或分组已不存在。"
@@ -7166,69 +7314,25 @@ export const catalog = {
     "en": "Files · {{base}} → {{target}}",
     "zh-CN": "文件树 · {{base}} → {{target}}"
   },
-  "treeMemory.manage": {
-    "en": "Manage folder expansion memory",
-    "zh-CN": "管理目录展开记忆"
+  "treeMemory.info": {
+    "en": "Automatically remembers folder expansion and collapse choices for this repository and restores them next time. Clear them in Settings → Local cache.",
+    "zh-CN": "自动记住此仓库的目录展开与收缩状态，下次打开时恢复。可在「设置 → 本地缓存」中清理。"
   },
-  "treeMemory.clear": {
-    "en": "Clear this repository’s expansion memory",
-    "zh-CN": "清除本仓库全部展开记忆"
+  "treeMemory.introduction": {
+    "en": "Folder expansion and collapse choices are remembered automatically for your next visit.",
+    "zh-CN": "将自动记住目录的展开与收缩状态，方便下次打开时恢复。"
   },
-  "treeMemory.close": {
-    "en": "Close expansion memory",
-    "zh-CN": "关闭展开记忆管理"
-  },
-  "treeMemory.scope": {
-    "en": "Shared across Commit and comparison trees for this repository in the current VS Code workspace. Search and Expand to changes are temporary.",
-    "zh-CN": "在当前 VS Code 工作区内，供本仓库的提交和比较文件树共享。搜索与展开到变更位置仅临时生效。"
-  },
-  "treeMemory.mode": {
-    "en": "Default expansion",
-    "zh-CN": "整体展开方式"
-  },
-  "treeMemory.auto": {
-    "en": "Automatic (small trees expanded; large trees at top level)",
-    "zh-CN": "自动（小树全展，大树仅顶层）"
-  },
-  "treeMemory.expanded": {
-    "en": "Expanded",
-    "zh-CN": "展开"
-  },
-  "treeMemory.collapsed": {
-    "en": "Collapsed",
-    "zh-CN": "收起"
-  },
-  "treeMemory.search": {
-    "en": "Search remembered paths",
-    "zh-CN": "搜索记忆路径"
-  },
-  "treeMemory.loading": {
-    "en": "Loading expansion memory…",
-    "zh-CN": "正在读取展开记忆…"
-  },
-  "treeMemory.absent": {
-    "en": "Absent from this snapshot",
-    "zh-CN": "当前快照不存在"
-  },
-  "treeMemory.remove": {
-    "en": "Forget expansion for {{path}}",
-    "zh-CN": "删除 {{path}} 的展开记忆"
-  },
-  "treeMemory.noMatches": {
-    "en": "No remembered paths match.",
-    "zh-CN": "没有匹配的记忆路径。"
-  },
-  "treeMemory.empty": {
-    "en": "No individual folder overrides.",
-    "zh-CN": "没有单独记忆的目录。"
+  "treeMemory.dismissIntroduction": {
+    "en": "Dismiss folder expansion tip",
+    "zh-CN": "关闭目录展开提示"
   },
   "treeMemory.unavailable": {
-    "en": "Expansion memory is unavailable; temporary browsing remains available.",
-    "zh-CN": "展开记忆不可用，仍可临时浏览。"
+    "en": "Folder expansion cache is unavailable; temporary browsing remains available.",
+    "zh-CN": "目录展开缓存不可用，仍可临时浏览。"
   },
-  "treeMemory.unchecked": {
-    "en": "Not yet checked against this snapshot",
-    "zh-CN": "尚未核对当前快照"
+  "treeMemory.hintUnavailable": {
+    "en": "Unable to save or read this tip’s dismissal. Retry to remember your choice.",
+    "zh-CN": "无法读取或保存提示的关闭状态，请重试以记住此选择。"
   },
   "treeViews.presentation": {
     "en": "File tree presentation",
@@ -8667,6 +8771,43 @@ export interface MessageParameters {
   "lfs.before": {  };
   "lfs.after": {  };
   "lfs.apply": {  };
+  "localCache.title": {  };
+  "localCache.immediate": {  };
+  "localCache.immediateShort": {  };
+  "localCache.footerHint": {  };
+  "localCache.scope": {  };
+  "localCache.effect": {  };
+  "localCache.refresh": {  };
+  "localCache.selectRemoved": {  };
+  "localCache.clearSelected": { count: number };
+  "localCache.clearAll": {  };
+  "localCache.loading": {  };
+  "localCache.cleared": {  };
+  "localCache.confirmAll": { count: number };
+  "localCache.confirmSelected": { count: number };
+  "localCache.irreversible": {  };
+  "localCache.clearing": {  };
+  "localCache.confirmClear": {  };
+  "localCache.empty": {  };
+  "localCache.selectAll": {  };
+  "localCache.repository": {  };
+  "localCache.status": {  };
+  "localCache.data": {  };
+  "localCache.actions": {  };
+  "localCache.unknownRepository": {  };
+  "localCache.unknownPath": {  };
+  "localCache.registered": {  };
+  "localCache.removed": {  };
+  "localCache.selectRepository": { name: ParameterValue };
+  "localCache.directoryExpansion": {  };
+  "localCache.directoryCount": { count: number };
+  "localCache.invalid": {  };
+  "localCache.clearRepository": { name: ParameterValue };
+  "localCache.expanded": {  };
+  "localCache.collapsed": {  };
+  "localCache.automatic": {  };
+  "localCache.registrationUnknown": {  };
+  "localCache.refreshFailed": { error: ParameterValue };
   "manager.theRepositoryOrGroupNoLongerExists": {  };
   "manager.reorderItemsWithinTheSameLevel": {  };
   "manager.selectARegisteredRepositoryFirst": {  };
@@ -9548,22 +9689,11 @@ export interface MessageParameters {
   "treeCompare.reverse": {  };
   "treeCompare.showChanges": {  };
   "treeCompareHost.panelTitle": { base: ParameterValue; target: ParameterValue };
-  "treeMemory.manage": {  };
-  "treeMemory.clear": {  };
-  "treeMemory.close": {  };
-  "treeMemory.scope": {  };
-  "treeMemory.mode": {  };
-  "treeMemory.auto": {  };
-  "treeMemory.expanded": {  };
-  "treeMemory.collapsed": {  };
-  "treeMemory.search": {  };
-  "treeMemory.loading": {  };
-  "treeMemory.absent": {  };
-  "treeMemory.remove": { path: ParameterValue };
-  "treeMemory.noMatches": {  };
-  "treeMemory.empty": {  };
+  "treeMemory.info": {  };
+  "treeMemory.introduction": {  };
+  "treeMemory.dismissIntroduction": {  };
   "treeMemory.unavailable": {  };
-  "treeMemory.unchecked": {  };
+  "treeMemory.hintUnavailable": {  };
   "treeViews.presentation": {  };
   "treeViews.list": {  };
   "treeViews.horizontal": {  };

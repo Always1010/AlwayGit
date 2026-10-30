@@ -5,6 +5,11 @@
 .commit-tree-direction>.hash {overflow-wrap:anywhere;}
 .commit-tree-header>.muted {font-size:11px;overflow-wrap:anywhere;}
 .commit-tree-toolbar {flex-wrap:wrap;}
+.commit-tree-memory-info {display:inline-flex;align-items:center;justify-content:center;width:28px;height:24px;flex:none;border-radius:3px;color:var(--muted);}
+.commit-tree-memory-info:focus-visible {outline:1px solid var(--accent);outline-offset:1px;}
+.commit-tree-memory-introduction {display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--border);font-size:12px;}
+.commit-tree-memory-introduction>span {flex:1;}
+.commit-tree-memory-error {overflow-wrap:anywhere;}
 .commit-tree-toolbar .file-path-filter {max-width:480px;min-width:150px;flex:1;}
 .commit-tree-body {display:flex;flex:1;min-height:0;min-width:0;}
 .commit-tree-rows {padding:5px 8px;}

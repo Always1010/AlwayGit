@@ -1,0 +1,224 @@
+{
+  "localCache.title": {
+    "en": "Local cache",
+    "zh-CN": "本地缓存",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.immediate": {
+    "en": "Clearing takes effect immediately. Apply is not required, and Cancel will not restore cleared cache.",
+    "zh-CN": "清理立即生效，无需点击「应用」；关闭设置或点击「取消」也不会恢复已清理的缓存。",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.immediateShort": {
+    "en": "Clearing takes effect immediately",
+    "zh-CN": "清理立即生效",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.footerHint": {
+    "en": "Cache clearing is immediate and cannot be undone with Cancel.",
+    "zh-CN": "缓存清理立即生效，「取消」无法撤回。",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.scope": {
+    "en": "Lists folder expansion cache saved by this extension for the current VS Code user profile, including removed repositories. Legacy workspace records migrate when their workspace is opened; cleared records are not imported again. Other local data is not included.",
+    "zh-CN": "列出当前 VS Code 用户配置下本扩展保存的目录展开缓存，包括已移除的仓库。旧工作区记录在打开对应工作区后迁移，已清理的记录不会重新导入；此处不包含其他本地数据。",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.effect": {
+    "en": "Clearing forgets folder expansion and collapse choices. The next tree starts with its default expansion. Repository files and Git history are preserved.",
+    "zh-CN": "清理会忘记目录展开与收缩状态，下次打开文件树时使用默认展开方式；不会删除仓库文件或 Git 历史。",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.refresh": {
+    "en": "Refresh cache list",
+    "zh-CN": "刷新缓存列表",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.selectRemoved": {
+    "en": "Select removed repositories",
+    "zh-CN": "选择已移除仓库",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.clearSelected": {
+    "en": "Clear selected ({{count}})",
+    "zh-CN": "清理所选（{{count}}）",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.clearAll": {
+    "en": "Clear all cache",
+    "zh-CN": "清理全部缓存",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.loading": {
+    "en": "Loading saved cache…",
+    "zh-CN": "正在读取已保存缓存…",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.cleared": {
+    "en": "Cache cleared. Cleared repositories use the default expansion the next time their tree opens.",
+    "zh-CN": "缓存已清理。下次打开已清理仓库的文件树时，将使用默认展开方式。",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.confirmAll": {
+    "en": "Clear all saved repository cache ({{count}})?",
+    "zh-CN": "确认清理全部仓库缓存（{{count}} 个）？",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.confirmSelected": {
+    "en": "Clear cache for these {{count}} repositories?",
+    "zh-CN": "确认清理以下 {{count}} 个仓库的缓存？",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.irreversible": {
+    "en": "Folder expansion state for the repositories below will be cleared immediately. This cannot be undone. Repository files and Git history will be preserved.",
+    "zh-CN": "以下仓库的目录展开状态将立即清理，无法撤回。仓库文件和 Git 历史会保留。",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.clearing": {
+    "en": "Clearing…",
+    "zh-CN": "正在清理…",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.confirmClear": {
+    "en": "Confirm clearing",
+    "zh-CN": "确认清理",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.empty": {
+    "en": "No saved repository cache.",
+    "zh-CN": "没有已保存的仓库缓存。",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.selectAll": {
+    "en": "Select all cached repositories",
+    "zh-CN": "选择全部有缓存的仓库",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.repository": {
+    "en": "Repository / path",
+    "zh-CN": "仓库 / 路径",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.status": {
+    "en": "Status",
+    "zh-CN": "状态",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.data": {
+    "en": "Cached data",
+    "zh-CN": "缓存数据",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.actions": {
+    "en": "Actions",
+    "zh-CN": "操作",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.unknownRepository": {
+    "en": "Unknown repository",
+    "zh-CN": "未知仓库",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.unknownPath": {
+    "en": "Path unavailable",
+    "zh-CN": "路径未知",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.registered": {
+    "en": "Added",
+    "zh-CN": "已添加",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.removed": {
+    "en": "Removed",
+    "zh-CN": "已移除",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.selectRepository": {
+    "en": "Select cache for {{name}}",
+    "zh-CN": "选择 {{name}} 的缓存",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.directoryExpansion": {
+    "en": "Folder expansion state",
+    "zh-CN": "目录展开状态",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.directoryCount": {
+    "en": "{{count}} individual folder choices",
+    "zh-CN": "{{count}} 个单独目录状态",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.invalid": {
+    "en": "Record cannot be fully read; clear it to start fresh.",
+    "zh-CN": "记录无法完整读取，可清理后重新记住。",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.clearRepository": {
+    "en": "Clear cache for {{name}}",
+    "zh-CN": "清理 {{name}} 的缓存",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
+  },
+  "localCache.expanded": {
+    "en": "Expand all",
+    "zh-CN": "整体展开",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx"
+  },
+  "localCache.collapsed": {
+    "en": "Collapse all",
+    "zh-CN": "整体收起",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx"
+  },
+  "localCache.automatic": {
+    "en": "Automatic expansion",
+    "zh-CN": "自动展开",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx"
+  },
+  "localCache.registrationUnknown": {
+    "en": "Status not yet confirmed",
+    "zh-CN": "状态尚未确认",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx"
+  },
+  "localCache.refreshFailed": {
+    "en": "Could not refresh the remaining cache: {{error}}",
+    "zh-CN": "未能刷新剩余缓存：{{error}}",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx"
+  }
+}
