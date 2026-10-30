@@ -8,6 +8,14 @@ AlwayGit is a graphical Git workbench for VS Code editor tabs, the Primary Sideb
 
 Workbench overview rendered with real UI components and an example repository. See the [user manual's screenshot notes](docs/USER_MANUAL.en.md#screenshot-notes) for capture details. Click the image to view it at full size.
 
+Commit snapshots also offer visual file trees: the horizontal view shows where changes sit in the directory hierarchy, and the radial view shows the same revision's overall structure. Both figures use the manual's `AlwayGit-Demo` sample data.
+
+![AlwayGit-Demo commit snapshot in a horizontal tree, showing directories and the distribution of added and modified files](docs/images/user-manual/figure-51.png)
+
+![The same AlwayGit-Demo commit snapshot in a radial tree, showing its full directory and file structure](docs/images/user-manual/figure-52.png)
+
+See [Full Tree in the user manual](docs/USER_MANUAL.en.md#commit-tree) for the entry points.
+
 ## Installation and launch
 
 Use VS Code 1.106 or later. Basic functionality requires Git 2.40+; Git 2.46+ is recommended for all advanced operations. See the [manual requirements](docs/USER_MANUAL.en.md#section-01-01) for operation-specific minimums. Building from source uses Node.js 24 and npm.

@@ -8,6 +8,14 @@ AlwayGit 是可在 VS Code 编辑器标签页、主侧边栏、第二侧边栏�
 
 工作台全景采用真实界面组件与示例仓库渲染。采集来源见[用户手册的截图说明](docs/USER_MANUAL.zh-CN.md#screenshot-notes)，点击图片可查看原图。
 
+提交快照还支持可视化文件树：横向树便于查看变更在目录中的分布，径向树展示同一版本的整体结构。以下两图使用手册中的 `AlwayGit-Demo` 示例数据。
+
+![AlwayGit-Demo 提交快照的横向树：目录层级与新增、修改文件的分布](docs/images/user-manual/figure-51.png)
+
+![AlwayGit-Demo 同一提交快照的径向树：完整目录与文件结构](docs/images/user-manual/figure-52.png)
+
+查看入口见[用户手册：完整文件树](docs/USER_MANUAL.zh-CN.md#commit-tree)。
+
 ## 安装与启动
 
 运行环境为 VS Code 1.106 或更新版本；基础功能要求 Git 2.40+，完整高级操作推荐 Git 2.46+，具体版本要求见[用户手册](docs/USER_MANUAL.zh-CN.md#section-01-01)。源码构建使用 Node.js 24 和 npm。

@@ -2,12 +2,19 @@ import { chromium } from 'playwright';
 import { build } from 'esbuild';
 import { createServer } from 'node:http';
 import { readFile, mkdir, copyFile, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 
-// Capture real built components with isolated sample RPC state. No Git, shell or VS Code commands run.
+// Capture real built components with isolated sample RPC state. The UI executes no Git,
+// shell or VS Code actions; Git is read only to identify the source revision below.
 // Stage every selected scene before copying reviewed images; --write replaces only a complete set.
 const root = path.resolve(import.meta.dirname, '..');
+const capturedAt = '2026-10-30';
+const sourceRevision = execFileSync('git', ['rev-parse', '--short', 'HEAD'], {
+  cwd: root,
+  encoding: 'utf8',
+}).trim();
 const write = process.argv.includes('--write');
 const only = process.argv.find((arg) => arg.startsWith('--only='))?.slice(7);
 const from = process.argv.find((arg) => arg.startsWith('--from='))?.slice(7);
@@ -78,7 +85,112 @@ const fixture = await build({
     { name: 'package.json', path: 'package.json', type: 'blob', mode: '100644', oid: 'e'.repeat(40), size: 4850 },
     { name: 'README.md', path: 'README.md', type: 'blob', mode: '100644', oid: 'f'.repeat(40), size: 3210 },
   ];
+  // A shared snapshot for the two introductory tree figures. Identity and commit
+  // metadata come from AlwayGit-Demo; paths and changes are capture-only samples.
+  const snapshotFiles = [
+    '.github/workflows/ci.yml',
+    '.github/workflows/release.yml',
+    'docs/getting-started.md',
+    'docs/team-workflow.md',
+    'docs/images/workbench.png',
+    'media/alwaygit.svg',
+    'media/icon.png',
+    'scripts/build.mjs',
+    'scripts/check.mjs',
+    'scripts/package.mjs',
+    'src/application/history.ts',
+    'src/application/session.ts',
+    'src/extension/commands.ts',
+    'src/extension/extension.ts',
+    'src/git/branches.ts',
+    'src/git/history.ts',
+    'src/git/service.ts',
+    'src/git/status.ts',
+    'src/protocol/settings.ts',
+    'src/protocol/types.ts',
+    'tests/branches.test.ts',
+    'tests/history.test.ts',
+    'tests/status.test.ts',
+    'webview/components/FileList.tsx',
+    'webview/components/Toolbar.tsx',
+    'webview/graph/layout.ts',
+    'webview/graph/paths.ts',
+    'webview/App.tsx',
+    'webview/Details.tsx',
+    'webview/History.tsx',
+    'webview/styles.css',
+    '.gitignore',
+    'package.json',
+    'README.md',
+  ];
+  const snapshotEntries = new Map();
+  for (const file of snapshotFiles) {
+    const parts = file.split('/');
+    parts.forEach((name, index) => {
+      const path = parts.slice(0, index + 1).join('/');
+      const directory = index < parts.length - 1;
+      if (!snapshotEntries.has(path)) {
+        snapshotEntries.set(path, {
+          name,
+          path,
+          type: directory ? 'tree' : 'blob',
+          mode: directory ? '040000' : '100644',
+          oid: (snapshotEntries.size + 1).toString(16).padStart(40, '0'),
+          ...(!directory ? { size: 1024 + index * 128 } : {}),
+        });
+      }
+    });
+  }
+  const snapshotChanges = [
+    ['docs/team-workflow.md', 'M'],
+    ['scripts/check.mjs', 'M'],
+    ['src/application/history.ts', 'M'],
+    ['src/git/service.ts', 'A'],
+    ['tests/history.test.ts', 'M'],
+    ['webview/App.tsx', 'M'],
+    ['webview/History.tsx', 'M'],
+    ['webview/styles.css', 'M'],
+  ].map(([path, status]) => ({
+    path,
+    status,
+    beforeMode: status === 'A' ? '000000' : '100644',
+    afterMode: '100644',
+    beforeOid: (status === 'A' ? '0' : 'a').repeat(40),
+    afterOid: snapshotEntries.get(path).oid,
+  }));
+  let treeExpansion = { mode: 'expanded', overrides: {} };
   async function captureRequest(method, payload, repoId) {
+    if (options.tree) {
+      if (method === 'revisionTree' || method === 'revisionTreeIndex') {
+        return {
+          revision: payload.revision,
+          path: payload.path ?? '',
+          entries: [...snapshotEntries.values()].filter(entry =>
+            method === 'revisionTreeIndex' ||
+            entry.path.slice(0, Math.max(0, entry.path.lastIndexOf('/'))) === (payload.path ?? '')
+          ),
+        };
+      }
+      if (method === 'revisionTreeCommit') {
+        const details = await request('details', { oid: payload.revision }, repoId);
+        const snapshot = await request('snapshot', undefined, repoId);
+        return { commit: details.commit, body: details.body, repository: snapshot.repository };
+      }
+      if (method === 'revisionTreeChanges') {
+        return {
+          revision: payload.revision,
+          parent: payload.parent,
+          files: snapshotChanges,
+        };
+      }
+      if (method === 'treeExpansionRead') return treeExpansion;
+      if (method === 'treeExpansionPatch') {
+        if (payload.kind === 'mode') treeExpansion = { mode: payload.mode, overrides: {} };
+        else treeExpansion.overrides[payload.path] = payload.expanded;
+        return treeExpansion;
+      }
+      if (method === 'treeExpansionHintRead') return true;
+    }
     if (method === 'revisionTree') return { revision: payload.revision, path: payload.path ?? '', entries: !payload.path ? sampleTree : payload.path === 'webview' ? ['App.tsx', 'History.tsx', 'styles.css'].map((name, index) => ({ name, path: 'webview/' + name, type: 'blob', mode: '100644', oid: String(index + 1).repeat(40), size: [23580, 17840, 48210][index] })) : [] };
     if (method === 'lfsStatus' || method === 'lfsTrackPreview') {
       const snapshot = await request('snapshot', undefined, repoId);
@@ -100,6 +212,10 @@ const fixture = await build({
   let session = { version: 2, repoId: 'demo-alwaygit', language: 'en',
     layout: { preset: 'workbench', sidebar: 248, details: 350, diff: 260, graph: 75, author: 105, date: 120, font: 13, row: 24 },
     drafts: {}, views: { 'demo-alwaygit': { search: '', tab: 'changes', expandedRefGroups: ['local:feature'] } } };
+  if (options.tree) {
+    session = { commitTree: { repoId: 'demo-alwaygit', revision: '009a73edc42d9918a6bc5e4791033ad7e6f202cc' } };
+    window.__ALWAYGIT_COMMIT_TREE__ = session;
+  }
   window.__ALWAYGIT_HOST__ = options.host || 'editor';
   window.__ALWAYGIT_PREFERENCES__ = preferences;
   window.acquireVsCodeApi = () => ({ getState: () => session, setState: value => { session = value; }, postMessage: async call => {
@@ -679,6 +795,33 @@ const scenes = [
       await diff.getByTestId('diff-navigation-boundary').waitFor();
     },
   ],
+  [
+    '51',
+    { tree: true },
+    async (p) => {
+      await p.getByRole('combobox', { name: 'File tree presentation' }).selectOption('horizontal');
+      await p.getByRole('checkbox', { name: 'Change markers' }).check();
+      await button(
+        p.locator('.commit-tree-secondary-controls'),
+        'Only expand changed files',
+      ).click();
+      await p.locator('.tree-graph-node[data-path="src/git/service.ts"]').waitFor();
+      await button(p, 'Fit entire tree (0)').click();
+      assert.equal(await p.locator('.tree-graph-node[data-status="A"]').count(), 1);
+      assert.equal(await p.locator('.tree-graph-node[data-status="M"]').count(), 7);
+    },
+  ],
+  [
+    '52',
+    { tree: true },
+    async (p) => {
+      await p.getByRole('combobox', { name: 'File tree presentation' }).selectOption('radial');
+      await p.locator('.tree-graph-node[data-path="webview/styles.css"]').waitFor();
+      await button(p, 'Fit entire tree (0)').click();
+      assert.equal(await p.getByRole('checkbox', { name: 'Change markers' }).isChecked(), false);
+      assert.equal(await p.locator('.tree-graph-node[data-status]').count(), 0);
+    },
+  ],
 ];
 
 let browser;
@@ -714,14 +857,22 @@ try {
     page.setDefaultTimeout(10000);
     page.on('pageerror', (error) => errors.push(error.message));
     try {
-      await page.clock.install({ time: new Date('2026-10-28T04:00:00Z') });
+      await page.clock.install({ time: new Date(`${capturedAt}T04:00:00Z`) });
       await page.addInitScript((options) => {
         window.__captureOptions = options;
       }, options);
       await page.addInitScript({ content: fixtureCode });
       await page.goto(url + (options.query ? '?' + options.query : ''));
-      await details(page).waitFor({ state: options.host ? 'attached' : 'visible' });
-      if (!options.host) await rows(page).first().waitFor();
+      if (options.tree) {
+        await page
+          .locator(
+            '.commit-tree-secondary-controls button[aria-label="Expand all directories"]:enabled',
+          )
+          .waitFor();
+      } else {
+        await details(page).waitFor({ state: options.host ? 'attached' : 'visible' });
+        if (!options.host) await rows(page).first().waitFor();
+      }
       await prepare(page);
       await page.waitForFunction(() => window.__capturePending === 0);
       await page.evaluate(
@@ -773,7 +924,7 @@ try {
   }
   await writeFile(
     path.join(output, 'capture-manifest.json'),
-    JSON.stringify({ capturedAt: '2026-10-28', scenes: selected.map(([id]) => id) }, null, 2) +
+    JSON.stringify({ capturedAt, sourceRevision, scenes: selected.map(([id]) => id) }, null, 2) +
       '\n',
   );
   if (write)
