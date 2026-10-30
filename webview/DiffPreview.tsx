@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 
 import { uiText } from './text';
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { PreviewReading } from './preview-reading';
 import type React from 'react';
 import { useDiffVirtualizer } from './diff-virtualizer';
 import { useWorkbenchFields } from './subscriptions';
@@ -169,11 +170,13 @@ function DiffPreviewPanel({
   edit,
   active = true,
   isolated,
+  reading,
 }: {
   native(): void;
   edit(): void;
   active?: boolean;
   isolated?: IsolatedDiffPreview;
+  reading?: PreviewReading;
 }) {
   const globalState = useWorkbenchFields(
     'busy',
@@ -191,7 +194,9 @@ function DiffPreviewPanel({
     'selectFile',
     'setLayout',
   );
-  const [isolatedCollapsed, setIsolatedCollapsed] = useState(false);
+  const [isolatedCollapsed, setIsolatedCollapsed] = useState(reading?.value?.collapsed ?? false);
+  const restoredReading = useRef(reading?.value),
+    pendingReading = useRef(!!reading?.value);
   const state = isolated
     ? {
         ...globalState,
@@ -236,6 +241,7 @@ function DiffPreviewPanel({
   };
   const trackHorizontal = () => {
     if (horizontal.current) setHorizontalOffset(horizontal.current.scrollLeft);
+    saveReading();
   };
   const pendingHunkScroll = useRef<
     { top: number; left: number; anchor: { index: number; fraction: number } } | undefined
@@ -257,8 +263,8 @@ function DiffPreviewPanel({
     navigationRequest = useRef<AbortController | undefined>(undefined),
     preloaded = useRef<{ key: string; preview: Preview } | undefined>(undefined),
     landing = useRef<{ key: string; index: number } | undefined>(undefined);
-  const [imageZoom, setImageZoom] = useState<ImageZoom>('fit'),
-    [maximized, setMaximized] = useState(false),
+  const [imageZoom, setImageZoom] = useState<ImageZoom>(reading?.value?.imageZoom ?? 'fit'),
+    [maximized, setMaximized] = useState(reading?.value?.maximized ?? false),
     imageSides = [useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null)] as const,
     syncingImageScroll = useRef(false);
   const collapsed = state.layout.diffCollapsed;
@@ -320,11 +326,11 @@ function DiffPreviewPanel({
         ? { top: saved.top, left: saved.left, anchor: saved.anchor }
         : undefined;
       displayedKey.current = targetKey;
-      initiallyPositioned.current = !!preserve;
+      initiallyPositioned.current = !!preserve || pendingReading.current;
       setPreview(undefined);
       setSelection(undefined);
       setHorizontalOffset(preserve ? saved.left : 0);
-      setImageZoom('fit');
+      setImageZoom(pendingReading.current ? (restoredReading.current?.imageZoom ?? 'fit') : 'fit');
       lastScrollTop.current = preserve ? saved.top : 0;
       navigationScroll.current = undefined;
       viewport.current?.scrollTo({ top: lastScrollTop.current });
@@ -366,7 +372,7 @@ function DiffPreviewPanel({
     };
   }, [targetKey, revision, previewGeneration]);
   useEffect(() => {
-    if (preview?.kind !== 'image') setMaximized(false);
+    if (preview && preview.kind !== 'image') setMaximized(false);
   }, [preview?.kind]);
   const index = preview?.kind === 'text' ? preview.index : undefined;
   const rows = useMemo(
@@ -398,6 +404,37 @@ function DiffPreviewPanel({
   });
   const totalHeight = virtual.getTotalSize();
   useLayoutEffect(() => {
+    const element = viewport.current,
+      saved = restoredReading.current;
+    if (
+      !pendingReading.current ||
+      !saved ||
+      !preview ||
+      loading ||
+      collapsed ||
+      !viewportWidth ||
+      !element
+    )
+      return;
+    element.scrollTop = saved.top ?? 0;
+    lastScrollTop.current = element.scrollTop;
+    setHorizontalOffset(saved.left ?? 0);
+    for (const side of imageSides)
+      side.current?.scrollTo({ top: saved.top ?? 0, left: saved.left ?? 0 });
+    pendingReading.current = false;
+  }, [preview, loading, totalHeight, viewportWidth, collapsed]);
+  function saveReading() {
+    if (!preview || loading || pendingReading.current) return;
+    reading?.onChange({
+      top: viewport.current?.scrollTop ?? lastScrollTop.current,
+      left: horizontalOffset.current,
+      imageZoom,
+      maximized,
+      collapsed,
+    });
+  }
+  useEffect(saveReading, [imageZoom, maximized, collapsed, loading]);
+  useLayoutEffect(() => {
     const saved = pendingHunkScroll.current,
       element = viewport.current;
     if (!saved || !preview || !element || !rowCount || loading) return;
@@ -407,6 +444,7 @@ function DiffPreviewPanel({
     virtual.scrollToAnchor(saved.anchor);
     setHorizontalOffset(saved.left);
     lastScrollTop.current = element.scrollTop;
+    saveReading();
   }, [preview, loading, rowCount, totalHeight]);
   const changes = useMemo(() => index?.changes ?? changedRanges(rows), [index, rows]);
   const virtualItems = virtual.getVirtualItems();
@@ -622,6 +660,7 @@ function DiffPreviewPanel({
     if (!element) return;
     if (element.scrollTop === lastScrollTop.current) return;
     lastScrollTop.current = element.scrollTop;
+    saveReading();
     if (
       navigationScroll.current !== undefined &&
       Math.abs(element.scrollTop - navigationScroll.current) < 2
@@ -847,6 +886,14 @@ function DiffPreviewPanel({
     syncingImageScroll.current = true;
     target.scrollLeft = event.currentTarget.scrollLeft;
     target.scrollTop = event.currentTarget.scrollTop;
+    if (!pendingReading.current)
+      reading?.onChange({
+        top: target.scrollTop,
+        left: target.scrollLeft,
+        imageZoom,
+        maximized,
+        collapsed,
+      });
     requestAnimationFrame(() => {
       syncingImageScroll.current = false;
     });

@@ -6,8 +6,17 @@ import { Button, Icon } from './ui';
 import { useWorkbenchFields } from './subscriptions';
 import { diffRowHeight } from './appearance';
 import { useDiffVirtualizer } from './diff-virtualizer';
+import type { PreviewReading } from './preview-reading';
 
-export function SnapshotTextPreview({ text, contentKey }: { text: string; contentKey: string }) {
+export function SnapshotTextPreview({
+  text,
+  contentKey,
+  reading,
+}: {
+  text: string;
+  contentKey: string;
+  reading?: PreviewReading;
+}) {
   const { appearance } = useWorkbenchFields('appearance'),
     viewport = useRef<HTMLDivElement>(null),
     frame = useRef<HTMLDivElement>(null),
@@ -26,6 +35,15 @@ export function SnapshotTextPreview({ text, contentKey }: { text: string; conten
     ]),
     wrap,
   });
+  const restored = useRef(false),
+    initialReading = useRef(reading?.value);
+  const saveReading = () => {
+    if (restored.current)
+      reading?.onChange({
+        top: viewport.current?.scrollTop ?? 0,
+        left: horizontal.current?.scrollLeft ?? 0,
+      });
+  };
   const extent = useRef({ key: '', text, maximum: 0 }),
     extentKey = JSON.stringify([
       contentKey,
@@ -67,6 +85,15 @@ export function SnapshotTextPreview({ text, contentKey }: { text: string; conten
   });
   const t = useTranslation();
   useLayoutEffect(() => {
+    if (restored.current || !width || !viewport.current) return;
+    viewport.current.scrollTop = initialReading.current?.top ?? 0;
+    if (horizontal.current) {
+      horizontal.current.scrollLeft = initialReading.current?.left ?? 0;
+      frame.current?.style.setProperty('--diff-scroll-x', `${-horizontal.current.scrollLeft}px`);
+    }
+    restored.current = true;
+  }, [width]);
+  useLayoutEffect(() => {
     const element = viewport.current;
     if (!element) return;
     const wheel = (event: WheelEvent) => {
@@ -98,7 +125,7 @@ export function SnapshotTextPreview({ text, contentKey }: { text: string; conten
         } as CSSProperties
       }
     >
-      <div className="snapshot-content" ref={viewport}>
+      <div className="snapshot-content" ref={viewport} onScroll={saveReading}>
         <div style={{ height: virtual.getScrollSize(), position: 'relative' }}>
           {virtual.getVirtualItems().map((item) => (
             <div
@@ -126,12 +153,13 @@ export function SnapshotTextPreview({ text, contentKey }: { text: string; conten
         role="region"
         aria-label={t('diff.scrollHorizontally')}
         tabIndex={-1}
-        onScroll={(event) =>
+        onScroll={(event) => {
           frame.current?.style.setProperty(
             '--diff-scroll-x',
             `${-event.currentTarget.scrollLeft}px`,
-          )
-        }
+          );
+          saveReading();
+        }}
       >
         <div />
       </div>
@@ -145,11 +173,13 @@ export function SnapshotPreview({
   revision,
   path,
   onClose,
+  reading,
 }: {
   repoId: string;
   revision: string;
   path: string;
   onClose(): void;
+  reading?: PreviewReading;
 }) {
   const t = useTranslation(),
     [preview, setPreview] = useState<DiffPreview>(),
@@ -228,13 +258,32 @@ export function SnapshotPreview({
             key={`${repoId}:${revision}:${path}`}
             contentKey={`${repoId}:${revision}:${path}`}
             text={preview.right}
+            reading={reading}
           />
         ) : (
           <div className="revision-tree-loading">{t('tree.emptyFile')}</div>
         )
       ) : preview.kind === 'image' && preview.right ? (
-        <div className="snapshot-image">
-          <img src={`data:${preview.right.mimeType};base64,${preview.right.data}`} alt={path} />
+        <div
+          className="snapshot-image"
+          onScroll={(event) =>
+            reading?.onChange({
+              top: event.currentTarget.scrollTop,
+              left: event.currentTarget.scrollLeft,
+            })
+          }
+        >
+          <img
+            src={`data:${preview.right.mimeType};base64,${preview.right.data}`}
+            alt={path}
+            onLoad={(event) => {
+              const pane = event.currentTarget.parentElement;
+              if (pane && reading?.value) {
+                pane.scrollTop = reading.value.top ?? 0;
+                pane.scrollLeft = reading.value.left ?? 0;
+              }
+            }}
+          />
         </div>
       ) : (
         <div className="revision-tree-loading">{unavailable}</div>

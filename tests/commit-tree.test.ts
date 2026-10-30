@@ -127,9 +127,29 @@ describe('independent Commit snapshots', () => {
     });
     expect(snapshotRows(snapshotNodes(entries), new Set(), '', { changesOnly: true })).toEqual([]);
   });
-  it('retains only a fixed repository and full Commit ID when restoring a tree tab', () => {
+  it('restores complete tree views, accepts legacy tabs and drops invalid optional fields independently', () => {
     const state = { commitTree: { repoId: 'repository', revision: 'a'.repeat(40) } };
     expect(commitTreePanelStateSchema.parse(state)).toEqual(state);
+    const view = {
+      viewMode: 'vertical',
+      changesOnly: true,
+      query: 'src',
+      cameras: { vertical: { centerX: 123, centerY: -45, scale: 0.0001 } },
+      expansion: { mode: 'collapsed', overrides: { src: true } },
+    };
+    expect(commitTreePanelStateSchema.parse({ ...state, view }).view).toEqual(view);
+    expect(
+      commitTreePanelStateSchema.parse({
+        ...state,
+        view: { ...view, viewMode: 'unknown', query: ['invalid'], previewSplit: { x: -1, y: 0.6 } },
+      }).view,
+    ).toMatchObject({
+      changesOnly: true,
+      viewMode: undefined,
+      query: undefined,
+      previewSplit: { x: undefined, y: 0.6 },
+      cameras: view.cameras,
+    });
     expect(
       commitTreePanelStateSchema.safeParse({
         commitTree: { ...state.commitTree, revision: 'HEAD' },

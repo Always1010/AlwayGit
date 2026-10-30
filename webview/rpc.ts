@@ -1,4 +1,8 @@
-import type { CommitTreePanelState } from '../src/protocol/tree';
+import {
+  commitTreePanelStateSchema,
+  type CommitTreePanelState,
+  type CommitTreeTarget,
+} from '../src/protocol/tree';
 import { message, MessageError } from '../src/i18n';
 import type { HostMessage, RpcRequest } from '../src/protocol/types';
 import { createDemoRequest } from './demo';
@@ -34,6 +38,20 @@ export const demoMode = !vscode && new URLSearchParams(location.search).get('dem
 export const connected = !!vscode || demoMode;
 export function saveCommitTreeState(state: CommitTreePanelState) {
   vscode?.setState?.(state);
+}
+export function readCommitTreeState(target: CommitTreeTarget): CommitTreePanelState {
+  for (const value of [vscode?.getState?.(), window.__ALWAYGIT_COMMIT_TREE__]) {
+    const parsed = commitTreePanelStateSchema.safeParse(value);
+    if (parsed.success && sameTreeTarget(parsed.data.commitTree, target)) return parsed.data;
+  }
+  return { commitTree: target };
+}
+export function sameTreeTarget(left: CommitTreeTarget, right: CommitTreeTarget): boolean {
+  return (
+    left.repoId === right.repoId &&
+    left.revision === right.revision &&
+    left.baseRevision === right.baseRevision
+  );
 }
 export function readSession(): SessionState {
   if (vscode) {

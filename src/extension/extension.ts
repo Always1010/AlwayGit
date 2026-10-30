@@ -152,6 +152,7 @@ export async function activate(context: vscode.ExtensionContext) {
             parsed.data.commitTree.revision,
             panel,
             parsed.data.commitTree.baseRevision,
+            parsed.data,
           );
         else panel.dispose();
       },

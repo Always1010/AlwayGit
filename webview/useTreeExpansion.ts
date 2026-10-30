@@ -19,17 +19,22 @@ interface MemoryState {
   sequence: number;
   loading: boolean;
   error?: string;
+  local?: TreeExpansionPreferences;
 }
 function projected(state: MemoryState) {
   return state.pending.reduce(
     (preferences, operation) =>
       operation.patch ? patchTreeExpansion(preferences, operation.patch) : defaultTreeExpansion(),
-    state.base,
+    state.local ?? state.base,
   );
 }
 
 /** Local choices overlay late reads and broadcasts until the host confirms each ordered patch. */
-export function useTreeExpansion(repoId: string) {
+export function useTreeExpansion(
+  repoId: string,
+  initial?: TreeExpansionPreferences,
+  isolated = false,
+) {
   const [, refresh] = useState(0),
     current = useRef<MemoryState | undefined>(undefined);
   if (current.current?.repoId !== repoId)
@@ -42,6 +47,7 @@ export function useTreeExpansion(repoId: string) {
       events: 0,
       sequence: 0,
       loading: true,
+      local: initial,
     };
   const state = current.current;
   const render = useCallback((owner: MemoryState) => {
@@ -104,6 +110,7 @@ export function useTreeExpansion(repoId: string) {
       .then((preferences) => {
         if (owner.changes === changes && owner.events === events) {
           owner.base = preferences;
+          if (isolated && !owner.local) owner.local = preferences;
           if (!owner.pending.length) owner.error = undefined;
         }
       })
@@ -115,7 +122,7 @@ export function useTreeExpansion(repoId: string) {
         owner.loading = owner.pending.some((item) => !item.failed);
         render(owner);
       });
-  }, [state, render, enqueue]);
+  }, [state, render, enqueue, isolated]);
   useEffect(() => {
     reload();
     return subscribe((event) => {
@@ -123,6 +130,7 @@ export function useTreeExpansion(repoId: string) {
       state.events++;
       state.base = event.preferences;
       if (event.cleared) {
+        state.local = isolated ? event.preferences : undefined;
         state.changes++;
         state.pending = [];
         state.error = undefined;
@@ -130,11 +138,13 @@ export function useTreeExpansion(repoId: string) {
       }
       render(state);
     });
-  }, [state, reload, render]);
+  }, [state, reload, render, isolated]);
   const write = useCallback(
     (patch?: TreeExpansionPatch) => {
       const owner = state,
         operation: Operation = { id: ++owner.sequence, patch };
+      if (isolated)
+        owner.local = patch ? patchTreeExpansion(projected(owner), patch) : defaultTreeExpansion();
       // A new overall choice supersedes failed choices; a path choice only supersedes that same path.
       owner.pending = owner.pending.filter(
         (item) =>
@@ -148,7 +158,7 @@ export function useTreeExpansion(repoId: string) {
       render(owner);
       enqueue(owner, operation);
     },
-    [state, render, enqueue],
+    [state, render, enqueue, isolated],
   );
   return {
     preferences: projected(state),

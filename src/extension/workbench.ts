@@ -872,6 +872,7 @@ export class Workbench implements vscode.Disposable {
     revision: string,
     restoredPanel?: vscode.WebviewPanel,
     baseRevision?: string,
+    restoredState?: CommitTreePanelState,
   ): Promise<void> {
     if (!vscode.workspace.isTrusted)
       throw new Error(this.text('host.gitExecutionRequiresATrustedWorkspace'));
@@ -907,7 +908,14 @@ export class Workbench implements vscode.Disposable {
       );
     panel.iconPath = vscode.Uri.joinPath(this.context.extensionUri, 'media', 'alwaygit.svg');
     try {
-      await this.attach(panel, 'editor', { repoId }, false, undefined, { commitTree: target });
+      await this.attach(
+        panel,
+        'editor',
+        { repoId },
+        false,
+        undefined,
+        restoredState ? { ...restoredState, commitTree: target } : { commitTree: target },
+      );
     } catch (error) {
       panel.dispose();
       throw error;
