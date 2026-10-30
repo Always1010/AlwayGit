@@ -2,7 +2,7 @@
 
 [简体中文](USER_MANUAL.zh-CN.md) | [Project home](../README.md)
 
-This manual explains how to inspect changes, save revisions, and collaborate with AlwayGit. Instructions and support boundaries describe the current version. Product behavior is specified in the [Workbench specification](WORKBENCH_SPEC.en.md).
+This manual follows common Git tasks: inspecting changes, staging and committing, managing branches, and collaborating in AlwayGit. Display preferences and auxiliary views receive brief notes; see the [Workbench Specification](WORKBENCH_SPEC.en.md) for complete product behavior and feature boundaries.
 
 Select More actions → Help & Guide, with its question-mark icon, in the upper-right corner of the Workbench to open the offline help. It includes quick start instructions, common tasks, common questions, and the full chapters of this manual. Its language follows the workbench setting.
 
@@ -175,7 +175,7 @@ Staged is the most important place to check before committing. The default unifi
 
 Settings → Interface → File List uses the unified changed-files list by default and also offers the split list. This default applies when no display mode has been saved; existing split or unified preferences remain in effect until changed and applied here. The unified list places unstaged entries before staged entries and sorts each area by file name; conflicts come first. Each version has its own row and Diff. Stage All, Unstage All and Discard All in the top toolbar always operate on the complete repository, independently of filtering or selection. Discard All discards only unstaged changes and preserves staged content.
 
-Split-mode heading actions use the current file filter; unified-mode toolbar bulk actions always use the whole repository. Use file context menus for selected files. File spacing is separate from History row density.
+Split-mode heading actions use the current file filter; unified-mode toolbar bulk actions always use the whole repository. Use file context menus for selected files. Paths can use two lines, a single full-path line, or file names only; hover to read the full path. Display preferences do not change the action scope.
 
 ![Figure 05 File list settings with unified mode selected by default, optional split mode, and independent file spacing](images/user-manual/figure-05.png)
 
@@ -213,7 +213,7 @@ Split-mode heading actions use the current file filter; unified-mode toolbar bul
 
 **Result:** Staged contains only the changes needed for this commit. After Unstage, the changes remain in the Working Tree.
 
-**Act on a change block:** A compact 32px gutter between the Unstaged text Diff panes contains « to stage that Working Tree block into the Index. The left-side » opens a file/range-bound discard confirmation; confirming restores only that Working Tree block from the Index, preserving staged content and other blocks. Discarding a complete untracked addition deletes that file; a deleted file can be restored. Staged Diff uses » to restore that Index block from HEAD and unstage it. Line-number width follows the number of digits, without a reserved action column. Buttons anchor to actual changes; hover or keyboard focus shows only the action name; changes keep their red/green backgrounds without additional blue frames. Each contiguous change block is independent and matches navigation; nearby changes are no longer grouped by Git context. Arbitrary line selection is unavailable. Staging and unstaging preserve Working Tree bytes and other blocks. Recheck Staged after the action. Refresh expired previews; unsupported files, conversion filters, renames, and active Git operations use whole-file actions.
+**Work with individual hunks:** In an Unstaged text Diff, use “«” between the columns to stage the current change block. To discard that block, use its “»” action and check the confirmation. In a Staged Diff, “»” unstages the block while keeping Working Tree content. Actions handle contiguous change blocks rather than arbitrary line selections; discarding a complete untracked new-file block deletes the file. Recheck Staged afterward. Refresh a stale preview; use whole-file actions for unsupported files or active Git operations.
 
 **Caution:** File menus and list bulk actions still operate on whole files. Filtering does not narrow the repository scope of the unified toolbar actions. Search file names or relative paths below the Working Tree summary, ignoring case; use the clear icon to restore all files. In split mode, group actions apply to the entire group without a filter, or only matching paths with a filter. Tooltips and confirmations show the scope, independently of the current selection. Use a file’s context menu to act on selected items. Ctrl/Cmd+A selects only visible files. Filtering does not change the actual Index; Ordinary Commit selects all staged files by default; you may deselect files in the checklist.
 
@@ -319,6 +319,8 @@ Ref checkboxes control which history you see; branch names and row selections co
 
 **Result:** History displays a commit graph that matches your selected ref scope.
 
+Scroll near the bottom of the loaded history to fetch more automatically; no load button is needed. Search results and File History also load subsequent records automatically.
+
 Commits appear newest first. An ordinary Merge continues along the receiving branch’s first-parent path, while topic commits occupy a side lane that joins their common ancestor. Commits from both paths remain visible, with each shared ancestor shown once. The default branch’s first-parent path is thicker; side paths retain their color until the junction, and hovering highlights the corresponding lineage. Lanes keep a readable spacing; wide parallel histories scroll horizontally within History.
 
 **Caution:** Working Tree is a virtual node, not a historical Commit. In ordinary history it may appear independently after HEAD is filtered out; file history shows it only for uncommitted changes to the target file and is not counted as an actual history entry.
@@ -367,16 +369,17 @@ Commits appear newest first. An ordinary Merge continues along the receiving bra
 
 ### Browse the full file tree of any commit
 
-1. Switch Commit Details to **Full Tree**, or right-click a Commit and choose **Browse Repository Tree**. This view includes every file saved at that revision, including files that the Commit did not change.
-2. Expand directories to load their contents as needed, or search full repository-relative paths. Search also covers directories that have not been expanded and pages the matching results.
-3. Click a historical file to compare it with the same path in the current Working Tree; a missing Working Tree path appears as an empty side. Its menu can open File History or copy the path or object ID.
-4. **Open Historical File in VS Code** in the tree context menu opens historical text as a read-only document. The bottom **Open File in VS Code** button and E shortcut open the current Working Tree file. PNG, JPEG, and WebP use the bottom image preview. For missing LFS objects, follow [Git LFS](#git-lfs) to download the object for the fixed revision.
+1. Switch Commit Details to **Full Tree** to inspect every file saved at that revision, including files this Commit did not change.
+2. Expand directories or search repository-relative paths. Click a file to compare its historical version with the same Working Tree path; a missing Working Tree path appears as an empty side.
+3. The file menu opens File History or copies the path or object ID. **Open Historical File in VS Code** opens read-only historical text; the bottom **Open File in VS Code** button and E shortcut open the current Working Tree file.
 
-**Result:** Inspect the selected revision's complete directory structure and file contents without restoring or writing Working Tree files. The tree stays pinned to the full Commit ID captured when opened and does not move with a branch. A Merge Commit always shows its result tree, independently of the selected Parent.
+**Result:** Inspect a fixed commit's directories and content without restoring files or checking out a branch. A Merge Commit shows its result tree; check the Commit ID in the heading.
 
-**Caution:** A symbolic link shows and compares its target text without following it; a Gitlink shows only its recorded object ID and does not enter the submodule. Tree search scans at most the first 100,000 entries and says when the bound is reached. Check the Commit ID in the heading after switching commits; changes to Working Tree files refresh the comparison.
+**Caution:** Symbolic links show their target text; Gitlinks show only the submodule object ID. The details tree reports when search reaches its scan limit. See [Git LFS](#git-lfs) for missing LFS objects.
 
 ![Figure 43 Full Tree pinned to a Commit, with an expanded directory and a historical file compared with the Working Tree](images/user-manual/figure-43.png)
+
+For a separate directory view, right-click a Commit and choose **Browse Commit Tree** to open its snapshot in an independent tab. Choose a list, horizontal, radial, or vertical view and optionally show changes relative to a parent. Clicking a file shows that revision's content, or its Diff when marked as changed. This auxiliary view does not check out a branch or modify the Working Tree.
 
 <a id="section-04-04"></a>
 
@@ -392,6 +395,8 @@ Commits appear newest first. An ordinary Merge continues along the receiving bra
 **Result:** The changed-file list and bottom Diff pane show the changes between the two versions.
 
 **Caution:** Selecting three or more commits returns to the details of the last commit you interacted with, while retaining the multiple selection for batch actions. It does not compare several versions at once.
+
+Use **View file tree differences** to inspect the target revision’s full directory tree and changes in a separate tab. Check the base and target: additions, deletions, and modifications follow that direction.
 
 ![Figure 14 Exactly two selected Commits automatically compared with endpoints and files on the right](images/user-manual/figure-14.png)
 
@@ -417,9 +422,9 @@ If no common ancestor exists, review mode explains why it cannot show files; end
 1. A file icon and bold relative path identify the current file, with compact added, modified, and deleted block counts beside it. Original icon buttons remain on the right in Previous, Next, current-position order; the position is borderless readonly text. Historical Commits default to “File 2/5 · Change 1/3”, showing the file position and the block position within that file. Side labels read “Before · source” and “After · source”; historical sources use short hashes, while working-directory comparisons retain names such as HEAD and Index.
 2. Previous and Next follow the current Commit's changed-file order by default. Next enters the first block of the next file; Previous enters the last block of the previous file. At the Commit's first or last block, the first out-of-range action shows a notice and keeps the current position; run the same action again to wrap. The notice floats above the code without shrinking the viewport or changing the reading position. Merge Commits keep the selected Parent, and navigation stays in the same Commit.
 3. To browse one file, open Settings → Interface → Diff, change “Diff navigation scope” to “Current file”, and Apply. This mode shows current / total blocks and uses the same notice-then-repeat behavior at the file boundaries; with only one block, either button locates it again immediately. The preference is saved in user settings and shared across windows.
-4. Use the shared bottom horizontal scrollbar for long lines. Both code columns move together while line numbers, stripes, and gutter actions stay fixed. Drag the divider for a larger reading area. Collapse and reopen Diff to continue reading; check the comparison title after switching files.
+4. Text wraps to the reading area by default while line numbers still refer to the original file. Settings → Interface → Diff offers a fixed wrap width or no wrapping; oversized content can scroll horizontally. Check the comparison title after switching files.
 
-Pale red backgrounds and red stripes to the left of line numbers mark deletions; green marks additions. Stronger inline emphasis identifies changed text. The preview adds no per-line plus/minus prefixes; literal `+` and `-` in source remain visible. Selecting and copying source text excludes line numbers. Row separators are off by default and can be enabled in Settings → Interface → Diff.
+Red marks deletions and green marks additions; stronger inline emphasis identifies changed text. Copying source excludes line numbers and does not insert the visual line wraps.
 
 **Result:** Choose to inspect the entire Commit or the current file block by block. Adjacent changed lines form one contiguous block.
 
@@ -1112,8 +1117,8 @@ Double-click a terminal tab to rename it. The toolbar clears the display and off
 ### Set the language and display appearance
 
 1. Click the gear in the upper-right corner to open settings.
-2. Choose a page in the General, Interface, Commit Graph, or Advanced category. The settings dialog keeps the same dimensions when switching categories. Long pages scroll in the right content area while the title and footer remain fixed. In smaller windows the dialog fits the available space, and category navigation scrolls independently.
-3. Interface → Text & density controls the interface font size and commit list density. Interface → File list controls the default unified or optional split display and file spacing. Interface → Diff groups the Diff font size, line height, row separators (off by default), and navigation scope with a code preview. Expand Detailed rules for navigation exceptions. Commit Graph → Display independently controls commit row separators and alternating row backgrounds, both off by default; selection, hover, and Working Tree indicators remain visible.
+2. Choose a language, theme, text and density, file list, Diff, or Commit Graph page as needed and check the preview.
+3. Interface contains reading preferences, including path display, text wrapping, and change navigation scope. Use the interface hints for auxiliary options.
 4. Click Apply to save. To discard unapplied changes, click Cancel, close settings, or press Esc.
 
 **Result:** Language, theme, colors, font sizes, density, shortcuts and reading preferences are saved in user settings and shared with other workbench windows in the same configuration environment. Cancel rolls back only this panel’s unapplied preview. Panel dimensions, browsing state and commit drafts are restored separately.
@@ -1146,10 +1151,10 @@ Git operation settings default to User. Select Current workspace before editing 
 
 **Prerequisite:** You want to redistribute space among history, details, and Diff.
 
-1. Drag the panel dividers to resize the left, right, and bottom areas. Both sidebars shrink continuously: the left snaps closed below 40 px and the right below 64 px. Keep holding and drag back to 56 / 80 px to reopen, or drag inward from the same 6 px edge after collapsing. The visible divider is 1 px. Resizing follows the pointer immediately; snaps and button actions use an approximately 140 ms ease-out transition that a new drag can interrupt. Narrow content is clipped rather than squeezed, and narrow widths persist. Reduced-motion preferences disable the transition. Press Esc during a drag to restore the original layout. Arrow buttons at the top of both dividers still collapse and expand each sidebar independently; expanding with the button restores its width before the collapse gesture. Maximum widths follow available workbench space while keeping history usable. Widths and collapse states are saved with this workbench layout while selections, filters, and drafts are retained. Narrow windows use region navigation to access each panel.
-2. Drag the visible boundaries of the Graph, author, and date columns to adjust their widths for easier reading.
-3. Use the icons in the Diff title bar to collapse or restore the lower panel.
-4. If the layout is unsuitable, select More actions → Restore Layout.
+1. Drag dividers to resize panels, or use sidebar arrows to collapse and expand them. Narrow windows provide region navigation; press Esc during a drag to cancel the adjustment.
+2. Drag the visible boundaries of the Graph, author, and date columns to adjust their widths.
+3. Use the Diff title-bar icons to collapse or restore the lower panel.
+4. Select More actions → Restore Layout when you want to restore the layout.
 
 **Result:** The reading area suits the current task. Restore Layout restores the dimensions and expands both sidebars and Diff.
 
