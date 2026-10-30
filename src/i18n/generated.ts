@@ -5775,6 +5775,34 @@ export const catalog = {
     "en": "Session exceeds the storage limit",
     "zh-CN": "会话超过存储限制"
   },
+  "settings.textWrap": {
+    "en": "Text preview wrapping",
+    "zh-CN": "文本预览换行"
+  },
+  "settings.textWrapMode": {
+    "en": "Wrapping mode",
+    "zh-CN": "换行模式"
+  },
+  "settings.textWrapAdaptive": {
+    "en": "Fit preview width (default)",
+    "zh-CN": "自适应换行（默认）"
+  },
+  "settings.textWrapColumnMode": {
+    "en": "Wrap at column",
+    "zh-CN": "按指定列宽换行"
+  },
+  "settings.textWrapOff": {
+    "en": "No wrapping",
+    "zh-CN": "不换行"
+  },
+  "settings.textWrapColumn": {
+    "en": "Column width (default: 100)",
+    "zh-CN": "换行列宽（默认 100）"
+  },
+  "settings.textWrapHelp": {
+    "en": "Applies to Diff and File Tree text previews. Keeps original line numbers and words intact; an oversized word can still require horizontal scrolling. Fixed-column mode keeps its width even in narrow panels. Wide characters and tabs can occupy multiple columns.",
+    "zh-CN": "适用于 Diff 和 File Tree 文本预览。保留原始行号，不强行拆开单词；单个单词过长时仍可横向滚动。固定列宽在窄面板中仍保持设定宽度。中文等宽字符和 Tab 可占多列。"
+  },
   "settings.alternateRows": {
     "en": "Use alternating row backgrounds",
     "zh-CN": "使用交替行底色"
@@ -9394,6 +9422,13 @@ export interface MessageParameters {
   "session.lightAndDarkGraphPalettesMustHaveTheSame": {  };
   "session.zhCN": {  };
   "session.sessionExceedsTheStorageLimit": {  };
+  "settings.textWrap": {  };
+  "settings.textWrapMode": {  };
+  "settings.textWrapAdaptive": {  };
+  "settings.textWrapColumnMode": {  };
+  "settings.textWrapOff": {  };
+  "settings.textWrapColumn": {  };
+  "settings.textWrapHelp": {  };
   "settings.alternateRows": {  };
   "settings.showRowSeparators": {  };
   "settings.lineHeight": {  };

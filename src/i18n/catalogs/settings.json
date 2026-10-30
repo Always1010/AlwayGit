@@ -1,4 +1,46 @@
 {
+  "settings.textWrap": {
+    "en": "Text preview wrapping",
+    "zh-CN": "文本预览换行",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / Diff and file preview wrapping"
+  },
+  "settings.textWrapMode": {
+    "en": "Wrapping mode",
+    "zh-CN": "换行模式",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / wrapping selector"
+  },
+  "settings.textWrapAdaptive": {
+    "en": "Fit preview width (default)",
+    "zh-CN": "自适应换行（默认）",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / adaptive wrapping"
+  },
+  "settings.textWrapColumnMode": {
+    "en": "Wrap at column",
+    "zh-CN": "按指定列宽换行",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / fixed-column wrapping"
+  },
+  "settings.textWrapOff": {
+    "en": "No wrapping",
+    "zh-CN": "不换行",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / unwrapped text"
+  },
+  "settings.textWrapColumn": {
+    "en": "Column width (default: 100)",
+    "zh-CN": "换行列宽（默认 100）",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / visual columns from 20 to 1000"
+  },
+  "settings.textWrapHelp": {
+    "en": "Applies to Diff and File Tree text previews. Keeps original line numbers and words intact; an oversized word can still require horizontal scrolling. Fixed-column mode keeps its width even in narrow panels. Wide characters and tabs can occupy multiple columns.",
+    "zh-CN": "适用于 Diff 和 File Tree 文本预览。保留原始行号，不强行拆开单词；单个单词过长时仍可横向滚动。固定列宽在窄面板中仍保持设定宽度。中文等宽字符和 Tab 可占多列。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / wrapping behavior and overflow"
+  },
   "settings.alternateRows": {
     "en": "Use alternating row backgrounds",
     "zh-CN": "使用交替行底色",

@@ -76,7 +76,13 @@ export async function verifyTreeCanvas(browser, url) {
               leftLabel: 'Base',
               rightLabel: 'Commit',
               left: 'before\n',
-              right: 'after\n',
+              right:
+                request.payload.kind === 'snapshot'
+                  ? '  const description = "' +
+                    '中文内容 alpha beta gamma '.repeat(24) +
+                    '";\nnext line\n' +
+                    'oversizedIdentifier'.repeat(80)
+                  : 'after\n',
             };
           queueMicrotask(() =>
             window.dispatchEvent(
@@ -97,6 +103,26 @@ export async function verifyTreeCanvas(browser, url) {
       .filter({ hasText: /^README\.md$/ })
       .click();
     await page.locator('.snapshot-content').waitFor();
+    await page.waitForFunction(
+      () => document.querySelector('.snapshot-line code')?.getBoundingClientRect().height > 36,
+    );
+    assert.deepEqual(
+      await page.locator('.snapshot-line .line-number').allTextContents(),
+      ['1', '2', '3'],
+      'Snapshot previews keep original line numbers after wrapping',
+    );
+    const wrapped = await page.locator('.snapshot-line').first().boundingBox(),
+      next = await page.locator('.snapshot-line').nth(1).boundingBox();
+    assert.ok(
+      Math.abs(wrapped.y + wrapped.height - next.y) < 1,
+      'Wrapped snapshot lines reserve their full height',
+    );
+    assert.ok(
+      await page
+        .locator('.snapshot-text .diff-horizontal-scroll')
+        .evaluate((bar) => bar.scrollWidth > bar.clientWidth),
+      'Long snapshot identifiers remain horizontally reachable',
+    );
     const grip = page.getByRole('separator', { name: 'Resize file tree and preview' });
     const tree = () =>
       page.locator('.commit-tree-body > .commit-tree-rows, .commit-tree-body > .commit-tree-graph');

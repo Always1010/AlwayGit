@@ -38,6 +38,8 @@ export const sessionSchema = z
         palette: z.enum(['vivid', 'distinct', 'extended']),
         codeFont: z.number().int().min(11).max(18),
         codeRowHeight: z.number().int().min(16).max(36).optional(),
+        textWrap: z.enum(['adaptive', 'column', 'off']).optional(),
+        textWrapColumn: z.number().int().min(20).max(1000).optional(),
         diffRowSeparators: z.boolean().optional(),
         historyRowSeparators: z.boolean().optional(),
         historyAlternateRows: z.boolean().optional(),

@@ -890,11 +890,15 @@ async function verifyImagePreview(browser, url) {
   }
 }
 
-async function addDiffFixture(page, diffNavigationScope) {
-  await page.addInitScript((scope) => {
-    const preferences =
-      JSON.parse(localStorage.getItem('alwaygit.diff-fixture-preferences') || 'null') ??
-      (scope ? { diffNavigationScope: scope } : {});
+async function addDiffFixture(page, diffNavigationScope, appearance = { textWrap: 'off' }) {
+  const config = { scope: diffNavigationScope, appearance };
+  await page.addInitScript(({ scope, appearance }) => {
+    const preferences = JSON.parse(
+      localStorage.getItem('alwaygit.diff-fixture-preferences') || 'null',
+    ) ?? {
+      ...(scope ? { diffNavigationScope: scope } : {}),
+      appearance: { theme: 'system', palette: 'vivid', codeFont: 12, ...appearance },
+    };
     window.__ALWAYGIT_PREFERENCES__ = preferences;
     const repo = { id: 'diff', root: '/diff', commonDir: '/diff/.git', name: 'Diff fixture' };
     const commit = {
@@ -981,8 +985,22 @@ async function addDiffFixture(page, diffNavigationScope) {
         fixture.calls.push(request.method);
         let result;
         if (request.method === 'interfaceSettings') result = structuredClone(fixture.preferences);
+        if (request.method === 'operationSettings')
+          result = {
+            scope: 'user',
+            allowDetachedHead: false,
+            pushFollowTags: false,
+            pushTagAfterCreate: false,
+            defaultResetMode: 'mixed',
+            forceDeleteUnmergedBranches: false,
+            forceRemoveDirtyWorktrees: false,
+          };
         if (request.method === 'saveInterfaceSettings') {
-          fixture.preferences = { ...fixture.preferences, ...request.payload };
+          fixture.preferences = {
+            ...fixture.preferences,
+            ...request.payload,
+            appearance: { ...fixture.preferences.appearance, ...request.payload.appearance },
+          };
           localStorage.setItem(
             'alwaygit.diff-fixture-preferences',
             JSON.stringify(fixture.preferences),
@@ -1137,7 +1155,190 @@ async function addDiffFixture(page, diffNavigationScope) {
         setTimeout(() => window.postMessage({ type: 'response', id: request.id, result }, '*'), 10);
       },
     });
-  }, diffNavigationScope);
+  }, config);
+}
+
+export async function verifyTextWrapping(browser, url) {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } }),
+    errors = [];
+  page.setDefaultTimeout(10_000);
+  page.on('pageerror', (error) => errors.push(error.message));
+  try {
+    await addDiffFixture(page, 'file', {});
+    await page.goto(url);
+    await page.evaluate(() => {
+      const fixture = window.__diffFixture,
+        left = fixture.left.split('\n'),
+        right = fixture.right.split('\n');
+      left[26] = '  const message = "' + '中文文本 alpha beta gamma delta '.repeat(18) + '";';
+      right[26] = '  const message = "short";';
+      left[40] = '\t' + 'indivisibleIdentifier'.repeat(80);
+      right[40] = '\tshortIdentifier';
+      fixture.left = left.join('\n');
+      fixture.right = right.join('\n');
+    });
+    await page.getByRole('option', { name: 'Diff fixture' }).dblclick();
+    const diff = page.getByTestId('diff-preview'),
+      viewport = diff.locator('.diff-viewport');
+    await page.waitForFunction(() => {
+      const row = document.querySelector('[data-preview-row="26"]');
+      return row?.dataset.previewLoaded === 'true' && row.getBoundingClientRect().height > 72;
+    });
+    assert.equal(
+      await diff.getAttribute('data-text-wrap'),
+      'adaptive',
+      'Legacy preferences default to adaptive wrapping',
+    );
+    const row = diff.locator('[data-preview-row="26"]');
+    assert.deepEqual(await row.locator('.line-number').allTextContents(), ['27', '27']);
+    const geometry = await row.evaluate((element) => {
+      const sides = [...element.querySelectorAll('.diff-side')].map((side) =>
+        side.getBoundingClientRect(),
+      );
+      const code = element.querySelector('code'),
+        range = document.createRange();
+      range.selectNodeContents(code);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      const copied = selection.toString();
+      selection.removeAllRanges();
+      return { heights: sides.map((side) => side.height), copied, text: code.textContent };
+    });
+    assert.equal(
+      geometry.heights[0],
+      geometry.heights[1],
+      'Both sides share the taller wrapped row',
+    );
+    assert.equal(geometry.copied, geometry.text, 'Soft wraps never become clipboard newlines');
+    await diff.screenshot({ path: 'artifacts/diff-text-wrapping.png' });
+    const openSettings = async () => {
+      await page.getByRole('button', { name: 'Settings', exact: true }).click();
+      const settings = page.getByTestId('interface-settings');
+      await settings.getByRole('button', { name: 'Diff', exact: true }).click();
+      return page.getByRole('dialog', { name: 'Settings' });
+    };
+    let dialog = await openSettings();
+    const applyAndClose = async () => {
+      await dialog.getByRole('button', { name: 'Apply', exact: true }).click();
+      await dialog.waitFor({ state: 'hidden' });
+    };
+    await dialog.getByLabel('Wrapping mode', { exact: true }).selectOption('column');
+    assert.equal(
+      await dialog.getByLabel('Column width (default: 100)', { exact: true }).inputValue(),
+      '100',
+    );
+    await dialog.getByLabel('Column width (default: 100)', { exact: true }).fill('80');
+    await dialog.screenshot({ path: 'artifacts/text-wrapping-settings.png' });
+    await applyAndClose();
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[data-preview-row="26"] code')?.getBoundingClientRect().width > 0,
+    );
+    const fixedWidth = await row
+      .locator('code')
+      .first()
+      .evaluate((code) => code.getBoundingClientRect().width);
+    await page.setViewportSize({ width: 1100, height: 900 });
+    assert.ok(
+      Math.abs((await row.locator('code').first().boundingBox()).width - fixedWidth) < 1,
+      'Fixed columns retain their width in a narrower viewport',
+    );
+    dialog = await openSettings();
+    await dialog.getByLabel('Wrapping mode', { exact: true }).selectOption('off');
+    await applyAndClose();
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[data-preview-row="26"]')?.getBoundingClientRect().height === 18,
+    );
+    dialog = await openSettings();
+    await dialog.getByLabel('Wrapping mode', { exact: true }).selectOption('column');
+    assert.equal(
+      await dialog.getByLabel('Column width (default: 100)', { exact: true }).inputValue(),
+      '80',
+    );
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    assert.equal(
+      await diff.getAttribute('data-text-wrap'),
+      'off',
+      'Cancel restores the saved mode',
+    );
+    dialog = await openSettings();
+    await dialog.getByLabel('Wrapping mode', { exact: true }).selectOption('adaptive');
+    await applyAndClose();
+    const before = await row.locator('code').first().boundingBox();
+    await page.setViewportSize({ width: 900, height: 900 });
+    await page.waitForFunction(
+      (height) =>
+        document.querySelector('[data-preview-row="26"] code')?.getBoundingClientRect().height >
+        height,
+      before.height,
+    );
+    assert.equal(await diff.getAttribute('data-text-wrap'), 'adaptive');
+    await diff.getByRole('button', { name: 'Next change', exact: true }).click();
+    await diff.locator('[data-preview-row="40"] code').first().waitFor();
+    assert.ok(
+      await diff
+        .locator('[data-preview-row="40"] code')
+        .first()
+        .evaluate(
+          (code) =>
+            code.textContent.startsWith('\t') &&
+            code.getBoundingClientRect().height <= 36 &&
+            code.scrollWidth > code.clientWidth * 10,
+        ),
+      'Oversized identifiers remain intact, allowing a separate leading-tab line',
+    );
+    assert.ok(
+      await diff
+        .locator('.diff-horizontal-scroll')
+        .evaluate((bar) => bar.scrollWidth > bar.clientWidth),
+      'Oversized words remain horizontally reachable',
+    );
+    const anchored = await viewport.evaluate((element) => {
+      const top = element.getBoundingClientRect().top;
+      return [...element.querySelectorAll('[data-preview-row]')]
+        .find((row) => row.getBoundingClientRect().bottom > top)
+        ?.getAttribute('data-preview-row');
+    });
+    await page.setViewportSize({ width: 1200, height: 900 });
+    await page.waitForFunction((index) => {
+      const viewport = document.querySelector('.diff-viewport'),
+        row = document.querySelector(`[data-preview-row="${index}"]`);
+      if (!row) return false;
+      const top = viewport.getBoundingClientRect().top,
+        box = row.getBoundingClientRect();
+      return box.top <= top + 2 && box.bottom > top;
+    }, anchored);
+    const pageRequests = await page.evaluate(() => {
+      const previous = window.__diffFixture.pageRequests.length;
+      window.__diffFixture.emit();
+      return previous;
+    });
+    await page.waitForFunction(
+      (previous) => window.__diffFixture.pageRequests.length > previous,
+      pageRequests,
+    );
+    await page.waitForFunction((index) => {
+      const viewport = document.querySelector('.diff-viewport'),
+        row = document.querySelector(`[data-preview-row="${index}"]`);
+      if (row?.dataset.previewLoaded !== 'true') return false;
+      const top = viewport.getBoundingClientRect().top,
+        box = row.getBoundingClientRect();
+      return box.top <= top + 2 && box.bottom > top;
+    }, anchored);
+    await page.reload();
+    await diff.waitFor();
+    assert.equal(
+      await diff.getAttribute('data-text-wrap'),
+      'adaptive',
+      'Applied mode survives reopening',
+    );
+    assert.deepEqual(errors, []);
+    console.log('ALWAYGIT_TEXT_WRAPPING_UI_TESTS_PASSED');
+  } finally {
+    await page.close();
+  }
 }
 
 export async function verifyCommitNavigation(browser, url) {
@@ -1382,11 +1583,11 @@ export async function verifyFixedDiffScroll(diff) {
       bar.dispatchEvent(new Event('scroll'));
       await tick();
       const longest = [...view.querySelectorAll('.diff-code code')].sort(
-        (a, b) => b.getBoundingClientRect().width - a.getBoundingClientRect().width,
+        (a, b) => b.scrollWidth - a.scrollWidth,
       )[0];
-      const tail = longest.getBoundingClientRect(),
+      const tailRight = longest.getBoundingClientRect().left + longest.scrollWidth,
         clip = longest.parentElement.getBoundingClientRect();
-      const tailVisible = tail.right <= clip.right + 1 && tail.right >= clip.left;
+      const tailVisible = tailRight <= clip.right + 1 && tailRight >= clip.left;
       observer.disconnect();
       bar.scrollLeft = 0;
       bar.dispatchEvent(new Event('scroll'));

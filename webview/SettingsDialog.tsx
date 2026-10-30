@@ -114,6 +114,46 @@ function DiffHeightField({ value, onChange }: { value: number; onChange(value: n
   );
 }
 
+function WrapColumnField({ value, onChange }: { value: number; onChange(value: number): void }) {
+  const t = useTranslation(),
+    [draft, setDraft] = useState(String(value));
+  useEffect(() => setDraft(String(value)), [value]);
+  const commit = () => {
+    const next = Number(draft);
+    if (draft.trim() && Number.isInteger(next) && next >= 20 && next <= 1000) onChange(next);
+    else setDraft(String(value));
+  };
+  return (
+    <label className="settings-control">
+      {t('settings.textWrapColumn')}
+      <input
+        type="number"
+        list="text-wrap-columns"
+        min={20}
+        max={1000}
+        step={1}
+        aria-label={t('settings.textWrapColumn')}
+        value={draft}
+        onChange={(event) => {
+          setDraft(event.target.value);
+          const next = Number(event.target.value);
+          if (event.target.value && Number.isInteger(next) && next >= 20 && next <= 1000)
+            onChange(next);
+        }}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') event.currentTarget.blur();
+        }}
+      />
+      <datalist id="text-wrap-columns">
+        {[80, 100, 120].map((column) => (
+          <option key={column} value={column} />
+        ))}
+      </datalist>
+    </label>
+  );
+}
+
 function FileSpacingField({ value, onChange }: { value: number; onChange(value: number): void }) {
   const t = useTranslation(),
     presets = [0, 1, 3, 5];
@@ -789,6 +829,35 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
                       </div>
                     </div>
                   </figure>
+                </section>
+                <section className="settings-section" aria-labelledby="text-wrap-heading">
+                  <h3 id="text-wrap-heading">{t('settings.textWrap')}</h3>
+                  <label className="settings-control">
+                    {t('settings.textWrapMode')}
+                    <select
+                      aria-label={t('settings.textWrapMode')}
+                      value={appearance.textWrap}
+                      onChange={(event) =>
+                        updateAppearance({
+                          ...appearance,
+                          textWrap: event.target.value as typeof appearance.textWrap,
+                        })
+                      }
+                    >
+                      <option value="adaptive">{t('settings.textWrapAdaptive')}</option>
+                      <option value="column">{t('settings.textWrapColumnMode')}</option>
+                      <option value="off">{t('settings.textWrapOff')}</option>
+                    </select>
+                  </label>
+                  {appearance.textWrap === 'column' && (
+                    <WrapColumnField
+                      value={appearance.textWrapColumn}
+                      onChange={(textWrapColumn) =>
+                        updateAppearance({ ...appearance, textWrapColumn })
+                      }
+                    />
+                  )}
+                  <p className="settings-note">{t('settings.textWrapHelp')}</p>
                 </section>
                 <section className="settings-section" aria-labelledby="diff-navigation-heading">
                   <h3 id="diff-navigation-heading">{t('settings.navigation')}</h3>
