@@ -20,6 +20,109 @@ function entry(path: string, type: RevisionTreeEntry['type'] = 'blob'): Revision
   };
 }
 describe('independent Commit snapshots', () => {
+  it('focuses changed leaves while retaining collapsed sibling directories and correct tree guides', () => {
+    const entries = [
+      entry('README.md'),
+      entry('src', 'tree'),
+      entry('src/components', 'tree'),
+      entry('src/components/Editor.vue'),
+      entry('src/components/Toolbar.vue'),
+      entry('src/components/dialogs', 'tree'),
+      entry('src/components/dialogs/Dialog.vue'),
+      entry('src/utils', 'tree'),
+      entry('src/utils/helper.ts'),
+      entry('docs', 'tree'),
+      entry('docs/guide.md'),
+    ];
+    const nodes = snapshotNodes(entries, [
+        { path: 'src/components/Editor.vue', status: 'M' } as RevisionTreeChange,
+      ]),
+      flat = allSnapshotNodes(nodes),
+      expanded = new Set(flat.filter((node) => node.summary).map((node) => node.id)),
+      before = JSON.stringify(nodes),
+      focused = snapshotRows(nodes, expanded, '', { changesOnly: true });
+    expect(focused.map((row) => row.node.entry.path)).toEqual([
+      'docs',
+      'src',
+      'src/components',
+      'src/components/dialogs',
+      'src/components/Editor.vue',
+      'src/utils',
+    ]);
+    expect(focused.find((row) => row.node.change)).toMatchObject({
+      depth: 2,
+      guides: [false, true],
+      last: true,
+      changeHighlight: 'M',
+    });
+    expect(
+      snapshotRows(nodes, expanded, 'Toolbar', { changesOnly: true }).map(
+        (row) => row.node.entry.path,
+      ),
+    ).toEqual(['src/components/Toolbar.vue']);
+    const revealed = snapshotRows(nodes, new Set([...expanded, 'docs']), '', {
+      changesOnly: true,
+      revealedDirectories: new Set(['docs']),
+    });
+    expect(revealed.some((row) => row.node.entry.path === 'docs/guide.md')).toBe(true);
+    expect(revealed.some((row) => row.node.entry.path === 'src/components/Toolbar.vue')).toBe(
+      false,
+    );
+    expect(JSON.stringify(nodes)).toBe(before);
+    expect(
+      snapshotRows(nodes, new Set(flat.map((node) => node.id))).map((row) => row.node.entry.path),
+    ).toHaveLength(entries.length);
+  });
+  it('keeps every change kind and deleted ancestor identity when focusing a replacement tree', () => {
+    const entries = [
+      entry('replaced'),
+      entry('src', 'tree'),
+      ...['added', 'modified', 'renamed', 'copied', 'typed', 'unchanged'].map((name) =>
+        entry(`src/${name}`),
+      ),
+    ];
+    const changes = [
+      ['src/added', 'A'],
+      ['src/modified', 'M'],
+      ['src/renamed', 'R100'],
+      ['src/copied', 'C100'],
+      ['src/typed', 'T'],
+      ['replaced/deep/deleted', 'D'],
+    ].map(([path, status]) => ({
+      path,
+      status,
+      beforeMode: '100644',
+      afterMode: status === 'D' ? '000000' : '100644',
+      beforeOid: 'c'.repeat(40),
+      afterOid: 'd'.repeat(40),
+      ...(status === 'R100' ? { previousPath: 'old/name' } : {}),
+    }));
+    const nodes = snapshotNodes(entries, changes),
+      expanded = new Set(
+        allSnapshotNodes(nodes)
+          .filter((node) => node.summary)
+          .map((node) => node.id),
+      ),
+      rows = snapshotRows(nodes, expanded, '', { changesOnly: true });
+    expect(
+      rows
+        .filter((row) => row.node.change)
+        .map((row) => row.node.change?.status)
+        .sort(),
+    ).toEqual(['A', 'C100', 'D', 'M', 'R100', 'T']);
+    expect(rows.find((row) => row.node.entry.path === 'replaced')).toMatchObject({
+      node: { deleted: true, entry: { type: 'tree' } },
+    });
+    expect(rows.find((row) => row.node.entry.path === 'replaced/deep/deleted')).toMatchObject({
+      node: { deleted: true },
+      depth: 2,
+    });
+    expect(
+      snapshotRows(snapshotNodes(entries), new Set(), '', { changesOnly: true }).every(
+        (row) => row.node.entry.type === 'tree',
+      ),
+    ).toBe(true);
+  });
   it('retains only a fixed repository and full Commit ID when restoring a tree tab', () => {
     const state = { commitTree: { repoId: 'repository', revision: 'a'.repeat(40) } };
     expect(commitTreePanelStateSchema.parse(state)).toEqual(state);

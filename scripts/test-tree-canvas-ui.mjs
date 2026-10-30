@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { verifyTreeFocus } from './test-tree-focus-ui.mjs';
 
 export async function verifyTreeCanvas(browser, url) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } }),
@@ -173,6 +174,7 @@ export async function verifyTreeCanvas(browser, url) {
       preview.y + preview.height <= body.y + body.height + 1,
       'Stacked preview stays within the available height',
     );
+    await verifyTreeFocus(page);
     assert.deepEqual(errors, [], 'Tree canvas must not produce runtime errors');
   } catch (error) {
     console.error(await page.locator('.commit-tree-preview').innerHTML());

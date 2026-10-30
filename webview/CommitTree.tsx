@@ -38,6 +38,12 @@ import './commit-tree.css';
 import { useTreeExpansion } from './useTreeExpansion';
 import { treeDirectoryExpanded } from '../src/protocol/tree-expansion';
 
+interface ChangeFocus {
+  key: string;
+  expanded: ReadonlySet<string>;
+  revealedDirectories: ReadonlySet<string>;
+}
+
 export function CommitTree({
   target: { repoId, revision, baseRevision },
 }: {
@@ -98,6 +104,8 @@ export function CommitTree({
     }
   };
   const [temporaryExpanded, setTemporaryExpanded] = useState<Set<string>>();
+  const [focusedChanges, setFocusedChanges] = useState<ChangeFocus>();
+  const [fitRequest, setFitRequest] = useState(0);
   const [previewOpen, setPreviewOpen] = useState(false),
     [expanding, setExpanding] = useState<number>();
   const [viewMode, setViewMode] = useState<TreeViewMode>('list');
@@ -150,6 +158,10 @@ export function CommitTree({
   const closeMenu = useCallback(() => setMenu(undefined), []);
   const parent = baseRevision ?? selectedParent ?? metadata?.commit.parents[0],
     baselineReady = !!baseRevision || !!metadata;
+  const comparisonKey = JSON.stringify([repoId, revision, baseRevision, parent]);
+  useEffect(() => {
+    setFocusedChanges(undefined);
+  }, [comparisonKey, showChanges]);
   const fail = (cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause));
   const copy = (text: string) => void rpc('copyText', repoId, { text }).catch(fail);
   useEffect(() => {
@@ -253,8 +265,11 @@ export function CommitTree({
     [entries, activeChanges],
   );
   const flatNodes = useMemo(() => allSnapshotNodes(nodes), [nodes]);
+  const changeFocus =
+    activeChanges && focusedChanges?.key === comparisonKey ? focusedChanges : undefined;
   const expanded = useMemo(
     () =>
+      changeFocus?.expanded ??
       new Set(
         flatNodes
           .filter(
@@ -265,9 +280,16 @@ export function CommitTree({
           )
           .map((node) => node.id),
       ),
-    [flatNodes, memory.preferences, temporaryExpanded, entries.length],
+    [flatNodes, memory.preferences, temporaryExpanded, entries.length, changeFocus],
   );
-  const rows = useMemo(() => snapshotRows(nodes, expanded, query), [nodes, expanded, query]);
+  const rows = useMemo(
+    () =>
+      snapshotRows(nodes, expanded, query, {
+        changesOnly: !!changeFocus,
+        revealedDirectories: changeFocus?.revealedDirectories,
+      }),
+    [nodes, expanded, query, changeFocus],
+  );
   const counts = useMemo(() => snapshotCounts(entries), [entries]);
   const summary = useMemo(() => changeCounts(activeChanges?.files ?? []), [activeChanges]);
   const selectedNode = flatNodes.find((node) => node.id === selected),
@@ -304,6 +326,7 @@ export function CommitTree({
         flatNodes.filter((node) => expanded.has(node.id)).map((node) => node.entry.path),
       );
     setQuery('');
+    setFocusedChanges(undefined);
     setExpanding(0);
     for (let offset = 0; offset < folders.length; offset += 500) {
       if (epoch !== expansionEpoch.current) return;
@@ -321,27 +344,47 @@ export function CommitTree({
   const collapse = () => {
     stopExpansion();
     setQuery('');
+    setFocusedChanges(undefined);
     setTemporaryExpanded(undefined);
     memory.setMode('collapsed');
   };
   const expandChanges = () => {
     stopExpansion();
     setQuery('');
-    setTemporaryExpanded(
-      (current) =>
-        new Set([
-          ...(current ?? []),
-          ...flatNodes
-            .filter((node) => node.entry.type === 'tree' && node.summary)
-            .map((node) => node.entry.path),
-        ]),
+    setTemporaryExpanded(undefined);
+    setFocusedChanges(
+      changeFocus
+        ? undefined
+        : {
+            key: comparisonKey,
+            expanded: new Set(
+              flatNodes
+                .filter((node) => node.entry.type === 'tree' && node.summary)
+                .map((node) => node.id),
+            ),
+            revealedDirectories: new Set(),
+          },
     );
+    setFitRequest((value) => value + 1);
   };
   const openEntry = (node: SnapshotNode) => {
     const entry = node.entry;
     if (entry.type === 'tree') {
       stopExpansion();
       const opened = !expanded.has(node.id);
+      if (changeFocus) {
+        const next = new Set(changeFocus.expanded),
+          revealed = new Set(changeFocus.revealedDirectories);
+        if (opened) {
+          next.add(node.id);
+          revealed.add(node.id);
+        } else {
+          next.delete(node.id);
+          revealed.delete(node.id);
+        }
+        setFocusedChanges({ ...changeFocus, expanded: next, revealedDirectories: revealed });
+        return;
+      }
       setTemporaryExpanded((current) => {
         if (!current?.has(entry.path)) return current;
         const next = new Set(current);
@@ -420,11 +463,12 @@ export function CommitTree({
       </Button>
       {showChanges && (
         <Button
-          className={withLabels ? '' : 'icon-only'}
+          className={`commit-tree-focus-changes${withLabels ? '' : ' icon-only'}`}
           icon="list-selection"
           title={t('tree.expandChanges')}
           aria-label={t('tree.expandChanges')}
-          disabled={!activeChanges}
+          aria-pressed={!!changeFocus}
+          disabled={!indexed || !activeChanges || !changeTotal}
           onClick={expandChanges}
         >
           {withLabels && t('tree.expandChanges')}
@@ -995,6 +1039,7 @@ export function CommitTree({
             rows={rows}
             mode={viewMode}
             query={query}
+            fitRequest={fitRequest}
             expanded={expanded}
             selected={selected}
             nodeHint={nodeHint}

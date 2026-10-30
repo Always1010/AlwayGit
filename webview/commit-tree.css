@@ -50,6 +50,11 @@
   gap: 3px;
   flex: none;
 }
+.commit-tree-focus-changes[aria-pressed='true'] {
+  background: var(--selected);
+  color: var(--selected-fg);
+  border-color: var(--accent);
+}
 .commit-tree-parent-select {
   max-width: 175px;
 }

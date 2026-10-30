@@ -24,6 +24,7 @@ export function CommitTreeGraph({
   rows,
   mode,
   query,
+  fitRequest,
   expanded,
   selected,
   nodeHint,
@@ -36,6 +37,7 @@ export function CommitTreeGraph({
   rows: SnapshotRow[];
   mode: TreeGraphMode;
   query: string;
+  fitRequest: number;
   expanded: ReadonlySet<string>;
   selected?: string;
   nodeHint(node: SnapshotNode): string;
@@ -98,7 +100,7 @@ export function CommitTreeGraph({
   fitRef.current = fit;
   useEffect(() => {
     fitRef.current();
-  }, [mode, query, blocked]);
+  }, [mode, query, blocked, fitRequest]);
   const previousSize = useRef(size);
   useEffect(() => {
     const previous = previousSize.current;
