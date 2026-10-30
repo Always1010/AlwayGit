@@ -7263,8 +7263,8 @@ export const catalog = {
     "zh-CN": "调整文件树与预览大小"
   },
   "tree.expandChanges": {
-    "en": "Only expand changed files",
-    "zh-CN": "只展开修改文件"
+    "en": "Show changes only",
+    "zh-CN": "只显示变更"
   },
   "tree.comparisonBase": {
     "en": "Compared with",

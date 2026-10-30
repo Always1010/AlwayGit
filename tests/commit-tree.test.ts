@@ -20,8 +20,13 @@ function entry(path: string, type: RevisionTreeEntry['type'] = 'blob'): Revision
   };
 }
 describe('independent Commit snapshots', () => {
-  it('focuses changed leaves while retaining collapsed sibling directories and correct tree guides', () => {
+  it('focuses changed leaves and their ancestors with correct guides even after manual expansion', () => {
     const entries = [
+      entry('.github', 'tree'),
+      entry('.github/workflows', 'tree'),
+      entry('.github/workflows/ci.yml'),
+      entry('media', 'tree'),
+      entry('media/icon.png'),
       entry('README.md'),
       entry('src', 'tree'),
       entry('src/components', 'tree'),
@@ -33,6 +38,8 @@ describe('independent Commit snapshots', () => {
       entry('src/utils/helper.ts'),
       entry('docs', 'tree'),
       entry('docs/guide.md'),
+      entry('docs/images', 'tree'),
+      entry('docs/images/workbench.png'),
     ];
     const nodes = snapshotNodes(entries, [
         { path: 'src/components/Editor.vue', status: 'M' } as RevisionTreeChange,
@@ -42,16 +49,13 @@ describe('independent Commit snapshots', () => {
       before = JSON.stringify(nodes),
       focused = snapshotRows(nodes, expanded, '', { changesOnly: true });
     expect(focused.map((row) => row.node.entry.path)).toEqual([
-      'docs',
       'src',
       'src/components',
-      'src/components/dialogs',
       'src/components/Editor.vue',
-      'src/utils',
     ]);
     expect(focused.find((row) => row.node.change)).toMatchObject({
       depth: 2,
-      guides: [false, true],
+      guides: [false, false],
       last: true,
       changeHighlight: 'M',
     });
@@ -60,14 +64,18 @@ describe('independent Commit snapshots', () => {
         (row) => row.node.entry.path,
       ),
     ).toEqual(['src/components/Toolbar.vue']);
-    const revealed = snapshotRows(nodes, new Set([...expanded, 'docs']), '', {
-      changesOnly: true,
-      revealedDirectories: new Set(['docs']),
-    });
-    expect(revealed.some((row) => row.node.entry.path === 'docs/guide.md')).toBe(true);
-    expect(revealed.some((row) => row.node.entry.path === 'src/components/Toolbar.vue')).toBe(
-      false,
-    );
+    expect(
+      snapshotRows(nodes, expanded, 'guide.md', { changesOnly: true }).map(
+        (row) => row.node.entry.path,
+      ),
+    ).toEqual(['docs/guide.md']);
+    expect(
+      snapshotRows(nodes, new Set(flat.map((node) => node.id)), '', { changesOnly: true }),
+    ).toEqual(focused);
+    expect(snapshotRows(nodes, new Set(), '', { changesOnly: true })).toMatchObject([
+      { node: { id: 'src' }, depth: 0, guides: [], last: true, changeHighlight: 'summary' },
+    ]);
+    expect(snapshotRows(nodes, expanded, '', { changesOnly: true })).toEqual(focused);
     expect(JSON.stringify(nodes)).toBe(before);
     expect(
       snapshotRows(nodes, new Set(flat.map((node) => node.id))).map((row) => row.node.entry.path),
@@ -117,11 +125,7 @@ describe('independent Commit snapshots', () => {
       node: { deleted: true },
       depth: 2,
     });
-    expect(
-      snapshotRows(snapshotNodes(entries), new Set(), '', { changesOnly: true }).every(
-        (row) => row.node.entry.type === 'tree',
-      ),
-    ).toBe(true);
+    expect(snapshotRows(snapshotNodes(entries), new Set(), '', { changesOnly: true })).toEqual([]);
   });
   it('retains only a fixed repository and full Commit ID when restoring a tree tab', () => {
     const state = { commitTree: { repoId: 'repository', revision: 'a'.repeat(40) } };

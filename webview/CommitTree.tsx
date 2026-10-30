@@ -41,7 +41,6 @@ import { treeDirectoryExpanded } from '../src/protocol/tree-expansion';
 interface ChangeFocus {
   key: string;
   expanded: ReadonlySet<string>;
-  revealedDirectories: ReadonlySet<string>;
 }
 
 export function CommitTree({
@@ -286,7 +285,6 @@ export function CommitTree({
     () =>
       snapshotRows(nodes, expanded, query, {
         changesOnly: !!changeFocus,
-        revealedDirectories: changeFocus?.revealedDirectories,
       }),
     [nodes, expanded, query, changeFocus],
   );
@@ -362,7 +360,6 @@ export function CommitTree({
                 .filter((node) => node.entry.type === 'tree' && node.summary)
                 .map((node) => node.id),
             ),
-            revealedDirectories: new Set(),
           },
     );
     setFitRequest((value) => value + 1);
@@ -373,16 +370,10 @@ export function CommitTree({
       stopExpansion();
       const opened = !expanded.has(node.id);
       if (changeFocus) {
-        const next = new Set(changeFocus.expanded),
-          revealed = new Set(changeFocus.revealedDirectories);
-        if (opened) {
-          next.add(node.id);
-          revealed.add(node.id);
-        } else {
-          next.delete(node.id);
-          revealed.delete(node.id);
-        }
-        setFocusedChanges({ ...changeFocus, expanded: next, revealedDirectories: revealed });
+        const next = new Set(changeFocus.expanded);
+        if (opened) next.add(node.id);
+        else next.delete(node.id);
+        setFocusedChanges({ ...changeFocus, expanded: next });
         return;
       }
       setTemporaryExpanded((current) => {

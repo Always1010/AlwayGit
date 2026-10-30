@@ -5,7 +5,7 @@ export async function verifyTreeFocus(page) {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.locator('.commit-tree-view-select').selectOption('list');
   const actions = page.locator('.commit-tree-secondary-controls'),
-    focus = actions.getByRole('button', { name: 'Only expand changed files', exact: true }),
+    focus = actions.getByRole('button', { name: 'Show changes only', exact: true }),
     expand = actions.getByRole('button', { name: 'Expand all directories', exact: true }),
     collapse = actions.getByRole('button', { name: 'Collapse all directories', exact: true }),
     entry = (name) =>
@@ -18,18 +18,17 @@ export async function verifyTreeFocus(page) {
   assert.equal(await entry('README.md').count(), 0, 'Unchanged sibling files are hidden');
   await entry('Editor.vue').waitFor();
   for (const name of ['docs', 'utils', 'dialogs'])
-    assert.equal(
-      await entry(name).locator('..').getAttribute('aria-expanded'),
-      'false',
-      `${name}: unrelated directories are collapsed`,
-    );
+    assert.equal(await entry(name).count(), 0, `${name}: unrelated directories are hidden`);
   assert.equal(await focus.getAttribute('aria-pressed'), 'true');
-  await entry('docs').click();
-  await entry('guide.md').waitFor();
+  await entry('components').click();
+  await entry('Editor.vue').waitFor({ state: 'detached' });
+  await entry('components').click();
+  await entry('Editor.vue').waitFor();
+  assert.equal(await entry('dialogs').count(), 0, 'Reopening hides unrelated subdirectories');
   assert.equal(
     await entry('Toolbar.vue').count(),
     0,
-    'Manual expansion reveals only the chosen directory',
+    'Reopening a changed directory keeps unchanged files hidden',
   );
   assert.equal(
     await page.evaluate(
@@ -45,9 +44,12 @@ export async function verifyTreeFocus(page) {
   const search = page.locator('.file-path-filter input');
   await search.fill('Toolbar.vue');
   await entry('src/components/Toolbar.vue').waitFor();
+  await search.fill('guide.md');
+  await entry('docs/guide.md').waitFor();
   await search.fill('');
   await entry('Editor.vue').waitFor();
   assert.equal(await entry('Toolbar.vue').count(), 0, 'Clearing search restores the focused view');
+  assert.equal(await entry('docs').count(), 0, 'Clearing search hides unrelated directories again');
 
   for (const mode of ['horizontal', 'radial', 'vertical']) {
     await page.locator('.commit-tree-view-select').selectOption(mode);
@@ -58,6 +60,13 @@ export async function verifyTreeFocus(page) {
       `${mode}: only changed files remain visible`,
     );
     assert.equal(await focus.getAttribute('aria-pressed'), 'true');
+    assert.deepEqual(
+      await page
+        .locator('.tree-graph-node')
+        .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-path'))),
+      ['src', 'src/components', 'src/components/Editor.vue'],
+      `${mode}: the graph contains only the changed file and its ancestors`,
+    );
   }
   await page.locator('.commit-tree-view-select').selectOption('list');
   await collapse.click();

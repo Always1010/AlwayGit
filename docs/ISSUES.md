@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-171：文件树变更聚焦仍显示无关目录分支
+
+- 日期：2026-10-30
+- 状态：已解决
+- 现象：开启“只展开修改文件”后，`.github`、`media`、`docs/images` 等没有变更的目录仍以折叠节点占据分支；手动展开目录还会带回未修改文件，无法持续聚焦变更路径。
+- 原因：聚焦过滤只隐藏未变更文件，保留全部目录，并通过手动展开例外重新显示普通条目；原规格和测试也固定了这一行为。
+- 解决方案：将入口改为“只显示变更”，共享节点过滤只保留 A/M/D/R/C/T 变更条目及有变更汇总的祖先目录，移除手动展开例外。保留删除记录的历史路径、完整快照搜索、退出聚焦后恢复目录偏好及四种布局的一致行为；同步规格、手册与受影响的横向树截图。
+- 验证方式：类型检查、1983 条双语资源检查、树模型／布局／目录缓存／双语资源／帮助内容 5 个文件共 39 项单测、Webview 生产构建及 tree-canvas-only 无头界面回归通过。覆盖各层级无关分支隐藏、全部变更类型与删除历史路径、重新展开仍只看变更、完整快照搜索及清空恢复、四种布局切换、目录偏好不写入与退出恢复。仅重新采集并检查图 51，同一示例只留下 8 个变更文件与 7 个必要目录。未执行全量测试、可见桌面测试、VSIX 打包、本机安装或远程推送。
+- 相关文件：`webview/commitTreeModel.ts`、`webview/CommitTree.tsx`、`src/i18n/catalogs/tree.json`、`src/i18n/generated.ts`、`tests/commit-tree.test.ts`、`scripts/test-tree-focus-ui.mjs`、`scripts/capture-manual.mjs`、`docs/WORKBENCH_SPEC.md`、`docs/WORKBENCH_SPEC.en.md`、`docs/USER_MANUAL.zh-CN.md`、`docs/USER_MANUAL.en.md`、`docs/images/user-manual/figure-51.png`、`README.md`、`README.zh-CN.md`。
+
 ## BUG-170：独立文件树与预览之间无法调整分栏大小
 
 - 日期：2026-10-30

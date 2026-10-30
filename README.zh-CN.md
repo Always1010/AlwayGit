@@ -10,7 +10,7 @@ AlwayGit 是可在 VS Code 编辑器标签页、主侧边栏、第二侧边栏�
 
 提交快照还支持可视化文件树：横向树便于查看变更在目录中的分布，径向树展示同一版本的整体结构。以下两图使用手册中的 `AlwayGit-Demo` 示例数据。
 
-![AlwayGit-Demo 提交快照的横向树：目录层级与新增、修改文件的分布](docs/images/user-manual/figure-51.png)
+![AlwayGit-Demo 提交快照的横向树：只显示变更文件及其必要目录](docs/images/user-manual/figure-51.png)
 
 ![AlwayGit-Demo 同一提交快照的径向树：完整目录与文件结构](docs/images/user-manual/figure-52.png)
 

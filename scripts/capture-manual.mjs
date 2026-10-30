@@ -801,10 +801,7 @@ const scenes = [
     async (p) => {
       await p.getByRole('combobox', { name: 'File tree presentation' }).selectOption('horizontal');
       await p.getByRole('checkbox', { name: 'Change markers' }).check();
-      await button(
-        p.locator('.commit-tree-secondary-controls'),
-        'Only expand changed files',
-      ).click();
+      await button(p.locator('.commit-tree-secondary-controls'), 'Show changes only').click();
       await p.locator('.tree-graph-node[data-path="src/git/service.ts"]').waitFor();
       await button(p, 'Fit entire tree (0)').click();
       assert.equal(await p.locator('.tree-graph-node[data-status="A"]').count(), 1);
