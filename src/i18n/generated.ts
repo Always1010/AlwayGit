@@ -7302,6 +7302,43 @@ export const catalog = {
     "en": "Commit change preview",
     "zh-CN": "本次提交变更预览"
   },
+  "tree.details": {
+    "en": "Snapshot details",
+    "zh-CN": "快照详情"
+  },
+  "tree.statistics": {
+    "en": "Snapshot and change statistics",
+    "zh-CN": "快照与变更统计"
+  },
+  "tree.moreActions": {
+    "en": "More tree actions",
+    "zh-CN": "更多文件树操作"
+  },
+  "tree.changeMarkers": {
+    "en": "Change markers",
+    "zh-CN": "变更标记"
+  },
+  "tree.compactFiles": {
+    "en": {
+      "one": "{{count}} file",
+      "other": "{{count}} files"
+    },
+    "zh-CN": "{{count}} 文件"
+  },
+  "tree.compactSubmodules": {
+    "en": {
+      "one": "{{count}} submodule",
+      "other": "{{count}} submodules"
+    },
+    "zh-CN": "{{count}} 子模块"
+  },
+  "tree.compactChanges": {
+    "en": {
+      "one": "{{count}} change",
+      "other": "{{count}} changes"
+    },
+    "zh-CN": "变更 {{count}}"
+  },
   "tree.selectFile": {
     "en": "Select a file to preview.",
     "zh-CN": "选择文件以预览。"
@@ -9702,6 +9739,13 @@ export interface MessageParameters {
   "tree.virtualDeleted": {  };
   "tree.deletedDirectory": {  };
   "tree.changePreview": {  };
+  "tree.details": {  };
+  "tree.statistics": {  };
+  "tree.moreActions": {  };
+  "tree.changeMarkers": {  };
+  "tree.compactFiles": { count: number };
+  "tree.compactSubmodules": { count: number };
+  "tree.compactChanges": { count: number };
   "tree.selectFile": {  };
   "treeCompare.browse": {  };
   "treeCompare.title": {  };

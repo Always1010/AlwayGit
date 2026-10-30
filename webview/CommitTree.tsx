@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { CommitTreeTarget, RevisionTreeChanges, RevisionTreeCommit, RevisionTreeEntry, RevisionTreeListing } from '../src/protocol/tree';
 import type { DiffTarget } from '../src/protocol/types';
 import { rpc, saveCommitTreeState } from './rpc';
@@ -20,6 +20,7 @@ import { treeDirectoryExpanded } from '../src/protocol/tree-expansion';
 export function CommitTree({ target: { repoId, revision, baseRevision } }: { target: CommitTreeTarget }) {
   const t = useTranslation(), preferences = useWorkbenchFields('appearance', 'layout', 'language');
   const theme = useResolvedTheme(preferences.appearance.theme);
+  const panelId = useId(), detailsId = `${panelId}-details`, statisticsId = `${panelId}-statistics`, actionsId = `${panelId}-actions`;
   const [entries, setEntries] = useState<RevisionTreeEntry[]>([]), [indexed, setIndexed] = useState(false), [loading, setLoading] = useState(true);
   const [metadata, setMetadata] = useState<RevisionTreeCommit>(), [error, setError] = useState<string>(), [metadataError, setMetadataError] = useState<string>();
   const [query, setQuery] = useState(''), [selected, setSelected] = useState<string>();
@@ -125,36 +126,71 @@ export function CommitTree({ target: { repoId, revision, baseRevision } }: { tar
   };
   const statusName = (status: string) => t(status[0] === 'A' ? 'tree.statusAdded' : status[0] === 'D' ? 'tree.statusDeleted' : status[0] === 'R' ? 'tree.statusRenamed' : status[0] === 'C' ? 'tree.statusCopied' : status[0] === 'T' ? 'tree.statusTypeChanged' : 'tree.statusModified');
   const nodeHint = (node: SnapshotNode) => [node.entry.path, node.change && statusName(node.change.status), node.change?.previousPath && t('tree.fromPath', { path: node.change.previousPath }), node.change && `${node.change.beforeMode} → ${node.change.afterMode}`, node.deleted && t('tree.virtualDeleted'), node.summary && t('tree.changeSummary', node.summary)].filter(Boolean).join(' · ');
+  const changeTotal = Object.values(summary).reduce((sum, count) => sum + count, 0);
+  const snapshotLabel = t('tree.compactFiles', { count: counts.files }) + (counts.submodules ? ` · ${t('tree.compactSubmodules', { count: counts.submodules })}` : '');
+  const actions = (withLabels: boolean) => <>
+    <Button className={withLabels ? '' : 'icon-only'} icon="expand-all" title={t('tree.expandAll')} aria-label={t('tree.expandAll')} disabled={!indexed || expanding !== undefined} onClick={() => void expandAll()}>{withLabels && t('tree.expandAll')}</Button>
+    <Button className={withLabels ? '' : 'icon-only'} icon="collapse-all" title={t('tree.collapseAll')} aria-label={t('tree.collapseAll')} onClick={collapse}>{withLabels && t('tree.collapseAll')}</Button>
+    {showChanges && <Button className={withLabels ? '' : 'icon-only'} icon="list-selection" title={t('tree.expandChanges')} aria-label={t('tree.expandChanges')} disabled={!activeChanges} onClick={expandChanges}>{withLabels && t('tree.expandChanges')}</Button>}
+    <span className="commit-tree-memory-info" tabIndex={0} role="img" title={t('treeMemory.info')} aria-label={t('treeMemory.info')}><Icon name="info"/>{withLabels && t('treeMemory.info')}</span>
+    <Button className={withLabels ? '' : 'icon-only'} icon="open-preview" title={t('tree.togglePreview')} aria-label={t('tree.togglePreview')} aria-pressed={previewOpen} onClick={() => setPreviewOpen(value => !value)}>{withLabels && t('tree.togglePreview')}</Button>
+  </>;
   return <div className="workbench commit-tree-page" data-theme={theme} style={{ '--workbench-font': `${preferences.layout.font}px`, '--file-row-height': '26px', '--diff-font': `${preferences.appearance.codeFont}px`, '--diff-row-height': `${diffRowHeight(preferences.appearance.codeFont, preferences.appearance.codeRowHeight)}px` } as CSSProperties}>
     <header className="commit-tree-header">
-      <div><Icon name="list-tree"/><strong>{t(baseRevision ? 'treeCompare.title' : 'tree.snapshotTitle')}</strong><span className="hash" title={revision}>{revision.slice(0, 8)}</span><Button className="icon-only" icon="copy" title={t('tree.copyCommitId')} aria-label={t('tree.copyCommitId')} onClick={() => copy(revision)}/></div>
-      {baseRevision && <div className="commit-tree-direction"><span className="hash" title={`${baseRevision} → ${revision}`}>{t('treeCompare.direction', { base: baseRevision.slice(0, 8), target: revision.slice(0, 8) })}</span><Button className="icon-only" icon="arrow-swap" title={t('treeCompare.reverse')} aria-label={t('treeCompare.reverse')} onClick={() => void rpc('openCommitTree', repoId, { revision: baseRevision, baseRevision: revision }).catch(fail)}/></div>}
-      {metadata && <><strong className="truncate" title={metadata.body}>{metadata.commit.subject}</strong><span className="muted">{metadata.commit.author} · {new Date(metadata.commit.timestamp * 1000).toLocaleString(preferences.language)}</span></>}
-      <span className="muted" title={metadata?.repository.root}>{metadata ? `${metadata.repository.name} · ${metadata.repository.root}` : repoId}</span>
+      <div className="commit-tree-identity">
+        <Icon name="list-tree"/><strong className="commit-tree-title">{t(baseRevision ? 'treeCompare.title' : 'tree.snapshotTitle')}</strong>
+        <span className="hash commit-tree-direction" title={baseRevision ? t('treeCompare.direction', { base: baseRevision, target: revision }) : revision} aria-label={baseRevision ? t('treeCompare.direction', { base: baseRevision, target: revision }) : revision}>{baseRevision && <>{baseRevision.slice(0, 8)} → </>}{revision.slice(0, 8)}</span>
+        {baseRevision ? <Button className="icon-only" icon="arrow-swap" title={t('treeCompare.reverse')} aria-label={t('treeCompare.reverse')} onClick={() => void rpc('openCommitTree', repoId, { revision: baseRevision, baseRevision: revision }).catch(fail)}/> : <Button className="icon-only" icon="copy" title={t('tree.copyCommitId')} aria-label={t('tree.copyCommitId')} onClick={() => copy(revision)}/>}
+      </div>
+      {metadata && <strong className="commit-tree-subject truncate" title={metadata.body}>{metadata.commit.subject}</strong>}
+      <span className="commit-tree-repository muted truncate" title={metadata?.repository.root ?? repoId}>{metadata?.repository.name ?? repoId}</span>
+      <Button className="icon-only" icon="ellipsis" title={t('tree.details')} aria-label={t('tree.details')} popoverTarget={detailsId}/>
     </header>
+    <div id={detailsId} popover="auto" className="commit-tree-popover" role="dialog" aria-label={t('tree.details')}>
+      <div className="commit-tree-popover-heading"><strong>{t('tree.details')}</strong><Button className="icon-only" icon="close" title={t('common.close')} aria-label={t('common.close')} popoverTarget={detailsId} popoverTargetAction="hide"/></div>
+      {metadata && <><pre className="commit-tree-message">{metadata.body || metadata.commit.subject}</pre><p className="muted">{metadata.commit.author} · {new Date(metadata.commit.timestamp * 1000).toLocaleString(preferences.language)}</p></>}
+      <p className="commit-tree-detail-revision"><span className="hash">{baseRevision ? t('treeCompare.direction', { base: baseRevision, target: revision }) : revision}</span><Button className="icon-only" icon="copy" title={t('tree.copyCommitId')} aria-label={t('tree.copyCommitId')} onClick={() => copy(revision)}/></p>
+      <p>{metadata?.repository.name ?? repoId}</p>{metadata && <p className="muted">{metadata.repository.root}</p>}
+    </div>
     <div className="revision-tree-toolbar commit-tree-toolbar">
       <select className="commit-tree-view-select" aria-label={t('treeViews.presentation')} value={viewMode} onChange={event => { setMenu(undefined); setViewMode(event.target.value as TreeViewMode); }}>
         <option value="list">{t('treeViews.list')}</option><option value="horizontal">{t('treeViews.horizontal')}</option><option value="radial">{t('treeViews.radial')}</option><option value="vertical">{t('treeViews.vertical')}</option>
       </select>
       <label className="file-path-filter"><Icon name="search"/><input type="search" disabled={!indexed} value={query} onChange={event => setQuery(event.target.value)} placeholder={t('tree.searchAllPathsPlaceholder')} aria-label={t('tree.searchAllPaths')}/></label>
-      <Button className="icon-only" icon="expand-all" title={t('tree.expandAll')} aria-label={t('tree.expandAll')} disabled={!indexed || expanding !== undefined} onClick={() => void expandAll()}/><Button className="icon-only" icon="collapse-all" title={t('tree.collapseAll')} aria-label={t('tree.collapseAll')} onClick={collapse}/>
-      <label className="commit-tree-changes-toggle"><input type="checkbox" checked={showChanges} disabled={!indexed} onChange={event => { stopExpansion(); setMenu(undefined); setShowChanges(event.target.checked); }}/>{t(baseRevision ? 'treeCompare.showChanges' : 'tree.showChanges')}</label>
-      {showChanges && <Button className="icon-only" icon="list-selection" title={t('tree.expandChanges')} aria-label={t('tree.expandChanges')} disabled={!activeChanges} onClick={expandChanges}/>}
-      <span className="commit-tree-memory-info" tabIndex={0} role="img" title={t('treeMemory.info')} aria-label={t('treeMemory.info')}><Icon name="info"/></span>
-      <Button className="icon-only" icon="open-preview" title={t('tree.togglePreview')} aria-label={t('tree.togglePreview')} aria-pressed={previewOpen} onClick={() => setPreviewOpen(value => !value)}/>
+      <div className="commit-tree-primary-controls">
+        <label className="commit-tree-changes-toggle" title={t(baseRevision ? 'treeCompare.showChanges' : 'tree.showChanges')}><input type="checkbox" checked={showChanges} disabled={!indexed} onChange={event => { stopExpansion(); setMenu(undefined); setShowChanges(event.target.checked); }}/>{t('tree.changeMarkers')}</label>
+        {showChanges && !baseRevision && metadata && metadata.commit.parents.length > 1 && <select className="commit-tree-parent-select" aria-label={t('tree.comparisonBase')} title={parent} value={parent} onChange={event => { stopExpansion(); setMenu(undefined); setSelectedParent(event.target.value); }}>{metadata.commit.parents.map((oid, index) => <option key={oid} value={oid}>{t('tree.parentOption', { index: index + 1, oid: oid.slice(0, 8) })}</option>)}</select>}
+      </div>
+      <div className="commit-tree-secondary-controls">{actions(false)}</div>
+      <Button className="icon-only commit-tree-more-actions" icon="ellipsis" title={t('tree.moreActions')} aria-label={t('tree.moreActions')} popoverTarget={actionsId}/>
+      <div className="commit-tree-statistics" role="status">
+        <Button className="commit-tree-statistics-button" title={t('tree.statistics')} aria-label={t('tree.statistics')} popoverTarget={statisticsId}>
+          <Icon name="graph" className="commit-tree-statistics-icon"/>
+          {indexed ? <span className="commit-tree-snapshot-count">{snapshotLabel}</span> : <Icon name={loading ? 'loading' : 'warning'} className={loading ? 'codicon-modifier-spin' : ''}/>}
+          {query && <span>{t('tree.matches', { count: rows.length })}</span>}
+          {showChanges && (changesLoading ? <span title={t('tree.loadingChanges')} aria-label={t('tree.loadingChanges')}><Icon name="loading" className="codicon-modifier-spin"/></span> : activeChanges && <><span className="commit-tree-change-counts" title={t('tree.changeSummary', summary)}>{Object.entries(summary).filter(([, count]) => count > 0).map(([key, count]) => <span key={key} className={`status-${key === 'typeChanged' ? 'T' : key[0].toUpperCase()}`}>{key === 'typeChanged' ? 'T' : key[0].toUpperCase()}{count}</span>)}{!changeTotal && t('tree.compactChanges', { count: 0 })}</span><span className="commit-tree-change-total">{t('tree.compactChanges', { count: changeTotal })}</span></>)}
+        </Button>
+      </div>
+    </div>
+    <div id={actionsId} popover="auto" className="commit-tree-popover commit-tree-actions-popover" role="dialog" aria-label={t('tree.moreActions')}>
+      <div className="commit-tree-popover-heading"><strong>{t('tree.moreActions')}</strong><Button className="icon-only" icon="close" title={t('common.close')} aria-label={t('common.close')} popoverTarget={actionsId} popoverTargetAction="hide"/></div>
+      {actions(true)}
+    </div>
+    <div id={statisticsId} popover="auto" className="commit-tree-popover" role="dialog" aria-label={t('tree.statistics')}>
+      <div className="commit-tree-popover-heading"><strong>{t('tree.statistics')}</strong><Button className="icon-only" icon="close" title={t('common.close')} aria-label={t('common.close')} popoverTarget={statisticsId} popoverTargetAction="hide"/></div>
+      <p>{indexed ? t('tree.snapshotCount', counts) : t(loading ? 'tree.indexing' : 'tree.indexIncomplete')}</p>
+      {query && <p>{t('tree.matches', { count: rows.length })}</p>}
+      {showChanges && <><p>{t('tree.comparisonBase')} <span className="hash">{parent ?? (metadata ? t('tree.emptyBase') : '…')}</span></p>{changesLoading && <p>{t('tree.loadingChanges')}</p>}{activeChanges && <><p>{t('tree.changeSummary', summary)}</p><p className="muted">{t('tree.deletedCountHint')}</p></>}</>}
     </div>
     {hintDismissed === false && <div className="commit-tree-memory-introduction"><Icon name="info"/><span>{t('treeMemory.introduction')}</span><Button className="icon-only" icon="close" title={t('treeMemory.dismissIntroduction')} aria-label={t('treeMemory.dismissIntroduction')} disabled={hintBusy} onClick={() => void dismissHint()}/></div>}
     {hintError && <div className="revision-tree-error commit-tree-memory-error" role="alert">{t('treeMemory.hintUnavailable')} {hintError}<Button className="icon-only" icon="refresh" title={t('tree.retry')} aria-label={t('tree.retry')} disabled={hintBusy} onClick={() => hintDismissed === false ? void dismissHint() : setHintAttempt(value => value + 1)}/></div>}
     {memory.error && <div className="revision-tree-error commit-tree-memory-error" role="alert">{t('treeMemory.unavailable')} {memory.error}<Button className="icon-only" icon="refresh" title={t('tree.retry')} aria-label={t('tree.retry')} disabled={memory.loading} onClick={memory.reload}/></div>}
-    <div className="revision-tree-status" role="status">
-      {indexed ? t('tree.snapshotCount', counts) : t(loading ? 'tree.indexing' : 'tree.indexIncomplete')}{query && ` · ${t('tree.matches', { count: rows.length })}`}
+    {(loading || !indexed || expanding !== undefined) && <div className="revision-tree-status commit-tree-progress" role="status">
+      {!indexed && t(loading ? 'tree.indexing' : 'tree.indexIncomplete')}
       {loading && <Button className="icon-only" icon="close" title={t('tree.cancelLoading')} aria-label={t('tree.cancelLoading')} onClick={() => indexController.current?.abort()}/>}
       {expanding !== undefined && <>{t('tree.expanding', { count: expanding })}<Button className="icon-only" icon="close" title={t('tree.cancelExpand')} aria-label={t('tree.cancelExpand')} onClick={stopExpansion}/></>}
-    </div>
-    {showChanges && <div className="commit-tree-change-info">
-      <div className="commit-tree-baseline"><span>{t('tree.comparisonBase')}</span>{!baseRevision && metadata && metadata.commit.parents.length > 1 ? <select aria-label={t('tree.comparisonBase')} value={parent} onChange={event => { stopExpansion(); setMenu(undefined); setSelectedParent(event.target.value); }}>{metadata.commit.parents.map((oid, index) => <option key={oid} value={oid}>{t('tree.parentOption', { index: index + 1, oid: oid.slice(0, 8) })}</option>)}</select> : <span className="hash" title={parent}>{parent ? parent.slice(0, 8) : metadata ? t('tree.emptyBase') : '…'}</span>}</div>
-      {changesLoading ? <span role="status">{t('tree.loadingChanges')}</span> : changesError ? <div className="revision-tree-error" role="alert">{t('tree.changesUnavailable')} {changesError}<Button className="icon-only" icon="refresh" title={t('tree.retry')} aria-label={t('tree.retry')} onClick={() => setChangeAttempt(value => value + 1)}/></div> : activeChanges && <><span>{t('tree.changeSummary', summary)}</span><span className="muted">{t('tree.deletedCountHint')}</span></>}
     </div>}
+    {showChanges && changesError && <div className="revision-tree-error" role="alert">{t('tree.changesUnavailable')} {changesError}<Button className="icon-only" icon="refresh" title={t('tree.retry')} aria-label={t('tree.retry')} onClick={() => setChangeAttempt(value => value + 1)}/></div>}
     {(error || metadataError) && <div className="revision-tree-error" role="alert">{error || metadataError}<Button className="icon-only" icon="refresh" title={t('tree.retry')} aria-label={t('tree.retry')} onClick={() => setAttempt(value => value + 1)}/></div>}
     <main className={`commit-tree-body${previewOpen ? ' with-preview' : ''}`}>
       {viewMode === 'list' ? <div className="revision-tree-rows commit-tree-rows" role="tree" aria-label={t('tree.fullRepositoryTree')}>
