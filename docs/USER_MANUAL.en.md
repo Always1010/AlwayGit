@@ -381,6 +381,8 @@ Commits appear newest first. An ordinary Merge continues along the receiving bra
 
 For a separate directory view, right-click a Commit and choose **Browse Commit Tree** to open its snapshot in an independent tab. Choose a list, horizontal, radial, or vertical view and optionally show changes relative to a parent. **Show changes only** retains changed files and their necessary directories; click it again to restore saved folder expansion preferences. Clicking a file shows that revision's content, or its Diff when marked as changed. This auxiliary view does not check out a branch or modify the Working Tree.
 
+The tree remembers its view, change toggles, search, selection, folders, canvas position, preview and split ratios across reconstruction and reopening. Use the toolbar gear or Settings → Interface → Commit file tree to choose last-used display choices or fixed defaults for new pages, with separate change options for single commits and comparisons. New defaults preserve existing page snapshots. Local cache can clear page and folder memory by repository. The figures below illustrate tree structure; their toolbar may omit the newly added settings gear.
+
 ![Figure 51 Horizontal tree of an AlwayGit-Demo commit snapshot, showing only changed files and their necessary directories](images/user-manual/figure-51.png)
 
 ![Figure 52 Radial tree of the same sample commit, showing the complete directory structure](images/user-manual/figure-52.png)

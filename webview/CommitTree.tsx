@@ -18,6 +18,8 @@ import type {
 import type { DiffTarget } from '../src/protocol/types';
 import { rpc } from './rpc';
 import { useCommitTreeState } from './useCommitTreeState';
+import { TreeDefaultsDialog } from './TreeDefaultsSettings';
+import { readTreeDefaults } from '../src/protocol/tree-settings';
 import { useWorkbenchFields } from './subscriptions';
 import { useResolvedTheme, diffRowHeight } from './appearance';
 import { useTranslation } from './i18n';
@@ -51,7 +53,13 @@ export function CommitTree({
   target: CommitTreeTarget;
 }) {
   const t = useTranslation(),
-    preferences = useWorkbenchFields('appearance', 'layout', 'language', 'treeWheelMode');
+    preferences = useWorkbenchFields(
+      'appearance',
+      'layout',
+      'language',
+      'treeWheelMode',
+      'treeDefaults',
+    );
   const theme = useResolvedTheme(preferences.appearance.theme);
   const pageState = useCommitTreeState({ repoId, revision, baseRevision }),
     { initial, update: saveView } = pageState;
@@ -114,6 +122,7 @@ export function CommitTree({
     [expanding, setExpanding] = useState<number>();
   const [viewMode, setViewMode] = useState<TreeViewMode>(initial.viewMode ?? 'list');
   const [wheelMode, setWheelMode] = useState(initial.wheelMode ?? preferences.treeWheelMode);
+  const [settingsDraft, setSettingsDraft] = useState(initial.settingsDraft);
   const body = useRef<HTMLElement>(null);
   const [bodySize, setBodySize] = useState({ width: 0, height: 0, stacked: false });
   const [previewSplit, setPreviewSplit] = useState(initial.previewSplit ?? {});
@@ -179,6 +188,7 @@ export function CommitTree({
       showChanges,
       changesOnly,
       wheelMode,
+      settingsDraft,
       query,
       selected,
       selectedParent,
@@ -194,6 +204,7 @@ export function CommitTree({
     showChanges,
     changesOnly,
     wheelMode,
+    settingsDraft,
     query,
     selected,
     selectedParent,
@@ -242,6 +253,9 @@ export function CommitTree({
       .then((result) => {
         if (live) {
           setMetadata(result);
+          setSelectedParent((current) =>
+            current && result.commit.parents.includes(current) ? current : undefined,
+          );
           setMetadataError(undefined);
         }
       })
@@ -295,6 +309,8 @@ export function CommitTree({
       : !changes.baseRevision && changes.parent === parent)
       ? changes
       : undefined;
+  const treeDataReady =
+    indexed && (!showChanges || !!activeChanges || !!changesError || !!metadataError);
   const nodes = useMemo(
     () => snapshotNodes(entries, activeChanges?.files),
     [entries, activeChanges],
@@ -330,21 +346,23 @@ export function CommitTree({
   );
   const rows = useMemo(
     () =>
-      snapshotRows(nodes, expanded, query, {
-        changesOnly: !!changeFocus,
-      }),
-    [nodes, expanded, query, changeFocus],
+      changesOnly && !activeChanges && !query.trim()
+        ? []
+        : snapshotRows(nodes, expanded, query, {
+            changesOnly: !!changeFocus,
+          }),
+    [nodes, expanded, query, changeFocus, changesOnly, activeChanges],
   );
   const counts = useMemo(() => snapshotCounts(entries), [entries]);
   useLayoutEffect(() => {
-    if (!indexed || !list.current) return;
+    if (!treeDataReady || memory.loading || !list.current) return;
     const saved = restoreList.current ?? pageState.saved.current.view?.listScroll;
     if (saved) {
       list.current.scrollTop = saved.top;
       list.current.scrollLeft = saved.left;
     }
     restoreList.current = undefined;
-  }, [indexed, viewMode]);
+  }, [treeDataReady, memory.loading, viewMode]);
   const summary = useMemo(() => changeCounts(activeChanges?.files ?? []), [activeChanges]);
   const selectedNode = flatNodes.find((node) => node.id === selected),
     selectedEntry = selectedNode?.entry;
@@ -554,6 +572,15 @@ export function CommitTree({
       >
         {withLabels && t('tree.togglePreview')}
       </Button>
+      <Button
+        className={withLabels ? '' : 'icon-only'}
+        icon="settings-gear"
+        title={t('treeSettings.title')}
+        aria-label={t('treeSettings.title')}
+        onClick={() => setSettingsDraft(readTreeDefaults(preferences.treeDefaults))}
+      >
+        {withLabels && t('treeSettings.title')}
+      </Button>
     </>
   );
   return (
@@ -561,6 +588,8 @@ export function CommitTree({
       className="workbench commit-tree-page"
       onPointerDownCapture={pageState.resume}
       onKeyDownCapture={pageState.resume}
+      onWheelCapture={pageState.resume}
+      onInputCapture={pageState.resume}
       data-theme={theme}
       style={
         {
@@ -966,7 +995,7 @@ export function CommitTree({
             ref={list}
             className="revision-tree-rows commit-tree-rows"
             onScroll={(event) => {
-              if (indexed)
+              if (treeDataReady && !memory.loading)
                 saveView({
                   listScroll: {
                     top: event.currentTarget.scrollTop,
@@ -1103,7 +1132,7 @@ export function CommitTree({
                 );
               }}
             </VirtualFileRows>
-            {!rows.length && !loading && indexed && (
+            {!rows.length && !loading && indexed && (!changesOnly || !!activeChanges) && (
               <div className="revision-tree-loading">
                 {t(query ? 'tree.noMatches' : 'tree.emptyTree')}
               </div>
@@ -1111,13 +1140,14 @@ export function CommitTree({
           </div>
         ) : (
           <CommitTreeGraph
+            initialFocus={pageState.saved.current.view?.graphFocus}
+            allowLargeGraph={pageState.saved.current.view?.allowLargeGraph}
+            onGraphStateChange={saveView}
             wheelMode={wheelMode}
             onWheelModeChange={setWheelMode}
             key={viewMode}
             initialCamera={pageState.saved.current.view?.cameras?.[viewMode]}
-            ready={
-              indexed && !memory.loading && (!showChanges || !!activeChanges || !!changesError)
-            }
+            ready={treeDataReady && !memory.loading}
             onCameraChange={(camera) =>
               saveView({
                 cameras: {
@@ -1156,7 +1186,11 @@ export function CommitTree({
         )}
         {previewOpen && (
           <div className="commit-tree-preview">
-            {selectedEntry?.type === 'gitlink' ? (
+            {!treeDataReady ? (
+              <div className="revision-tree-loading">
+                <Icon name="loading" className="codicon-modifier-spin" /> {t('tree.loading')}
+              </div>
+            ) : selectedEntry?.type === 'gitlink' ? (
               <div className="revision-tree-loading">
                 {t('tree.submodulePointer')} <span className="hash">{selectedEntry.oid}</span>
               </div>
@@ -1205,6 +1239,15 @@ export function CommitTree({
             onClick={pageState.retry}
           />
         </div>
+      )}
+      {settingsDraft && (
+        <TreeDefaultsDialog
+          draft={settingsDraft}
+          onChange={setSettingsDraft}
+          current={pageState.saved.current.view ?? {}}
+          comparison={!!baseRevision}
+          onClose={() => setSettingsDraft(undefined)}
+        />
       )}
       {menu && (
         <ContextMenu

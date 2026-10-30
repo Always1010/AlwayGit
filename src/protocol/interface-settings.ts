@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { sessionSchema, type SessionState, type LayoutState } from './session';
+import { treeDefaultsSchema } from './tree-settings';
 
 export const defaultLayout: LayoutState = {
   preset: 'workbench',
@@ -18,6 +19,7 @@ export const defaultLayout: LayoutState = {
 export const interfaceSettingsSchema = z
   .object({
     treeWheelMode: z.enum(['zoom', 'scroll']).optional(),
+    treeDefaults: treeDefaultsSchema.optional(),
     language: z.enum(['en', 'zh-CN']).optional(),
     font: sessionSchema.shape.layout.unwrap().shape.font.optional(),
     row: sessionSchema.shape.layout.unwrap().shape.row.optional(),

@@ -1,5 +1,6 @@
 import { ShortcutSettings } from './ShortcutSettings';
 import { LocalCacheSettings } from './LocalCacheSettings';
+import { TreeDefaultsEditor } from './TreeDefaultsSettings';
 import { FileLabel } from './FileLabel';
 import { BranchIcon, Button, Icon, Modal } from './ui';
 
@@ -28,6 +29,7 @@ import {
 import { graphPalettes, type GraphPaletteId } from './graph/palettes';
 
 type SettingsPage =
+  | 'tree'
   | 'files'
   | 'language'
   | 'keyboard'
@@ -471,27 +473,29 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
     appearance.colors.dark.some((color, index) => color !== presetBase.dark[index]) ||
     appearance.colors.light.length !== presetBase.light.length;
   const pageLabel =
-    page === 'cache'
-      ? t('localCache.title')
-      : page === 'files'
-        ? t('changes.fileList')
-        : page === 'advanced'
-          ? t('settings.gitOperations')
-          : page === 'keyboard'
-            ? t('settings.keyboardShortcuts')
-            : page === 'language'
-              ? t('common.language')
-              : page === 'theme'
-                ? t('settings.theme')
-                : page === 'density'
-                  ? t('settings.textDensity')
-                  : page === 'diff'
-                    ? uiText('settings.diff')
-                    : page === 'status'
-                      ? t('settings.statusIndicators')
-                      : page === 'history'
-                        ? t('settings.display')
-                        : t('settings.graphColors');
+    page === 'tree'
+      ? t('treeSettings.title')
+      : page === 'cache'
+        ? t('localCache.title')
+        : page === 'files'
+          ? t('changes.fileList')
+          : page === 'advanced'
+            ? t('settings.gitOperations')
+            : page === 'keyboard'
+              ? t('settings.keyboardShortcuts')
+              : page === 'language'
+                ? t('common.language')
+                : page === 'theme'
+                  ? t('settings.theme')
+                  : page === 'density'
+                    ? t('settings.textDensity')
+                    : page === 'diff'
+                      ? uiText('settings.diff')
+                      : page === 'status'
+                        ? t('settings.statusIndicators')
+                        : page === 'history'
+                          ? t('settings.display')
+                          : t('settings.graphColors');
   const navItem = (id: SettingsPage, icon: string, label: string) => (
     <button
       type="button"
@@ -550,6 +554,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
             {navItem('theme', 'color-mode', t('settings.theme'))}
             {navItem('density', 'text-size', t('settings.textDensity'))}
             {navItem('files', 'list-tree', t('changes.fileList'))}
+            {navItem('tree', 'type-hierarchy', t('treeSettings.title'))}
             {navItem('diff', 'diff', t('settings.diff'))}
             {navItem('status', 'bell-dot', t('settings.statusIndicators'))}
           </div>
@@ -603,6 +608,12 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
           </header>
 
           <div className="settings-page-scroll" key={page}>
+            {page === 'tree' && (
+              <TreeDefaultsEditor
+                value={state.treeDefaults}
+                onChange={(treeDefaults) => state.previewSettings({ treeDefaults })}
+              />
+            )}
             {saveError && (
               <p role="alert" className="form-error">
                 {saveError}

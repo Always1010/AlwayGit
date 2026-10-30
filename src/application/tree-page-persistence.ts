@@ -28,12 +28,6 @@ const prefix = 'alwaygit.treePage';
 const maxPages = 40,
   maxBytes = 4 * 1024 * 1024;
 
-/** New targets inherit display options from an existing complete page, never its query or coordinates. */
-export function inheritedTreeView(view: CommitTreeViewState = {}): CommitTreeViewState {
-  const { viewMode, showChanges, changesOnly, wheelMode, previewOpen, previewSplit } = view;
-  return { viewMode, showChanges, changesOnly, wheelMode, previewOpen, previewSplit };
-}
-
 /** Independent keys avoid replacing other pages across hosts. Memento has no cross-window CAS. */
 export class TreePageMemory {
   private pending: Promise<unknown> = Promise.resolve();

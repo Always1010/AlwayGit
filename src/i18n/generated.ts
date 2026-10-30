@@ -7519,6 +7519,66 @@ export const catalog = {
     "en": "This file-tree state exceeds the 4 MiB local-cache limit. Reduce individual folder choices before retrying.",
     "zh-CN": "当前文件树状态超过 4 MiB 本地缓存上限，请减少单独记录的目录选择后重试。"
   },
+  "treeSettings.title": {
+    "en": "Commit file tree",
+    "zh-CN": "提交文件树"
+  },
+  "treeSettings.opening": {
+    "en": "Opening behavior",
+    "zh-CN": "打开方式"
+  },
+  "treeSettings.newPages": {
+    "en": "New file-tree pages",
+    "zh-CN": "新文件树页面"
+  },
+  "treeSettings.rememberRecent": {
+    "en": "Remember last used",
+    "zh-CN": "记住上次使用"
+  },
+  "treeSettings.useDefaults": {
+    "en": "Use specified defaults",
+    "zh-CN": "使用指定默认值"
+  },
+  "treeSettings.explanation": {
+    "en": "Existing pages restore their complete state. New pages inherit only display choices or use the defaults below; searches and file selections stay with their original page.",
+    "zh-CN": "已有页面恢复完整现场；新页面只继承显示选项，或使用下方默认值。搜索词与文件选择留在原页面。"
+  },
+  "treeSettings.defaults": {
+    "en": "New-page defaults",
+    "zh-CN": "新页面默认值"
+  },
+  "treeSettings.wheel": {
+    "en": "Default wheel behavior",
+    "zh-CN": "默认滚轮行为"
+  },
+  "treeSettings.expansion": {
+    "en": "Initial folder expansion",
+    "zh-CN": "初始目录展开方式"
+  },
+  "treeSettings.rememberFolders": {
+    "en": "Use repository folder memory",
+    "zh-CN": "沿用仓库目录记忆"
+  },
+  "treeSettings.preview": {
+    "en": "Open file preview by default",
+    "zh-CN": "默认打开文件预览"
+  },
+  "treeSettings.single": {
+    "en": "Single Commit",
+    "zh-CN": "单 Commit 浏览"
+  },
+  "treeSettings.comparison": {
+    "en": "Two-Commit comparison",
+    "zh-CN": "双 Commit 比较"
+  },
+  "treeSettings.copyCurrent": {
+    "en": "Use current display choices",
+    "zh-CN": "使用当前显示选项"
+  },
+  "treeSettings.reset": {
+    "en": "Reset file-tree defaults",
+    "zh-CN": "恢复文件树默认设置"
+  },
   "validation.checkoutRequiresExactlyOneBranch": {
     "en": "Checkout requires exactly one branch",
     "zh-CN": "切换操作只能选择一个分支"
@@ -9867,6 +9927,21 @@ export interface MessageParameters {
   "treeViews.stateSaveFailed": { error: ParameterValue };
   "treeViews.retrySave": {  };
   "treeViews.cacheBudget": {  };
+  "treeSettings.title": {  };
+  "treeSettings.opening": {  };
+  "treeSettings.newPages": {  };
+  "treeSettings.rememberRecent": {  };
+  "treeSettings.useDefaults": {  };
+  "treeSettings.explanation": {  };
+  "treeSettings.defaults": {  };
+  "treeSettings.wheel": {  };
+  "treeSettings.expansion": {  };
+  "treeSettings.rememberFolders": {  };
+  "treeSettings.preview": {  };
+  "treeSettings.single": {  };
+  "treeSettings.comparison": {  };
+  "treeSettings.copyCurrent": {  };
+  "treeSettings.reset": {  };
   "validation.checkoutRequiresExactlyOneBranch": {  };
   "validation.stashRequiresCheckout": {  };
   "validation.chooseAnExistingGroupOrCreateANewOne": {  };

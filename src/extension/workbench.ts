@@ -1,5 +1,6 @@
 import { TreeExpansionMemory } from '../application/tree-expansion-persistence';
-import { TreePageMemory, inheritedTreeView } from '../application/tree-page-persistence';
+import { TreePageMemory } from '../application/tree-page-persistence';
+import { openingTreeView, readTreeDefaults } from '../protocol/tree-settings';
 import { defaultTreeExpansion, treeExpansionPatchSchema } from '../protocol/tree-expansion';
 import { localCacheClearSchema } from '../protocol/local-cache';
 import { prepareRebaseSchema } from '../protocol/interactive-rebase';
@@ -915,10 +916,15 @@ export class Workbench implements vscode.Disposable {
       );
     panel.iconPath = vscode.Uri.joinPath(this.context.extensionUri, 'media', 'alwaygit.svg');
     try {
+      const preferences = this.interfaceSettings();
       const view =
         restoredState?.view ??
         (await this.treePageMemory.read(target)) ??
-        inheritedTreeView(await this.treePageMemory.latest(!!baseRevision));
+        openingTreeView(
+          readTreeDefaults(preferences.treeDefaults, preferences.treeWheelMode),
+          !!baseRevision,
+          await this.treePageMemory.latest(!!baseRevision),
+        );
       await this.attach(
         panel,
         'editor',
@@ -1375,9 +1381,12 @@ export class Workbench implements vscode.Disposable {
         (request.repoId !== undefined && request.repoId !== target.repoId)
       )
         throw new MessageError(message('tree.fixedPanel'));
-      // Fixed tree tabs may change their wheel preference, but no other workbench settings.
+      // Fixed tree tabs may edit only tree defaults and the legacy wheel preference.
       if (request.method === 'saveInterfaceSettings')
-        interfaceSettingsSchema.pick({ treeWheelMode: true }).required().parse(request.payload);
+        interfaceSettingsSchema
+          .pick({ treeWheelMode: true, treeDefaults: true })
+          .refine((value) => value.treeWheelMode !== undefined || value.treeDefaults !== undefined)
+          .parse(request.payload);
       if (request.method === 'saveCommitTreeState') {
         const saved = commitTreePanelStateSchema.parse(request.payload).commitTree;
         if (JSON.stringify(saved) !== JSON.stringify(target))
