@@ -124,7 +124,14 @@ export function ActionFeedbackBar({
       role={status === 'error' ? 'alert' : 'status'}
       aria-live={status === 'error' ? 'assertive' : 'polite'}
     >
-      <div className="feedback-row">
+      <div
+        className={`feedback-row${hasDetails ? ' feedback-row-expandable' : ''}`}
+        onClick={(event) => {
+          if (hasDetails && !(event.target as Element).closest('button')) {
+            setExpandedFor(expanded ? undefined : feedbackKey);
+          }
+        }}
+      >
         <Icon
           name={
             status === 'running'
