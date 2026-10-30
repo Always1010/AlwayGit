@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { PreviewRowMetrics } from '../webview/preview-row-metrics';
 import {
   adjacentDiffFile,
   alignDiff,
@@ -10,6 +11,19 @@ import {
 } from '../webview/diff';
 
 describe('Diff change navigation', () => {
+  it('locates paged rows and retains an in-row anchor when wrapped heights grow or shrink', () => {
+    const metrics = new PreviewRowMetrics(1_000_000, 18);
+    metrics.measure(20, 72);
+    metrics.measure(900_000, 126);
+    expect(metrics.offset(900_000)).toBe(900_000 * 18 + 54);
+    expect(metrics.rowAt(metrics.offset(900_000) + 100)).toBe(900_000);
+    const anchor = metrics.anchor(metrics.offset(900_000) + 63);
+    metrics.measure(20, 36);
+    metrics.measure(900_000, 54);
+    expect(metrics.restore(anchor)).toBe(metrics.offset(900_000) + 27);
+    expect(metrics.rowAt(metrics.offset(900_001))).toBe(900_001);
+    expect(metrics.offset(1_000_000)).toBe(18_000_000 + 18 + 36);
+  });
   it('wraps across files in both directions and skips files without text blocks', async () => {
     const counts = [2, 0, 0, 3],
       controller = new AbortController(),

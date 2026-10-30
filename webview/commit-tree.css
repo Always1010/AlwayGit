@@ -301,14 +301,32 @@
   min-width: 0;
   min-height: 0;
 }
+.snapshot-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
 .snapshot-content {
   flex: 1;
   margin: 0;
-  padding: 10px;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overflow-anchor: none;
   font: var(--diff-font, 12px)/var(--diff-row-height, 18px)
     var(--vscode-editor-font-family, Consolas, monospace);
   tab-size: 4;
+}
+.snapshot-line {
+  display: flex;
+}
+.snapshot-line code {
+  display: block;
+  font: inherit;
+  white-space: pre;
+  width: max-content;
+  transform: translateX(var(--diff-scroll-x, 0px));
 }
 .snapshot-image {
   display: flex;

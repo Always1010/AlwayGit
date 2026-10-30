@@ -2127,6 +2127,7 @@ p {
 }
 .text-diff-viewport {
   overflow-x: hidden;
+  overflow-anchor: none;
 }
 .diff-horizontal-scroll {
   flex: none;
@@ -2175,6 +2176,22 @@ p {
   white-space: pre;
   tab-size: 4;
   transform: translateX(var(--diff-scroll-x, 0px));
+}
+[data-text-wrap='adaptive'] [data-preview-code],
+[data-text-wrap='column'] [data-preview-code] {
+  width: 100%;
+  white-space: pre-wrap;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+[data-text-wrap='column'] [data-preview-code] {
+  width: var(--preview-wrap-width, 100ch);
+}
+[data-preview-code] {
+  align-self: flex-start;
+}
+[data-preview-row] .line-number {
+  align-self: flex-start;
 }
 .diff-heading {
   flex-wrap: wrap;

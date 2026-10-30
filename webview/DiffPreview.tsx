@@ -144,11 +144,11 @@ function content(
   side: 'before' | 'after',
 ) {
   if (value === undefined) return null;
-  if (!changed || other === undefined) return <code>{value}</code>;
+  if (!changed || other === undefined) return <code data-preview-code>{value}</code>;
   const parts = changedParts(side === 'before' ? value : other, side === 'before' ? other : value),
     middle = side === 'before' ? parts.before : parts.after;
   return (
-    <code>
+    <code data-preview-code>
       {parts.prefix}
       {middle && (
         <mark className={side === 'before' ? 'diff-word-removed' : 'diff-word-added'}>
@@ -237,9 +237,18 @@ function DiffPreviewPanel({
   const trackHorizontal = () => {
     if (horizontal.current) setHorizontalOffset(horizontal.current.scrollLeft);
   };
-  const pendingHunkScroll = useRef<{ top: number; left: number } | undefined>(undefined);
+  const pendingHunkScroll = useRef<
+    { top: number; left: number; anchor: { index: number; fraction: number } } | undefined
+  >(undefined);
   const hunkScroll = useRef<
-    { repoId?: string; path: string; top: number; left: number } | undefined
+    | {
+        repoId?: string;
+        path: string;
+        top: number;
+        left: number;
+        anchor: { index: number; fraction: number };
+      }
+    | undefined
   >(undefined);
   const [navigating, setNavigating] = useState(false),
     [navigationError, setNavigationError] = useState<string>(),
@@ -307,7 +316,9 @@ function DiffPreviewPanel({
       const saved = hunkScroll.current,
         preserve = saved && saved.repoId === state.repoId && saved.path === state.diffTarget?.path;
       hunkScroll.current = undefined;
-      pendingHunkScroll.current = preserve ? { top: saved.top, left: saved.left } : undefined;
+      pendingHunkScroll.current = preserve
+        ? { top: saved.top, left: saved.left, anchor: saved.anchor }
+        : undefined;
       displayedKey.current = targetKey;
       initiallyPositioned.current = !!preserve;
       setPreview(undefined);
@@ -373,39 +384,19 @@ function DiffPreviewPanel({
     };
   }, [index?.token, state.repoId]);
   const ROW_HEIGHT = diffRowHeight(state.appearance.codeFont, state.appearance.codeRowHeight);
-  const virtual = useDiffVirtualizer(rowCount, ROW_HEIGHT, viewport, active && !collapsed);
-  const totalHeight = virtual.getTotalSize(),
-    previousRowHeight = useRef(ROW_HEIGHT),
-    previousScale = useRef(virtual.scale),
-    pendingTopRow = useRef<number | undefined>(undefined);
-  useLayoutEffect(() => {
-    const element = viewport.current,
-      topRow =
-        (element?.scrollTop ?? lastScrollTop.current) /
-        previousScale.current /
-        previousRowHeight.current;
-    if (previousRowHeight.current !== ROW_HEIGHT || previousScale.current !== virtual.scale) {
-      if (element) pendingTopRow.current = topRow;
-      else lastScrollTop.current = virtual.toScrollOffset(topRow * ROW_HEIGHT);
-    }
-    previousRowHeight.current = ROW_HEIGHT;
-    previousScale.current = virtual.scale;
-    virtual.measure();
-  }, [ROW_HEIGHT, virtual.scale]);
-  useLayoutEffect(() => {
-    const element = viewport.current;
-    // Wait for the remeasured spacer; the old height can clamp the new offset.
-    if (!element || pendingTopRow.current === undefined || totalHeight !== rowCount * ROW_HEIGHT)
-      return;
-    const offset = Math.max(
-      0,
-      Math.min(pendingTopRow.current * ROW_HEIGHT, totalHeight - element.clientHeight),
-    );
-    navigationScroll.current = virtual.toScrollOffset(offset);
-    pendingTopRow.current = undefined;
-    virtual.scrollToOffset(offset);
-    lastScrollTop.current = element.scrollTop;
-  }, [ROW_HEIGHT, totalHeight, rowCount, collapsed]);
+  const wrap = state.appearance.textWrap !== 'off';
+  const virtual = useDiffVirtualizer(rowCount, ROW_HEIGHT, viewport, active && !collapsed, {
+    contentKey: targetKey,
+    layoutKey: JSON.stringify([
+      viewportWidth,
+      state.appearance.codeFont,
+      state.appearance.textWrap,
+      state.appearance.textWrapColumn,
+      index?.token,
+    ]),
+    wrap,
+  });
+  const totalHeight = virtual.getTotalSize();
   useLayoutEffect(() => {
     const saved = pendingHunkScroll.current,
       element = viewport.current;
@@ -413,7 +404,7 @@ function DiffPreviewPanel({
     pendingHunkScroll.current = undefined;
     const top = Math.max(0, Math.min(saved.top, virtual.getScrollSize() - element.clientHeight));
     navigationScroll.current = top;
-    virtual.scrollToOffset(virtual.toLogicalOffset(top));
+    virtual.scrollToAnchor(saved.anchor);
     setHorizontalOffset(saved.left);
     lastScrollTop.current = element.scrollTop;
   }, [preview, loading, rowCount, totalHeight]);
@@ -461,13 +452,12 @@ function DiffPreviewPanel({
       block = changes[index],
       height = viewport.current.clientHeight;
     setSelection({ key: targetKey, rows, index, ranges: changes });
-    const top =
-      (block.end - block.start + 1) * ROW_HEIGHT > height
-        ? block.start * ROW_HEIGHT
-        : ((block.start + block.end + 1) * ROW_HEIGHT) / 2 - height / 2;
+    const start = virtual.offsetAtRow(block.start),
+      end = virtual.offsetAtRow(block.end + 1);
+    const top = end - start > height ? start : (start + end - height) / 2;
     const offset = Math.max(0, Math.min(top, virtual.getTotalSize() - height));
     navigationScroll.current = virtual.toScrollOffset(offset);
-    virtual.scrollToOffset(offset);
+    virtual.scrollToRange(block.start, block.end);
   };
   const boundaryKey = JSON.stringify([
     targetKey,
@@ -643,7 +633,7 @@ function DiffPreviewPanel({
     if (preview?.kind !== 'text') return;
     const index = changeAtRow(
       changes,
-      (virtual.toLogicalOffset(element.scrollTop) + element.clientHeight / 2) / ROW_HEIGHT,
+      virtual.rowAtOffset(virtual.toLogicalOffset(element.scrollTop) + element.clientHeight / 2),
     );
     setSelection((current) =>
       current?.key === targetKey && current.ranges === changes && current.index === index
@@ -664,6 +654,17 @@ function DiffPreviewPanel({
       }
     return columns;
   }, [rows, index]);
+  const horizontalWidth = useRef({ key: '', preview, maximum: 0 });
+  const horizontalKey = JSON.stringify([
+    targetKey,
+    index?.token,
+    viewportWidth,
+    state.appearance.codeFont,
+    state.appearance.textWrap,
+    state.appearance.textWrapColumn,
+  ]);
+  if (horizontalWidth.current.key !== horizontalKey || horizontalWidth.current.preview !== preview)
+    horizontalWidth.current = { key: horizontalKey, preview, maximum: 0 };
   // Horizontal scrolling has its own native control; only code receives its offset.
   useLayoutEffect(() => {
     const element = viewport.current,
@@ -675,6 +676,19 @@ function DiffPreviewPanel({
         ? Math.min(...cells.map((cell) => cell.getBoundingClientRect().width))
         : 0;
       frame.current?.style.setProperty('--diff-code-width', `${width}px`);
+      if (wrap) {
+        for (const row of element.querySelectorAll<HTMLElement>('[data-preview-row]')) {
+          if (row.dataset.previewLoaded === 'false') continue;
+          const codes = [...row.querySelectorAll<HTMLElement>('[data-preview-code]')];
+          horizontalWidth.current.maximum = Math.max(
+            horizontalWidth.current.maximum,
+            ...codes.map((code) => code.scrollWidth),
+          );
+        }
+        const extent = Math.max(width, horizontalWidth.current.maximum);
+        const spacer = bar.firstElementChild as HTMLElement | null;
+        if (spacer) spacer.style.width = `${bar.clientWidth + Math.max(0, extent - width)}px`;
+      }
       const overflow = contentColumns > 0 && bar.scrollWidth > bar.clientWidth;
       frame.current?.style.setProperty('--diff-horizontal-height', overflow ? '6px' : '0px');
       bar.tabIndex = overflow ? 0 : -1;
@@ -694,6 +708,9 @@ function DiffPreviewPanel({
     active,
     preview?.kind,
     state.appearance.codeFont,
+    horizontalKey,
+    pages.row,
+    totalHeight,
   ]);
   useLayoutEffect(() => {
     const element = viewport.current;
@@ -768,6 +785,7 @@ function DiffPreviewPanel({
       path: hunkTarget.path,
       top: viewport.current?.scrollTop ?? lastScrollTop.current,
       left: horizontalOffset.current,
+      anchor: virtual.getAnchor(),
     };
     void state.execute({
       type: discard ? 'discard-hunk' : hunkTarget.area === 'staged' ? 'unstage-hunk' : 'stage-hunk',
@@ -912,11 +930,13 @@ function DiffPreviewPanel({
     <section
       className={`diff-preview${maximized ? ' diff-preview-maximized' : ''}`}
       data-testid="diff-preview"
+      data-text-wrap={state.appearance.textWrap}
       ref={frame}
       style={
         {
           '--diff-gutter-width': patchHunks?.token ? '32px' : '1px',
           '--diff-line-digits': Math.max(2, String(rowCount).length),
+          '--preview-wrap-width': `${state.appearance.textWrapColumn}ch`,
         } as React.CSSProperties
       }
     >
@@ -1171,12 +1191,14 @@ function DiffPreviewPanel({
                     return (
                       <div
                         key={item.index}
+                        data-preview-row={item.index}
+                        data-preview-loaded={!index || !!pages.row(item.index)}
                         className={`diff-line${active ? ' active-change' : ''}${active && item.index === highlighted?.start ? ' active-change-start' : ''}${active && item.index === highlighted?.end ? ' active-change-end' : ''}`}
                         style={{
                           position: 'absolute',
                           left: 0,
                           width: 'var(--diff-viewport-width,100%)',
-                          height: ROW_HEIGHT,
+                          height: item.size,
                           transform: `translateY(${item.start}px)`,
                         }}
                       >
@@ -1227,7 +1249,9 @@ function DiffPreviewPanel({
               >
                 <div
                   style={{
-                    width: `max(100%, calc(100% + ${contentColumns}ch + 4px - var(--diff-code-width,0px)))`,
+                    width: wrap
+                      ? undefined
+                      : `max(100%, calc(100% + ${contentColumns}ch + 4px - var(--diff-code-width,0px)))`,
                   }}
                 />
               </div>

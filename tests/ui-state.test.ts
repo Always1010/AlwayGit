@@ -1854,6 +1854,8 @@ describe('repository UI consistency', () => {
       codeFont: 15,
       codeRowHeight: 18,
       diffRowSeparators: false,
+      textWrap: 'adaptive',
+      textWrapColumn: 100,
       historyRowSeparators: false,
       historyAlternateRows: false,
       fileSpacing: 1,
@@ -1868,6 +1870,21 @@ describe('repository UI consistency', () => {
     }
     expect(normalizeAppearance({ ...legacy, codeRowHeight: NaN }).codeRowHeight).toBe(18);
     expect(normalizeAppearance({ ...legacy, codeRowHeight: 100 }).codeRowHeight).toBe(36);
+    for (const textWrap of ['adaptive', 'column', 'off'] as const) {
+      expect(
+        sessionSchema.parse({ appearance: { ...legacy, textWrap, textWrapColumn: 120 } })
+          .appearance,
+      ).toMatchObject({ textWrap, textWrapColumn: 120 });
+    }
+    expect(
+      sessionSchema.safeParse({ appearance: { ...legacy, textWrap: 'unknown' } }).success,
+    ).toBe(false);
+    for (const textWrapColumn of [0, 19, 1001, 100.5]) {
+      expect(sessionSchema.safeParse({ appearance: { ...legacy, textWrapColumn } }).success).toBe(
+        false,
+      );
+    }
+    expect(normalizeAppearance({ textWrapColumn: NaN }).textWrapColumn).toBe(100);
     for (const fileSpacing of [-1, 9, 1.5]) {
       expect(sessionSchema.safeParse({ appearance: { ...legacy, fileSpacing } }).success).toBe(
         false,

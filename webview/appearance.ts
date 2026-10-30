@@ -25,6 +25,8 @@ export interface Appearance {
   palette: GraphPaletteId;
   codeFont: number;
   codeRowHeight: number;
+  textWrap: 'adaptive' | 'column' | 'off';
+  textWrapColumn: number;
   diffRowSeparators: boolean;
   historyRowSeparators: boolean;
   historyAlternateRows: boolean;
@@ -65,6 +67,8 @@ export const defaultAppearance: Appearance = {
   palette: 'vivid',
   codeFont: 12,
   codeRowHeight: 18,
+  textWrap: 'adaptive',
+  textWrapColumn: 100,
   diffRowSeparators: false,
   historyRowSeparators: false,
   historyAlternateRows: false,
@@ -114,6 +118,10 @@ export function normalizeAppearance(value: Partial<Appearance> = {}): Appearance
       ? Math.round(Math.max(16, Math.min(36, value.codeRowHeight!)))
       : 18,
     diffRowSeparators: value.diffRowSeparators === true,
+    textWrap: value.textWrap === 'column' || value.textWrap === 'off' ? value.textWrap : 'adaptive',
+    textWrapColumn: Number.isFinite(value.textWrapColumn)
+      ? Math.round(Math.max(20, Math.min(1000, value.textWrapColumn!)))
+      : 100,
     historyRowSeparators: value.historyRowSeparators === true,
     historyAlternateRows: value.historyAlternateRows === true,
     fileSpacing: Number.isFinite(value.fileSpacing)
