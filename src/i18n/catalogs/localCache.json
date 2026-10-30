@@ -126,14 +126,8 @@
     "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
   },
   "localCache.unknownRepository": {
-    "en": "Unknown repository",
-    "zh-CN": "未知仓库",
-    "review": "translated",
-    "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
-  },
-  "localCache.unknownPath": {
-    "en": "Path unavailable",
-    "zh-CN": "路径未知",
+    "en": "Unknown",
+    "zh-CN": "未知",
     "review": "translated",
     "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
   },
