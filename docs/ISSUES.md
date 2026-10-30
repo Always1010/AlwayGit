@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-170：独立文件树与预览之间无法调整分栏大小
+
+- 日期：2026-10-30
+- 状态：已解决
+- 现象：独立文件树的目录列表或图形画布打开文件预览后，中间分隔线不能拖动，无法按阅读需要调整两侧大小。
+- 原因：左右区域使用固定百分比布局，没有可操作的分隔条；画布尺寸变化又自动适应全图，连续调整会反复改变缩放。
+- 解决方案：复用可拖动及键盘操作的分隔条，按可用空间限制两侧尺寸；当前标签分别保留左右、上下布局的比例，关闭预览及切换展示方式后复用。画布尺寸变化时保持缩放和阅读中心。
+- 验证方式：类型检查、双语资源检查和 Webview 生产构建通过；tree-canvas-only 无头界面回归覆盖真实鼠标拖动、关闭重开恢复、三个图形布局保留缩放、键盘最小尺寸与预览边界，以及窄窗口上下拖动。未启动可见桌面测试。
+- 相关文件：`webview/CommitTree.tsx`、`webview/CommitTreeGraph.tsx`、`webview/commit-tree.css`、`webview/commit-tree-graph.css`、`src/i18n/catalogs/tree.json`、`scripts/test-tree-canvas-ui.mjs`、`scripts/test-ui.mjs`、`docs/WORKBENCH_SPEC.md`、`docs/WORKBENCH_SPEC.en.md`。
+
 ## BUG-169：合并侧线过度压缩且接入主线时失去路径颜色
 
 - 日期：2026-10-28
