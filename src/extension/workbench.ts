@@ -1,4 +1,5 @@
 import { TreeExpansionMemory } from '../application/tree-expansion-persistence';
+import { TreePageMemory, inheritedTreeView } from '../application/tree-page-persistence';
 import { defaultTreeExpansion, treeExpansionPatchSchema } from '../protocol/tree-expansion';
 import { localCacheClearSchema } from '../protocol/local-cache';
 import { prepareRebaseSchema } from '../protocol/interactive-rebase';
@@ -119,7 +120,11 @@ import {
   workbenchViewIds,
 } from './workbench-launcher';
 
-import { commitTreeTargetSchema, type CommitTreePanelState } from '../protocol/tree';
+import {
+  commitTreeTargetSchema,
+  commitTreePanelStateSchema,
+  type CommitTreePanelState,
+} from '../protocol/tree';
 import {
   treeCompareOrderSchema,
   openCommitTreeSchema,
@@ -255,6 +260,7 @@ export class Workbench implements vscode.Disposable {
   private preferenceMigration?: Promise<void>;
   private preferenceWrites: Promise<unknown> = Promise.resolve();
   private readonly treeExpansionMemory: TreeExpansionMemory;
+  private readonly treePageMemory: TreePageMemory;
   private interfaceSettings(): InterfacePreferences {
     const configuration = vscode.workspace.getConfiguration('alwaygit');
     const parsed = interfaceSettingsSchema.safeParse(configuration.get('interfaceSettings', {}));
@@ -372,6 +378,7 @@ export class Workbench implements vscode.Disposable {
     private readonly projects: ProjectWindows,
   ) {
     this.treeExpansionMemory = new TreeExpansionMemory(context.globalState, context.workspaceState);
+    this.treePageMemory = new TreePageMemory(context.globalState);
     this.disposables.push(
       repositories.onDidChange((event) => {
         this.snapshots.invalidate(event.repoId);
@@ -908,13 +915,19 @@ export class Workbench implements vscode.Disposable {
       );
     panel.iconPath = vscode.Uri.joinPath(this.context.extensionUri, 'media', 'alwaygit.svg');
     try {
+      const view =
+        restoredState?.view ??
+        (await this.treePageMemory.read(target)) ??
+        inheritedTreeView(await this.treePageMemory.latest(!!baseRevision));
       await this.attach(
         panel,
         'editor',
         { repoId },
         false,
         undefined,
-        restoredState ? { ...restoredState, commitTree: target } : { commitTree: target },
+        Object.values(view).some((value) => value !== undefined)
+          ? { commitTree: target, view }
+          : { commitTree: target },
       );
     } catch (error) {
       panel.dispose();
@@ -1338,6 +1351,7 @@ export class Workbench implements vscode.Disposable {
         'treeExpansionRead',
         'treeExpansionPatch',
         'treeExpansionReset',
+        'saveCommitTreeState',
         'workbenchReady',
         'cancelQuery',
         'copyText',
@@ -1364,6 +1378,11 @@ export class Workbench implements vscode.Disposable {
       // Fixed tree tabs may change their wheel preference, but no other workbench settings.
       if (request.method === 'saveInterfaceSettings')
         interfaceSettingsSchema.pick({ treeWheelMode: true }).required().parse(request.payload);
+      if (request.method === 'saveCommitTreeState') {
+        const saved = commitTreePanelStateSchema.parse(request.payload).commitTree;
+        if (JSON.stringify(saved) !== JSON.stringify(target))
+          throw new MessageError(message('tree.fixedPanel'));
+      }
       const payload = request.payload as
         | {
             revision?: string;
@@ -1466,27 +1485,54 @@ export class Workbench implements vscode.Disposable {
     }
     if (request.method === 'localCacheList' || request.method === 'localCacheClear') {
       const repositories = this.repositories.list();
-      if (request.method === 'localCacheList')
-        return this.treeExpansionMemory.list(repositories, this.repositoriesInitialized);
-      return this.treeExpansionMemory.clear(
-        localCacheClearSchema.parse(request.payload),
+      if (request.method === 'localCacheClear') {
+        const requestClear = localCacheClearSchema.parse(request.payload);
+        await this.treePageMemory.clear(requestClear);
+        for (const entry of this.panels.values()) {
+          const repoId = entry.commitTree?.commitTree.repoId;
+          if (repoId && (requestClear.kind === 'all' || requestClear.repoIds.includes(repoId)))
+            this.post({ type: 'treePageCacheCleared', repoId }, entry);
+        }
+        await this.treeExpansionMemory.clear(
+          requestClear,
+          repositories,
+          (repoId) => {
+            for (const panel of this.panels.values())
+              if (panel.commitTree?.commitTree.repoId === repoId) {
+                this.post(
+                  {
+                    type: 'treeExpansionChanged',
+                    repoId,
+                    preferences: defaultTreeExpansion(),
+                    cleared: true,
+                  },
+                  panel,
+                );
+              }
+          },
+          this.repositoriesInitialized,
+        );
+      }
+      const entries = await this.treeExpansionMemory.list(
         repositories,
-        (repoId) => {
-          for (const panel of this.panels.values())
-            if (panel.commitTree?.commitTree.repoId === repoId) {
-              this.post(
-                {
-                  type: 'treeExpansionChanged',
-                  repoId,
-                  preferences: defaultTreeExpansion(),
-                  cleared: true,
-                },
-                panel,
-              );
-            }
-        },
         this.repositoriesInitialized,
       );
+      for (const page of await this.treePageMemory.list(
+        repositories,
+        this.repositoriesInitialized,
+      )) {
+        const entry = entries.find((entry) => entry.repoId === page.repoId);
+        if (entry) entry.pages = page.pages;
+        else entries.push(page);
+      }
+      return entries;
+    }
+    if (request.method === 'saveCommitTreeState') {
+      if (!source?.commitTree) throw new MessageError(message('tree.fixedPanel'));
+      const saved = commitTreePanelStateSchema.parse(request.payload);
+      await this.treePageMemory.save(saved, this.repositories.get(saved.commitTree.repoId));
+      source.commitTree = saved;
+      return null;
     }
     if (request.method === 'treeExpansionHintRead') return this.treeExpansionMemory.hintDismissed();
     if (request.method === 'treeExpansionHintDismiss')
@@ -2314,7 +2360,12 @@ export class Workbench implements vscode.Disposable {
       if (this.panels.get(entry.panel) !== entry) continue;
       if (
         entry.commitTree &&
-        !['response', 'interfaceSettingsChanged', 'treeExpansionChanged'].includes(message.type)
+        ![
+          'response',
+          'interfaceSettingsChanged',
+          'treeExpansionChanged',
+          'treePageCacheCleared',
+        ].includes(message.type)
       )
         continue;
       // Retain invalidation on the host: hidden Webviews need not receive or process these messages.

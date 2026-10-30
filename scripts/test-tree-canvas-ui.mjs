@@ -216,6 +216,7 @@ export async function verifyTreeCanvas(browser, url) {
     await page.locator('.diff-preview').waitFor();
     await page.locator('.commit-tree-view-select').selectOption('vertical');
     await page.locator('.tree-graph-stage').press('+');
+    await page.getByRole('button', { name: 'Scroll', exact: true }).click();
     const stage = await page.locator('.tree-graph-stage').boundingBox();
     await page.mouse.move(stage.x + 20, stage.y + 40);
     await page.mouse.down();
@@ -242,6 +243,7 @@ export async function verifyTreeCanvas(browser, url) {
       'previewOpen',
       'previewSplit',
       'expansion',
+      'wheelMode',
     ])
       assert.deepEqual(
         restored.view[field],

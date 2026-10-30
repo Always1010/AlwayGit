@@ -18,8 +18,8 @@
     "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
   },
   "localCache.scope": {
-    "en": "Saved folder expansion state for repositories, including removed repositories.",
-    "zh-CN": "保存各仓库的目录展开状态，包括已移除的仓库。",
+    "en": "Saved file-tree pages and folder expansion choices, including removed repositories. Defaults are managed separately.",
+    "zh-CN": "保存文件树页面与目录展开记忆，包括已移除的仓库；默认设置单独管理。",
     "review": "translated",
     "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
   },
@@ -72,8 +72,8 @@
     "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
   },
   "localCache.irreversible": {
-    "en": "Clearing resets folder expansion to defaults on the next visit and cannot be undone. Repository files and Git history are preserved.",
-    "zh-CN": "清理后，下次打开时恢复默认展开方式。此操作无法撤回，仓库文件和 Git 历史不受影响。",
+    "en": "Clearing removes saved file-tree pages and folder expansion choices. It cannot be undone. Repository files and Git history are preserved.",
+    "zh-CN": "清理会删除文件树页面记录及目录展开记忆，无法撤回；仓库文件和 Git 历史不受影响。",
     "review": "translated",
     "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
   },
@@ -114,8 +114,8 @@
     "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
   },
   "localCache.data": {
-    "en": "Folder state",
-    "zh-CN": "目录状态",
+    "en": "Tree state",
+    "zh-CN": "文件树状态",
     "review": "translated",
     "context": "webview/LocalCacheSettings.tsx; webview/SettingsDialog.tsx"
   },
@@ -200,6 +200,12 @@
   "localCache.refreshFailed": {
     "en": "Could not refresh the remaining cache: {{error}}",
     "zh-CN": "未能刷新剩余缓存：{{error}}",
+    "review": "translated",
+    "context": "webview/LocalCacheSettings.tsx"
+  },
+  "localCache.pageCount": {
+    "en": "{{count}} pages",
+    "zh-CN": "{{count}} 个页面",
     "review": "translated",
     "context": "webview/LocalCacheSettings.tsx"
   }

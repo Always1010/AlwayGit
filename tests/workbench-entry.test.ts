@@ -579,10 +579,37 @@ describe('Commit tree editor tabs', () => {
     });
     expect(vscode.window.createWebviewPanel).toHaveBeenCalledTimes(3);
     expect(first.panel.reveal).toHaveBeenCalledTimes(2);
-    await workbench.openCommitTree(repo.id, revision, restored.panel as never, baseRevision);
-    expect(internals.panels.get(restored.panel)?.commitTree).toEqual({
+    const restoredState = {
       commitTree: { repoId: repo.id, revision, baseRevision },
+      view: { viewMode: 'vertical' as const, changesOnly: true, query: 'keep' },
+    };
+    await workbench.openCommitTree(
+      repo.id,
+      revision,
+      restored.panel as never,
+      baseRevision,
+      restoredState,
+    );
+    expect(internals.panels.get(restored.panel)?.commitTree).toEqual(restoredState);
+    await restored.receive({
+      id: 'persist',
+      method: 'saveCommitTreeState',
+      payload: restoredState,
     });
+    expect(restored.panel.webview.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'persist', result: null }),
+    );
+    await restored.receive({
+      id: 'wrong-target',
+      method: 'saveCommitTreeState',
+      payload: {
+        ...restoredState,
+        commitTree: { ...restoredState.commitTree, revision: 'c'.repeat(40) },
+      },
+    });
+    expect(restored.panel.webview.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'wrong-target', error: expect.anything() }),
+    );
     expect(restored.panel.title).toContain('bbbbbbbb');
     expect(restored.panel.title).toContain('aaaaaaaa');
   });

@@ -10,6 +10,7 @@ export interface LocalCacheEntry {
   /** Repository discovery has not completed; false registered is not evidence of removal. */
   registrationUnknown?: boolean;
   directories: number;
+  pages?: number;
   mode: TreeExpansionMode;
   invalid?: boolean;
 }

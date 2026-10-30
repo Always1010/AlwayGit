@@ -549,6 +549,7 @@ export interface RpcRequest {
     | 'treeExpansionRead'
     | 'treeExpansionPatch'
     | 'treeExpansionReset'
+    | 'saveCommitTreeState'
     | 'treeCompareOrder'
     | 'revisionTreeCompare'
     | 'revisionTreeChanges'
@@ -677,6 +678,7 @@ export type HostMessage =
       };
     }
   | { type: 'changed'; repoId: string; changes?: RepositoryChanges; snapshot?: Snapshot }
+  | { type: 'treePageCacheCleared'; repoId: string }
   | { type: 'activity'; repoId: string; busy: boolean; label: string }
   | {
       type: 'networkOperationProgress';

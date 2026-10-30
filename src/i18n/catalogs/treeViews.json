@@ -77,12 +77,6 @@
     "review": "translated",
     "context": "webview/CommitTreeGraph.tsx"
   },
-  "treeViews.wheelSaveFailed": {
-    "en": "Could not save the wheel mode; the previous mode was restored: {{error}}",
-    "zh-CN": "无法保存滚轮模式，已恢复之前的模式：{{error}}",
-    "review": "translated",
-    "context": "webview/CommitTreeGraph.tsx"
-  },
   "treeViews.canvasZoom": {
     "en": "Tree canvas: drag to pan, wheel to zoom at pointer, Shift+wheel to pan horizontally, Ctrl+wheel to zoom at pointer, +/- to zoom, 0 to fit, Down to focus nodes",
     "zh-CN": "树画布：拖动平移，滚轮以鼠标位置缩放，Shift+滚轮左右平移，Ctrl+滚轮以鼠标位置缩放，加减号缩放，0 适应完整树，下方向键聚焦节点",
@@ -130,5 +124,23 @@
     "zh-CN": "匹配完整路径，保留目录展开状态",
     "review": "translated",
     "context": "webview/CommitTreeGraph.tsx"
+  },
+  "treeViews.stateSaveFailed": {
+    "en": "Could not save the file-tree state. Your current view is retained: {{error}}",
+    "zh-CN": "无法保存文件树状态，当前页面现场仍然保留：{{error}}",
+    "review": "translated",
+    "context": "webview/CommitTree.tsx"
+  },
+  "treeViews.retrySave": {
+    "en": "Retry saving page state",
+    "zh-CN": "重试保存页面状态",
+    "review": "translated",
+    "context": "webview/CommitTree.tsx"
+  },
+  "treeViews.cacheBudget": {
+    "en": "This file-tree state exceeds the 4 MiB local-cache limit. Reduce individual folder choices before retrying.",
+    "zh-CN": "当前文件树状态超过 4 MiB 本地缓存上限，请减少单独记录的目录选择后重试。",
+    "review": "translated",
+    "context": "src/application/tree-page-persistence.ts"
   }
 }

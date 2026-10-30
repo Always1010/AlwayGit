@@ -3637,8 +3637,8 @@ export const catalog = {
     "zh-CN": "本地缓存说明"
   },
   "localCache.scope": {
-    "en": "Saved folder expansion state for repositories, including removed repositories.",
-    "zh-CN": "保存各仓库的目录展开状态，包括已移除的仓库。"
+    "en": "Saved file-tree pages and folder expansion choices, including removed repositories. Defaults are managed separately.",
+    "zh-CN": "保存文件树页面与目录展开记忆，包括已移除的仓库；默认设置单独管理。"
   },
   "localCache.refresh": {
     "en": "Refresh cache list",
@@ -3673,8 +3673,8 @@ export const catalog = {
     "zh-CN": "确认清理以下 {{count}} 个仓库的缓存？"
   },
   "localCache.irreversible": {
-    "en": "Clearing resets folder expansion to defaults on the next visit and cannot be undone. Repository files and Git history are preserved.",
-    "zh-CN": "清理后，下次打开时恢复默认展开方式。此操作无法撤回，仓库文件和 Git 历史不受影响。"
+    "en": "Clearing removes saved file-tree pages and folder expansion choices. It cannot be undone. Repository files and Git history are preserved.",
+    "zh-CN": "清理会删除文件树页面记录及目录展开记忆，无法撤回；仓库文件和 Git 历史不受影响。"
   },
   "localCache.clearing": {
     "en": "Clearing…",
@@ -3701,8 +3701,8 @@ export const catalog = {
     "zh-CN": "状态"
   },
   "localCache.data": {
-    "en": "Folder state",
-    "zh-CN": "目录状态"
+    "en": "Tree state",
+    "zh-CN": "文件树状态"
   },
   "localCache.actions": {
     "en": "Actions",
@@ -3759,6 +3759,10 @@ export const catalog = {
   "localCache.refreshFailed": {
     "en": "Could not refresh the remaining cache: {{error}}",
     "zh-CN": "未能刷新剩余缓存：{{error}}"
+  },
+  "localCache.pageCount": {
+    "en": "{{count}} pages",
+    "zh-CN": "{{count}} 个页面"
   },
   "manager.theRepositoryOrGroupNoLongerExists": {
     "en": "The repository or group no longer exists.",
@@ -7471,10 +7475,6 @@ export const catalog = {
     "en": "Wheel scrolls vertically; Ctrl+wheel zooms at the pointer. Remembered across repositories and tree layouts.",
     "zh-CN": "滚轮上下移动；Ctrl+滚轮以鼠标位置为中心缩放。跨仓库和树布局记住选择。"
   },
-  "treeViews.wheelSaveFailed": {
-    "en": "Could not save the wheel mode; the previous mode was restored: {{error}}",
-    "zh-CN": "无法保存滚轮模式，已恢复之前的模式：{{error}}"
-  },
   "treeViews.canvasZoom": {
     "en": "Tree canvas: drag to pan, wheel to zoom at pointer, Shift+wheel to pan horizontally, Ctrl+wheel to zoom at pointer, +/- to zoom, 0 to fit, Down to focus nodes",
     "zh-CN": "树画布：拖动平移，滚轮以鼠标位置缩放，Shift+滚轮左右平移，Ctrl+滚轮以鼠标位置缩放，加减号缩放，0 适应完整树，下方向键聚焦节点"
@@ -7506,6 +7506,18 @@ export const catalog = {
   "treeViews.searchPaths": {
     "en": "Matching full paths; folder expansion is preserved",
     "zh-CN": "匹配完整路径，保留目录展开状态"
+  },
+  "treeViews.stateSaveFailed": {
+    "en": "Could not save the file-tree state. Your current view is retained: {{error}}",
+    "zh-CN": "无法保存文件树状态，当前页面现场仍然保留：{{error}}"
+  },
+  "treeViews.retrySave": {
+    "en": "Retry saving page state",
+    "zh-CN": "重试保存页面状态"
+  },
+  "treeViews.cacheBudget": {
+    "en": "This file-tree state exceeds the 4 MiB local-cache limit. Reduce individual folder choices before retrying.",
+    "zh-CN": "当前文件树状态超过 4 MiB 本地缓存上限，请减少单独记录的目录选择后重试。"
   },
   "validation.checkoutRequiresExactlyOneBranch": {
     "en": "Checkout requires exactly one branch",
@@ -8922,6 +8934,7 @@ export interface MessageParameters {
   "localCache.automatic": {  };
   "localCache.registrationUnknown": {  };
   "localCache.refreshFailed": { error: ParameterValue };
+  "localCache.pageCount": { count: number };
   "manager.theRepositoryOrGroupNoLongerExists": {  };
   "manager.reorderItemsWithinTheSameLevel": {  };
   "manager.selectARegisteredRepositoryFirst": {  };
@@ -9843,7 +9856,6 @@ export interface MessageParameters {
   "treeViews.wheelScroll": {  };
   "treeViews.wheelZoomHint": {  };
   "treeViews.wheelScrollHint": {  };
-  "treeViews.wheelSaveFailed": { error: ParameterValue };
   "treeViews.canvasZoom": {  };
   "treeViews.navigationHintZoom": {  };
   "treeViews.canvas": {  };
@@ -9852,6 +9864,9 @@ export interface MessageParameters {
   "treeViews.renderAll": {  };
   "treeViews.visibleCount": { visible: ParameterValue; count: number };
   "treeViews.searchPaths": {  };
+  "treeViews.stateSaveFailed": { error: ParameterValue };
+  "treeViews.retrySave": {  };
+  "treeViews.cacheBudget": {  };
   "validation.checkoutRequiresExactlyOneBranch": {  };
   "validation.stashRequiresCheckout": {  };
   "validation.chooseAnExistingGroupOrCreateANewOne": {  };
