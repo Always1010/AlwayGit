@@ -4460,8 +4460,8 @@ export const catalog = {
     "zh-CN": "无法在所选引用的完整历史中定位此提交。"
   },
   "notices.automaticLocateReachedItsReadLimitHistoryAndCommit": {
-    "en": "Automatic locate reached its read limit. History and Commit details are preserved. Use Load More to continue, or narrow the selected refs and locate again.",
-    "zh-CN": "已达到自动定位的读取上限，保留当前历史和提交详情。可使用“加载更多”继续加载，或缩小引用范围后再定位。"
+    "en": "Automatic locate reached its read limit. History and Commit details are preserved. Scroll to the bottom to continue loading, or narrow the selected refs and locate again.",
+    "zh-CN": "已达到自动定位的读取上限，保留当前历史和提交详情。可滚动到底部继续加载，或缩小引用范围后再定位。"
   },
   "notices.demoCompletedNoDiskChanges": {
     "en": "Demo: {{kind}} completed. No disk changes.",

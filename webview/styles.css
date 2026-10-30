@@ -1341,12 +1341,6 @@ p {
 .history-date {
   font-variant-numeric: tabular-nums;
 }
-.load-more {
-  width: 100%;
-  flex: none;
-  background: var(--panel);
-  font-size: 12px;
-}
 .empty {
   padding: 20px 12px;
   display: flex;

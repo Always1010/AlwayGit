@@ -91,6 +91,11 @@ export async function verifyHistoryNavigation(browser, url, screenshotPath) {
       viewport = history.locator('.history-viewport');
     await history.locator('[data-oid]').first().waitFor();
     assert.equal(
+      await history.getByRole('button', { name: 'Load More', exact: true }).count(),
+      0,
+      'History relies on automatic pagination without a Load More button',
+    );
+    assert.equal(
       await history.locator('[data-testid="history-location"]').count(),
       0,
       'History must not reserve a persistent location summary',
@@ -169,8 +174,13 @@ export async function verifyHistoryNavigation(browser, url, screenshotPath) {
     await history.getByText(/Could not load tag v2: Fixture read failure/).waitFor();
     await reset.waitFor();
     assert.equal(
-      await page.getByRole('button', { name: 'Load More', exact: true }).isDisabled(),
-      true,
+      await page.evaluate(() =>
+        window.__scopeFixture.calls.some(
+          (request) => request.method === 'history' && request.payload.offset > 0,
+        ),
+      ),
+      false,
+      'A failed scope change must not append to the previously displayed history',
     );
     await page.evaluate(() => {
       window.__scopeFixture.fail = false;
@@ -180,6 +190,22 @@ export async function verifyHistoryNavigation(browser, url, screenshotPath) {
     await reset.click();
     await history.getByText('Scope commit 0', { exact: true }).waitFor();
     await reset.waitFor({ state: 'hidden' });
+    await viewport.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    await page.waitForFunction(
+      () => document.querySelector('[role="table"]')?.getAttribute('aria-rowcount') === '332',
+    );
+    assert.equal(
+      await page.evaluate(
+        () =>
+          window.__scopeFixture.calls.filter(
+            (request) => request.method === 'history' && request.payload.offset === 300,
+          ).length,
+      ),
+      1,
+      'Scrolling to the bottom appends the next page exactly once',
+    );
     assert.equal(
       await page.evaluate(() =>
         window.__scopeFixture.calls.some((request) => request.method === 'action'),
