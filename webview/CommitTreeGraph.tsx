@@ -16,8 +16,7 @@ import {
   type TreeGraphNode,
 } from './treeLayout';
 import { wheelTree } from './treeWheel';
-import { useWorkbenchFields } from './subscriptions';
-import { errorMessage } from './rpc-error';
+import type { TreeWheelMode } from '../src/protocol/interface-settings';
 import './commit-tree-graph.css';
 
 const graphReviewThreshold = 6000;
@@ -37,6 +36,8 @@ export function CommitTreeGraph({
   initialCamera,
   onCameraChange,
   ready = true,
+  wheelMode: treeWheelMode,
+  onWheelModeChange,
 }: {
   rows: SnapshotRow[];
   mode: TreeGraphMode;
@@ -53,16 +54,11 @@ export function CommitTreeGraph({
   initialCamera?: TreeCameraState;
   onCameraChange?(camera: TreeCameraState): void;
   ready?: boolean;
+  wheelMode: TreeWheelMode;
+  onWheelModeChange(mode: TreeWheelMode): void;
 }) {
   const t = useTranslation(),
     stage = useRef<HTMLDivElement>(null);
-  const { treeWheelMode, treeWheelModeSaving, setTreeWheelMode, language } = useWorkbenchFields(
-    'treeWheelMode',
-    'treeWheelModeSaving',
-    'setTreeWheelMode',
-    'language',
-  );
-  const [wheelError, setWheelError] = useState<string>();
   const wheelModeRef = useRef(treeWheelMode);
   wheelModeRef.current = treeWheelMode;
   const [allowLarge, setAllowLarge] = useState(false),
@@ -237,27 +233,16 @@ export function CommitTreeGraph({
           disabled={blocked}
           onClick={fit}
         />
-        <div
-          className="tree-wheel-mode"
-          role="group"
-          aria-label={t('treeViews.wheelMode')}
-          aria-busy={treeWheelModeSaving}
-        >
+        <div className="tree-wheel-mode" role="group" aria-label={t('treeViews.wheelMode')}>
           <span>{t('treeViews.wheelMode')}</span>
           {(['zoom', 'scroll'] as const).map((value) => (
             <Button
               key={value}
               aria-pressed={treeWheelMode === value}
-              disabled={treeWheelModeSaving}
               title={
                 value === 'zoom' ? t('treeViews.wheelZoomHint') : t('treeViews.wheelScrollHint')
               }
-              onClick={() => {
-                setWheelError(undefined);
-                void setTreeWheelMode(value).catch((error) =>
-                  setWheelError(errorMessage(error, language)),
-                );
-              }}
+              onClick={() => onWheelModeChange(value)}
             >
               {value === 'zoom' ? t('treeViews.wheelZoom') : t('treeViews.wheelScroll')}
             </Button>
@@ -269,11 +254,6 @@ export function CommitTreeGraph({
             : t('treeViews.navigationHint')}
         </span>
       </div>
-      {wheelError && (
-        <div className="tree-wheel-error" role="alert">
-          {t('treeViews.wheelSaveFailed', { error: wheelError })}
-        </div>
-      )}
       <div
         className="tree-graph-stage"
         ref={stage}

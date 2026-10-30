@@ -253,6 +253,7 @@ export const requestSchema = z.object({
     'treeExpansionRead',
     'treeExpansionPatch',
     'treeExpansionReset',
+    'saveCommitTreeState',
     'treeCompareOrder',
     'revisionTreeCompare',
     'revisionTreeChanges',

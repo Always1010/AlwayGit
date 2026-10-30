@@ -51,7 +51,7 @@ export function CommitTree({
   target: CommitTreeTarget;
 }) {
   const t = useTranslation(),
-    preferences = useWorkbenchFields('appearance', 'layout', 'language');
+    preferences = useWorkbenchFields('appearance', 'layout', 'language', 'treeWheelMode');
   const theme = useResolvedTheme(preferences.appearance.theme);
   const pageState = useCommitTreeState({ repoId, revision, baseRevision }),
     { initial, update: saveView } = pageState;
@@ -113,6 +113,7 @@ export function CommitTree({
   const [previewOpen, setPreviewOpen] = useState(initial.previewOpen ?? false),
     [expanding, setExpanding] = useState<number>();
   const [viewMode, setViewMode] = useState<TreeViewMode>(initial.viewMode ?? 'list');
+  const [wheelMode, setWheelMode] = useState(initial.wheelMode ?? preferences.treeWheelMode);
   const body = useRef<HTMLElement>(null);
   const [bodySize, setBodySize] = useState({ width: 0, height: 0, stacked: false });
   const [previewSplit, setPreviewSplit] = useState(initial.previewSplit ?? {});
@@ -177,6 +178,7 @@ export function CommitTree({
       viewMode,
       showChanges,
       changesOnly,
+      wheelMode,
       query,
       selected,
       selectedParent,
@@ -191,6 +193,7 @@ export function CommitTree({
     viewMode,
     showChanges,
     changesOnly,
+    wheelMode,
     query,
     selected,
     selectedParent,
@@ -556,6 +559,8 @@ export function CommitTree({
   return (
     <div
       className="workbench commit-tree-page"
+      onPointerDownCapture={pageState.resume}
+      onKeyDownCapture={pageState.resume}
       data-theme={theme}
       style={
         {
@@ -1106,6 +1111,8 @@ export function CommitTree({
           </div>
         ) : (
           <CommitTreeGraph
+            wheelMode={wheelMode}
+            onWheelModeChange={setWheelMode}
             key={viewMode}
             initialCamera={pageState.saved.current.view?.cameras?.[viewMode]}
             ready={
@@ -1189,7 +1196,14 @@ export function CommitTree({
       </main>
       {pageState.saveError && (
         <div role="alert" className="revision-tree-error">
-          {pageState.saveError}
+          {t('treeViews.stateSaveFailed', { error: pageState.saveError })}
+          <Button
+            icon="refresh"
+            className="icon-only"
+            title={t('treeViews.retrySave')}
+            aria-label={t('treeViews.retrySave')}
+            onClick={pageState.retry}
+          />
         </div>
       )}
       {menu && (

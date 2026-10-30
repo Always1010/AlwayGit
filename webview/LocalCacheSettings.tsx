@@ -271,6 +271,9 @@ export function LocalCacheSettings({ onBusyChange }: { onBusyChange(busy: boolea
                         })}
                       >
                         {t('localCache.directoryCount', { count: entry.directories })}
+                        {!!entry.pages && (
+                          <span> · {t('localCache.pageCount', { count: entry.pages })}</span>
+                        )}
                       </span>
                     )}
                   </td>

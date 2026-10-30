@@ -9,6 +9,7 @@ import {
   snapshotRows,
 } from '../webview/commitTreeModel';
 import { parseRevisionTreeChanges } from '../src/git/tree';
+import { TreePageMemory, inheritedTreeView } from '../src/application/tree-page-persistence';
 
 function entry(path: string, type: RevisionTreeEntry['type'] = 'blob'): RevisionTreeEntry {
   return {
@@ -20,6 +21,54 @@ function entry(path: string, type: RevisionTreeEntry['type'] = 'blob'): Revision
   };
 }
 describe('independent Commit snapshots', () => {
+  it('reopens exact page state and derives new-page choices without duplicating recent preferences', async () => {
+    const values = new Map<string, unknown>();
+    const memory = new TreePageMemory({
+      keys: () => [...values.keys()],
+      get: <T>(key: string, fallback: T) => (values.get(key) ?? fallback) as T,
+      update: async (key, value) => {
+        if (value === undefined) values.delete(key);
+        else values.set(key, value);
+      },
+    });
+    const commitTree = { repoId: 'repo', revision: 'a'.repeat(40) },
+      view = {
+        viewMode: 'vertical' as const,
+        query: 'one-off',
+        selected: 'src/a',
+        changesOnly: true,
+        showChanges: true,
+        wheelMode: 'scroll' as const,
+        cameras: { vertical: { centerX: 40, centerY: 70, scale: 0.8 } },
+      };
+    await memory.save({ commitTree, view }, { id: 'repo', name: 'Repository', root: '/repo' });
+    expect(await memory.read(commitTree)).toEqual(view);
+    expect(await memory.read({ ...commitTree, baseRevision: 'b'.repeat(40) })).toBeUndefined();
+    const inherited = inheritedTreeView(await memory.latest(false));
+    expect(inherited).toMatchObject({
+      viewMode: 'vertical',
+      changesOnly: true,
+      wheelMode: 'scroll',
+    });
+    expect(inherited.query).toBeUndefined();
+    expect(inherited.selected).toBeUndefined();
+    expect(inherited.cameras).toBeUndefined();
+    expect(await memory.list([], true)).toMatchObject([
+      { repoId: 'repo', registered: false, pages: 1 },
+    ]);
+    for (let index = 0; index < 43; index++)
+      await memory.save(
+        { commitTree: { ...commitTree, revision: index.toString(16).padStart(40, '0') }, view },
+        { id: 'repo', name: 'Repository', root: '/repo' },
+      );
+    expect(values.size).toBe(40);
+    expect(await memory.read(commitTree)).toBeUndefined();
+    await memory.clear({ kind: 'repositories', repoIds: ['other'] });
+    expect(values.size).toBe(40);
+    await memory.clear({ kind: 'repositories', repoIds: ['repo'] });
+    expect(values.size).toBe(0);
+    expect(await memory.latest(false)).toBeUndefined();
+  });
   it('focuses changed leaves and their ancestors with correct guides even after manual expansion', () => {
     const entries = [
       entry('.github', 'tree'),

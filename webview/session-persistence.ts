@@ -42,6 +42,11 @@ export class SessionPersistence<T> {
     clearTimeout(this.timer);
     void this.flush();
   }
+  /** Explicit cache clearing cancels queued writes from the previous browsing session. */
+  discardPending(): void {
+    clearTimeout(this.timer);
+    this.desired = undefined;
+  }
 
   private async flush(): Promise<void> {
     const next = this.desired;
