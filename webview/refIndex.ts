@@ -18,7 +18,8 @@ export function indexRefs(refs: GitRef[] = empty): RefIndex {
   for (const ref of refs) {
     index.byName.set(ref.fullName, ref);
     const group = index.byOid.get(ref.oid);
-    if (group) group.push(ref); else index.byOid.set(ref.oid, [ref]);
+    if (group) group.push(ref);
+    else index.byOid.set(ref.oid, [ref]);
     index[ref.kind].push(ref);
   }
   indexes.set(refs, index);

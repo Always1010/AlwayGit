@@ -10,12 +10,19 @@ vi.mock('node:child_process', () => ({ spawn: vi.fn() }));
 
 function processFixture(pid: number) {
   return Object.assign(new EventEmitter(), {
-    pid, stdout: new PassThrough(), stderr: new PassThrough(), stdin: new PassThrough(), kill: vi.fn(() => true),
+    pid,
+    stdout: new PassThrough(),
+    stderr: new PassThrough(),
+    stdin: new PassThrough(),
+    kill: vi.fn(() => true),
   });
 }
 function completedProcess(output = '') {
   const child = processFixture(99);
-  void Promise.resolve().then(() => { if (output) child.stdout.emit('data', Buffer.from(output)); child.emit('close', 0); });
+  void Promise.resolve().then(() => {
+    if (output) child.stdout.emit('data', Buffer.from(output));
+    child.emit('close', 0);
+  });
   return child as unknown as ChildProcess;
 }
 const platform = Object.getOwnPropertyDescriptor(process, 'platform')!;
@@ -24,117 +31,212 @@ beforeEach(() => {
   Object.defineProperty(process, 'platform', { ...platform, value: 'win32' });
   vi.mocked(spawn).mockReset();
 });
-afterEach(() => { Object.defineProperty(process, 'platform', platform); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllEnvs(); });
+afterEach(() => {
+  Object.defineProperty(process, 'platform', platform);
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
+});
 
 function start(options: Partial<Parameters<typeof runGitProcess>[0]> = {}) {
-  const git = processFixture(42), killer = processFixture(43);
-  vi.mocked(spawn).mockReturnValueOnce(git as unknown as ChildProcess).mockReturnValueOnce(killer as unknown as ChildProcess);
+  const git = processFixture(42),
+    killer = processFixture(43);
+  vi.mocked(spawn)
+    .mockReturnValueOnce(git as unknown as ChildProcess)
+    .mockReturnValueOnce(killer as unknown as ChildProcess);
   const settled = vi.fn();
   const result = runGitProcess({ args: ['status'], env: {}, timeoutMs: 100, ...options }).then(
-    value => { settled(); return { value, error: undefined }; }, error => { settled(); return { value: undefined, error }; },
+    (value) => {
+      settled();
+      return { value, error: undefined };
+    },
+    (error) => {
+      settled();
+      return { value: undefined, error };
+    },
   );
   return { git, killer, settled, result };
 }
 
 describe('Git process termination', () => {
   it('supports an explicit unlimited deadline while preserving process-tree cancellation', async () => {
-    const controller = new AbortController(), { git, killer, settled, result } = start({ timeoutMs: 0, signal: controller.signal });
+    const controller = new AbortController(),
+      { git, killer, settled, result } = start({ timeoutMs: 0, signal: controller.signal });
     await vi.advanceTimersByTimeAsync(86_400_000);
-    expect(settled).not.toHaveBeenCalled(); expect(spawn).toHaveBeenCalledTimes(1);
-    controller.abort(); git.emit('close', 1);
-    await Promise.resolve(); expect(settled).not.toHaveBeenCalled();
-    killer.emit('close', 0); expect((await result).error).toMatchObject({ code: 'ABORTED' });
+    expect(settled).not.toHaveBeenCalled();
+    expect(spawn).toHaveBeenCalledTimes(1);
+    controller.abort();
+    git.emit('close', 1);
+    await Promise.resolve();
+    expect(settled).not.toHaveBeenCalled();
+    killer.emit('close', 0);
+    expect((await result).error).toMatchObject({ code: 'ABORTED' });
   });
   it('reads the network deadline for each command without extending ordinary query deadlines', async () => {
-    const repo = { id: 'dynamic-budget', root: process.cwd(), commonDir: process.cwd(), name: 'dynamic' };
+    const repo = {
+      id: 'dynamic-budget',
+      root: process.cwd(),
+      commonDir: process.cwd(),
+      name: 'dynamic',
+    };
     let budget = 1_200_000;
     const service = new GitService({ networkTimeoutMs: () => budget });
-    const runtime = service as unknown as { run(repository: typeof repo, args: string[]): Promise<unknown> };
+    const runtime = service as unknown as {
+      run(repository: typeof repo, args: string[]): Promise<unknown>;
+    };
     for (const minutes of [20, 0]) {
       budget = minutes * 60_000;
-      const child = processFixture(61); vi.mocked(spawn).mockReturnValueOnce(child as unknown as ChildProcess);
+      const child = processFixture(61);
+      vi.mocked(spawn).mockReturnValueOnce(child as unknown as ChildProcess);
       const result = runtime.run(repo, ['fetch']);
       await vi.advanceTimersByTimeAsync(660_000);
       expect(child.kill).not.toHaveBeenCalled();
       expect(vi.mocked(spawn).mock.lastCall?.[0]).toBe('git');
-      child.emit('close', 0); await result;
+      child.emit('close', 0);
+      await result;
     }
-    const child = processFixture(62), killer = processFixture(63);
-    vi.mocked(spawn).mockReturnValueOnce(child as unknown as ChildProcess).mockReturnValueOnce(killer as unknown as ChildProcess);
-    const result = runtime.run(repo, ['status']).catch(error => error);
+    const child = processFixture(62),
+      killer = processFixture(63);
+    vi.mocked(spawn)
+      .mockReturnValueOnce(child as unknown as ChildProcess)
+      .mockReturnValueOnce(killer as unknown as ChildProcess);
+    const result = runtime.run(repo, ['status']).catch((error) => error);
     await vi.advanceTimersByTimeAsync(60_000);
     expect(vi.mocked(spawn).mock.lastCall?.[0]).toBe('taskkill');
-    child.emit('close', 1); killer.emit('close', 0);
+    child.emit('close', 1);
+    killer.emit('close', 0);
     expect(await result).toMatchObject({ code: 'TIMEOUT' });
   });
-  it.each([undefined, 'never'])('preserves credential helper interaction for network operations and keeps probes silent (%s)', async inherited => {
-    vi.stubEnv('GCM_INTERACTIVE', inherited);
-    vi.mocked(spawn).mockImplementation(() => completedProcess());
-    const service = new GitService({ environment: async (_repo, args) => ['fetch', 'pull', 'push'].includes(args[0])
-      ? credentialEnvironment('/extension/askpass.cjs', async () => undefined) : {} });
-    const runtime = service as unknown as { run(repo: { id: string; root: string; commonDir: string; name: string }, args: string[]): Promise<unknown> };
-    const repo = { id: 'auth', root: process.cwd(), commonDir: process.cwd(), name: 'auth' };
-    for (const command of ['fetch', 'pull', 'push', 'status', 'ls-remote']) {
-      await runtime.run(repo, [command]);
-      const env = vi.mocked(spawn).mock.lastCall![2]!.env!;
-      const network = ['fetch', 'pull', 'push'].includes(command);
-      expect(env.GCM_INTERACTIVE).toBe(network ? inherited : 'never');
-      expect(env.GIT_TERMINAL_PROMPT).toBe('0');
-      if (network) expect(env.GIT_ASKPASS).toBe('/extension/askpass.sh');
-    }
-  });
+  it.each([undefined, 'never'])(
+    'preserves credential helper interaction for network operations and keeps probes silent (%s)',
+    async (inherited) => {
+      vi.stubEnv('GCM_INTERACTIVE', inherited);
+      vi.mocked(spawn).mockImplementation(() => completedProcess());
+      const service = new GitService({
+        environment: async (_repo, args) =>
+          ['fetch', 'pull', 'push'].includes(args[0])
+            ? credentialEnvironment('/extension/askpass.cjs', async () => undefined)
+            : {},
+      });
+      const runtime = service as unknown as {
+        run(
+          repo: { id: string; root: string; commonDir: string; name: string },
+          args: string[],
+        ): Promise<unknown>;
+      };
+      const repo = { id: 'auth', root: process.cwd(), commonDir: process.cwd(), name: 'auth' };
+      for (const command of ['fetch', 'pull', 'push', 'status', 'ls-remote']) {
+        await runtime.run(repo, [command]);
+        const env = vi.mocked(spawn).mock.lastCall![2]!.env!;
+        const network = ['fetch', 'pull', 'push'].includes(command);
+        expect(env.GCM_INTERACTIVE).toBe(network ? inherited : 'never');
+        expect(env.GIT_TERMINAL_PROMPT).toBe('0');
+        if (network) expect(env.GIT_ASKPASS).toBe('/extension/askpass.sh');
+      }
+    },
+  );
   it('sanitizes streamed Git stderr before invoking the output callback', async () => {
-    const child = processFixture(41), output: string[] = [];
+    const child = processFixture(41),
+      output: string[] = [];
     vi.mocked(spawn).mockReturnValueOnce(child as unknown as ChildProcess);
     const service = new GitService({ onOutput: (_repo, text) => output.push(text) });
-    const runtime = service as unknown as { run(repo: { id: string; root: string; commonDir: string; name: string }, args: string[]): Promise<unknown> };
-    const result = runtime.run({ id: 'log', root: process.cwd(), commonDir: process.cwd(), name: 'log' }, ['fetch']).catch(error => error);
+    const runtime = service as unknown as {
+      run(
+        repo: { id: string; root: string; commonDir: string; name: string },
+        args: string[],
+      ): Promise<unknown>;
+    };
+    const result = runtime
+      .run({ id: 'log', root: process.cwd(), commonDir: process.cwd(), name: 'log' }, ['fetch'])
+      .catch((error) => error);
     await vi.waitFor(() => expect(spawn).toHaveBeenCalledOnce());
     child.stderr.emit('data', Buffer.from('https://user:'));
     expect(output).toEqual([]);
     child.stderr.emit('data', Buffer.from('private@example.test/r?access_token=query-secret'));
-    child.emit('close', 1); await result;
+    child.emit('close', 1);
+    await result;
     expect(output.join('')).toBe('https://***@example.test/r?access_token=***');
   });
-  it.each([undefined, 'D:\\Git\\git.exe'])('resolves Git only on demand, sharing initialization and respecting the configured path (%s)', async configured => {
-    let finish!: (value: string) => void;
-    const gate = new Promise<string>(resolve => { finish = resolve; }), resolveGitPath = vi.fn(() => gate);
-    const service = new GitService({ gitPath: configured, resolveGitPath });
-    vi.mocked(spawn).mockImplementation((_executable, args) => completedProcess(args?.includes('--show-toplevel') ? process.cwd() : args?.some(arg => arg === '--git-common-dir' || arg === '--git-dir') ? process.cwd() + '/.git' : 'false'));
-    expect(resolveGitPath).not.toHaveBeenCalled();
-    const first = service.discover(process.cwd()), second = service.discover(process.cwd());
-    if (!configured) {
-      await vi.waitFor(() => expect(resolveGitPath).toHaveBeenCalledOnce());
-      expect(spawn).not.toHaveBeenCalled();
-    }
-    finish('D:\\BuiltinGit\\git.exe');
-    await Promise.all([first, second]);
-    expect(spawn).toHaveBeenCalledTimes(8);
-    expect(vi.mocked(spawn).mock.calls.every(([executable]) => executable === (configured ?? 'D:\\BuiltinGit\\git.exe'))).toBe(true);
-    expect(resolveGitPath).toHaveBeenCalledTimes(configured ? 0 : 1);
-  });
+  it.each([undefined, 'D:\\Git\\git.exe'])(
+    'resolves Git only on demand, sharing initialization and respecting the configured path (%s)',
+    async (configured) => {
+      let finish!: (value: string) => void;
+      const gate = new Promise<string>((resolve) => {
+          finish = resolve;
+        }),
+        resolveGitPath = vi.fn(() => gate);
+      const service = new GitService({ gitPath: configured, resolveGitPath });
+      vi.mocked(spawn).mockImplementation((_executable, args) =>
+        completedProcess(
+          args?.includes('--show-toplevel')
+            ? process.cwd()
+            : args?.some((arg) => arg === '--git-common-dir' || arg === '--git-dir')
+              ? process.cwd() + '/.git'
+              : 'false',
+        ),
+      );
+      expect(resolveGitPath).not.toHaveBeenCalled();
+      const first = service.discover(process.cwd()),
+        second = service.discover(process.cwd());
+      if (!configured) {
+        await vi.waitFor(() => expect(resolveGitPath).toHaveBeenCalledOnce());
+        expect(spawn).not.toHaveBeenCalled();
+      }
+      finish('D:\\BuiltinGit\\git.exe');
+      await Promise.all([first, second]);
+      expect(spawn).toHaveBeenCalledTimes(8);
+      expect(
+        vi
+          .mocked(spawn)
+          .mock.calls.every(
+            ([executable]) => executable === (configured ?? 'D:\\BuiltinGit\\git.exe'),
+          ),
+      ).toBe(true);
+      expect(resolveGitPath).toHaveBeenCalledTimes(configured ? 0 : 1);
+    },
+  );
 
-  it.each(['timeout', 'output limit', 'abort'] as const)('waits for both Git and taskkill after %s', async cause => {
-    const controller = new AbortController();
-    const { git, killer, result, settled } = start({ signal: controller.signal, maxOutputBytes: 1 });
-    if (cause === 'timeout') await vi.advanceTimersByTimeAsync(100);
-    else if (cause === 'output limit') git.stdout.emit('data', Buffer.from('too much output'));
-    else controller.abort();
-    expect(spawn).toHaveBeenLastCalledWith('taskkill', ['/PID', '42', '/T', '/F'], { shell: false, windowsHide: true, stdio: 'ignore' });
-    git.emit('close', 1);
-    await Promise.resolve();
-    expect(settled).not.toHaveBeenCalled();
-    expect(git.stdout.destroyed).toBe(false);
-    killer.emit('close', 0);
-    expect((await result).error).toMatchObject({ code: cause === 'timeout' ? 'TIMEOUT' : cause === 'abort' ? 'ABORTED' : 'OUTPUT_LIMIT' });
-    expect(spawn).toHaveBeenCalledTimes(2);
-  });
+  it.each(['timeout', 'output limit', 'abort'] as const)(
+    'waits for both Git and taskkill after %s',
+    async (cause) => {
+      const controller = new AbortController();
+      const { git, killer, result, settled } = start({
+        signal: controller.signal,
+        maxOutputBytes: 1,
+      });
+      if (cause === 'timeout') await vi.advanceTimersByTimeAsync(100);
+      else if (cause === 'output limit') git.stdout.emit('data', Buffer.from('too much output'));
+      else controller.abort();
+      expect(spawn).toHaveBeenLastCalledWith('taskkill', ['/PID', '42', '/T', '/F'], {
+        shell: false,
+        windowsHide: true,
+        stdio: 'ignore',
+      });
+      git.emit('close', 1);
+      await Promise.resolve();
+      expect(settled).not.toHaveBeenCalled();
+      expect(git.stdout.destroyed).toBe(false);
+      killer.emit('close', 0);
+      expect((await result).error).toMatchObject({
+        code: cause === 'timeout' ? 'TIMEOUT' : cause === 'abort' ? 'ABORTED' : 'OUTPUT_LIMIT',
+      });
+      expect(spawn).toHaveBeenCalledTimes(2);
+    },
+  );
 
   it('retains authentication until Git closes when taskkill finishes first', async () => {
-    const git = processFixture(44), killer = processFixture(45), dispose = vi.fn(), cancelPrompts = vi.fn();
-    vi.mocked(spawn).mockReturnValueOnce(git as unknown as ChildProcess).mockReturnValueOnce(killer as unknown as ChildProcess);
-    const service = new GitService({ timeoutMs: 100, environment: async () => ({ env: {}, dispose, cancelPrompts }) });
-    const result = service.discover(process.cwd()).catch(error => error);
+    const git = processFixture(44),
+      killer = processFixture(45),
+      dispose = vi.fn(),
+      cancelPrompts = vi.fn();
+    vi.mocked(spawn)
+      .mockReturnValueOnce(git as unknown as ChildProcess)
+      .mockReturnValueOnce(killer as unknown as ChildProcess);
+    const service = new GitService({
+      timeoutMs: 100,
+      environment: async () => ({ env: {}, dispose, cancelPrompts }),
+    });
+    const result = service.discover(process.cwd()).catch((error) => error);
     // discover resolves the root before the environment adapter and spawn.
     await vi.waitFor(() => expect(spawn).toHaveBeenCalledTimes(1));
     await vi.advanceTimersByTimeAsync(100);
@@ -148,95 +250,183 @@ describe('Git process termination', () => {
   });
 
   it('allows a network command beyond the query deadline and stops at its host budget', async () => {
-    const repo = { id: 'network-budget', name: 'test', root: process.cwd(), commonDir: `${process.cwd()}/runner-network-budget` };
-    const git = processFixture(54), killer = processFixture(55), cancelPrompts = vi.fn();
+    const repo = {
+      id: 'network-budget',
+      name: 'test',
+      root: process.cwd(),
+      commonDir: `${process.cwd()}/runner-network-budget`,
+    };
+    const git = processFixture(54),
+      killer = processFixture(55),
+      cancelPrompts = vi.fn();
     const service = new GitService({ environment: async () => ({ env: {}, cancelPrompts }) });
     vi.spyOn(service, 'discover').mockResolvedValue(repo);
     vi.mocked(spawn).mockImplementation(((executable: string, args: readonly string[]) => {
       if (executable === 'taskkill') return killer;
       return args.includes('fetch') ? git : completedProcess();
     }) as typeof spawn);
-    const result = service.execute(repo, { type: 'fetch' }).catch(error => error);
+    const result = service.execute(repo, { type: 'fetch' }).catch((error) => error);
     await vi.advanceTimersByTimeAsync(240_000);
     expect(cancelPrompts).not.toHaveBeenCalled();
     expect(spawn).not.toHaveBeenCalledWith('taskkill', expect.anything(), expect.anything());
     await vi.advanceTimersByTimeAsync(360_000);
     expect(cancelPrompts).toHaveBeenCalledTimes(1);
-    killer.emit('close', 0); git.emit('close', 1);
+    killer.emit('close', 0);
+    git.emit('close', 1);
     expect(await result).toMatchObject({ code: 'TIMEOUT' });
   });
 
   it('isolates later writes across service instances when taskkill fails', async () => {
-    const git = processFixture(46), killer = processFixture(47), dispose = vi.fn();
+    const git = processFixture(46),
+      killer = processFixture(47),
+      dispose = vi.fn();
     vi.mocked(spawn).mockImplementation(((executable: string, args: readonly string[]) => {
       if (executable === 'taskkill') return killer;
       return args.includes('add') ? git : completedProcess();
     }) as typeof spawn);
-    const repo = { id: 'runner-test', name: 'test', root: process.cwd(), commonDir: `${process.cwd()}/runner-quarantine-test` };
-    const first = new GitService({ timeoutMs: 100, environment: async () => ({ env: {}, dispose }) });
+    const repo = {
+      id: 'runner-test',
+      name: 'test',
+      root: process.cwd(),
+      commonDir: `${process.cwd()}/runner-quarantine-test`,
+    };
+    const first = new GitService({
+      timeoutMs: 100,
+      environment: async () => ({ env: {}, dispose }),
+    });
     const second = new GitService();
     vi.spyOn(first, 'discover').mockResolvedValue(repo);
     const verifySecond = vi.spyOn(second, 'discover').mockResolvedValue(repo);
-    const result = first.execute(repo, { type: 'stage', paths: ['a.txt'] }).catch(error => error);
+    const result = first.execute(repo, { type: 'stage', paths: ['a.txt'] }).catch((error) => error);
     await vi.advanceTimersByTimeAsync(0);
-    await vi.waitUntil(() => vi.mocked(spawn).mock.calls.some(([, args]) => Array.isArray(args) && args.includes('add')), { interval: 1 });
+    await vi.waitUntil(
+      () =>
+        vi.mocked(spawn).mock.calls.some(([, args]) => Array.isArray(args) && args.includes('add')),
+      { interval: 1 },
+    );
     await vi.advanceTimersByTimeAsync(100);
     killer.emit('close', 5);
     expect(git.kill).toHaveBeenCalledWith('SIGKILL');
     expect(dispose).toHaveBeenCalledTimes(2); // Completed status and file-scope reads; add still owns its environment.
     git.emit('close', 1);
-    expect(await result).toMatchObject({ code: 'GIT_TERMINATION_UNCONFIRMED', terminationUnconfirmed: true, pid: 46 });
-    await expect(second.execute(repo, { type: 'stage', paths: ['a.txt'] })).rejects.toMatchObject({ terminationUnconfirmed: true });
+    expect(await result).toMatchObject({
+      code: 'GIT_TERMINATION_UNCONFIRMED',
+      terminationUnconfirmed: true,
+      pid: 46,
+    });
+    await expect(second.execute(repo, { type: 'stage', paths: ['a.txt'] })).rejects.toMatchObject({
+      terminationUnconfirmed: true,
+    });
     expect(verifySecond).not.toHaveBeenCalled();
     expect(dispose).toHaveBeenCalledTimes(3);
     expect(spawn).toHaveBeenCalledTimes(4);
   });
 
   it('preserves write isolation when a batch catches and wraps the termination error', async () => {
-    const repo = { id: 'batch-test', name: 'test', root: process.cwd(), commonDir: `${process.cwd()}/runner-batch-test` };
-    const service = new GitService({ timeoutMs: 100 }), git = processFixture(50), killer = processFixture(51);
+    const repo = {
+      id: 'batch-test',
+      name: 'test',
+      root: process.cwd(),
+      commonDir: `${process.cwd()}/runner-batch-test`,
+    };
+    const service = new GitService({ timeoutMs: 100 }),
+      git = processFixture(50),
+      killer = processFixture(51);
     vi.spyOn(service, 'discover').mockResolvedValue(repo);
-    vi.spyOn(service, 'snapshot').mockResolvedValue({ repository: repo, branch: 'main', ahead: 0, behind: 0, changes: [], refs: [], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 1 });
+    vi.spyOn(service, 'snapshot').mockResolvedValue({
+      repository: repo,
+      branch: 'main',
+      ahead: 0,
+      behind: 0,
+      changes: [],
+      refs: [],
+      stashes: [],
+      worktrees: [],
+      operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false },
+      version: 1,
+    });
     vi.mocked(spawn).mockImplementation(((executable: string, args: readonly string[]) => {
       if (executable === 'taskkill') return killer;
-      return args.includes('-d') ? git : completedProcess(args.includes('rev-parse') ? 'a'.repeat(40) : '');
+      return args.includes('-d')
+        ? git
+        : completedProcess(args.includes('rev-parse') ? 'a'.repeat(40) : '');
     }) as typeof spawn);
-    const result = service.execute(repo, { type: 'branch.delete', names: ['one', 'two'], force: true, expectedOids: { one: 'a'.repeat(40), two: 'a'.repeat(40) } }).catch(error => error);
+    const result = service
+      .execute(repo, {
+        type: 'branch.delete',
+        names: ['one', 'two'],
+        force: true,
+        expectedOids: { one: 'a'.repeat(40), two: 'a'.repeat(40) },
+      })
+      .catch((error) => error);
     await vi.advanceTimersByTimeAsync(100);
-    killer.emit('close', 5); git.emit('close', 1);
-    expect(await result).toMatchObject({ code: 'GIT_TERMINATION_UNCONFIRMED', terminationUnconfirmed: true, pid: 50 });
-    const deletes = vi.mocked(spawn).mock.calls.filter(([, args]) => Array.isArray(args) && args.includes('-d'));
+    killer.emit('close', 5);
+    git.emit('close', 1);
+    expect(await result).toMatchObject({
+      code: 'GIT_TERMINATION_UNCONFIRMED',
+      terminationUnconfirmed: true,
+      pid: 50,
+    });
+    const deletes = vi
+      .mocked(spawn)
+      .mock.calls.filter(([, args]) => Array.isArray(args) && args.includes('-d'));
     expect(deletes).toHaveLength(1);
     expect(deletes[0][1]).toContain('refs/heads/one');
   });
 
   it('cancels a read-only request without isolating subsequent writes', async () => {
-    const repo = { id: 'read-test', name: 'test', root: process.cwd(), commonDir: `${process.cwd()}/runner-read-test` };
-    const service = new GitService({ timeoutMs: 100 }), git = processFixture(52), killer = processFixture(53), controller = new AbortController();
+    const repo = {
+      id: 'read-test',
+      name: 'test',
+      root: process.cwd(),
+      commonDir: `${process.cwd()}/runner-read-test`,
+    };
+    const service = new GitService({ timeoutMs: 100 }),
+      git = processFixture(52),
+      killer = processFixture(53),
+      controller = new AbortController();
     vi.spyOn(service, 'discover').mockResolvedValue(repo);
     let firstStatus = true;
     vi.mocked(spawn).mockImplementation(((executable: string, args: readonly string[]) => {
       if (executable === 'taskkill') return killer;
-      if (args.includes('status') && firstStatus) { firstStatus = false; return git; }
+      if (args.includes('status') && firstStatus) {
+        firstStatus = false;
+        return git;
+      }
       return completedProcess();
     }) as typeof spawn);
-    const result = service.withReadSignal(controller.signal, () => service.repositoryStatus(repo)).catch(error => error);
+    const result = service
+      .withReadSignal(controller.signal, () => service.repositoryStatus(repo))
+      .catch((error) => error);
     await vi.advanceTimersByTimeAsync(0);
-    controller.abort(); killer.emit('close', 5); git.emit('close', 1);
+    controller.abort();
+    killer.emit('close', 5);
+    git.emit('close', 1);
     const error = await result;
     expect(error).toMatchObject({ code: 'ABORTED', pid: 52 });
     expect(error.terminationUnconfirmed).not.toBe(true);
     await service.execute(repo, { type: 'stage', paths: ['a.txt'] });
-    expect(vi.mocked(spawn).mock.calls.some(([, args]) => Array.isArray(args) && args.includes('add'))).toBe(true);
-    await expect(service.withReadSignal(new AbortController().signal, () => service.execute(repo, { type: 'stage', paths: ['a.txt'] }))).rejects.toMatchObject({ code: 'WRITE_IN_READ_SCOPE' });
+    expect(
+      vi.mocked(spawn).mock.calls.some(([, args]) => Array.isArray(args) && args.includes('add')),
+    ).toBe(true);
+    await expect(
+      service.withReadSignal(new AbortController().signal, () =>
+        service.execute(repo, { type: 'stage', paths: ['a.txt'] }),
+      ),
+    ).rejects.toMatchObject({ code: 'WRITE_IN_READ_SCOPE' });
   });
 
   it('reports unconfirmed termination after the grace period without pretending Git exited', async () => {
     const { git, killer, result } = start();
     await vi.advanceTimersByTimeAsync(5100);
-    expect((await result).error).toMatchObject({ code: 'GIT_TERMINATION_UNCONFIRMED', terminationUnconfirmed: true, pid: 42 });
+    expect((await result).error).toMatchObject({
+      code: 'GIT_TERMINATION_UNCONFIRMED',
+      terminationUnconfirmed: true,
+      pid: 42,
+    });
     expect(git.stdout.destroyed).toBe(false);
     // Real handles may close later; this must not turn the failure into success.
-    git.emit('close', 1); killer.emit('close', 0);
+    git.emit('close', 1);
+    killer.emit('close', 0);
   });
 });

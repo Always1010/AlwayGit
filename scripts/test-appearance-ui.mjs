@@ -4,11 +4,13 @@ import { mkdir } from 'node:fs/promises';
 const sessionKey = 'alwaygit.demo-session';
 
 async function readSession(page) {
-  return page.evaluate(key => JSON.parse(localStorage.getItem(key) || '{}'), sessionKey);
+  return page.evaluate((key) => JSON.parse(localStorage.getItem(key) || '{}'), sessionKey);
 }
 
 async function readPreferences(page) {
-  return page.evaluate(() => JSON.parse(localStorage.getItem('alwaygit.demo-interfaceSettings') || '{}'));
+  return page.evaluate(() =>
+    JSON.parse(localStorage.getItem('alwaygit.demo-interfaceSettings') || '{}'),
+  );
 }
 
 async function requiredBox(locator, label) {
@@ -23,73 +25,150 @@ function centerY(box) {
 
 async function assertCentered(locator, expected, label, tolerance = 1.5) {
   const box = await requiredBox(locator, label);
-  assert.ok(Math.abs(centerY(box) - expected) <= tolerance, `${label} must align with the graph node center`);
+  assert.ok(
+    Math.abs(centerY(box) - expected) <= tolerance,
+    `${label} must align with the graph node center`,
+  );
 }
 
 async function assertCurrentIndicator(locator, color, label) {
-  const shape = await locator.evaluate(element => {
+  const shape = await locator.evaluate((element) => {
     const style = getComputedStyle(element);
-    return { color: style.borderLeftColor, width: style.borderLeftWidth, top: style.borderTopWidth, bottom: style.borderBottomWidth };
+    return {
+      color: style.borderLeftColor,
+      width: style.borderLeftWidth,
+      top: style.borderTopWidth,
+      bottom: style.borderBottomWidth,
+    };
   });
-  assert.deepEqual(shape, { color, width: '9px', top: '6px', bottom: '6px' }, `${label} uses a large solid high-contrast triangle`);
+  assert.deepEqual(
+    shape,
+    { color, width: '9px', top: '6px', bottom: '6px' },
+    `${label} uses a large solid high-contrast triangle`,
+  );
 }
 
 export async function verifyAppearance(browser, url) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 940 } });
-  const runtimeErrors = [], consoleErrors = [];
-  page.on('pageerror', error => runtimeErrors.push(error.message));
-  page.on('console', message => { if (message.type() === 'error') consoleErrors.push(message.text()); });
+  const runtimeErrors = [],
+    consoleErrors = [];
+  page.on('pageerror', (error) => runtimeErrors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text());
+  });
   await mkdir('artifacts', { recursive: true });
   try {
     const legacySession = {
       version: 1,
       language: 'en',
       repoId: 'demo-alwaygit',
-      layout: { preset: 'editor', sidebar: 248, details: 330, diff: 250, author: 112, date: 130, font: 13, row: 26 },
+      layout: {
+        preset: 'editor',
+        sidebar: 248,
+        details: 330,
+        diff: 250,
+        author: 112,
+        date: 130,
+        font: 13,
+        row: 26,
+      },
       drafts: { 'demo-alwaygit': 'Legacy draft survives migration' },
       views: { 'demo-alwaygit': { search: '', tab: 'history' } },
     };
-    await page.addInitScript(({ key, value }) => {
-      if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(value));
-      document.addEventListener('DOMContentLoaded', () => {
-        document.body.classList.add('vscode-light');
-        document.body.dataset.vscodeThemeKind = 'vscode-light';
-        for (const name of ['editor-background', 'sideBar-background', 'foreground', 'descriptionForeground', 'panel-border', 'focusBorder']) {
-          document.body.style.setProperty(`--vscode-${name}`, '#777777');
-        }
-      });
-    }, { key: sessionKey, value: legacySession });
+    await page.addInitScript(
+      ({ key, value }) => {
+        if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(value));
+        document.addEventListener('DOMContentLoaded', () => {
+          document.body.classList.add('vscode-light');
+          document.body.dataset.vscodeThemeKind = 'vscode-light';
+          for (const name of [
+            'editor-background',
+            'sideBar-background',
+            'foreground',
+            'descriptionForeground',
+            'panel-border',
+            'focusBorder',
+          ]) {
+            document.body.style.setProperty(`--vscode-${name}`, '#777777');
+          }
+        });
+      },
+      { key: sessionKey, value: legacySession },
+    );
     await page.goto(url);
 
-    const workbench = page.getByTestId('workbench'), history = page.getByTestId('history'), details = page.getByTestId('details');
-    await Promise.all([workbench.waitFor(), history.locator('[data-oid]').first().waitFor(), details.waitFor()]);
-    assert.equal(await page.locator('html').getAttribute('lang'),'en','The initial document language follows the restored workbench language');
-    assert.equal(await workbench.getAttribute('data-theme'), 'light', 'System appearance follows the simulated light VS Code host');
-    assert.equal(await workbench.evaluate(element => getComputedStyle(element).backgroundColor), 'rgb(255, 255, 255)', 'Workbench light theme overrides gray host surface tokens');
-    const currentIndicator = workbench.locator('[data-worktree-path][aria-current="true"] .current-indicator-glyph');
+    const workbench = page.getByTestId('workbench'),
+      history = page.getByTestId('history'),
+      details = page.getByTestId('details');
+    await Promise.all([
+      workbench.waitFor(),
+      history.locator('[data-oid]').first().waitFor(),
+      details.waitFor(),
+    ]);
+    assert.equal(
+      await page.locator('html').getAttribute('lang'),
+      'en',
+      'The initial document language follows the restored workbench language',
+    );
+    assert.equal(
+      await workbench.getAttribute('data-theme'),
+      'light',
+      'System appearance follows the simulated light VS Code host',
+    );
+    assert.equal(
+      await workbench.evaluate((element) => getComputedStyle(element).backgroundColor),
+      'rgb(255, 255, 255)',
+      'Workbench light theme overrides gray host surface tokens',
+    );
+    const currentIndicator = workbench.locator(
+      '[data-worktree-path][aria-current="true"] .current-indicator-glyph',
+    );
     await assertCurrentIndicator(currentIndicator, 'rgb(0, 0, 0)', 'Light theme current marker');
-    assert.equal(await page.getByLabel('Layout', { exact: true }).count(), 0, 'Removed Layout control must not remain in the workbench');
-    assert.equal(await page.getByLabel('Language').count(), 0, 'Language control belongs only in Interface Settings');
+    assert.equal(
+      await page.getByLabel('Layout', { exact: true }).count(),
+      0,
+      'Removed Layout control must not remain in the workbench',
+    );
+    assert.equal(
+      await page.getByLabel('Language').count(),
+      0,
+      'Language control belongs only in Interface Settings',
+    );
     const top = page.locator('.toolbar');
-    assert.equal(await top.getByRole('button', { name: /^(Stage|Unstage|Discard)/ }).count(), 0, 'Stage and Discard actions must not return to the top bars');
+    assert.equal(
+      await top.getByRole('button', { name: /^(Stage|Unstage|Discard)/ }).count(),
+      0,
+      'Stage and Discard actions must not return to the top bars',
+    );
 
     await page.getByTestId('toolbar-more').click();
     const restore = page.getByRole('menuitem', { name: 'Restore Layout', exact: true });
-    assert.equal((await restore.innerText()).trim(), 'Restore Layout', 'Restore Layout has a label in More');
+    assert.equal(
+      (await restore.innerText()).trim(),
+      'Restore Layout',
+      'Restore Layout has a label in More',
+    );
     assert.equal(await restore.locator('.codicon').count(), 1, 'Restore Layout keeps its icon');
     await page.keyboard.press('Escape');
     {
-      const sidebar = page.getByTestId('sidebar'), details = page.getByTestId('details');
+      const sidebar = page.getByTestId('sidebar'),
+        details = page.getByTestId('details');
       const leftWidth = (await requiredBox(sidebar, 'Repository sidebar')).width;
       const rightWidth = (await requiredBox(details, 'Details panel')).width;
       const historyWidth = (await requiredBox(history, 'History')).width;
       await page.getByRole('button', { name: 'Collapse repository sidebar', exact: true }).click();
       assert.equal(await sidebar.isVisible(), false);
       assert.equal(await details.isVisible(), true);
-      assert.ok((await requiredBox(history, 'History with left sidebar hidden')).width >= historyWidth + leftWidth);
+      assert.ok(
+        (await requiredBox(history, 'History with left sidebar hidden')).width >=
+          historyWidth + leftWidth,
+      );
       await page.getByRole('button', { name: 'Collapse details panel', exact: true }).click();
       assert.equal(await details.isVisible(), false);
-      assert.equal((await requiredBox(history, 'History with both sidebars hidden')).width, (await requiredBox(page.locator('.workspace'), 'Workspace')).width);
+      assert.equal(
+        (await requiredBox(history, 'History with both sidebars hidden')).width,
+        (await requiredBox(page.locator('.workspace'), 'Workspace')).width,
+      );
       await page.reload();
       await page.getByRole('button', { name: 'Expand repository sidebar', exact: true }).waitFor();
       assert.equal(await sidebar.isVisible(), false);
@@ -114,175 +193,404 @@ export async function verifyAppearance(browser, url) {
     assert.equal(Number(await separators.graph.getAttribute('aria-valuenow')), 64);
     assert.equal(Number(await separators.author.getAttribute('aria-valuenow')), 112);
     assert.equal(Number(await separators.date.getAttribute('aria-valuenow')), 130);
-    const graphHeaderBox = await requiredBox(history.locator('.history-columns [role="columnheader"]').first(), 'Graph header');
+    const graphHeaderBox = await requiredBox(
+      history.locator('.history-columns [role="columnheader"]').first(),
+      'Graph header',
+    );
     const graphHandleBox = await requiredBox(separators.graph, 'Graph separator');
-    assert.ok(Math.abs(graphHandleBox.x + graphHandleBox.width - graphHeaderBox.x - graphHeaderBox.width) <= 1, 'Graph separator stays on the column right boundary');
-    await page.mouse.move(graphHandleBox.x + graphHandleBox.width / 2, graphHandleBox.y + graphHandleBox.height / 2);
+    assert.ok(
+      Math.abs(graphHandleBox.x + graphHandleBox.width - graphHeaderBox.x - graphHeaderBox.width) <=
+        1,
+      'Graph separator stays on the column right boundary',
+    );
+    await page.mouse.move(
+      graphHandleBox.x + graphHandleBox.width / 2,
+      graphHandleBox.y + graphHandleBox.height / 2,
+    );
     await page.mouse.down();
-    await page.mouse.move(graphHandleBox.x + graphHandleBox.width / 2 + 20, graphHandleBox.y + graphHandleBox.height / 2);
+    await page.mouse.move(
+      graphHandleBox.x + graphHandleBox.width / 2 + 20,
+      graphHandleBox.y + graphHandleBox.height / 2,
+    );
     await page.mouse.up();
-    assert.equal(Number(await separators.graph.getAttribute('aria-valuenow')), 84, 'Graph widens when its right boundary moves right');
+    assert.equal(
+      Number(await separators.graph.getAttribute('aria-valuenow')),
+      84,
+      'Graph widens when its right boundary moves right',
+    );
     const movedGraphHandleBox = await requiredBox(separators.graph, 'Moved Graph separator');
-    assert.ok(Math.abs(movedGraphHandleBox.x - graphHandleBox.x - 20) <= 1, 'Graph separator follows the pointer direction');
-    for (const [key, selector, label] of [['author', '.history-columns [role="columnheader"]:nth-child(3)', 'Author'], ['date', '.history-columns [role="columnheader"]:nth-child(4)', 'Date']]) {
+    assert.ok(
+      Math.abs(movedGraphHandleBox.x - graphHandleBox.x - 20) <= 1,
+      'Graph separator follows the pointer direction',
+    );
+    for (const [key, selector, label] of [
+      ['author', '.history-columns [role="columnheader"]:nth-child(3)', 'Author'],
+      ['date', '.history-columns [role="columnheader"]:nth-child(4)', 'Date'],
+    ]) {
       const cellBox = await requiredBox(history.locator(selector), `${label} header`);
       const handleBox = await requiredBox(separators[key], `${label} separator`);
-      assert.ok(Math.abs(handleBox.x - cellBox.x) <= 1, `${label} separator stays on the column's left boundary`);
+      assert.ok(
+        Math.abs(handleBox.x - cellBox.x) <= 1,
+        `${label} separator stays on the column's left boundary`,
+      );
       await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
       await page.mouse.down();
-      await page.mouse.move(handleBox.x + handleBox.width / 2 + 20, handleBox.y + handleBox.height / 2);
+      await page.mouse.move(
+        handleBox.x + handleBox.width / 2 + 20,
+        handleBox.y + handleBox.height / 2,
+      );
       await page.mouse.up();
-      assert.equal(Number(await separators[key].getAttribute('aria-valuenow')), key === 'author' ? 92 : 110, `${label} narrows when its left boundary moves right`);
+      assert.equal(
+        Number(await separators[key].getAttribute('aria-valuenow')),
+        key === 'author' ? 92 : 110,
+        `${label} narrows when its left boundary moves right`,
+      );
       const movedBox = await requiredBox(separators[key], `${label} moved separator`);
-      assert.ok(Math.abs(movedBox.x - handleBox.x - 20) <= 1, `${label} separator follows the pointer direction`);
+      assert.ok(
+        Math.abs(movedBox.x - handleBox.x - 20) <= 1,
+        `${label} separator follows the pointer direction`,
+      );
     }
 
     await history.locator('[data-working-tree]').click();
     await page.locator('.toolbar .commit-trigger').click();
-    assert.equal(await page.getByRole('textbox', { name: 'Commit message' }).inputValue(), 'Legacy draft survives migration', 'Legacy drafts survive appearance migration');
+    assert.equal(
+      await page.getByRole('textbox', { name: 'Commit message' }).inputValue(),
+      'Legacy draft survives migration',
+      'Legacy drafts survive appearance migration',
+    );
     await page.keyboard.press('Escape');
     await history.locator('[data-head-commit="true"]').click();
     const migrated = await readSession(page);
     assert.equal(migrated.layout.preset, 'workbench');
-    assert.equal(migrated.appearance.fileSpacing, 1, 'Legacy sessions use compact file spacing by default');
+    assert.equal(
+      migrated.appearance.fileSpacing,
+      1,
+      'Legacy sessions use compact file spacing by default',
+    );
     assert.equal(migrated.layout.row, 24, 'Legacy default row 26 migrates to compact row 24');
-    assert.equal(migrated.layout.graph, 84, 'Legacy sessions gain a persisted Graph width after adjustment');
+    assert.equal(
+      migrated.layout.graph,
+      84,
+      'Legacy sessions gain a persisted Graph width after adjustment',
+    );
     assert.equal(migrated.layout.sidebar, 248, 'Migration retains custom panel widths');
     assert.equal(migrated.layout.details, 330, 'Migration retains the custom details width');
     assert.equal(migrated.drafts['demo-alwaygit'], 'Legacy draft survives migration');
-    assert.equal(migrated.appearance.codeRowHeight, 18, 'Legacy settings use the compact default Diff height');
-    assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--diff-row-height').trim()), '18px');
+    assert.equal(
+      migrated.appearance.codeRowHeight,
+      18,
+      'Legacy settings use the compact default Diff height',
+    );
+    assert.equal(
+      await workbench.evaluate((element) =>
+        getComputedStyle(element).getPropertyValue('--diff-row-height').trim(),
+      ),
+      '18px',
+    );
 
     const headRow = history.locator('[data-head-commit="true"]').first();
-    assert.equal(Math.round((await requiredBox(headRow, 'Default commit row')).height), 24, 'Default effective history row is 24px');
-    const node = await requiredBox(headRow.locator('.git-graph-node'), 'HEAD graph node'), nodeCenter = centerY(node);
+    assert.equal(
+      Math.round((await requiredBox(headRow, 'Default commit row')).height),
+      24,
+      'Default effective history row is 24px',
+    );
+    const node = await requiredBox(headRow.locator('.git-graph-node'), 'HEAD graph node'),
+      nodeCenter = centerY(node);
     await assertCentered(headRow.locator('.commit-message-button'), nodeCenter, 'Commit message');
     await assertCentered(headRow.locator('.ref-badge').first(), nodeCenter, 'Reference badge');
     await assertCentered(headRow.locator('.history-author'), nodeCenter, 'Commit author');
     await assertCentered(headRow.locator('.history-date'), nodeCenter, 'Commit date');
     await page.screenshot({ path: 'artifacts/appearance-light.png' });
 
-    const initialLane = await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--graph-lane-0').trim());
+    const initialLane = await workbench.evaluate((element) =>
+      getComputedStyle(element).getPropertyValue('--graph-lane-0').trim(),
+    );
     await page.evaluate(() => {
       document.body.classList.remove('vscode-light');
       document.body.classList.add('vscode-high-contrast');
       document.body.dataset.vscodeThemeKind = 'vscode-high-contrast';
     });
-    await page.waitForFunction(() => document.querySelector('[data-testid="workbench"]')?.getAttribute('data-theme') === 'hc-dark');
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[data-testid="workbench"]')?.getAttribute('data-theme') ===
+        'hc-dark',
+    );
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    let dialog = page.getByRole('dialog', { name: 'Settings' }), settings = page.getByTestId('interface-settings');
+    let dialog = page.getByRole('dialog', { name: 'Settings' }),
+      settings = page.getByTestId('interface-settings');
     const settingsBox = await requiredBox(dialog, 'Settings dialog');
     const settingsFooter = await requiredBox(dialog.locator('.modal-footer'), 'Settings footer');
     assert.equal(settingsBox.width, 760);
     assert.equal(settingsBox.height, 600);
     for (const category of await settings.locator('.settings-nav button').all()) {
       await category.click();
-      assert.deepEqual(await requiredBox(dialog, 'Settings after switching categories'), settingsBox, 'Category content never resizes or moves the dialog');
-      assert.deepEqual(await requiredBox(dialog.locator('.modal-footer'), 'Footer after switching categories'), settingsFooter, 'Footer remains in place');
+      assert.deepEqual(
+        await requiredBox(dialog, 'Settings after switching categories'),
+        settingsBox,
+        'Category content never resizes or moves the dialog',
+      );
+      assert.deepEqual(
+        await requiredBox(dialog.locator('.modal-footer'), 'Footer after switching categories'),
+        settingsFooter,
+        'Footer remains in place',
+      );
     }
     await page.setViewportSize({ width: 500, height: 380 });
     await settings.locator('.settings-nav button').last().click();
     const smallBox = await requiredBox(dialog, 'Settings in a small window');
-    const smallFooter = await requiredBox(dialog.locator('.modal-footer'), 'Footer in a small window');
+    const smallFooter = await requiredBox(
+      dialog.locator('.modal-footer'),
+      'Footer in a small window',
+    );
     assert.ok(smallBox.width <= 468 && smallBox.height <= 348);
-    assert.ok(smallFooter.y + smallFooter.height <= 364, 'Footer stays inside the available viewport');
-    assert.equal(await settings.locator('.settings-page-scroll').evaluate(element => element.scrollHeight > element.clientHeight), true, 'Long content scrolls internally');
+    assert.ok(
+      smallFooter.y + smallFooter.height <= 364,
+      'Footer stays inside the available viewport',
+    );
+    assert.equal(
+      await settings
+        .locator('.settings-page-scroll')
+        .evaluate((element) => element.scrollHeight > element.clientHeight),
+      true,
+      'Long content scrolls internally',
+    );
     await page.setViewportSize({ width: 1440, height: 940 });
     await settings.getByRole('button', { name: 'Diff', exact: true }).click();
-    const diffSeparators = settings.getByRole('checkbox', { name: 'Show row separators', exact: true });
+    const diffSeparators = settings.getByRole('checkbox', {
+      name: 'Show row separators',
+      exact: true,
+    });
     assert.equal(await diffSeparators.isChecked(), false);
-    assert.equal(await settings.locator('.settings-diff-preview-line').first().evaluate(element => getComputedStyle(element).boxShadow), 'none');
+    assert.equal(
+      await settings
+        .locator('.settings-diff-preview-line')
+        .first()
+        .evaluate((element) => getComputedStyle(element).boxShadow),
+      'none',
+    );
     await diffSeparators.check();
-    assert.notEqual(await settings.locator('.settings-diff-preview-line').first().evaluate(element => getComputedStyle(element).boxShadow), 'none');
+    assert.notEqual(
+      await settings
+        .locator('.settings-diff-preview-line')
+        .first()
+        .evaluate((element) => getComputedStyle(element).boxShadow),
+      'none',
+    );
     await settings.getByRole('button', { name: 'Display', exact: true }).click();
-    const historySeparators = settings.getByRole('checkbox', { name: 'Show row separators', exact: true });
-    const alternatingRows = settings.getByRole('checkbox', { name: 'Use alternating row backgrounds', exact: true });
+    const historySeparators = settings.getByRole('checkbox', {
+      name: 'Show row separators',
+      exact: true,
+    });
+    const alternatingRows = settings.getByRole('checkbox', {
+      name: 'Use alternating row backgrounds',
+      exact: true,
+    });
     assert.equal(await historySeparators.isChecked(), false);
     assert.equal(await alternatingRows.isChecked(), false);
-    await historySeparators.check(); await alternatingRows.check();
+    await historySeparators.check();
+    await alternatingRows.check();
     assert.equal(await workbench.getAttribute('data-history-row-separators'), 'true');
     assert.equal(await workbench.getAttribute('data-history-alternate-rows'), 'true');
     await settings.getByRole('button', { name: 'Theme', exact: true }).click();
     await settings.getByRole('radio', { name: 'Clear Light', exact: true }).click();
-    assert.equal(await workbench.getAttribute('data-theme'), 'light', 'Manual light theme overrides a high-contrast host');
+    assert.equal(
+      await workbench.getAttribute('data-theme'),
+      'light',
+      'Manual light theme overrides a high-contrast host',
+    );
     await settings.getByRole('radio', { name: 'Warm Paper', exact: true }).click();
-    assert.equal(await workbench.getAttribute('data-theme'), 'paper', 'Additional themes preview live');
+    assert.equal(
+      await workbench.getAttribute('data-theme'),
+      'paper',
+      'Additional themes preview live',
+    );
     await settings.getByRole('radio', { name: 'Deep Night', exact: true }).click();
     await settings.getByRole('button', { name: 'Text & density', exact: true }).click();
     await settings.getByLabel('Interface font', { exact: true }).selectOption('15');
     await settings.getByLabel('Commit list density', { exact: true }).selectOption('22');
     await settings.getByRole('button', { name: 'File list', exact: true }).click();
-    await settings.getByRole('region', { name: 'File list spacing', exact: true }).getByLabel('File list spacing', { exact: true }).selectOption('5');
-    assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--file-row-padding').trim()), '5px', 'File spacing previews immediately');
+    await settings
+      .getByRole('region', { name: 'File list spacing', exact: true })
+      .getByLabel('File list spacing', { exact: true })
+      .selectOption('5');
+    assert.equal(
+      await workbench.evaluate((element) =>
+        getComputedStyle(element).getPropertyValue('--file-row-padding').trim(),
+      ),
+      '5px',
+      'File spacing previews immediately',
+    );
     await settings.getByRole('button', { name: 'Diff', exact: true }).click();
     await settings.getByLabel('Diff line height', { exact: true }).selectOption('22');
-    assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--diff-row-height').trim()), '22px', 'Diff height previews immediately');
+    assert.equal(
+      await workbench.evaluate((element) =>
+        getComputedStyle(element).getPropertyValue('--diff-row-height').trim(),
+      ),
+      '22px',
+      'Diff height previews immediately',
+    );
     await settings.getByRole('button', { name: 'Colors', exact: true }).click();
     await settings.getByRole('radio', { name: /Distinct/ }).click();
     assert.equal(await workbench.getAttribute('data-theme'), 'dark', 'Theme previews live');
-    await assertCurrentIndicator(currentIndicator, 'rgb(255, 255, 255)', 'Dark theme current marker');
-    assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--workbench-font').trim()), '15px', 'Interface font previews live');
-    assert.notEqual(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--graph-lane-0').trim()), initialLane, 'Graph palette previews live');
+    await assertCurrentIndicator(
+      currentIndicator,
+      'rgb(255, 255, 255)',
+      'Dark theme current marker',
+    );
+    assert.equal(
+      await workbench.evaluate((element) =>
+        getComputedStyle(element).getPropertyValue('--workbench-font').trim(),
+      ),
+      '15px',
+      'Interface font previews live',
+    );
+    assert.notEqual(
+      await workbench.evaluate((element) =>
+        getComputedStyle(element).getPropertyValue('--graph-lane-0').trim(),
+      ),
+      initialLane,
+      'Graph palette previews live',
+    );
     const previewSession = await readSession(page);
-    assert.equal(previewSession.appearance.theme, 'system', 'Theme preview is not persisted before Apply');
-    assert.equal(previewSession.appearance.palette, 'vivid', 'Palette preview is not persisted before Apply');
+    assert.equal(
+      previewSession.appearance.theme,
+      'system',
+      'Theme preview is not persisted before Apply',
+    );
+    assert.equal(
+      previewSession.appearance.palette,
+      'vivid',
+      'Palette preview is not persisted before Apply',
+    );
     assert.equal(previewSession.layout.font, 13, 'Font preview is not persisted before Apply');
-    assert.equal(previewSession.appearance.codeRowHeight, 18, 'Diff height preview is not persisted before Apply');
-    assert.equal(previewSession.appearance.fileSpacing, 1, 'File spacing preview is not persisted before Apply');
+    assert.equal(
+      previewSession.appearance.codeRowHeight,
+      18,
+      'Diff height preview is not persisted before Apply',
+    );
+    assert.equal(
+      previewSession.appearance.fileSpacing,
+      1,
+      'File spacing preview is not persisted before Apply',
+    );
     await page.screenshot({ path: 'artifacts/appearance-settings.png' });
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     assert.equal(await workbench.getAttribute('data-history-row-separators'), 'false');
     assert.equal(await workbench.getAttribute('data-history-alternate-rows'), 'false');
-    assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--diff-row-shadow').trim()), 'none');
-    assert.equal(await workbench.getAttribute('data-theme'), 'hc-dark', 'Cancel restores the host-resolved high-contrast theme');
-    await assertCurrentIndicator(currentIndicator, 'rgb(255, 255, 255)', 'High-contrast dark current marker');
-    assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--workbench-font').trim()), '13px', 'Cancel restores interface font');
-    assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--diff-row-height').trim()), '18px', 'Cancel restores Diff height');
-    assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--file-row-padding').trim()), '1px', 'Cancel restores file spacing');
+    assert.equal(
+      await workbench.evaluate((element) =>
+        getComputedStyle(element).getPropertyValue('--diff-row-shadow').trim(),
+      ),
+      'none',
+    );
+    assert.equal(
+      await workbench.getAttribute('data-theme'),
+      'hc-dark',
+      'Cancel restores the host-resolved high-contrast theme',
+    );
+    await assertCurrentIndicator(
+      currentIndicator,
+      'rgb(255, 255, 255)',
+      'High-contrast dark current marker',
+    );
+    assert.equal(
+      await workbench.evaluate((element) =>
+        getComputedStyle(element).getPropertyValue('--workbench-font').trim(),
+      ),
+      '13px',
+      'Cancel restores interface font',
+    );
+    assert.equal(
+      await workbench.evaluate((element) =>
+        getComputedStyle(element).getPropertyValue('--diff-row-height').trim(),
+      ),
+      '18px',
+      'Cancel restores Diff height',
+    );
+    assert.equal(
+      await workbench.evaluate((element) =>
+        getComputedStyle(element).getPropertyValue('--file-row-padding').trim(),
+      ),
+      '1px',
+      'Cancel restores file spacing',
+    );
     await page.evaluate(() => {
       document.body.classList.remove('vscode-high-contrast');
       document.body.classList.add('vscode-light');
       document.body.dataset.vscodeThemeKind = 'vscode-light';
     });
-    await page.waitForFunction(() => document.querySelector('[data-testid="workbench"]')?.getAttribute('data-theme') === 'light');
-    assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--graph-lane-0').trim()), initialLane, 'Cancel restores graph palette');
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[data-testid="workbench"]')?.getAttribute('data-theme') === 'light',
+    );
+    assert.equal(
+      await workbench.evaluate((element) =>
+        getComputedStyle(element).getPropertyValue('--graph-lane-0').trim(),
+      ),
+      initialLane,
+      'Cancel restores graph palette',
+    );
 
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    dialog = page.getByRole('dialog', { name: 'Settings' }); settings = page.getByTestId('interface-settings');
+    dialog = page.getByRole('dialog', { name: 'Settings' });
+    settings = page.getByTestId('interface-settings');
     await settings.getByRole('radio', { name: 'Berry Purple', exact: true }).click();
     await settings.getByRole('button', { name: 'Text & density', exact: true }).click();
     await settings.getByLabel('Interface font', { exact: true }).selectOption('16');
     await settings.getByRole('button', { name: 'Diff', exact: true }).click();
     await settings.getByLabel('Diff font', { exact: true }).selectOption('15');
     await settings.getByLabel('Diff line height', { exact: true }).selectOption('custom');
-    const customHeight = settings.getByRole('spinbutton', { name: 'Custom Diff line height', exact: true });
+    const customHeight = settings.getByRole('spinbutton', {
+      name: 'Custom Diff line height',
+      exact: true,
+    });
     await customHeight.fill('');
     await customHeight.press('Tab');
-    assert.equal(await customHeight.inputValue(), '18', 'Empty custom input restores the previous value');
+    assert.equal(
+      await customHeight.inputValue(),
+      '18',
+      'Empty custom input restores the previous value',
+    );
     await customHeight.fill('100');
     await customHeight.press('Tab');
-    assert.equal(await customHeight.inputValue(), '36', 'Custom input is clamped to its supported range');
+    assert.equal(
+      await customHeight.inputValue(),
+      '36',
+      'Custom input is clamped to its supported range',
+    );
     await customHeight.fill('23');
     await settings.getByRole('button', { name: 'Text & density', exact: true }).click();
     await settings.getByLabel('Commit list density', { exact: true }).selectOption('22');
     await settings.getByRole('button', { name: 'File list', exact: true }).click();
     const fileSpacing = settings.getByRole('region', { name: 'File list spacing', exact: true });
     await fileSpacing.getByLabel('File list spacing', { exact: true }).selectOption('custom');
-    const customSpacing = fileSpacing.getByRole('spinbutton', { name: 'Custom file list spacing', exact: true });
-    await customSpacing.fill(''); await customSpacing.press('Tab');
+    const customSpacing = fileSpacing.getByRole('spinbutton', {
+      name: 'Custom file list spacing',
+      exact: true,
+    });
+    await customSpacing.fill('');
+    await customSpacing.press('Tab');
     assert.equal(await customSpacing.inputValue(), '1');
-    await customSpacing.fill('100'); await customSpacing.press('Tab');
+    await customSpacing.fill('100');
+    await customSpacing.press('Tab');
     assert.equal(await customSpacing.inputValue(), '8');
     await customSpacing.fill('4');
     await settings.getByRole('button', { name: 'Status indicators', exact: true }).click();
     await settings.getByRole('radio', { name: '#006BFF', exact: true }).click();
-    assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--notification-badge').trim()), '#006BFF', 'Badge color previews live');
+    assert.equal(
+      await workbench.evaluate((element) =>
+        getComputedStyle(element).getPropertyValue('--notification-badge').trim(),
+      ),
+      '#006BFF',
+      'Badge color previews live',
+    );
     await settings.getByRole('button', { name: 'Colors', exact: true }).click();
     await settings.getByRole('radio', { name: /Extended/ }).click();
     await settings.getByRole('textbox', { name: 'Path color 1', exact: true }).fill('#0066DD');
     await settings.getByRole('textbox', { name: 'Path color 1', exact: true }).press('Enter');
     await dialog.getByRole('button', { name: 'Apply', exact: true }).click();
-    await dialog.waitFor({state:'hidden'});
+    await dialog.waitFor({ state: 'hidden' });
     let applied = await readPreferences(page);
     assert.equal(applied.appearance.theme, 'berry');
     assert.equal(applied.appearance.badgeColor, '#006BFF');
@@ -299,15 +607,62 @@ export async function verifyAppearance(browser, url) {
 
     await page.reload();
     await Promise.all([workbench.waitFor(), history.locator('[data-oid]').first().waitFor()]);
-    assert.equal(await workbench.getAttribute('data-theme'), 'berry', 'Applied theme survives reload despite the light host');
-    assert.equal(await workbench.evaluate(element => getComputedStyle(element).backgroundColor), 'rgb(39, 23, 47)', 'Explicit berry theme overrides gray VS Code tokens');
-    assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--notification-badge').trim()), '#006BFF', 'Applied badge color survives reload');
-    assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--graph-lane-0').trim()), '#4DA3FF', 'The paired dark color survives reload alongside the edited light color');
-    assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--workbench-font').trim()), '16px');
-    assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--row-height').trim()), '28px', '16px interface font raises effective row height to 28px');
-    assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--diff-row-height').trim()), '23px', 'Custom Diff height survives reload');
-    assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--file-row-padding').trim()), '4px', 'Custom file spacing survives reload');
-    assert.equal(await details.getByRole('textbox', { name: 'Commit message' }).count(), 0, 'Reload restores the saved history view');
+    assert.equal(
+      await workbench.getAttribute('data-theme'),
+      'berry',
+      'Applied theme survives reload despite the light host',
+    );
+    assert.equal(
+      await workbench.evaluate((element) => getComputedStyle(element).backgroundColor),
+      'rgb(39, 23, 47)',
+      'Explicit berry theme overrides gray VS Code tokens',
+    );
+    assert.equal(
+      await workbench.evaluate((element) =>
+        getComputedStyle(element).getPropertyValue('--notification-badge').trim(),
+      ),
+      '#006BFF',
+      'Applied badge color survives reload',
+    );
+    assert.equal(
+      await workbench.evaluate((element) =>
+        getComputedStyle(element).getPropertyValue('--graph-lane-0').trim(),
+      ),
+      '#4DA3FF',
+      'The paired dark color survives reload alongside the edited light color',
+    );
+    assert.equal(
+      await workbench.evaluate((element) =>
+        getComputedStyle(element).getPropertyValue('--workbench-font').trim(),
+      ),
+      '16px',
+    );
+    assert.equal(
+      await workbench.evaluate((element) =>
+        getComputedStyle(element).getPropertyValue('--row-height').trim(),
+      ),
+      '28px',
+      '16px interface font raises effective row height to 28px',
+    );
+    assert.equal(
+      await workbench.evaluate((element) =>
+        getComputedStyle(element).getPropertyValue('--diff-row-height').trim(),
+      ),
+      '23px',
+      'Custom Diff height survives reload',
+    );
+    assert.equal(
+      await workbench.evaluate((element) =>
+        getComputedStyle(element).getPropertyValue('--file-row-padding').trim(),
+      ),
+      '4px',
+      'Custom file spacing survives reload',
+    );
+    assert.equal(
+      await details.getByRole('textbox', { name: 'Commit message' }).count(),
+      0,
+      'Reload restores the saved history view',
+    );
 
     await page.getByTestId('toolbar-more').click();
     await restore.click();
@@ -315,18 +670,41 @@ export async function verifyAppearance(browser, url) {
     assert.equal(Number(await separators.details.getAttribute('aria-valuenow')), 300);
     assert.equal(Number(await separators.diff.getAttribute('aria-valuenow')), 220);
     assert.equal(Number(await separators.graph.getAttribute('aria-valuenow')), 64);
-    assert.equal(await workbench.getAttribute('data-theme'), 'berry', 'Restore Layout does not reset theme');
-    assert.equal(await workbench.evaluate(element => getComputedStyle(element).getPropertyValue('--workbench-font').trim()), '16px', 'Restore Layout does not reset interface font');
+    assert.equal(
+      await workbench.getAttribute('data-theme'),
+      'berry',
+      'Restore Layout does not reset theme',
+    );
+    assert.equal(
+      await workbench.evaluate((element) =>
+        getComputedStyle(element).getPropertyValue('--workbench-font').trim(),
+      ),
+      '16px',
+      'Restore Layout does not reset interface font',
+    );
     applied = await readPreferences(page);
     assert.equal(applied.appearance.theme, 'berry');
     assert.equal(applied.font, 16);
-    assert.equal(applied.appearance.codeRowHeight, 23, 'Restore Layout preserves custom Diff height');
+    assert.equal(
+      applied.appearance.codeRowHeight,
+      23,
+      'Restore Layout preserves custom Diff height',
+    );
 
-    const largeRow = history.locator('[data-oid]').first(), largeRowBox = await requiredBox(largeRow, '16px commit row');
+    const largeRow = history.locator('[data-oid]').first(),
+      largeRowBox = await requiredBox(largeRow, '16px commit row');
     assert.equal(Math.round(largeRowBox.height), 28);
-    for (const [selector, label] of [['.commit-subject', 'Commit subject'], ['.history-author', 'Author'], ['.history-date', 'Date']]) {
+    for (const [selector, label] of [
+      ['.commit-subject', 'Commit subject'],
+      ['.history-author', 'Author'],
+      ['.history-date', 'Date'],
+    ]) {
       const box = await requiredBox(largeRow.locator(selector), label);
-      assert.ok(box.y >= largeRowBox.y - .5 && box.y + box.height <= largeRowBox.y + largeRowBox.height + .5, `${label} must not overlap a 28px row`);
+      assert.ok(
+        box.y >= largeRowBox.y - 0.5 &&
+          box.y + box.height <= largeRowBox.y + largeRowBox.height + 0.5,
+        `${label} must not overlap a 28px row`,
+      );
     }
 
     await history.locator('[data-working-tree]').click();
@@ -335,46 +713,75 @@ export async function verifyAppearance(browser, url) {
     assert.equal(Number(await separators.details.getAttribute('aria-valuenow')), 230);
     const detailsBox = await requiredBox(details, 'Narrow details panel');
     assert.ok(Math.abs(detailsBox.width - 230) <= 1, 'Details panel honors its 230px minimum');
-    const unstaged = details.locator('.change-heading-unstaged'), staged = details.locator('.change-heading-staged');
+    const unstaged = details.locator('.change-heading-unstaged'),
+      staged = details.locator('.change-heading-staged');
     await unstaged.getByRole('button', { name: 'Stage All', exact: true }).waitFor();
     await staged.getByRole('button', { name: 'Unstage All', exact: true }).waitFor();
     const discard = unstaged.getByRole('button', { name: 'Discard All…', exact: true });
     assert.equal((await discard.innerText()).trim(), '', 'Discard remains icon-only');
     assert.equal(await discard.locator('.codicon').count(), 1);
-    for (const [heading, label] of [[unstaged, 'Unstaged'], [staged, 'Staged']]) {
+    for (const [heading, label] of [
+      [unstaged, 'Unstaged'],
+      [staged, 'Staged'],
+    ]) {
       const headingBox = await requiredBox(heading, `${label} heading`);
       for (const button of await heading.getByRole('button').all()) {
         const buttonBox = await requiredBox(button, `${label} action`);
-        assert.ok(buttonBox.x >= headingBox.x - .5 && buttonBox.x + buttonBox.width <= headingBox.x + headingBox.width + .5, `${label} actions must not overflow a 230px panel`);
+        assert.ok(
+          buttonBox.x >= headingBox.x - 0.5 &&
+            buttonBox.x + buttonBox.width <= headingBox.x + headingBox.width + 0.5,
+          `${label} actions must not overflow a 230px panel`,
+        );
       }
     }
 
     await page.locator('.settings-trigger').click();
-    dialog=page.getByRole('dialog',{name:'Settings',exact:true});settings=page.getByTestId('interface-settings');
-    await settings.getByRole('button',{name:'Language',exact:true}).click();
+    dialog = page.getByRole('dialog', { name: 'Settings', exact: true });
+    settings = page.getByTestId('interface-settings');
+    await settings.getByRole('button', { name: 'Language', exact: true }).click();
     await settings.locator('.settings-page select').selectOption('zh-CN');
-    await page.waitForFunction(()=>document.documentElement.lang==='zh-CN');
-    dialog=page.getByRole('dialog',{name:'设置',exact:true});
-    await dialog.getByRole('button',{name:'应用',exact:true}).click();
-    await dialog.waitFor({state:'hidden'});
-    const tagHeading=page.getByTestId('sidebar').getByRole('button',{name:'标签',exact:true}).locator('..');
-    await tagHeading.getByRole('button',{name:'创建标签…',exact:true}).click();
-    const tagDialog=page.getByRole('dialog',{name:'创建标签',exact:true});await tagDialog.waitFor();
-    assert.equal(await tagDialog.getByLabel('标签名称',{exact:true}).count(),1);
-    assert.equal(await tagDialog.getByLabel('目标提交',{exact:true}).count(),1);
-    assert.equal(await tagDialog.getByLabel('Target Commit',{exact:true}).count(),0,'Chinese action fields do not retain forced English accessible names');
-    await tagDialog.getByRole('button',{name:'取消',exact:true}).click();
+    await page.waitForFunction(() => document.documentElement.lang === 'zh-CN');
+    dialog = page.getByRole('dialog', { name: '设置', exact: true });
+    await dialog.getByRole('button', { name: '应用', exact: true }).click();
+    await dialog.waitFor({ state: 'hidden' });
+    const tagHeading = page
+      .getByTestId('sidebar')
+      .getByRole('button', { name: '标签', exact: true })
+      .locator('..');
+    await tagHeading.getByRole('button', { name: '创建标签…', exact: true }).click();
+    const tagDialog = page.getByRole('dialog', { name: '创建标签', exact: true });
+    await tagDialog.waitFor();
+    assert.equal(await tagDialog.getByLabel('标签名称', { exact: true }).count(), 1);
+    assert.equal(await tagDialog.getByLabel('目标提交', { exact: true }).count(), 1);
+    assert.equal(
+      await tagDialog.getByLabel('Target Commit', { exact: true }).count(),
+      0,
+      'Chinese action fields do not retain forced English accessible names',
+    );
+    await tagDialog.getByRole('button', { name: '取消', exact: true }).click();
     await page.locator('.toolbar button:has(.codicon-arrow-down)').click();
-    const pullDialog=page.getByRole('dialog',{name:'拉取',exact:true});await pullDialog.waitFor();
-    await pullDialog.getByRole('button',{name:'更改拉取来源',exact:true}).click();
-    assert.equal(await pullDialog.getByLabel('远端',{exact:true}).count(),1,'Pull source fields use the current language for their accessible names');
-    await pullDialog.getByRole('button',{name:'取消',exact:true}).click();
-    await page.reload();await workbench.waitFor();
-    assert.equal(await page.locator('html').getAttribute('lang'),'zh-CN','A saved Chinese session initializes the document language before use');
+    const pullDialog = page.getByRole('dialog', { name: '拉取', exact: true });
+    await pullDialog.waitFor();
+    await pullDialog.getByRole('button', { name: '更改拉取来源', exact: true }).click();
+    assert.equal(
+      await pullDialog.getByLabel('远端', { exact: true }).count(),
+      1,
+      'Pull source fields use the current language for their accessible names',
+    );
+    await pullDialog.getByRole('button', { name: '取消', exact: true }).click();
+    await page.reload();
+    await workbench.waitFor();
+    assert.equal(
+      await page.locator('html').getAttribute('lang'),
+      'zh-CN',
+      'A saved Chinese session initializes the document language before use',
+    );
 
     assert.deepEqual(runtimeErrors, [], 'Appearance flow must not throw page errors');
     assert.deepEqual(consoleErrors, [], 'Appearance flow must not log console errors');
-    console.log('ALWAYGIT_APPEARANCE_UI_TESTS_PASSED: migration, compact alignment, preview/cancel/apply persistence, theme gallery, badge colors, adaptive font rows and 230px details actions');
+    console.log(
+      'ALWAYGIT_APPEARANCE_UI_TESTS_PASSED: migration, compact alignment, preview/cancel/apply persistence, theme gallery, badge colors, adaptive font rows and 230px details actions',
+    );
   } catch (error) {
     await page.screenshot({ path: 'artifacts/appearance-failure.png' }).catch(() => {});
     throw error;

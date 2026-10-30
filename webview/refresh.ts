@@ -1,17 +1,42 @@
 import { indexRefs } from './refIndex';
-import type { Change, DiffTarget, FileHistoryFilter, RepositoryChanges, Snapshot } from '../src/protocol/types';
+import type {
+  Change,
+  DiffTarget,
+  FileHistoryFilter,
+  RepositoryChanges,
+  Snapshot,
+} from '../src/protocol/types';
 import { fileHistoryKey } from '../src/protocol/history';
 
 export function diffKey(target?: DiffTarget): string {
   if (!target) return '';
-  if (target.kind === 'commit') return JSON.stringify([target.kind, target.oid, target.parent, target.path, target.previousPath]);
-  if (target.kind === 'comparison') return JSON.stringify([target.kind, target.left, target.right, target.path, target.previousPath]);
-  if (target.kind === 'stash-working') return JSON.stringify([target.kind, target.stashOid, target.path]);
-  if (target.kind === 'revision' || target.kind === 'snapshot') return JSON.stringify([target.kind, target.revision, target.path]);
+  if (target.kind === 'commit')
+    return JSON.stringify([
+      target.kind,
+      target.oid,
+      target.parent,
+      target.path,
+      target.previousPath,
+    ]);
+  if (target.kind === 'comparison')
+    return JSON.stringify([
+      target.kind,
+      target.left,
+      target.right,
+      target.path,
+      target.previousPath,
+    ]);
+  if (target.kind === 'stash-working')
+    return JSON.stringify([target.kind, target.stashOid, target.path]);
+  if (target.kind === 'revision' || target.kind === 'snapshot')
+    return JSON.stringify([target.kind, target.revision, target.path]);
   return JSON.stringify([target.kind, target.area, target.path]);
 }
 
-export function mergeChanges(a?: RepositoryChanges, b?: RepositoryChanges): RepositoryChanges | undefined {
+export function mergeChanges(
+  a?: RepositoryChanges,
+  b?: RepositoryChanges,
+): RepositoryChanges | undefined {
   if (!a?.paths || !b?.paths) return undefined;
   return { paths: [...new Set([...a.paths, ...b.paths])], index: !!(a.index || b.index) };
 }
@@ -19,7 +44,12 @@ export function mergeChanges(a?: RepositoryChanges, b?: RepositoryChanges): Repo
 export function historyKey(snapshot: Snapshot, refs: string[], file?: FileHistoryFilter): string {
   // HEAD supplies the Working Tree node; all remote tips determine pushed markers.
   const index = indexRefs(snapshot.refs);
-  return JSON.stringify([snapshot.head, refs.map(name => [name, name === 'HEAD' ? snapshot.head : index.byName.get(name)?.oid]), index.remote.map(ref => [ref.fullName, ref.oid]).sort(), fileHistoryKey(file)]);
+  return JSON.stringify([
+    snapshot.head,
+    refs.map((name) => [name, name === 'HEAD' ? snapshot.head : index.byName.get(name)?.oid]),
+    index.remote.map((ref) => [ref.fullName, ref.oid]).sort(),
+    fileHistoryKey(file),
+  ]);
 }
 
 export function shareSnapshot(previous: Snapshot | undefined, incoming: Snapshot): Snapshot {
@@ -35,35 +65,71 @@ export function shareValue<T>(previous: T, incoming: T): T {
   return JSON.stringify(previous) === JSON.stringify(incoming) ? previous : incoming;
 }
 
-export function hasArea(change: Change, area: Extract<DiffTarget, { kind: 'change' }>['area']): boolean {
+export function hasArea(
+  change: Change,
+  area: Extract<DiffTarget, { kind: 'change' }>['area'],
+): boolean {
   if (area === 'conflict') return change.conflict;
   if (change.conflict) return false;
-  return area === 'staged' ? change.indexStatus !== ' ' && !change.untracked : change.worktreeStatus !== ' ' || change.untracked;
+  return area === 'staged'
+    ? change.indexStatus !== ' ' && !change.untracked
+    : change.worktreeStatus !== ' ' || change.untracked;
 }
 
-export function workingTarget(snapshot: Snapshot, current?: DiffTarget, selectedFile?: string): DiffTarget | undefined {
-  const change = snapshot.changes.find(file => file.path === selectedFile) ?? snapshot.changes[0];
+export function workingTarget(
+  snapshot: Snapshot,
+  current?: DiffTarget,
+  selectedFile?: string,
+): DiffTarget | undefined {
+  const change = snapshot.changes.find((file) => file.path === selectedFile) ?? snapshot.changes[0];
   if (!change) return undefined;
-  const area = current?.kind === 'change' && current.path === change.path && hasArea(change, current.area)
-    ? current.area : change.conflict ? 'conflict' : change.worktreeStatus !== ' ' || change.untracked ? 'unstaged' : 'staged';
+  const area =
+    current?.kind === 'change' && current.path === change.path && hasArea(change, current.area)
+      ? current.area
+      : change.conflict
+        ? 'conflict'
+        : change.worktreeStatus !== ' ' || change.untracked
+          ? 'unstaged'
+          : 'staged';
   return { kind: 'change', path: change.path, area };
 }
 
 /** Match the tracked HEAD version, plus its uncommitted rename destination. */
-export function fileHistoryChanges(snapshot: Pick<Snapshot, 'changes'>, file?: FileHistoryFilter, paths?: string[]): Change[] {
+export function fileHistoryChanges(
+  snapshot: Pick<Snapshot, 'changes'>,
+  file?: FileHistoryFilter,
+  paths?: string[],
+): Change[] {
   if (!file) return snapshot.changes;
   const names = new Set(paths ?? [file.anchorPath ?? file.path]);
   if (file.anchorPath) names.add(file.path);
-  return snapshot.changes.filter(change => names.has(change.path) || !!change.originalPath && names.has(change.originalPath));
+  return snapshot.changes.filter(
+    (change) => names.has(change.path) || (!!change.originalPath && names.has(change.originalPath)),
+  );
 }
 
-export function affectsWorkingDiff(before: Snapshot | undefined, after: Snapshot, target: DiffTarget, changes?: RepositoryChanges): boolean {
+export function affectsWorkingDiff(
+  before: Snapshot | undefined,
+  after: Snapshot,
+  target: DiffTarget,
+  changes?: RepositoryChanges,
+): boolean {
   if (target.kind !== 'change' && target.kind !== 'revision') return false;
-  if (!before || !changes?.paths || target.kind === 'change' && changes.index) return true;
-  const oldFile = before.changes.find(file => file.path === target.path), file = after.changes.find(file => file.path === target.path);
-  if (JSON.stringify(oldFile) !== JSON.stringify(file) || (target.kind === 'revision' || target.area === 'staged') && before.head !== after.head) return true;
+  if (!before || !changes?.paths || (target.kind === 'change' && changes.index)) return true;
+  const oldFile = before.changes.find((file) => file.path === target.path),
+    file = after.changes.find((file) => file.path === target.path);
+  if (
+    JSON.stringify(oldFile) !== JSON.stringify(file) ||
+    ((target.kind === 'revision' || target.area === 'staged') && before.head !== after.head)
+  )
+    return true;
   if (target.kind === 'change' && target.area === 'staged') return false;
-  const normalize = (value: string) => /^[A-Za-z]:[\\/]/.test(after.repository.root) ? value.replace(/\\/g, '/').toLowerCase() : value;
-  const names = [target.path, file?.originalPath].filter((name): name is string => !!name).map(normalize);
-  return changes.paths.some(path => names.some(name => name === normalize(path) || name.startsWith(normalize(path) + '/')));
+  const normalize = (value: string) =>
+    /^[A-Za-z]:[\\/]/.test(after.repository.root) ? value.replace(/\\/g, '/').toLowerCase() : value;
+  const names = [target.path, file?.originalPath]
+    .filter((name): name is string => !!name)
+    .map(normalize);
+  return changes.paths.some((path) =>
+    names.some((name) => name === normalize(path) || name.startsWith(normalize(path) + '/')),
+  );
 }

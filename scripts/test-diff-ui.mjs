@@ -1,154 +1,382 @@
 import assert from 'node:assert/strict';
 
 export async function verifyFileOpen(browser, url) {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } }), errors = [];
-  page.on('pageerror', error => errors.push(error.message));
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } }),
+    errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
   try {
     await page.addInitScript(() => {
-      const repo = { id: 'file-open', root: '/file-open', commonDir: '/file-open/.git', name: 'File open fixture' };
-      const older = { oid: 'a'.repeat(40), parents: [], author: 'Fixture', email: 'test@example.com', timestamp: 0, subject: 'Older' };
+      const repo = {
+        id: 'file-open',
+        root: '/file-open',
+        commonDir: '/file-open/.git',
+        name: 'File open fixture',
+      };
+      const older = {
+        oid: 'a'.repeat(40),
+        parents: [],
+        author: 'Fixture',
+        email: 'test@example.com',
+        timestamp: 0,
+        subject: 'Older',
+      };
       const newer = { ...older, oid: 'b'.repeat(40), parents: [older.oid], subject: 'Newer' };
       const files = [{ path: 'current.txt', status: 'R', previousPath: 'old.txt' }];
-      const fixture = window.__fileOpenFixture = { calls: [], failure: null };
-      const snapshot = { repository: repo, branch: 'main', head: newer.oid, ahead: 0, behind: 0, changes: [{ path: 'current.txt', indexStatus: ' ', worktreeStatus: 'M', untracked: false }], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: newer.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 1 };
-      window.acquireVsCodeApi = () => ({ getState: () => ({ repoId: repo.id, language: 'en', singleKeyShortcuts: true }), setState() {}, postMessage(request) {
-        fixture.calls.push(structuredClone(request)); let result;
-        if (request.method === 'repositories') result = [repo];
-        if (['repositoryCollections', 'repositoryStatuses', 'terminalList'].includes(request.method)) result = [];
-        if (request.method === 'interfaceSettings') result = { language: 'en', singleKeyShortcuts: true };
-        if (request.method === 'operationSettings') result = { scope: 'user' };
-        if (request.method === 'snapshot') result = snapshot;
-        if (request.method === 'history') result = { commits: [newer, older], tips: [newer.oid], nextOffset: 2, hasMore: false };
-        if (request.method === 'details') result = { commit: request.payload.oid === older.oid ? older : newer, parent: older.oid, body: '', files };
-        if (request.method === 'compare') result = { left: older, right: newer, files };
-        if (request.method === 'revisionTree') result = { revision: request.payload.revision, path: '', entries: [{ name: 'current.txt', path: 'current.txt', oid: 'c'.repeat(40), mode: '100644', type: 'blob' }] };
-        if (request.method === 'diffPreview') result = { kind: 'text', path: request.payload.path, leftLabel: 'Historical before', rightLabel: 'Historical after', left: 'before', right: 'after' };
-        const error = request.method === 'openFile' && fixture.failure ? { message: fixture.failure } : undefined;
-        setTimeout(() => window.postMessage({ type: 'response', id: request.id, result, error }, '*'), 0);
-      } });
+      const fixture = (window.__fileOpenFixture = { calls: [], failure: null });
+      const snapshot = {
+        repository: repo,
+        branch: 'main',
+        head: newer.oid,
+        ahead: 0,
+        behind: 0,
+        changes: [{ path: 'current.txt', indexStatus: ' ', worktreeStatus: 'M', untracked: false }],
+        refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: newer.oid }],
+        stashes: [],
+        worktrees: [],
+        operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false },
+        version: 1,
+      };
+      window.acquireVsCodeApi = () => ({
+        getState: () => ({ repoId: repo.id, language: 'en', singleKeyShortcuts: true }),
+        setState() {},
+        postMessage(request) {
+          fixture.calls.push(structuredClone(request));
+          let result;
+          if (request.method === 'repositories') result = [repo];
+          if (
+            ['repositoryCollections', 'repositoryStatuses', 'terminalList'].includes(request.method)
+          )
+            result = [];
+          if (request.method === 'interfaceSettings')
+            result = { language: 'en', singleKeyShortcuts: true };
+          if (request.method === 'operationSettings') result = { scope: 'user' };
+          if (request.method === 'snapshot') result = snapshot;
+          if (request.method === 'history')
+            result = { commits: [newer, older], tips: [newer.oid], nextOffset: 2, hasMore: false };
+          if (request.method === 'details')
+            result = {
+              commit: request.payload.oid === older.oid ? older : newer,
+              parent: older.oid,
+              body: '',
+              files,
+            };
+          if (request.method === 'compare') result = { left: older, right: newer, files };
+          if (request.method === 'revisionTree')
+            result = {
+              revision: request.payload.revision,
+              path: '',
+              entries: [
+                {
+                  name: 'current.txt',
+                  path: 'current.txt',
+                  oid: 'c'.repeat(40),
+                  mode: '100644',
+                  type: 'blob',
+                },
+              ],
+            };
+          if (request.method === 'diffPreview')
+            result = {
+              kind: 'text',
+              path: request.payload.path,
+              leftLabel: 'Historical before',
+              rightLabel: 'Historical after',
+              left: 'before',
+              right: 'after',
+            };
+          const error =
+            request.method === 'openFile' && fixture.failure
+              ? { message: fixture.failure }
+              : undefined;
+          setTimeout(
+            () => window.postMessage({ type: 'response', id: request.id, result, error }, '*'),
+            0,
+          );
+        },
+      });
     });
     await page.goto(url.replace('?demo=1', ''));
-    const diff = page.getByTestId('diff-preview'), history = page.getByTestId('history');
-    const opens = () => page.evaluate(() => window.__fileOpenFixture.calls.filter(call => ['openFile', 'openRevision', 'diff'].includes(call.method)));
+    const diff = page.getByTestId('diff-preview'),
+      history = page.getByTestId('history');
+    const opens = () =>
+      page.evaluate(() =>
+        window.__fileOpenFixture.calls.filter((call) =>
+          ['openFile', 'openRevision', 'diff'].includes(call.method),
+        ),
+      );
     const assertOpen = async (run, method, payload) => {
       const before = (await opens()).length;
       await run();
-      await page.waitForFunction(count => window.__fileOpenFixture.calls.filter(call => ['openFile', 'openRevision', 'diff'].includes(call.method)).length > count, before);
+      await page.waitForFunction(
+        (count) =>
+          window.__fileOpenFixture.calls.filter((call) =>
+            ['openFile', 'openRevision', 'diff'].includes(call.method),
+          ).length > count,
+        before,
+      );
       const added = (await opens()).slice(before);
       assert.equal(added.length, 1);
       assert.equal(added[0].method, method);
       assert.equal(added[0].repoId, 'file-open');
-      for (const [key, value] of Object.entries(payload)) assert.deepEqual(added[0].payload[key], value);
+      for (const [key, value] of Object.entries(payload))
+        assert.deepEqual(added[0].payload[key], value);
     };
     const openButton = diff.getByRole('button', { name: 'Open File in VS Code', exact: true });
-    await page.getByTestId('details').getByRole('button', { name: 'current.txt', exact: true }).click();
+    await page
+      .getByTestId('details')
+      .getByRole('button', { name: 'current.txt', exact: true })
+      .click();
     await openButton.waitFor();
     assert.match(await openButton.getAttribute('title'), /current working tree.*may differ/);
     await assertOpen(() => openButton.click(), 'openFile', { path: 'current.txt' });
     await history.locator('[data-oid]').first().click();
     await diff.getByText('after', { exact: true }).waitFor();
     await assertOpen(() => openButton.click(), 'openFile', { path: 'current.txt' });
-    await assertOpen(() => diff.getByRole('button', { name: 'Open Diff', exact: true }).click(), 'diff', { kind: 'commit', oid: 'b'.repeat(40), parent: 'a'.repeat(40), previousPath: 'old.txt' });
+    await assertOpen(
+      () => diff.getByRole('button', { name: 'Open Diff', exact: true }).click(),
+      'diff',
+      { kind: 'commit', oid: 'b'.repeat(40), parent: 'a'.repeat(40), previousPath: 'old.txt' },
+    );
     // An opening error must be visible and must never trigger another Diff request.
-    await page.evaluate(() => { window.__fileOpenFixture.failure = 'Current file is missing'; });
+    await page.evaluate(() => {
+      window.__fileOpenFixture.failure = 'Current file is missing';
+    });
     await assertOpen(() => openButton.click(), 'openFile', { path: 'current.txt' });
     await page.getByRole('alert').filter({ hasText: 'Current file is missing' }).waitFor();
     assert.equal((await opens()).at(-1).method, 'openFile');
-    await page.evaluate(() => { window.__fileOpenFixture.failure = null; });
+    await page.evaluate(() => {
+      window.__fileOpenFixture.failure = null;
+    });
     await page.getByRole('button', { name: 'Dismiss error', exact: true }).click();
-    await history.locator('[data-oid]').last().click({ modifiers: ['Control'] });
+    await history
+      .locator('[data-oid]')
+      .last()
+      .click({ modifiers: ['Control'] });
     await history.locator('[data-oid]').last().click({ button: 'right' });
     await page.getByRole('menuitem', { name: 'Compare Commits', exact: true }).click();
     await diff.getByText('after', { exact: true }).waitFor();
     await assertOpen(() => openButton.click(), 'openFile', { path: 'current.txt' });
     await page.getByTestId('workbench').focus();
     await assertOpen(() => page.keyboard.press('e'), 'openFile', { path: 'current.txt' });
-    await assertOpen(() => page.keyboard.press('d'), 'diff', { kind: 'comparison', left: 'a'.repeat(40), right: 'b'.repeat(40), previousPath: 'old.txt' });
-    const file = page.getByTestId('details').getByRole('button', { name: 'current.txt', exact: true });
+    await assertOpen(() => page.keyboard.press('d'), 'diff', {
+      kind: 'comparison',
+      left: 'a'.repeat(40),
+      right: 'b'.repeat(40),
+      previousPath: 'old.txt',
+    });
+    const file = page
+      .getByTestId('details')
+      .getByRole('button', { name: 'current.txt', exact: true });
     await file.click({ button: 'right' });
-    await assertOpen(() => page.getByRole('menuitem', { name: 'Open File in VS Code', exact: true }).click(), 'openFile', { path: 'current.txt' });
+    await assertOpen(
+      () => page.getByRole('menuitem', { name: 'Open File in VS Code', exact: true }).click(),
+      'openFile',
+      { path: 'current.txt' },
+    );
     await history.locator('[data-oid]').first().click();
-    await page.getByTestId('details').getByRole('button', { name: 'Full Tree', exact: true }).click();
+    await page
+      .getByTestId('details')
+      .getByRole('button', { name: 'Full Tree', exact: true })
+      .click();
     const treeFile = page.getByRole('treeitem').filter({ hasText: 'current.txt' });
     await treeFile.click();
     await diff.getByText('after', { exact: true }).waitFor();
     await assertOpen(() => openButton.click(), 'openFile', { path: 'current.txt' });
     await treeFile.click({ button: 'right' });
-    await assertOpen(() => page.getByRole('menuitem', { name: 'Open Historical File in VS Code', exact: true }).click(), 'openRevision', { revision: 'b'.repeat(40), path: 'current.txt' });
+    await assertOpen(
+      () =>
+        page
+          .getByRole('menuitem', { name: 'Open Historical File in VS Code', exact: true })
+          .click(),
+      'openRevision',
+      { revision: 'b'.repeat(40), path: 'current.txt' },
+    );
     assert.deepEqual(errors, []);
-    console.log('ALWAYGIT_FILE_OPEN_UI_PASSED: working/commit/comparison/tree file opens, D/E, context menu, error without Diff fallback and historical action');
-  } finally { await page.close(); }
+    console.log(
+      'ALWAYGIT_FILE_OPEN_UI_PASSED: working/commit/comparison/tree file opens, D/E, context menu, error without Diff fallback and historical action',
+    );
+  } finally {
+    await page.close();
+  }
 }
 
 export async function verifyDiffNavigation(browser, url) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
-  page.on('pageerror', error => errors.push(error.message));
+  page.on('pageerror', (error) => errors.push(error.message));
   try {
     await addDiffFixture(page, 'file');
     await page.goto(url);
     await page.getByRole('option', { name: 'Diff fixture' }).dblclick();
-    await page.getByTestId('diff-preview').getByTestId('diff-change-count').getByText('1/3',{exact:true}).waitFor();
+    await page
+      .getByTestId('diff-preview')
+      .getByTestId('diff-change-count')
+      .getByText('1/3', { exact: true })
+      .waitFor();
     await page.getByTestId('history').locator('[data-oid]').first().click();
-    const diff = page.getByTestId('diff-preview'), count = diff.getByTestId('diff-change-count'), summary = diff.getByTestId('diff-change-summary'), viewport = diff.locator('.diff-viewport'), horizontal = diff.locator('.diff-horizontal-scroll');
+    const diff = page.getByTestId('diff-preview'),
+      count = diff.getByTestId('diff-change-count'),
+      summary = diff.getByTestId('diff-change-summary'),
+      viewport = diff.locator('.diff-viewport'),
+      horizontal = diff.locator('.diff-horizontal-scroll');
     const assertColumnsAligned = async () => {
       await page.waitForFunction(() => {
-        const header=document.querySelector('.text-diff-labels'),row=document.querySelector('.diff-line');
-        if(!header||!row)return false;
-        return [...row.children].every((cell,index)=>{const a=cell.getBoundingClientRect(),b=header.children[index].getBoundingClientRect();return Math.abs(a.left-b.left)<0.1&&Math.abs(a.width-b.width)<0.1;});
+        const header = document.querySelector('.text-diff-labels'),
+          row = document.querySelector('.diff-line');
+        if (!header || !row) return false;
+        return [...row.children].every((cell, index) => {
+          const a = cell.getBoundingClientRect(),
+            b = header.children[index].getBoundingClientRect();
+          return Math.abs(a.left - b.left) < 0.1 && Math.abs(a.width - b.width) < 0.1;
+        });
       });
     };
     const assertRevealed = async () => {
       await page.waitForFunction(() => {
-        const block = document.querySelector('.active-change-start'), viewport = document.querySelector('.diff-viewport');
+        const block = document.querySelector('.active-change-start'),
+          viewport = document.querySelector('.diff-viewport');
         if (!block || !viewport) return false;
-        const a = block.getBoundingClientRect(), b = viewport.getBoundingClientRect();
+        const a = block.getBoundingClientRect(),
+          b = viewport.getBoundingClientRect();
         return a.y >= b.y - 1 && a.bottom <= b.bottom + 1;
       });
     };
     await count.getByText('1/3', { exact: true }).waitFor();
     await assertRevealed();
     await assertColumnsAligned();
-    await diff.locator('.text-diff-labels>span').first().getByText('Before · bbbbbbbb', { exact: true }).waitFor();
-    await diff.locator('.text-diff-labels>span').last().getByText('After · aaaaaaaa', { exact: true }).waitFor();
-    assert.ok(await viewport.evaluate(element => element.scrollTop > 0), 'The first distant change is revealed automatically');
+    await diff
+      .locator('.text-diff-labels>span')
+      .first()
+      .getByText('Before · bbbbbbbb', { exact: true })
+      .waitFor();
+    await diff
+      .locator('.text-diff-labels>span')
+      .last()
+      .getByText('After · aaaaaaaa', { exact: true })
+      .waitFor();
+    assert.ok(
+      await viewport.evaluate((element) => element.scrollTop > 0),
+      'The first distant change is revealed automatically',
+    );
     assert.equal(await summary.locator('.diff-change-added').innerText(), '+0');
     assert.equal(await summary.locator('.diff-change-modified').innerText(), '~3');
     assert.equal(await summary.locator('.diff-change-removed').innerText(), '−0');
-    assert.equal(await diff.locator('.diff-marker').count(), 0, 'Diff prefixes are absent from the code area');
-    assert.equal(await diff.locator('.diff-side.removed code', { hasText: '-literal source prefix' }).innerText(), '-literal source prefix', 'A leading minus in the source remains intact');
-    assert.equal(await diff.locator('.diff-side.added code', { hasText: '+literal source prefix' }).innerText(), '+literal source prefix', 'A leading plus in the source remains intact');
+    assert.equal(
+      await diff.locator('.diff-marker').count(),
+      0,
+      'Diff prefixes are absent from the code area',
+    );
+    assert.equal(
+      await diff
+        .locator('.diff-side.removed code', { hasText: '-literal source prefix' })
+        .innerText(),
+      '-literal source prefix',
+      'A leading minus in the source remains intact',
+    );
+    assert.equal(
+      await diff
+        .locator('.diff-side.added code', { hasText: '+literal source prefix' })
+        .innerText(),
+      '+literal source prefix',
+      'A leading plus in the source remains intact',
+    );
     const emojiMark = diff.locator('mark.diff-word-added', { hasText: '😁' });
     await emojiMark.waitFor();
-    assert.equal(await emojiMark.innerText(), '😁', 'Inline highlighting keeps the changed emoji in one DOM node');
-    assert.ok((await emojiMark.boundingBox()).width > 0, 'The changed emoji highlight covers the rendered glyph');
-    assert.equal(await count.evaluate(element => getComputedStyle(element).borderTopWidth), '0px', 'Current/total count is flat text, not an input-like badge');
-    assert.equal(await summary.locator('..').getAttribute('class'), 'diff-heading-identity', 'Statistics stay with the current filename');
-    assert.deepEqual(await diff.locator('.diff-heading .inline-actions .button>.codicon').evaluateAll(icons => icons.map(icon => icon.className.trim())), ['codicon codicon-diff', 'codicon codicon-go-to-file', 'codicon codicon-arrow-up', 'codicon codicon-arrow-down'], 'Original action icons retain their order');
+    assert.equal(
+      await emojiMark.innerText(),
+      '😁',
+      'Inline highlighting keeps the changed emoji in one DOM node',
+    );
+    assert.ok(
+      (await emojiMark.boundingBox()).width > 0,
+      'The changed emoji highlight covers the rendered glyph',
+    );
+    assert.equal(
+      await count.evaluate((element) => getComputedStyle(element).borderTopWidth),
+      '0px',
+      'Current/total count is flat text, not an input-like badge',
+    );
+    assert.equal(
+      await summary.locator('..').getAttribute('class'),
+      'diff-heading-identity',
+      'Statistics stay with the current filename',
+    );
+    assert.deepEqual(
+      await diff
+        .locator('.diff-heading .inline-actions .button>.codicon')
+        .evaluateAll((icons) => icons.map((icon) => icon.className.trim())),
+      [
+        'codicon codicon-diff',
+        'codicon codicon-go-to-file',
+        'codicon codicon-arrow-up',
+        'codicon codicon-arrow-down',
+      ],
+      'Original action icons retain their order',
+    );
     const resize = page.getByRole('separator', { name: 'Resize Diff panel' });
     await resize.press('End');
-    assert.ok((await diff.boundingBox()).height > 450, 'Diff panel maximum follows the available workbench height');
+    assert.ok(
+      (await diff.boundingBox()).height > 450,
+      'Diff panel maximum follows the available workbench height',
+    );
     const expandedHeight = (await diff.boundingBox()).height;
-    await page.getByTestId('bottom-dock').getByRole('button', { name: 'Collapse bottom panel' }).click();
-    assert.ok((await page.getByTestId('bottom-dock').boundingBox()).height <= 32, 'Collapsed dock keeps its tabs');
+    await page
+      .getByTestId('bottom-dock')
+      .getByRole('button', { name: 'Collapse bottom panel' })
+      .click();
+    assert.ok(
+      (await page.getByTestId('bottom-dock').boundingBox()).height <= 32,
+      'Collapsed dock keeps its tabs',
+    );
     assert.equal(await diff.locator('.diff-viewport').count(), 0);
-    await page.getByTestId('bottom-dock').getByRole('button', { name: 'Expand bottom panel' }).click();
-    assert.ok(Math.abs((await diff.boundingBox()).height - expandedHeight) < 2, 'Expanded Diff restores its previous height');
+    await page
+      .getByTestId('bottom-dock')
+      .getByRole('button', { name: 'Expand bottom panel' })
+      .click();
+    assert.ok(
+      Math.abs((await diff.boundingBox()).height - expandedHeight) < 2,
+      'Expanded Diff restores its previous height',
+    );
     assert.equal(await diff.getByRole('button', { name: 'Previous change' }).isEnabled(), true);
-    const readingPosition = () => viewport.evaluate(element => ({ top: element.getBoundingClientRect().top, height: element.clientHeight, scrollTop: element.scrollTop }));
+    const readingPosition = () =>
+      viewport.evaluate((element) => ({
+        top: element.getBoundingClientRect().top,
+        height: element.clientHeight,
+        scrollTop: element.scrollTop,
+      }));
     const beforeBoundary = await readingPosition();
     await diff.getByRole('button', { name: 'Previous change' }).click();
     await count.getByText('1/3', { exact: true }).waitFor();
-    await diff.getByTestId('diff-navigation-boundary').getByText('This is the first change in the current file. Run Previous change again to go to the last change.', { exact: true }).waitFor();
-    assert.deepEqual(await readingPosition(), beforeBoundary, 'The floating boundary notice preserves the viewport and reading position');
+    await diff
+      .getByTestId('diff-navigation-boundary')
+      .getByText(
+        'This is the first change in the current file. Run Previous change again to go to the last change.',
+        { exact: true },
+      )
+      .waitFor();
+    assert.deepEqual(
+      await readingPosition(),
+      beforeBoundary,
+      'The floating boundary notice preserves the viewport and reading position',
+    );
     await diff.getByRole('button', { name: 'Previous change' }).click();
     await count.getByText('3/3', { exact: true }).waitFor();
     await diff.getByRole('button', { name: 'Next change' }).click();
     await count.getByText('3/3', { exact: true }).waitFor();
-    await diff.getByTestId('diff-navigation-boundary').getByText('This is the last change in the current file. Run Next change again to go to the first change.', { exact: true }).waitFor();
+    await diff
+      .getByTestId('diff-navigation-boundary')
+      .getByText(
+        'This is the last change in the current file. Run Next change again to go to the first change.',
+        { exact: true },
+      )
+      .waitFor();
     await diff.getByRole('button', { name: 'Previous change' }).click();
     await count.getByText('2/3', { exact: true }).waitFor();
-    assert.equal(await diff.getByTestId('diff-navigation-boundary').count(), 0, 'The opposite direction clears the pending file wrap');
+    assert.equal(
+      await diff.getByTestId('diff-navigation-boundary').count(),
+      0,
+      'The opposite direction clears the pending file wrap',
+    );
     await diff.getByRole('button', { name: 'Next change' }).click();
     await count.getByText('3/3', { exact: true }).waitFor();
     await diff.getByRole('button', { name: 'Next change' }).click();
@@ -166,83 +394,207 @@ export async function verifyDiffNavigation(browser, url) {
     await page.mouse.wheel(0, 1);
     await diff.getByTestId('diff-navigation-boundary').waitFor({ state: 'hidden' });
     const block = diff.locator('.active-change-start');
-    const blockBox = await block.boundingBox(), viewportBox = await viewport.boundingBox();
-    assert.ok(blockBox.y >= viewportBox.y && blockBox.y < viewportBox.y + viewportBox.height, 'Jump must reveal the current block');
-    const borders = await diff.locator('.active-change').evaluateAll(rows => rows.map(row => { const style = getComputedStyle(row, '::after'); return { top: style.borderTopWidth, bottom: style.borderBottomWidth, outline: getComputedStyle(row).outlineStyle }; }));
-    assert.ok(borders.every(border => border.top === '0px' && border.bottom === '0px'), 'Navigation does not draw an extra frame around changed code');
-    assert.ok(borders.every(border => border.outline === 'none'), 'No outline on individual changed lines');
+    const blockBox = await block.boundingBox(),
+      viewportBox = await viewport.boundingBox();
+    assert.ok(
+      blockBox.y >= viewportBox.y && blockBox.y < viewportBox.y + viewportBox.height,
+      'Jump must reveal the current block',
+    );
+    const borders = await diff.locator('.active-change').evaluateAll((rows) =>
+      rows.map((row) => {
+        const style = getComputedStyle(row, '::after');
+        return {
+          top: style.borderTopWidth,
+          bottom: style.borderBottomWidth,
+          outline: getComputedStyle(row).outlineStyle,
+        };
+      }),
+    );
+    assert.ok(
+      borders.every((border) => border.top === '0px' && border.bottom === '0px'),
+      'Navigation does not draw an extra frame around changed code',
+    );
+    assert.ok(
+      borders.every((border) => border.outline === 'none'),
+      'No outline on individual changed lines',
+    );
     await verifyFixedDiffScroll(diff);
-    await horizontal.evaluate(element => { element.scrollLeft = 220; element.dispatchEvent(new Event('scroll')); });
-    const halves = await diff.locator('.active-change-start').evaluate(row => [...row.querySelectorAll('.diff-side')].map(cell => cell.getBoundingClientRect().width));
-    assert.ok(halves.every(width => width > 300 && width < 700), 'Both columns retain half viewport width for long lines');
+    await horizontal.evaluate((element) => {
+      element.scrollLeft = 220;
+      element.dispatchEvent(new Event('scroll'));
+    });
+    const halves = await diff
+      .locator('.active-change-start')
+      .evaluate((row) =>
+        [...row.querySelectorAll('.diff-side')].map((cell) => cell.getBoundingClientRect().width),
+      );
+    assert.ok(
+      halves.every((width) => width > 300 && width < 700),
+      'Both columns retain half viewport width for long lines',
+    );
     assert.equal(await count.innerText(), '3/3', 'Horizontal scroll must not change current block');
-    await diff.screenshot({path:'artifacts/diff-horizontal-pan.png'});
-    const savedHorizontal=await horizontal.evaluate(element=>element.scrollLeft);
-    await page.getByTestId('bottom-dock').getByRole('button',{name:'Collapse bottom panel'}).click();
-    await page.getByTestId('bottom-dock').getByRole('button',{name:'Expand bottom panel'}).click();
+    await diff.screenshot({ path: 'artifacts/diff-horizontal-pan.png' });
+    const savedHorizontal = await horizontal.evaluate((element) => element.scrollLeft);
+    await page
+      .getByTestId('bottom-dock')
+      .getByRole('button', { name: 'Collapse bottom panel' })
+      .click();
+    await page
+      .getByTestId('bottom-dock')
+      .getByRole('button', { name: 'Expand bottom panel' })
+      .click();
     await assertColumnsAligned();
-    assert.equal(await horizontal.evaluate(element=>element.scrollLeft),savedHorizontal,'Collapse/expand preserves horizontal reading position');
-    assert.ok(await horizontal.evaluate(element => element.scrollWidth > element.clientWidth));
-    assert.equal(await viewport.evaluate(element=>element.scrollWidth-element.clientWidth),0,'The vertical viewport has no horizontal overflow');
+    assert.equal(
+      await horizontal.evaluate((element) => element.scrollLeft),
+      savedHorizontal,
+      'Collapse/expand preserves horizontal reading position',
+    );
+    assert.ok(await horizontal.evaluate((element) => element.scrollWidth > element.clientWidth));
+    assert.equal(
+      await viewport.evaluate((element) => element.scrollWidth - element.clientWidth),
+      0,
+      'The vertical viewport has no horizontal overflow',
+    );
     await page.setViewportSize({ width: 960, height: 700 });
     await page.waitForFunction(() => {
-      const viewport = document.querySelector('.diff-viewport'), row = document.querySelector('.diff-line');
+      const viewport = document.querySelector('.diff-viewport'),
+        row = document.querySelector('.diff-line');
       return Math.abs(row.getBoundingClientRect().width - viewport.clientWidth) < 1;
     });
     await assertColumnsAligned();
-    const resizedHalves = await diff.locator('.active-change-start').evaluate(row => [...row.querySelectorAll('.diff-side')].map(cell => cell.getBoundingClientRect().width));
-    assert.ok(resizedHalves.every(width => width < 400), 'Resize recomputes both comparison columns');
+    const resizedHalves = await diff
+      .locator('.active-change-start')
+      .evaluate((row) =>
+        [...row.querySelectorAll('.diff-side')].map((cell) => cell.getBoundingClientRect().width),
+      );
+    assert.ok(
+      resizedHalves.every((width) => width < 400),
+      'Resize recomputes both comparison columns',
+    );
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.waitForFunction(() => Math.abs(document.querySelector('.diff-line').getBoundingClientRect().width - document.querySelector('.diff-viewport').clientWidth) < 1);
-    await viewport.evaluate(element => { element.scrollTop = 0; element.dispatchEvent(new Event('scroll')); });
+    await page.waitForFunction(
+      () =>
+        Math.abs(
+          document.querySelector('.diff-line').getBoundingClientRect().width -
+            document.querySelector('.diff-viewport').clientWidth,
+        ) < 1,
+    );
+    await viewport.evaluate((element) => {
+      element.scrollTop = 0;
+      element.dispatchEvent(new Event('scroll'));
+    });
     await count.getByText('1/3', { exact: true }).waitFor();
-    await page.getByTestId('details').getByRole('button', { name: 'same.txt', exact: true }).click();
+    await page
+      .getByTestId('details')
+      .getByRole('button', { name: 'same.txt', exact: true })
+      .click();
     await count.getByText('0/0', { exact: true }).waitFor();
     await assertColumnsAligned();
     assert.equal(await diff.getByRole('button', { name: 'Previous change' }).isDisabled(), true);
     assert.equal(await diff.getByRole('button', { name: 'Next change' }).isDisabled(), true);
-    assert.equal(await horizontal.evaluate(element => element.scrollLeft), 0);
-    await page.getByTestId('bottom-dock').getByRole('button', { name: 'Collapse bottom panel' }).click();
-    await page.getByTestId('details').getByRole('button', { name: 'single.txt', exact: true }).click();
+    assert.equal(await horizontal.evaluate((element) => element.scrollLeft), 0);
+    await page
+      .getByTestId('bottom-dock')
+      .getByRole('button', { name: 'Collapse bottom panel' })
+      .click();
+    await page
+      .getByTestId('details')
+      .getByRole('button', { name: 'single.txt', exact: true })
+      .click();
     await count.getByText('1/1', { exact: true }).waitFor({ state: 'attached' });
-    await page.getByTestId('bottom-dock').getByRole('button', { name: 'Expand bottom panel' }).click();
+    await page
+      .getByTestId('bottom-dock')
+      .getByRole('button', { name: 'Expand bottom panel' })
+      .click();
     await assertRevealed();
     for (const direction of ['Previous change', 'Next change']) {
       assert.equal(await diff.getByRole('button', { name: direction }).isEnabled(), true);
-      await viewport.evaluate(element => { element.scrollTop = 0; element.dispatchEvent(new Event('scroll')); });
+      await viewport.evaluate((element) => {
+        element.scrollTop = 0;
+        element.dispatchEvent(new Event('scroll'));
+      });
       await diff.getByRole('button', { name: direction }).click();
       await assertRevealed();
-      assert.equal(await count.innerText(), '1/1', 'Repeated single-change navigation retains the only block');
+      assert.equal(
+        await count.innerText(),
+        '1/1',
+        'Repeated single-change navigation retains the only block',
+      );
     }
-    const singleScroll = await viewport.evaluate(element => element.scrollTop);
-    await page.getByTestId('bottom-dock').getByRole('button', { name: 'Collapse bottom panel' }).click();
-    await page.getByTestId('bottom-dock').getByRole('button', { name: 'Expand bottom panel' }).click();
+    const singleScroll = await viewport.evaluate((element) => element.scrollTop);
+    await page
+      .getByTestId('bottom-dock')
+      .getByRole('button', { name: 'Collapse bottom panel' })
+      .click();
+    await page
+      .getByTestId('bottom-dock')
+      .getByRole('button', { name: 'Expand bottom panel' })
+      .click();
     await assertRevealed();
-    assert.ok(Math.abs(await viewport.evaluate(element => element.scrollTop) - singleScroll) < 2, 'Collapse/expand preserves the reading position');
-    await page.getByTestId('details').getByRole('button', { name: 'large.txt', exact: true }).click();
+    assert.ok(
+      Math.abs((await viewport.evaluate((element) => element.scrollTop)) - singleScroll) < 2,
+      'Collapse/expand preserves the reading position',
+    );
+    await page
+      .getByTestId('details')
+      .getByRole('button', { name: 'large.txt', exact: true })
+      .click();
     await count.getByText('1/1', { exact: true }).waitFor();
     // Both files have one block; wait for the tall block rather than the old count.
-    await page.waitForFunction(() => document.querySelectorAll('.diff-line.active-change').length > 1);
+    await page.waitForFunction(
+      () => document.querySelectorAll('.diff-line.active-change').length > 1,
+    );
     await assertRevealed();
-    const largeStart = await diff.locator('.active-change-start').boundingBox(), largeViewport = await viewport.boundingBox();
-    assert.ok(Math.abs(largeStart.y - largeViewport.y) < 2, `A block taller than the viewport is revealed from its beginning (block ${largeStart.y}, viewport ${largeViewport.y}, height ${largeViewport.height})`);
-    const topRow = await viewport.evaluate(element => element.scrollTop / document.querySelector('.diff-line').getBoundingClientRect().height);
+    const largeStart = await diff.locator('.active-change-start').boundingBox(),
+      largeViewport = await viewport.boundingBox();
+    assert.ok(
+      Math.abs(largeStart.y - largeViewport.y) < 2,
+      `A block taller than the viewport is revealed from its beginning (block ${largeStart.y}, viewport ${largeViewport.y}, height ${largeViewport.height})`,
+    );
+    const topRow = await viewport.evaluate(
+      (element) =>
+        element.scrollTop / document.querySelector('.diff-line').getBoundingClientRect().height,
+    );
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    const settings = page.getByTestId('interface-settings'), dialog = page.getByRole('dialog', { name: 'Settings' });
+    const settings = page.getByTestId('interface-settings'),
+      dialog = page.getByRole('dialog', { name: 'Settings' });
     await settings.getByRole('button', { name: 'Diff', exact: true }).click();
-    assert.equal(await settings.locator('.diff-marker').count(), 0, 'The Settings preview uses the same prefix-free style');
+    assert.equal(
+      await settings.locator('.diff-marker').count(),
+      0,
+      'The Settings preview uses the same prefix-free style',
+    );
     await settings.getByLabel('Diff line height', { exact: true }).selectOption('24');
-    await page.waitForFunction(() => document.querySelector('.diff-line')?.getBoundingClientRect().height === 24);
-    const resizedTopRow = await viewport.evaluate(element => element.scrollTop / 24);
-    assert.ok(Math.abs(resizedTopRow - topRow) < .1, `Height preview retains the top reading row (${topRow} → ${resizedTopRow})`);
+    await page.waitForFunction(
+      () => document.querySelector('.diff-line')?.getBoundingClientRect().height === 24,
+    );
+    const resizedTopRow = await viewport.evaluate((element) => element.scrollTop / 24);
+    assert.ok(
+      Math.abs(resizedTopRow - topRow) < 0.1,
+      `Height preview retains the top reading row (${topRow} → ${resizedTopRow})`,
+    );
     await settings.getByLabel('Diff font', { exact: true }).selectOption('18');
     await settings.getByLabel('Diff line height', { exact: true }).selectOption('18');
-    await page.waitForFunction(() => document.querySelector('.diff-line')?.getBoundingClientRect().height === 22);
-    assert.equal(await diff.locator('.diff-line').first().evaluate(element => getComputedStyle(element).lineHeight), '22px', 'CSS and virtual rows agree on the safe minimum for large text');
+    await page.waitForFunction(
+      () => document.querySelector('.diff-line')?.getBoundingClientRect().height === 22,
+    );
+    assert.equal(
+      await diff
+        .locator('.diff-line')
+        .first()
+        .evaluate((element) => getComputedStyle(element).lineHeight),
+      '22px',
+      'CSS and virtual rows agree on the safe minimum for large text',
+    );
     await verifyDiffLineNumberClearance(diff);
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await page.waitForFunction(() => document.querySelector('.diff-line')?.getBoundingClientRect().height === 18);
-    await viewport.evaluate(element => { element.scrollTop = 0; element.dispatchEvent(new Event('scroll')); });
+    await page.waitForFunction(
+      () => document.querySelector('.diff-line')?.getBoundingClientRect().height === 18,
+    );
+    await viewport.evaluate((element) => {
+      element.scrollTop = 0;
+      element.dispatchEvent(new Event('scroll'));
+    });
     await diff.getByRole('button', { name: 'Next change' }).click();
     await assertRevealed();
     await page.getByTestId('history').locator('[data-working-tree]').click();
@@ -250,181 +602,608 @@ export async function verifyDiffNavigation(browser, url) {
     await diff.getByRole('button', { name: 'Next change' }).click();
     await diff.getByRole('button', { name: 'Next change' }).click();
     await count.getByText('3/3', { exact: true }).waitFor();
-    const scroll = await viewport.evaluate(element => element.scrollTop);
-    await page.evaluate(() => { const fixture = window.__diffFixture, left = fixture.left.split('\n'), right = fixture.right.split('\n'); for (const i of [26, 27, 28]) right[i] = left[i]; fixture.right = right.join('\n'); fixture.emit(); });
+    const scroll = await viewport.evaluate((element) => element.scrollTop);
+    await page.evaluate(() => {
+      const fixture = window.__diffFixture,
+        left = fixture.left.split('\n'),
+        right = fixture.right.split('\n');
+      for (const i of [26, 27, 28]) right[i] = left[i];
+      fixture.right = right.join('\n');
+      fixture.emit();
+    });
     await count.getByText('2/2', { exact: true }).waitFor();
-    assert.ok(Math.abs(await viewport.evaluate(element => element.scrollTop) - scroll) < 2, 'Same-file refresh retains scroll');
-    await page.evaluate(()=>{const f=window.__diffFixture;f.left=Array.from({length:100001},(_,i)=>'context '+i).join('\n');f.right=f.left.slice(0,f.left.lastIndexOf('\n')+1)+'tail changed';f.emit();});
-    await count.getByText('1/1',{exact:true}).waitFor();
-    await diff.getByRole('button',{name:'Next change'}).click();
-    await diff.locator('.active-change-start .line-number').first().getByText('100001',{exact:true}).waitFor();
-    await diff.locator('mark').getByText('tail changed',{exact:true}).waitFor();
+    assert.ok(
+      Math.abs((await viewport.evaluate((element) => element.scrollTop)) - scroll) < 2,
+      'Same-file refresh retains scroll',
+    );
+    await page.evaluate(() => {
+      const f = window.__diffFixture;
+      f.left = Array.from({ length: 100001 }, (_, i) => 'context ' + i).join('\n');
+      f.right = f.left.slice(0, f.left.lastIndexOf('\n') + 1) + 'tail changed';
+      f.emit();
+    });
+    await count.getByText('1/1', { exact: true }).waitFor();
+    await diff.getByRole('button', { name: 'Next change' }).click();
+    await diff
+      .locator('.active-change-start .line-number')
+      .first()
+      .getByText('100001', { exact: true })
+      .waitFor();
+    await diff.locator('mark').getByText('tail changed', { exact: true }).waitFor();
     await verifyDiffLineNumberClearance(diff);
-    assert.ok(await diff.locator('.diff-line').count()<100,'Only viewport rows render for a complete 100,001-line file');
-    await viewport.evaluate(e=>{e.scrollTop=0;e.dispatchEvent(new Event('scroll'));});
-    await diff.locator('.line-number').getByText('1',{exact:true}).first().waitFor();
-    assert.ok(await page.evaluate(()=>window.__diffFixture.pageRequests.some(p=>p.start>=99900)),'Tail content is loaded by range');
-    await page.evaluate(()=>{const f=window.__diffFixture;f.synthetic={rowCount:5000000,change:4999998};f.emit();});
-    await page.waitForFunction(()=>parseFloat(document.querySelector('.diff-content').style.height)===8000000);
-    await diff.getByRole('button',{name:'Next change'}).click();
-    await diff.locator('.active-change-start .line-number').first().getByText('4999999',{exact:true}).waitFor();
-    await diff.locator('mark').getByText('tail changed',{exact:true}).waitFor();
+    assert.ok(
+      (await diff.locator('.diff-line').count()) < 100,
+      'Only viewport rows render for a complete 100,001-line file',
+    );
+    await viewport.evaluate((e) => {
+      e.scrollTop = 0;
+      e.dispatchEvent(new Event('scroll'));
+    });
+    await diff.locator('.line-number').getByText('1', { exact: true }).first().waitFor();
+    assert.ok(
+      await page.evaluate(() => window.__diffFixture.pageRequests.some((p) => p.start >= 99900)),
+      'Tail content is loaded by range',
+    );
+    await page.evaluate(() => {
+      const f = window.__diffFixture;
+      f.synthetic = { rowCount: 5000000, change: 4999998 };
+      f.emit();
+    });
+    await page.waitForFunction(
+      () => parseFloat(document.querySelector('.diff-content').style.height) === 8000000,
+    );
+    await diff.getByRole('button', { name: 'Next change' }).click();
+    await diff
+      .locator('.active-change-start .line-number')
+      .first()
+      .getByText('4999999', { exact: true })
+      .waitFor();
+    await diff.locator('mark').getByText('tail changed', { exact: true }).waitFor();
     await verifyDiffLineNumberClearance(diff);
-    await viewport.evaluate(e=>{e.scrollTop=e.scrollHeight;e.dispatchEvent(new Event('scroll'));});
-    await diff.locator('.line-number').getByText('5000000',{exact:true}).first().waitFor();
-    assert.ok(await diff.locator('.diff-line').count()<100,'Scaled scrolling reaches all rows without a browser height limit');
-    await page.evaluate(()=>{const f=window.__diffFixture;f.holdPath='diff.txt';f.emit();});
-    await page.waitForFunction(()=>window.__diffFixture.held.length>0);
-    assert.equal(await count.innerText(),'1/1','A same-file refresh retains the previous block position until its response');
-    assert.equal(await summary.locator('.diff-change-modified').innerText(),'~1','A same-file refresh retains the previous statistics without flicker');
-    assert.equal(await diff.getByRole('button',{name:'Next change'}).isDisabled(),true,'Pending refresh disables navigation over the old comparison');
-    await page.evaluate(()=>{const f=window.__diffFixture;f.holdPath=null;f.held.splice(0).forEach(reply=>reply());});
-    await page.waitForFunction(()=>!document.querySelector('[data-testid="diff-preview"] [aria-label="Next change"]').disabled);
-    await count.getByText('1/1',{exact:true}).waitFor();
-    await page.evaluate(()=>{const f=window.__diffFixture;f.failPath='diff.txt';f.emit();});
-    await diff.getByRole('alert').getByText('Read failed',{exact:true}).waitFor();
-    assert.equal(await count.innerText(),'—','A failed complete comparison must not report zero changes');
+    await viewport.evaluate((e) => {
+      e.scrollTop = e.scrollHeight;
+      e.dispatchEvent(new Event('scroll'));
+    });
+    await diff.locator('.line-number').getByText('5000000', { exact: true }).first().waitFor();
+    assert.ok(
+      (await diff.locator('.diff-line').count()) < 100,
+      'Scaled scrolling reaches all rows without a browser height limit',
+    );
+    await page.evaluate(() => {
+      const f = window.__diffFixture;
+      f.holdPath = 'diff.txt';
+      f.emit();
+    });
+    await page.waitForFunction(() => window.__diffFixture.held.length > 0);
+    assert.equal(
+      await count.innerText(),
+      '1/1',
+      'A same-file refresh retains the previous block position until its response',
+    );
+    assert.equal(
+      await summary.locator('.diff-change-modified').innerText(),
+      '~1',
+      'A same-file refresh retains the previous statistics without flicker',
+    );
+    assert.equal(
+      await diff.getByRole('button', { name: 'Next change' }).isDisabled(),
+      true,
+      'Pending refresh disables navigation over the old comparison',
+    );
+    await page.evaluate(() => {
+      const f = window.__diffFixture;
+      f.holdPath = null;
+      f.held.splice(0).forEach((reply) => reply());
+    });
+    await page.waitForFunction(
+      () =>
+        !document.querySelector('[data-testid="diff-preview"] [aria-label="Next change"]').disabled,
+    );
+    await count.getByText('1/1', { exact: true }).waitFor();
+    await page.evaluate(() => {
+      const f = window.__diffFixture;
+      f.failPath = 'diff.txt';
+      f.emit();
+    });
+    await diff.getByRole('alert').getByText('Read failed', { exact: true }).waitFor();
+    assert.equal(
+      await count.innerText(),
+      '—',
+      'A failed complete comparison must not report zero changes',
+    );
     assert.deepEqual(errors, []);
-    console.log('ALWAYGIT_DIFF_UI_TESTS_PASSED: initial reveal, boundary confirmation/single-change navigation, tall blocks, collapse/restore, type summary, scrolling, refresh remap, complete tail changes, paging and scaled scrolling');
-  } finally { await page.close(); }
+    console.log(
+      'ALWAYGIT_DIFF_UI_TESTS_PASSED: initial reveal, boundary confirmation/single-change navigation, tall blocks, collapse/restore, type summary, scrolling, refresh remap, complete tail changes, paging and scaled scrolling',
+    );
+  } finally {
+    await page.close();
+  }
   await verifyCommitNavigation(browser, url);
   await verifyImagePreview(browser, url);
 }
 
 async function verifyImagePreview(browser, url) {
-  const page = await browser.newPage({ viewport: { width: 1200, height: 760 } }), errors = [];
-  page.on('pageerror', error => errors.push(error.message));
+  const page = await browser.newPage({ viewport: { width: 1200, height: 760 } }),
+    errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
   try {
     await page.addInitScript(() => {
-      const repo={id:'images',root:'/images',commonDir:'/images/.git',name:'Image fixture'},commit={oid:'1'.repeat(40),parents:[],author:'Fixture',email:'fixture@example.com',timestamp:0,subject:'Images'};
-      const image='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
-      const snapshot={repository:repo,branch:'main',head:commit.oid,ahead:0,behind:0,changes:[{path:'image.png',indexStatus:' ',worktreeStatus:'M',conflict:false,untracked:false},{path:'binary.bin',indexStatus:' ',worktreeStatus:'M',conflict:false,untracked:false}],refs:[{name:'main',fullName:'refs/heads/main',kind:'local',oid:commit.oid}],stashes:[],worktrees:[],operation:{conflicts:0,canContinue:false,canAbort:false,canSkip:false},version:1};
-      window.acquireVsCodeApi=()=>({getState:()=>null,setState(){},postMessage(request){let result;
-        if(request.method==='repositories')result=[repo];
-        if(request.method==='repositoryCollections')result=[];
-        if(request.method==='repositoryOrder')result={root:[],collections:{}};
-        if(request.method==='repositoryStatuses')result=[];
-        if(request.method==='operationSettings')result={allowDetachedHead:false,scope:'workspace'};
-        if(request.method==='snapshot')result=snapshot;
-        if(request.method==='history')result={commits:[commit],tips:[commit.oid],nextOffset:1,hasMore:false};
-        if(request.method==='details')result={commit,body:'',files:[]};
-        if(request.method==='diffPreview')result=request.payload.path==='image.png'?{kind:'image',path:'image.png',leftLabel:'Before',rightLabel:'After',left:{mimeType:'image/png',data:image,byteLength:68,width:1,height:1},right:{mimeType:'image/png',data:image,byteLength:68,width:1,height:1}}:{kind:'binary',reason:'unsupported',path:'binary.bin',leftLabel:'Before',rightLabel:'After'};
-        setTimeout(()=>window.postMessage({type:'response',id:request.id,result},'*'),0);
-      }});
+      const repo = {
+          id: 'images',
+          root: '/images',
+          commonDir: '/images/.git',
+          name: 'Image fixture',
+        },
+        commit = {
+          oid: '1'.repeat(40),
+          parents: [],
+          author: 'Fixture',
+          email: 'fixture@example.com',
+          timestamp: 0,
+          subject: 'Images',
+        };
+      const image =
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+      const snapshot = {
+        repository: repo,
+        branch: 'main',
+        head: commit.oid,
+        ahead: 0,
+        behind: 0,
+        changes: [
+          {
+            path: 'image.png',
+            indexStatus: ' ',
+            worktreeStatus: 'M',
+            conflict: false,
+            untracked: false,
+          },
+          {
+            path: 'binary.bin',
+            indexStatus: ' ',
+            worktreeStatus: 'M',
+            conflict: false,
+            untracked: false,
+          },
+        ],
+        refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }],
+        stashes: [],
+        worktrees: [],
+        operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false },
+        version: 1,
+      };
+      window.acquireVsCodeApi = () => ({
+        getState: () => null,
+        setState() {},
+        postMessage(request) {
+          let result;
+          if (request.method === 'repositories') result = [repo];
+          if (request.method === 'repositoryCollections') result = [];
+          if (request.method === 'repositoryOrder') result = { root: [], collections: {} };
+          if (request.method === 'repositoryStatuses') result = [];
+          if (request.method === 'operationSettings')
+            result = { allowDetachedHead: false, scope: 'workspace' };
+          if (request.method === 'snapshot') result = snapshot;
+          if (request.method === 'history')
+            result = { commits: [commit], tips: [commit.oid], nextOffset: 1, hasMore: false };
+          if (request.method === 'details') result = { commit, body: '', files: [] };
+          if (request.method === 'diffPreview')
+            result =
+              request.payload.path === 'image.png'
+                ? {
+                    kind: 'image',
+                    path: 'image.png',
+                    leftLabel: 'Before',
+                    rightLabel: 'After',
+                    left: {
+                      mimeType: 'image/png',
+                      data: image,
+                      byteLength: 68,
+                      width: 1,
+                      height: 1,
+                    },
+                    right: {
+                      mimeType: 'image/png',
+                      data: image,
+                      byteLength: 68,
+                      width: 1,
+                      height: 1,
+                    },
+                  }
+                : {
+                    kind: 'binary',
+                    reason: 'unsupported',
+                    path: 'binary.bin',
+                    leftLabel: 'Before',
+                    rightLabel: 'After',
+                  };
+          setTimeout(
+            () => window.postMessage({ type: 'response', id: request.id, result }, '*'),
+            0,
+          );
+        },
+      });
     });
     await page.goto(url);
-    await page.getByRole('option',{name:'Image fixture'}).dblclick();
+    await page.getByRole('option', { name: 'Image fixture' }).dblclick();
     await page.getByTestId('history').locator('[data-working-tree]').click();
-    const diff=page.getByTestId('diff-preview');
+    const diff = page.getByTestId('diff-preview');
     await diff.locator('.image-diff img').first().waitFor();
-    await page.waitForFunction(()=>[...document.querySelectorAll('.image-diff img')].every(image=>image.complete&&image.naturalWidth===1));
-    assert.equal(await diff.locator('.image-diff img').count(),2);
-    assert.equal(await diff.getByTestId('diff-change-summary').locator('.diff-change-modified').innerText(),'~1');
-    assert.equal(await diff.getByTestId('diff-change-count').innerText(),'1/1');
-    assert.equal(await diff.getByRole('button',{name:'Open Diff'}).isDisabled(),true);
-    assert.equal(await diff.getByRole('button',{name:'Open File in VS Code'}).isDisabled(),true);
-    await diff.getByRole('button',{name:'Show images at actual size'}).click();
-    assert.equal(await diff.getByRole('button',{name:'Show images at actual size'}).getAttribute('aria-pressed'),'true');
-    await diff.getByRole('button',{name:'Maximize image preview'}).click();
-    assert.ok(await diff.evaluate(element=>element.classList.contains('diff-preview-maximized')));
+    await page.waitForFunction(() =>
+      [...document.querySelectorAll('.image-diff img')].every(
+        (image) => image.complete && image.naturalWidth === 1,
+      ),
+    );
+    assert.equal(await diff.locator('.image-diff img').count(), 2);
+    assert.equal(
+      await diff.getByTestId('diff-change-summary').locator('.diff-change-modified').innerText(),
+      '~1',
+    );
+    assert.equal(await diff.getByTestId('diff-change-count').innerText(), '1/1');
+    assert.equal(await diff.getByRole('button', { name: 'Open Diff' }).isDisabled(), true);
+    assert.equal(
+      await diff.getByRole('button', { name: 'Open File in VS Code' }).isDisabled(),
+      true,
+    );
+    await diff.getByRole('button', { name: 'Show images at actual size' }).click();
+    assert.equal(
+      await diff
+        .getByRole('button', { name: 'Show images at actual size' })
+        .getAttribute('aria-pressed'),
+      'true',
+    );
+    await diff.getByRole('button', { name: 'Maximize image preview' }).click();
+    assert.ok(
+      await diff.evaluate((element) => element.classList.contains('diff-preview-maximized')),
+    );
     await page.keyboard.press(',');
-    const settings=page.getByRole('dialog',{name:'Settings',exact:true});await settings.waitFor();
-    await page.keyboard.press('Escape');await settings.waitFor({state:'hidden'});
-    assert.ok(await diff.evaluate(element=>element.classList.contains('diff-preview-maximized')),'Modal Escape does not reach the captured image-preview handler');
+    const settings = page.getByRole('dialog', { name: 'Settings', exact: true });
+    await settings.waitFor();
     await page.keyboard.press('Escape');
-    assert.equal(await diff.evaluate(element=>element.classList.contains('diff-preview-maximized')),false,'The next Escape restores the image preview after the modal closes');
-    await page.getByTestId('details').getByRole('button',{name:'binary.bin',exact:true}).click();
-    await diff.getByText('Binary file: text preview unavailable',{exact:true}).waitFor();
-    assert.equal(await diff.getByRole('button',{name:'Open Diff'}).isDisabled(),true);
-    assert.equal(await diff.getByRole('button',{name:'Open File in VS Code'}).isDisabled(),true);
-    assert.deepEqual(errors,[]);
-    console.log('ALWAYGIT_IMAGE_DIFF_UI_TESTS_PASSED: side-by-side image preview, metadata, zoom, maximize and disabled native actions');
-  } finally { await page.close(); }
+    await settings.waitFor({ state: 'hidden' });
+    assert.ok(
+      await diff.evaluate((element) => element.classList.contains('diff-preview-maximized')),
+      'Modal Escape does not reach the captured image-preview handler',
+    );
+    await page.keyboard.press('Escape');
+    assert.equal(
+      await diff.evaluate((element) => element.classList.contains('diff-preview-maximized')),
+      false,
+      'The next Escape restores the image preview after the modal closes',
+    );
+    await page
+      .getByTestId('details')
+      .getByRole('button', { name: 'binary.bin', exact: true })
+      .click();
+    await diff.getByText('Binary file: text preview unavailable', { exact: true }).waitFor();
+    assert.equal(await diff.getByRole('button', { name: 'Open Diff' }).isDisabled(), true);
+    assert.equal(
+      await diff.getByRole('button', { name: 'Open File in VS Code' }).isDisabled(),
+      true,
+    );
+    assert.deepEqual(errors, []);
+    console.log(
+      'ALWAYGIT_IMAGE_DIFF_UI_TESTS_PASSED: side-by-side image preview, metadata, zoom, maximize and disabled native actions',
+    );
+  } finally {
+    await page.close();
+  }
 }
 
 async function addDiffFixture(page, diffNavigationScope) {
-    await page.addInitScript(scope => {
-      const preferences=JSON.parse(localStorage.getItem('alwaygit.diff-fixture-preferences')||'null')??(scope?{diffNavigationScope:scope}:{});
-      window.__ALWAYGIT_PREFERENCES__=preferences;
-      const repo = { id: 'diff', root: '/diff', commonDir: '/diff/.git', name: 'Diff fixture' };
-      const commit = { oid: 'a'.repeat(40), parents: ['b'.repeat(40), 'c'.repeat(40)], author: 'Fixture', email: 'test@example.com', timestamp: 0, subject: 'Diff navigation' };
-      const lines = Array.from({ length: 130 }, (_, i) => `context line ${i}`);
-      lines[26] = 'emoji 😀 stays';
-      lines[27] = '-literal source prefix';
-      lines[81] = 'left long ' + '0123456789'.repeat(120);
-      const right = lines.map((line, i) => [26, 27, 28, 40, 41, 42, 80, 81, 82].includes(i) ? i === 26 ? 'emoji 😁 stays' : i === 27 ? '+literal source prefix' : i === 81 ? 'right long ' + 'abcdefghij'.repeat(120) : `changed line ${i}` : line);
-      const fixture = window.__diffFixture = { commit, calls: [], previews: [], failPath: null, holdPath: null, held: [], emptyFiles: false, left: lines.join('\n'), right: right.join('\n'), truncated: false, preferences, snapshots:new Map(), pageRequests:[], synthetic:null,
-        snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 0, behind: 0, changes: [{ path: 'diff.txt', indexStatus: ' ', worktreeStatus: 'M', conflict: false, untracked: false }], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
-        emit() { window.postMessage({ type: 'changed', repoId: repo.id, changes: { paths: ['diff.txt'] } }, '*'); },
-      };
-      window.acquireVsCodeApi = () => ({ getState: () => JSON.parse(localStorage.getItem('alwaygit.diff-fixture-session') || 'null') ?? { diffNavigationScope: scope }, setState: state => localStorage.setItem('alwaygit.diff-fixture-session', JSON.stringify(state)), postMessage(request) {
-        if (request.method === 'saveSession') { setTimeout(() => window.postMessage({ type: 'response', id: request.id, result: null }, '*'), 0); return; }
+  await page.addInitScript((scope) => {
+    const preferences =
+      JSON.parse(localStorage.getItem('alwaygit.diff-fixture-preferences') || 'null') ??
+      (scope ? { diffNavigationScope: scope } : {});
+    window.__ALWAYGIT_PREFERENCES__ = preferences;
+    const repo = { id: 'diff', root: '/diff', commonDir: '/diff/.git', name: 'Diff fixture' };
+    const commit = {
+      oid: 'a'.repeat(40),
+      parents: ['b'.repeat(40), 'c'.repeat(40)],
+      author: 'Fixture',
+      email: 'test@example.com',
+      timestamp: 0,
+      subject: 'Diff navigation',
+    };
+    const lines = Array.from({ length: 130 }, (_, i) => `context line ${i}`);
+    lines[26] = 'emoji 😀 stays';
+    lines[27] = '-literal source prefix';
+    lines[81] = 'left long ' + '0123456789'.repeat(120);
+    const right = lines.map((line, i) =>
+      [26, 27, 28, 40, 41, 42, 80, 81, 82].includes(i)
+        ? i === 26
+          ? 'emoji 😁 stays'
+          : i === 27
+            ? '+literal source prefix'
+            : i === 81
+              ? 'right long ' + 'abcdefghij'.repeat(120)
+              : `changed line ${i}`
+        : line,
+    );
+    const fixture = (window.__diffFixture = {
+      commit,
+      calls: [],
+      previews: [],
+      failPath: null,
+      holdPath: null,
+      held: [],
+      emptyFiles: false,
+      left: lines.join('\n'),
+      right: right.join('\n'),
+      truncated: false,
+      preferences,
+      snapshots: new Map(),
+      pageRequests: [],
+      synthetic: null,
+      snapshot: {
+        repository: repo,
+        branch: 'main',
+        head: commit.oid,
+        ahead: 0,
+        behind: 0,
+        changes: [
+          {
+            path: 'diff.txt',
+            indexStatus: ' ',
+            worktreeStatus: 'M',
+            conflict: false,
+            untracked: false,
+          },
+        ],
+        refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }],
+        stashes: [],
+        worktrees: [],
+        operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false },
+        version: 0,
+      },
+      emit() {
+        window.postMessage(
+          { type: 'changed', repoId: repo.id, changes: { paths: ['diff.txt'] } },
+          '*',
+        );
+      },
+    });
+    window.acquireVsCodeApi = () => ({
+      getState: () =>
+        JSON.parse(localStorage.getItem('alwaygit.diff-fixture-session') || 'null') ?? {
+          diffNavigationScope: scope,
+        },
+      setState: (state) =>
+        localStorage.setItem('alwaygit.diff-fixture-session', JSON.stringify(state)),
+      postMessage(request) {
+        if (request.method === 'saveSession') {
+          setTimeout(
+            () => window.postMessage({ type: 'response', id: request.id, result: null }, '*'),
+            0,
+          );
+          return;
+        }
         fixture.calls.push(request.method);
         let result;
-        if(request.method==='interfaceSettings')result=structuredClone(fixture.preferences);
-        if(request.method==='saveInterfaceSettings'){fixture.preferences={...fixture.preferences,...request.payload};localStorage.setItem('alwaygit.diff-fixture-preferences',JSON.stringify(fixture.preferences));window.__ALWAYGIT_PREFERENCES__=fixture.preferences;result=structuredClone(fixture.preferences);}
-        if (request.method === 'repositories') result = [repo];
-        if (request.method === 'snapshot') result = structuredClone({ ...fixture.snapshot, version: ++fixture.snapshot.version });
-        if (request.method === 'history') result = { commits: [commit], tips: [commit.oid], nextOffset: 1, hasMore: false };
-        if (request.method === 'details') result = { commit, parent: request.payload.parent ?? commit.parents[0], body: '', files: ['diff.txt', 'same.txt', 'binary.bin', 'single.txt', 'large.txt', 'tail.txt'].map(path => ({ path, status: path === 'single.txt' ? 'R' : 'M', previousPath: path === 'single.txt' ? 'old-single.txt' : undefined })) };
-        if(request.method==='diffPage') {
-          fixture.pageRequests.push(request.payload);
-          const {token,start,count}=request.payload,snapshot=fixture.snapshots.get(token);
-          result={token,start,rows:snapshot.synthetic?Array.from({length:Math.min(count,snapshot.rowCount-start)},(_,i)=>({beforeLine:start+i+1,afterLine:start+i+1,before:'context '+(start+i),after:start+i===snapshot.change?'tail changed':'context '+(start+i),changed:start+i===snapshot.change})):snapshot.rows.slice(start,start+count)};
+        if (request.method === 'interfaceSettings') result = structuredClone(fixture.preferences);
+        if (request.method === 'saveInterfaceSettings') {
+          fixture.preferences = { ...fixture.preferences, ...request.payload };
+          localStorage.setItem(
+            'alwaygit.diff-fixture-preferences',
+            JSON.stringify(fixture.preferences),
+          );
+          window.__ALWAYGIT_PREFERENCES__ = fixture.preferences;
+          result = structuredClone(fixture.preferences);
         }
-        if(request.method==='diffRelease'){fixture.snapshots.delete(request.payload.token);result=null;}
+        if (request.method === 'repositories') result = [repo];
+        if (request.method === 'snapshot')
+          result = structuredClone({ ...fixture.snapshot, version: ++fixture.snapshot.version });
+        if (request.method === 'history')
+          result = { commits: [commit], tips: [commit.oid], nextOffset: 1, hasMore: false };
+        if (request.method === 'details')
+          result = {
+            commit,
+            parent: request.payload.parent ?? commit.parents[0],
+            body: '',
+            files: [
+              'diff.txt',
+              'same.txt',
+              'binary.bin',
+              'single.txt',
+              'large.txt',
+              'tail.txt',
+            ].map((path) => ({
+              path,
+              status: path === 'single.txt' ? 'R' : 'M',
+              previousPath: path === 'single.txt' ? 'old-single.txt' : undefined,
+            })),
+          };
+        if (request.method === 'diffPage') {
+          fixture.pageRequests.push(request.payload);
+          const { token, start, count } = request.payload,
+            snapshot = fixture.snapshots.get(token);
+          result = {
+            token,
+            start,
+            rows: snapshot.synthetic
+              ? Array.from({ length: Math.min(count, snapshot.rowCount - start) }, (_, i) => ({
+                  beforeLine: start + i + 1,
+                  afterLine: start + i + 1,
+                  before: 'context ' + (start + i),
+                  after: start + i === snapshot.change ? 'tail changed' : 'context ' + (start + i),
+                  changed: start + i === snapshot.change,
+                }))
+              : snapshot.rows.slice(start, start + count),
+          };
+        }
+        if (request.method === 'diffRelease') {
+          fixture.snapshots.delete(request.payload.token);
+          result = null;
+        }
         if (request.method === 'diffPreview') {
           const path = request.payload.path;
           fixture.previews.push(structuredClone(request.payload));
-          if (fixture.failPath === path) { setTimeout(() => window.postMessage({ type: 'response', id: request.id, error: { message: 'Read failed' } }, '*'), 10); return; }
-          const right = fixture.emptyFiles || path === 'same.txt' ? fixture.left : path === 'tail.txt' ? fixture.left.split('\n').map((line, i) => [30, 95].includes(i) ? `tail changed ${i}` : line).join('\n') : path === 'single.txt' || path === 'large.txt' ? fixture.left.split('\n').map((line, i) => i === 80 || path === 'large.txt' && i > 80 && i <= 125 ? `changed line ${i}` : line).join('\n') : fixture.right;
-          const leftLabel = request.payload.kind === 'commit' ? (request.payload.parent ?? commit.parents[0]).slice(0, 8) : 'Index', rightLabel = request.payload.kind === 'commit' ? request.payload.oid.slice(0, 8) : 'Working Tree';
-          result = path === 'binary.bin' ? { kind: 'binary', reason: 'unsupported', path, leftLabel, rightLabel } : { kind: 'text', path, leftLabel, rightLabel, left: fixture.left, right, truncated: fixture.truncated };
-          if(result.kind==='text'&&request.payload.paged){
-            const afterLines=right.split('\n');const rows=fixture.left.split('\n').map((before,i)=>({before,after:afterLines[i],beforeLine:i+1,afterLine:i+1,changed:before!==afterLines[i]}));
-            const changes=[];for(let i=0;i<rows.length;i++){if(!rows[i].changed)continue;const start=i;while(i+1<rows.length&&rows[i+1].changed)i++;changes.push({start,end:i});}
-            const token=request.payload.summaryOnly?'':crypto.randomUUID();
-            const index=fixture.synthetic?{token,rowCount:fixture.synthetic.rowCount,changes:[{start:fixture.synthetic.change,end:fixture.synthetic.change}],summary:{added:0,modified:1,removed:0},columns:20}:{token,rowCount:rows.length,changes,summary:{added:0,modified:changes.length,removed:0},columns:rows.reduce((max,row)=>Math.max(max,row.before.length,row.after.length),0)};
-            if(token)fixture.snapshots.set(token,fixture.synthetic?{...fixture.synthetic,synthetic:true}:{rows});
-            result={...result,left:'',right:'',index};
+          if (fixture.failPath === path) {
+            setTimeout(
+              () =>
+                window.postMessage(
+                  { type: 'response', id: request.id, error: { message: 'Read failed' } },
+                  '*',
+                ),
+              10,
+            );
+            return;
           }
-          if (fixture.holdPath === path) { fixture.held.push(() => window.postMessage({ type: 'response', id: request.id, result }, '*')); return; }
+          const right =
+            fixture.emptyFiles || path === 'same.txt'
+              ? fixture.left
+              : path === 'tail.txt'
+                ? fixture.left
+                    .split('\n')
+                    .map((line, i) => ([30, 95].includes(i) ? `tail changed ${i}` : line))
+                    .join('\n')
+                : path === 'single.txt' || path === 'large.txt'
+                  ? fixture.left
+                      .split('\n')
+                      .map((line, i) =>
+                        i === 80 || (path === 'large.txt' && i > 80 && i <= 125)
+                          ? `changed line ${i}`
+                          : line,
+                      )
+                      .join('\n')
+                  : fixture.right;
+          const leftLabel =
+              request.payload.kind === 'commit'
+                ? (request.payload.parent ?? commit.parents[0]).slice(0, 8)
+                : 'Index',
+            rightLabel =
+              request.payload.kind === 'commit' ? request.payload.oid.slice(0, 8) : 'Working Tree';
+          result =
+            path === 'binary.bin'
+              ? { kind: 'binary', reason: 'unsupported', path, leftLabel, rightLabel }
+              : {
+                  kind: 'text',
+                  path,
+                  leftLabel,
+                  rightLabel,
+                  left: fixture.left,
+                  right,
+                  truncated: fixture.truncated,
+                };
+          if (result.kind === 'text' && request.payload.paged) {
+            const afterLines = right.split('\n');
+            const rows = fixture.left.split('\n').map((before, i) => ({
+              before,
+              after: afterLines[i],
+              beforeLine: i + 1,
+              afterLine: i + 1,
+              changed: before !== afterLines[i],
+            }));
+            const changes = [];
+            for (let i = 0; i < rows.length; i++) {
+              if (!rows[i].changed) continue;
+              const start = i;
+              while (i + 1 < rows.length && rows[i + 1].changed) i++;
+              changes.push({ start, end: i });
+            }
+            const token = request.payload.summaryOnly ? '' : crypto.randomUUID();
+            const index = fixture.synthetic
+              ? {
+                  token,
+                  rowCount: fixture.synthetic.rowCount,
+                  changes: [{ start: fixture.synthetic.change, end: fixture.synthetic.change }],
+                  summary: { added: 0, modified: 1, removed: 0 },
+                  columns: 20,
+                }
+              : {
+                  token,
+                  rowCount: rows.length,
+                  changes,
+                  summary: { added: 0, modified: changes.length, removed: 0 },
+                  columns: rows.reduce(
+                    (max, row) => Math.max(max, row.before.length, row.after.length),
+                    0,
+                  ),
+                };
+            if (token)
+              fixture.snapshots.set(
+                token,
+                fixture.synthetic ? { ...fixture.synthetic, synthetic: true } : { rows },
+              );
+            result = { ...result, left: '', right: '', index };
+          }
+          if (fixture.holdPath === path) {
+            fixture.held.push(() =>
+              window.postMessage({ type: 'response', id: request.id, result }, '*'),
+            );
+            return;
+          }
         }
         setTimeout(() => window.postMessage({ type: 'response', id: request.id, result }, '*'), 10);
-      } });
-    }, diffNavigationScope);
+      },
+    });
+  }, diffNavigationScope);
 }
 
 export async function verifyCommitNavigation(browser, url) {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } }), errors = [];
-  page.on('pageerror', error => errors.push(error.message));
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } }),
+    errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
   try {
     await addDiffFixture(page);
     await page.goto(url);
     await page.getByRole('option', { name: 'Diff fixture' }).dblclick();
-    await page.getByTestId('diff-preview').getByTestId('diff-change-count').getByText('1/3',{exact:true}).waitFor();
+    await page
+      .getByTestId('diff-preview')
+      .getByTestId('diff-change-count')
+      .getByText('1/3', { exact: true })
+      .waitFor();
     await page.getByTestId('history').locator('[data-oid]').first().click();
-    const diff = page.getByTestId('diff-preview'), count = diff.getByTestId('diff-change-count'), details = page.getByTestId('details');
-    const expectCount = async text => { await count.getByText(text, { exact: true }).waitFor(); };
-    const step = async (direction, text) => { await diff.getByRole('button', { name: direction === -1 ? 'Previous change' : 'Next change' }).click(); await expectCount(text); };
+    const diff = page.getByTestId('diff-preview'),
+      count = diff.getByTestId('diff-change-count'),
+      details = page.getByTestId('details');
+    const expectCount = async (text) => {
+      await count.getByText(text, { exact: true }).waitFor();
+    };
+    const step = async (direction, text) => {
+      await diff
+        .getByRole('button', { name: direction === -1 ? 'Previous change' : 'Next change' })
+        .click();
+      await expectCount(text);
+    };
     const settings = async () => {
       await page.getByRole('button', { name: 'Settings', exact: true }).click();
-      await page.getByTestId('interface-settings').getByRole('button', { name: 'Diff', exact: true }).click();
+      await page
+        .getByTestId('interface-settings')
+        .getByRole('button', { name: 'Diff', exact: true })
+        .click();
       return page.getByRole('dialog', { name: 'Settings' });
     };
     await expectCount('File 1/6 · Change 1/3');
     await diff.getByRole('button', { name: 'Previous change' }).click();
     await expectCount('File 1/6 · Change 1/3');
-    await diff.getByTestId('diff-navigation-boundary').getByText('This is the first change in the current Commit. Run Previous change again to go to the last change in this Commit.', { exact: true }).waitFor();
+    await diff
+      .getByTestId('diff-navigation-boundary')
+      .getByText(
+        'This is the first change in the current Commit. Run Previous change again to go to the last change in this Commit.',
+        { exact: true },
+      )
+      .waitFor();
     await step(-1, 'File 6/6 · Change 2/2');
     await page.waitForFunction(() => {
-      const block = document.querySelector('.active-change-start'), viewport = document.querySelector('.diff-viewport');
+      const block = document.querySelector('.active-change-start'),
+        viewport = document.querySelector('.diff-viewport');
       if (!block) return false;
-      return block.querySelector('.line-number').textContent === '96' && block.getBoundingClientRect().y >= viewport.getBoundingClientRect().y && block.getBoundingClientRect().bottom <= viewport.getBoundingClientRect().bottom;
+      return (
+        block.querySelector('.line-number').textContent === '96' &&
+        block.getBoundingClientRect().y >= viewport.getBoundingClientRect().y &&
+        block.getBoundingClientRect().bottom <= viewport.getBoundingClientRect().bottom
+      );
     });
     await diff.getByRole('button', { name: 'Next change' }).click();
     await expectCount('File 6/6 · Change 2/2');
-    await diff.getByTestId('diff-navigation-boundary').getByText('This is the last change in the current Commit. Run Next change again to go to the first change in this Commit.', { exact: true }).waitFor();
+    await diff
+      .getByTestId('diff-navigation-boundary')
+      .getByText(
+        'This is the last change in the current Commit. Run Next change again to go to the first change in this Commit.',
+        { exact: true },
+      )
+      .waitFor();
     await step(1, 'File 1/6 · Change 1/3');
     await step(1, 'File 1/6 · Change 2/3');
     await step(1, 'File 1/6 · Change 3/3');
@@ -432,12 +1211,21 @@ export async function verifyCommitNavigation(browser, url) {
     await filter.fill('diff');
     await step(1, 'File 4/6 · Change 1/1');
     assert.equal(await filter.inputValue(), 'diff');
-    await details.getByText('Current Diff is outside the path filter: single.txt', { exact: true }).waitFor();
-    const renamed = await page.evaluate(() => window.__diffFixture.previews.find(target => target.path === 'single.txt'));
+    await details
+      .getByText('Current Diff is outside the path filter: single.txt', { exact: true })
+      .waitFor();
+    const renamed = await page.evaluate(() =>
+      window.__diffFixture.previews.find((target) => target.path === 'single.txt'),
+    );
     assert.equal(renamed.previousPath, 'old-single.txt');
     assert.equal(renamed.parent, 'b'.repeat(40));
     await filter.fill('');
-    assert.ok(await details.locator('.file-item[aria-current="true"]').getByRole('button', { name: 'single.txt', exact: true }).count());
+    assert.ok(
+      await details
+        .locator('.file-item[aria-current="true"]')
+        .getByRole('button', { name: 'single.txt', exact: true })
+        .count(),
+    );
     await step(-1, 'File 1/6 · Change 3/3');
     await step(1, 'File 4/6 · Change 1/1');
     await step(1, 'File 5/6 · Change 1/1');
@@ -450,24 +1238,41 @@ export async function verifyCommitNavigation(browser, url) {
     await expectCount('File 3/6 · Change 0/0');
     await step(1, 'File 4/6 · Change 1/1');
     await step(-1, 'File 1/6 · Change 3/3');
-    await page.evaluate(() => { window.__diffFixture.failPath = 'same.txt'; });
+    await page.evaluate(() => {
+      window.__diffFixture.failPath = 'same.txt';
+    });
     await diff.getByRole('button', { name: 'Next change' }).click();
     await diff.getByRole('alert').getByText('same.txt: Read failed', { exact: true }).waitFor();
-    assert.equal(await count.innerText(), 'File 1/6 · Change 3/3', 'A failed file read must not skip to a later file');
-    await page.evaluate(() => { window.__diffFixture.failPath = null; });
+    assert.equal(
+      await count.innerText(),
+      'File 1/6 · Change 3/3',
+      'A failed file read must not skip to a later file',
+    );
+    await page.evaluate(() => {
+      window.__diffFixture.failPath = null;
+    });
     await step(1, 'File 4/6 · Change 1/1');
     await details.getByRole('button', { name: 'tail.txt', exact: true }).click();
     await expectCount('File 6/6 · Change 1/2');
     await step(1, 'File 6/6 · Change 2/2');
     // A parent switch cancels a pending cross-file read, preserving the new comparison.
-    await page.evaluate(() => { window.__diffFixture.holdPath = 'diff.txt'; });
+    await page.evaluate(() => {
+      window.__diffFixture.holdPath = 'diff.txt';
+    });
     await diff.getByRole('button', { name: 'Next change' }).click();
     await page.waitForFunction(() => window.__diffFixture.held.length === 1);
     await details.getByLabel('Compare parent').selectOption('c'.repeat(40));
     await expectCount('File 6/6 · Change 1/2');
-    await page.evaluate(() => { const fixture = window.__diffFixture; fixture.holdPath = null; fixture.held.splice(0).forEach(reply => reply()); });
+    await page.evaluate(() => {
+      const fixture = window.__diffFixture;
+      fixture.holdPath = null;
+      fixture.held.splice(0).forEach((reply) => reply());
+    });
     await step(-1, 'File 5/6 · Change 1/1');
-    assert.equal(await page.evaluate(() => window.__diffFixture.previews.at(-1).parent), 'c'.repeat(40));
+    assert.equal(
+      await page.evaluate(() => window.__diffFixture.previews.at(-1).parent),
+      'c'.repeat(40),
+    );
     // Cancelling settings restores the default; applying persists across reload.
     let dialog = await settings();
     await dialog.getByLabel('Diff navigation scope').selectOption('file');
@@ -480,72 +1285,178 @@ export async function verifyCommitNavigation(browser, url) {
     await page.reload();
     await expectCount('1/1');
     await step(1, '1/1');
-    assert.equal(await diff.getByTestId('diff-navigation-boundary').count(), 0, 'A single change relocates immediately without arming a wrap');
-    assert.ok(await details.locator('.file-item[aria-current="true"]').getByRole('button', { name: 'large.txt', exact: true }).count());
+    assert.equal(
+      await diff.getByTestId('diff-navigation-boundary').count(),
+      0,
+      'A single change relocates immediately without arming a wrap',
+    );
+    assert.ok(
+      await details
+        .locator('.file-item[aria-current="true"]')
+        .getByRole('button', { name: 'large.txt', exact: true })
+        .count(),
+    );
     dialog = await settings();
     assert.equal(await dialog.getByLabel('Diff navigation scope').inputValue(), 'file');
     await dialog.getByLabel('Diff navigation scope').selectOption('commit');
     await dialog.getByRole('button', { name: 'Apply', exact: true }).click();
     // Empty previews terminate a full scan and disable both arrows.
-    await page.evaluate(() => { window.__diffFixture.emptyFiles = true; });
+    await page.evaluate(() => {
+      window.__diffFixture.emptyFiles = true;
+    });
     await details.getByRole('button', { name: 'same.txt', exact: true }).click();
     await expectCount('File 2/6 · Change 0/0');
     await diff.getByRole('button', { name: 'Next change' }).click();
-    await page.waitForFunction(() => [...document.querySelectorAll('.diff-preview button')].filter(button => ['Previous change', 'Next change'].includes(button.getAttribute('aria-label'))).every(button => button.disabled) && !document.querySelector('.diff-viewport [role="status"]'));
+    await page.waitForFunction(
+      () =>
+        [...document.querySelectorAll('.diff-preview button')]
+          .filter((button) =>
+            ['Previous change', 'Next change'].includes(button.getAttribute('aria-label')),
+          )
+          .every((button) => button.disabled) &&
+        !document.querySelector('.diff-viewport [role="status"]'),
+    );
     assert.equal(await count.innerText(), 'File 2/6 · Change 0/0');
     assert.deepEqual(errors, []);
-    console.log('ALWAYGIT_COMMIT_DIFF_UI_TESTS_PASSED: cross-file boundary confirmation, reverse landing, rename/parent, filtering, binary/empty files, read failures, cancellation and saved scope');
-  } finally { await page.close(); }
+    console.log(
+      'ALWAYGIT_COMMIT_DIFF_UI_TESTS_PASSED: cross-file boundary confirmation, reverse landing, rename/parent, filtering, binary/empty files, read failures, cancellation and saved scope',
+    );
+  } finally {
+    await page.close();
+  }
 }
 
 /** Sample every frame while panning; fixed chrome must never need positional compensation. */
 export async function verifyFixedDiffScroll(diff) {
   await verifyDiffLineNumberClearance(diff);
-  const result=await diff.evaluate(async panel=>{
-    const tick=()=>new Promise(resolve=>requestAnimationFrame(resolve));await tick();await tick();
-    const bar=panel.querySelector('.diff-horizontal-scroll'),view=panel.querySelector('.diff-viewport');
-    const row=view.querySelector('.active-change-start')??view.querySelector('.diff-line');
-    const fixed=[...panel.querySelectorAll('.text-diff-labels>span'),...row.querySelectorAll('.line-number,.diff-hunk-gutter,.diff-side')];
-    const reference=fixed.map(node=>{const b=node.getBoundingClientRect();return {left:b.left,width:b.width};});
-    const code=[...row.querySelectorAll('.diff-code code')],original=bar.scrollLeft,maximum=bar.scrollWidth-bar.clientWidth;
-    const codeStart=code.map(node=>node.getBoundingClientRect().left);
-    let stable=true,moved=false,synchronized=true,mutations=0;
-    const observer=new MutationObserver(records=>{mutations+=records.length;});observer.observe(row,{attributes:true,childList:true,subtree:true});
-    const sample=()=>{
-      stable=stable&&fixed.every((node,index)=>{const b=node.getBoundingClientRect(),a=reference[index];return Math.abs(a.left-b.left)<0.1&&Math.abs(a.width-b.width)<0.1;});
-      const offsets=code.map((node,index)=>node.getBoundingClientRect().left-codeStart[index]);
-      moved=moved||offsets.some(value=>Math.abs(value)>10);
-      synchronized=synchronized&&offsets.every(value=>Math.abs(value-offsets[0])<0.1);
+  const result = await diff.evaluate(async (panel) => {
+    const tick = () => new Promise((resolve) => requestAnimationFrame(resolve));
+    await tick();
+    await tick();
+    const bar = panel.querySelector('.diff-horizontal-scroll'),
+      view = panel.querySelector('.diff-viewport');
+    const row = view.querySelector('.active-change-start') ?? view.querySelector('.diff-line');
+    const fixed = [
+      ...panel.querySelectorAll('.text-diff-labels>span'),
+      ...row.querySelectorAll('.line-number,.diff-hunk-gutter,.diff-side'),
+    ];
+    const reference = fixed.map((node) => {
+      const b = node.getBoundingClientRect();
+      return { left: b.left, width: b.width };
+    });
+    const code = [...row.querySelectorAll('.diff-code code')],
+      original = bar.scrollLeft,
+      maximum = bar.scrollWidth - bar.clientWidth;
+    const codeStart = code.map((node) => node.getBoundingClientRect().left);
+    let stable = true,
+      moved = false,
+      synchronized = true,
+      mutations = 0;
+    const observer = new MutationObserver((records) => {
+      mutations += records.length;
+    });
+    observer.observe(row, { attributes: true, childList: true, subtree: true });
+    const sample = () => {
+      stable =
+        stable &&
+        fixed.every((node, index) => {
+          const b = node.getBoundingClientRect(),
+            a = reference[index];
+          return Math.abs(a.left - b.left) < 0.1 && Math.abs(a.width - b.width) < 0.1;
+        });
+      const offsets = code.map(
+        (node, index) => node.getBoundingClientRect().left - codeStart[index],
+      );
+      moved = moved || offsets.some((value) => Math.abs(value) > 10);
+      synchronized = synchronized && offsets.every((value) => Math.abs(value - offsets[0]) < 0.1);
     };
     try {
-      for(let step=0;step<=24;step++){bar.scrollLeft=maximum*(step<=12?step:24-step)/12;bar.dispatchEvent(new Event('scroll'));sample();await tick();sample();}
-      bar.scrollLeft=maximum;bar.dispatchEvent(new Event('scroll'));await tick();
-      const longest=[...view.querySelectorAll('.diff-code code')].sort((a,b)=>b.getBoundingClientRect().width-a.getBoundingClientRect().width)[0];
-      const tail=longest.getBoundingClientRect(),clip=longest.parentElement.getBoundingClientRect();
-      const tailVisible=tail.right<=clip.right+1&&tail.right>=clip.left;
+      for (let step = 0; step <= 24; step++) {
+        bar.scrollLeft = (maximum * (step <= 12 ? step : 24 - step)) / 12;
+        bar.dispatchEvent(new Event('scroll'));
+        sample();
+        await tick();
+        sample();
+      }
+      bar.scrollLeft = maximum;
+      bar.dispatchEvent(new Event('scroll'));
+      await tick();
+      const longest = [...view.querySelectorAll('.diff-code code')].sort(
+        (a, b) => b.getBoundingClientRect().width - a.getBoundingClientRect().width,
+      )[0];
+      const tail = longest.getBoundingClientRect(),
+        clip = longest.parentElement.getBoundingClientRect();
+      const tailVisible = tail.right <= clip.right + 1 && tail.right >= clip.left;
       observer.disconnect();
-      bar.scrollLeft=0;bar.dispatchEvent(new Event('scroll'));
-      view.dispatchEvent(new WheelEvent('wheel',{deltaX:70,bubbles:true,cancelable:true}));const trackpad=bar.scrollLeft;
-      view.dispatchEvent(new WheelEvent('wheel',{deltaY:70,shiftKey:true,bubbles:true,cancelable:true}));const shiftWheel=bar.scrollLeft;
-      return {stable,moved,synchronized,mutations,maximum,tailVisible,trackpad,shiftWheel,viewportLeft:view.scrollLeft};
-    } finally {observer.disconnect();bar.scrollLeft=original;bar.dispatchEvent(new Event('scroll'));await tick();}
+      bar.scrollLeft = 0;
+      bar.dispatchEvent(new Event('scroll'));
+      view.dispatchEvent(new WheelEvent('wheel', { deltaX: 70, bubbles: true, cancelable: true }));
+      const trackpad = bar.scrollLeft;
+      view.dispatchEvent(
+        new WheelEvent('wheel', { deltaY: 70, shiftKey: true, bubbles: true, cancelable: true }),
+      );
+      const shiftWheel = bar.scrollLeft;
+      return {
+        stable,
+        moved,
+        synchronized,
+        mutations,
+        maximum,
+        tailVisible,
+        trackpad,
+        shiftWheel,
+        viewportLeft: view.scrollLeft,
+      };
+    } finally {
+      observer.disconnect();
+      bar.scrollLeft = original;
+      bar.dispatchEvent(new Event('scroll'));
+      await tick();
+    }
   });
-  assert.ok(result.maximum>100,'The fixture must exercise long-line overflow');
-  assert.ok(result.stable,'Headings, line numbers, markers, backgrounds, and gutter stay fixed in every sampled frame');
-  assert.ok(result.moved&&result.synchronized,'Only both code columns pan, with matching offsets');
-  assert.equal(result.mutations,0,'Horizontal panning must not rerender or reposition virtual rows');
-  assert.equal(result.viewportLeft,0,'The vertical viewport never pans horizontally');
-  assert.ok(result.tailVisible,'The longest visible line remains reachable at the right limit');
-  assert.ok(result.trackpad>0&&result.shiftWheel>result.trackpad,'Trackpad and Shift+wheel pan the shared text layer');
+  assert.ok(result.maximum > 100, 'The fixture must exercise long-line overflow');
+  assert.ok(
+    result.stable,
+    'Headings, line numbers, markers, backgrounds, and gutter stay fixed in every sampled frame',
+  );
+  assert.ok(
+    result.moved && result.synchronized,
+    'Only both code columns pan, with matching offsets',
+  );
+  assert.equal(
+    result.mutations,
+    0,
+    'Horizontal panning must not rerender or reposition virtual rows',
+  );
+  assert.equal(result.viewportLeft, 0, 'The vertical viewport never pans horizontally');
+  assert.ok(result.tailVisible, 'The longest visible line remains reachable at the right limit');
+  assert.ok(
+    result.trackpad > 0 && result.shiftWheel > result.trackpad,
+    'Trackpad and Shift+wheel pan the shared text layer',
+  );
   await verifyDiffLineNumberClearance(diff);
 }
 
 async function verifyDiffLineNumberClearance(diff) {
-  const gaps=await diff.locator('.diff-side.added .line-number,.diff-side.removed .line-number').evaluateAll(numbers=>numbers.filter(number=>number.textContent).map(number=>{
-    const range=document.createRange();range.selectNodeContents(number);
-    const text=range.getBoundingClientRect(),cell=number.parentElement.getBoundingClientRect();
-    return {left:text.left-cell.left,right:number.getBoundingClientRect().right-text.right};
-  }));
-  assert.ok(gaps.length>0,'The fixture must contain numbered changed lines');
-  assert.ok(gaps.every(gap=>gap.left>=5&&gap.right>=11.9),'Changed line numbers leave space for the 3px emphasis stripe and a 12px gap before source text');
+  const gaps = await diff
+    .locator('.diff-side.added .line-number,.diff-side.removed .line-number')
+    .evaluateAll((numbers) =>
+      numbers
+        .filter((number) => number.textContent)
+        .map((number) => {
+          const range = document.createRange();
+          range.selectNodeContents(number);
+          const text = range.getBoundingClientRect(),
+            cell = number.parentElement.getBoundingClientRect();
+          return {
+            left: text.left - cell.left,
+            right: number.getBoundingClientRect().right - text.right,
+          };
+        }),
+    );
+  assert.ok(gaps.length > 0, 'The fixture must contain numbered changed lines');
+  assert.ok(
+    gaps.every((gap) => gap.left >= 5 && gap.right >= 11.9),
+    'Changed line numbers leave space for the 3px emphasis stripe and a 12px gap before source text',
+  );
 }

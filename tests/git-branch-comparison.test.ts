@@ -19,9 +19,25 @@ it('compares divergent pinned trees, pages both exclusive histories and preserve
   const before = await git(root, 'status', '--porcelain=v1');
   const query = { baseRef: 'refs/heads/main', targetRef: 'refs/heads/feature', limit: 1 };
   const review = await service.branchComparison(repo, query);
-  expect(review).toMatchObject({ baseOid, targetOid, mode: 'review', mergeBases: [ancestor], diffBase: ancestor, base: { total: 2, nextOffset: 1, hasMore: true }, target: { total: 3, nextOffset: 1, hasMore: true } });
-  expect(review.files).toContainEqual({ path: 'renamed.txt', previousPath: 'shared.txt', status: 'R100' });
-  expect(review.files.map(file => file.path)).toEqual(['binary.dat', 'feature.txt', 'renamed.txt']);
+  expect(review).toMatchObject({
+    baseOid,
+    targetOid,
+    mode: 'review',
+    mergeBases: [ancestor],
+    diffBase: ancestor,
+    base: { total: 2, nextOffset: 1, hasMore: true },
+    target: { total: 3, nextOffset: 1, hasMore: true },
+  });
+  expect(review.files).toContainEqual({
+    path: 'renamed.txt',
+    previousPath: 'shared.txt',
+    status: 'R100',
+  });
+  expect(review.files.map((file) => file.path)).toEqual([
+    'binary.dat',
+    'feature.txt',
+    'renamed.txt',
+  ]);
   const pinned = { ...query, baseOid, targetOid };
   const next = await service.branchComparison(repo, { ...pinned, baseOffset: 1, targetOffset: 1 });
   expect(next.base.commits[0].oid).not.toBe(review.base.commits[0].oid);
@@ -29,10 +45,15 @@ it('compares divergent pinned trees, pages both exclusive histories and preserve
   const snapshot = await service.branchComparison(repo, { ...pinned, mode: 'snapshot' });
   expect(snapshot.diffBase).toBe(baseOid);
   expect(snapshot.files).toContainEqual({ path: 'main.txt', status: 'D' });
-  const reverse = await service.branchComparison(repo, { baseRef: query.targetRef, targetRef: query.baseRef, baseOid: targetOid, targetOid: baseOid });
+  const reverse = await service.branchComparison(repo, {
+    baseRef: query.targetRef,
+    targetRef: query.baseRef,
+    baseOid: targetOid,
+    targetOid: baseOid,
+  });
   expect(reverse.base.total).toBe(3);
   expect(reverse.target.total).toBe(2);
-  expect(reverse.files.map(file => file.path)).toEqual(['main.txt']);
+  expect(reverse.files.map((file) => file.path)).toEqual(['main.txt']);
   expect(await git(root, 'status', '--porcelain=v1')).toBe(before);
   expect(await git(root, 'symbolic-ref', 'HEAD')).toBe('refs/heads/main');
   await commitFile(root, 'later.txt', 'later\n');
@@ -72,14 +93,18 @@ it('requires an explicit merge base for criss-cross review and rejects unrelated
   expect(new Set(review.mergeBases)).toEqual(new Set([a, b]));
   expect(review.diffBase).toBeUndefined();
   expect((await service.branchComparison(repo, { ...query, mergeBase: a })).diffBase).toBe(a);
-  await expect(service.branchComparison(repo, { ...query, mergeBase: common })).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' });
+  await expect(
+    service.branchComparison(repo, { ...query, mergeBase: common }),
+  ).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' });
   expect((await service.branchComparison(repo, { ...query, mode: 'snapshot' })).diffBase).toBe(x);
 });
 
 it('validates immutable pin pairs, pagination and merge-base object IDs at the RPC boundary', () => {
   const query = { baseRef: 'HEAD', targetRef: 'refs/remotes/origin/main' };
   expect(branchComparisonSchema.safeParse(query).success).toBe(true);
-  expect(branchComparisonSchema.safeParse({ ...query, baseOid: 'a'.repeat(40) }).success).toBe(false);
+  expect(branchComparisonSchema.safeParse({ ...query, baseOid: 'a'.repeat(40) }).success).toBe(
+    false,
+  );
   expect(branchComparisonSchema.safeParse({ ...query, baseOffset: -1 }).success).toBe(false);
   expect(branchComparisonSchema.safeParse({ ...query, limit: 301 }).success).toBe(false);
   expect(branchComparisonSchema.safeParse({ ...query, mergeBase: 'HEAD' }).success).toBe(false);

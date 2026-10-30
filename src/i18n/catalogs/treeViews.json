@@ -1,24 +1,134 @@
 {
-  "treeViews.presentation": { "en": "File tree presentation", "zh-CN": "文件树展示方式", "review": "translated", "context": "webview/CommitTree.tsx" },
-  "treeViews.list": { "en": "Directory list", "zh-CN": "目录列表", "review": "translated", "context": "webview/CommitTree.tsx" },
-  "treeViews.horizontal": { "en": "Horizontal tree", "zh-CN": "横向连线树", "review": "translated", "context": "webview/CommitTree.tsx" },
-  "treeViews.radial": { "en": "Radial tree", "zh-CN": "径向树", "review": "translated", "context": "webview/CommitTree.tsx" },
-  "treeViews.vertical": { "en": "Compact vertical tree", "zh-CN": "纵向紧凑树", "review": "translated", "context": "webview/CommitTree.tsx" },
-  "treeViews.zoomOut": { "en": "Zoom out", "zh-CN": "缩小", "review": "translated", "context": "webview/CommitTreeGraph.tsx" },
-  "treeViews.zoomIn": { "en": "Zoom in", "zh-CN": "放大", "review": "translated", "context": "webview/CommitTreeGraph.tsx" },
-  "treeViews.fit": { "en": "Fit entire tree (0)", "zh-CN": "适应完整树（0）", "review": "translated", "context": "webview/CommitTreeGraph.tsx" },
-  "treeViews.wheelMode": { "en": "Wheel", "zh-CN": "滚轮", "review": "translated", "context": "webview/CommitTreeGraph.tsx" },
-  "treeViews.wheelZoom": { "en": "Zoom", "zh-CN": "缩放", "review": "translated", "context": "webview/CommitTreeGraph.tsx" },
-  "treeViews.wheelScroll": { "en": "Scroll", "zh-CN": "滚动", "review": "translated", "context": "webview/CommitTreeGraph.tsx" },
-  "treeViews.wheelZoomHint": { "en": "Wheel zooms at the pointer; Shift+wheel pans horizontally. Remembered across repositories and tree layouts.", "zh-CN": "滚轮以鼠标位置为中心缩放；Shift+滚轮左右移动。跨仓库和树布局记住选择。", "review": "translated", "context": "webview/CommitTreeGraph.tsx" },
-  "treeViews.wheelScrollHint": { "en": "Wheel scrolls vertically; Ctrl+wheel zooms at the pointer. Remembered across repositories and tree layouts.", "zh-CN": "滚轮上下移动；Ctrl+滚轮以鼠标位置为中心缩放。跨仓库和树布局记住选择。", "review": "translated", "context": "webview/CommitTreeGraph.tsx" },
-  "treeViews.wheelSaveFailed": { "en": "Could not save the wheel mode; the previous mode was restored: {{error}}", "zh-CN": "无法保存滚轮模式，已恢复之前的模式：{{error}}", "review": "translated", "context": "webview/CommitTreeGraph.tsx" },
-  "treeViews.canvasZoom": { "en": "Tree canvas: drag to pan, wheel to zoom at pointer, Shift+wheel to pan horizontally, Ctrl+wheel to zoom at pointer, +/- to zoom, 0 to fit, Down to focus nodes", "zh-CN": "树画布：拖动平移，滚轮以鼠标位置缩放，Shift+滚轮左右平移，Ctrl+滚轮以鼠标位置缩放，加减号缩放，0 适应完整树，下方向键聚焦节点", "review": "translated", "context": "webview/CommitTreeGraph.tsx" },
-  "treeViews.navigationHintZoom": { "en": "Drag to pan · Wheel zoom · Shift+wheel ←→ · 0 to fit", "zh-CN": "拖动平移 · 滚轮缩放 · Shift+滚轮左右 · 0 适应完整树", "review": "translated", "context": "webview/CommitTreeGraph.tsx" },
-  "treeViews.canvas": { "en": "Tree canvas: drag to pan, wheel to pan vertically, Shift+wheel to pan horizontally, Ctrl+wheel to zoom at pointer, +/- to zoom, 0 to fit, Down to focus nodes", "zh-CN": "树画布：拖动平移，滚轮上下平移，Shift+滚轮左右平移，Ctrl+滚轮以鼠标位置缩放，加减号缩放，0 适应完整树，下方向键聚焦节点", "review": "translated", "context": "webview/CommitTreeGraph.tsx" },
-  "treeViews.navigationHint": { "en": "Drag to pan · Wheel ↑↓ · Shift+wheel ←→ · Ctrl+wheel zoom · 0 to fit", "zh-CN": "拖动平移 · 滚轮上下 · Shift+滚轮左右 · Ctrl+滚轮缩放 · 0 适应完整树", "review": "translated", "context": "webview/CommitTreeGraph.tsx" },
-  "treeViews.largeGraph": { "en": "This tree has {{count}} expanded nodes. Drawing all nodes can be expensive. Collapse folders or use the directory list for a large repository, or explicitly draw the complete graph. No nodes will be omitted.", "zh-CN": "当前树有 {{count}} 个展开节点，完整绘制可能较慢。大仓库可先收起目录或使用目录列表，也可选择绘制完整图形；不会省略节点。", "review": "translated", "context": "webview/CommitTreeGraph.tsx" },
-  "treeViews.renderAll": { "en": "Draw complete graph", "zh-CN": "绘制完整图形", "review": "translated", "context": "webview/CommitTreeGraph.tsx" },
-  "treeViews.visibleCount": { "en": "{{visible}} nodes in viewport / {{count}} expanded or matching nodes", "zh-CN": "视口内 {{visible}} 个节点 / 共 {{count}} 个展开或匹配节点", "review": "translated", "context": "webview/CommitTreeGraph.tsx" },
-  "treeViews.searchPaths": { "en": "Matching full paths; folder expansion is preserved", "zh-CN": "匹配完整路径，保留目录展开状态", "review": "translated", "context": "webview/CommitTreeGraph.tsx" }
+  "treeViews.presentation": {
+    "en": "File tree presentation",
+    "zh-CN": "文件树展示方式",
+    "review": "translated",
+    "context": "webview/CommitTree.tsx"
+  },
+  "treeViews.list": {
+    "en": "Directory list",
+    "zh-CN": "目录列表",
+    "review": "translated",
+    "context": "webview/CommitTree.tsx"
+  },
+  "treeViews.horizontal": {
+    "en": "Horizontal tree",
+    "zh-CN": "横向连线树",
+    "review": "translated",
+    "context": "webview/CommitTree.tsx"
+  },
+  "treeViews.radial": {
+    "en": "Radial tree",
+    "zh-CN": "径向树",
+    "review": "translated",
+    "context": "webview/CommitTree.tsx"
+  },
+  "treeViews.vertical": {
+    "en": "Compact vertical tree",
+    "zh-CN": "纵向紧凑树",
+    "review": "translated",
+    "context": "webview/CommitTree.tsx"
+  },
+  "treeViews.zoomOut": {
+    "en": "Zoom out",
+    "zh-CN": "缩小",
+    "review": "translated",
+    "context": "webview/CommitTreeGraph.tsx"
+  },
+  "treeViews.zoomIn": {
+    "en": "Zoom in",
+    "zh-CN": "放大",
+    "review": "translated",
+    "context": "webview/CommitTreeGraph.tsx"
+  },
+  "treeViews.fit": {
+    "en": "Fit entire tree (0)",
+    "zh-CN": "适应完整树（0）",
+    "review": "translated",
+    "context": "webview/CommitTreeGraph.tsx"
+  },
+  "treeViews.wheelMode": {
+    "en": "Wheel",
+    "zh-CN": "滚轮",
+    "review": "translated",
+    "context": "webview/CommitTreeGraph.tsx"
+  },
+  "treeViews.wheelZoom": {
+    "en": "Zoom",
+    "zh-CN": "缩放",
+    "review": "translated",
+    "context": "webview/CommitTreeGraph.tsx"
+  },
+  "treeViews.wheelScroll": {
+    "en": "Scroll",
+    "zh-CN": "滚动",
+    "review": "translated",
+    "context": "webview/CommitTreeGraph.tsx"
+  },
+  "treeViews.wheelZoomHint": {
+    "en": "Wheel zooms at the pointer; Shift+wheel pans horizontally. Remembered across repositories and tree layouts.",
+    "zh-CN": "滚轮以鼠标位置为中心缩放；Shift+滚轮左右移动。跨仓库和树布局记住选择。",
+    "review": "translated",
+    "context": "webview/CommitTreeGraph.tsx"
+  },
+  "treeViews.wheelScrollHint": {
+    "en": "Wheel scrolls vertically; Ctrl+wheel zooms at the pointer. Remembered across repositories and tree layouts.",
+    "zh-CN": "滚轮上下移动；Ctrl+滚轮以鼠标位置为中心缩放。跨仓库和树布局记住选择。",
+    "review": "translated",
+    "context": "webview/CommitTreeGraph.tsx"
+  },
+  "treeViews.wheelSaveFailed": {
+    "en": "Could not save the wheel mode; the previous mode was restored: {{error}}",
+    "zh-CN": "无法保存滚轮模式，已恢复之前的模式：{{error}}",
+    "review": "translated",
+    "context": "webview/CommitTreeGraph.tsx"
+  },
+  "treeViews.canvasZoom": {
+    "en": "Tree canvas: drag to pan, wheel to zoom at pointer, Shift+wheel to pan horizontally, Ctrl+wheel to zoom at pointer, +/- to zoom, 0 to fit, Down to focus nodes",
+    "zh-CN": "树画布：拖动平移，滚轮以鼠标位置缩放，Shift+滚轮左右平移，Ctrl+滚轮以鼠标位置缩放，加减号缩放，0 适应完整树，下方向键聚焦节点",
+    "review": "translated",
+    "context": "webview/CommitTreeGraph.tsx"
+  },
+  "treeViews.navigationHintZoom": {
+    "en": "Drag to pan · Wheel zoom · Shift+wheel ←→ · 0 to fit",
+    "zh-CN": "拖动平移 · 滚轮缩放 · Shift+滚轮左右 · 0 适应完整树",
+    "review": "translated",
+    "context": "webview/CommitTreeGraph.tsx"
+  },
+  "treeViews.canvas": {
+    "en": "Tree canvas: drag to pan, wheel to pan vertically, Shift+wheel to pan horizontally, Ctrl+wheel to zoom at pointer, +/- to zoom, 0 to fit, Down to focus nodes",
+    "zh-CN": "树画布：拖动平移，滚轮上下平移，Shift+滚轮左右平移，Ctrl+滚轮以鼠标位置缩放，加减号缩放，0 适应完整树，下方向键聚焦节点",
+    "review": "translated",
+    "context": "webview/CommitTreeGraph.tsx"
+  },
+  "treeViews.navigationHint": {
+    "en": "Drag to pan · Wheel ↑↓ · Shift+wheel ←→ · Ctrl+wheel zoom · 0 to fit",
+    "zh-CN": "拖动平移 · 滚轮上下 · Shift+滚轮左右 · Ctrl+滚轮缩放 · 0 适应完整树",
+    "review": "translated",
+    "context": "webview/CommitTreeGraph.tsx"
+  },
+  "treeViews.largeGraph": {
+    "en": "This tree has {{count}} expanded nodes. Drawing all nodes can be expensive. Collapse folders or use the directory list for a large repository, or explicitly draw the complete graph. No nodes will be omitted.",
+    "zh-CN": "当前树有 {{count}} 个展开节点，完整绘制可能较慢。大仓库可先收起目录或使用目录列表，也可选择绘制完整图形；不会省略节点。",
+    "review": "translated",
+    "context": "webview/CommitTreeGraph.tsx"
+  },
+  "treeViews.renderAll": {
+    "en": "Draw complete graph",
+    "zh-CN": "绘制完整图形",
+    "review": "translated",
+    "context": "webview/CommitTreeGraph.tsx"
+  },
+  "treeViews.visibleCount": {
+    "en": "{{visible}} nodes in viewport / {{count}} expanded or matching nodes",
+    "zh-CN": "视口内 {{visible}} 个节点 / 共 {{count}} 个展开或匹配节点",
+    "review": "translated",
+    "context": "webview/CommitTreeGraph.tsx"
+  },
+  "treeViews.searchPaths": {
+    "en": "Matching full paths; folder expansion is preserved",
+    "zh-CN": "匹配完整路径，保留目录展开状态",
+    "review": "translated",
+    "context": "webview/CommitTreeGraph.tsx"
+  }
 }

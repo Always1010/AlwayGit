@@ -1,43 +1,224 @@
-.commit-tree-graph {display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;overflow:hidden;}
-.tree-graph-toolbar {display:flex;align-items:center;gap:5px;padding:4px 8px;border-bottom:1px solid var(--row-border);flex-wrap:wrap;}
-.tree-graph-toolbar>.muted {font-size:11px;margin-left:auto;flex:1 1 220px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right;}
-.tree-wheel-mode {display:flex;align-items:center;gap:2px;flex:none;}
-.tree-wheel-mode>span {font-size:11px;color:var(--muted);margin:0 4px;}
-.tree-wheel-mode .button {padding:2px 6px;font-size:11px;}
-.tree-wheel-mode .button[aria-pressed=true] {background:var(--selected);color:var(--selected-fg);border-color:var(--accent);}
-.tree-wheel-error {padding:4px 8px;color:var(--vscode-errorForeground,var(--fg));font-size:11px;}
-.tree-graph-scale {font-size:11px;min-width:42px;text-align:center;font-variant-numeric:tabular-nums;}
-.tree-graph-stage {flex:1;min-height:80px;overflow:hidden;touch-action:none;cursor:grab;position:relative;}
-.tree-graph-stage.dragging {cursor:grabbing;user-select:none;}
-.tree-graph-stage>svg {display:block;position:absolute;inset:0;}
-.tree-graph-edges path {stroke:var(--muted);stroke-width:1.2;fill:none;opacity:.55;vector-effect:non-scaling-stroke;}
-.tree-graph-node {display:flex;align-items:center;gap:5px;width:100%;height:28px;border:1px solid var(--border);border-radius:5px;padding:2px 6px;background:var(--panel);color:var(--fg);font:12px var(--font);text-align:left;white-space:nowrap;cursor:pointer;box-sizing:border-box;}
-.tree-graph-node:hover {background:var(--hover);border-color:var(--accent);}
-.tree-graph-node.selected {background:var(--selected);color:var(--selected-fg);border-color:var(--accent);}
-.tree-graph-node[data-change-highlight] {background:var(--snapshot-change-background);color:var(--fg);}
-.tree-graph-node.selected {outline:1px solid var(--accent);outline-offset:-1px;}
-.tree-graph-node:focus-visible {outline:2px solid var(--accent);outline-offset:1px;}
-.tree-graph-node .codicon {flex:none;font-size:14px;}
-.tree-graph-node .tree-graph-label {flex:1;}
-.tree-graph-node.snapshot-deleted .tree-graph-label {text-decoration:line-through;color:var(--muted);}
-.tree-graph-node .snapshot-directory-status {padding:0 2px;gap:3px;align-items:center;font-size:10px;}
-.tree-graph-node .snapshot-badge {padding:0 2px;}
-.tree-graph-point {fill:var(--accent);stroke:var(--bg);stroke-width:1;}
-.commit-tree-graph[data-layout=radial] .tree-graph-point {stroke:var(--accent);stroke-width:1.2;}
-.commit-tree-graph[data-layout=radial] .tree-graph-point.file {fill:var(--bg);stroke:var(--muted);}
-.commit-tree-graph[data-layout=radial] .tree-graph-point.directory:not(.expanded) {fill:var(--bg);stroke-width:2;}
-.commit-tree-graph[data-layout=radial] .tree-graph-node {height:22px;padding:0 2px;gap:3px;font-size:13px;border-radius:2px;}
-.commit-tree-graph[data-layout=radial] .tree-graph-node:not(:hover):not(.selected):not([data-change-highlight]) {border-color:transparent;background:transparent;}
-.commit-tree-graph[data-layout=radial] .tree-graph-node.directory {font-weight:600;}
-.commit-tree-graph[data-layout=radial] .tree-graph-node.flipped {flex-direction:row-reverse;}
-.commit-tree-graph[data-layout=radial] .tree-graph-node.flipped .tree-graph-label {text-align:right;}
-.commit-tree-graph[data-layout=radial] .tree-graph-edges path {stroke-width:.85;opacity:.6;}
-.tree-graph-root circle {fill:var(--accent);}
-.tree-graph-root text {fill:var(--fg);font:12px var(--font);}
-.commit-tree-graph[data-layout=vertical] .tree-graph-node:not(:hover):not(.selected):not([data-change-highlight]) {background:transparent;border-color:transparent;}
-.tree-graph-large {padding:30px;max-width:560px;margin:auto;cursor:default;line-height:1.7;}
-.tree-graph-large>.button {margin:4px;}
-.tree-graph-footer {font-size:11px;padding:4px 8px;border-top:1px solid var(--row-border);}
-.with-preview>.commit-tree-graph {flex:0 0 54%;min-width:220px;}
-.commit-tree-view-select {max-width:180px;}
-@media(max-width:650px) {.with-preview>.commit-tree-graph {flex:0 0 50%;min-width:0;}.tree-graph-toolbar>.muted{display:none;}}
+.commit-tree-graph {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.tree-graph-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--row-border);
+  flex-wrap: wrap;
+}
+.tree-graph-toolbar > .muted {
+  font-size: 11px;
+  margin-left: auto;
+  flex: 1 1 220px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+}
+.tree-wheel-mode {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+.tree-wheel-mode > span {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 0 4px;
+}
+.tree-wheel-mode .button {
+  padding: 2px 6px;
+  font-size: 11px;
+}
+.tree-wheel-mode .button[aria-pressed='true'] {
+  background: var(--selected);
+  color: var(--selected-fg);
+  border-color: var(--accent);
+}
+.tree-wheel-error {
+  padding: 4px 8px;
+  color: var(--vscode-errorForeground, var(--fg));
+  font-size: 11px;
+}
+.tree-graph-scale {
+  font-size: 11px;
+  min-width: 42px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.tree-graph-stage {
+  flex: 1;
+  min-height: 80px;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  position: relative;
+}
+.tree-graph-stage.dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+.tree-graph-stage > svg {
+  display: block;
+  position: absolute;
+  inset: 0;
+}
+.tree-graph-edges path {
+  stroke: var(--muted);
+  stroke-width: 1.2;
+  fill: none;
+  opacity: 0.55;
+  vector-effect: non-scaling-stroke;
+}
+.tree-graph-node {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 2px 6px;
+  background: var(--panel);
+  color: var(--fg);
+  font: 12px var(--font);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.tree-graph-node:hover {
+  background: var(--hover);
+  border-color: var(--accent);
+}
+.tree-graph-node.selected {
+  background: var(--selected);
+  color: var(--selected-fg);
+  border-color: var(--accent);
+}
+.tree-graph-node[data-change-highlight] {
+  background: var(--snapshot-change-background);
+  color: var(--fg);
+}
+.tree-graph-node.selected {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+.tree-graph-node:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.tree-graph-node .codicon {
+  flex: none;
+  font-size: 14px;
+}
+.tree-graph-node .tree-graph-label {
+  flex: 1;
+}
+.tree-graph-node.snapshot-deleted .tree-graph-label {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+.tree-graph-node .snapshot-directory-status {
+  padding: 0 2px;
+  gap: 3px;
+  align-items: center;
+  font-size: 10px;
+}
+.tree-graph-node .snapshot-badge {
+  padding: 0 2px;
+}
+.tree-graph-point {
+  fill: var(--accent);
+  stroke: var(--bg);
+  stroke-width: 1;
+}
+.commit-tree-graph[data-layout='radial'] .tree-graph-point {
+  stroke: var(--accent);
+  stroke-width: 1.2;
+}
+.commit-tree-graph[data-layout='radial'] .tree-graph-point.file {
+  fill: var(--bg);
+  stroke: var(--muted);
+}
+.commit-tree-graph[data-layout='radial'] .tree-graph-point.directory:not(.expanded) {
+  fill: var(--bg);
+  stroke-width: 2;
+}
+.commit-tree-graph[data-layout='radial'] .tree-graph-node {
+  height: 22px;
+  padding: 0 2px;
+  gap: 3px;
+  font-size: 13px;
+  border-radius: 2px;
+}
+.commit-tree-graph[data-layout='radial']
+  .tree-graph-node:not(:hover):not(.selected):not([data-change-highlight]) {
+  border-color: transparent;
+  background: transparent;
+}
+.commit-tree-graph[data-layout='radial'] .tree-graph-node.directory {
+  font-weight: 600;
+}
+.commit-tree-graph[data-layout='radial'] .tree-graph-node.flipped {
+  flex-direction: row-reverse;
+}
+.commit-tree-graph[data-layout='radial'] .tree-graph-node.flipped .tree-graph-label {
+  text-align: right;
+}
+.commit-tree-graph[data-layout='radial'] .tree-graph-edges path {
+  stroke-width: 0.85;
+  opacity: 0.6;
+}
+.tree-graph-root circle {
+  fill: var(--accent);
+}
+.tree-graph-root text {
+  fill: var(--fg);
+  font: 12px var(--font);
+}
+.commit-tree-graph[data-layout='vertical']
+  .tree-graph-node:not(:hover):not(.selected):not([data-change-highlight]) {
+  background: transparent;
+  border-color: transparent;
+}
+.tree-graph-large {
+  padding: 30px;
+  max-width: 560px;
+  margin: auto;
+  cursor: default;
+  line-height: 1.7;
+}
+.tree-graph-large > .button {
+  margin: 4px;
+}
+.tree-graph-footer {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-top: 1px solid var(--row-border);
+}
+.with-preview > .commit-tree-graph {
+  flex: 0 0 54%;
+  min-width: 220px;
+}
+.commit-tree-view-select {
+  max-width: 180px;
+}
+@media (max-width: 650px) {
+  .with-preview > .commit-tree-graph {
+    flex: 0 0 50%;
+    min-width: 0;
+  }
+  .tree-graph-toolbar > .muted {
+    display: none;
+  }
+}

@@ -1,29 +1,76 @@
 import * as vscode from 'vscode';
 import { preferredLanguage } from '../application/language';
 import { translate, translator } from '../i18n/index';
-import { readWorkbenchLocations, type DockedWorkbenchLocation, type WorkbenchLocations } from '../protocol/workbench-host';
+import {
+  readWorkbenchLocations,
+  type DockedWorkbenchLocation,
+  type WorkbenchLocations,
+} from '../protocol/workbench-host';
 import type { Workbench } from './workbench';
 
-export const workbenchViewIds = { sidebar: 'alwaygit.workbenchLauncher', auxiliary: 'alwaygit.workbenchAuxiliary', panel: 'alwaygit.workbenchPanel' } as const;
+export const workbenchViewIds = {
+  sidebar: 'alwaygit.workbenchLauncher',
+  auxiliary: 'alwaygit.workbenchAuxiliary',
+  panel: 'alwaygit.workbenchPanel',
+} as const;
 
-export const workbenchContainerIds = { sidebar: 'workbench.view.extension.alwaygit', auxiliary: 'workbench.view.extension.alwaygit-auxiliary', panel: 'workbench.view.extension.alwaygit-panel' } as const;
+export const workbenchContainerIds = {
+  sidebar: 'workbench.view.extension.alwaygit',
+  auxiliary: 'workbench.view.extension.alwaygit-auxiliary',
+  panel: 'workbench.view.extension.alwaygit-panel',
+} as const;
 
-export const workbenchLocationSettingsCommands = { sidebar: 'alwaygit.sidebarLocationSettings', auxiliary: 'alwaygit.auxiliaryLocationSettings', panel: 'alwaygit.panelLocationSettings' } as const;
+export const workbenchLocationSettingsCommands = {
+  sidebar: 'alwaygit.sidebarLocationSettings',
+  auxiliary: 'alwaygit.auxiliaryLocationSettings',
+  panel: 'alwaygit.panelLocationSettings',
+} as const;
 
 /** Retain the legacy sidebar identity and register independent secondary-sidebar and panel views. */
 export function createWorkbenchActivityLauncher(workbench: Workbench): vscode.Disposable {
-  const registrations = (['sidebar', 'auxiliary', 'panel'] as const).map(location => vscode.window.registerWebviewViewProvider(workbenchViewIds[location], {
-    resolveWebviewView: (view, context) => workbench.resolveDockedView(view, context.state, location),
-  }, { webviewOptions: { retainContextWhenHidden: true } }));
-  return { dispose() { for (const registration of registrations) registration.dispose(); } };
+  const registrations = (['sidebar', 'auxiliary', 'panel'] as const).map((location) =>
+    vscode.window.registerWebviewViewProvider(
+      workbenchViewIds[location],
+      {
+        resolveWebviewView: (view, context) =>
+          workbench.resolveDockedView(view, context.state, location),
+      },
+      { webviewOptions: { retainContextWhenHidden: true } },
+    ),
+  );
+  return {
+    dispose() {
+      for (const registration of registrations) registration.dispose();
+    },
+  };
 }
 
-export function workbenchLauncherHtml(resources?: { script: string; stylesheet: string; cspSource: string; nonce: string }, locations: WorkbenchLocations = readWorkbenchLocations(undefined), location: DockedWorkbenchLocation = 'sidebar'): string {
+export function workbenchLauncherHtml(
+  resources?: { script: string; stylesheet: string; cspSource: string; nonce: string },
+  locations: WorkbenchLocations = readWorkbenchLocations(undefined),
+  location: DockedWorkbenchLocation = 'sidebar',
+): string {
   const language = preferredLanguage();
   const t = translator(language);
-  const label = (item: WorkbenchLocations['default']) => t(item === 'editor' ? 'workbenchEntry.editorMode' : item === 'sidebar' ? 'workbenchEntry.sidebarMode' : item === 'auxiliary' ? 'workbenchEntry.auxiliaryMode' : 'workbenchEntry.panelMode');
-  const escape = (value: string) => value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!);
-  const csp = resources ? `style-src ${resources.cspSource} 'unsafe-inline'; script-src 'nonce-${resources.nonce}';` : "style-src 'unsafe-inline';";
+  const label = (item: WorkbenchLocations['default']) =>
+    t(
+      item === 'editor'
+        ? 'workbenchEntry.editorMode'
+        : item === 'sidebar'
+          ? 'workbenchEntry.sidebarMode'
+          : item === 'auxiliary'
+            ? 'workbenchEntry.auxiliaryMode'
+            : 'workbenchEntry.panelMode',
+    );
+  const escape = (value: string) =>
+    value.replace(
+      /[&<>"']/g,
+      (character) =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!,
+    );
+  const csp = resources
+    ? `style-src ${resources.cspSource} 'unsafe-inline'; script-src 'nonce-${resources.nonce}';`
+    : "style-src 'unsafe-inline';";
   return `<!DOCTYPE html><html lang="${language}"><head><meta charset="UTF-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; ${escape(csp)}"><style>
     body{margin:0;padding:20px;box-sizing:border-box;font-family:var(--vscode-font-family,sans-serif);font-size:var(--vscode-font-size,13px);line-height:1.6;color:var(--vscode-foreground);background:var(--vscode-sideBar-background)}
     main{max-width:460px;overflow-wrap:anywhere}h1{margin:0 0 12px;font-size:18px;font-weight:600;line-height:1.4}p{margin:0 0 16px;color:var(--vscode-descriptionForeground)}

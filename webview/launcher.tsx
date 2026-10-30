@@ -12,7 +12,10 @@ let sequence = 0;
 const pending = new Map<string, { resolve(value: unknown): void; reject(error: Error): void }>();
 function request(method: RpcRequest['method'], payload?: unknown): Promise<unknown> {
   const id = `launcher-${++sequence}`;
-  return new Promise((resolve, reject) => { pending.set(id, { resolve, reject }); api.postMessage({ id, method, payload }); });
+  return new Promise((resolve, reject) => {
+    pending.set(id, { resolve, reject });
+    api.postMessage({ id, method, payload });
+  });
 }
 function LauncherSettings() {
   const [settings, setSettings] = useState<{ locations: WorkbenchLocations; language: Language }>();
@@ -20,18 +23,31 @@ function LauncherSettings() {
   useEffect(() => {
     const receive = ({ data }: MessageEvent<HostMessage>) => {
       if (!data || typeof data.type !== 'string') return;
-      if (data.type === 'showWorkbenchLocations') setSettings(current => current ?? { locations: data.locations, language: data.language });
+      if (data.type === 'showWorkbenchLocations')
+        setSettings((current) => current ?? { locations: data.locations, language: data.language });
       if (data.type === 'response') {
-        const call = pending.get(data.id); if (!call) return; pending.delete(data.id);
-        if (data.error) call.reject(new Error(data.error.message)); else call.resolve(data.result);
+        const call = pending.get(data.id);
+        if (!call) return;
+        pending.delete(data.id);
+        if (data.error) call.reject(new Error(data.error.message));
+        else call.resolve(data.result);
       }
     };
     window.addEventListener('message', receive);
     void request('workbenchLocationsReady').catch(() => {});
     return () => window.removeEventListener('message', receive);
   }, []);
-  return settings && <WorkbenchLocationsDialog {...settings} onApply={locations => request('saveWorkbenchLocations', locations)} onClose={() => {
-    flushSync(() => setSettings(undefined)); void request('workbenchLocationsClosed').catch(() => {});
-  }}/>;
+  return (
+    settings && (
+      <WorkbenchLocationsDialog
+        {...settings}
+        onApply={(locations) => request('saveWorkbenchLocations', locations)}
+        onClose={() => {
+          flushSync(() => setSettings(undefined));
+          void request('workbenchLocationsClosed').catch(() => {});
+        }}
+      />
+    )
+  );
 }
-createRoot(document.getElementById('locations-root')!).render(<LauncherSettings/>);
+createRoot(document.getElementById('locations-root')!).render(<LauncherSettings />);

@@ -38,7 +38,23 @@ function pathFor(segment: GraphSegment, height: number, laneWidth: number): stri
 }
 
 /** A complete, independently renderable row for a fixed-height history table. */
-export function GraphRow({ row, height = 26, laneWidth = GRAPH_LANE_WIDTH, width, head = false, selected = false, main = false, pushed = true, working = false, compressed = false, mainParents, paletteId = 'vivid', paletteSize, hoveredPath, onHoverPath }: GraphRowProps) {
+export function GraphRow({
+  row,
+  height = 26,
+  laneWidth = GRAPH_LANE_WIDTH,
+  width,
+  head = false,
+  selected = false,
+  main = false,
+  pushed = true,
+  working = false,
+  compressed = false,
+  mainParents,
+  paletteId = 'vivid',
+  paletteSize,
+  hoveredPath,
+  onHoverPath,
+}: GraphRowProps) {
   const titleId = useId();
   const palette = getGraphPalette(paletteId);
   const colorFor = (index: number) => {
@@ -47,11 +63,24 @@ export function GraphRow({ row, height = 26, laneWidth = GRAPH_LANE_WIDTH, width
   };
   const svgWidth = Math.max(width ?? 0, row.laneCount * laneWidth, laneWidth);
   const parentLabel = row.parents.length
-    ? uiText("graphRow.parents", { value: (row.parents.length > 1 ? uiText("graphRow.mergeCommit") : ''), value2: (row.parents.map(oid => oid.slice(0, 8)).join(', ')) })
-    : uiText("graphRow.rootCommitNoParents");
+    ? uiText('graphRow.parents', {
+        value: row.parents.length > 1 ? uiText('graphRow.mergeCommit') : '',
+        value2: row.parents.map((oid) => oid.slice(0, 8)).join(', '),
+      })
+    : uiText('graphRow.rootCommitNoParents');
   const label = working
-    ? uiText("graphRow.workingTreeVirtualNodeLane", { value: (row.lane + 1), value2: (selected ? uiText("graphRow.selected") : '') })
-    : uiText("graphRow.commitLane", { value: (row.oid.slice(0, 8)), value2: (row.lane + 1), parentLabel: (parentLabel), value3: (main ? uiText("graphRow.mainBranch") : ''), value4: (head ? uiText("graphRow.currentHEAD") : ''), value5: (selected ? uiText("graphRow.selectedCommit") : '') });
+    ? uiText('graphRow.workingTreeVirtualNodeLane', {
+        value: row.lane + 1,
+        value2: selected ? uiText('graphRow.selected') : '',
+      })
+    : uiText('graphRow.commitLane', {
+        value: row.oid.slice(0, 8),
+        value2: row.lane + 1,
+        parentLabel: parentLabel,
+        value3: main ? uiText('graphRow.mainBranch') : '',
+        value4: head ? uiText('graphRow.currentHEAD') : '',
+        value5: selected ? uiText('graphRow.selectedCommit') : '',
+      });
   const nodeX = (row.lane + 0.5) * laneWidth;
   const nodeY = height / 2;
   const nodeColor = main ? 'var(--graph-main, #f2f2f2)' : colorFor(row.color);
@@ -73,67 +102,81 @@ export function GraphRow({ row, height = 26, laneWidth = GRAPH_LANE_WIDTH, width
     >
       <title id={titleId}>{label}</title>
       {row.segments.map((segment, index) => {
-        const mainSegment=mainParents?.get(segment.source)===segment.target;
-        const highlighted=!!hoveredPath&&segment.pathId===hoveredPath;
+        const mainSegment = mainParents?.get(segment.source) === segment.target;
+        const highlighted = !!hoveredPath && segment.pathId === hoveredPath;
         return (
-        <path
-          key={`${segment.kind}-${segment.target}-${index}`}
-          d={pathFor(segment, height, laneWidth)}
-          fill="none"
-          stroke={working && segment.kind==='parent'?workingColor:mainSegment?'var(--graph-main, #f2f2f2)':colorFor(segment.color)}
-          strokeWidth={highlighted?4:mainSegment?3:2.5}
-          strokeDasharray={compressed ? '4 3' : undefined}
-          opacity={hoveredPath && !highlighted ? .35 : 1}
-          data-path-id={segment.pathId}
-          onMouseEnter={()=>onHoverPath?.(segment.pathId)}
-          onMouseLeave={()=>onHoverPath?.()}
-          pointerEvents="stroke"
-          vectorEffect="non-scaling-stroke"
-          strokeLinecap="round"
-          aria-hidden="true"
-        />
-      );})}
-      {working ? <><circle
-        className="git-graph-working-halo"
-        cx={nodeX}
-        cy={nodeY}
-        r={7.5}
-        fill={workingColor}
-        opacity={.16}
-        pointerEvents="none"
-        aria-hidden="true"
-      /><rect
-        className="git-graph-working-node"
-        x={nodeX-4.5}
-        y={nodeY-4.5}
-        width={9}
-        height={9}
-        rx={1}
-        transform={`rotate(45 ${nodeX} ${nodeY})`}
-        fill={workingColor}
-        stroke="var(--bg, var(--vscode-editor-background, Canvas))"
-        strokeWidth={1.5}
-        data-path-id={row.pathId}
-        onMouseEnter={()=>onHoverPath?.(row.pathId)}
-        onMouseLeave={()=>onHoverPath?.()}
-        vectorEffect="non-scaling-stroke"
-        aria-hidden="true"
-      /></>:<circle
+          <path
+            key={`${segment.kind}-${segment.target}-${index}`}
+            d={pathFor(segment, height, laneWidth)}
+            fill="none"
+            stroke={
+              working && segment.kind === 'parent'
+                ? workingColor
+                : mainSegment
+                  ? 'var(--graph-main, #f2f2f2)'
+                  : colorFor(segment.color)
+            }
+            strokeWidth={highlighted ? 4 : mainSegment ? 3 : 2.5}
+            strokeDasharray={compressed ? '4 3' : undefined}
+            opacity={hoveredPath && !highlighted ? 0.35 : 1}
+            data-path-id={segment.pathId}
+            onMouseEnter={() => onHoverPath?.(segment.pathId)}
+            onMouseLeave={() => onHoverPath?.()}
+            pointerEvents="stroke"
+            vectorEffect="non-scaling-stroke"
+            strokeLinecap="round"
+            aria-hidden="true"
+          />
+        );
+      })}
+      {working ? (
+        <>
+          <circle
+            className="git-graph-working-halo"
+            cx={nodeX}
+            cy={nodeY}
+            r={7.5}
+            fill={workingColor}
+            opacity={0.16}
+            pointerEvents="none"
+            aria-hidden="true"
+          />
+          <rect
+            className="git-graph-working-node"
+            x={nodeX - 4.5}
+            y={nodeY - 4.5}
+            width={9}
+            height={9}
+            rx={1}
+            transform={`rotate(45 ${nodeX} ${nodeY})`}
+            fill={workingColor}
+            stroke="var(--bg, var(--vscode-editor-background, Canvas))"
+            strokeWidth={1.5}
+            data-path-id={row.pathId}
+            onMouseEnter={() => onHoverPath?.(row.pathId)}
+            onMouseLeave={() => onHoverPath?.()}
+            vectorEffect="non-scaling-stroke"
+            aria-hidden="true"
+          />
+        </>
+      ) : (
+        <circle
           className="git-graph-node"
           cx={nodeX}
           cy={nodeY}
-          r={row.parents.length > 1 ? pushed ? 4.5 : 4 : pushed ? 3.5 : 3}
+          r={row.parents.length > 1 ? (pushed ? 4.5 : 4) : pushed ? 3.5 : 3}
           fill={pushed ? nodeColor : 'var(--bg, var(--vscode-editor-background, Canvas))'}
           stroke={nodeColor}
           strokeWidth={selected ? 2 : pushed ? 1 : 2}
-          opacity={hoveredPath && row.pathId !== hoveredPath ? .35 : 1}
+          opacity={hoveredPath && row.pathId !== hoveredPath ? 0.35 : 1}
           data-path-id={row.pathId}
-          onMouseEnter={()=>onHoverPath?.(row.pathId)}
-          onMouseLeave={()=>onHoverPath?.()}
+          onMouseEnter={() => onHoverPath?.(row.pathId)}
+          onMouseLeave={() => onHoverPath?.()}
           vectorEffect="non-scaling-stroke"
           data-pushed={pushed}
           aria-hidden="true"
-        />}
+        />
+      )}
       {!working && pushed && row.parents.length > 1 && (
         <circle
           cx={nodeX}

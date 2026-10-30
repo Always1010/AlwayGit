@@ -12,19 +12,32 @@ describe('Tag Push', () => {
     const { root, repo } = await fixtures.setup();
     const original = await commitFile(root, 'base.txt', 'base');
     const bare = path.join(root, 'remote.git');
-    await mkdir(bare); await git(bare, 'init', '--bare'); await git(root, 'remote', 'add', 'origin', bare);
-    await git(root, 'tag', 'light', original); await git(root, 'tag', '-a', 'annotated', '-m', 'original', original);
-    const expectedOids = { light: await git(root, 'rev-parse', 'refs/tags/light'), annotated: await git(root, 'rev-parse', 'refs/tags/annotated') };
+    await mkdir(bare);
+    await git(bare, 'init', '--bare');
+    await git(root, 'remote', 'add', 'origin', bare);
+    await git(root, 'tag', 'light', original);
+    await git(root, 'tag', '-a', 'annotated', '-m', 'original', original);
+    const expectedOids = {
+      light: await git(root, 'rev-parse', 'refs/tags/light'),
+      annotated: await git(root, 'rev-parse', 'refs/tags/annotated'),
+    };
     const replacement = await commitFile(root, 'next.txt', 'next');
     let sends = 0;
-    const service = new GitService({ environment: async (_repo, args) => {
-      if (args[0] === 'push') {
-        if (++sends === 1) await git(root, 'tag', '-f', 'light', replacement);
-        else await git(root, 'tag', '-f', '-a', 'annotated', '-m', 'replacement', replacement);
-      }
-      return {};
-    } });
-    await service.execute(repo, { type: 'tag.push', remote: 'origin', names: ['light', 'annotated'], expectedOids });
+    const service = new GitService({
+      environment: async (_repo, args) => {
+        if (args[0] === 'push') {
+          if (++sends === 1) await git(root, 'tag', '-f', 'light', replacement);
+          else await git(root, 'tag', '-f', '-a', 'annotated', '-m', 'replacement', replacement);
+        }
+        return {};
+      },
+    });
+    await service.execute(repo, {
+      type: 'tag.push',
+      remote: 'origin',
+      names: ['light', 'annotated'],
+      expectedOids,
+    });
     for (const name of ['light', 'annotated'] as const) {
       expect(await git(bare, 'rev-parse', `refs/tags/${name}`)).toBe(expectedOids[name]);
       expect(await git(root, 'rev-parse', `refs/tags/${name}`)).not.toBe(expectedOids[name]);
@@ -35,10 +48,20 @@ describe('Tag Push', () => {
     const { root, service, repo } = await fixtures.setup();
     const head = await commitFile(root, 'base.txt', 'base');
     const bare = path.join(root, 'remote.git');
-    await mkdir(bare); await git(bare, 'init', '--bare'); await git(root, 'remote', 'add', 'origin', bare);
+    await mkdir(bare);
+    await git(bare, 'init', '--bare');
+    await git(root, 'remote', 'add', 'origin', bare);
     await git(root, 'tag', 'unrelated');
-    await service.execute(repo, { type: 'tag.create', name: 'v1', target: head, message: 'release', pushRemote: 'origin' });
-    expect(await git(bare, 'rev-parse', 'refs/tags/v1')).toBe(await git(root, 'rev-parse', 'refs/tags/v1'));
+    await service.execute(repo, {
+      type: 'tag.create',
+      name: 'v1',
+      target: head,
+      message: 'release',
+      pushRemote: 'origin',
+    });
+    expect(await git(bare, 'rev-parse', 'refs/tags/v1')).toBe(
+      await git(root, 'rev-parse', 'refs/tags/v1'),
+    );
     await expect(git(bare, 'show-ref', '--verify', 'refs/tags/unrelated')).rejects.toThrow();
   });
 
@@ -46,10 +69,20 @@ describe('Tag Push', () => {
     const { root, service, repo } = await fixtures.setup();
     const original = await commitFile(root, 'base.txt', 'base');
     const bare = path.join(root, 'remote.git');
-    await mkdir(bare); await git(bare, 'init', '--bare'); await git(root, 'remote', 'add', 'origin', bare);
-    await git(root, 'tag', 'remote-v1', original); await git(root, 'push', 'origin', 'refs/tags/remote-v1:refs/tags/v1');
+    await mkdir(bare);
+    await git(bare, 'init', '--bare');
+    await git(root, 'remote', 'add', 'origin', bare);
+    await git(root, 'tag', 'remote-v1', original);
+    await git(root, 'push', 'origin', 'refs/tags/remote-v1:refs/tags/v1');
     const replacement = await commitFile(root, 'next.txt', 'next');
-    await expect(service.execute(repo, { type: 'tag.create', name: 'v1', target: replacement, pushRemote: 'origin' })).rejects.toMatchObject({ code: 'PARTIAL_FAILURE' });
+    await expect(
+      service.execute(repo, {
+        type: 'tag.create',
+        name: 'v1',
+        target: replacement,
+        pushRemote: 'origin',
+      }),
+    ).rejects.toMatchObject({ code: 'PARTIAL_FAILURE' });
     expect(await git(root, 'rev-parse', 'refs/tags/v1')).toBe(replacement);
     expect(await git(bare, 'rev-parse', 'refs/tags/v1')).toBe(original);
   });
@@ -58,51 +91,109 @@ describe('Tag Push', () => {
     const { root, service, repo } = await fixtures.setup();
     await commitFile(root, 'base.txt', 'base');
     const bare = path.join(root, 'remote.git');
-    await mkdir(bare); await git(bare, 'init', '--bare'); await git(root, 'remote', 'add', 'origin', bare);
+    await mkdir(bare);
+    await git(bare, 'init', '--bare');
+    await git(root, 'remote', 'add', 'origin', bare);
     await git(root, 'tag', 'light');
     await git(root, 'tag', '-a', '-m', 'release', 'annotated');
     await git(root, 'tag', '-a', '-m', 'private', 'other');
     await git(root, 'config', 'push.followTags', 'true');
-    const tags = (await service.snapshot(repo)).refs.filter(ref => ref.kind === 'tag');
-    const selected = tags.filter(tag => tag.name !== 'other');
-    const result = await service.execute(repo, { type: 'tag.push', remote: 'origin', names: selected.map(tag => tag.name), expectedOids: Object.fromEntries(selected.map(tag => [tag.name, tag.refOid!])) });
-    expect(result).toMatchObject({ kind: 'push', outcome: 'success', remote: 'origin', destinations: [{ refs: expect.arrayContaining(selected.map(tag => ({ kind: 'tag', name: tag.name, status: 'published' }))) }] });
-    for (const tag of selected) expect(await git(bare, 'rev-parse', `refs/tags/${tag.name}`)).toBe(tag.refOid);
+    const tags = (await service.snapshot(repo)).refs.filter((ref) => ref.kind === 'tag');
+    const selected = tags.filter((tag) => tag.name !== 'other');
+    const result = await service.execute(repo, {
+      type: 'tag.push',
+      remote: 'origin',
+      names: selected.map((tag) => tag.name),
+      expectedOids: Object.fromEntries(selected.map((tag) => [tag.name, tag.refOid!])),
+    });
+    expect(result).toMatchObject({
+      kind: 'push',
+      outcome: 'success',
+      remote: 'origin',
+      destinations: [
+        {
+          refs: expect.arrayContaining(
+            selected.map((tag) => ({ kind: 'tag', name: tag.name, status: 'published' })),
+          ),
+        },
+      ],
+    });
+    for (const tag of selected)
+      expect(await git(bare, 'rev-parse', `refs/tags/${tag.name}`)).toBe(tag.refOid);
     await expect(git(bare, 'show-ref', '--verify', 'refs/tags/other')).rejects.toThrow();
   });
 
   it('preserves confirmed Tag publications when a second Push address is unreachable', async () => {
     const { root, service, repo } = await fixtures.setup();
     await commitFile(root, 'base.txt', 'base');
-    const bare = path.join(root, 'remote.git'), missing = path.join(root, 'missing.git');
-    await mkdir(bare); await git(bare, 'init', '--bare'); await git(root, 'remote', 'add', 'origin', bare);
+    const bare = path.join(root, 'remote.git'),
+      missing = path.join(root, 'missing.git');
+    await mkdir(bare);
+    await git(bare, 'init', '--bare');
+    await git(root, 'remote', 'add', 'origin', bare);
     await git(root, 'remote', 'set-url', '--add', '--push', 'origin', bare);
     await git(root, 'remote', 'set-url', '--add', '--push', 'origin', missing);
-    await git(root, 'tag', 'v1'); await git(root, 'tag', '-a', 'v2', '-m', 'release');
-    const expectedOids = { v1: await git(root, 'rev-parse', 'refs/tags/v1'), v2: await git(root, 'rev-parse', 'refs/tags/v2') };
-    const execute = () => service.execute(repo, { type: 'tag.push', remote: 'origin', names: ['v1', 'v2'], expectedOids });
-    const failure = await execute().catch(error => error);
-    expect(failure).toMatchObject({ code: 'PARTIAL_FAILURE', pushResult: { outcome: 'partial', remote: 'origin', destinations: expect.arrayContaining([
-      expect.objectContaining({ refs: [{ kind: 'tag', name: 'v1', status: 'published' }, { kind: 'tag', name: 'v2', status: 'published' }] }),
-      expect.objectContaining({ refs: [], unconfirmed: true }),
-    ]) } });
+    await git(root, 'tag', 'v1');
+    await git(root, 'tag', '-a', 'v2', '-m', 'release');
+    const expectedOids = {
+      v1: await git(root, 'rev-parse', 'refs/tags/v1'),
+      v2: await git(root, 'rev-parse', 'refs/tags/v2'),
+    };
+    const execute = () =>
+      service.execute(repo, {
+        type: 'tag.push',
+        remote: 'origin',
+        names: ['v1', 'v2'],
+        expectedOids,
+      });
+    const failure = await execute().catch((error) => error);
+    expect(failure).toMatchObject({
+      code: 'PARTIAL_FAILURE',
+      pushResult: {
+        outcome: 'partial',
+        remote: 'origin',
+        destinations: expect.arrayContaining([
+          expect.objectContaining({
+            refs: [
+              { kind: 'tag', name: 'v1', status: 'published' },
+              { kind: 'tag', name: 'v2', status: 'published' },
+            ],
+          }),
+          expect.objectContaining({ refs: [], unconfirmed: true }),
+        ]),
+      },
+    });
     expect(failure.message).toContain('2 Tag(s) pushed');
-    for (const name of ['v1', 'v2'] as const) expect(await git(bare, 'rev-parse', `refs/tags/${name}`)).toBe(expectedOids[name]);
-    const repeated = await execute().catch(error => error);
+    for (const name of ['v1', 'v2'] as const)
+      expect(await git(bare, 'rev-parse', `refs/tags/${name}`)).toBe(expectedOids[name]);
+    const repeated = await execute().catch((error) => error);
     expect(repeated.pushResult.outcome).toBe('partial');
-    expect(repeated.pushResult.destinations[0].refs.map((ref: { status: string }) => ref.status)).toEqual(['up-to-date', 'up-to-date']);
+    expect(
+      repeated.pushResult.destinations[0].refs.map((ref: { status: string }) => ref.status),
+    ).toEqual(['up-to-date', 'up-to-date']);
   });
 
   it('preflights every raw Tag identity before pushing any selection', async () => {
     const { root, service, repo } = await fixtures.setup();
     await commitFile(root, 'base.txt', 'base');
     const bare = path.join(root, 'remote.git');
-    await mkdir(bare); await git(bare, 'init', '--bare'); await git(root, 'remote', 'add', 'origin', bare);
-    await git(root, 'tag', 'v1'); await git(root, 'tag', 'v2');
-    const tags = (await service.snapshot(repo)).refs.filter(ref => ref.kind === 'tag');
-    const expectedOids = Object.fromEntries(tags.map(tag => [tag.name, tag.refOid!]));
-    const advanced = await commitFile(root, 'next.txt', 'next'); await git(root, 'tag', '-f', 'v2', advanced);
-    await expect(service.execute(repo, { type: 'tag.push', remote: 'origin', names: ['v1', 'v2'], expectedOids })).rejects.toMatchObject({ code: 'OPERATION_CHANGED' });
+    await mkdir(bare);
+    await git(bare, 'init', '--bare');
+    await git(root, 'remote', 'add', 'origin', bare);
+    await git(root, 'tag', 'v1');
+    await git(root, 'tag', 'v2');
+    const tags = (await service.snapshot(repo)).refs.filter((ref) => ref.kind === 'tag');
+    const expectedOids = Object.fromEntries(tags.map((tag) => [tag.name, tag.refOid!]));
+    const advanced = await commitFile(root, 'next.txt', 'next');
+    await git(root, 'tag', '-f', 'v2', advanced);
+    await expect(
+      service.execute(repo, {
+        type: 'tag.push',
+        remote: 'origin',
+        names: ['v1', 'v2'],
+        expectedOids,
+      }),
+    ).rejects.toMatchObject({ code: 'OPERATION_CHANGED' });
     await expect(git(bare, 'show-ref', '--verify', 'refs/tags/v1')).rejects.toThrow();
   });
 
@@ -110,11 +201,24 @@ describe('Tag Push', () => {
     const { root, service, repo } = await fixtures.setup();
     const original = await commitFile(root, 'base.txt', 'base');
     const bare = path.join(root, 'remote.git');
-    await mkdir(bare); await git(bare, 'init', '--bare'); await git(root, 'remote', 'add', 'origin', bare);
-    await git(root, 'tag', 'v1', original); await git(root, 'push', 'origin', 'refs/tags/v1:refs/tags/v1');
-    const replacement = await commitFile(root, 'next.txt', 'next'); await git(root, 'tag', '-f', 'v1', replacement);
-    const tag = (await service.snapshot(repo)).refs.find(ref => ref.kind === 'tag' && ref.name === 'v1')!;
-    await expect(service.execute(repo, { type: 'tag.push', remote: 'origin', names: ['v1'], expectedOids: { v1: tag.refOid! } })).rejects.toMatchObject({ code: 'PARTIAL_FAILURE' });
+    await mkdir(bare);
+    await git(bare, 'init', '--bare');
+    await git(root, 'remote', 'add', 'origin', bare);
+    await git(root, 'tag', 'v1', original);
+    await git(root, 'push', 'origin', 'refs/tags/v1:refs/tags/v1');
+    const replacement = await commitFile(root, 'next.txt', 'next');
+    await git(root, 'tag', '-f', 'v1', replacement);
+    const tag = (await service.snapshot(repo)).refs.find(
+      (ref) => ref.kind === 'tag' && ref.name === 'v1',
+    )!;
+    await expect(
+      service.execute(repo, {
+        type: 'tag.push',
+        remote: 'origin',
+        names: ['v1'],
+        expectedOids: { v1: tag.refOid! },
+      }),
+    ).rejects.toMatchObject({ code: 'PARTIAL_FAILURE' });
     expect(await git(bare, 'rev-parse', 'refs/tags/v1')).toBe(original);
   });
 });

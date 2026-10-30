@@ -8,33 +8,58 @@ export function useShortcuts(commands: ShortcutActions): void {
   useLayoutEffect(() => {
     Object.assign(actions, commands);
     return () => {
-      for (const command of Object.keys(commands) as WorkbenchShortcut[]) if (actions[command] === commands[command]) delete actions[command];
+      for (const command of Object.keys(commands) as WorkbenchShortcut[])
+        if (actions[command] === commands[command]) delete actions[command];
     };
   });
 }
 
 function editable(target: EventTarget | null): boolean {
-  return selectionTargetIsEditable(target) || target instanceof Element && !!target.closest('select,[role="textbox"],[role="combobox"],[data-terminal-input]');
+  return (
+    selectionTargetIsEditable(target) ||
+    (target instanceof Element &&
+      !!target.closest('select,[role="textbox"],[role="combobox"],[data-terminal-input]'))
+  );
 }
 
 export function useWorkbenchKeyboard(blocked: boolean): void {
   const blockedRef = useRef(blocked);
-  useLayoutEffect(() => { blockedRef.current = blocked; }, [blocked]);
+  useLayoutEffect(() => {
+    blockedRef.current = blocked;
+  }, [blocked]);
   useEffect(() => {
     let composing = false;
-    const start = () => { composing = true; }, end = () => { composing = false; };
-    const hasOverlay = () => blockedRef.current || !!document.querySelector('[aria-modal="true"],[role="menu"]');
-    const key = (event: KeyboardEvent) => dispatchShortcut(event, actions, {
-      singleKeys: useWorkbench.getState().singleKeyShortcuts, overrides: useWorkbench.getState().shortcutOverrides,
-      blocked: hasOverlay() || !document.querySelector('[data-testid="workbench"]'),
-      editable: editable(event.target) || editable(document.activeElement), composing,
-    });
+    const start = () => {
+        composing = true;
+      },
+      end = () => {
+        composing = false;
+      };
+    const hasOverlay = () =>
+      blockedRef.current || !!document.querySelector('[aria-modal="true"],[role="menu"]');
+    const key = (event: KeyboardEvent) =>
+      dispatchShortcut(event, actions, {
+        singleKeys: useWorkbench.getState().singleKeyShortcuts,
+        overrides: useWorkbench.getState().shortcutOverrides,
+        blocked: hasOverlay() || !document.querySelector('[data-testid="workbench"]'),
+        editable: editable(event.target) || editable(document.activeElement),
+        composing,
+      });
     const pointer = (event: PointerEvent) => {
-      if (event.button !== 0 || hasOverlay() || editable(event.target) || !editable(document.activeElement) || !(event.target instanceof Element)) return;
+      if (
+        event.button !== 0 ||
+        hasOverlay() ||
+        editable(event.target) ||
+        !editable(document.activeElement) ||
+        !(event.target instanceof Element)
+      )
+        return;
       const root = event.target.closest<HTMLElement>('[data-testid="workbench"]');
       if (!root) return;
       // Separators suppress the browser's focus transfer; blank Diff text is not focusable.
-      const target = event.target.closest<HTMLElement>('button:not(:disabled),a[href],[tabindex],input:not(:disabled)');
+      const target = event.target.closest<HTMLElement>(
+        'button:not(:disabled),a[href],[tabindex],input:not(:disabled)',
+      );
       (target ?? root).focus({ preventScroll: true });
     };
     window.addEventListener('keydown', key, true);

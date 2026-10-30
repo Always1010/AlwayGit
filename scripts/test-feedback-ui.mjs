@@ -4,107 +4,363 @@ import assert from 'node:assert/strict';
 export async function verifyFeedback(browser, url) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
-  page.on('pageerror', error => errors.push(error.message));
+  page.on('pageerror', (error) => errors.push(error.message));
   try {
     await page.addInitScript(() => {
-      const repo = { id: 'feedback', root: '/feedback', commonDir: '/feedback/.git', name: 'Feedback fixture' };
-      const commit = { oid: 'a'.repeat(40), parents: [], author: 'Fixture', email: 'test@example.com', timestamp: 0, subject: 'Test operations' };
-      const fixture = window.__feedbackFixture = {
-        pending: undefined, calls: [], cleanReview: false, holdRemoteLinks: false, pendingRemoteLinks: [],
-        snapshot: { repository: repo, branch: 'main', head: commit.oid, ahead: 1, behind: 2, pullTarget: { localBranch: 'main', remote: 'origin', remoteBranch: 'main' }, pushTarget: { localBranch: 'main', remote: 'origin', remoteBranch: 'release', configured: true }, remotes: ['origin'], changes: [], refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }], stashes: [], worktrees: [], operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false }, version: 0 },
-        complete(error, publication) { window.postMessage({ type: 'response', id: this.pending.id, result: error ? undefined : publication ? {snapshot:structuredClone({...this.snapshot,version:++this.snapshot.version}),result:publication} : structuredClone({ ...this.snapshot, version: ++this.snapshot.version }), error: error ? { message: error } : undefined }, '*'); this.pending = undefined; },
-        progress(progress, requestId = this.pending.id) { window.postMessage({ type: 'networkOperationProgress', repoId: repo.id, requestId, progress: { command: this.pending.payload.type, startedAt: Date.now(), lastOutputAt: Date.now(), ...progress } }, '*'); },
-        completeRemoteLinks(index, result, error) { const request=this.pendingRemoteLinks[index]; window.postMessage({type:'response',id:request.id,result,error:error?{message:error}:undefined},'*'); },
+      const repo = {
+        id: 'feedback',
+        root: '/feedback',
+        commonDir: '/feedback/.git',
+        name: 'Feedback fixture',
       };
-      window.acquireVsCodeApi = () => ({ getState: () => ({}), setState: () => {}, postMessage(request) {
-        if (request.method === 'saveSession') { setTimeout(() => window.postMessage({ type: 'response', id: request.id, result: null }, '*'), 0); return; }
-        fixture.calls.push(request);
-        if (request.method === 'action') { fixture.pending = request; return; }
-        let result;
-        if (request.method === 'repositories') result = [repo];
-        if (request.method === 'snapshot') result = structuredClone({ ...fixture.snapshot, version: ++fixture.snapshot.version });
-        if (request.method === 'remoteLinks') {
-          if(fixture.holdRemoteLinks){fixture.pendingRemoteLinks.push(request);return;}
-          result={repositories:[{url:'https://github.com/acme/repo',label:'github.com/acme/repo',provider:'github'}],defaultBranch:'main'};
-        }
-        if (request.method === 'operationReview') result = {kind:fixture.snapshot.operation.kind,token:'reviewed-index',files:fixture.snapshot.changes.filter(file=>!file.conflict&&file.indexStatus!==' ').map(file=>({path:file.path,lines:fixture.cleanReview?[]:[1,3,5]}))};
-        if (request.method === 'history') result = { commits: [commit], tips: [commit.oid], nextOffset: 1, hasMore: false };
-        if (request.method === 'details') result = { commit, body: '', files: [] };
-        if (request.method === 'diffPreview') result = { kind: 'text', path: request.payload.path, leftLabel: request.payload.area==='staged'?'HEAD':'Ours', rightLabel: request.payload.area==='staged'?'Index':'Theirs', left: 'before', right: request.payload.area==='staged'&&!fixture.cleanReview?'<<<<<<< HEAD\nmain-ready\n=======\nfeature-ready\n>>>>>>> feature/release':'feature-ready' };
-        setTimeout(() => window.postMessage({ type: 'response', id: request.id, result }, '*'), 10);
-      } });
+      const commit = {
+        oid: 'a'.repeat(40),
+        parents: [],
+        author: 'Fixture',
+        email: 'test@example.com',
+        timestamp: 0,
+        subject: 'Test operations',
+      };
+      const fixture = (window.__feedbackFixture = {
+        pending: undefined,
+        calls: [],
+        cleanReview: false,
+        holdRemoteLinks: false,
+        pendingRemoteLinks: [],
+        snapshot: {
+          repository: repo,
+          branch: 'main',
+          head: commit.oid,
+          ahead: 1,
+          behind: 2,
+          pullTarget: { localBranch: 'main', remote: 'origin', remoteBranch: 'main' },
+          pushTarget: {
+            localBranch: 'main',
+            remote: 'origin',
+            remoteBranch: 'release',
+            configured: true,
+          },
+          remotes: ['origin'],
+          changes: [],
+          refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }],
+          stashes: [],
+          worktrees: [],
+          operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false },
+          version: 0,
+        },
+        complete(error, publication) {
+          window.postMessage(
+            {
+              type: 'response',
+              id: this.pending.id,
+              result: error
+                ? undefined
+                : publication
+                  ? {
+                      snapshot: structuredClone({
+                        ...this.snapshot,
+                        version: ++this.snapshot.version,
+                      }),
+                      result: publication,
+                    }
+                  : structuredClone({ ...this.snapshot, version: ++this.snapshot.version }),
+              error: error ? { message: error } : undefined,
+            },
+            '*',
+          );
+          this.pending = undefined;
+        },
+        progress(progress, requestId = this.pending.id) {
+          window.postMessage(
+            {
+              type: 'networkOperationProgress',
+              repoId: repo.id,
+              requestId,
+              progress: {
+                command: this.pending.payload.type,
+                startedAt: Date.now(),
+                lastOutputAt: Date.now(),
+                ...progress,
+              },
+            },
+            '*',
+          );
+        },
+        completeRemoteLinks(index, result, error) {
+          const request = this.pendingRemoteLinks[index];
+          window.postMessage(
+            {
+              type: 'response',
+              id: request.id,
+              result,
+              error: error ? { message: error } : undefined,
+            },
+            '*',
+          );
+        },
+      });
+      window.acquireVsCodeApi = () => ({
+        getState: () => ({}),
+        setState: () => {},
+        postMessage(request) {
+          if (request.method === 'saveSession') {
+            setTimeout(
+              () => window.postMessage({ type: 'response', id: request.id, result: null }, '*'),
+              0,
+            );
+            return;
+          }
+          fixture.calls.push(request);
+          if (request.method === 'action') {
+            fixture.pending = request;
+            return;
+          }
+          let result;
+          if (request.method === 'repositories') result = [repo];
+          if (request.method === 'snapshot')
+            result = structuredClone({ ...fixture.snapshot, version: ++fixture.snapshot.version });
+          if (request.method === 'remoteLinks') {
+            if (fixture.holdRemoteLinks) {
+              fixture.pendingRemoteLinks.push(request);
+              return;
+            }
+            result = {
+              repositories: [
+                {
+                  url: 'https://github.com/acme/repo',
+                  label: 'github.com/acme/repo',
+                  provider: 'github',
+                },
+              ],
+              defaultBranch: 'main',
+            };
+          }
+          if (request.method === 'operationReview')
+            result = {
+              kind: fixture.snapshot.operation.kind,
+              token: 'reviewed-index',
+              files: fixture.snapshot.changes
+                .filter((file) => !file.conflict && file.indexStatus !== ' ')
+                .map((file) => ({ path: file.path, lines: fixture.cleanReview ? [] : [1, 3, 5] })),
+            };
+          if (request.method === 'history')
+            result = { commits: [commit], tips: [commit.oid], nextOffset: 1, hasMore: false };
+          if (request.method === 'details') result = { commit, body: '', files: [] };
+          if (request.method === 'diffPreview')
+            result = {
+              kind: 'text',
+              path: request.payload.path,
+              leftLabel: request.payload.area === 'staged' ? 'HEAD' : 'Ours',
+              rightLabel: request.payload.area === 'staged' ? 'Index' : 'Theirs',
+              left: 'before',
+              right:
+                request.payload.area === 'staged' && !fixture.cleanReview
+                  ? '<<<<<<< HEAD\nmain-ready\n=======\nfeature-ready\n>>>>>>> feature/release'
+                  : 'feature-ready',
+            };
+          setTimeout(
+            () => window.postMessage({ type: 'response', id: request.id, result }, '*'),
+            10,
+          );
+        },
+      });
     });
     await page.goto(url);
     await page.getByRole('option', { name: 'Feedback fixture' }).dblclick();
-    const toolbar=page.locator('.toolbar'),pull=toolbar.getByRole('button',{name:'Pull, 2 incoming commits',exact:true}),pushButton=toolbar.getByRole('button',{name:'Push, 1 unpushed commits',exact:true});
-    assert.equal(await pull.locator('.notification-badge').innerText(),'2','Pull shows its incoming count in the shared badge');
-    assert.equal(await pushButton.locator('.notification-badge').innerText(),'1','Push shows its unpushed count in the shared badge');
-    assert.match(await pull.getAttribute('title'),/2 incoming commits/,'Pull keeps the count in its tooltip');
-    assert.match(await pushButton.getAttribute('title'),/1 unpushed commits/,'Push keeps the count in its tooltip');
+    const toolbar = page.locator('.toolbar'),
+      pull = toolbar.getByRole('button', { name: 'Pull, 2 incoming commits', exact: true }),
+      pushButton = toolbar.getByRole('button', { name: 'Push, 1 unpushed commits', exact: true });
+    assert.equal(
+      await pull.locator('.notification-badge').innerText(),
+      '2',
+      'Pull shows its incoming count in the shared badge',
+    );
+    assert.equal(
+      await pushButton.locator('.notification-badge').innerText(),
+      '1',
+      'Push shows its unpushed count in the shared badge',
+    );
+    assert.match(
+      await pull.getAttribute('title'),
+      /2 incoming commits/,
+      'Pull keeps the count in its tooltip',
+    );
+    assert.match(
+      await pushButton.getAttribute('title'),
+      /1 unpushed commits/,
+      'Push keeps the count in its tooltip',
+    );
     const bar = page.getByTestId('action-feedback');
-    await page.evaluate(()=>{
-      const fixture=window.__feedbackFixture;
-      fixture.snapshot.refs.push({name:'topic',fullName:'refs/heads/topic',kind:'local',oid:'b'.repeat(40)});
-      window.postMessage({type:'changed',repoId:'feedback'},'*');
+    await page.evaluate(() => {
+      const fixture = window.__feedbackFixture;
+      fixture.snapshot.refs.push({
+        name: 'topic',
+        fullName: 'refs/heads/topic',
+        kind: 'local',
+        oid: 'b'.repeat(40),
+      });
+      window.postMessage({ type: 'changed', repoId: 'feedback' }, '*');
     });
-    const topic=page.getByTestId('sidebar').getByRole('button',{name:'Branch topic',exact:true});
+    const topic = page
+      .getByTestId('sidebar')
+      .getByRole('button', { name: 'Branch topic', exact: true });
     await topic.dblclick();
-    await page.waitForFunction(()=>window.__feedbackFixture.pending?.payload.type==='branch.checkout');
-    const checkoutProgress=page.getByTestId('operation-progress');await checkoutProgress.waitFor();
-    const bounds=await checkoutProgress.getByRole('dialog').boundingBox();
-    assert.ok(Math.abs(bounds.x+bounds.width/2-720)<2 && Math.abs(bounds.y+bounds.height/2-450)<2,'Progress must be centered in the workbench');
-    await page.screenshot({path:'artifacts/operation-progress-preview.png'});
-    await page.keyboard.press('Escape');await page.keyboard.press('Tab');
-    await page.evaluate(()=>window.postMessage({type:'activity',repoId:'feedback',busy:false,label:'branch.checkout'},'*'));
-    assert.equal(await checkoutProgress.isVisible(),true,'Host end must not release a pending Checkout');
-    assert.equal(await page.locator('.workspace').evaluate(node=>node.inert),true);
-    assert.equal(await page.evaluate(()=>window.__feedbackFixture.calls.filter(call=>call.method==='action'&&call.payload.type==='branch.checkout').length),1);
-    await page.evaluate(()=>window.__feedbackFixture.complete());
-    await checkoutProgress.waitFor({state:'hidden'});
-    assert.equal(await page.locator('.workspace').evaluate(node=>node.inert),false);
-    await bar.getByRole('button',{name:'Dismiss notification'}).click();
-    for (const [kind, title] of [['merge', 'Merge'], ['rebase', 'Rebase'], ['reset', 'Reset']]) {
+    await page.waitForFunction(
+      () => window.__feedbackFixture.pending?.payload.type === 'branch.checkout',
+    );
+    const checkoutProgress = page.getByTestId('operation-progress');
+    await checkoutProgress.waitFor();
+    const bounds = await checkoutProgress.getByRole('dialog').boundingBox();
+    assert.ok(
+      Math.abs(bounds.x + bounds.width / 2 - 720) < 2 &&
+        Math.abs(bounds.y + bounds.height / 2 - 450) < 2,
+      'Progress must be centered in the workbench',
+    );
+    await page.screenshot({ path: 'artifacts/operation-progress-preview.png' });
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Tab');
+    await page.evaluate(() =>
+      window.postMessage(
+        { type: 'activity', repoId: 'feedback', busy: false, label: 'branch.checkout' },
+        '*',
+      ),
+    );
+    assert.equal(
+      await checkoutProgress.isVisible(),
+      true,
+      'Host end must not release a pending Checkout',
+    );
+    assert.equal(await page.locator('.workspace').evaluate((node) => node.inert), true);
+    assert.equal(
+      await page.evaluate(
+        () =>
+          window.__feedbackFixture.calls.filter(
+            (call) => call.method === 'action' && call.payload.type === 'branch.checkout',
+          ).length,
+      ),
+      1,
+    );
+    await page.evaluate(() => window.__feedbackFixture.complete());
+    await checkoutProgress.waitFor({ state: 'hidden' });
+    assert.equal(await page.locator('.workspace').evaluate((node) => node.inert), false);
+    await bar.getByRole('button', { name: 'Dismiss notification' }).click();
+    for (const [kind, title] of [
+      ['merge', 'Merge'],
+      ['rebase', 'Rebase'],
+      ['reset', 'Reset'],
+    ]) {
       await page.getByTestId('history').locator('[data-oid]').first().click({ button: 'right' });
       await page.getByRole('menuitem', { name: `${title}…`, exact: true }).click();
       const dialog = page.getByRole('dialog', { name: title, exact: true });
       await dialog.getByText(`HEAD: ${'a'.repeat(40)}`, { exact: false }).waitFor();
-      if(kind==='merge'){
-        await page.evaluate(()=>window.postMessage({type:'activity',repoId:'feedback',busy:true,label:'External Git operation'},'*'));
-        await page.waitForFunction(()=>document.querySelector('[role="dialog"][aria-label="Merge"]')?.getAttribute('aria-busy')==='true');
+      if (kind === 'merge') {
+        await page.evaluate(() =>
+          window.postMessage(
+            { type: 'activity', repoId: 'feedback', busy: true, label: 'External Git operation' },
+            '*',
+          ),
+        );
+        await page.waitForFunction(
+          () =>
+            document
+              .querySelector('[role="dialog"][aria-label="Merge"]')
+              ?.getAttribute('aria-busy') === 'true',
+        );
         await page.keyboard.press('Escape');
-        assert.equal(await dialog.isVisible(),true,'Escape is consumed while a busy modal remains open');
-        await page.evaluate(()=>window.postMessage({type:'activity',repoId:'feedback',busy:false,label:''},'*'));
-        await page.waitForFunction(()=>document.querySelector('[role="dialog"][aria-label="Merge"]')?.getAttribute('aria-busy')==='false');
+        assert.equal(
+          await dialog.isVisible(),
+          true,
+          'Escape is consumed while a busy modal remains open',
+        );
+        await page.evaluate(() =>
+          window.postMessage({ type: 'activity', repoId: 'feedback', busy: false, label: '' }, '*'),
+        );
+        await page.waitForFunction(
+          () =>
+            document
+              .querySelector('[role="dialog"][aria-label="Merge"]')
+              ?.getAttribute('aria-busy') === 'false',
+        );
       }
-      await page.evaluate(() => { const fixture = window.__feedbackFixture; fixture.snapshot.branch = 'other-confirmation'; fixture.snapshot.head = 'b'.repeat(40); window.postMessage({ type: 'changed', repoId: 'feedback' }, '*'); });
-      await page.waitForFunction(() => document.querySelector('.toolbar')?.textContent.includes('other-confirmation'));
+      await page.evaluate(() => {
+        const fixture = window.__feedbackFixture;
+        fixture.snapshot.branch = 'other-confirmation';
+        fixture.snapshot.head = 'b'.repeat(40);
+        window.postMessage({ type: 'changed', repoId: 'feedback' }, '*');
+      });
+      await page.waitForFunction(() =>
+        document.querySelector('.toolbar')?.textContent.includes('other-confirmation'),
+      );
       assert.match(await dialog.innerText(), /main/);
       assert.equal((await dialog.innerText()).includes('other-confirmation'), false);
       await dialog.getByRole('button', { name: title, exact: true }).click();
-      await page.waitForFunction(kind => window.__feedbackFixture.pending?.payload.type === kind, kind);
+      await page.waitForFunction(
+        (kind) => window.__feedbackFixture.pending?.payload.type === kind,
+        kind,
+      );
       const progress = page.getByTestId('operation-progress');
       await progress.waitFor();
       assert.equal(await progress.getByRole('button').count(), 0);
-      assert.equal(await page.locator('.workspace').evaluate(node => node.inert), true);
+      assert.equal(await page.locator('.workspace').evaluate((node) => node.inert), true);
       const before = await page.evaluate(() => window.__feedbackFixture.calls.length);
-      await page.keyboard.press('Escape'); await page.keyboard.press('Tab'); await page.keyboard.press('F5');
+      await page.keyboard.press('Escape');
+      await page.keyboard.press('Tab');
+      await page.keyboard.press('F5');
       await progress.click({ position: { x: 4, y: 4 } });
       assert.equal(await progress.isVisible(), true);
       assert.equal(await page.evaluate(() => window.__feedbackFixture.calls.length), before);
       const payload = await page.evaluate(() => window.__feedbackFixture.pending.payload);
-      assert.equal(payload.expectedBranch, 'main'); assert.equal(payload.expectedHead, 'a'.repeat(40));
-      await page.evaluate(() => { const fixture = window.__feedbackFixture; fixture.snapshot.branch = 'main'; fixture.snapshot.head = 'a'.repeat(40); fixture.complete('The confirmed branch changed. Refresh and reopen the dialog.'); });
+      assert.equal(payload.expectedBranch, 'main');
+      assert.equal(payload.expectedHead, 'a'.repeat(40));
+      await page.evaluate(() => {
+        const fixture = window.__feedbackFixture;
+        fixture.snapshot.branch = 'main';
+        fixture.snapshot.head = 'a'.repeat(40);
+        fixture.complete('The confirmed branch changed. Refresh and reopen the dialog.');
+      });
       await bar.getByText(`${title} failed`, { exact: true }).waitFor();
       await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
       await bar.getByRole('button', { name: 'Dismiss notification' }).click();
-      await page.waitForFunction(() => !document.querySelector('.toolbar')?.textContent.includes('other-confirmation'));
+      await page.waitForFunction(
+        () => !document.querySelector('.toolbar')?.textContent.includes('other-confirmation'),
+      );
     }
-    await page.evaluate(()=>{const fixture=window.__feedbackFixture;fixture.snapshot.changes=[{path:'notes.txt',indexStatus:'?',worktreeStatus:'?',conflict:false,untracked:true}];window.postMessage({type:'changed',repoId:'feedback'},'*');});
-    await page.locator('.toolbar').getByRole('button',{name:'Stash All Changes…',exact:true}).click();
-    await page.getByRole('dialog',{name:'Stash All Changes',exact:true}).getByRole('button',{name:'Stash All Changes',exact:true}).click();
-    await page.waitForFunction(()=>window.__feedbackFixture.pending?.payload.type==='stash.create');
-    await page.evaluate(()=>{const fixture=window.__feedbackFixture;fixture.snapshot.stashes=[{selector:'stash@{0}',oid:'c'.repeat(40),subject:'pause notes'}];fixture.snapshot.changes=[];fixture.complete();});
-    await bar.getByText('1 file saved · 1 untracked · Working tree clean',{exact:true}).waitFor();await bar.getByRole('button',{name:'Dismiss notification'}).click();
+    await page.evaluate(() => {
+      const fixture = window.__feedbackFixture;
+      fixture.snapshot.changes = [
+        {
+          path: 'notes.txt',
+          indexStatus: '?',
+          worktreeStatus: '?',
+          conflict: false,
+          untracked: true,
+        },
+      ];
+      window.postMessage({ type: 'changed', repoId: 'feedback' }, '*');
+    });
+    await page
+      .locator('.toolbar')
+      .getByRole('button', { name: 'Stash All Changes…', exact: true })
+      .click();
+    await page
+      .getByRole('dialog', { name: 'Stash All Changes', exact: true })
+      .getByRole('button', { name: 'Stash All Changes', exact: true })
+      .click();
+    await page.waitForFunction(
+      () => window.__feedbackFixture.pending?.payload.type === 'stash.create',
+    );
+    await page.evaluate(() => {
+      const fixture = window.__feedbackFixture;
+      fixture.snapshot.stashes = [
+        { selector: 'stash@{0}', oid: 'c'.repeat(40), subject: 'pause notes' },
+      ];
+      fixture.snapshot.changes = [];
+      fixture.complete();
+    });
+    await bar
+      .getByText('1 file saved · 1 untracked · Working tree clean', { exact: true })
+      .waitFor();
+    await bar.getByRole('button', { name: 'Dismiss notification' }).click();
     async function push() {
       await page.locator('.toolbar').getByRole('button', { name: /^Push/ }).click();
       await page.getByRole('dialog').getByRole('button', { name: 'Push', exact: true }).click();
@@ -115,61 +371,133 @@ export async function verifyFeedback(browser, url) {
     assert.equal(await bar.getByRole('button', { name: 'Dismiss notification' }).count(), 0);
     const pushDialog = page.getByRole('dialog', { name: 'Push', exact: true });
     const pushProgress = pushDialog.getByTestId('network-progress');
-    await pushProgress.getByText('Connecting or waiting for Git output…', { exact: true }).waitFor();
+    await pushProgress
+      .getByText('Connecting or waiting for Git output…', { exact: true })
+      .waitFor();
     assert.equal(await pushDialog.getByRole('progressbar').count(), 0);
     assert.equal(await pushDialog.locator('.feedback-spinner').count(), 1);
-    const pushAnimation = await pushDialog.locator('.feedback-spinner').evaluateHandle(node => node.getAnimations()[0]);
-    const spinnerStyle = await pushDialog.locator('.feedback-spinner').evaluate(node => {
+    const pushAnimation = await pushDialog
+      .locator('.feedback-spinner')
+      .evaluateHandle((node) => node.getAnimations()[0]);
+    const spinnerStyle = await pushDialog.locator('.feedback-spinner').evaluate((node) => {
       const style = getComputedStyle(node);
-      return { name: style.animationName, duration: style.animationDuration, timing: style.animationTimingFunction, iterations: style.animationIterationCount, size: style.fontSize, color: style.color };
+      return {
+        name: style.animationName,
+        duration: style.animationDuration,
+        timing: style.animationTimingFunction,
+        iterations: style.animationIterationCount,
+        size: style.fontSize,
+        color: style.color,
+      };
     });
     assert.equal(spinnerStyle.name, 'feedback-spin');
     assert.equal(spinnerStyle.timing, 'linear');
     assert.equal(spinnerStyle.iterations, 'infinite');
-    await page.evaluate(() => window.__feedbackFixture.progress({ phase: 'sending', percent: 68, completed: 204, total: 300, transferred: '42.6 MiB', speed: '1.8 MiB/s' }));
+    await page.evaluate(() =>
+      window.__feedbackFixture.progress({
+        phase: 'sending',
+        percent: 68,
+        completed: 204,
+        total: 300,
+        transferred: '42.6 MiB',
+        speed: '1.8 MiB/s',
+      }),
+    );
     await pushProgress.getByText('Objects: 204 / 300', { exact: true }).waitFor();
     await pushProgress.getByText('Speed: 1.8 MiB/s', { exact: true }).waitFor();
     await pushProgress.getByText('Sending objects · 68%', { exact: true }).waitFor();
-    await page.evaluate(() => window.__feedbackFixture.progress({ phase: 'sending', percent: 99 }, 'old-request'));
-    assert.equal(await pushProgress.getByText('Sending objects · 68%', { exact: true }).count(), 1, 'A late request must not replace current progress');
-    await page.evaluate(() => window.__feedbackFixture.progress({ phase: 'waiting', transferred: '60.0 MiB', lastOutputAt: Date.now() - 45000 }));
+    await page.evaluate(() =>
+      window.__feedbackFixture.progress({ phase: 'sending', percent: 99 }, 'old-request'),
+    );
+    assert.equal(
+      await pushProgress.getByText('Sending objects · 68%', { exact: true }).count(),
+      1,
+      'A late request must not replace current progress',
+    );
+    await page.evaluate(() =>
+      window.__feedbackFixture.progress({
+        phase: 'waiting',
+        transferred: '60.0 MiB',
+        lastOutputAt: Date.now() - 45000,
+      }),
+    );
     await pushProgress.getByText('Waiting for remote confirmation…', { exact: true }).waitFor();
-    assert.equal(await pushDialog.getByRole('progressbar').count(), 0, 'Waiting uses the same circle without a simulated progress bar');
-    assert.equal(await pushAnimation.evaluate(animation => animation.playState), 'running', 'Phase updates keep the original circle animation running');
+    assert.equal(
+      await pushDialog.getByRole('progressbar').count(),
+      0,
+      'Waiting uses the same circle without a simulated progress bar',
+    );
+    assert.equal(
+      await pushAnimation.evaluate((animation) => animation.playState),
+      'running',
+      'Phase updates keep the original circle animation running',
+    );
     await pushAnimation.dispose();
     await pushProgress.getByText(/No new Git output for/).waitFor();
     await pushProgress.getByRole('button', { name: 'Show Log', exact: true }).click();
-    await page.waitForFunction(() => window.__feedbackFixture.calls.some(call => call.method === 'showLog'));
+    await page.waitForFunction(() =>
+      window.__feedbackFixture.calls.some((call) => call.method === 'showLog'),
+    );
     await pushDialog.screenshot({ path: 'artifacts/push-progress-preview.png' });
     await page.getByRole('button', { name: 'Minimize progress', exact: true }).click();
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
     await bar.getByText('Waiting for remote confirmation…', { exact: true }).waitFor();
     assert.equal(await bar.locator('.feedback-spinner').count(), 1);
     assert.equal(await bar.getByRole('progressbar').count(), 0);
-    assert.equal(await page.locator('.workspace').evaluate(node => node.inert), false);
+    assert.equal(await page.locator('.workspace').evaluate((node) => node.inert), false);
     await page.screenshot({ path: 'artifacts/network-progress-preview.png' });
     await page.evaluate(() => window.__feedbackFixture.complete());
     await bar.getByText('Push completed', { exact: true }).waitFor();
     assert.equal(await bar.locator('.feedback-spinner').count(), 0);
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
-    await page.locator('.toolbar').getByRole('button', { name: 'Refresh current repository status and history', exact: true }).click();
+    await page
+      .locator('.toolbar')
+      .getByRole('button', { name: 'Refresh current repository status and history', exact: true })
+      .click();
     await bar.getByText('Push completed', { exact: true }).waitFor();
     await bar.getByRole('button', { name: 'Dismiss notification' }).click();
     await bar.waitFor({ state: 'hidden' });
     await pull.click();
-    await page.getByRole('dialog', { name: 'Pull', exact: true }).getByRole('button', { name: 'Pull', exact: true }).click();
-    const pullProgress = page.getByTestId('operation-progress'); await pullProgress.waitFor();
+    await page
+      .getByRole('dialog', { name: 'Pull', exact: true })
+      .getByRole('button', { name: 'Pull', exact: true })
+      .click();
+    const pullProgress = page.getByTestId('operation-progress');
+    await pullProgress.waitFor();
     assert.equal(await pullProgress.locator('.feedback-spinner').count(), 1);
     assert.equal(await pullProgress.getByRole('progressbar').count(), 0);
-    assert.deepEqual(await pullProgress.locator('.feedback-spinner').evaluate(node => {
-      const style = getComputedStyle(node);
-      return { name: style.animationName, duration: style.animationDuration, timing: style.animationTimingFunction, iterations: style.animationIterationCount, size: style.fontSize, color: style.color };
-    }), spinnerStyle, 'Push and Pull share the same circle and rotation style');
-    await page.evaluate(() => window.__feedbackFixture.progress({ phase: 'receiving', percent: 80, completed: 8, total: 10, transferred: '10.0 MiB', speed: '2.0 MiB/s' }));
+    assert.deepEqual(
+      await pullProgress.locator('.feedback-spinner').evaluate((node) => {
+        const style = getComputedStyle(node);
+        return {
+          name: style.animationName,
+          duration: style.animationDuration,
+          timing: style.animationTimingFunction,
+          iterations: style.animationIterationCount,
+          size: style.fontSize,
+          color: style.color,
+        };
+      }),
+      spinnerStyle,
+      'Push and Pull share the same circle and rotation style',
+    );
+    await page.evaluate(() =>
+      window.__feedbackFixture.progress({
+        phase: 'receiving',
+        percent: 80,
+        completed: 8,
+        total: 10,
+        transferred: '10.0 MiB',
+        speed: '2.0 MiB/s',
+      }),
+    );
     await pullProgress.getByText('Receiving objects · 80%', { exact: true }).waitFor();
-    await pullProgress.getByRole('dialog').screenshot({ path: 'artifacts/pull-progress-preview.png' });
-    assert.equal(await page.locator('.workspace').evaluate(node => node.inert), true);
-    await page.keyboard.press('Tab'); await page.keyboard.press('Enter');
+    await pullProgress
+      .getByRole('dialog')
+      .screenshot({ path: 'artifacts/pull-progress-preview.png' });
+    assert.equal(await page.locator('.workspace').evaluate((node) => node.inert), true);
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Enter');
     assert.equal(await pullProgress.isVisible(), true, 'Log access must not unlock Pull');
     await page.evaluate(() => window.__feedbackFixture.progress({ phase: 'integrating' }));
     await pullProgress.getByText('Merging or rebasing…', { exact: true }).waitFor();
@@ -183,141 +511,364 @@ export async function verifyFeedback(browser, url) {
     await bar.getByRole('button', { name: 'Dismiss notification' }).click();
     await toolbar.getByRole('button', { name: 'Fetch', exact: true }).click();
     await bar.getByText('Fetch in progress…', { exact: true }).waitFor();
-    assert.equal(await page.getByRole('dialog').count(), 0, 'Toolbar Fetch keeps its existing background view');
+    assert.equal(
+      await page.getByRole('dialog').count(),
+      0,
+      'Toolbar Fetch keeps its existing background view',
+    );
     await page.evaluate(() => window.__feedbackFixture.progress({ phase: 'refreshing' }));
     await bar.getByText('Updating the workbench…', { exact: true }).waitFor();
     assert.equal(await bar.locator('.feedback-spinner').count(), 1);
     assert.equal(await bar.getByRole('progressbar').count(), 0);
-    assert.equal(await page.locator('.workspace').evaluate(node => node.inert), false);
+    assert.equal(await page.locator('.workspace').evaluate((node) => node.inert), false);
     await bar.screenshot({ path: 'artifacts/fetch-progress-preview.png' });
     await page.evaluate(() => window.__feedbackFixture.complete());
     await bar.getByText('Fetch completed', { exact: true }).waitFor();
     assert.equal(await bar.locator('.feedback-spinner').count(), 0);
     await bar.getByRole('button', { name: 'Dismiss notification' }).click();
     await push();
-    assert.equal(await page.getByTestId('operation-progress').count(),0,'Push must remain nonblocking');
-    await page.evaluate(()=>window.__feedbackFixture.complete(undefined,{kind:'push',outcome:'success',remote:'origin',localBranch:'main',output:'To github\nnew branch release',destinations:[{label:'github.com/acme/repo',repository:{url:'https://github.com/acme/repo',label:'github.com/acme/repo',provider:'github'},refs:[{kind:'branch',name:'release',status:'published',url:'https://github.com/acme/repo/tree/release'}]}]}));
-    await page.getByRole('dialog').waitFor({state:'hidden'});
-    const publication=page.getByTestId('push-result');
-    assert.equal(await publication.count(),0,'Remote links and output must start collapsed');
-    assert.ok((await bar.boundingBox()).height<=36,'Collapsed feedback must occupy one compact row');
-    await bar.getByRole('button',{name:'Operation details',exact:true}).click();
-    await publication.getByText('Published',{exact:true}).waitFor();
-    assert.match(await publication.locator('pre').innerText(),/new branch release/);
-    await page.screenshot({path:'artifacts/push-result-preview.png'});
-    await publication.getByRole('button',{name:'Copy remote link',exact:true}).click();
-    await page.waitForFunction(()=>window.__feedbackFixture.calls.some(call=>call.method==='copyText'&&call.payload.text==='https://github.com/acme/repo/tree/release'));
-    await publication.getByRole('button',{name:'Open remote branch or tag',exact:true}).click();
-    await page.waitForFunction(()=>window.__feedbackFixture.calls.some(call=>call.method==='openExternal'&&call.payload.url==='https://github.com/acme/repo/tree/release'));
-    const createRequest=publication.getByRole('button',{name:'Create PR on GitHub',exact:true});
-    await page.evaluate(()=>{window.__feedbackFixture.holdRemoteLinks=true;});
-    await createRequest.click(); await createRequest.click();
-    await page.waitForFunction(()=>window.__feedbackFixture.pendingRemoteLinks.length===2);
-    await page.evaluate(()=>window.__feedbackFixture.completeRemoteLinks(1,{repositories:[{url:'https://github.com/new/repo',label:'github.com/new/repo',provider:'github'}],defaultBranch:'trunk'}));
-    const newestRequest=page.getByRole('dialog',{name:'Create PR on GitHub',exact:true});await newestRequest.waitFor();
-    assert.equal(await newestRequest.getByLabel('Target branch (blank uses website default)').inputValue(),'trunk');
-    await newestRequest.getByRole('button',{name:'Cancel',exact:true}).click();
-    await page.evaluate(()=>window.__feedbackFixture.completeRemoteLinks(0,{repositories:[{url:'https://github.com/old/repo',label:'github.com/old/repo',provider:'github'}],defaultBranch:'main'}));
-    await page.waitForTimeout(20);
-    assert.equal(await page.getByRole('dialog',{name:/Create (?:PR|MR) on/}).count(),0,'Closing the newest request invalidates an older late response');
-    await page.evaluate(()=>{const fixture=window.__feedbackFixture;fixture.holdRemoteLinks=false;fixture.pendingRemoteLinks=[];});
+    assert.equal(
+      await page.getByTestId('operation-progress').count(),
+      0,
+      'Push must remain nonblocking',
+    );
+    await page.evaluate(() =>
+      window.__feedbackFixture.complete(undefined, {
+        kind: 'push',
+        outcome: 'success',
+        remote: 'origin',
+        localBranch: 'main',
+        output: 'To github\nnew branch release',
+        destinations: [
+          {
+            label: 'github.com/acme/repo',
+            repository: {
+              url: 'https://github.com/acme/repo',
+              label: 'github.com/acme/repo',
+              provider: 'github',
+            },
+            refs: [
+              {
+                kind: 'branch',
+                name: 'release',
+                status: 'published',
+                url: 'https://github.com/acme/repo/tree/release',
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    await page.getByRole('dialog').waitFor({ state: 'hidden' });
+    const publication = page.getByTestId('push-result');
+    assert.equal(await publication.count(), 0, 'Remote links and output must start collapsed');
+    assert.ok(
+      (await bar.boundingBox()).height <= 36,
+      'Collapsed feedback must occupy one compact row',
+    );
+    await bar.getByRole('button', { name: 'Operation details', exact: true }).click();
+    await publication.getByText('Published', { exact: true }).waitFor();
+    assert.match(await publication.locator('pre').innerText(), /new branch release/);
+    await page.screenshot({ path: 'artifacts/push-result-preview.png' });
+    await publication.getByRole('button', { name: 'Copy remote link', exact: true }).click();
+    await page.waitForFunction(() =>
+      window.__feedbackFixture.calls.some(
+        (call) =>
+          call.method === 'copyText' &&
+          call.payload.text === 'https://github.com/acme/repo/tree/release',
+      ),
+    );
+    await publication
+      .getByRole('button', { name: 'Open remote branch or tag', exact: true })
+      .click();
+    await page.waitForFunction(() =>
+      window.__feedbackFixture.calls.some(
+        (call) =>
+          call.method === 'openExternal' &&
+          call.payload.url === 'https://github.com/acme/repo/tree/release',
+      ),
+    );
+    const createRequest = publication.getByRole('button', {
+      name: 'Create PR on GitHub',
+      exact: true,
+    });
+    await page.evaluate(() => {
+      window.__feedbackFixture.holdRemoteLinks = true;
+    });
     await createRequest.click();
-    const request=page.getByRole('dialog',{name:'Create PR on GitHub',exact:true});await request.waitFor();
+    await createRequest.click();
+    await page.waitForFunction(() => window.__feedbackFixture.pendingRemoteLinks.length === 2);
+    await page.evaluate(() =>
+      window.__feedbackFixture.completeRemoteLinks(1, {
+        repositories: [
+          { url: 'https://github.com/new/repo', label: 'github.com/new/repo', provider: 'github' },
+        ],
+        defaultBranch: 'trunk',
+      }),
+    );
+    const newestRequest = page.getByRole('dialog', { name: 'Create PR on GitHub', exact: true });
+    await newestRequest.waitFor();
+    assert.equal(
+      await newestRequest.getByLabel('Target branch (blank uses website default)').inputValue(),
+      'trunk',
+    );
+    await newestRequest.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await page.evaluate(() =>
+      window.__feedbackFixture.completeRemoteLinks(0, {
+        repositories: [
+          { url: 'https://github.com/old/repo', label: 'github.com/old/repo', provider: 'github' },
+        ],
+        defaultBranch: 'main',
+      }),
+    );
+    await page.waitForTimeout(20);
+    assert.equal(
+      await page.getByRole('dialog', { name: /Create (?:PR|MR) on/ }).count(),
+      0,
+      'Closing the newest request invalidates an older late response',
+    );
+    await page.evaluate(() => {
+      const fixture = window.__feedbackFixture;
+      fixture.holdRemoteLinks = false;
+      fixture.pendingRemoteLinks = [];
+    });
+    await createRequest.click();
+    const request = page.getByRole('dialog', { name: 'Create PR on GitHub', exact: true });
+    await request.waitFor();
     await request.getByLabel('Target repository URL').fill('https://github.com/upstream/repo');
     await request.getByLabel('Target branch (blank uses website default)').fill('release/1.x');
-    await request.getByRole('button',{name:'Continue on website',exact:true}).click();
-    await page.waitForFunction(()=>window.__feedbackFixture.calls.some(call=>call.method==='openExternal'&&call.payload.url==='https://github.com/upstream/repo/compare/release%2F1.x...acme%3Arelease?expand=1'));
-    await request.waitFor({state:'hidden'});
-    await bar.getByText('Push completed',{exact:true}).waitFor();
+    await request.getByRole('button', { name: 'Continue on website', exact: true }).click();
+    await page.waitForFunction(() =>
+      window.__feedbackFixture.calls.some(
+        (call) =>
+          call.method === 'openExternal' &&
+          call.payload.url ===
+            'https://github.com/upstream/repo/compare/release%2F1.x...acme%3Arelease?expand=1',
+      ),
+    );
+    await request.waitFor({ state: 'hidden' });
+    await bar.getByText('Push completed', { exact: true }).waitFor();
     await push();
-    await page.evaluate(() => window.__feedbackFixture.complete('remote: permission denied\nfatal: could not push to origin'));
+    await page.evaluate(() =>
+      window.__feedbackFixture.complete(
+        'remote: permission denied\nfatal: could not push to origin',
+      ),
+    );
     await bar.getByText('Push failed', { exact: true }).waitFor();
     await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
     assert.equal(await bar.getAttribute('role'), 'alert');
     await bar.getByText('remote: permission denied', { exact: true }).waitFor();
-    assert.equal(await bar.locator('pre').count(),0,'Error summary must be visible before expanding full output');
-    await bar.getByRole('button',{name:'Operation details',exact:true}).click();
+    assert.equal(
+      await bar.locator('pre').count(),
+      0,
+      'Error summary must be visible before expanding full output',
+    );
+    await bar.getByRole('button', { name: 'Operation details', exact: true }).click();
     assert.match(await bar.locator('pre').innerText(), /fatal: could not push/);
     await bar.getByRole('button', { name: 'Show Log', exact: true }).click();
-    await page.waitForFunction(() => window.__feedbackFixture.calls.some(call => call.method === 'showLog'));
-    await page.getByTestId('history').locator('[data-oid]').first().click({button:'right'});
-    await page.getByRole('menuitem',{name:'Merge…',exact:true}).click();
-    await page.getByRole('dialog').getByRole('button',{name:'Merge',exact:true}).click();
-    await page.waitForFunction(()=>window.__feedbackFixture.pending?.payload.type==='merge');
+    await page.waitForFunction(() =>
+      window.__feedbackFixture.calls.some((call) => call.method === 'showLog'),
+    );
+    await page.getByTestId('history').locator('[data-oid]').first().click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Merge…', exact: true }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Merge', exact: true }).click();
+    await page.waitForFunction(() => window.__feedbackFixture.pending?.payload.type === 'merge');
     await page.evaluate(() => {
       const fixture = window.__feedbackFixture;
-      fixture.snapshot.operation = { kind: 'merge', conflicts: 2, canContinue: false, canAbort: true, canSkip: false, originalHead:'a'.repeat(40) };
-      fixture.snapshot.changes = ['src/features/auth/login.ts', 'webview/Details.tsx'].map(path => ({ path, indexStatus: 'U', worktreeStatus: 'U', conflict: true, untracked: false }));
+      fixture.snapshot.operation = {
+        kind: 'merge',
+        conflicts: 2,
+        canContinue: false,
+        canAbort: true,
+        canSkip: false,
+        originalHead: 'a'.repeat(40),
+      };
+      fixture.snapshot.changes = ['src/features/auth/login.ts', 'webview/Details.tsx'].map(
+        (path) => ({
+          path,
+          indexStatus: 'U',
+          worktreeStatus: 'U',
+          conflict: true,
+          untracked: false,
+        }),
+      );
       fixture.complete('CONFLICT: edit and stage the result');
     });
-    const paused=page.getByRole('dialog',{name:'merge paused',exact:true});
+    const paused = page.getByRole('dialog', { name: 'merge paused', exact: true });
     await paused.waitFor();
-    assert.equal(await paused.getByRole('button',{name:'Merge',exact:true}).count(),0);
-    assert.equal(await paused.getByRole('button',{name:'Cancel',exact:true}).count(),0);
-    await paused.getByRole('button',{name:'Abort merge…',exact:true}).waitFor();
-    await paused.getByRole('button',{name:'Close This Window',exact:true}).click();
-    assert.equal(await page.evaluate(()=>window.__feedbackFixture.calls.filter(call=>call.payload?.type==='operation.abort').length),0);
+    assert.equal(await paused.getByRole('button', { name: 'Merge', exact: true }).count(), 0);
+    assert.equal(await paused.getByRole('button', { name: 'Cancel', exact: true }).count(), 0);
+    await paused.getByRole('button', { name: 'Abort merge…', exact: true }).waitFor();
+    await paused.getByRole('button', { name: 'Close This Window', exact: true }).click();
+    assert.equal(
+      await page.evaluate(
+        () =>
+          window.__feedbackFixture.calls.filter((call) => call.payload?.type === 'operation.abort')
+            .length,
+      ),
+      0,
+    );
     const operation = page.getByTestId('operation-notice');
     await operation.getByText('Merge paused', { exact: true }).waitFor();
     await operation.getByText('2 conflicts', { exact: true }).waitFor();
-    assert.equal(await operation.getByRole('button', { name: 'Continue', exact: true }).isDisabled(), true);
-    await operation.getByText('Resolve and Stage conflicting files before Continue.', { exact: true }).waitFor();
+    assert.equal(
+      await operation.getByRole('button', { name: 'Continue', exact: true }).isDisabled(),
+      true,
+    );
+    await operation
+      .getByText('Resolve and Stage conflicting files before Continue.', { exact: true })
+      .waitFor();
     await operation.getByRole('button', { name: 'View Conflicts', exact: true }).click();
-    await page.waitForFunction(() => window.__feedbackFixture.calls.some(call => call.method === 'diffPreview' && call.payload.area === 'conflict' && call.payload.path === 'src/features/auth/login.ts'));
-    await page.getByTestId('details').locator('.change-group').first().getByText('./src/features/auth', { exact: true }).waitFor();
+    await page.waitForFunction(() =>
+      window.__feedbackFixture.calls.some(
+        (call) =>
+          call.method === 'diffPreview' &&
+          call.payload.area === 'conflict' &&
+          call.payload.path === 'src/features/auth/login.ts',
+      ),
+    );
+    await page
+      .getByTestId('details')
+      .locator('.change-group')
+      .first()
+      .getByText('./src/features/auth', { exact: true })
+      .waitFor();
     await operation.getByRole('button', { name: 'Abort Merge…', exact: true }).click();
-    await page.getByRole('dialog').getByText('a'.repeat(40),{exact:true}).waitFor();
+    await page.getByRole('dialog').getByText('a'.repeat(40), { exact: true }).waitFor();
     await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
-    const conflictGroup=page.getByTestId('details').locator('.change-group').first();
-    await conflictGroup.getByText('This does not choose the correct content or verify your resolution.',{exact:false}).waitFor();
-    await conflictGroup.getByRole('button',{name:/Manually handled: Mark & Stage/}).click();
-    await page.waitForFunction(()=>window.__feedbackFixture.pending?.payload.type==='resolve-and-stage');
+    const conflictGroup = page.getByTestId('details').locator('.change-group').first();
+    await conflictGroup
+      .getByText('This does not choose the correct content or verify your resolution.', {
+        exact: false,
+      })
+      .waitFor();
+    await conflictGroup.getByRole('button', { name: /Manually handled: Mark & Stage/ }).click();
+    await page.waitForFunction(
+      () => window.__feedbackFixture.pending?.payload.type === 'resolve-and-stage',
+    );
     await page.evaluate(() => {
       const fixture = window.__feedbackFixture;
-      fixture.snapshot.operation = { kind: 'merge', conflicts: 0, canContinue: true, canAbort: true, canSkip: false };
-      fixture.snapshot.changes = fixture.snapshot.changes.map(file => ({ ...file, indexStatus: 'M', worktreeStatus: ' ', conflict: false }));
+      fixture.snapshot.operation = {
+        kind: 'merge',
+        conflicts: 0,
+        canContinue: true,
+        canAbort: true,
+        canSkip: false,
+      };
+      fixture.snapshot.changes = fixture.snapshot.changes.map((file) => ({
+        ...file,
+        indexStatus: 'M',
+        worktreeStatus: ' ',
+        conflict: false,
+      }));
       fixture.complete();
     });
     await operation.getByText('Awaiting result review', { exact: true }).waitFor();
-    assert.equal(await operation.getByText('Conflicts resolved.',{exact:false}).count(),0);
-    await bar.getByText('Marked and staged; inspect the result before continuing.',{exact:true}).waitFor();
-    await operation.getByRole('button',{name:'Review Staged Result',exact:true}).waitFor();
-    assert.equal(await operation.getByRole('button', { name: 'Continue', exact: true }).isEnabled(), true);
+    assert.equal(await operation.getByText('Conflicts resolved.', { exact: false }).count(), 0);
+    await bar
+      .getByText('Marked and staged; inspect the result before continuing.', { exact: true })
+      .waitFor();
+    await operation.getByRole('button', { name: 'Review Staged Result', exact: true }).waitFor();
+    assert.equal(
+      await operation.getByRole('button', { name: 'Continue', exact: true }).isEnabled(),
+      true,
+    );
     await operation.getByRole('button', { name: 'Continue', exact: true }).click();
-    let review=page.getByRole('dialog',{name:'Inspect Staged Result',exact:true});
-    await review.getByText('Possible markers at lines: 1, 3, 5',{exact:true}).first().waitFor();
-    assert.equal(await review.getByRole('button',{name:'Continue Anyway',exact:true}).isDisabled(),true);
-    assert.equal(await page.evaluate(()=>window.__feedbackFixture.pending),undefined);
-    await review.getByRole('button',{name:'Return to Review',exact:true}).click();
-    await page.waitForFunction(()=>window.__feedbackFixture.calls.some(call=>call.method==='diffPreview'&&call.payload.area==='staged'));
-    await operation.getByRole('button',{name:'Continue',exact:true}).click();
-    review=page.getByRole('dialog',{name:'Inspect Staged Result',exact:true});
+    let review = page.getByRole('dialog', { name: 'Inspect Staged Result', exact: true });
+    await review.getByText('Possible markers at lines: 1, 3, 5', { exact: true }).first().waitFor();
+    assert.equal(
+      await review.getByRole('button', { name: 'Continue Anyway', exact: true }).isDisabled(),
+      true,
+    );
+    assert.equal(await page.evaluate(() => window.__feedbackFixture.pending), undefined);
+    await review.getByRole('button', { name: 'Return to Review', exact: true }).click();
+    await page.waitForFunction(() =>
+      window.__feedbackFixture.calls.some(
+        (call) => call.method === 'diffPreview' && call.payload.area === 'staged',
+      ),
+    );
+    await operation.getByRole('button', { name: 'Continue', exact: true }).click();
+    review = page.getByRole('dialog', { name: 'Inspect Staged Result', exact: true });
     await review.getByRole('checkbox').check();
-    await review.getByRole('button',{name:'Continue Anyway',exact:true}).click();
-    await page.waitForFunction(() => window.__feedbackFixture.pending?.payload.type === 'operation.continue');
-    assert.equal(await page.evaluate(()=>window.__feedbackFixture.pending.payload.reviewToken),'reviewed-index');
-    await page.evaluate(() => { window.__feedbackFixture.snapshot.operation = { conflicts: 0, canContinue: false, canSkip: false, canAbort: false }; window.__feedbackFixture.complete(); });
+    await review.getByRole('button', { name: 'Continue Anyway', exact: true }).click();
+    await page.waitForFunction(
+      () => window.__feedbackFixture.pending?.payload.type === 'operation.continue',
+    );
+    assert.equal(
+      await page.evaluate(() => window.__feedbackFixture.pending.payload.reviewToken),
+      'reviewed-index',
+    );
+    await page.evaluate(() => {
+      window.__feedbackFixture.snapshot.operation = {
+        conflicts: 0,
+        canContinue: false,
+        canSkip: false,
+        canAbort: false,
+      };
+      window.__feedbackFixture.complete();
+    });
     await operation.waitFor({ state: 'hidden' });
     // Ordinary Commit during an active operation uses the same review boundary.
-    await page.evaluate(()=>{const fixture=window.__feedbackFixture;fixture.cleanReview=true;fixture.snapshot.operation={kind:'merge',conflicts:0,canContinue:true,canAbort:true,canSkip:false};window.postMessage({type:'changed',repoId:'feedback'},'*');});
+    await page.evaluate(() => {
+      const fixture = window.__feedbackFixture;
+      fixture.cleanReview = true;
+      fixture.snapshot.operation = {
+        kind: 'merge',
+        conflicts: 0,
+        canContinue: true,
+        canAbort: true,
+        canSkip: false,
+      };
+      window.postMessage({ type: 'changed', repoId: 'feedback' }, '*');
+    });
     await operation.waitFor();
     await page.locator('.toolbar .commit-trigger').click();
-    await page.getByLabel('Commit message',{exact:true}).fill('Reviewed merge');
-    await page.getByRole('dialog',{name:'Commit',exact:true}).getByRole('button',{name:'Commit',exact:true}).click();
-    review=page.getByRole('dialog',{name:'Inspect Staged Result',exact:true});
-    await review.getByText('This does not verify content correctness.',{exact:false}).waitFor();
-    assert.equal(await review.getByRole('checkbox').count(),0);
-    await review.getByRole('button',{name:'Confirm & Continue',exact:true}).click();
-    await page.waitForFunction(()=>window.__feedbackFixture.pending?.payload.type==='commit');
-    await page.evaluate(()=>{const fixture=window.__feedbackFixture;fixture.snapshot.head='b'.repeat(40);fixture.snapshot.operation={conflicts:0,canContinue:false,canAbort:false,canSkip:false};fixture.snapshot.changes=[{path:'notes.txt',indexStatus:'?',worktreeStatus:'?',conflict:false,untracked:true}];fixture.complete();});
+    await page.getByLabel('Commit message', { exact: true }).fill('Reviewed merge');
+    await page
+      .getByRole('dialog', { name: 'Commit', exact: true })
+      .getByRole('button', { name: 'Commit', exact: true })
+      .click();
+    review = page.getByRole('dialog', { name: 'Inspect Staged Result', exact: true });
+    await review.getByText('This does not verify content correctness.', { exact: false }).waitFor();
+    assert.equal(await review.getByRole('checkbox').count(), 0);
+    await review.getByRole('button', { name: 'Confirm & Continue', exact: true }).click();
+    await page.waitForFunction(() => window.__feedbackFixture.pending?.payload.type === 'commit');
+    await page.evaluate(() => {
+      const fixture = window.__feedbackFixture;
+      fixture.snapshot.head = 'b'.repeat(40);
+      fixture.snapshot.operation = {
+        conflicts: 0,
+        canContinue: false,
+        canAbort: false,
+        canSkip: false,
+      };
+      fixture.snapshot.changes = [
+        {
+          path: 'notes.txt',
+          indexStatus: '?',
+          worktreeStatus: '?',
+          conflict: false,
+          untracked: true,
+        },
+      ];
+      fixture.complete();
+    });
     await page.locator('.toolbar .commit-trigger').click();
-    assert.equal(await page.getByLabel('Commit message',{exact:true}).inputValue(),'');
+    assert.equal(await page.getByLabel('Commit message', { exact: true }).inputValue(), '');
     await page.keyboard.press('Escape');
-    await bar.getByText(`Commit ${'b'.repeat(8)} created`,{exact:true}).waitFor();
-    await bar.getByText('2 files committed · 1 change remaining',{exact:true}).waitFor();
-    await bar.getByRole('button',{name:'View Commit',exact:true}).click();
-    await page.waitForFunction(()=>window.__feedbackFixture.calls.some(call=>call.method==='details'&&call.payload.oid==='b'.repeat(40)));
+    await bar.getByText(`Commit ${'b'.repeat(8)} created`, { exact: true }).waitFor();
+    await bar.getByText('2 files committed · 1 change remaining', { exact: true }).waitFor();
+    await bar.getByRole('button', { name: 'View Commit', exact: true }).click();
+    await page.waitForFunction(() =>
+      window.__feedbackFixture.calls.some(
+        (call) => call.method === 'details' && call.payload.oid === 'b'.repeat(40),
+      ),
+    );
     assert.deepEqual(errors, []);
-    console.log('ALWAYGIT_FEEDBACK_UI_TESTS_PASSED: frontend Checkout lock, Push links and fork PR target, Commit result summary and View Commit, paused Merge exit/abort, manual staging, staged marker review, return, explicit override and Commit guard');
-  } finally { await page.close(); }
+    console.log(
+      'ALWAYGIT_FEEDBACK_UI_TESTS_PASSED: frontend Checkout lock, Push links and fork PR target, Commit result summary and View Commit, paused Merge exit/abort, manual staging, staged marker review, return, explicit override and Commit guard',
+    );
+  } finally {
+    await page.close();
+  }
 }

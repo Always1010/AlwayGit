@@ -14,7 +14,12 @@ export interface LocalCacheEntry {
   invalid?: boolean;
 }
 export const localCacheClearSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('repositories'), repoIds: z.array(z.string().min(1).max(4096)).min(1).max(10000) }).strict(),
+  z
+    .object({
+      kind: z.literal('repositories'),
+      repoIds: z.array(z.string().min(1).max(4096)).min(1).max(10000),
+    })
+    .strict(),
   z.object({ kind: z.literal('all') }).strict(),
 ]);
 export type LocalCacheClear = z.infer<typeof localCacheClearSchema>;

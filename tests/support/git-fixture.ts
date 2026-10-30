@@ -15,7 +15,12 @@ export async function git(root: string, ...args: string[]): Promise<string> {
   return result.stdout.trim();
 }
 
-export async function commitFile(root: string, filename: string, content: string | Buffer, message = filename) {
+export async function commitFile(
+  root: string,
+  filename: string,
+  content: string | Buffer,
+  message = filename,
+) {
   await writeFile(path.join(root, filename), content);
   await git(root, 'add', '--', filename);
   await git(root, 'commit', '-m', message);
@@ -23,7 +28,10 @@ export async function commitFile(root: string, filename: string, content: string
 }
 
 /** Each suite owns its temporary roots; cleanup never follows an arbitrary path. */
-export function gitFixtures(prefix: string, identity = { name: 'Test User', email: 'test@example.com' }) {
+export function gitFixtures(
+  prefix: string,
+  identity = { name: 'Test User', email: 'test@example.com' },
+) {
   if (!/^alwaygit-[a-z-]+-$/.test(prefix)) throw new Error('Unsafe fixture prefix');
   const roots: string[] = [];
   return {
@@ -40,7 +48,10 @@ export function gitFixtures(prefix: string, identity = { name: 'Test User', emai
     async cleanup() {
       for (const root of roots.splice(0)) {
         const absolute = path.resolve(root);
-        if (path.dirname(absolute) !== path.resolve(os.tmpdir()) || !path.basename(absolute).startsWith(prefix)) {
+        if (
+          path.dirname(absolute) !== path.resolve(os.tmpdir()) ||
+          !path.basename(absolute).startsWith(prefix)
+        ) {
           throw new Error('Unsafe cleanup target');
         }
         await rm(absolute, { recursive: true, force: true, maxRetries: 5 });
