@@ -2482,7 +2482,7 @@ describe('repository UI consistency', () => {
       selectedOid: 'very-old',
     });
     expect(store.getState().commits).toHaveLength(20);
-    expect(store.getState().notice).toContain('Load More');
+    expect(store.getState().notice).toContain('Scroll to the bottom');
   });
   it('stops locating when a new search replaces the pending history request', async () => {
     await store.getState().selectRepository('a');

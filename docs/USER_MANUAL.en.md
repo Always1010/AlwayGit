@@ -331,7 +331,7 @@ Commits appear newest first. An ordinary Merge continues along the receiving bra
 
 1. Enter a message keyword in History. The query runs after typing pauses. Open advanced history search with the adjacent filter icon.
 2. Optionally enter an author name or email, UTC committer date range, repository-relative file or directory, added or removed single-line code, or Commit ID, then select **Apply filters**. Advanced fields remain drafts until applied; applied fields, the message keyword, and the selected refs combine with AND.
-3. Review the match count; `+` means more matching commits are available. Queries cover the entire history in the selected scope. Use Load More to continue, or the stop icon to cancel a running query. Applying changed conditions cancels the old request and clears old rows immediately.
+3. Review the match count; `+` means more matching commits are available. Queries cover the entire history in the selected scope. Scroll near the bottom to load more matching commits automatically, or use the stop icon to cancel a running query. Applying changed conditions cancels the old request and clears old rows immediately.
 4. Select a match to inspect its details. Locate in Full History clears message, advanced, and file-history conditions before locating the commit within the selected refs. Clear advanced filters clears only advanced fields.
 
 **Result:** Conditions match the same commit, and a Merge matching several parents appears once. Conditions persist per repository view and can be restored with Back; existing saved sessions remain compatible. Clearing every search condition restores Graph and the saved column widths.

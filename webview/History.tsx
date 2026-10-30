@@ -940,15 +940,6 @@ ${commit.oid}`}
           )}
         </div>
       </div>
-      {state.hasMore && (
-        <Button
-          className="load-more"
-          disabled={!canAppend || state.historyLoading || !!state.locatingOid}
-          onClick={() => void state.loadHistory(true)}
-        >
-          {t('history.loadMore')}
-        </Button>
-      )}
     </section>
   );
 }
