@@ -15,7 +15,6 @@ import { CommitTreeGraph } from './CommitTreeGraph';
 import type { TreeViewMode } from './treeLayout';
 import './commit-tree.css';
 import { useTreeExpansion } from './useTreeExpansion';
-import { TreeExpansionMemory } from './TreeExpansionMemory';
 import { treeDirectoryExpanded } from '../src/protocol/tree-expansion';
 
 export function CommitTree({ target: { repoId, revision, baseRevision } }: { target: CommitTreeTarget }) {
@@ -25,6 +24,24 @@ export function CommitTree({ target: { repoId, revision, baseRevision } }: { tar
   const [metadata, setMetadata] = useState<RevisionTreeCommit>(), [error, setError] = useState<string>(), [metadataError, setMetadataError] = useState<string>();
   const [query, setQuery] = useState(''), [selected, setSelected] = useState<string>();
   const memory = useTreeExpansion(repoId);
+  const [hintDismissed, setHintDismissed] = useState<boolean>(), [hintBusy, setHintBusy] = useState(true), [hintError, setHintError] = useState<string>();
+  const [hintAttempt, setHintAttempt] = useState(0), hintLive = useRef(true);
+  useEffect(() => {
+    hintLive.current = true;
+    let live = true;
+    setHintBusy(true); setHintError(undefined);
+    void rpc<boolean>('treeExpansionHintRead').then(dismissed => { if (live) setHintDismissed(dismissed); })
+      .catch(cause => { if (live) setHintError(cause instanceof Error ? cause.message : String(cause)); })
+      .finally(() => { if (live) setHintBusy(false); });
+    return () => { live = false; hintLive.current = false; };
+  }, [hintAttempt]);
+  const dismissHint = async () => {
+    if (hintBusy) return;
+    setHintBusy(true); setHintError(undefined);
+    try { await rpc<boolean>('treeExpansionHintDismiss'); if (hintLive.current) setHintDismissed(true); }
+    catch (cause) { if (hintLive.current) setHintError(cause instanceof Error ? cause.message : String(cause)); }
+    finally { if (hintLive.current) setHintBusy(false); }
+  };
   const [temporaryExpanded, setTemporaryExpanded] = useState<Set<string>>();
   const [previewOpen, setPreviewOpen] = useState(false), [expanding, setExpanding] = useState<number>();
   const [viewMode, setViewMode] = useState<TreeViewMode>('list');
@@ -71,7 +88,6 @@ export function CommitTree({ target: { repoId, revision, baseRevision } }: { tar
   const nodes = useMemo(() => snapshotNodes(entries, activeChanges?.files), [entries, activeChanges]);
   const flatNodes = useMemo(() => allSnapshotNodes(nodes), [nodes]);
   const expanded = useMemo(() => new Set(flatNodes.filter(node => node.entry.type === 'tree' && (temporaryExpanded?.has(node.entry.path) || treeDirectoryExpanded(memory.preferences, node.entry.path, entries.length))).map(node => node.id)), [flatNodes, memory.preferences, temporaryExpanded, entries.length]);
-  const directories = useMemo(() => new Set(entries.filter(entry => entry.type === 'tree').map(entry => entry.path)), [entries]);
   const rows = useMemo(() => snapshotRows(nodes, expanded, query), [nodes, expanded, query]);
   const counts = useMemo(() => snapshotCounts(entries), [entries]);
   const summary = useMemo(() => changeCounts(activeChanges?.files ?? []), [activeChanges]);
@@ -124,9 +140,12 @@ export function CommitTree({ target: { repoId, revision, baseRevision } }: { tar
       <Button className="icon-only" icon="expand-all" title={t('tree.expandAll')} aria-label={t('tree.expandAll')} disabled={!indexed || expanding !== undefined} onClick={() => void expandAll()}/><Button className="icon-only" icon="collapse-all" title={t('tree.collapseAll')} aria-label={t('tree.collapseAll')} onClick={collapse}/>
       <label className="commit-tree-changes-toggle"><input type="checkbox" checked={showChanges} disabled={!indexed} onChange={event => { stopExpansion(); setMenu(undefined); setShowChanges(event.target.checked); }}/>{t(baseRevision ? 'treeCompare.showChanges' : 'tree.showChanges')}</label>
       {showChanges && <Button className="icon-only" icon="list-selection" title={t('tree.expandChanges')} aria-label={t('tree.expandChanges')} disabled={!activeChanges} onClick={expandChanges}/>}
-      <TreeExpansionMemory preferences={memory.preferences} directories={directories} indexed={indexed} loading={memory.loading} error={memory.error} reload={memory.reload} remove={path => { stopExpansion(); setTemporaryExpanded(undefined); memory.remove(path); }} setMode={mode => { stopExpansion(); setTemporaryExpanded(undefined); memory.setMode(mode); }} reset={() => { stopExpansion(); setTemporaryExpanded(undefined); memory.reset(); }}/>
+      <span className="commit-tree-memory-info" tabIndex={0} role="img" title={t('treeMemory.info')} aria-label={t('treeMemory.info')}><Icon name="info"/></span>
       <Button className="icon-only" icon="open-preview" title={t('tree.togglePreview')} aria-label={t('tree.togglePreview')} aria-pressed={previewOpen} onClick={() => setPreviewOpen(value => !value)}/>
     </div>
+    {hintDismissed === false && <div className="commit-tree-memory-introduction"><Icon name="info"/><span>{t('treeMemory.introduction')}</span><Button className="icon-only" icon="close" title={t('treeMemory.dismissIntroduction')} aria-label={t('treeMemory.dismissIntroduction')} disabled={hintBusy} onClick={() => void dismissHint()}/></div>}
+    {hintError && <div className="revision-tree-error commit-tree-memory-error" role="alert">{t('treeMemory.hintUnavailable')} {hintError}<Button className="icon-only" icon="refresh" title={t('tree.retry')} aria-label={t('tree.retry')} disabled={hintBusy} onClick={() => hintDismissed === false ? void dismissHint() : setHintAttempt(value => value + 1)}/></div>}
+    {memory.error && <div className="revision-tree-error commit-tree-memory-error" role="alert">{t('treeMemory.unavailable')} {memory.error}<Button className="icon-only" icon="refresh" title={t('tree.retry')} aria-label={t('tree.retry')} disabled={memory.loading} onClick={memory.reload}/></div>}
     <div className="revision-tree-status" role="status">
       {indexed ? t('tree.snapshotCount', counts) : t(loading ? 'tree.indexing' : 'tree.indexIncomplete')}{query && ` · ${t('tree.matches', { count: rows.length })}`}
       {loading && <Button className="icon-only" icon="close" title={t('tree.cancelLoading')} aria-label={t('tree.cancelLoading')} onClick={() => indexController.current?.abort()}/>}

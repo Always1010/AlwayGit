@@ -1,5 +1,6 @@
 import { TreeExpansionMemory } from '../application/tree-expansion-persistence';
-import { treeExpansionPatchSchema } from '../protocol/tree-expansion';
+import { defaultTreeExpansion, treeExpansionPatchSchema } from '../protocol/tree-expansion';
+import { localCacheClearSchema } from '../protocol/local-cache';
 import { prepareRebaseSchema } from '../protocol/interactive-rebase';
 import { message, MessageError } from '../i18n';
 import { translate, type MessageKey, type MessageArgs } from '../i18n/index';
@@ -97,6 +98,7 @@ export class Workbench implements vscode.Disposable {
   get receivedWebviewRequests(): number { return this.requestCount; }
   private readonly interval: ReturnType<typeof setInterval>;
   private initialScan?: Promise<void>;
+  private repositoriesInitialized = false;
   private preferenceMigration?: Promise<void>;
   private preferenceWrites: Promise<unknown> = Promise.resolve();
   private readonly treeExpansionMemory: TreeExpansionMemory;
@@ -144,7 +146,7 @@ export class Workbench implements vscode.Disposable {
   private repositoryKey(commonDir: string): string { const resolved=path.resolve(commonDir);return process.platform==='win32'?resolved.toLowerCase():resolved; }
   private isBusy(commonDir: string): boolean { const key=this.repositoryKey(commonDir);return this.busy.has(key)||this.externalBusy.has(key); }
   constructor(private readonly context: vscode.ExtensionContext, private readonly git: GitServiceContract, private readonly repositories: RepositoryManager, private readonly documents: GitDocuments, private readonly output: vscode.OutputChannel, private readonly projects: ProjectWindows) {
-    this.treeExpansionMemory = new TreeExpansionMemory(context.workspaceState);
+    this.treeExpansionMemory = new TreeExpansionMemory(context.globalState, context.workspaceState);
     this.disposables.push(repositories.onDidChange(event => { this.snapshots.invalidate(event.repoId); this.post({ type: 'changed', ...event }); }), repositories.onDidChangeRepositories(() => {
       for (const entry of this.panels.values()) this.updatePanelTitle(entry);
       this.post({ type: 'repositoriesChanged' });
@@ -371,7 +373,7 @@ export class Workbench implements vscode.Disposable {
   /** Share startup discovery with data requests, without holding up panel creation. */
   initializeRepositories(): Promise<void> {
     if (!this.initialScan) {
-      const scan = this.repositories.scan().catch(error => {
+      const scan = this.repositories.scan().then(() => { this.repositoriesInitialized = true; }).catch(error => {
         if (this.initialScan === scan) this.initialScan = undefined;
         throw error;
       });
@@ -544,7 +546,7 @@ export class Workbench implements vscode.Disposable {
   private async routeRequest(request: RpcRequest, source?:WorkbenchPanel): Promise<unknown> {
     if (source?.commitTree) {
       const target = source.commitTree.commitTree;
-      const allowed = ['treeExpansionRead', 'treeExpansionPatch', 'treeExpansionReset', 'workbenchReady', 'cancelQuery', 'copyText', 'interfaceSettings', 'revisionTreeChanges', 'revisionTreeCompare', 'openCommitTree', 'revisionTree', 'revisionTreeIndex', 'revisionTreeCommit', 'isolatedDiffPreview', 'isolatedDiffPage', 'diffRelease', 'openRevision', 'diff', 'lfsHistoricalStatus'];
+      const allowed = ['treeExpansionHintRead', 'treeExpansionHintDismiss', 'treeExpansionRead', 'treeExpansionPatch', 'treeExpansionReset', 'workbenchReady', 'cancelQuery', 'copyText', 'interfaceSettings', 'revisionTreeChanges', 'revisionTreeCompare', 'openCommitTree', 'revisionTree', 'revisionTreeIndex', 'revisionTreeCommit', 'isolatedDiffPreview', 'isolatedDiffPage', 'diffRelease', 'openRevision', 'diff', 'lfsHistoricalStatus'];
       if (!allowed.includes(request.method) || request.repoId !== undefined && request.repoId !== target.repoId) throw new MessageError(message('tree.fixedPanel'));
       const payload = request.payload as { revision?: string; baseRevision?: string; parent?: string; oid?: string; kind?: string; left?: string; right?: string } | undefined;
       const pair = target.baseRevision !== undefined;
@@ -587,6 +589,17 @@ export class Workbench implements vscode.Disposable {
       if (source) await this.closeLocationDialog(source.panel);
       return null;
     }
+    if (request.method === 'localCacheList' || request.method === 'localCacheClear') {
+      const repositories = this.repositories.list();
+      if (request.method === 'localCacheList') return this.treeExpansionMemory.list(repositories, this.repositoriesInitialized);
+      return this.treeExpansionMemory.clear(localCacheClearSchema.parse(request.payload), repositories, repoId => {
+        for (const panel of this.panels.values()) if (panel.commitTree?.commitTree.repoId === repoId) {
+          this.post({ type: 'treeExpansionChanged', repoId, preferences: defaultTreeExpansion(), cleared: true }, panel);
+        }
+      }, this.repositoriesInitialized);
+    }
+    if (request.method === 'treeExpansionHintRead') return this.treeExpansionMemory.hintDismissed();
+    if (request.method === 'treeExpansionHintDismiss') return this.treeExpansionMemory.dismissHint();
     if (request.method === 'interfaceSettings') { await this.migrateInterfaceSettings(); return this.interfaceSettings(); }
     if (request.method === 'saveInterfaceSettings') {
       const update = interfaceSettingsUpdateSchema.parse(request.payload);
@@ -684,12 +697,12 @@ export class Workbench implements vscode.Disposable {
     }
     const repo = this.repositories.get(request.repoId);
     switch (request.method) {
-      case 'treeExpansionRead': return this.treeExpansionMemory.read(repo.id);
+      case 'treeExpansionRead': return this.treeExpansionMemory.read(repo.id, repo);
       case 'treeExpansionPatch':
       case 'treeExpansionReset': {
         const preferences = request.method === 'treeExpansionReset'
           ? await this.treeExpansionMemory.reset(repo.id)
-          : await this.treeExpansionMemory.patch(repo.id, treeExpansionPatchSchema.parse(request.payload));
+          : await this.treeExpansionMemory.patch(repo.id, treeExpansionPatchSchema.parse(request.payload), repo);
         for (const panel of this.panels.values()) if (panel.commitTree?.commitTree.repoId === repo.id) this.post({ type: 'treeExpansionChanged', repoId: repo.id, preferences }, panel);
         return preferences;
       }

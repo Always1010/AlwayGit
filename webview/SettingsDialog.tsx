@@ -1,4 +1,5 @@
 import { ShortcutSettings } from './ShortcutSettings';
+import { LocalCacheSettings } from './LocalCacheSettings';
 import { BranchIcon, Button, Icon, Modal } from './ui';
 
 import { RepositoryIcon } from './RepositoryIcon';
@@ -15,7 +16,7 @@ import { graphPalettes, type GraphPaletteId } from './graph/palettes';
 
 
 
-type SettingsPage = 'files' | 'language' | 'keyboard' | 'theme' | 'density' | 'diff' | 'status' | 'history' | 'colors' | 'advanced';
+type SettingsPage = 'files' | 'language' | 'keyboard' | 'theme' | 'density' | 'diff' | 'status' | 'history' | 'colors' | 'advanced' | 'cache';
 type ColorTheme = 'light' | 'dark';
 const defaultMainColors = { light: '#283447', dark: '#EDF3FF' } as const;
 const themes: { id: ThemePreference; labelKey: StaticMessageKey; colors: readonly [string, string, string] }[] = [
@@ -122,6 +123,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
   const state = useWorkbench(), t = useTranslation(), { appearance, layout } = state;
   const [page, setPage] = useState<SettingsPage>('theme');
   const [recordingShortcut, setRecordingShortcut] = useState(false);
+  const [cacheBusy, setCacheBusy] = useState(false);
   const [colorTheme, setColorTheme] = useState<ColorTheme>(isLightTheme(theme) ? 'light' : 'dark');
   const [allowDetachedHead, setAllowDetachedHead] = useState(state.operationSettings.allowDetachedHead),[pushFollowTags,setPushFollowTags]=useState(state.operationSettings.pushFollowTags),[pushTagAfterCreate,setPushTagAfterCreate]=useState(state.operationSettings.pushTagAfterCreate),[defaultResetMode,setDefaultResetMode]=useState(state.operationSettings.defaultResetMode), [forceDeleteUnmergedBranches,setForceDeleteUnmergedBranches]=useState(state.operationSettings.forceDeleteUnmergedBranches),[forceRemoveDirtyWorktrees,setForceRemoveDirtyWorktrees]=useState(state.operationSettings.forceRemoveDirtyWorktrees), [advancedDirty, setAdvancedDirty] = useState(false), [saving, setSaving] = useState(false), [saveError, setSaveError] = useState<string>();
   const [operationScope, setOperationScope] = useState<OperationSettings['scope']>('user');
@@ -137,9 +139,9 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
       .finally(() => { if (!cancelled) setScopeLoading(false); });
     return () => { cancelled = true; };
   }, [operationScope, advancedDirty, state.operationSettings]);
-  const close = () => { if (!saving) state.finishSettings(false); };
+  const close = () => { if (!saving && !cacheBusy) state.finishSettings(false); };
   const apply = async () => {
-    if (recordingShortcut) return;
+    if (recordingShortcut || cacheBusy) return;
     setSaving(true); setSaveError(undefined);
     try { if (advancedDirty) await state.saveOperationSettings({allowDetachedHead,pushFollowTags,pushTagAfterCreate,defaultResetMode,forceDeleteUnmergedBranches,forceRemoveDirtyWorktrees}, operationScope); await state.finishSettings(true); }
     catch (error) { setSaveError(error instanceof Error ? error.message : String(error)); }
@@ -159,24 +161,25 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
   };
   const presetBase = presetColors(appearance.palette);
   const customized = appearance.colors.light.some((color, index) => color !== presetBase.light[index]) || appearance.colors.dark.some((color, index) => color !== presetBase.dark[index]) || appearance.colors.light.length !== presetBase.light.length;
-  const pageLabel = page === 'files' ? t('changes.fileList') : page === 'advanced' ? t("settings.gitOperations") : page === 'keyboard' ? t("settings.keyboardShortcuts") : page === 'language' ? t("common.language") : page === 'theme' ? t("settings.theme") : page === 'density' ? t("settings.textDensity") : page === 'diff' ? uiText("settings.diff") : page === 'status' ? t("settings.statusIndicators") : page === 'history' ? t('settings.display') : t("settings.graphColors");
-  const navItem = (id: SettingsPage, icon: string, label: string) => <button type="button" className={`settings-nav-item ${page === id ? 'is-active' : ''}`} aria-current={page === id ? 'page' : undefined} onClick={() => setPage(id)}><Icon name={icon}/><span>{label}</span></button>;
+  const pageLabel = page === 'cache' ? t('localCache.title') : page === 'files' ? t('changes.fileList') : page === 'advanced' ? t("settings.gitOperations") : page === 'keyboard' ? t("settings.keyboardShortcuts") : page === 'language' ? t("common.language") : page === 'theme' ? t("settings.theme") : page === 'density' ? t("settings.textDensity") : page === 'diff' ? uiText("settings.diff") : page === 'status' ? t("settings.statusIndicators") : page === 'history' ? t('settings.display') : t("settings.graphColors");
+  const navItem = (id: SettingsPage, icon: string, label: string) => <button type="button" className={`settings-nav-item ${page === id ? 'is-active' : ''}`} aria-current={page === id ? 'page' : undefined} disabled={cacheBusy} onClick={() => setPage(id)}><Icon name={icon}/><span>{label}</span></button>;
 
-  return <Modal title={t("common.settings")} busy={saving} onClose={close} footer={
-    <><span className="settings-save-hint"><Icon name="check"/>{page === 'advanced' ? operationScope === 'user' ? t("settings.gitOptionsAreSavedInUserSettings") : t("settings.appliesToThisWorkspace") : t('settings.sharedUserPreferences')}</span><Button className="settings-cancel" disabled={saving} onClick={close}>{t("common.cancel")}</Button><Button className="primary" disabled={saving || recordingShortcut || advancedDirty && scopeLoading} onClick={()=>void apply()}>{saving?t("settings.saving"):t("common.apply")}</Button></>
+  return <Modal title={t("common.settings")} busy={saving || cacheBusy} onClose={close} footer={
+    <><span className="settings-save-hint"><Icon name="check"/>{page === 'cache' ? t('localCache.footerHint') : page === 'advanced' ? operationScope === 'user' ? t("settings.gitOptionsAreSavedInUserSettings") : t("settings.appliesToThisWorkspace") : t('settings.sharedUserPreferences')}</span><Button className="settings-cancel" disabled={saving || cacheBusy} onClick={close}>{t("common.cancel")}</Button><Button className="primary" disabled={saving || cacheBusy || recordingShortcut || advancedDirty && scopeLoading} onClick={()=>void apply()}>{saving?t("settings.saving"):t("common.apply")}</Button></>
   }>
     <div className="interface-settings" data-testid="interface-settings">
       <nav className="settings-nav" aria-label={t("settings.settingsCategories")}>
-        <div className="settings-nav-group"><strong>{t("settings.general")}</strong>{navItem('language', 'globe', t("common.language"))}{navItem('keyboard', 'keyboard', t("settings.keyboardShortcuts"))}</div>
+        <div className="settings-nav-group"><strong>{t("settings.general")}</strong>{navItem('language', 'globe', t("common.language"))}{navItem('keyboard', 'keyboard', t("settings.keyboardShortcuts"))}{navItem('cache', 'database', t('localCache.title'))}</div>
         <div className="settings-nav-group"><strong>{t("settings.interface")}</strong>{navItem('theme', 'color-mode', t("settings.theme"))}{navItem('density', 'text-size', t("settings.textDensity"))}{navItem('files', 'list-tree', t('changes.fileList'))}{navItem('diff', 'diff', t("settings.diff"))}{navItem('status', 'bell-dot', t("settings.statusIndicators"))}</div>
         <div className="settings-nav-group"><strong>{t("settings.commitGraph")}</strong>{navItem('history', 'list-flat', t('settings.display'))}{navItem('colors', 'git-merge', t("settings.colors"))}</div>
         <div className="settings-nav-group"><strong>{t("settings.advanced")}</strong>{navItem('advanced', 'tools', t("settings.gitOperations"))}</div>
       </nav>
       <main className="settings-content">
-        <header className="settings-page-heading"><span>{page === 'advanced' ? t("settings.advanced") : page === 'language' || page === 'keyboard' ? t("settings.general") : page === 'colors' || page === 'history' ? t("settings.commitGraph") : t("settings.interface")} › {pageLabel}</span><small>{page === 'advanced' ? t("settings.gitOptionsTakeEffectOnlyAfterApply") : page === 'keyboard' ? t('settings.shortcutApplyHint') : t("settings.changesPreviewImmediatelyApplyToSave")}</small></header>
+        <header className="settings-page-heading"><span>{page === 'advanced' ? t("settings.advanced") : page === 'language' || page === 'keyboard' || page === 'cache' ? t("settings.general") : page === 'colors' || page === 'history' ? t("settings.commitGraph") : t("settings.interface")} › {pageLabel}</span><small>{page === 'cache' ? t('localCache.immediateShort') : page === 'advanced' ? t("settings.gitOptionsTakeEffectOnlyAfterApply") : page === 'keyboard' ? t('settings.shortcutApplyHint') : t("settings.changesPreviewImmediatelyApplyToSave")}</small></header>
 
         <div className="settings-page-scroll" key={page}>
         {saveError&&<p role="alert" className="form-error">{saveError}</p>}
+        {page === 'cache' && <LocalCacheSettings onBusyChange={setCacheBusy}/>}
         {page === 'files' && <section className="settings-page" aria-label={t('changes.fileList')}>
           <section className="settings-section" aria-labelledby="file-list-display-heading">
             <h3 id="file-list-display-heading">{t('changes.displayMode')}</h3>
