@@ -247,7 +247,10 @@
           "properties": {
             "treeWheelMode": {
               "type": "string",
-              "enum": ["zoom", "scroll"]
+              "enum": [
+                "zoom",
+                "scroll"
+              ]
             },
             "font": {
               "type": "number",
@@ -417,6 +420,8 @@
     }
   },
   "scripts": {
+    "format": "prettier --write",
+    "format:check": "prettier --check",
     "vscode:prepublish": "npm run build",
     "build": "node scripts/build.mjs && vite build",
     "watch:extension": "node scripts/build.mjs --watch",
@@ -454,6 +459,7 @@
     "@vscode/vsce": "^4.0.0",
     "esbuild": "^0.28.2",
     "playwright": "^1.63.0",
+    "prettier": "3.9.10",
     "typescript": "^7.0.2",
     "vite": "^8.3.1",
     "vitest": "^5.0.2"
