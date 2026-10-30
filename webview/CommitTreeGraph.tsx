@@ -99,9 +99,17 @@ export function CommitTreeGraph({
   useEffect(() => {
     fitRef.current();
   }, [mode, query, blocked]);
+  const previousSize = useRef(size);
   useEffect(() => {
-    fitRef.current();
-  }, [size.width, size.height]);
+    const previous = previousSize.current;
+    previousSize.current = size;
+    // Keep the same scale and canvas center while the preview divider is dragged.
+    setCamera((current) => ({
+      ...current,
+      x: current.x + (size.width - previous.width) / 2,
+      y: current.y + (size.height - previous.height) / 2,
+    }));
+  }, [size]);
   const firstLayout = useRef(false);
   useEffect(() => {
     if (!firstLayout.current && layout.nodes.length) {

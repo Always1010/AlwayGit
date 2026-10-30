@@ -7230,6 +7230,10 @@ export const catalog = {
     "en": "Show Commit changes",
     "zh-CN": "显示本次变更"
   },
+  "tree.resizePreview": {
+    "en": "Resize file tree and preview",
+    "zh-CN": "调整文件树与预览大小"
+  },
   "tree.expandChanges": {
     "en": "Expand directories containing changes",
     "zh-CN": "展开到变更位置"
@@ -9753,6 +9757,7 @@ export interface MessageParameters {
   "tree.submodulePointer": {  };
   "tree.noMatches": {  };
   "tree.showChanges": {  };
+  "tree.resizePreview": {  };
   "tree.expandChanges": {  };
   "tree.comparisonBase": {  };
   "tree.parentOption": { index: ParameterValue; oid: ParameterValue };

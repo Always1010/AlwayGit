@@ -206,18 +206,10 @@
   padding: 4px 8px;
   border-top: 1px solid var(--row-border);
 }
-.with-preview > .commit-tree-graph {
-  flex: 0 0 54%;
-  min-width: 220px;
-}
 .commit-tree-view-select {
   max-width: 180px;
 }
 @media (max-width: 650px) {
-  .with-preview > .commit-tree-graph {
-    flex: 0 0 50%;
-    min-width: 0;
-  }
   .tree-graph-toolbar > .muted {
     display: none;
   }

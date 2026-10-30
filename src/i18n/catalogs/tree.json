@@ -284,6 +284,12 @@
     "review": "translated",
     "context": "Commit tree changes overlay"
   },
+  "tree.resizePreview": {
+    "en": "Resize file tree and preview",
+    "zh-CN": "调整文件树与预览大小",
+    "review": "translated",
+    "context": "Commit tree preview divider"
+  },
   "tree.expandChanges": {
     "en": "Expand directories containing changes",
     "zh-CN": "展开到变更位置",

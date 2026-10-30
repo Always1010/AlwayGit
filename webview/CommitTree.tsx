@@ -19,7 +19,7 @@ import { rpc, saveCommitTreeState } from './rpc';
 import { useWorkbenchFields } from './subscriptions';
 import { useResolvedTheme, diffRowHeight } from './appearance';
 import { useTranslation } from './i18n';
-import { Button, Icon } from './ui';
+import { Button, Icon, ResizeHandle } from './ui';
 import { VirtualFileRows } from './VirtualFileRows';
 import { SnapshotPreview } from './SnapshotPreview';
 import { DiffPreview } from './DiffPreview';
@@ -101,6 +101,37 @@ export function CommitTree({
   const [previewOpen, setPreviewOpen] = useState(false),
     [expanding, setExpanding] = useState<number>();
   const [viewMode, setViewMode] = useState<TreeViewMode>('list');
+  const body = useRef<HTMLElement>(null);
+  const [bodySize, setBodySize] = useState({ width: 0, height: 0, stacked: false });
+  const [previewSplit, setPreviewSplit] = useState<{ x?: number; y?: number }>({});
+  useEffect(() => {
+    const element = body.current;
+    if (!element) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setBodySize({
+        width: entry.contentRect.width,
+        height: entry.contentRect.height,
+        stacked: window.matchMedia('(max-width: 650px)').matches,
+      });
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  const splitAxis = bodySize.stacked ? 'y' : 'x',
+    splitAvailable = Math.max(0, (bodySize.stacked ? bodySize.height : bodySize.width) - 6),
+    splitMin = Math.min(
+      bodySize.stacked ? 120 : viewMode === 'list' ? 180 : 220,
+      splitAvailable / 2,
+    ),
+    splitMax = splitAvailable - Math.min(bodySize.stacked ? 120 : 220, splitAvailable / 2),
+    splitSize = Math.max(
+      splitMin,
+      Math.min(
+        splitMax,
+        splitAvailable *
+          (previewSplit[splitAxis] ?? (bodySize.stacked ? 0.5 : viewMode === 'list' ? 0.44 : 0.54)),
+      ),
+    );
   const indexController = useRef<AbortController | undefined>(undefined),
     expansionEpoch = useRef(0);
   const [attempt, setAttempt] = useState(0),
@@ -816,7 +847,11 @@ export function CommitTree({
           />
         </div>
       )}
-      <main className={`commit-tree-body${previewOpen ? ' with-preview' : ''}`}>
+      <main
+        ref={body}
+        className={`commit-tree-body${previewOpen ? ' with-preview' : ''}`}
+        style={{ '--commit-tree-split': `${splitSize}px` } as CSSProperties}
+      >
         {viewMode === 'list' ? (
           <div
             className="revision-tree-rows commit-tree-rows"
@@ -968,6 +1003,20 @@ export function CommitTree({
             openHistorical={openHistorical}
             context={(node, x, y, anchor) => setMenu({ node, x, y, anchor })}
             useList={() => setViewMode('list')}
+          />
+        )}
+        {previewOpen && (
+          <ResizeHandle
+            axis={splitAxis}
+            className="commit-tree-preview-divider"
+            label={t('tree.resizePreview')}
+            value={splitSize}
+            min={splitMin}
+            max={splitMax}
+            onChange={(value) => {
+              if (splitAvailable > 0)
+                setPreviewSplit((current) => ({ ...current, [splitAxis]: value / splitAvailable }));
+            }}
           />
         )}
         {previewOpen && (

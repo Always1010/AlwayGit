@@ -36,9 +36,11 @@ import { verifyProjectOpen } from './test-project-ui.mjs';
 import { verifyDockedWorkbench, verifyWorkbenchLocations } from './test-workbench-host-ui.mjs';
 import { verifyPanelResize } from './test-panel-resize-ui.mjs';
 import { verifySidebarSelection } from './test-sidebar-selection-ui.mjs';
+import { verifyTreeCanvas } from './test-tree-canvas-ui.mjs';
 
 // Full and targeted runs share one registry, so a new suite cannot be omitted from full runs.
 const suites = new Map([
+  ['tree-canvas', verifyTreeCanvas],
   ['sidebar-selection', verifySidebarSelection],
   ['workflow-additions', verifyWorkflowAdditions],
   ['lfs', verifyLfs],
