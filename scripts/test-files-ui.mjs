@@ -1,5 +1,50 @@
 import assert from 'node:assert/strict';
 
+async function verifyFilePathDisplay(page, list, virtual = false, scrollTop = 18000) {
+  const readingPosition = () => list.evaluate(element => {
+    const top = element.getBoundingClientRect().top;
+    const row = [...element.querySelectorAll('.file-item,.change-file')].find(row => row.getBoundingClientRect().bottom > top);
+    return row?.querySelector('.file-name')?.getAttribute('aria-label');
+  });
+  if (virtual) {
+    await list.evaluate((element, offset) => { element.scrollTop = offset; }, scrollTop);
+    await page.waitForTimeout(100);
+  }
+  const anchor = await readingPosition();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Settings', exact: true });
+  await dialog.getByRole('button', { name: 'File list', exact: true }).click();
+  const modes = dialog.locator('input[name="file-path-display"]');
+  for (const [index, display] of [[1, 'inline'], [2, 'name-only'], [0, 'stacked']]) {
+    await modes.nth(index).check();
+    await list.locator(`.file-label[data-path-display="${display}"]`).first().waitFor();
+    await page.waitForTimeout(100);
+    const geometry = await list.locator('.file-item,.change-file').evaluateAll(rows => rows.map(row => {
+      const box = row.getBoundingClientRect(), name = row.querySelector('.file-basename').getBoundingClientRect();
+      const path = row.querySelector('.file-parent-path')?.getBoundingClientRect();
+      const group = [...row.closest('[role="listbox"]').querySelectorAll('.virtual-file-spacer')].indexOf(row.closest('.virtual-file-spacer'));
+      return { top: box.top, bottom: box.bottom, height: box.height, group, sameLine: !path || Math.abs((path.top + path.bottom - name.top - name.bottom) / 2) < 1 };
+    }));
+    assert.ok(geometry.length && geometry.every(row => row.height === (display === 'stacked' ? 36 : 29)), 'File row heights follow the selected display mode');
+    if (display !== 'stacked') assert.ok(geometry.every(row => row.sameLine), 'Single-line paths stay beside file names');
+    assert.equal(await list.locator('.file-parent-path').count(), display === 'name-only' ? 0 : geometry.length);
+    const button = list.locator('.file-name').first();
+    assert.ok((await button.getAttribute('title')).includes(await button.getAttribute('aria-label')), 'Full paths remain available in hover text');
+    if (virtual) {
+      assert.equal(await readingPosition(), anchor, 'Switching file layout retains the top visible file');
+      assert.ok(geometry.length < 200, 'Layout changes retain virtualization');
+      assert.ok(geometry.slice(1).every((row, i) => row.group !== geometry[i].group || Math.abs(row.top - geometry[i].bottom) < 1), 'Remeasured virtual rows have no overlaps or stale gaps');
+    }
+  }
+  await modes.nth(2).check();
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await list.locator('.file-label[data-path-display="stacked"]').first().waitFor();
+  if (virtual) {
+    assert.equal(await readingPosition(), anchor, 'Cancel restores layout without losing the reading position');
+    await list.evaluate(element => { element.scrollTop = 0; });
+  }
+}
+
 // Shared by Working Tree, Commit Details, and Commit comparison regressions.
 async function verifyFileSelectionPreview(page, list, screenshotPath) {
   const rows = list.locator('.file-item,.change-file'), first = rows.nth(0), second = rows.nth(1), third = rows.nth(2);
@@ -160,6 +205,7 @@ export async function verifyFiles(browser, url) {
     assert.equal(await panel.locator('.file-item > .codicon').count(), 0, 'Each row uses one file icon with a status badge');
     const compactRow = await panel.locator('.file-item').first().boundingBox();
     assert.equal(compactRow?.height, 36, 'Default two-line rows reserve space for complete file-name glyphs');
+    await verifyFilePathDisplay(page, panel.locator('.detail-files'));
     await verifyFileSelectionPreview(page, panel.locator('.detail-files'));
     await historyCommits.nth(1).click({ modifiers: ['Control'] });
     await details.locator('.comparison-summary').waitFor();
@@ -541,6 +587,8 @@ export async function verifyFiles(browser, url) {
       window.postMessage({ type: 'changed', repoId: 'files' }, '*');
     });
     await details.getByText('Staged 41210 · Unstaged 41210', { exact: true }).waitFor();
+    await verifyFilePathDisplay(page, groups, true);
+    await verifyFilePathDisplay(page, groups, true, await groups.evaluate(element => Math.round(element.scrollHeight * .7)));
     await page.locator('.toolbar').getByRole('button',{name:'Commit',exact:true}).click();
     await commitDialog.getByText('Files to commit · 41210',{exact:true}).waitFor();
     assert.ok(await commitDialog.locator('.commit-file').count() < 100,'Large commit checklists mount only visible rows');

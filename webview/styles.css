@@ -309,6 +309,9 @@ h1,h2,p {margin:0;}
 .file-label {display:flex;flex:1;flex-direction:column;min-width:0;gap:1px;}
 .file-basename {flex-shrink:0;font-size:var(--workbench-font,13px);line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .file-parent-path {flex-shrink:0;font-size:11px;line-height:1.2;color:var(--muted);overflow-wrap:anywhere;}
+.file-label[data-path-display="inline"] {flex-direction:row;align-items:center;gap:8px;overflow:hidden;}
+.file-label[data-path-display="inline"]>.file-basename {flex:0 0 auto;min-width:0;max-width:100%;}
+.file-label[data-path-display="inline"]>.file-parent-path {flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .file-item.batch-selected,.change-file.batch-selected {background:color-mix(in srgb,var(--accent) 18%,var(--bg));}
 .file-item>.file-name:focus,.change-file>.file-name:focus {outline:none;}
 :is(.file-selection-panel,.working-file-selection):not([data-selection-focus-suspended]) :is(.file-item,.change-file):has(>.file-name:focus) {outline:1px solid var(--accent);outline-offset:-1px;}

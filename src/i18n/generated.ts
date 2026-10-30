@@ -6599,6 +6599,34 @@ export const catalog = {
     "en": "These independent defaults initialize single and batch dialogs. You can override them for one operation. Target review and final confirmation are still required.",
     "zh-CN": "两个默认值独立控制单项与批量操作的初始选择，可单次覆盖。仍需核对目标并完成最终确认。"
   },
+  "settings.filePathDisplay": {
+    "en": "File path display",
+    "zh-CN": "文件路径显示"
+  },
+  "settings.filePathStacked": {
+    "en": "Two lines (default)",
+    "zh-CN": "两行显示（默认）"
+  },
+  "settings.filePathInline": {
+    "en": "Single line",
+    "zh-CN": "单行显示"
+  },
+  "settings.filePathNameOnly": {
+    "en": "File name only",
+    "zh-CN": "仅显示文件名"
+  },
+  "settings.filePathStackedDescription": {
+    "en": "Show the file name above its repository-relative parent directory.",
+    "zh-CN": "第一行显示文件名，第二行显示仓库相对父目录。"
+  },
+  "settings.filePathInlineDescription": {
+    "en": "Show the file name followed by its parent directory on one line.",
+    "zh-CN": "文件名在前，父目录在后，合并为一行显示。"
+  },
+  "settings.filePathNameOnlyDescription": {
+    "en": "Hide the parent directory. Hover to see the full repository-relative file path.",
+    "zh-CN": "隐藏父目录，鼠标悬浮时查看包含文件名的完整仓库相对路径。"
+  },
   "sidebar.refreshRepositoryListAndStatusBadges": {
     "en": "Refresh repository list and status badges",
     "zh-CN": "刷新仓库列表和状态角标"
@@ -9503,6 +9531,13 @@ export interface MessageParameters {
   "settings.forceDeleteUnmergedBranches": {  };
   "settings.forceRemoveDirtyWorktrees": {  };
   "settings.forceDeletionDefaultsEffect": {  };
+  "settings.filePathDisplay": {  };
+  "settings.filePathStacked": {  };
+  "settings.filePathInline": {  };
+  "settings.filePathNameOnly": {  };
+  "settings.filePathStackedDescription": {  };
+  "settings.filePathInlineDescription": {  };
+  "settings.filePathNameOnlyDescription": {  };
   "sidebar.refreshRepositoryListAndStatusBadges": {  };
   "sidebar.collapse": {  };
   "sidebar.expand": {  };
