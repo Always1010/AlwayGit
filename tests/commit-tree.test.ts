@@ -46,4 +46,28 @@ describe('independent Commit snapshots', () => {
     expect(files[1]).toMatchObject({ path: 'vendor', beforeMode: '160000', afterMode: '000000' });
     expect(() => parseRevisionTreeChanges(Buffer.from('malformed\0'))).toThrow();
   });
+  it('moves mixed change highlights to the nearest visible collapsed directory without mutating tree summaries', () => {
+    const entries = [entry('src', 'tree'), entry('src/deep', 'tree'), entry('src/deep/added.txt'), entry('src/deep/modified.txt'), entry('src/renamed.txt'), entry('copied.txt'), entry('type.txt'), entry('unchanged.txt')];
+    const change = (path: string, status: string): RevisionTreeChange => ({ path, status, beforeMode: '100644', afterMode: status === 'D' ? '000000' : '100644', beforeOid: 'c'.repeat(40), afterOid: 'd'.repeat(40) });
+    const nodes = snapshotNodes(entries, [change('src/deep/added.txt', 'A'), change('src/deep/modified.txt', 'M'), change('src/deep/deleted.txt', 'D'), change('src/renamed.txt', 'R100'), change('copied.txt', 'C100'), change('type.txt', 'T'), change('gone/deep/old.txt', 'D')]);
+    const before = JSON.stringify(nodes);
+    const highlights = (expanded: string[]) => snapshotRows(nodes, new Set(expanded)).filter(row => row.changeHighlight).map(row => [row.node.entry.path, row.changeHighlight]);
+    // A remembered descendant expansion never bypasses its collapsed visible ancestor.
+    expect(highlights(['src/deep'])).toEqual([['gone', 'summary'], ['src', 'summary'], ['copied.txt', 'C'], ['type.txt', 'T']]);
+    expect(highlights(['src'])).toEqual([['gone', 'summary'], ['src/deep', 'summary'], ['src/renamed.txt', 'R'], ['copied.txt', 'C'], ['type.txt', 'T']]);
+    const allExpanded = allSnapshotNodes(nodes).filter(node => node.entry.type === 'tree').map(node => node.id);
+    expect(highlights(allExpanded)).toEqual([['gone/deep/old.txt', 'D'], ['src/deep/added.txt', 'A'], ['src/deep/deleted.txt', 'D'], ['src/deep/modified.txt', 'M'], ['src/renamed.txt', 'R'], ['copied.txt', 'C'], ['type.txt', 'T']]);
+    expect(JSON.stringify(nodes)).toBe(before);
+    expect(nodes.find(node => node.entry.path === 'src')?.summary).toMatchObject({ added: 1, modified: 1, deleted: 1, renamed: 1 });
+    expect(snapshotRows(snapshotNodes(entries), new Set()).every(row => row.changeHighlight === undefined)).toBe(true);
+  });
+  it('highlights only actual flat search matches and retains an explicit matching directory summary', () => {
+    const entries = [entry('src', 'tree'), entry('src/deep', 'tree'), entry('src/deep/changed.txt'), entry('src/unrelated.txt')];
+    const files: RevisionTreeChange[] = [{ path: 'src/deep/changed.txt', status: 'M', beforeMode: '100644', afterMode: '100644', beforeOid: 'c'.repeat(40), afterOid: 'd'.repeat(40) }];
+    const nodes = snapshotNodes(entries, files), expanded = new Set(['src', 'src/deep']);
+    expect(snapshotRows(nodes, new Set(), 'changed.txt').map(row => [row.node.entry.path, row.depth, row.changeHighlight])).toEqual([['src/deep/changed.txt', 0, 'M']]);
+    expect(snapshotRows(nodes, expanded, 'src').map(row => [row.node.entry.path, row.changeHighlight])).toEqual([['src', 'summary'], ['src/deep', 'summary'], ['src/deep/changed.txt', 'M'], ['src/unrelated.txt', undefined]]);
+    expect(snapshotRows(nodes, new Set(), 'unrelated.txt').map(row => row.changeHighlight)).toEqual([undefined]);
+    expect(snapshotRows(nodes, expanded).filter(row => row.node.entry.type === 'tree').every(row => !row.changeHighlight && row.node.summary)).toBe(true);
+  });
 });
