@@ -1,0 +1,18 @@
+# Generated files are maintained by their own tools.
+package-lock.json
+package.nls.json
+package.nls.zh-cn.json
+src/i18n/generated.ts
+
+# Keep documentation layout outside code formatting.
+**/*.md
+
+# Build outputs, reports and local artifacts.
+node_modules/
+dist/
+artifacts/
+TMP/
+.vscode-test/
+test-results/
+playwright-report/
+coverage/
