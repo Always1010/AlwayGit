@@ -12,7 +12,7 @@ AlwayGit 是 Workspace 类型的 VS Code 扩展。React 工作台共用一套消
 
 提交文件树复用工作台消息桥和构建入口，由独立的 `alwaygit.commitTree` WebviewPanel 承载，`CommitTree.tsx` 只保存固定仓库、目标完整提交 ID 和可选的基准完整提交 ID，不写入主工作台会话基线。标签页按仓库、目标及基准区分，交换方向打开或激活反向固定页。`browseComparisonTree` 复用匹配的主工作台比较方向，必要时通过独立请求类别的只读 `treeCompareOrder` 规范化祖先方向，避免取消主详情读取；显式方向保持原顺序，异步完成后检查原仓库仍然有效，不改变主工作台详情或草稿。宿主按来源限制只读请求；完整树索引、原始提交元数据和含旧模式/OID 的变更读取分别取消与调度。双提交使用 `revisionTreeCompare` 直接比较基准和目标的树，不计算合并基准；单提交保留 `revisionTreeChanges` 与 Parent 选择。`commitTreeModel.ts` 将目标真实快照与基准侧删除虚拟条目组合成展示树；`snapshot` 预览目标只读取固定历史内容，与 `revision` 的历史对工作区比较分离。双提交变更预览沿用 `comparison` Diff 目标，历史文件和 LFS 内容读取限制在绑定的两端提交。
 
-`snapshotRows` 依据展开结构生成共享的高亮元数据：展开祖先只保留汇总标记，具体变更与折叠汇总承担高亮；列表与三种图形视图在虚拟化和画布裁剪之前使用相同结果。图形视图统一普通滚轮纵向平移、Shift 横向平移、Ctrl 以指针为中心缩放并保留触控板双轴输入。Graph 菜单的单提交树与双提交树差异入口放在各自末尾的独立分隔组。
+`snapshotRows` 依据展开结构生成共享的高亮元数据：展开祖先只保留汇总标记，具体变更与折叠汇总承担高亮；列表与三种图形视图在虚拟化和画布裁剪之前使用相同结果。图形视图通过 `interfaceSettings.treeWheelMode` 保存共享滚轮偏好（缺省 `zoom`），由 `wheelTree` 按当前模式处理输入；切换不重建相机。固定树标签页仅允许通过 `saveInterfaceSettings` 写入这一项偏好，其他设置写入仍被阻止；交互规则见[工作台规格](WORKBENCH_SPEC.md)。Graph 菜单的单提交树与双提交树差异入口放在各自末尾的独立分隔组。
 
 目录展开偏好由 `src/protocol/tree-expansion.ts` 定义为整体模式与目录路径覆盖，`TreeExpansionMemory` 作为本地缓存单独保存在 `globalState` 的 `alwaygit.treeExpansion.<encoded repoId>` 键中，附带已知的仓库名称和根目录；不放入主会话、仓库文件或用户配置，不按提交复制展开数组。读取和管理缓存时迁移当前 `workspaceState` 的旧键，全局副本保存成功后才删除旧键；其他工作区的旧记录在对应工作区打开后迁移。清理前先保存独立的迁移抑制标记，防止其他工作区的旧副本重新导入；全部清理将按仓库的抑制列表合并为一个全局标记，不限制新的目录操作。`localCacheList` 根据实际存储键枚举，包括已移除和损坏记录；`localCacheClear` 支持指定仓库或全部清理。这两个请求在仓库解析前处理，不依赖当前仓库或 Git 扫描，固定树页无权调用；未完成仓库初始化时不能把未知注册状态标为已移除。清理逐项保存并广播，部分失败明确报错，界面重新读取剩余记录。
 

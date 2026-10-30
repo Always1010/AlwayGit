@@ -245,6 +245,10 @@
           "scope": "application",
           "additionalProperties": false,
           "properties": {
+            "treeWheelMode": {
+              "type": "string",
+              "enum": ["zoom", "scroll"]
+            },
             "font": {
               "type": "number",
               "minimum": 10,

@@ -3,6 +3,7 @@ import { sessionSchema, type SessionState, type LayoutState } from './session';
 
 export const defaultLayout: LayoutState = { preset: 'workbench', sidebar: 210, details: 300, sidebarCollapsed: false, detailsCollapsed: false, diff: 220, diffCollapsed: false, graph: 64, author: 100, date: 120, font: 13, row: 24 };
 export const interfaceSettingsSchema = z.object({
+  treeWheelMode: z.enum(['zoom', 'scroll']).optional(),
   language: z.enum(['en', 'zh-CN']).optional(),
   font: sessionSchema.shape.layout.unwrap().shape.font.optional(),
   row: sessionSchema.shape.layout.unwrap().shape.row.optional(),
@@ -15,6 +16,7 @@ export const interfaceSettingsSchema = z.object({
 export const interfaceSettingsUpdateSchema = interfaceSettingsSchema.extend({ appearance: sessionSchema.shape.appearance.unwrap().partial().optional() });
 export type InterfacePreferences = z.infer<typeof interfaceSettingsSchema>;
 export type InterfacePreferencesUpdate = z.infer<typeof interfaceSettingsUpdateSchema>;
+export type TreeWheelMode = NonNullable<InterfacePreferences['treeWheelMode']>;
 
 /** Read only preference fields from a legacy session, without migrating browsing state. */
 export function legacyInterfaceSettings(session: SessionState): InterfacePreferences {

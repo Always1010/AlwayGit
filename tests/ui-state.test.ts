@@ -22,6 +22,24 @@ beforeEach(async () => {
 });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 describe('repository UI consistency', () => {
+  it('shares the saved wheel mode across repositories and restores it from preference broadcasts', async () => {
+    expect(store.getState().treeWheelMode).toBe('zoom');
+    bridge.rpc.mockImplementation(async (_method, _repo, payload) => payload);
+    await store.getState().setTreeWheelMode('scroll');
+    expect(bridge.rpc).toHaveBeenCalledWith('saveInterfaceSettings', undefined, { treeWheelMode: 'scroll' });
+    store.setState({ repoId: b.id });
+    expect(store.getState().treeWheelMode).toBe('scroll');
+    bridge.event?.({ type: 'interfaceSettingsChanged', settings: { treeWheelMode: 'zoom' } });
+    expect(store.getState().treeWheelMode).toBe('zoom');
+  });
+  it('restores the previous wheel mode and permits retry when saving fails', async () => {
+    bridge.rpc.mockRejectedValueOnce(new Error('save failed'));
+    await expect(store.getState().setTreeWheelMode('scroll')).rejects.toThrow('save failed');
+    expect(store.getState()).toMatchObject({ treeWheelMode: 'zoom', treeWheelModeSaving: false });
+    bridge.rpc.mockResolvedValueOnce({ treeWheelMode: 'scroll' });
+    await store.getState().setTreeWheelMode('scroll');
+    expect(store.getState()).toMatchObject({ treeWheelMode: 'scroll', treeWheelModeSaving: false });
+  });
   it('opens the displayed comparison tree without changing main workbench state or direction', async () => {
     const comparison = { left: { ...commit, oid: 'base' }, right: { ...commit, oid: 'target' }, files: [] };
     store.setState({ repoId: a.id, comparison, selectedOids: ['target', 'base'], drafts: { a: 'draft' } });

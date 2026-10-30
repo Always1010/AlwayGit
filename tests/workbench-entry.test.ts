@@ -105,7 +105,7 @@ describe('Commit tree editor tabs', () => {
       expect(first.panel.webview.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'wrong-preview', error: expect.any(Object) }));
     }
   });
-  it('shares only repository expansion preferences between fixed tree tabs', async () => {
+  it('shares repository expansion and only the wheel interface preference between fixed tree tabs', async () => {
     const repo = { id: 'repo', root: '/repo', commonDir: '/repo/.git', name: 'repo' };
     const otherRepo = { ...repo, id: 'other' };
     const workbench = workbenchFixture(undefined, undefined, { list: () => [repo, otherRepo], get: id => id === 'other' ? otherRepo : repo });
@@ -118,6 +118,22 @@ describe('Commit tree editor tabs', () => {
     await workbench.openCommitTree(repo.id, 'a'.repeat(40));
     await workbench.openCommitTree(repo.id, 'b'.repeat(40), undefined, 'a'.repeat(40));
     await workbench.openCommitTree(otherRepo.id, 'a'.repeat(40));
+    const configuration = new Map<string, unknown>();
+    vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
+      get: (key: string, fallback: unknown) => configuration.get(key) ?? fallback,
+      inspect: (key: string) => ({ globalValue: configuration.get(key) }),
+      update: vi.fn(async (key: string, value: unknown) => { configuration.set(key, value); }),
+    } as unknown as vscode.WorkspaceConfiguration);
+    await first.receive({ id: 'wheel', method: 'saveInterfaceSettings', payload: { treeWheelMode: 'scroll' } });
+    expect(configuration.get('interfaceSettings')).toEqual({ treeWheelMode: 'scroll' });
+    for (const fixture of [normal, first, second, other]) expect(fixture.panel.webview.postMessage).toHaveBeenCalledWith({ type: 'interfaceSettingsChanged', settings: { language: 'en', treeWheelMode: 'scroll' } });
+    await other.receive({ id: 'wheel-read', method: 'interfaceSettings' });
+    expect(other.panel.webview.postMessage).toHaveBeenLastCalledWith({ type: 'response', id: 'wheel-read', result: { language: 'en', treeWheelMode: 'scroll' } });
+    for (const payload of [{}, { treeWheelMode: 'invalid' }, { treeWheelMode: 'zoom', font: 15 }, { language: 'zh-CN' }]) {
+      await first.receive({ id: 'other-preference', method: 'saveInterfaceSettings', payload });
+      expect(first.panel.webview.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'other-preference', error: expect.any(Object) }));
+    }
+    expect(configuration.get('interfaceSettings')).toEqual({ treeWheelMode: 'scroll' });
     await Promise.all([
       first.receive({ id: 'path-a', method: 'treeExpansionPatch', payload: { kind: 'directory', path: 'src', expanded: false } }),
       second.receive({ id: 'path-b', method: 'treeExpansionPatch', payload: { kind: 'directory', path: 'docs', expanded: true } }),

@@ -11,17 +11,19 @@ describe('repository tree layouts', () => {
   it('pans wheel and touchpad deltas in screen pixels, maps Shift vertically, and normalizes wheel units', () => {
     const camera = { x: 30, y: 40, scale: 2 }, viewport = { width: 800, height: 500 }, pointer = { x: 123, y: 234 };
     const input = { deltaX: 7, deltaY: 30, deltaMode: 0, ctrlKey: false, shiftKey: false };
-    expect(wheelTree(camera, input, viewport, pointer)).toEqual({ x: 23, y: 10, scale: 2 });
+    expect(wheelTree(camera, input, viewport, pointer, 'scroll')).toEqual({ x: 23, y: 10, scale: 2 });
     expect(wheelTree(camera, { ...input, shiftKey: true }, viewport, pointer)).toEqual({ x: -7, y: 40, scale: 2 });
     expect(wheelTree(camera, { ...input, deltaY: 0, shiftKey: true }, viewport, pointer)).toEqual({ x: 23, y: 40, scale: 2 });
-    expect(wheelTree(camera, { ...input, deltaX: -2, deltaY: -3, deltaMode: 1 }, viewport, pointer)).toEqual({ x: 62, y: 88, scale: 2 });
-    expect(wheelTree(camera, { ...input, deltaX: 1, deltaY: -1, deltaMode: 2 }, viewport, pointer)).toEqual({ x: -770, y: 540, scale: 2 });
+    expect(wheelTree(camera, { ...input, deltaX: -2, deltaY: -3, deltaMode: 1 }, viewport, pointer, 'scroll')).toEqual({ x: 62, y: 88, scale: 2 });
+    expect(wheelTree(camera, { ...input, deltaX: 1, deltaY: -1, deltaMode: 2 }, viewport, pointer, 'scroll')).toEqual({ x: -770, y: 540, scale: 2 });
   });
   it('gives Ctrl priority over Shift and anchors normalized wheel zoom at the pointer', () => {
     const camera = { x: 30, y: 40, scale: 1 }, viewport = { width: 800, height: 500 }, pointer = { x: 123, y: 234 };
     const input = { deltaX: 7, deltaY: -3, deltaMode: 1, ctrlKey: true, shiftKey: true };
-    const zoomed = wheelTree(camera, input, viewport, pointer);
+    const zoomed = wheelTree(camera, input, viewport, pointer, 'scroll');
     expect(zoomed).toEqual(wheelTree(camera, { ...input, deltaY: -48, deltaMode: 0, shiftKey: false }, viewport, pointer));
+    // Plain wheel input defaults to zoom; Ctrl keeps zoom available in scroll mode.
+    expect(zoomed).toEqual(wheelTree(camera, { ...input, ctrlKey: false, shiftKey: false }, viewport, pointer));
     expect(zoomed.scale).toBeGreaterThan(camera.scale);
     expect((pointer.x - zoomed.x) / zoomed.scale).toBeCloseTo((pointer.x - camera.x) / camera.scale);
     expect((pointer.y - zoomed.y) / zoomed.scale).toBeCloseTo((pointer.y - camera.y) / camera.scale);
