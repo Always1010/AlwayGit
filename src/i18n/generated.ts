@@ -3709,12 +3709,8 @@ export const catalog = {
     "zh-CN": "操作"
   },
   "localCache.unknownRepository": {
-    "en": "Unknown repository",
-    "zh-CN": "未知仓库"
-  },
-  "localCache.unknownPath": {
-    "en": "Path unavailable",
-    "zh-CN": "路径未知"
+    "en": "Unknown",
+    "zh-CN": "未知"
   },
   "localCache.registered": {
     "en": "Added",
@@ -8813,7 +8809,6 @@ export interface MessageParameters {
   "localCache.data": {  };
   "localCache.actions": {  };
   "localCache.unknownRepository": {  };
-  "localCache.unknownPath": {  };
   "localCache.registered": {  };
   "localCache.removed": {  };
   "localCache.selectRepository": { name: ParameterValue };
