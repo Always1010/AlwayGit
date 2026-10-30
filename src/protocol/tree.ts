@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import type { Commit } from './types';
 import { treeExpansionPreferencesSchema } from './tree-expansion';
+import { treeDefaultsSchema, treeViewModeSchema } from './tree-settings';
+export { treeViewModeSchema } from './tree-settings';
 
 const fixedRevisionSchema = z.string().regex(/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/);
 export const commitTreeTargetSchema = z
@@ -10,7 +12,6 @@ export const commitTreeTargetSchema = z
     baseRevision: fixedRevisionSchema.optional(),
   })
   .strict();
-export const treeViewModeSchema = z.enum(['list', 'horizontal', 'radial', 'vertical']);
 const coordinate = z.number().finite().min(-1e9).max(1e9);
 const scrollOffset = z.number().finite().min(0).max(1e9);
 export const treeCameraStateSchema = z.object({
@@ -60,6 +61,9 @@ export const commitTreeViewStateSchema = z.object({
     .catch(undefined),
   listScroll: z.object({ top: scrollOffset, left: scrollOffset }).optional().catch(undefined),
   preview: treePreviewStateSchema.optional().catch(undefined),
+  settingsDraft: treeDefaultsSchema.optional().catch(undefined),
+  graphFocus: z.string().max(8192).optional().catch(undefined),
+  allowLargeGraph: z.boolean().optional().catch(undefined),
 });
 export type CommitTreeViewState = z.infer<typeof commitTreeViewStateSchema>;
 export const commitTreePanelStateSchema = z

@@ -9,7 +9,12 @@ import {
   snapshotRows,
 } from '../webview/commitTreeModel';
 import { parseRevisionTreeChanges } from '../src/git/tree';
-import { TreePageMemory, inheritedTreeView } from '../src/application/tree-page-persistence';
+import { TreePageMemory } from '../src/application/tree-page-persistence';
+import {
+  inheritedTreeView,
+  openingTreeView,
+  readTreeDefaults,
+} from '../src/protocol/tree-settings';
 
 function entry(path: string, type: RevisionTreeEntry['type'] = 'blob'): RevisionTreeEntry {
   return {
@@ -21,6 +26,44 @@ function entry(path: string, type: RevisionTreeEntry['type'] = 'blob'): Revision
   };
 }
 describe('independent Commit snapshots', () => {
+  it('separates configured defaults from page restoration and normalizes dependent toggles', () => {
+    const recent = {
+      viewMode: 'radial' as const,
+      wheelMode: 'scroll' as const,
+      changesOnly: true,
+      showChanges: true,
+      query: 'never inherit',
+      settingsDraft: readTreeDefaults(),
+    };
+    const defaults = readTreeDefaults({ viewMode: 'vertical', single: { changesOnly: true } });
+    expect(defaults.single).toEqual({ changesOnly: true, showChanges: true });
+    expect(openingTreeView(defaults, false, recent)).toMatchObject({
+      viewMode: 'radial',
+      wheelMode: 'scroll',
+      changesOnly: true,
+    });
+    expect(openingTreeView(defaults, false, recent).query).toBeUndefined();
+    const fixed = openingTreeView(
+      { ...defaults, opening: 'defaults', expansion: 'collapsed' },
+      true,
+      recent,
+    );
+    expect(fixed).toEqual({
+      viewMode: 'vertical',
+      wheelMode: 'zoom',
+      previewOpen: false,
+      showChanges: true,
+      changesOnly: false,
+      expansion: { mode: 'collapsed', overrides: {} },
+    });
+    expect(fixed.settingsDraft).toBeUndefined();
+    expect(openingTreeView(defaults, false, { viewMode: 'horizontal' })).toMatchObject({
+      viewMode: 'horizontal',
+      wheelMode: 'zoom',
+      showChanges: true,
+    });
+    expect(readTreeDefaults(undefined, 'scroll').wheelMode).toBe('scroll');
+  });
   it('reopens exact page state and derives new-page choices without duplicating recent preferences', async () => {
     const values = new Map<string, unknown>();
     const memory = new TreePageMemory({

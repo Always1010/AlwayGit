@@ -514,3 +514,14 @@
     max-width: 110px;
   }
 }
+
+.tree-defaults-modal {
+  width: min(700px, calc(100vw - 24px));
+}
+
+.tree-defaults-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}

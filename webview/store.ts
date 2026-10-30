@@ -9,6 +9,7 @@ import { normalizeShortcutOverrides, type ShortcutOverrides } from '../src/proto
 import { useDock } from './dock-store';
 import { translate, uiText, setLanguageReader } from './text';
 import { create } from 'zustand';
+import { readTreeDefaults, type TreeDefaults } from '../src/protocol/tree-settings';
 import { errorMessage } from './rpc-error';
 import type {
   ActionResponse,
@@ -176,6 +177,7 @@ function rememberHistory(): void {
   useWorkbench.setState({ historyBackDepth: stack.length });
 }
 interface WorkbenchState {
+  treeDefaults: TreeDefaults;
   treeWheelMode: TreeWheelMode;
   treeWheelModeSaving: boolean;
   setTreeWheelMode(mode: TreeWheelMode): Promise<void>;
@@ -390,6 +392,7 @@ function interfaceSnapshot(
     | 'singleKeyShortcuts'
     | 'shortcutOverrides'
     | 'changeListMode'
+    | 'treeDefaults'
   >,
 ): InterfaceSettings {
   return {
@@ -401,6 +404,7 @@ function interfaceSnapshot(
     singleKeyShortcuts: state.singleKeyShortcuts,
     shortcutOverrides: state.shortcutOverrides,
     changeListMode: state.changeListMode,
+    treeDefaults: state.treeDefaults,
   };
 }
 function preferenceChanges(
@@ -434,6 +438,7 @@ function synchronizeInterfaceSettings(preferences: InterfacePreferences): void {
   const current = useWorkbench.getState();
   const saved = overlayInterfaceSettings({ layout: current.layout }, preferences);
   const baseline: InterfaceSettings = {
+    treeDefaults: readTreeDefaults(preferences.treeDefaults, preferences.treeWheelMode),
     language: saved.language === 'zh-CN' ? 'zh-CN' : 'en',
     font: saved.layout!.font,
     row: saved.layout!.row,
@@ -459,6 +464,10 @@ const initialLayout = layout(session.layout);
 // Only the old default density migrates; custom dimensions and drafts are kept.
 if (!session.appearance && initialLayout.row === 26) initialLayout.row = 24;
 export const useWorkbench = create<WorkbenchState>((set, get) => ({
+  treeDefaults: readTreeDefaults(
+    globalThis.window?.__ALWAYGIT_PREFERENCES__?.treeDefaults,
+    globalThis.window?.__ALWAYGIT_PREFERENCES__?.treeWheelMode,
+  ),
   treeWheelMode:
     typeof window !== 'undefined'
       ? (window.__ALWAYGIT_PREFERENCES__?.treeWheelMode ?? 'zoom')
@@ -2285,6 +2294,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     if (state.settingsBaseline) return;
     set({
       settingsBaseline: {
+        treeDefaults: state.treeDefaults,
         language: state.language,
         font: state.layout.font,
         row: state.layout.row,
@@ -2308,6 +2318,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         value.shortcutOverrides ?? state.shortcutOverrides,
       ),
       changeListMode: value.changeListMode ?? state.changeListMode,
+      treeDefaults: value.treeDefaults ?? state.treeDefaults,
       layout: layout({
         ...state.layout,
         font: value.font ?? state.layout.font,

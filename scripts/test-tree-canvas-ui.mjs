@@ -45,6 +45,17 @@ export async function verifyTreeCanvas(browser, url) {
         postMessage(request) {
           fixture.calls.push(structuredClone(request));
           let result;
+          if (request.method === 'saveInterfaceSettings') {
+            sessionStorage.setItem('tree-defaults', JSON.stringify(request.payload));
+            result = request.payload;
+            queueMicrotask(() =>
+              window.dispatchEvent(
+                new MessageEvent('message', {
+                  data: { type: 'interfaceSettingsChanged', settings: request.payload },
+                }),
+              ),
+            );
+          }
           if (['revisionTree', 'revisionTreeIndex'].includes(request.method))
             result = { revision, path: '', entries };
           if (request.method === 'revisionTreeCommit')
@@ -86,7 +97,8 @@ export async function verifyTreeCanvas(browser, url) {
                     '中文内容 alpha beta gamma '.repeat(24) +
                     '";\nnext line\n' +
                     'oversizedIdentifier'.repeat(80)
-                  : 'after\n',
+                  : 'after\n' +
+                    Array.from({ length: 180 }, (_, index) => `line ${index}`).join('\n'),
             };
           queueMicrotask(() =>
             window.dispatchEvent(
@@ -127,6 +139,12 @@ export async function verifyTreeCanvas(browser, url) {
         .evaluate((bar) => bar.scrollWidth > bar.clientWidth),
       'Long snapshot identifiers remain horizontally reachable',
     );
+    await page.locator('.snapshot-text .diff-horizontal-scroll').evaluate((bar) => {
+      bar.scrollLeft = 160;
+    });
+    await page.waitForFunction(
+      () => JSON.parse(sessionStorage.getItem('tree-page-state')).view.preview?.left > 0,
+    );
     const grip = page.getByRole('separator', { name: 'Resize file tree and preview' });
     const tree = () =>
       page.locator('.commit-tree-body > .commit-tree-rows, .commit-tree-body > .commit-tree-graph');
@@ -164,6 +182,9 @@ export async function verifyTreeCanvas(browser, url) {
       .locator('.commit-tree-secondary-controls button[aria-label="Show or hide file preview"]')
       .click();
     assert.ok(Math.abs((await size('x')) - remembered) < 1, 'Reopening preview restores its split');
+    await page.waitForFunction(
+      () => document.querySelector('.snapshot-text .diff-horizontal-scroll')?.scrollLeft > 0,
+    );
 
     for (const mode of ['horizontal', 'radial', 'vertical']) {
       await page.locator('.commit-tree-view-select').selectOption(mode);
@@ -214,6 +235,12 @@ export async function verifyTreeCanvas(browser, url) {
       .filter({ hasText: /^Editor\.vue$/ })
       .click();
     await page.locator('.diff-preview').waitFor();
+    await page.locator('.diff-viewport').evaluate((pane) => {
+      pane.scrollTop = 620;
+    });
+    await page.waitForFunction(
+      () => JSON.parse(sessionStorage.getItem('tree-page-state')).view.preview?.top >= 600,
+    );
     await page.locator('.commit-tree-view-select').selectOption('vertical');
     await page.locator('.tree-graph-stage').press('+');
     await page.getByRole('button', { name: 'Scroll', exact: true }).click();
@@ -257,6 +284,7 @@ export async function verifyTreeCanvas(browser, url) {
       );
     assert.equal(await focus.getAttribute('aria-pressed'), 'true');
     await page.locator('.diff-preview').waitFor();
+    await page.waitForFunction(() => document.querySelector('.diff-viewport')?.scrollTop >= 600);
     await page.locator('.file-path-filter input').fill('Toolbar.vue');
     await page.reload();
     await page.locator('.file-path-filter input:enabled').waitFor();
@@ -268,6 +296,102 @@ export async function verifyTreeCanvas(browser, url) {
       await page.getByRole('treeitem', { name: /^src\/components\/Toolbar\.vue/ }).count(),
       0,
     );
+    await page
+      .locator('.commit-tree-secondary-controls button[aria-label="Commit file tree"]')
+      .click();
+    const defaultsDialog = page.getByRole('dialog', { name: 'Commit file tree' });
+    await defaultsDialog.getByLabel('New file-tree pages').selectOption('defaults');
+    await defaultsDialog.getByLabel('File tree presentation').selectOption('radial');
+    await defaultsDialog.getByLabel('Default wheel behavior').selectOption('zoom');
+    await page.reload();
+    await defaultsDialog.waitFor();
+    assert.equal(
+      await defaultsDialog.getByLabel('File tree presentation').inputValue(),
+      'radial',
+      'Unapplied tree settings survive page reconstruction',
+    );
+    assert.equal(await defaultsDialog.getByLabel('New file-tree pages').inputValue(), 'defaults');
+    assert.equal(
+      await page.evaluate(() => sessionStorage.getItem('tree-defaults')),
+      null,
+      'Reconstruction must not apply draft settings',
+    );
+    await defaultsDialog.getByRole('button', { name: 'Apply', exact: true }).click();
+    await defaultsDialog.waitFor({ state: 'detached' });
+    assert.equal(
+      await page.locator('.commit-tree-view-select').inputValue(),
+      'vertical',
+      'New defaults must not replace an existing page snapshot',
+    );
+    const configured = await page.evaluate(() =>
+      JSON.parse(sessionStorage.getItem('tree-defaults')),
+    );
+    assert.equal(configured.treeDefaults.viewMode, 'radial');
+    assert.equal(configured.treeDefaults.opening, 'defaults');
+    await page
+      .locator('.commit-tree-secondary-controls button[aria-label="Commit file tree"]')
+      .click();
+    await defaultsDialog.getByRole('button', { name: 'Reset file-tree defaults' }).click();
+    await defaultsDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    assert.deepEqual(
+      await page.evaluate(() => JSON.parse(sessionStorage.getItem('tree-defaults'))),
+      configured,
+      'Cancelling a reset leaves saved defaults unchanged',
+    );
+    await page
+      .locator('.commit-tree-secondary-controls button[aria-label="Commit file tree"]')
+      .click();
+    await page.screenshot({ path: 'artifacts/tree-defaults-settings.png' });
+    await page.setViewportSize({ width: 420, height: 760 });
+    await defaultsDialog.waitFor();
+    assert.ok(
+      await defaultsDialog.evaluate((dialog) => dialog.scrollWidth <= dialog.clientWidth + 1),
+      'File-tree settings remain usable in narrow windows',
+    );
+    await page.screenshot({ path: 'artifacts/tree-defaults-settings-narrow.png' });
+    await defaultsDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+
+    const regular = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    try {
+      await regular.goto(url);
+      await regular.getByRole('button', { name: 'Settings', exact: true }).click();
+      const settings = regular.getByRole('dialog', { name: 'Settings', exact: true });
+      await settings
+        .locator('.settings-nav')
+        .getByRole('button', { name: 'Commit file tree', exact: true })
+        .click();
+      await settings.getByLabel('New file-tree pages').selectOption('defaults');
+      await settings.getByLabel('File tree presentation').selectOption('horizontal');
+      await settings.getByRole('button', { name: 'Apply', exact: true }).click();
+      await settings.waitFor({ state: 'detached' });
+      const preferences = await regular.evaluate(() =>
+        JSON.parse(localStorage.getItem('alwaygit.demo-interfaceSettings')),
+      );
+      assert.equal(preferences.treeDefaults.viewMode, 'horizontal');
+      await regular.reload();
+      await regular.getByRole('button', { name: 'Settings', exact: true }).click();
+      await settings
+        .locator('.settings-nav')
+        .getByRole('button', { name: 'Commit file tree', exact: true })
+        .click();
+      await regular.waitForFunction(() => {
+        const editor = document.querySelector('.tree-defaults-editor');
+        return [...(editor?.querySelectorAll('select') ?? [])].some(
+          (select) => select.value === 'horizontal',
+        );
+      });
+      assert.equal(await settings.getByLabel('File tree presentation').inputValue(), 'horizontal');
+      await settings.getByRole('button', { name: 'Reset file-tree defaults' }).click();
+      await settings.getByRole('button', { name: 'Cancel', exact: true }).click();
+      assert.deepEqual(
+        await regular.evaluate(() =>
+          JSON.parse(localStorage.getItem('alwaygit.demo-interfaceSettings')),
+        ),
+        preferences,
+      );
+    } finally {
+      await regular.close();
+    }
     assert.deepEqual(errors, [], 'Tree canvas must not produce runtime errors');
   } catch (error) {
     console.error(await page.locator('.commit-tree-preview').innerHTML());

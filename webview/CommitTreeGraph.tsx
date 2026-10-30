@@ -38,6 +38,9 @@ export function CommitTreeGraph({
   ready = true,
   wheelMode: treeWheelMode,
   onWheelModeChange,
+  initialFocus,
+  allowLargeGraph,
+  onGraphStateChange,
 }: {
   rows: SnapshotRow[];
   mode: TreeGraphMode;
@@ -56,15 +59,22 @@ export function CommitTreeGraph({
   ready?: boolean;
   wheelMode: TreeWheelMode;
   onWheelModeChange(mode: TreeWheelMode): void;
+  initialFocus?: string;
+  allowLargeGraph?: boolean;
+  onGraphStateChange?(value: { graphFocus?: string; allowLargeGraph?: boolean }): void;
 }) {
   const t = useTranslation(),
     stage = useRef<HTMLDivElement>(null);
   const wheelModeRef = useRef(treeWheelMode);
   wheelModeRef.current = treeWheelMode;
-  const [allowLarge, setAllowLarge] = useState(false),
+  const [allowLarge, setAllowLarge] = useState(allowLargeGraph ?? false),
     [size, setSize] = useState({ width: 800, height: 600 });
   const [camera, setCamera] = useState<TreeCamera>({ x: 30, y: 30, scale: 1 }),
-    [focusId, setFocusId] = useState<string>();
+    [focusId, setFocusId] = useState(initialFocus);
+  const rememberFocus = (id: string) => {
+    setFocusId(id);
+    onGraphStateChange?.({ graphFocus: id });
+  };
   const [positioned, setPositioned] = useState(false),
     [measured, setMeasured] = useState(false);
   const restoredCamera = useRef(initialCamera);
@@ -189,7 +199,7 @@ export function CommitTreeGraph({
   const focusNode = (index: number) => {
     const node = layout.nodes[Math.max(0, Math.min(layout.nodes.length - 1, index))];
     if (!node) return;
-    setFocusId(node.row.node.id);
+    rememberFocus(node.row.node.id);
     setCamera((current) => ({
       ...current,
       x: size.width / 2 - (node.x + node.width / 2) * current.scale,
@@ -306,7 +316,14 @@ export function CommitTreeGraph({
           <div className="tree-graph-large" role="status">
             <Icon name="info" />
             <p>{t('treeViews.largeGraph', { count: rows.length })}</p>
-            <Button onClick={() => setAllowLarge(true)}>{t('treeViews.renderAll')}</Button>
+            <Button
+              onClick={() => {
+                setAllowLarge(true);
+                onGraphStateChange?.({ allowLargeGraph: true });
+              }}
+            >
+              {t('treeViews.renderAll')}
+            </Button>
             <Button onClick={useList}>{t('treeViews.list')}</Button>
           </div>
         ) : !rows.length ? (
@@ -380,7 +397,7 @@ export function CommitTreeGraph({
                           focusId === node.id || (!hasVisibleFocus && point === visible[0]) ? 0 : -1
                         }
                         title={nodeHint(node)}
-                        onFocus={() => setFocusId(node.id)}
+                        onFocus={() => rememberFocus(node.id)}
                         onClick={() => openEntry(node)}
                         onDoubleClick={() => {
                           if (!folder && node.entry.type !== 'gitlink') openHistorical(node);

@@ -71,6 +71,21 @@ const deferred = () => {
   return { promise, resolve };
 };
 
+it('discards queued pre-clear state and resumes only with a new snapshot', async () => {
+  vi.useFakeTimers();
+  const local = vi.fn(),
+    host = vi.fn(async () => {});
+  const persistence = new SessionPersistence(local, host);
+  persistence.save({ selection: 'before clear' });
+  persistence.discardPending();
+  await vi.advanceTimersByTimeAsync(300);
+  expect(host).not.toHaveBeenCalled();
+  expect(local).toHaveBeenCalledWith({ selection: 'before clear' });
+  persistence.save({ selection: 'new user choice' });
+  await vi.advanceTimersByTimeAsync(200);
+  expect(host).toHaveBeenCalledExactlyOnceWith({ selection: 'new user choice' });
+});
+
 it('saves local state immediately and sends only the latest pending state after the prior acknowledgement', async () => {
   vi.useFakeTimers();
   const local = vi.fn(),

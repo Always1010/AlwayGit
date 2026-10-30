@@ -16,6 +16,7 @@ import { readWorkbenchLocations, type WorkbenchLocation } from '../src/protocol/
 import { affectsWorkingDiff } from '../webview/refresh';
 import { TerminalSessions } from '../src/application/terminal-sessions';
 import { TreeExpansionMemory } from '../src/application/tree-expansion-persistence';
+import { TreePageMemory } from '../src/application/tree-page-persistence';
 
 vi.mock('vscode', () => {
   class EventEmitter<T> {
@@ -160,6 +161,81 @@ function workbenchFixture(
 }
 
 describe('Commit tree editor tabs', () => {
+  it('uses configured defaults only for new targets and restores an exact cached page ahead of them', async () => {
+    const repo = { id: 'repo', root: '/repo', commonDir: '/repo/.git', name: 'repo' };
+    const workbench = workbenchFixture(undefined, undefined, {
+      list: () => [repo],
+      get: () => repo,
+    });
+    const values = new Map<string, unknown>();
+    (workbench as unknown as { treePageMemory: TreePageMemory }).treePageMemory =
+      new TreePageMemory({
+        keys: () => [...values.keys()],
+        get: <T>(key: string, fallback: T) => (values.get(key) ?? fallback) as T,
+        update: async (key, value) => {
+          if (value === undefined) values.delete(key);
+          else values.set(key, value);
+        },
+      });
+    const configuration = new Map<string, unknown>([
+      [
+        'interfaceSettings',
+        {
+          treeDefaults: {
+            opening: 'defaults',
+            viewMode: 'radial',
+            wheelMode: 'scroll',
+            single: { changesOnly: true },
+          },
+        },
+      ],
+    ]);
+    vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
+      get: (key: string, fallback: unknown) => configuration.get(key) ?? fallback,
+      inspect: (key: string) => ({ globalValue: configuration.get(key) }),
+      update: vi.fn(async (key: string, value: unknown) => {
+        configuration.set(key, value);
+      }),
+    } as unknown as vscode.WorkspaceConfiguration);
+    const first = panelFixture(),
+      reopened = panelFixture(),
+      fresh = panelFixture();
+    vi.mocked(vscode.window.createWebviewPanel)
+      .mockReturnValueOnce(first.panel as never)
+      .mockReturnValueOnce(reopened.panel as never)
+      .mockReturnValueOnce(fresh.panel as never);
+    const target = { repoId: 'repo', revision: 'a'.repeat(40) };
+    const internals = workbench as unknown as {
+      panels: Map<unknown, { commitTree?: { view?: unknown } }>;
+    };
+    await workbench.openCommitTree(target.repoId, target.revision);
+    expect(internals.panels.get(first.panel)?.commitTree?.view).toMatchObject({
+      viewMode: 'radial',
+      wheelMode: 'scroll',
+      changesOnly: true,
+      showChanges: true,
+    });
+    await first.receive({
+      id: 'cache',
+      method: 'saveCommitTreeState',
+      payload: {
+        commitTree: target,
+        view: { viewMode: 'vertical', query: 'keep', showChanges: false },
+      },
+    });
+    first.panel.dispose();
+    await workbench.openCommitTree(target.repoId, target.revision);
+    expect(internals.panels.get(reopened.panel)?.commitTree?.view).toEqual({
+      viewMode: 'vertical',
+      query: 'keep',
+      showChanges: false,
+    });
+    await workbench.openCommitTree(target.repoId, 'b'.repeat(40));
+    expect(internals.panels.get(fresh.panel)?.commitTree?.view).toMatchObject({
+      viewMode: 'radial',
+      changesOnly: true,
+    });
+  });
   it('pins and reuses tree targets without taking over the normal editor or its saved baseline', async () => {
     const repo = { id: 'repo', root: '/repo', commonDir: '/repo/.git', name: 'repo' };
     const workbench = workbenchFixture(undefined, undefined, {
@@ -569,7 +645,7 @@ describe('Commit tree editor tabs', () => {
       payload: { revision: baseRevision, baseRevision: revision },
     });
     expect(vscode.window.createWebviewPanel).toHaveBeenCalledTimes(3);
-    expect(internals.panels.get(second.panel)?.commitTree).toEqual({
+    expect(internals.panels.get(second.panel)?.commitTree).toMatchObject({
       commitTree: { repoId: repo.id, revision: baseRevision, baseRevision: revision },
     });
     await second.receive({

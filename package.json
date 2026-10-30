@@ -284,6 +284,71 @@
             },
             "appearance": {
               "type": "object"
+            },
+            "treeDefaults": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "opening": {
+                  "type": "string",
+                  "enum": [
+                    "recent",
+                    "defaults"
+                  ]
+                },
+                "viewMode": {
+                  "type": "string",
+                  "enum": [
+                    "list",
+                    "horizontal",
+                    "radial",
+                    "vertical"
+                  ]
+                },
+                "wheelMode": {
+                  "type": "string",
+                  "enum": [
+                    "zoom",
+                    "scroll"
+                  ]
+                },
+                "previewOpen": {
+                  "type": "boolean"
+                },
+                "expansion": {
+                  "type": "string",
+                  "enum": [
+                    "remember",
+                    "auto",
+                    "expanded",
+                    "collapsed"
+                  ]
+                },
+                "single": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "showChanges": {
+                      "type": "boolean"
+                    },
+                    "changesOnly": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "comparison": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "showChanges": {
+                      "type": "boolean"
+                    },
+                    "changesOnly": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
             }
           },
           "description": "%manifest.contributes.configuration.properties.alwaygit.interfaceSettings.description%"

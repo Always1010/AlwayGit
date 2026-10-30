@@ -425,9 +425,11 @@ function DiffPreviewPanel({
   }, [preview, loading, totalHeight, viewportWidth, collapsed]);
   function saveReading() {
     if (!preview || loading || pendingReading.current) return;
+    const imagePane =
+      preview.kind === 'image' ? (imageSides[0].current ?? imageSides[1].current) : undefined;
     reading?.onChange({
-      top: viewport.current?.scrollTop ?? lastScrollTop.current,
-      left: horizontalOffset.current,
+      top: imagePane?.scrollTop ?? viewport.current?.scrollTop ?? lastScrollTop.current,
+      left: imagePane?.scrollLeft ?? horizontalOffset.current,
       imageZoom,
       maximized,
       collapsed,

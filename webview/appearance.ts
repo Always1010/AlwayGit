@@ -39,6 +39,7 @@ export interface Appearance {
   mainColors: { light: string; dark: string };
 }
 export interface InterfaceSettings {
+  treeDefaults: import('../src/protocol/tree-settings').TreeDefaults;
   language: Language;
   font: number;
   row: number;
