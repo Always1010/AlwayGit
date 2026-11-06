@@ -10,7 +10,13 @@ import assert from 'node:assert/strict';
 // shell or VS Code actions; Git is read only to identify the source revision below.
 // Stage every selected scene before copying reviewed images; --write replaces only a complete set.
 const root = path.resolve(import.meta.dirname, '..');
-const capturedAt = '2026-10-30';
+const capturedAt = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Shanghai',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+}).format(new Date());
+const sampleTime = '2026-10-30T04:00:00Z';
 const sourceRevision = execFileSync('git', ['rev-parse', '--short', 'HEAD'], {
   cwd: root,
   encoding: 'utf8',
@@ -543,6 +549,10 @@ const scenes = [
     {},
     async (p) => {
       await button(p, 'Pull').click();
+      assert.equal(
+        await dialog(p).getByLabel('Pull Strategy', { exact: true }).inputValue(),
+        'rebase',
+      );
     },
   ],
   [
@@ -620,6 +630,10 @@ const scenes = [
       await button(p, 'Pull').click();
       await button(dialog(p), 'Change pull source').click();
       await dialog(p).getByLabel('Source branch', { exact: true }).fill('develop');
+      assert.equal(
+        await dialog(p).getByLabel('Pull Strategy', { exact: true }).inputValue(),
+        'rebase',
+      );
     },
   ],
   [
@@ -638,6 +652,8 @@ const scenes = [
     {},
     async (p) => {
       await settings(p, 'Git operations');
+      await dialog(p).getByLabel('Default Pull strategy', { exact: true }).waitFor();
+      await dialog(p).getByLabel('Batch Fetch concurrency', { exact: true }).waitFor();
     },
   ],
   [
@@ -731,6 +747,7 @@ const scenes = [
         .getByLabel('Recovery branch name', { exact: true })
         .fill('recovery/layout-review');
       await dialog(p).locator('.revision-inspector strong').first().waitFor();
+      await dialog(p).locator('.revision-inspector .diff-line').first().waitFor();
     },
   ],
   [
@@ -854,7 +871,7 @@ try {
     page.setDefaultTimeout(10000);
     page.on('pageerror', (error) => errors.push(error.message));
     try {
-      await page.clock.install({ time: new Date(`${capturedAt}T04:00:00Z`) });
+      await page.clock.install({ time: new Date(sampleTime) });
       await page.addInitScript((options) => {
         window.__captureOptions = options;
       }, options);
@@ -921,8 +938,11 @@ try {
   }
   await writeFile(
     path.join(output, 'capture-manifest.json'),
-    JSON.stringify({ capturedAt, sourceRevision, scenes: selected.map(([id]) => id) }, null, 2) +
-      '\n',
+    JSON.stringify(
+      { capturedAt, sampleTime, sourceRevision, scenes: selected.map(([id]) => id) },
+      null,
+      2,
+    ) + '\n',
   );
   if (write)
     for (const [id] of scenes)

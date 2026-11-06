@@ -8,7 +8,7 @@ Select More actions → Help & Guide, with its question-mark icon, in the upper-
 
 <a id="screenshot-notes"></a>
 
-**About the screenshots:** Both editions share the same images. Figures 51–52 share one `AlwayGit-Demo` sample snapshot and are reused in both READMEs. Figure 51 was updated on 2026-10-30 from the 1.8.0 source build (`186779a` plus this Show changes only change), showing only changed files and their necessary directories. Figure 52 retains the complete radial tree captured the same day from baseline `e7b7e0f`. Figures 03, 06, and 14 were captured on 2026-10-29 from the 1.8.0 source build (UI baseline `0c956b5`), showing two topic commits on the Merge side lane, 18 px lane spacing, continuous path colors, and node outlines matching their paths. Figures 04–05, 07, 09, 11, 13, 18, 23, 29, 38, 40–47, and 49–50 were captured on 2026-10-28 from the 1.8.0 source build (UI baseline `67d3097`), reflecting the default unified list, current selection states, and Diff styles. Figure 49 explicitly demonstrates optional split mode; Figure 50 shows the navigation boundary notice. Figures 05 and 38 retain their original settings scenes and omit the later path-display and wrapping options; use the current interface for those reading preferences. Other figures retain their 2026-10-24 source. Some still show the old sample name `AlwayGit`, original paths, and surrounding toolbar; the main sample repository is now `AlwayGit-Demo`. These differences do not change the dialog operations illustrated. Background Graphs in other images retain the original sample history; see [history filtering](#section-04-01) for how to read the current graph. Images show actual Workbench components with an English interface, the default theme on a light host, and sample data; the language page previews Chinese. Repository, author, Commit ID, history, Git-operation, and terminal states come from isolated sample RPC data, not real project records or validation of real remotes, authentication, Git, or terminal execution. The narrow sidebar figure demonstrates region navigation at that viewport size. Images exclude native VS Code chrome, native confirmations, and system folder pickers. Your names, paths, Commit IDs, and saved interface preferences may differ. See [Validation](VALIDATION.en.md#manual-screenshots) for the capture process and verification scope.
+**About the screenshots:** Both editions share the same images. Figures 26, 35, 37, 45, 47, and 48 were selectively updated on 2026-11-07 from the 1.8.0 source build (UI baseline `b719d03`), reflecting default Rebase, Git-operation settings, a fully loaded Reflog Diff, and footer actions for recovery branches, interactive Rebase, and LFS rule application. Their sample clock is fixed at 2026-10-30 and does not indicate the capture date. Figures 51–52 share one `AlwayGit-Demo` sample snapshot and are reused in both READMEs. Figure 51 was updated on 2026-10-30 from the 1.8.0 source build (`186779a` plus this Show changes only change), showing only changed files and their necessary directories. Figure 52 retains the complete radial tree captured the same day from baseline `e7b7e0f`. Figures 03, 06, and 14 were captured on 2026-10-29 from the 1.8.0 source build (UI baseline `0c956b5`), showing two topic commits on the Merge side lane, 18 px lane spacing, continuous path colors, and node outlines matching their paths. Figures 04–05, 07, 09, 11, 13, 18, 23, 29, 38, 40–44, 46, and 49–50 were captured on 2026-10-28 from the 1.8.0 source build (UI baseline `67d3097`), reflecting the default unified list, current selection states, and Diff styles. Figure 49 explicitly demonstrates optional split mode; Figure 50 shows the navigation boundary notice. Figures 05 and 38 retain their original settings scenes and omit the later path-display and wrapping options; use the current interface for those reading preferences. Other figures retain their 2026-10-24 source. Some still show the old sample name `AlwayGit`, original paths, and surrounding toolbar; the main sample repository is now `AlwayGit-Demo`. These differences do not change the dialog operations illustrated. Some retained figures still show the former Load More entry; current history loads automatically near the bottom without clicking it. Background Graphs in other images retain the original sample history; see [history filtering](#section-04-01) for how to read the current graph. Images show actual Workbench components with an English interface, the default theme on a light host, and sample data; the language page previews Chinese. Repository, author, Commit ID, history, Git-operation, and terminal states come from isolated sample RPC data, not real project records or validation of real remotes, authentication, Git, or terminal execution. The narrow sidebar figure demonstrates region navigation at that viewport size. Images exclude native VS Code chrome, native confirmations, and system folder pickers. Your names, paths, Commit IDs, and saved interface preferences may differ. See [Validation](VALIDATION.en.md#manual-screenshots) for the capture process and verification scope.
 
 ## Read by task
 
@@ -464,7 +464,7 @@ Open More → Open Reflog to inspect the current worktree HEAD or a local branch
 
 To recover a commit from before a Reset or Rebase, select its record, enter a recovery branch name and choose Create recovery branch. Your current branch and worktree remain selected unless you explicitly check the switch option. Expired records or pruned objects may be unavailable. Reflog does not save discarded uncommitted file contents.
 
-![Figure 45 Inspect a Reflog record, its commit files and Diff, then enter a recovery branch name](images/user-manual/figure-45.png)
+![Figure 45 Reflog records with commit files and a loaded Diff, plus the footer action to create a recovery branch](images/user-manual/figure-45.png)
 
 <a id="chapter-05"></a>
 
@@ -607,9 +607,9 @@ Wait for Stopping to finish, then inspect the result: Fetch retains downloaded d
 
 **Caution:** Without an explicit Remote, Fetch uses Git's default remote selection; with a Remote, it fetches only that target. Fetch disables automatic `pruneTags` cleanup and preserves ordinary local tags; explicit tag refspecs or mirror configurations still determine their own pruning scope. The Graph status indicating that a commit is already on the remote is based on the remote references known locally after the most recent Fetch. It is not a live query of the server.
 
-![Figure 26 Pull from the default origin/main source into main with a complete source ready for confirmation](images/user-manual/figure-26.png)
+![Figure 26 Pull from the default origin/main source into main using Rebase, with a complete source ready for confirmation](images/user-manual/figure-26.png)
 
-![Figure 35 Expanded Pull source selection using origin/develop for this Pull without changing upstream](images/user-manual/figure-35.png)
+![Figure 35 Expanded Pull source selection using Rebase from origin/develop without changing upstream](images/user-manual/figure-35.png)
 
 <a id="batch-fetch"></a>
 
@@ -972,7 +972,7 @@ Skip is disabled when replay already created the commit but message editing fail
 
 The original HEAD remains under `refs/alwaygit/rebase-backups/…` after completion or abort. Inspect it through [Reflog](#reflog-recovery) and create a recovery branch. Existing hooks and signing configuration remain active; fix hook or signing failures before retrying, or abort.
 
-![Figure 47 Interactive Rebase plan in oldest-first order, with commit details, actions, and messages reviewed before execution](images/user-manual/figure-47.png)
+![Figure 47 Interactive Rebase plan ordered oldest to newest, with a footer action to execute the reviewed commits, actions, and messages](images/user-manual/figure-47.png)
 
 <a id="chapter-02"></a>
 
@@ -1164,7 +1164,7 @@ Double-click a terminal tab to rename it. The toolbar clears the display and off
 
 Git operation settings default to User. Select Current workspace before editing to override the defaults for that VS Code workspace. Workspace overrides remain effective after user defaults are saved; empty windows cannot save workspace settings. The workspace scope covers all repositories managed in that window.
 
-![Figure 37 Git operation settings distinguish user defaults from current VS Code workspace overrides](images/user-manual/figure-37.png)
+![Figure 37 Git operation settings show user scope, Batch Fetch concurrency 4, and default Pull strategy Rebase](images/user-manual/figure-37.png)
 
 <a id="section-11-02"></a>
 
@@ -1231,7 +1231,7 @@ Choose a remote and explicitly start an operation. Failures retain errors and lo
 
 Tracking rules accept literal filenames or glob patterns. Preview the root `.gitattributes` changes before applying them. Unrelated rules and the index remain intact; edits remain unstaged. Literal filenames are anchored to the repository root and escape glob characters according to the host platform; patterns ending in whitespace require manual attribute editing. Switching branches or changing HEAD invalidates the preview. Untrack removes only an exactly matching standard LFS rule; custom rules and nested attributes need manual review. Adding or removing a rule does not migrate existing content, rewrite history, or re-stage files. Migration, cache pruning, file locks, and global Git configuration are outside this panel's scope.
 
-![Figure 48 Git LFS object cache status and a tracking-rule change preview before applying](images/user-manual/figure-48.png)
+![Figure 48 Git LFS object-cache status and a tracking-rule preview, with the footer action to apply it](images/user-manual/figure-48.png)
 
 <a id="section-11-05"></a>
 
