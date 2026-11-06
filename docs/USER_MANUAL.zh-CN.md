@@ -595,7 +595,7 @@ Fetch 更新本机知道的远端状态；Pull 把远端改动整合进当前分
 
 1. 对目标 Remote 执行 Fetch，等待结果栏报告成功。
 2. 查看远端分支和历史差异，理解即将整合的提交。
-3. 需要更新当前分支时使用 Pull，核对“拉取来源”中的来源分支 → 当前本地分支。默认读取上游来源；更改来源图标可展开远程仓库和来源分支选择，也可输入尚未 Fetch 的分支名。没有上游时需明确选择来源；本次选择不会修改上游配置。在 Pull Strategy 选择符合协作约定的策略，只允许快进时使用 Fast-forward Only。没有远程仓库时先添加远程；Detached HEAD 下先切换到本地分支。来源完整时窗口默认聚焦 Pull，可立即按 Enter 执行；来源不完整时聚焦需要补全的选项。
+3. 需要更新当前分支时使用 Pull，核对“拉取来源”中的来源分支 → 当前本地分支。默认读取上游来源；更改来源图标可展开远程仓库和来源分支选择，也可输入尚未 Fetch 的分支名。没有上游时需明确选择来源；本次选择不会修改上游配置。Pull Strategy 默认使用 Rebase，可在“设置 → 高级 → Git 操作”的“默认 Pull 策略”中选择 Rebase、Merge 或 Fast-forward Only，支持用户和工作区范围；本次 Pull 仍可临时覆盖，只允许快进时使用 Fast-forward Only。扩展设置不修改命令行 Git 配置。没有远程仓库时先添加远程；Detached HEAD 下先切换到本地分支。来源完整时窗口默认聚焦 Pull，可立即按 Enter 执行；来源不完整时聚焦需要补全的选项。
 4. 成功后检查历史；若产生冲突，按“合并与冲突处理”完成或中止操作。
 
 **结果：** Fetch 更新所同步远端的引用，并清理该远端已经删除的远程跟踪分支；Remote 列表和 Graph 同步刷新，失效分支的勾选和选中状态随之清除。本地同名分支及尚未推送的提交、工作区和暂存区内容仍然保留。Pull 后当前分支已整合目标改动，或明确进入待处理状态。
@@ -1227,6 +1227,7 @@ Git 在仓库所在的 VS Code 扩展宿主中执行。产品架构面向本地�
 | alwaygit.historyPageSize | 300；50–1000 | 每页加载真实 Commit 的数量上限 |
 | alwaygit.refreshInterval | 15 秒；5–300 秒 | 可见工作台的补偿刷新间隔 |
 | alwaygit.allowDetachedHead | false | 直接进入 Detached HEAD 的高级策略 |
+| alwaygit.defaultPullStrategy | rebase | Pull 弹窗默认策略：rebase、merge 或 ff-only；工作区设置优先，不修改 Git 配置 |
 | alwaygit.pushFollowTags | false | 普通 Push 默认是否附带相关注解 Tag |
 | alwaygit.pushTagAfterCreate | false | 新建 Tag 后默认是否推送到所选 Remote |
 | alwaygit.defaultResetMode | mixed | Reset 对话框默认选中的 Soft、Mixed 或 Hard 模式 |

@@ -352,6 +352,9 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
   const [allowDetachedHead, setAllowDetachedHead] = useState(
       state.operationSettings.allowDetachedHead,
     ),
+    [defaultPullStrategy, setDefaultPullStrategy] = useState(
+      state.operationSettings.defaultPullStrategy,
+    ),
     [pushFollowTags, setPushFollowTags] = useState(state.operationSettings.pushFollowTags),
     [pushTagAfterCreate, setPushTagAfterCreate] = useState(
       state.operationSettings.pushTagAfterCreate,
@@ -380,6 +383,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
         if (cancelled) return;
         setScopeSettings(settings);
         setAllowDetachedHead(settings.allowDetachedHead);
+        setDefaultPullStrategy(settings.defaultPullStrategy);
         setPushFollowTags(settings.pushFollowTags);
         setPushTagAfterCreate(settings.pushTagAfterCreate);
         setDefaultResetMode(settings.defaultResetMode);
@@ -409,6 +413,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
         await state.saveOperationSettings(
           {
             allowDetachedHead,
+            defaultPullStrategy,
             pushFollowTags,
             pushTagAfterCreate,
             defaultResetMode,
@@ -950,6 +955,23 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
                 <p className="settings-note">
                   {t('settings.thisAlsoControlsDetachedWorktreesInternalRebaseStepsAnd')}
                 </p>
+                <label className="settings-control">
+                  {t('settings.defaultPullStrategy')}
+                  <select
+                    aria-label={t('settings.defaultPullStrategy')}
+                    value={defaultPullStrategy}
+                    disabled={saving || scopeLoading || !scopeSettings}
+                    onChange={(event) => {
+                      setAdvancedDirty(true);
+                      setDefaultPullStrategy(event.target.value as typeof defaultPullStrategy);
+                    }}
+                  >
+                    <option value="rebase">{uiText('actions.rebase')}</option>
+                    <option value="merge">{uiText('actions.merge')}</option>
+                    <option value="ff-only">{uiText('actions.fastForwardOnly')}</option>
+                  </select>
+                </label>
+                <p className="settings-page-copy">{t('settings.defaultPullStrategyDescription')}</p>
                 <label className="form-checkbox">
                   <input
                     type="checkbox"

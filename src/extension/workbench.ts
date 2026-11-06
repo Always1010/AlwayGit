@@ -316,6 +316,7 @@ export class Workbench implements vscode.Disposable {
     );
     const keys = [
       'allowDetachedHead',
+      'defaultPullStrategy',
       'pushFollowTags',
       'pushTagAfterCreate',
       'defaultResetMode',
@@ -329,8 +330,12 @@ export class Workbench implements vscode.Disposable {
           fallback)
         : configuration.get<T>(key, fallback);
     const reset = read<string>('defaultResetMode', 'mixed');
+    const pullStrategy = read<string>('defaultPullStrategy', 'rebase');
     return {
       allowDetachedHead: read<boolean>('allowDetachedHead', false) === true,
+      defaultPullStrategy: ['ff-only', 'merge', 'rebase'].includes(pullStrategy)
+        ? (pullStrategy as OperationSettings['defaultPullStrategy'])
+        : 'rebase',
       pushFollowTags: read<boolean>('pushFollowTags', false) === true,
       pushTagAfterCreate: read<boolean>('pushTagAfterCreate', false) === true,
       defaultResetMode: ['soft', 'mixed', 'hard'].includes(reset)
@@ -400,6 +405,7 @@ export class Workbench implements vscode.Disposable {
         if (
           [
             'allowDetachedHead',
+            'defaultPullStrategy',
             'pushFollowTags',
             'pushTagAfterCreate',
             'defaultResetMode',
@@ -1648,6 +1654,7 @@ export class Workbench implements vscode.Disposable {
         configuration = vscode.workspace.getConfiguration('alwaygit');
       for (const key of [
         'allowDetachedHead',
+        'defaultPullStrategy',
         'pushFollowTags',
         'pushTagAfterCreate',
         'defaultResetMode',

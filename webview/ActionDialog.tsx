@@ -252,7 +252,7 @@ function StandardActionDialog({
             : '',
     selector: dialog.target ?? snapshot.stashes[0]?.selector ?? '',
     path: type === 'worktree.remove' ? (dialog.target ?? '') : '',
-    strategy: 'ff-only',
+    strategy: state.operationSettings.defaultPullStrategy,
     mode: type === 'reset' ? state.operationSettings.defaultResetMode : 'mixed',
     remote:
       type === 'pull'

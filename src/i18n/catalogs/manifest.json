@@ -95,6 +95,12 @@
     "review": "translated",
     "context": "package.json / contributes.configuration.properties.alwaygit.allowDetachedHead.description"
   },
+  "manifest.contributes.configuration.properties.alwaygit.defaultPullStrategy.description": {
+    "en": "Default strategy selected when opening Pull: Rebase, Merge, or Fast-forward Only. The dialog can override it for one Pull. This setting does not change Git configuration.",
+    "zh-CN": "打开 Pull 对话框时默认选择的策略：Rebase、Merge 或 Fast-forward Only。可在对话框中单次覆盖；此设置不修改 Git 配置。",
+    "review": "translated",
+    "context": "package.json / contributes.configuration.properties.alwaygit.defaultPullStrategy.description"
+  },
   "manifest.contributes.configuration.properties.alwaygit.pushFollowTags.description": {
     "en": "Default to pushing missing annotated Tags reachable from the selected branch during Push. The Push dialog can override and remember this choice.",
     "zh-CN": "分支 Push 时默认同时推送该分支可达且远端缺少的注解标签。可在 Push 对话框中临时覆盖并记住选择。",

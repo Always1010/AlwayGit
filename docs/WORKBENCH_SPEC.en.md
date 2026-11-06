@@ -353,6 +353,7 @@ Each tab restores its own Webview state. A saved workspace session initializes o
 | `alwaygit.historyPageSize` | 300; 50–1000 | Real commits per page |
 | `alwaygit.refreshInterval` | 15 seconds; 5–300 | Compensating refresh for visible Workbench's current repository |
 | `alwaygit.allowDetachedHead` | false; boolean | Sole advanced-policy source; default user scope with explicit workspace override; workspace wins, unavailable in empty windows; applied synchronization, never unsaved preview authorization |
+| `alwaygit.defaultPullStrategy` | rebase; rebase/merge/ff-only | Initial Pull strategy; advanced settings support user/workspace scope, with one-off dialog override; does not change Git configuration |
 | `alwaygit.pushFollowTags` | false; boolean | Default related annotated Tags on ordinary Push; explicit one-off/remember |
 | `alwaygit.pushTagAfterCreate` | false; boolean | Default Push after local Tag creation; explicit one-off/remember |
 | `alwaygit.defaultResetMode` | mixed; soft/mixed/hard | Default Reset mode; change in settings or explicitly remember in dialog |

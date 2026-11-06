@@ -311,8 +311,13 @@ export function createDemoRequest(emit: (event: HostMessage) => void) {
   const demoCollections: RepositoryCollection[] = [];
   let demoOrder: RepositoryOrder | undefined;
   const storedResetMode = localStorage.getItem('alwaygit.demo-defaultResetMode');
+  const storedPullStrategy = localStorage.getItem('alwaygit.demo-defaultPullStrategy');
   let demoOperationSettings: OperationSettings = {
     allowDetachedHead: localStorage.getItem('alwaygit.demo-allowDetachedHead') === 'true',
+    defaultPullStrategy:
+      storedPullStrategy === 'merge' || storedPullStrategy === 'ff-only'
+        ? storedPullStrategy
+        : 'rebase',
     pushFollowTags: localStorage.getItem('alwaygit.demo-pushFollowTags') === 'true',
     pushTagAfterCreate: localStorage.getItem('alwaygit.demo-pushTagAfterCreate') === 'true',
     forceDeleteUnmergedBranches:
@@ -325,6 +330,7 @@ export function createDemoRequest(emit: (event: HostMessage) => void) {
   };
   const operationSettingKeys = [
     'allowDetachedHead',
+    'defaultPullStrategy',
     'pushFollowTags',
     'pushTagAfterCreate',
     'defaultResetMode',
@@ -336,6 +342,7 @@ export function createDemoRequest(emit: (event: HostMessage) => void) {
   );
   let demoUserOperationSettings: OperationSettings = {
     allowDetachedHead: false,
+    defaultPullStrategy: 'rebase',
     pushFollowTags: false,
     pushTagAfterCreate: false,
     forceDeleteUnmergedBranches: false,

@@ -839,6 +839,18 @@
     "review": "translated",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
+  "settings.defaultPullStrategy": {
+    "en": "Default Pull strategy",
+    "zh-CN": "默认 Pull 策略",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
+  "settings.defaultPullStrategyDescription": {
+    "en": "Pull starts with Rebase by default. Choose Rebase, Merge, or Fast-forward Only; the Pull dialog can override this for one operation. This setting does not change command-line Git configuration.",
+    "zh-CN": "Pull 初始默认使用 Rebase。可选择 Rebase、Merge 或 Fast-forward Only，并在 Pull 对话框中单次覆盖。此设置不修改命令行 Git 配置。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+  },
   "settings.defaultResetMode": {
     "en": "Default Reset mode",
     "zh-CN": "默认重置模式",

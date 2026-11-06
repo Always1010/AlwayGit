@@ -517,6 +517,7 @@ export interface StashApplyBlocker {
 export type ActionBlocker = CheckoutBlocker | StashApplyBlocker;
 export interface OperationSettings {
   allowDetachedHead: boolean;
+  defaultPullStrategy: 'ff-only' | 'merge' | 'rebase';
   pushFollowTags: boolean;
   pushTagAfterCreate: boolean;
   defaultResetMode: 'soft' | 'mixed' | 'hard';

@@ -222,6 +222,17 @@
           "scope": "window",
           "description": "%manifest.contributes.configuration.properties.alwaygit.allowDetachedHead.description%"
         },
+        "alwaygit.defaultPullStrategy": {
+          "type": "string",
+          "enum": [
+            "rebase",
+            "merge",
+            "ff-only"
+          ],
+          "default": "rebase",
+          "scope": "window",
+          "description": "%manifest.contributes.configuration.properties.alwaygit.defaultPullStrategy.description%"
+        },
         "alwaygit.pushFollowTags": {
           "type": "boolean",
           "default": false,

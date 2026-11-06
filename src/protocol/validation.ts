@@ -359,6 +359,7 @@ export const operationSettingsScopeSchema = z
 export const operationSettingsSchema = z
   .object({
     allowDetachedHead: z.boolean().optional(),
+    defaultPullStrategy: z.enum(['ff-only', 'merge', 'rebase']).optional(),
     pushFollowTags: z.boolean().optional(),
     pushTagAfterCreate: z.boolean().optional(),
     defaultResetMode: z.enum(['soft', 'mixed', 'hard']).optional(),

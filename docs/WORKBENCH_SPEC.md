@@ -370,6 +370,7 @@ Diff 标题栏去掉“Diff ·”前缀，以静态文件图标及完整加粗�
 | `alwaygit.historyPageSize` | 300；50–1000 | 每次历史分页加载的真实 Commit 数量上限 |
 | `alwaygit.refreshInterval` | 15 秒；5–300 秒 | 对可见工作台当前仓库进行补偿刷新 |
 | `alwaygit.allowDetachedHead` | `false`；布尔值 | 高级设置的唯一配置来源；设置页默认编辑用户设置，可显式切换当前工作区；工作区覆盖优先，空窗口不可选择工作区；应用后同步各工作台，禁止未应用预览放开操作 |
+| `alwaygit.defaultPullStrategy` | `rebase`；`rebase` / `merge` / `ff-only` | Pull 弹窗的默认策略；高级设置支持用户与工作区范围，本次操作可临时覆盖，不修改 Git 配置 |
 | `alwaygit.pushFollowTags` | `false`；布尔值 | 普通 Push 是否默认附带相关注解 Tag；对话框可单次覆盖并明确记住 |
 | `alwaygit.pushTagAfterCreate` | `false`；布尔值 | Create Tag 是否默认在本地创建后把新标签推送到所选 Remote；对话框可单次覆盖并明确记住 |
 | `alwaygit.defaultResetMode` | `mixed`；`soft` / `mixed` / `hard` | Reset 对话框的默认模式；可在设置页修改，也可在执行时明确记住本次选择 |

@@ -237,6 +237,7 @@ interface WorkbenchState {
       Pick<
         OperationSettings,
         | 'allowDetachedHead'
+        | 'defaultPullStrategy'
         | 'pushFollowTags'
         | 'pushTagAfterCreate'
         | 'defaultResetMode'
@@ -803,6 +804,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   shortcutOverrides: normalizeShortcutOverrides(session.shortcutOverrides),
   operationSettings: {
     allowDetachedHead: false,
+    defaultPullStrategy: 'rebase',
     pushFollowTags: false,
     pushTagAfterCreate: false,
     defaultResetMode: 'mixed',
@@ -814,6 +816,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     const settings = await rpc<OperationSettings>('operationSettings');
     if (
       typeof settings?.allowDetachedHead === 'boolean' &&
+      ['ff-only', 'merge', 'rebase'].includes(settings?.defaultPullStrategy) &&
       typeof settings?.pushFollowTags === 'boolean' &&
       typeof settings?.pushTagAfterCreate === 'boolean' &&
       ['soft', 'mixed', 'hard'].includes(settings?.defaultResetMode)
@@ -833,6 +836,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     });
     if (
       typeof settings?.allowDetachedHead !== 'boolean' ||
+      !['ff-only', 'merge', 'rebase'].includes(settings?.defaultPullStrategy) ||
       typeof settings?.pushFollowTags !== 'boolean' ||
       typeof settings?.pushTagAfterCreate !== 'boolean' ||
       !['soft', 'mixed', 'hard'].includes(settings?.defaultResetMode) ||

@@ -203,6 +203,15 @@ describe('Workbench protocol validation', () => {
       operationSettingsSchema.safeParse({ ...settings, defaultResetMode: 'keep' }).success,
     ).toBe(false);
   });
+  it('accepts only supported Pull defaults without changing unrelated operation settings', () => {
+    for (const defaultPullStrategy of ['rebase', 'merge', 'ff-only']) {
+      const settings = { defaultPullStrategy, scope: 'user' };
+      expect(operationSettingsSchema.parse(settings)).toEqual(settings);
+    }
+    expect(operationSettingsSchema.safeParse({ defaultPullStrategy: 'squash' }).success).toBe(
+      false,
+    );
+  });
   it.each(['merge', 'rebase', 'reset'])('requires a captured branch and HEAD for %s', (type) => {
     const action = { type, target: 'HEAD', ...(type === 'reset' ? { mode: 'hard' } : {}) };
     expect(actionSchema.safeParse(action).success).toBe(false);

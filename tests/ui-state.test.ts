@@ -1142,6 +1142,7 @@ describe('repository UI consistency', () => {
         forceDeleteUnmergedBranches: false,
         forceRemoveDirtyWorktrees: false,
         defaultResetMode: 'mixed',
+        defaultPullStrategy: 'rebase' as const,
         scope: 'workspace',
       },
     });
@@ -1159,6 +1160,7 @@ describe('repository UI consistency', () => {
         forceDeleteUnmergedBranches: false,
         forceRemoveDirtyWorktrees: false,
         defaultResetMode: 'mixed',
+        defaultPullStrategy: 'rebase' as const,
         scope: 'workspace',
       },
       snapshot: {
@@ -1661,6 +1663,7 @@ describe('repository UI consistency', () => {
   });
   it('uses host operation settings and keeps failed saves from enabling Detached Checkout', async () => {
     expect(store.getState().operationSettings.allowDetachedHead).toBe(false);
+    expect(store.getState().operationSettings.defaultPullStrategy).toBe('rebase');
     bridge.rpc.mockImplementation(async (method: string) => {
       if (method === 'operationSettings')
         return {
@@ -1670,6 +1673,7 @@ describe('repository UI consistency', () => {
           forceDeleteUnmergedBranches: false,
           forceRemoveDirtyWorktrees: false,
           defaultResetMode: 'soft',
+          defaultPullStrategy: 'merge' as const,
           scope: 'workspace',
         };
       throw new Error('Settings write failed');
@@ -1677,6 +1681,7 @@ describe('repository UI consistency', () => {
     await store.getState().loadOperationSettings();
     expect(store.getState().operationSettings.allowDetachedHead).toBe(true);
     expect(store.getState().operationSettings.defaultResetMode).toBe('soft');
+    expect(store.getState().operationSettings.defaultPullStrategy).toBe('merge');
     bridge.event?.({
       type: 'operationSettingsChanged',
       settings: {
@@ -1686,6 +1691,7 @@ describe('repository UI consistency', () => {
         forceDeleteUnmergedBranches: false,
         forceRemoveDirtyWorktrees: false,
         defaultResetMode: 'mixed',
+        defaultPullStrategy: 'rebase' as const,
         scope: 'workspace',
       },
     });
@@ -1697,6 +1703,7 @@ describe('repository UI consistency', () => {
         forceDeleteUnmergedBranches: false,
         forceRemoveDirtyWorktrees: false,
         defaultResetMode: 'hard',
+        defaultPullStrategy: 'rebase' as const,
       }),
     ).rejects.toThrow('Settings write failed');
     expect(store.getState().operationSettings.allowDetachedHead).toBe(false);
@@ -1707,6 +1714,7 @@ describe('repository UI consistency', () => {
       forceDeleteUnmergedBranches: false,
       forceRemoveDirtyWorktrees: false,
       defaultResetMode: 'hard',
+      defaultPullStrategy: 'rebase' as const,
       scope: 'workspace',
     });
     await store.getState().saveOperationSettings({
@@ -1716,6 +1724,7 @@ describe('repository UI consistency', () => {
       forceDeleteUnmergedBranches: false,
       forceRemoveDirtyWorktrees: false,
       defaultResetMode: 'hard',
+      defaultPullStrategy: 'rebase' as const,
     });
     expect(store.getState().operationSettings.allowDetachedHead).toBe(true);
     expect(store.getState().operationSettings.defaultResetMode).toBe('hard');
@@ -1791,6 +1800,7 @@ describe('repository UI consistency', () => {
       forceDeleteUnmergedBranches: false,
       forceRemoveDirtyWorktrees: false,
       defaultResetMode: 'hard' as const,
+      defaultPullStrategy: 'merge' as const,
     };
     bridge.rpc.mockImplementation(async (method) =>
       method === 'saveOperationSettings'
@@ -1802,6 +1812,7 @@ describe('repository UI consistency', () => {
             forceDeleteUnmergedBranches: false,
             forceRemoveDirtyWorktrees: false,
             defaultResetMode: 'mixed',
+            defaultPullStrategy: 'ff-only' as const,
             scope: 'workspace',
           },
     );
@@ -1815,6 +1826,7 @@ describe('repository UI consistency', () => {
       forceDeleteUnmergedBranches: false,
       forceRemoveDirtyWorktrees: false,
       defaultResetMode: 'mixed',
+      defaultPullStrategy: 'ff-only' as const,
       scope: 'workspace',
     });
   });

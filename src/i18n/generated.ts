@@ -3940,6 +3940,10 @@ export const catalog = {
     "en": "Allow direct Detached HEAD Checkout. Disabled by default; create and switch to a local branch when inspecting historical versions.",
     "zh-CN": "允许直接切换到 Detached HEAD。默认关闭；查看历史版本时请创建并切换到本地分支。"
   },
+  "manifest.contributes.configuration.properties.alwaygit.defaultPullStrategy.description": {
+    "en": "Default strategy selected when opening Pull: Rebase, Merge, or Fast-forward Only. The dialog can override it for one Pull. This setting does not change Git configuration.",
+    "zh-CN": "打开 Pull 对话框时默认选择的策略：Rebase、Merge 或 Fast-forward Only。可在对话框中单次覆盖；此设置不修改 Git 配置。"
+  },
   "manifest.contributes.configuration.properties.alwaygit.pushFollowTags.description": {
     "en": "Default to pushing missing annotated Tags reachable from the selected branch during Push. The Push dialog can override and remember this choice.",
     "zh-CN": "分支 Push 时默认同时推送该分支可达且远端缺少的注解标签。可在 Push 对话框中临时覆盖并记住选择。"
@@ -6454,6 +6458,14 @@ export const catalog = {
   "settings.tagCreationOffersTheSelectedRemoteAndKeepsThe": {
     "en": "Create Tag selects a remote and pushes only the new Tag. If the push fails, the local Tag is retained.",
     "zh-CN": "创建标签时选择远端，并且只推送新标签；如果推送失败，本地标签会保留。"
+  },
+  "settings.defaultPullStrategy": {
+    "en": "Default Pull strategy",
+    "zh-CN": "默认 Pull 策略"
+  },
+  "settings.defaultPullStrategyDescription": {
+    "en": "Pull starts with Rebase by default. Choose Rebase, Merge, or Fast-forward Only; the Pull dialog can override this for one operation. This setting does not change command-line Git configuration.",
+    "zh-CN": "Pull 初始默认使用 Rebase。可选择 Rebase、Merge 或 Fast-forward Only，并在 Pull 对话框中单次覆盖。此设置不修改命令行 Git 配置。"
   },
   "settings.defaultResetMode": {
     "en": "Default Reset mode",
@@ -9155,6 +9167,7 @@ export interface MessageParameters {
   "manifest.contributes.configuration.properties.alwaygit.historyPageSize.description": {  };
   "manifest.contributes.configuration.properties.alwaygit.refreshInterval.description": {  };
   "manifest.contributes.configuration.properties.alwaygit.allowDetachedHead.description": {  };
+  "manifest.contributes.configuration.properties.alwaygit.defaultPullStrategy.description": {  };
   "manifest.contributes.configuration.properties.alwaygit.pushFollowTags.description": {  };
   "manifest.contributes.configuration.properties.alwaygit.pushTagAfterCreate.description": {  };
   "manifest.contributes.configuration.properties.alwaygit.defaultResetMode.description": {  };
@@ -9780,6 +9793,8 @@ export interface MessageParameters {
   "settings.branchPushUsesFollowTagsWhenEnabled": {  };
   "settings.pushNewTagsAfterCreationByDefault": {  };
   "settings.tagCreationOffersTheSelectedRemoteAndKeepsThe": {  };
+  "settings.defaultPullStrategy": {  };
+  "settings.defaultPullStrategyDescription": {  };
   "settings.defaultResetMode": {  };
   "settings.resetDialogStartsWithThisModeHardStillRequires": {  };
   "settings.shortcutSearch": {  };
