@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-176：部分弹窗操作纵向堆叠、主按钮不明显且重复显示关闭入口
+
+- 日期：2026-11-06
+- 状态：已解决
+- 现象：退出 Cherry-pick 与 Skip 确认将取消、确认按钮放在正文中纵向拉宽，底部又出现 Close；退出确认缺少主按钮强调。交互式 Rebase、LFS 规则应用和 Reflog 恢复分支的主要操作也未统一到底部操作栏，部分按钮看起来像普通文字。
+- 原因：弹窗正文使用纵向 Flex 布局，调用方直接放置操作按钮且未提供 footer，触发通用弹窗的默认 Close；LFS 应用和 Reflog 恢复操作缺少 primary 样式，LFS 外层滚动还会带走操作栏。
+- 解决方案：五处操作区复用底部并排按钮栏，普通主操作使用 primary、Skip 保留 danger，取消与右上角关闭正常退出，保留 Skip / Quit 默认取消和原有执行校验。Rebase 完成或 LFS 没有有效预览时不生成多余底栏；LFS 仅正文滚动，保留底部操作栏。
+- 验证方式：类型与 2030 条双语资源检查、Webview 生产构建、操作条定向 11 项单测通过；Cherry-pick、交互式 Rebase、Reflog、LFS 四组无头界面回归通过，覆盖底部操作入口、主按钮样式、取消、执行与重复 Close 移除，并检查确认按钮同行排列。未启动可见桌面测试，未打包、安装、升版或远程推送。
+- 相关文件：`webview/OperationNotice.tsx`、`webview/InteractiveRebaseDialog.tsx`、`webview/LfsDialog.tsx`、`webview/ReflogDialog.tsx`、`webview/lfs.css`、`tests/operation-notice.test.tsx`、`scripts/test-cherry-pick-ui.mjs`、`scripts/test-interactive-rebase-ui.mjs`、`scripts/test-revision-tools-ui.mjs`、`scripts/test-lfs-ui.mjs`。
+
 ## BUG-175：工作台共享脚本预加载被 CSP 拦截导致白屏
 
 - 日期：2026-11-06

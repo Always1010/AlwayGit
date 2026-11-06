@@ -228,28 +228,43 @@ export function OperationNotice({ abort }: { abort(): void }) {
               : t('operations.skipTitle', { name })
           }
           onClose={() => setConfirmSkip(undefined)}
+          footer={
+            <>
+              <Button data-autofocus="true" onClick={() => setConfirmSkip(undefined)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                className="danger"
+                disabled={state.busy}
+                onClick={() => executeSkip(confirmSkip)}
+              >
+                {t('operations.confirmSkip')}
+              </Button>
+            </>
+          }
         >
           <p>{t(kind === 'rebase' ? 'interactiveRebase.skipConfirm' : 'operations.skipEffect')}</p>
           {kind === 'cherry-pick' && <p>{t('operations.cherryPickKeepAlternative')}</p>}
-          <Button data-autofocus="true" onClick={() => setConfirmSkip(undefined)}>
-            {t('common.cancel')}
-          </Button>
-          <Button className="danger" disabled={state.busy} onClick={() => executeSkip(confirmSkip)}>
-            {t('operations.confirmSkip')}
-          </Button>
         </Modal>
       )}
       {workflow && <ConflictWorkflow key={state.repoId} onClose={() => setWorkflow(false)} />}
       {validQuit && (
-        <Modal title={t('operations.quit')} onClose={() => setConfirmQuit(undefined)}>
+        <Modal
+          title={t('operations.quit')}
+          onClose={() => setConfirmQuit(undefined)}
+          footer={
+            <>
+              <Button data-autofocus="true" onClick={() => setConfirmQuit(undefined)}>
+                {t('common.cancel')}
+              </Button>
+              <Button className="primary" disabled={state.busy} onClick={() => quit(confirmQuit)}>
+                {t('operations.confirmQuit')}
+              </Button>
+            </>
+          }
+        >
           <p>{t('operations.quitEffect')}</p>
           <p>{t('operations.quitNext')}</p>
-          <Button data-autofocus="true" onClick={() => setConfirmQuit(undefined)}>
-            {t('common.cancel')}
-          </Button>
-          <Button disabled={state.busy} onClick={() => quit(confirmQuit)}>
-            {t('operations.confirmQuit')}
-          </Button>
         </Modal>
       )}
     </div>

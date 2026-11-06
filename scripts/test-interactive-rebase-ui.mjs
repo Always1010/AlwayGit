@@ -13,8 +13,11 @@ export async function verifyInteractiveRebase(browser, url) {
     await page.getByRole('menuitem', { name: 'Interactive Rebase', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Interactive Rebase', exact: true }),
       rows = dialog.locator('.rebase-plan li'),
-      execute = dialog.getByRole('button', { name: 'Execute reviewed Rebase plan', exact: true });
+      execute = dialog
+        .locator('.modal-footer')
+        .getByRole('button', { name: 'Execute reviewed Rebase plan', exact: true });
     await rows.nth(2).waitFor();
+    assert.equal(await dialog.getByRole('button', { name: 'Close', exact: true }).count(), 1);
     assert.equal(await rows.count(), 3);
     const original = await rows.first().locator('.rebase-commit').innerText();
     await rows.first().getByRole('button', { name: 'Move later (Alt+Down)', exact: true }).click();
@@ -58,6 +61,7 @@ export async function verifyInteractiveRebase(browser, url) {
     await execute.click();
     await dialog.getByRole('status').filter({ hasText: 'Rebase completed' }).waitFor();
     await dialog.getByRole('status').locator('code').waitFor();
+    assert.equal(await dialog.locator('.modal-footer').count(), 0);
     assert.match(await dialog.getByRole('status').innerText(), /refs\/alwaygit\/rebase-backups\//);
     assert.deepEqual(errors, []);
   } finally {

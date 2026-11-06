@@ -1,6 +1,9 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 
-type Node = { type: unknown; props: { children?: unknown; onClick?(): void; disabled?: boolean } };
+type Node = {
+  type: unknown;
+  props: { children?: unknown; footer?: unknown; onClick?(): void; disabled?: boolean };
+};
 const fixture = vi.hoisted(() => ({
   slots: [] as unknown[],
   cursor: 0,
@@ -56,7 +59,7 @@ function nodes(value: unknown): Node[] {
   if (Array.isArray(value)) return value.flatMap(nodes);
   if (!value || typeof value !== 'object' || !('props' in value)) return [];
   const node = value as Node;
-  return [node, ...nodes(node.props.children)];
+  return [node, ...nodes(node.props.children), ...nodes(node.props.footer)];
 }
 function render() {
   fixture.cursor = 0;

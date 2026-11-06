@@ -19,7 +19,11 @@ export async function verifyReflog(browser, url) {
     await dialog
       .getByRole('textbox', { name: 'Recovery branch name', exact: true })
       .fill('recovery/ui-test');
-    await dialog.getByRole('button', { name: 'Create recovery branch', exact: true }).click();
+    assert.equal(await dialog.getByRole('button', { name: 'Close', exact: true }).count(), 1);
+    await dialog
+      .locator('.modal-footer .primary')
+      .filter({ hasText: 'Create recovery branch' })
+      .click();
     await dialog.getByRole('status').filter({ hasText: 'Recovery branch created' }).waitFor();
     assert.equal(await page.getByTestId('current-branch').textContent(), 'main');
     await page.keyboard.press('Escape');

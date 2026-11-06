@@ -111,6 +111,30 @@ export function InteractiveRebaseDialog({ start, onClose }: { start?: string; on
       title={t('interactiveRebase.title')}
       busy={busy}
       onClose={onClose}
+      footer={
+        completed ? null : (
+          <>
+            <Button disabled={busy} onClick={onClose}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              className="primary"
+              disabled={
+                !plan ||
+                busy ||
+                changed ||
+                expired ||
+                invalid ||
+                scope.trim() !== loadedScope ||
+                (!!plan.published.length && !acknowledgePublished)
+              }
+              onClick={() => void execute()}
+            >
+              {t('interactiveRebase.execute')}
+            </Button>
+          </>
+        )
+      }
     >
       <p>{t('interactiveRebase.hint')}</p>
       <div className="revision-controls">
@@ -263,21 +287,6 @@ export function InteractiveRebaseDialog({ start, onClose }: { start?: string; on
             </label>
           )}
           <p>{t('interactiveRebase.recovery')}</p>
-          <Button
-            className="primary"
-            disabled={
-              !plan ||
-              busy ||
-              changed ||
-              expired ||
-              invalid ||
-              scope.trim() !== loadedScope ||
-              (!!plan.published.length && !acknowledgePublished)
-            }
-            onClick={() => void execute()}
-          >
-            {t('interactiveRebase.execute')}
-          </Button>
         </>
       )}
     </Modal>

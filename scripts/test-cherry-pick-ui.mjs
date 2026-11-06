@@ -1,5 +1,19 @@
 import assert from 'node:assert/strict';
 
+async function verifyConfirmationFooter(dialog, action, style) {
+  const footer = dialog.locator('.modal-footer');
+  const cancel = footer.getByRole('button', { name: 'Cancel', exact: true });
+  const confirm = footer.getByRole('button', { name: action, exact: true });
+  assert.equal(await footer.getByRole('button').count(), 2);
+  assert.equal(await dialog.getByRole('button', { name: 'Close', exact: true }).count(), 1);
+  assert.equal(
+    await confirm.evaluate((button, name) => button.classList.contains(name), style),
+    true,
+  );
+  const [left, right] = await Promise.all([cancel.boundingBox(), confirm.boundingBox()]);
+  assert.ok(left && right && Math.abs(left.y - right.y) < 1 && left.x + left.width <= right.x);
+}
+
 export async function verifyCherryPick(browser, url) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
@@ -227,6 +241,7 @@ export async function verifyCherryPick(browser, url) {
       exact: true,
     });
     await skipDialog.getByText(/Already applied commits remain/).waitFor();
+    await verifyConfirmationFooter(skipDialog, 'Confirm Skip', 'danger');
     assert.equal(
       await skipDialog
         .getByRole('button', { name: 'Cancel', exact: true })
@@ -281,6 +296,7 @@ export async function verifyCherryPick(browser, url) {
       exact: true,
     });
     await quitDialog.getByText(/including unresolved conflicts/).waitFor();
+    await verifyConfirmationFooter(quitDialog, 'Quit & Keep Files', 'primary');
     await quitDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     assert.equal(await page.evaluate(() => window.__cherryFixture.actions.length), 3);
     await quit.click();

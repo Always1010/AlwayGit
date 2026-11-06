@@ -87,7 +87,27 @@ export function ReflogDialog({
     }
   }
   return (
-    <Modal className="revision-dialog" title={t('reflog.title')} busy={busy} onClose={onClose}>
+    <Modal
+      className="revision-dialog"
+      title={t('reflog.title')}
+      busy={busy}
+      onClose={onClose}
+      footer={
+        <>
+          <Button disabled={busy} onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            className="primary"
+            icon="git-branch"
+            disabled={!selected || !name.trim() || busy}
+            onClick={() => void recover()}
+          >
+            {t('reflog.recover')}
+          </Button>
+        </>
+      }
+    >
       <p>{t('reflog.hint')}</p>
       <div className="revision-controls">
         <label>
@@ -175,13 +195,6 @@ export function ReflogDialog({
           />
           {t('reflog.checkout')}
         </label>
-        <Button
-          icon="git-branch"
-          disabled={!selected || !name.trim() || busy}
-          onClick={() => void recover()}
-        >
-          {t('reflog.recover')}
-        </Button>
         <Button
           icon="copy"
           title={t('reflog.copy')}

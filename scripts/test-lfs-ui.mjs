@@ -246,7 +246,11 @@ export async function verifyLfs(browser, url) {
           .payload,
     );
     assert.deepEqual(preview, { pattern: 'assets/new.bin', literal: true, operation: 'track' });
-    await dialog.getByRole('button', { name: 'Apply attributes preview', exact: true }).click();
+    assert.equal(await dialog.getByRole('button', { name: 'Close', exact: true }).count(), 1);
+    await dialog
+      .locator('.modal-footer .primary')
+      .filter({ hasText: 'Apply attributes preview' })
+      .click();
     await page.waitForFunction(() => window.__lfsFixture.trackApplied);
     const track = await page.evaluate(() =>
       window.__lfsFixture.actions.find((action) => action.type === 'lfs.track'),
@@ -259,7 +263,7 @@ export async function verifyLfs(browser, url) {
     await dialog
       .getByRole('button', { name: 'Apply attributes preview', exact: true })
       .waitFor({ state: 'hidden' });
-    await dialog.getByText('Close', { exact: true }).click();
+    await dialog.getByRole('button', { name: 'Close', exact: true }).click();
 
     await diff
       .getByRole('button', { name: 'Download historical LFS object…', exact: true })

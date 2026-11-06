@@ -108,6 +108,22 @@ export function LfsDialog({
       title={t('lfs.title')}
       busy={busy}
       onClose={onClose}
+      footer={
+        preview && preview.head === snapshot.head && preview.branch === snapshot.branch ? (
+          <>
+            <Button disabled={busy} onClick={onClose}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              className="primary"
+              disabled={disabled || preview.before === preview.after}
+              onClick={() => void execute({ type: 'lfs.track', token: preview.token })}
+            >
+              {t('lfs.apply')}
+            </Button>
+          </>
+        ) : null
+      }
     >
       <p>{t('lfs.hint')}</p>
       <div className="revision-controls">
@@ -348,12 +364,6 @@ export function LfsDialog({
               <pre>{preview.after}</pre>
             </div>
           </div>
-          <Button
-            disabled={disabled || preview.before === preview.after}
-            onClick={() => void execute({ type: 'lfs.track', token: preview.token })}
-          >
-            {t('lfs.apply')}
-          </Button>
         </>
       )}
     </Modal>
