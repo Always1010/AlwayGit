@@ -26,6 +26,8 @@ function installFixture() {
     version: 1,
     historicalAvailable: false,
     trackApplied: false,
+    holdAction: false,
+    pendingResponse: undefined,
     session: {
       version: 2,
       language: 'en',
@@ -150,6 +152,10 @@ function installFixture() {
         fixture.version++;
         result = { snapshot: snapshot() };
       }
+      if (request.method === 'action' && fixture.holdAction) {
+        fixture.pendingResponse = { type: 'response', id: request.id, result };
+        return;
+      }
       setTimeout(() => window.postMessage({ type: 'response', id: request.id, result }, '*'), 0);
     },
   });
@@ -193,6 +199,9 @@ export async function verifyLfs(browser, url) {
     const remote = dialog.getByRole('combobox', { name: 'Remote', exact: true });
     await remote.selectOption('backup');
     await dialog.getByRole('checkbox', { name: 'Select assets/model.bin', exact: true }).check();
+    await page.evaluate(() => {
+      window.__lfsFixture.holdAction = true;
+    });
     await dialog.getByRole('button', { name: 'Fetch selected', exact: true }).click();
     await page.waitForFunction(() =>
       window.__lfsFixture.actions.some((action) => action.type === 'lfs.fetch'),
@@ -212,6 +221,25 @@ export async function verifyLfs(browser, url) {
       },
       'Selected fetch is explicit and bound to the reviewed remote',
     );
+    const stop = dialog.locator('.modal-footer').getByRole('button', { name: /^Stop / });
+    await stop.waitFor();
+    assert.match(
+      await stop.innerText(),
+      /^Stop /,
+      'LFS exposes a labeled stop in its fixed footer',
+    );
+    await dialog.locator('.modal-body').evaluate((node) => {
+      node.scrollTop = node.scrollHeight;
+    });
+    assert.equal(await stop.isVisible(), true);
+    await dialog.screenshot({ path: 'artifacts/lfs-running-footer.png' });
+    await page.evaluate(() => {
+      const fixture = window.__lfsFixture;
+      fixture.holdAction = false;
+      window.postMessage(fixture.pendingResponse, '*');
+      fixture.pendingResponse = undefined;
+    });
+    await stop.waitFor({ state: 'hidden' });
 
     await dialog.getByRole('button', { name: 'Retry branch object upload', exact: true }).click();
     await page.waitForFunction(() =>

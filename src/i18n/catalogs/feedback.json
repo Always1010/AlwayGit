@@ -141,8 +141,8 @@
     "context": "Frontend operation progress and results"
   },
   "feedback.elapsed": {
-    "en": "Elapsed: {{seconds}} seconds",
-    "zh-CN": "已等待 {{seconds}} 秒",
+    "en": "Elapsed: {{seconds}}s",
+    "zh-CN": "已用时 {{seconds}} 秒",
     "review": "translated",
     "context": "Frontend operation progress and results"
   },

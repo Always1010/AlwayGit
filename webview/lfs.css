@@ -1,6 +1,12 @@
 .lfs-dialog {
   max-height: 92vh;
 }
+.lfs-dialog > .modal-footer {
+  flex: none;
+}
+.lfs-dialog > .modal-footer > .stop-operation-button {
+  margin-right: auto;
+}
 .lfs-files {
   max-height: 35vh;
   overflow: auto;

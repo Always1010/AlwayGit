@@ -1,5 +1,24 @@
 import assert from 'node:assert/strict';
 
+async function verifyProgressActions(panel, stopName) {
+  const stop = panel.getByRole('button', { name: stopName, exact: true });
+  assert.equal(await stop.innerText(), stopName, 'Stopping must have a visible action label');
+  const content = await panel.getByTestId('network-progress').boundingBox();
+  const actions = await panel.locator('.network-progress-actions').boundingBox();
+  const logBox = await panel.getByRole('button', { name: 'Show Log', exact: true }).boundingBox();
+  const stopBox = await stop.boundingBox();
+  assert.ok(content.y + content.height <= actions.y + 1, 'Actions follow progress content');
+  assert.ok(
+    logBox.y + logBox.height <= stopBox.y + 1 || logBox.x + logBox.width <= stopBox.x,
+    'Log and Stop have separate targets when actions wrap',
+  );
+  assert.equal(
+    await panel.evaluate((node) => node.scrollWidth > node.clientWidth),
+    false,
+    'Progress content and actions must fit the dialog',
+  );
+}
+
 /** The response is held explicitly so every action state is observable. */
 export async function verifyFeedback(browser, url) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -35,6 +54,7 @@ export async function verifyFeedback(browser, url) {
           head: commit.oid,
           ahead: 1,
           behind: 2,
+          upstream: 'origin/main',
           pullTarget: { localBranch: 'main', remote: 'origin', remoteBranch: 'main' },
           pushTarget: {
             localBranch: 'main',
@@ -456,7 +476,11 @@ export async function verifyFeedback(browser, url) {
     );
     await pushAnimation.dispose();
     await pushProgress.getByText(/No new Git output for/).waitFor();
-    await pushProgress.getByRole('button', { name: 'Show Log', exact: true }).click();
+    await verifyProgressActions(pushDialog, 'Stop Push');
+    await page.setViewportSize({ width: 360, height: 640 });
+    await verifyProgressActions(pushDialog, 'Stop Push');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await pushDialog.getByRole('button', { name: 'Show Log', exact: true }).click();
     await page.waitForFunction(() =>
       window.__feedbackFixture.calls.some((call) => call.method === 'showLog'),
     );
@@ -486,6 +510,34 @@ export async function verifyFeedback(browser, url) {
       .click();
     const pullProgress = page.getByTestId('operation-progress');
     await pullProgress.waitFor();
+    const pullPanel = pullProgress.getByRole('dialog');
+    await verifyProgressActions(pullPanel, 'Stop Pull');
+    await page.setViewportSize({ width: 360, height: 640 });
+    await verifyProgressActions(pullPanel, 'Stop Pull');
+    const target = pullPanel.locator('.operation-progress-target');
+    const originalTarget = await target.innerText();
+    await target.evaluate((node) => {
+      node.textContent = `origin/feature/${'long-branch-name-'.repeat(10)} → main`;
+    });
+    await verifyProgressActions(pullPanel, 'Stop Pull');
+    await pullPanel.screenshot({ path: 'artifacts/pull-progress-long-target.png' });
+    await target.evaluate((node, text) => {
+      node.textContent = text;
+    }, originalTarget);
+    const originalTheme = await page.getByTestId('workbench').getAttribute('data-theme');
+    await page.getByTestId('workbench').evaluate((node) => {
+      node.dataset.theme = 'light';
+    });
+    await pullPanel.screenshot({ path: 'artifacts/pull-progress-light-narrow.png' });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.getByTestId('workbench').evaluate((node) => {
+      node.dataset.theme = 'dark';
+    });
+    await verifyProgressActions(pullPanel, 'Stop Pull');
+    await pullPanel.screenshot({ path: 'artifacts/pull-progress-dark.png' });
+    await page.getByTestId('workbench').evaluate((node, theme) => {
+      node.dataset.theme = theme;
+    }, originalTheme);
     assert.equal(await pullProgress.locator('.feedback-spinner').count(), 1);
     assert.equal(await pullProgress.getByRole('progressbar').count(), 0);
     assert.deepEqual(

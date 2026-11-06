@@ -20,7 +20,7 @@ import { samePath } from './pathIdentity';
 import { captureRemoteLease, updateRemoteLease } from './remoteLease';
 import { DiscardDialog } from './DiscardDialog';
 import { blocksWorkbench, networkCommand } from './actionFeedback';
-import { NetworkProgress } from './NetworkProgress';
+import { NetworkProgress, NetworkProgressActions } from './NetworkProgress';
 import { selectedTagRemote, tagQueryKey } from './tagStatus';
 import {
   captureTagDeleteLease,
@@ -966,17 +966,18 @@ function StandardActionDialog({
         onClose={onClose}
         className="network-operation-dialog"
         footer={
-          <Button
-            icon="chevron-down"
-            title={t('feedback.network.minimize')}
-            aria-label={t('feedback.network.minimize')}
-            onClick={onClose}
-          />
+          <NetworkProgressActions feedback={state.actionFeedback}>
+            <Button icon="chevron-down" onClick={onClose}>
+              {t('feedback.network.minimize')}
+            </Button>
+          </NetworkProgressActions>
         }
       >
-        <Icon name="loading" className="feedback-spinner" />
-        <p className="muted">{state.actionFeedback.target}</p>
-        <NetworkProgress feedback={state.actionFeedback} />
+        <p className="network-operation-target muted">
+          <Icon name="loading" className="feedback-spinner" />
+          <span>{state.actionFeedback.target}</span>
+        </p>
+        <NetworkProgress feedback={state.actionFeedback} actions={false} />
       </Modal>
     );
   }

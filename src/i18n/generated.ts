@@ -1048,6 +1048,10 @@ export const catalog = {
     "en": "Stopping… Waiting for Git to exit.",
     "zh-CN": "正在停止…等待 Git 进程结束。"
   },
+  "cancellation.stoppingLabel": {
+    "en": "Stopping…",
+    "zh-CN": "正在停止…"
+  },
   "cancellation.stopped": {
     "en": "Operation stopped; check the current repository state.",
     "zh-CN": "操作已停止，请检查仓库当前状态。"
@@ -2438,8 +2442,8 @@ export const catalog = {
     "zh-CN": "操作完成后将自动解锁工作台。"
   },
   "feedback.elapsed": {
-    "en": "Elapsed: {{seconds}} seconds",
-    "zh-CN": "已等待 {{seconds}} 秒"
+    "en": "Elapsed: {{seconds}}s",
+    "zh-CN": "已用时 {{seconds}} 秒"
   },
   "feedback.stillRunning": {
     "en": "The operation is still running. Please wait.",
@@ -8498,6 +8502,7 @@ export interface MessageParameters {
   "cancellation.stopNamed": { name: ParameterValue };
   "cancellation.keep": {  };
   "cancellation.stopping": {  };
+  "cancellation.stoppingLabel": {  };
   "cancellation.stopped": {  };
   "cancellation.refresh": {  };
   "cancellation.batch": {  };

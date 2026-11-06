@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { ActionFeedback } from './actionFeedback';
 import { useTranslation, type StaticMessageKey } from './i18n';
 import type { NetworkOperationProgress } from '../src/protocol/types';
@@ -6,6 +6,7 @@ import { rpc } from './rpc';
 import { useWorkbench } from './store';
 import { Button } from './ui';
 import { StopOperationButton } from './StopOperation';
+import { operationTasks } from './operationTasks';
 
 const labels: Record<NetworkOperationProgress['phase'], StaticMessageKey> = {
   connecting: 'feedback.network.connecting',
@@ -21,9 +22,23 @@ const labels: Record<NetworkOperationProgress['phase'], StaticMessageKey> = {
 };
 
 /** Shared by the network dialog, protected Pull dialog and background feedback. */
-export function NetworkProgress({ feedback }: { feedback: ActionFeedback }) {
+export function NetworkProgress({
+  feedback,
+  actions = true,
+}: {
+  feedback: ActionFeedback;
+  actions?: boolean;
+}) {
   const t = useTranslation(),
     [now, setNow] = useState(Date.now);
+  const tasks = useSyncExternalStore(operationTasks.subscribe, operationTasks.snapshot);
+  const stopping = tasks.some(
+    (task) =>
+      task.stopping &&
+      (feedback.requestId
+        ? task.id === feedback.requestId
+        : task.repoId === feedback.repoId && !!task.action),
+  );
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
@@ -43,24 +58,17 @@ export function NetworkProgress({ feedback }: { feedback: ActionFeedback }) {
   const determinate =
     !['connecting', 'waiting', 'updating', 'integrating', 'refreshing'].includes(phase) &&
     progress.percent !== undefined;
+  const hasMetrics =
+    (determinate && progress.completed !== undefined && progress.total !== undefined) ||
+    progress.transferred ||
+    progress.speed;
   return (
     <div className="network-progress" data-testid="network-progress">
-      <div className="network-progress-heading">
-        <p role="status" aria-live="polite">
-          {label}
-          {determinate ? ` · ${progress.percent}%` : ''}
-        </p>
-        <StopOperationButton requestId={feedback.requestId} repoId={feedback.repoId} />
-        <Button
-          icon="output"
-          title={t('feedback.showLog')}
-          aria-label={t('feedback.showLog')}
-          onClick={() =>
-            void rpc('showLog').catch((error) => useWorkbench.getState().report(error))
-          }
-        />
-      </div>
-      {phase !== 'refreshing' && (
+      <p role="status" aria-live="polite">
+        {stopping ? t('cancellation.stopping') : label}
+        {!stopping && determinate ? ` · ${progress.percent}%` : ''}
+      </p>
+      {!stopping && phase !== 'refreshing' && hasMetrics && (
         <div className="network-progress-metrics">
           {determinate && progress.completed !== undefined && progress.total !== undefined && (
             <span>
@@ -80,11 +88,39 @@ export function NetworkProgress({ feedback }: { feedback: ActionFeedback }) {
         <span>{t('feedback.elapsed', { seconds })}</span>
         <span>{t('feedback.network.lastOutput', { seconds: quiet })}</span>
       </div>
-      {quiet >= 30 && phase !== 'refreshing' && (
+      {!stopping && quiet >= 30 && phase !== 'refreshing' && (
         <p className="muted" role="status">
           {t('feedback.network.quiet', { seconds: quiet })}
         </p>
       )}
+      {actions && <NetworkProgressActions feedback={feedback} />}
+    </div>
+  );
+}
+
+/** Kept outside scrolling dialog bodies; inline progress uses the same trailing action row. */
+export function NetworkProgressActions({
+  feedback,
+  children,
+}: {
+  feedback: ActionFeedback;
+  children?: ReactNode;
+}) {
+  const t = useTranslation();
+  return (
+    <div className="network-progress-actions">
+      <Button
+        icon="output"
+        className="network-progress-log"
+        title={t('feedback.showLog')}
+        onClick={() => void rpc('showLog').catch((error) => useWorkbench.getState().report(error))}
+      >
+        {t('feedback.showLog')}
+      </Button>
+      <div className="network-progress-controls">
+        {children}
+        <StopOperationButton requestId={feedback.requestId} repoId={feedback.repoId} />
+      </div>
     </div>
   );
 }

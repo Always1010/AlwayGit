@@ -3,7 +3,7 @@ import { actionName } from './actionFeedback';
 import type { ActionFeedback } from './actionFeedback';
 import { useTranslation } from './i18n';
 import { Icon } from './ui';
-import { NetworkProgress } from './NetworkProgress';
+import { NetworkProgress, NetworkProgressActions } from './NetworkProgress';
 
 /** Separate from confirmation dialogs: no close control and no background interaction. */
 export function OperationProgress({ feedback }: { feedback?: ActionFeedback }) {
@@ -81,44 +81,51 @@ export function OperationProgress({ feedback }: { feedback?: ActionFeedback }) {
         aria-describedby="operation-progress-target"
         tabIndex={-1}
       >
-        <Icon name="loading" className="feedback-spinner" />
-        <h2 id="operation-progress-title">
-          {t('feedback.inProgress', {
-            name: feedback ? actionName(feedback.action) : t('feedback.gitOperation'),
-          })}
-        </h2>
-        <p id="operation-progress-target">{feedback?.target}</p>
-        {feedback?.networkProgress ? (
-          <NetworkProgress feedback={feedback} />
-        ) : (
-          <p role="status" aria-live="polite">
-            {feedback?.phase === 'refreshing'
-              ? t('feedback.updatingWorkbench')
-              : t('feedback.waitForOperation')}
+        <div className="operation-progress-content">
+          <div className="operation-progress-heading">
+            <Icon name="loading" className="feedback-spinner" />
+            <h2 id="operation-progress-title">
+              {t('feedback.inProgress', {
+                name: feedback ? actionName(feedback.action) : t('feedback.gitOperation'),
+              })}
+            </h2>
+          </div>
+          <p id="operation-progress-target" className="operation-progress-target muted">
+            {feedback?.target}
           </p>
-        )}
-        {feedback?.progress && feedback.phase !== 'refreshing' && (
-          <>
-            <p role="status">
-              {t(
-                feedback.progress.phase === 'cleaning'
-                  ? 'feedback.cleaningFiles'
-                  : 'feedback.restoringFiles',
-                { completed: feedback.progress.completed, total: feedback.progress.total },
-              )}
+          {feedback?.networkProgress ? (
+            <NetworkProgress feedback={feedback} actions={false} />
+          ) : (
+            <p role="status" aria-live="polite">
+              {feedback?.phase === 'refreshing'
+                ? t('feedback.updatingWorkbench')
+                : t('feedback.waitForOperation')}
             </p>
-            <progress
-              value={feedback.progress.completed}
-              max={Math.max(1, feedback.progress.total)}
-            />
-          </>
-        )}
-        {!feedback?.networkProgress && (
-          <>
-            <span className="muted">{t('feedback.elapsed', { seconds })}</span>
-            {seconds >= 15 && <p className="muted">{t('feedback.stillRunning')}</p>}
-          </>
-        )}
+          )}
+          {feedback?.progress && feedback.phase !== 'refreshing' && (
+            <>
+              <p role="status">
+                {t(
+                  feedback.progress.phase === 'cleaning'
+                    ? 'feedback.cleaningFiles'
+                    : 'feedback.restoringFiles',
+                  { completed: feedback.progress.completed, total: feedback.progress.total },
+                )}
+              </p>
+              <progress
+                value={feedback.progress.completed}
+                max={Math.max(1, feedback.progress.total)}
+              />
+            </>
+          )}
+          {!feedback?.networkProgress && (
+            <>
+              <span className="muted">{t('feedback.elapsed', { seconds })}</span>
+              {seconds >= 15 && <p className="muted">{t('feedback.stillRunning')}</p>}
+            </>
+          )}
+        </div>
+        {feedback?.networkProgress && <NetworkProgressActions feedback={feedback} />}
       </div>
     </div>
   );

@@ -47,6 +47,12 @@
     "review": "translated",
     "context": "Operation cancellation: protocol, host and workbench confirmation"
   },
+  "cancellation.stoppingLabel": {
+    "en": "Stopping…",
+    "zh-CN": "正在停止…",
+    "review": "translated",
+    "context": "Compact disabled stop button label; detailed waiting status remains in progress content"
+  },
   "cancellation.stopped": {
     "en": "Operation stopped; check the current repository state.",
     "zh-CN": "操作已停止，请检查仓库当前状态。",

@@ -28,6 +28,7 @@ type Node = {
     footer?: unknown;
     onClick?(): void;
     onClose?(): void;
+    disabled?: boolean;
     'data-autofocus'?: string;
   };
 };
@@ -49,6 +50,8 @@ afterEach(() => {
 });
 it('requires explicit confirmation, defaults to continuing, and displays the operation risk', async () => {
   operationTasks.add({ id: 'old', repoId: 'repo', action: { type: 'push' }, stopping: false });
+  const trigger = nodes(StopOperationButton({ requestId: 'old' }));
+  expect(trigger.some((node) => node.props.children === 'cancellation.stopNamed')).toBe(true);
   const dialog = open();
   expect(fixture.rpc).not.toHaveBeenCalled();
   expect(dialog.some((node) => node.props.children === 'cancellation.pushRisk')).toBe(true);
@@ -61,6 +64,9 @@ it('requires explicit confirmation, defaults to continuing, and displays the ope
   await Promise.resolve();
   expect(fixture.rpc).toHaveBeenCalledWith('cancelOperation', 'repo', { requestId: 'old' });
   expect(operationTasks.snapshot()[0].stopping).toBe(true);
+  const stopping = nodes(StopOperationButton({ requestId: 'old' }));
+  expect(stopping.find((node) => node.type === 'button')!.props.disabled).toBe(true);
+  expect(stopping.some((node) => node.props.children === 'cancellation.stoppingLabel')).toBe(true);
 });
 it('automatically closes a completed target and rejects its stale confirm handler without stopping a newer operation', () => {
   operationTasks.add({ id: 'old', repoId: 'repo', action: { type: 'fetch' }, stopping: false });

@@ -102,6 +102,10 @@ export function LfsDialog({
   const context = { expectedHead: status?.head ?? '', expectedBranch: status?.branch ?? '' },
     fetchDestination = status?.destinations[remote]?.fetch,
     pushDestination = status?.destinations[remote]?.push;
+  const currentPreview =
+    preview && preview.head === snapshot.head && preview.branch === snapshot.branch
+      ? preview
+      : undefined;
   return (
     <Modal
       className="revision-dialog lfs-dialog"
@@ -109,25 +113,29 @@ export function LfsDialog({
       busy={busy}
       onClose={onClose}
       footer={
-        preview && preview.head === snapshot.head && preview.branch === snapshot.branch ? (
+        busy || currentPreview ? (
           <>
-            <Button disabled={busy} onClick={onClose}>
-              {t('common.cancel')}
-            </Button>
-            <Button
-              className="primary"
-              disabled={disabled || preview.before === preview.after}
-              onClick={() => void execute({ type: 'lfs.track', token: preview.token })}
-            >
-              {t('lfs.apply')}
-            </Button>
+            <StopOperationButton repoId={repoId} />
+            {currentPreview && (
+              <>
+                <Button disabled={busy} onClick={onClose}>
+                  {t('common.cancel')}
+                </Button>
+                <Button
+                  className="primary"
+                  disabled={disabled || currentPreview.before === currentPreview.after}
+                  onClick={() => void execute({ type: 'lfs.track', token: currentPreview.token })}
+                >
+                  {t('lfs.apply')}
+                </Button>
+              </>
+            )}
           </>
         ) : null
       }
     >
       <p>{t('lfs.hint')}</p>
       <div className="revision-controls">
-        <StopOperationButton repoId={repoId} />
         <Button
           icon="refresh"
           title={t('common.refresh')}

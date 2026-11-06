@@ -37,18 +37,20 @@ export function StopOperationButton({
         : t('cancellation.refresh');
   const title = stopping ? t('cancellation.stopping') : t('cancellation.stopNamed', { name });
   return (
-    <>
-      <Button
-        icon="debug-stop"
-        title={title}
-        aria-label={title}
-        disabled={stopping}
-        onClick={() =>
-          operationTasks.confirm(matching.filter((task) => !task.stopping).map((task) => task.id))
-        }
-      />
-      {stopping && <span role="status">{t('cancellation.stopping')}</span>}
-    </>
+    <Button
+      icon="primitive-square"
+      className="stop-operation-button"
+      title={title}
+      aria-label={title}
+      disabled={stopping}
+      onClick={() =>
+        operationTasks.confirm(matching.filter((task) => !task.stopping).map((task) => task.id))
+      }
+    >
+      <span role={stopping ? 'status' : undefined}>
+        {stopping ? t('cancellation.stoppingLabel') : title}
+      </span>
+    </Button>
   );
 }
 
@@ -97,7 +99,7 @@ export function StopOperationConfirmation() {
             <Button data-autofocus="true" onClick={close}>
               {t('cancellation.keep')}
             </Button>
-            <Button icon="debug-stop" className="danger" onClick={() => void stop()}>
+            <Button icon="primitive-square" className="danger" onClick={() => void stop()}>
               {t('cancellation.stopNamed', { name })}
             </Button>
           </>
