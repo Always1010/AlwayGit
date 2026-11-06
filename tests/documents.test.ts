@@ -536,6 +536,92 @@ describe('Complete Git Diff previews', () => {
     await expect(documents.changedWorkingPreview(repo, owner, snapshot)).resolves.toBeUndefined();
   });
 
+  it('shares large-file reads within a polling round while preserving each panel baseline', async () => {
+    const { root, repo, service, documents } = await setup();
+    const filename = path.join(root, 'shared.txt'),
+      target: DiffTarget = { kind: 'change', path: 'shared.txt', area: 'unstaged' },
+      firstOwner = {},
+      secondOwner = {};
+    // Include quotes, escapes, and a surrogate pair across a fingerprint chunk boundary.
+    const content = 'x'.repeat(16_383) + '😀\n"\\'.repeat(60_000);
+    await writeFile(filename, content);
+    await commit(root, 'base');
+    await writeFile(filename, content + 'first');
+    const first = textPreview(await documents.indexedPreview(repo, target, true, firstOwner));
+    await writeFile(filename, content + 'other');
+    const second = textPreview(await documents.indexedPreview(repo, target, true, secondOwner));
+    expect(second.index!.token).not.toBe(first.index!.token);
+    const contentRead = vi.spyOn(service, 'content'),
+      workingRead = vi.spyOn(
+        documents as unknown as { readWorking(path: string, bytes: number): Promise<Buffer> },
+        'readWorking',
+      );
+    const snapshot = await service.snapshot(repo);
+    const round = { repository: repo, snapshot, fingerprints: new Map<string, Promise<string>>() };
+    expect(
+      await Promise.all([
+        documents.changedWorkingPreview(repo, firstOwner, snapshot, undefined, round),
+        documents.changedWorkingPreview(repo, secondOwner, snapshot, undefined, round),
+      ]),
+    ).toEqual([target, undefined]);
+    // One classification prefix and one complete read per side, rather than two per panel.
+    expect(contentRead).toHaveBeenCalledTimes(2);
+    expect(workingRead).toHaveBeenCalledTimes(2);
+    await documents.changedWorkingPreview(repo, secondOwner, snapshot, undefined, round);
+    expect(contentRead).toHaveBeenCalledTimes(2);
+    expect(workingRead).toHaveBeenCalledTimes(2);
+    expect(documents.diffPage(repo, first.index!.token, 0, 1).token).toBe(first.index!.token);
+    expect(documents.diffPage(repo, second.index!.token, 0, 1).token).toBe(second.index!.token);
+
+    await writeFile(filename, content + 'again'); // Same byte length and status, a later pass.
+    const next = await service.snapshot(repo);
+    await expect(
+      documents.changedWorkingPreview(repo, secondOwner, next, undefined, round),
+    ).resolves.toEqual(target); // A mismatched snapshot cannot reuse this round's digest.
+    expect(contentRead).toHaveBeenCalledTimes(4);
+    expect(workingRead).toHaveBeenCalledTimes(4);
+    const cancellation = new Error('cancelled');
+    vi.spyOn(service, 'throwIfReadCancelled').mockImplementationOnce(() => {
+      throw cancellation;
+    });
+    await expect(
+      documents.changedWorkingPreview(repo, secondOwner, snapshot, undefined, round),
+    ).rejects.toBe(cancellation); // Even a completed shared digest must honor cancellation.
+  });
+
+  it('retries failed polling reads and keeps different comparison targets separate', async () => {
+    const { root, repo, service, documents } = await setup();
+    await writeFile(path.join(root, 'retry.txt'), 'base');
+    const revision = await commit(root, 'base');
+    await writeFile(path.join(root, 'retry.txt'), 'edited');
+    const owner = {},
+      historicalOwner = {},
+      target: DiffTarget = { kind: 'change', path: 'retry.txt', area: 'unstaged' };
+    await documents.preview(repo, target, owner);
+    await documents.preview(
+      repo,
+      { kind: 'revision', path: target.path, revision },
+      historicalOwner,
+    );
+    const snapshot = await service.snapshot(repo),
+      round = { repository: repo, snapshot, fingerprints: new Map<string, Promise<string>>() },
+      contentRead = vi.spyOn(service, 'content'),
+      failure = new Error('temporary failure');
+    contentRead.mockRejectedValueOnce(failure);
+    await expect(
+      documents.changedWorkingPreview(repo, owner, snapshot, undefined, round),
+    ).rejects.toBe(failure);
+    expect(round.fingerprints.size).toBe(0);
+    await expect(
+      documents.changedWorkingPreview(repo, owner, snapshot, undefined, round),
+    ).resolves.toBeUndefined();
+    await expect(
+      documents.changedWorkingPreview(repo, historicalOwner, snapshot, undefined, round),
+    ).resolves.toBeUndefined();
+    expect(contentRead).toHaveBeenCalledTimes(3);
+    expect(round.fingerprints.size).toBe(2);
+  });
+
   it('rechecks the actual staged comparison independently of Working Tree edits', async () => {
     const { root, repo, service, documents } = await setup(),
       owner = {};

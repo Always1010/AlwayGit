@@ -2381,6 +2381,11 @@ export class Workbench implements vscode.Disposable {
           const previous = this.fingerprints.get(repo.id),
             snapshot = await this.snapshots.read(repo.id, () => this.git.snapshot(repo));
           const changed = this.recordFingerprint(snapshot) !== previous;
+          const previewRound = {
+            repository: repo,
+            snapshot,
+            fingerprints: new Map<string, Promise<string>>(),
+          };
           for (const entry of this.panels.values()) {
             if (!entry.panel.visible || entry.activeRepository !== id) continue;
             const view = entry.session?.views?.[id];
@@ -2394,6 +2399,7 @@ export class Workbench implements vscode.Disposable {
                   entry,
                   snapshot,
                   view.selectedFile,
+                  previewRound,
                 );
                 if (target)
                   diffChanges = {

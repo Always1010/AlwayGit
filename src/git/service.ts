@@ -90,6 +90,7 @@ import type { ReflogQuery } from '../protocol/reflog';
 import type { RevisionTreeRequest, RevisionTreeSearchRequest } from '../protocol/tree';
 import { fileHistoryIndex, type FileHistoryIndex } from './file-history';
 import { redactSecrets, SecretRedactor } from '../application/logging';
+import { BlobCache } from './blob-cache';
 
 export interface GitServiceOptions {
   allowDetachedHead?: () => boolean;
@@ -279,6 +280,7 @@ export class GitService implements GitServiceContract {
     FileHistoryIndex & { created: number; remoteKey?: string; localOnly?: Set<string> }
   >();
   private readonly historyMatches = new Map<string, { created: number; ids: readonly string[] }>();
+  private readonly blobs = new BlobCache();
   private readonly reviews = new Map<string, { token: string; fingerprint: string }>();
   private readonly hunks = new PatchHunkStore();
   async patchHunks(repo: Repository, target: { path: string; area: 'staged' | 'unstaged' }) {
@@ -2001,9 +2003,26 @@ export class GitService implements GitServiceContract {
         if (record.slice(tab + 1) === name && Number(meta[2]) === stage) object = meta[1];
       }
     }
-    return object
-      ? (await this.run(repo, ['cat-file', 'blob', object], false, maxBytes)).stdout
-      : Buffer.alloc(0);
+    if (!object) return Buffer.alloc(0);
+    // cat-file honors replacement refs, including replacements of a blob itself.
+    // Re-read their identities and bypass caching while replacements are configured.
+    const replacements = await this.text(repo, [
+      'for-each-ref',
+      '--format=%(refname)%00%(objectname)',
+      process.env.GIT_REPLACE_REF_BASE ?? 'refs/replace/',
+    ]);
+    if (replacements)
+      return (await this.run(repo, ['cat-file', 'blob', object], false, maxBytes)).stdout;
+    const key = JSON.stringify([normalized(repo.commonDir), object]);
+    const cached = this.blobs.get(key, maxBytes);
+    if (cached) {
+      this.throwIfReadCancelled();
+      return cached;
+    }
+    const bytes = (await this.run(repo, ['cat-file', 'blob', object], false, maxBytes)).stdout;
+    // A capture exactly at its limit may be a prefix. Never cache it as a full blob.
+    if (maxBytes === undefined || bytes.length < maxBytes) this.blobs.remember(key, bytes);
+    return bytes;
   }
   /** Compare immutable copies, retaining only hunk headers rather than a large patch. */
   async textDiffHunks(repo: Repository, left: string, right: string): Promise<TextDiffHunk[]> {

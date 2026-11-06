@@ -35,11 +35,39 @@ interface PreviewBaseline {
   fingerprint: string;
   token?: string;
 }
+/** A single polling pass: keep digests only, never panel snapshots or full previews. */
+export interface WorkingPreviewRound {
+  repository: Repository;
+  snapshot: Snapshot;
+  fingerprints: Map<string, Promise<string>>;
+}
 
 function previewFingerprint(preview: DiffPreview): string {
-  const content =
-    preview.kind === 'text' ? (({ patchHunks: _hunks, ...rest }) => rest)(preview) : preview;
-  return createHash('sha256').update(JSON.stringify(content)).digest('hex');
+  const hash = createHash('sha256');
+  const field = (value: string) => {
+    hash.update(`${value.length}:`);
+    // Hash exact UTF-16 code units in bounded chunks, including split surrogate pairs.
+    // Large text/Base64 fields never pass through JSON escaping or a full-size copy.
+    for (let offset = 0; offset < value.length; offset += 16_384)
+      hash.update(Buffer.from(value.slice(offset, offset + 16_384), 'utf16le'));
+  };
+  if (preview.kind === 'text') {
+    const { left, right, patchHunks: _hunks, ...metadata } = preview;
+    field(JSON.stringify(metadata));
+    field(left);
+    field(right);
+  } else if (preview.kind === 'image') {
+    const { left, right, ...metadata } = preview;
+    field(JSON.stringify(metadata));
+    for (const image of [left, right]) {
+      if (image) {
+        const { data, ...header } = image;
+        field(JSON.stringify(header));
+        field(data);
+      } else field('');
+    }
+  } else field(JSON.stringify(preview));
+  return hash.digest('hex');
 }
 
 type ImageHeader = Pick<DiffImage, 'mimeType' | 'width' | 'height'>;
@@ -320,6 +348,7 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
     owner: object,
     snapshot: Snapshot,
     selectedFile?: string,
+    round?: WorkingPreviewRound,
   ): Promise<Extract<DiffTarget, { kind: 'change' | 'revision' }> | undefined> {
     const baseline = this.previews.get(owner);
     if (
@@ -329,39 +358,49 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
       (selectedFile && selectedFile !== baseline.target.path)
     )
       return;
-    if (baseline.target.kind === 'revision') {
-      const preview = await this.previewComparison(
-        repo,
-        await this.comparison(repo, baseline.target, snapshot),
-      );
-      if (
-        this.previews.get(owner) === baseline &&
-        previewFingerprint(preview) !== baseline.fingerprint
-      )
-        return baseline.target;
-      return;
+    if (baseline.target.kind !== 'revision' && baseline.target.kind !== 'change') return;
+    const target = baseline.target;
+    if (target.kind === 'change') {
+      const file = snapshot.changes.find((change) => change.path === target.path);
+      const valid =
+        file &&
+        (target.area === 'conflict'
+          ? file.conflict
+          : !file.conflict &&
+            (target.area === 'staged'
+              ? !file.untracked && file.indexStatus !== ' ' && file.indexStatus !== '?'
+              : file.untracked || file.worktreeStatus !== ' '));
+      if (!valid) return target;
     }
-    if (baseline.target.kind !== 'change') return;
-    const target = baseline.target,
-      file = snapshot.changes.find((change) => change.path === target.path);
-    const valid =
-      file &&
-      (target.area === 'conflict'
-        ? file.conflict
-        : !file.conflict &&
-          (target.area === 'staged'
-            ? !file.untracked && file.indexStatus !== ' ' && file.indexStatus !== '?'
-            : file.untracked || file.worktreeStatus !== ' '));
-    if (!valid) return target;
-    const preview = await this.previewComparison(
-      repo,
-      await this.comparison(repo, target, snapshot),
-    );
+    this.git.throwIfReadCancelled?.();
+    // A round is tied to the actual repository and Snapshot objects, so a caller
+    // cannot accidentally reuse mutable Working Tree/Index results on a later pass.
+    const checks =
+      round?.repository === repo && round.snapshot === snapshot ? round.fingerprints : undefined;
+    const key = JSON.stringify([
+      target.kind,
+      target.path,
+      target.kind === 'revision' ? target.revision : target.area,
+    ]);
+    let pending = checks?.get(key);
+    if (!pending) {
+      pending = (async () =>
+        previewFingerprint(
+          await this.previewComparison(repo, await this.comparison(repo, target, snapshot)),
+        ))();
+      if (checks) {
+        if (checks.size >= 64) checks.delete(checks.keys().next().value!);
+        checks.set(key, pending);
+        const task = pending;
+        void task.catch(() => {
+          if (checks.get(key) === task) checks.delete(key);
+        });
+      }
+    }
+    const fingerprint = await pending;
+    this.git.throwIfReadCancelled?.();
     // A new preview may have completed while this background read was pending.
-    if (
-      this.previews.get(owner) === baseline &&
-      previewFingerprint(preview) !== baseline.fingerprint
-    )
+    if (this.previews.get(owner) === baseline && fingerprint !== baseline.fingerprint)
       return target;
   }
   async indexedPreview(

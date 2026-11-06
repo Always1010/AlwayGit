@@ -1393,6 +1393,11 @@ describe('Workbench entry presentation', () => {
       for (const fixture of fixtures)
         expect(fixture.panel.webview.postMessage).not.toHaveBeenCalled();
       expect(internals.documents.changedWorkingPreview).toHaveBeenCalledTimes(6); // Visible views can compare a historical revision to Working Tree.
+      const checks = internals.documents.changedWorkingPreview.mock.calls;
+      expect(checks[0][4]).toBe(checks[1][4]);
+      expect(checks[1][4]).toBe(checks[2][4]);
+      expect(checks[3][4]).toBe(checks[4][4]);
+      expect(checks[3][4]).not.toBe(checks[0][4]); // Every poll gets a fresh mutable-content scope.
       workingChanged = true;
       await internals.poll();
       expect(working.panel.webview.postMessage).toHaveBeenCalledOnce();
