@@ -237,6 +237,7 @@ interface WorkbenchState {
     settings: Partial<
       Pick<
         OperationSettings,
+        | 'batchFetchConcurrency'
         | 'allowDetachedHead'
         | 'defaultPullStrategy'
         | 'pushFollowTags'
@@ -313,7 +314,7 @@ interface WorkbenchState {
   tab: 'history' | 'changes';
   drafts: Record<string, string>;
   initialize(): Promise<void>;
-  loadRepositoryStatuses(): Promise<void>;
+  loadRepositoryStatuses(repositoryIds?: string[]): Promise<void>;
   selectRepository(id: string, options?: { restoreView?: boolean }): Promise<void>;
   refresh(options?: {
     background?: boolean;
@@ -804,6 +805,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   singleKeyShortcuts: session.singleKeyShortcuts !== false,
   shortcutOverrides: normalizeShortcutOverrides(session.shortcutOverrides),
   operationSettings: {
+    batchFetchConcurrency: 4,
     allowDetachedHead: false,
     defaultPullStrategy: 'rebase',
     pushFollowTags: false,
@@ -1021,10 +1023,14 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       get().report(error);
     }
   },
-  async loadRepositoryStatuses() {
+  async loadRepositoryStatuses(repositoryIds) {
     const request = ++repositoryStatusEpoch;
     try {
-      const statuses = await rpc<RepositoryStatus[]>('repositoryStatuses');
+      const statuses = await rpc<RepositoryStatus[]>(
+        'repositoryStatuses',
+        undefined,
+        repositoryIds ? { repositoryIds } : undefined,
+      );
       if (request !== repositoryStatusEpoch || !Array.isArray(statuses)) return;
       const known = new Set(get().repositories.map((repository) => repository.id));
       const repositoryStatuses = Object.fromEntries(
@@ -1042,7 +1048,12 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
           unpushed: snapshot.unpushed ?? snapshot.ahead,
         };
       set((state) => ({
-        repositoryStatuses: shareValue(state.repositoryStatuses, repositoryStatuses),
+        repositoryStatuses: shareValue(
+          state.repositoryStatuses,
+          repositoryIds
+            ? { ...state.repositoryStatuses, ...repositoryStatuses }
+            : repositoryStatuses,
+        ),
       }));
     } catch {
       /* Repository badges are supplementary; the selected repository still refreshes normally. */

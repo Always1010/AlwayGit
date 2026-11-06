@@ -314,7 +314,12 @@ export function createDemoRequest(emit: (event: HostMessage) => void) {
   let demoOrder: RepositoryOrder | undefined;
   const storedResetMode = localStorage.getItem('alwaygit.demo-defaultResetMode');
   const storedPullStrategy = localStorage.getItem('alwaygit.demo-defaultPullStrategy');
+  const storedConcurrency = Number(localStorage.getItem('alwaygit.demo-batchFetchConcurrency'));
   let demoOperationSettings: OperationSettings = {
+    batchFetchConcurrency:
+      Number.isInteger(storedConcurrency) && storedConcurrency >= 1 && storedConcurrency <= 8
+        ? storedConcurrency
+        : 4,
     allowDetachedHead: localStorage.getItem('alwaygit.demo-allowDetachedHead') === 'true',
     defaultPullStrategy:
       storedPullStrategy === 'merge' || storedPullStrategy === 'ff-only'
@@ -331,6 +336,7 @@ export function createDemoRequest(emit: (event: HostMessage) => void) {
     scope: 'workspace',
   };
   const operationSettingKeys = [
+    'batchFetchConcurrency',
     'allowDetachedHead',
     'defaultPullStrategy',
     'pushFollowTags',
@@ -343,6 +349,7 @@ export function createDemoRequest(emit: (event: HostMessage) => void) {
     (key) => localStorage.getItem(`alwaygit.demo-${key}`) !== null,
   );
   let demoUserOperationSettings: OperationSettings = {
+    batchFetchConcurrency: 4,
     allowDetachedHead: false,
     defaultPullStrategy: 'rebase',
     pushFollowTags: false,
@@ -664,17 +671,22 @@ export function createDemoRequest(emit: (event: HostMessage) => void) {
       return collection;
     }
     if (method === 'repositoryStatuses')
-      return Object.values(demoStores).map(
-        ({ snapshot }) =>
-          ({
-            repositoryId: snapshot.repository.id,
-            branch: snapshot.branch,
-            upstream: snapshot.upstream,
-            behind: snapshot.upstream ? snapshot.behind : undefined,
-            ahead: snapshot.ahead,
-            unpushed: snapshot.unpushed ?? snapshot.ahead,
-          }) satisfies RepositoryStatus,
-      );
+      return Object.values(demoStores)
+        .filter(({ snapshot }) => {
+          const ids = (payload as { repositoryIds?: string[] } | undefined)?.repositoryIds;
+          return !ids || ids.includes(snapshot.repository.id);
+        })
+        .map(
+          ({ snapshot }) =>
+            ({
+              repositoryId: snapshot.repository.id,
+              branch: snapshot.branch,
+              upstream: snapshot.upstream,
+              behind: snapshot.upstream ? snapshot.behind : undefined,
+              ahead: snapshot.ahead,
+              unpushed: snapshot.unpushed ?? snapshot.ahead,
+            }) satisfies RepositoryStatus,
+        );
     if (method === 'snapshot')
       return structuredClone({
         ...demoSnapshot,

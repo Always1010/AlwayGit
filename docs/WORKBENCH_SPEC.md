@@ -371,6 +371,7 @@ Diff 标题栏去掉“Diff ·”前缀，以静态文件图标及完整加粗�
 | --- | --- | --- |
 | `alwaygit.gitPath` | 空字符串；机器级设置 | 依次使用显式路径、VS Code 内置 Git 扩展提供的路径和 PATH |
 | `alwaygit.networkTimeoutMinutes` | `10`；0–1440 的整数 | 单条 Push/Fetch/Pull 的总耗时上限（分钟）；`0` 关闭上限，修改从下一条命令生效，无输出提示不触发终止 |
+| `alwaygit.batchFetchConcurrency` | `4`；1–8 的整数 | 批量 Fetch 的仓库并发上限；`1` 为串行，修改从下一批生效；高级设置可选择用户或工作区范围 |
 | `alwaygit.historyPageSize` | 300；50–1000 | 每次历史分页加载的真实 Commit 数量上限 |
 | `alwaygit.refreshInterval` | 15 秒；5–300 秒 | 对可见工作台当前仓库进行补偿刷新 |
 | `alwaygit.allowDetachedHead` | `false`；布尔值 | 高级设置的唯一配置来源；设置页默认编辑用户设置，可显式切换当前工作区；工作区覆盖优先，空窗口不可选择工作区；应用后同步各工作台，禁止未应用预览放开操作 |

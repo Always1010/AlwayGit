@@ -105,6 +105,20 @@ const action = {
 } as const;
 
 describe('repository operation lifecycle', () => {
+  it('defers batch Fetch snapshots without changing ordinary Fetch refresh or failure propagation', async () => {
+    const { value, git } = workbench({
+      runRepositoryOperation: async (_key: string, _label: string, task: () => Promise<unknown>) =>
+        task(),
+    });
+    const batch = { ...action, payload: { type: 'fetch', deferRefresh: true } } as const;
+    await value.handle(batch);
+    expect(git.snapshot).not.toHaveBeenCalled();
+    await value.handle(action);
+    expect(git.snapshot).toHaveBeenCalledOnce();
+    git.execute.mockRejectedValueOnce(new Error('network unavailable'));
+    await expect(value.handle(batch)).rejects.toThrow('network unavailable');
+    expect(git.snapshot).toHaveBeenCalledOnce();
+  });
   it('does not report confirmed cancellation when a read-only action preflight could not terminate', async () => {
     const { value, git } = workbench({
       runRepositoryOperation: async (_key: string, _label: string, task: () => Promise<unknown>) =>

@@ -1,4 +1,16 @@
 {
+  "settings.batchFetchConcurrency": {
+    "en": "Batch Fetch concurrency",
+    "zh-CN": "批量 Fetch 并发数",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / Git operations"
+  },
+  "settings.batchFetchConcurrencyDescription": {
+    "en": "Fetch 1–8 repositories at a time (default: 4). Changes apply to the next batch. Worktrees sharing Git storage are fetched once.",
+    "zh-CN": "同时获取 1–8 个仓库，默认为 4。修改从下一批生效；共享 Git 存储的工作树只获取一次。",
+    "review": "translated",
+    "context": "webview/SettingsDialog.tsx / Git operations"
+  },
   "settings.textWrap": {
     "en": "Text preview wrapping",
     "zh-CN": "文本预览换行",

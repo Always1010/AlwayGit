@@ -54,7 +54,11 @@ export const actionSchema = z.union([
           value.expectedHead !== undefined &&
           value.expectedBranch !== undefined),
     ),
-  z.object({ type: z.literal('fetch'), remote: text.optional() }),
+  z.object({
+    type: z.literal('fetch'),
+    remote: text.optional(),
+    deferRefresh: z.boolean().optional(),
+  }),
   z
     .object({
       type: z.literal('pull'),
@@ -360,6 +364,7 @@ export const operationSettingsScopeSchema = z
   .strict();
 export const operationSettingsSchema = z
   .object({
+    batchFetchConcurrency: z.number().int().min(1).max(8).optional(),
     allowDetachedHead: z.boolean().optional(),
     defaultPullStrategy: z.enum(['ff-only', 'merge', 'rebase']).optional(),
     pushFollowTags: z.boolean().optional(),
@@ -376,6 +381,9 @@ export const operationSettingsSchema = z
 export { sessionSchema } from './session';
 export const copySchema = z.object({ text: z.string().max(1000000) });
 export const repositoryKeysSchema = z.object({ keys: z.array(text).min(1).max(10000) });
+export const repositoryStatusesSchema = z
+  .object({ repositoryIds: z.array(text).max(10000).optional() })
+  .strict();
 export const repositoryCollectionSchema = z.object({ id: text });
 export const createRepositoryCollectionSchema = z.object({
   name: z.string().trim().min(1).max(80),

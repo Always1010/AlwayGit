@@ -55,6 +55,7 @@ import {
   openWorkbenchSchema,
   openWorktreeSchema,
   repositoryKeysSchema,
+  repositoryStatusesSchema,
   repositoryCollectionSchema,
   moveRepositoriesSchema,
   repositoryMembershipsSchema,
@@ -317,6 +318,7 @@ export class Workbench implements vscode.Disposable {
       vscode.workspace.workspaceFile || vscode.workspace.workspaceFolders?.length
     );
     const keys = [
+      'batchFetchConcurrency',
       'allowDetachedHead',
       'defaultPullStrategy',
       'pushFollowTags',
@@ -333,7 +335,10 @@ export class Workbench implements vscode.Disposable {
         : configuration.get<T>(key, fallback);
     const reset = read<string>('defaultResetMode', 'mixed');
     const pullStrategy = read<string>('defaultPullStrategy', 'rebase');
+    const concurrency = read<number>('batchFetchConcurrency', 4);
     return {
+      batchFetchConcurrency:
+        Number.isInteger(concurrency) && concurrency >= 1 && concurrency <= 8 ? concurrency : 4,
       allowDetachedHead: read<boolean>('allowDetachedHead', false) === true,
       defaultPullStrategy: ['ff-only', 'merge', 'rebase'].includes(pullStrategy)
         ? (pullStrategy as OperationSettings['defaultPullStrategy'])
@@ -406,6 +411,7 @@ export class Workbench implements vscode.Disposable {
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (
           [
+            'batchFetchConcurrency',
             'allowDetachedHead',
             'defaultPullStrategy',
             'pushFollowTags',
@@ -1655,6 +1661,7 @@ export class Workbench implements vscode.Disposable {
             : vscode.ConfigurationTarget.Global,
         configuration = vscode.workspace.getConfiguration('alwaygit');
       for (const key of [
+        'batchFetchConcurrency',
         'allowDetachedHead',
         'defaultPullStrategy',
         'pushFollowTags',
@@ -1737,7 +1744,10 @@ export class Workbench implements vscode.Disposable {
       await this.projects.notifyCatalogChanged();
       return this.repositories.order();
     }
-    if (request.method === 'repositoryStatuses') return this.repositoryStatuses();
+    if (request.method === 'repositoryStatuses') {
+      const { repositoryIds } = repositoryStatusesSchema.parse(request.payload ?? {});
+      return this.repositoryStatuses(repositoryIds);
+    }
     if (request.method === 'pickRepositoryDirectory') return this.pickRepositoryDirectory();
     if (request.method === 'discoverRepositories') {
       const data = repositoryDiscoverySchema.parse(request.payload);
@@ -2231,9 +2241,14 @@ export class Workbench implements vscode.Disposable {
               busy: this.isBusy(repo.commonDir),
               label: action.type,
             });
-            this.post({ type: 'changed', repoId: r.id });
+            if (action.type === 'fetch' && action.deferRefresh && source) {
+              for (const panel of this.panels.values())
+                if (panel !== source) this.post({ type: 'changed', repoId: r.id }, panel);
+            } else this.post({ type: 'changed', repoId: r.id });
           }
         }
+        // Batch Fetch refreshes the active view and affected badges once after all writes.
+        if (action.type === 'fetch' && action.deferRefresh) return { result };
         if (
           ['push', 'fetch', 'pull', 'tag.push'].includes(action.type) ||
           (action.type === 'tag.create' && action.pushRemote) ||
@@ -2299,8 +2314,11 @@ export class Workbench implements vscode.Disposable {
     );
   }
 
-  private async repositoryStatuses(): Promise<RepositoryStatus[]> {
-    const repositories = this.repositories.list(),
+  private async repositoryStatuses(repositoryIds?: string[]): Promise<RepositoryStatus[]> {
+    const selected = repositoryIds && new Set(repositoryIds);
+    const repositories = this.repositories
+        .list()
+        .filter((repo) => !selected || selected.has(repo.id)),
       results: Array<RepositoryStatus | undefined> = new Array(repositories.length);
     let next = 0;
     await Promise.all(

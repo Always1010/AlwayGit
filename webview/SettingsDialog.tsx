@@ -401,7 +401,10 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
   const [recordingShortcut, setRecordingShortcut] = useState(false);
   const [cacheBusy, setCacheBusy] = useState(false);
   const [colorTheme, setColorTheme] = useState<ColorTheme>(isLightTheme(theme) ? 'light' : 'dark');
-  const [allowDetachedHead, setAllowDetachedHead] = useState(
+  const [batchFetchConcurrency, setBatchFetchConcurrency] = useState(
+      state.operationSettings.batchFetchConcurrency ?? 4,
+    ),
+    [allowDetachedHead, setAllowDetachedHead] = useState(
       state.operationSettings.allowDetachedHead,
     ),
     [defaultPullStrategy, setDefaultPullStrategy] = useState(
@@ -434,6 +437,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
       .then((settings) => {
         if (cancelled) return;
         setScopeSettings(settings);
+        setBatchFetchConcurrency(settings.batchFetchConcurrency ?? 4);
         setAllowDetachedHead(settings.allowDetachedHead);
         setDefaultPullStrategy(settings.defaultPullStrategy);
         setPushFollowTags(settings.pushFollowTags);
@@ -464,6 +468,7 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
       if (advancedDirty)
         await state.saveOperationSettings(
           {
+            batchFetchConcurrency,
             allowDetachedHead,
             defaultPullStrategy,
             pushFollowTags,
@@ -987,6 +992,27 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
                       ? t('settings.workspaceOverrideActive')
                       : t('settings.userScopeDescription')
                     : t('settings.workspaceScopeDescription')}
+                </p>
+                <label className="settings-control">
+                  {t('settings.batchFetchConcurrency')}
+                  <select
+                    aria-label={t('settings.batchFetchConcurrency')}
+                    value={batchFetchConcurrency}
+                    disabled={saving || scopeLoading || !scopeSettings}
+                    onChange={(event) => {
+                      setAdvancedDirty(true);
+                      setBatchFetchConcurrency(Number(event.target.value));
+                    }}
+                  >
+                    {Array.from({ length: 8 }, (_, index) => index + 1).map((count) => (
+                      <option key={count} value={count}>
+                        {count}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <p className="settings-page-copy">
+                  {t('settings.batchFetchConcurrencyDescription')}
                 </p>
                 <label className="form-checkbox">
                   <input

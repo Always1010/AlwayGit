@@ -4,21 +4,30 @@ import { StopOperationButton } from './StopOperation';
 import { Button, Icon } from './ui';
 
 export function RepositoryFetchProgress() {
-  const { entries, running, taskId } = useRepositoryFetch();
+  const { entries, running, refreshing, taskId } = useRepositoryFetch();
   const t = useTranslation();
   if (!entries.length) return null;
   const failed = entries.filter((entry) => entry.status === 'error');
   const completed = entries.filter((entry) => entry.status === 'success').length;
   const skipped = entries.filter((entry) => entry.status === 'skipped').length;
   const settled = entries.filter((entry) => !['pending', 'running'].includes(entry.status)).length;
+  const active = entries.filter((entry) => entry.status === 'running').length;
+  const pending = entries.filter((entry) => entry.status === 'pending').length;
   return (
     <div className={`banner repository-fetch-progress${failed.length ? ' warning' : ' notice'}`}>
       <Icon name={running ? 'sync' : failed.length ? 'warning' : 'cloud-download'} />
       <div className="repository-fetch-summary">
         <span role="status" aria-live="polite">
-          {running
-            ? t('workbench.batchFetchProgress', { completed: settled, total: entries.length })
-            : t('workbench.batchFetchResult', { completed, failed: failed.length, skipped })}
+          {refreshing
+            ? t('workbench.batchFetchRefreshing')
+            : running
+              ? t('workbench.batchFetchProgress', {
+                  completed: settled,
+                  total: entries.length,
+                  active,
+                  pending,
+                })
+              : t('workbench.batchFetchResult', { completed, failed: failed.length, skipped })}
         </span>
         {failed.length > 0 && (
           <details>
@@ -32,7 +41,7 @@ export function RepositoryFetchProgress() {
         )}
       </div>
       {running ? (
-        <StopOperationButton requestId={taskId} />
+        !refreshing && <StopOperationButton requestId={taskId} />
       ) : (
         <>
           {failed.length > 0 && (

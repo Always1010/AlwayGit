@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { Repository } from '../src/protocol/types';
-import { groupRepositories } from '../src/protocol/repositories';
+import { groupRepositories, repositoryGroupKey } from '../src/protocol/repositories';
 import { rpc } from './rpc';
 import { operationTasks } from './operationTasks';
 import { useWorkbench } from './store';
@@ -14,8 +14,9 @@ export interface RepositoryFetchEntry {
 export const useRepositoryFetch = create<{
   entries: RepositoryFetchEntry[];
   running: boolean;
+  refreshing: boolean;
   taskId?: string;
-}>(() => ({ entries: [], running: false }));
+}>(() => ({ entries: [], running: false, refreshing: false }));
 
 let sequence = 0;
 
@@ -26,6 +27,9 @@ export async function fetchRepositories(repositories: Repository[]): Promise<voi
     (group) => group.repository,
   );
   if (!targets.length) return;
+  const configured = useWorkbench.getState().operationSettings.batchFetchConcurrency ?? 4;
+  const concurrency =
+    Number.isInteger(configured) && configured >= 1 && configured <= 8 ? configured : 4;
   const taskId = `repository-fetch-${++sequence}`;
   const entries: RepositoryFetchEntry[] = targets.map((repository) => ({
     repository,
@@ -36,7 +40,7 @@ export async function fetchRepositories(repositories: Repository[]): Promise<voi
   const requests = new Map<string, string>();
   const publish = () =>
     useRepositoryFetch.setState({ entries: entries.map((entry) => ({ ...entry })) });
-  useRepositoryFetch.setState({ entries, running: true, taskId });
+  useRepositoryFetch.setState({ entries, running: true, refreshing: false, taskId });
   operationTasks.add({
     id: taskId,
     repoId: targets[0].id,
@@ -55,7 +59,7 @@ export async function fetchRepositories(repositories: Repository[]): Promise<voi
   });
   try {
     await Promise.all(
-      Array.from({ length: Math.min(4, targets.length) }, async () => {
+      Array.from({ length: Math.min(concurrency, targets.length) }, async () => {
         while (!stopped && next < entries.length) {
           const entry = entries[next++];
           entry.status = 'running';
@@ -65,7 +69,7 @@ export async function fetchRepositories(repositories: Repository[]): Promise<voi
             await rpc(
               'action',
               entry.repository.id,
-              { type: 'fetch' },
+              { type: 'fetch', deferRefresh: true },
               {
                 onRequestId(id) {
                   requestId = id;
@@ -84,13 +88,24 @@ export async function fetchRepositories(repositories: Repository[]): Promise<voi
         }
       }),
     );
+    operationTasks.remove(taskId);
+    useRepositoryFetch.setState({ refreshing: true, taskId: undefined });
     const state = useWorkbench.getState();
+    const affected = new Set(
+      entries
+        .filter((entry) => entry.status !== 'skipped')
+        .map((entry) => repositoryGroupKey(entry.repository)),
+    );
     const active = state.repositories.find((repository) => repository.id === state.repoId);
-    if (active && groupRepositories([...targets, active]).length === targets.length)
+    if (active && affected.has(repositoryGroupKey(active)))
       await state.refresh({ background: true });
-    await useWorkbench.getState().loadRepositoryStatuses();
+    const currentRepositories = useWorkbench.getState().repositories;
+    const repositoryIds = currentRepositories
+      .filter((repository) => affected.has(repositoryGroupKey(repository)))
+      .map((repository) => repository.id);
+    if (repositoryIds.length) await useWorkbench.getState().loadRepositoryStatuses(repositoryIds);
   } finally {
     operationTasks.remove(taskId);
-    useRepositoryFetch.setState({ running: false, taskId: undefined });
+    useRepositoryFetch.setState({ running: false, refreshing: false, taskId: undefined });
   }
 }

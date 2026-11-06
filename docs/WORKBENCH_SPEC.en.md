@@ -354,6 +354,7 @@ Each tab restores its own Webview state. A saved workspace session initializes o
 | --- | --- | --- |
 | `alwaygit.gitPath` | Empty; machine scope | Explicit path, then built-in Git extension path, then PATH |
 | `alwaygit.networkTimeoutMinutes` | 10; integer 0–1440 | Total minutes per Push/Fetch/Pull; 0 disables; applies next command; silent-output notice does not terminate |
+| `alwaygit.batchFetchConcurrency` | 4; integer 1–8 | Concurrent repositories per batch Fetch; 1 runs serially; changes apply to the next batch; advanced settings support user/workspace scope |
 | `alwaygit.historyPageSize` | 300; 50–1000 | Real commits per page |
 | `alwaygit.refreshInterval` | 15 seconds; 5–300 | Compensating refresh for visible Workbench's current repository |
 | `alwaygit.allowDetachedHead` | false; boolean | Sole advanced-policy source; default user scope with explicit workspace override; workspace wins, unavailable in empty windows; applied synchronization, never unsaved preview authorization |

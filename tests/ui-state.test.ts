@@ -3978,6 +3978,46 @@ describe('file history navigation', () => {
 });
 
 describe('repository batch Fetch', () => {
+  it.each([1, 4, 8])(
+    'uses %i concurrent requests and refreshes only affected worktrees',
+    async (concurrency) => {
+      const { fetchRepositories } = await import('../webview/repositoryFetch');
+      const repositories = Array.from({ length: 9 }, (_, i) => ({
+        ...a,
+        id: `repo-${i}`,
+        commonDir: `/repo-${i}/.git`,
+      }));
+      const linked = { ...repositories[0], id: 'linked', root: '/linked' };
+      const previous = { repositoryId: b.id, branch: 'main', ahead: 3, unpushed: 3 };
+      store.setState({
+        repositories: [...repositories, linked, b],
+        repoId: b.id,
+        repositoryStatuses: { [b.id]: previous },
+        operationSettings: {
+          ...store.getState().operationSettings,
+          batchFetchConcurrency: concurrency,
+        },
+      });
+      const pending = deferred<void>();
+      bridge.rpc.mockImplementation((method) =>
+        method === 'action' ? pending.promise : Promise.resolve([]),
+      );
+      const run = fetchRepositories(repositories);
+      expect(bridge.rpc.mock.calls.filter(([method]) => method === 'action')).toHaveLength(
+        concurrency,
+      );
+      pending.resolve();
+      await run;
+      const actions = bridge.rpc.mock.calls.filter(([method]) => method === 'action');
+      expect(actions).toHaveLength(9);
+      expect(actions.every(([, , payload]) => payload.deferRefresh === true)).toBe(true);
+      expect(bridge.rpc).toHaveBeenCalledWith('repositoryStatuses', undefined, {
+        repositoryIds: [...repositories.map((repo) => repo.id), linked.id],
+      });
+      expect(bridge.rpc.mock.calls.some(([method]) => method === 'snapshot')).toBe(false);
+      expect(store.getState().repositoryStatuses[b.id]).toEqual(previous);
+    },
+  );
   it('fetches collection membership including hidden worktrees once and disables empty collections', async () => {
     const { menuFor } = await import('../webview/menus');
     const selected = vi.fn();

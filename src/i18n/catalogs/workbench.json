@@ -426,10 +426,16 @@
     "context": "webview/RepositoryCatalogStatus.tsx / startup repository catalog"
   },
   "workbench.batchFetchProgress": {
-    "en": "Fetching repositories: {{completed}} / {{total}} completed",
-    "zh-CN": "正在获取仓库更新：已完成 {{completed}} / {{total}}",
+    "en": "Fetching repositories: {{completed}} / {{total}} completed · {{active}} running · {{pending}} queued",
+    "zh-CN": "正在获取仓库更新：已完成 {{completed}} / {{total}} · {{active}} 个运行中 · {{pending}} 个等待中",
     "review": "translated",
     "context": "Background batch Fetch progress"
+  },
+  "workbench.batchFetchRefreshing": {
+    "en": "Fetch finished; refreshing repository status…",
+    "zh-CN": "获取已结束，正在刷新仓库状态…",
+    "review": "translated",
+    "context": "Background batch Fetch final refresh"
   },
   "workbench.batchFetchResult": {
     "en": "Fetch completed: {{completed}} succeeded, {{failed}} failed, {{skipped}} skipped",

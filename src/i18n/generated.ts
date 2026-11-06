@@ -4032,6 +4032,10 @@ export const catalog = {
     "en": "Initially select forced removal in Worktree removal dialogs. Uncommitted files may be discarded; final confirmation is still required.",
     "zh-CN": "工作树移除弹窗初始勾选强制移除。可能丢弃未提交文件，仍需最终确认。"
   },
+  "manifest.batchFetchConcurrency": {
+    "en": "Maximum repositories fetched concurrently by batch Fetch (1–8). Changes apply to the next batch; 1 runs serially.",
+    "zh-CN": "批量 Fetch 同时获取的仓库数上限（1–8）。修改从下一批生效；1 表示串行。"
+  },
   "manifest.networkTimeoutMinutes": {
     "en": "Total time limit for each Push, Fetch or Pull command, in minutes (0 disables the limit). Changes apply to the next command. No-output reminders do not stop Git.",
     "zh-CN": "每条 Push、Fetch 或 Pull 命令的总耗时限制，单位为分钟（0 表示关闭限制）。修改从下一条命令生效；无输出提醒不会停止 Git。"
@@ -5950,6 +5954,14 @@ export const catalog = {
   "session.sessionExceedsTheStorageLimit": {
     "en": "Session exceeds the storage limit",
     "zh-CN": "会话超过存储限制"
+  },
+  "settings.batchFetchConcurrency": {
+    "en": "Batch Fetch concurrency",
+    "zh-CN": "批量 Fetch 并发数"
+  },
+  "settings.batchFetchConcurrencyDescription": {
+    "en": "Fetch 1–8 repositories at a time (default: 4). Changes apply to the next batch. Worktrees sharing Git storage are fetched once.",
+    "zh-CN": "同时获取 1–8 个仓库，默认为 4。修改从下一批生效；共享 Git 存储的工作树只获取一次。"
   },
   "settings.textWrap": {
     "en": "Text preview wrapping",
@@ -8112,8 +8124,12 @@ export const catalog = {
     "zh-CN": "重试"
   },
   "workbench.batchFetchProgress": {
-    "en": "Fetching repositories: {{completed}} / {{total}} completed",
-    "zh-CN": "正在获取仓库更新：已完成 {{completed}} / {{total}}"
+    "en": "Fetching repositories: {{completed}} / {{total}} completed · {{active}} running · {{pending}} queued",
+    "zh-CN": "正在获取仓库更新：已完成 {{completed}} / {{total}} · {{active}} 个运行中 · {{pending}} 个等待中"
+  },
+  "workbench.batchFetchRefreshing": {
+    "en": "Fetch finished; refreshing repository status…",
+    "zh-CN": "获取已结束，正在刷新仓库状态…"
   },
   "workbench.batchFetchResult": {
     "en": "Fetch completed: {{completed}} succeeded, {{failed}} failed, {{skipped}} skipped",
@@ -9246,6 +9262,7 @@ export interface MessageParameters {
   "manifest.auxiliaryWorkbench": {  };
   "manifest.contributes.configuration.properties.alwaygit.forceDeleteUnmergedBranches.description": {  };
   "manifest.contributes.configuration.properties.alwaygit.forceRemoveDirtyWorktrees.description": {  };
+  "manifest.batchFetchConcurrency": {  };
   "manifest.networkTimeoutMinutes": {  };
   "menus.discardAllUnstaged": {  };
   "menus.discardAllChanges": {  };
@@ -9722,6 +9739,8 @@ export interface MessageParameters {
   "session.lightAndDarkGraphPalettesMustHaveTheSame": {  };
   "session.zhCN": {  };
   "session.sessionExceedsTheStorageLimit": {  };
+  "settings.batchFetchConcurrency": {  };
+  "settings.batchFetchConcurrencyDescription": {  };
   "settings.textWrap": {  };
   "settings.textWrapMode": {  };
   "settings.textWrapAdaptive": {  };
@@ -10259,7 +10278,8 @@ export interface MessageParameters {
   "workbench.repositoryLoadingFailed": {  };
   "workbench.repositoryLoadingSlow": {  };
   "workbench.retryRepositories": {  };
-  "workbench.batchFetchProgress": { completed: ParameterValue; total: ParameterValue };
+  "workbench.batchFetchProgress": { completed: ParameterValue; total: ParameterValue; active: ParameterValue; pending: ParameterValue };
+  "workbench.batchFetchRefreshing": {  };
   "workbench.batchFetchResult": { completed: ParameterValue; failed: ParameterValue; skipped: ParameterValue };
   "workbench.batchFetchFailures": { count: number };
   "workbench.retryFailedFetches": {  };

@@ -352,7 +352,7 @@ export type GitAction =
       expectedHead?: string;
       expectedBranch?: string;
     }
-  | { type: 'fetch'; remote?: string }
+  | { type: 'fetch'; remote?: string; deferRefresh?: boolean }
   | {
       type: 'pull';
       strategy: 'ff-only' | 'merge' | 'rebase';
@@ -530,6 +530,7 @@ export interface StashApplyBlocker {
 }
 export type ActionBlocker = CheckoutBlocker | StashApplyBlocker;
 export interface OperationSettings {
+  batchFetchConcurrency?: number;
   allowDetachedHead: boolean;
   defaultPullStrategy: 'ff-only' | 'merge' | 'rebase';
   pushFollowTags: boolean;
