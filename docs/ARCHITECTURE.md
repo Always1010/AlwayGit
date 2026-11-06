@@ -265,4 +265,4 @@ Reset、Merge 和 Rebase 在确认前将目标解析为固定 Commit OID，并�
 
 `protocol/interactive-rebase.ts` 约束计划与动作，`git/interactive-rebase.ts` 管理有界令牌缓存及工作树私有 Git 目录下的 manifest、受控编辑器和检查点。Git 原生 interactive merge backend 执行 reviewed todo；辅助程序先验证 Git 生成的候选 OID 列表，再写入显式计划。内部固定 exec 检查点记录每步执行前的 detached HEAD，以区分变空提交和已重放但 reword/hook 失败的提交；进度不计这些内部检查点。说明以 JSON/文件传递，不拼入 shell。运行当前扩展宿主的 `process.execPath`，仅编辑器命令设置 `ELECTRON_RUN_AS_NODE`，兼容 Git for Windows 的 POSIX shell 引号规则，无需安装 Node。
 
-每次启动与恢复设置 autosquash、autostash、updateRefs、rebaseMerges、rescheduleFailedExec 为 false，固定 commentChar、instructionFormat 和说明清理规则；保留空提交与等价补丁，使用 force-rebase 保证同基点动作实际执行，hooks/签名继续生效。序列及消息编辑器核对 orig-head/head-name；恢复还校验 manifest、工作树和编辑器文件。继续沿用暂存结果审阅令牌。恢复引用不删除；完成或中止清理辅助目录，进程终止未确认时延后到 completion 清理并保留原有写隔离。
+每次启动与恢复设置 autosquash、autostash、updateRefs、rebaseMerges、rescheduleFailedExec 为 false，固定 commentChar、instructionFormat 和说明清理规则；保留空提交与等价补丁，使用 force-rebase 保证同基点动作实际执行，hooks/签名继续生效。序列及消息编辑器核对 orig-head/head-name；恢复还校验 manifest、工作树和编辑器文件。继续沿用暂存结果审阅令牌。恢复引用不删除；Rebase 完成后，仅在 Git 的进行中标记已消失时清理辅助目录。启动、Continue 或 Skip 遇到未确认终止时，保留写隔离，等 completion 后再核对能否清理。Abort 只有明确执行成功才清理辅助目录；确认失效、中止失败或异常终止时保留恢复上下文，随后收到进程退出信号也不视为中止成功，不据此清理。

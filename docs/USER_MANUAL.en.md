@@ -814,11 +814,11 @@ The goal of conflict resolution is to produce the correct final file contents. M
 2. Read the starting commit and recovery information. Cherry-pick Abort rolls back the entire batch, including applied commits, and may lose manual resolution edits. Cancel is focused by default. To retain current files, cancel and choose `Quit Cherry-pick & Keep Files…` instead.
 3. Proceed through the workbench explanation and native confirmation, then check the current branch, history, and file status.
 
-**Result:** Git has attempted to restore the state from before the operation began, and the in-progress indicator has disappeared.
+**Result:** After a successful Abort, Git restores the state from before the operation began and the in-progress indicator disappears. If it fails, use the actual Git state and error to determine what happened.
 
 **Caution:** Closing the operation window only closes the window; it does not abort the Git operation. Abort may discard changes made while resolving conflicts. Changes that existed before the operation may affect whether full restoration is possible.
 
-**Troubleshooting:** If Abort fails, stop repeating write operations, retain the error information, and inspect the actual Git state before taking further action.
+**Troubleshooting:** Restarting the operation, advancing a step, changing the branch or HEAD, or editing Index or working-file content after confirmation opens can invalidate it. Inspect the current state, start Abort again, and review a new confirmation. If Abort fails, stop repeating write operations, retain the error information, and inspect the actual Git state before taking further action. Managed Rebase preserves the recovery context needed after a failed Abort; process exit does not establish success, so do not manually delete its recovery files.
 
 ![Figure 20 Abort Merge confirmation showing its start point and restoration risks](images/user-manual/figure-20.png)
 
