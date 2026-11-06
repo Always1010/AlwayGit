@@ -154,5 +154,29 @@
     "zh-CN": " · 已锁定",
     "review": "translated",
     "context": "webview/Sidebar.tsx / SidebarPanel"
+  },
+  "sidebar.incomingCommits": {
+    "en": "{{name}}, {{count}} incoming commits on the tracked branch",
+    "zh-CN": "{{name}}，当前分支有 {{count}} 个待拉取提交",
+    "review": "translated",
+    "context": "Repository Pull badge tooltip and accessible name"
+  },
+  "sidebar.repositoryStatusUnavailable": {
+    "en": "Repository status is unavailable; remote differences cannot be determined.",
+    "zh-CN": "仓库状态尚不可用，无法判断远程差异。",
+    "review": "translated",
+    "context": "Repository comparison unknown state"
+  },
+  "sidebar.remoteStatusCached": {
+    "en": "Remote differences use locally cached references. Fetch to check for new remote commits.",
+    "zh-CN": "远程差异基于本地缓存的引用；获取远程更新后才能发现远端的新提交。",
+    "review": "translated",
+    "context": "Repository remote comparison freshness hint"
+  },
+  "sidebar.noUpstreamComparison": {
+    "en": "No upstream branch is configured; incoming commits cannot be determined.",
+    "zh-CN": "未设置跟踪分支，无法判断待拉取提交。",
+    "review": "translated",
+    "context": "Repository without an upstream branch"
   }
 }

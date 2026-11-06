@@ -1013,6 +1013,8 @@ Click list whitespace or press Esc to clear the blue selection while retaining a
 
 **Caution:** Within the repository navigation scope, Ctrl/Cmd+A selects all logical repositories; Escape clears the action selection. Inside text fields, these shortcuts still edit text.
 
+Round numeric badges appear to the right of repository names: incoming commits on the left (blue by default), unpushed commits on the right (red by default). Zero counts are hidden; a single badge aligns right without a reserved gap, and counts above 99 display `99+`. Hover for each meaning. Toolbar Pull/Push badges use the same respective colors. Settings → Interface → Status indicators offers independent presets, custom colors, immediate previews, and per-color reset; choose Apply to save. Incoming counts compare the current working directory’s branch with its upstream using locally cached remote references; ordinary refresh does not Fetch. Missing upstream or unavailable status hides the incoming badge and explains that comparison is unavailable, rather than claiming the repository is current.
+
 <a id="section-02-04"></a>
 
 ### Remove repositories from the navigation

@@ -577,10 +577,17 @@ export async function verifyAppearance(browser, url) {
     assert.equal(await customSpacing.inputValue(), '8');
     await customSpacing.fill('4');
     await settings.getByRole('button', { name: 'Status indicators', exact: true }).click();
-    await settings.getByRole('radio', { name: '#006BFF', exact: true }).click();
+    await settings
+      .getByRole('radiogroup', { name: 'Incoming commits · Badge color presets', exact: true })
+      .getByRole('radio', { name: '#008F5D', exact: true })
+      .click();
+    await settings
+      .getByRole('radiogroup', { name: 'Unpushed commits · Badge color presets', exact: true })
+      .getByRole('radio', { name: '#006BFF', exact: true })
+      .click();
     assert.equal(
       await workbench.evaluate((element) =>
-        getComputedStyle(element).getPropertyValue('--notification-badge').trim(),
+        getComputedStyle(element).getPropertyValue('--push-badge').trim(),
       ),
       '#006BFF',
       'Badge color previews live',
@@ -593,7 +600,8 @@ export async function verifyAppearance(browser, url) {
     await dialog.waitFor({ state: 'hidden' });
     let applied = await readPreferences(page);
     assert.equal(applied.appearance.theme, 'berry');
-    assert.equal(applied.appearance.badgeColor, '#006BFF');
+    assert.equal(applied.appearance.pullBadgeColor, '#008F5D');
+    assert.equal(applied.appearance.pushBadgeColor, '#006BFF');
     assert.equal(applied.appearance.palette, 'extended');
     assert.equal(applied.appearance.codeFont, 15);
     assert.equal(applied.appearance.codeRowHeight, 23);
@@ -619,7 +627,7 @@ export async function verifyAppearance(browser, url) {
     );
     assert.equal(
       await workbench.evaluate((element) =>
-        getComputedStyle(element).getPropertyValue('--notification-badge').trim(),
+        getComputedStyle(element).getPropertyValue('--push-badge').trim(),
       ),
       '#006BFF',
       'Applied badge color survives reload',

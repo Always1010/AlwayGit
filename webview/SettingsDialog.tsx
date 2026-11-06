@@ -1,3 +1,4 @@
+import { CommitCountBadge } from './CommitCountBadge';
 import { ShortcutSettings } from './ShortcutSettings';
 import { LocalCacheSettings } from './LocalCacheSettings';
 import { TreeDefaultsEditor } from './TreeDefaultsSettings';
@@ -14,7 +15,8 @@ import { useTranslation } from './i18n';
 import type { Language, StaticMessageKey } from './i18n';
 import type { DiffNavigationScope } from '../src/protocol/session';
 import {
-  defaultBadgeColor,
+  defaultPullBadgeColor,
+  defaultPushBadgeColor,
   defaultCurrentBranchColor,
   defaultCurrentRepositoryColor,
   diffRowHeight,
@@ -60,6 +62,56 @@ const themes: {
   { id: 'contrast', labelKey: 'settings.highContrast', colors: ['#0C1016', '#FFE875', '#153F6B'] },
 ];
 const badgeColors = ['#D61F3C', '#FF5A00', '#006BFF', '#B900E6', '#008F5D', '#FFD400'] as const;
+
+function BadgeColorSetting({
+  label,
+  value,
+  onChange,
+  onReset,
+}: {
+  label: string;
+  value: string;
+  onChange(value: string): void;
+  onReset(): void;
+}) {
+  const t = useTranslation();
+  return (
+    <div className="badge-color-setting">
+      <div className="settings-title-row">
+        <strong>{label}</strong>
+        <Button
+          className="icon-only"
+          icon="discard"
+          title={`${label} · ${t('settings.restoreDefault')}`}
+          aria-label={`${label} · ${t('settings.restoreDefault')}`}
+          onClick={onReset}
+        />
+      </div>
+      <div
+        className="badge-presets"
+        role="radiogroup"
+        aria-label={`${label} · ${t('settings.badgeColorPresets')}`}
+      >
+        {badgeColors.map((color) => (
+          <button
+            key={color}
+            type="button"
+            role="radio"
+            aria-checked={value === color}
+            aria-label={color}
+            className={value === color ? 'is-chosen' : ''}
+            style={{ background: color }}
+            onClick={() => onChange(color)}
+          />
+        ))}
+      </div>
+      <label className="status-color-field">
+        <span>{t('settings.customColor')}</span>
+        <ColorField value={value} label={label} onChange={onChange} />
+      </label>
+    </div>
+  );
+}
 
 function DiffHeightField({ value, onChange }: { value: number; onChange(value: number): void }) {
   const t = useTranslation(),
@@ -1190,63 +1242,44 @@ export function SettingsDialog({ theme }: { theme: ResolvedTheme }) {
                       {t('settings.setSeparateColorsForCommitCountsTheCurrentBranch')}
                     </p>
                   </div>
-                  <Button
-                    className="icon-only"
-                    icon="discard"
-                    title={t('settings.restoreDefault')}
-                    aria-label={t('settings.restoreDefaultBadgeColor')}
-                    onClick={() =>
-                      updateAppearance({ ...appearance, badgeColor: defaultBadgeColor })
-                    }
-                  />
                 </div>
                 <div className="badge-preview-row">
                   <span>{t('settings.preview')}</span>
-                  <span
-                    className="notification-badge settings-badge-preview"
-                    style={{
-                      background: appearance.badgeColor,
-                      color: textColorForBackground(appearance.badgeColor),
-                    }}
-                  >
-                    24
-                  </span>
-                  <span
-                    className="notification-badge settings-badge-preview"
-                    style={{
-                      background: appearance.badgeColor,
-                      color: textColorForBackground(appearance.badgeColor),
-                    }}
-                  >
-                    69
-                  </span>
-                </div>
-                <div
-                  className="badge-presets"
-                  role="radiogroup"
-                  aria-label={t('settings.badgeColorPresets')}
-                >
-                  {badgeColors.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      role="radio"
-                      aria-checked={appearance.badgeColor === color}
-                      aria-label={color}
-                      className={appearance.badgeColor === color ? 'is-chosen' : ''}
-                      style={{ background: color }}
-                      onClick={() => updateAppearance({ ...appearance, badgeColor: color })}
+                  <span className="badge-preview-item">
+                    {t('settings.pullBadgeColor')}
+                    <CommitCountBadge
+                      direction="pull"
+                      count={24}
+                      label={t('settings.pullBadgeColor')}
+                      color={appearance.pullBadgeColor}
                     />
-                  ))}
+                  </span>
+                  <span className="badge-preview-item">
+                    {t('settings.pushBadgeColor')}
+                    <CommitCountBadge
+                      direction="push"
+                      count={69}
+                      label={t('settings.pushBadgeColor')}
+                      color={appearance.pushBadgeColor}
+                    />
+                  </span>
                 </div>
-                <label className="status-color-field">
-                  <span>{t('settings.customColor')}</span>
-                  <ColorField
-                    value={appearance.badgeColor}
-                    label={t('settings.notificationBadgeColor')}
-                    onChange={(value) => updateAppearance({ ...appearance, badgeColor: value })}
-                  />
-                </label>
+                <BadgeColorSetting
+                  label={t('settings.pullBadgeColor')}
+                  value={appearance.pullBadgeColor}
+                  onChange={(pullBadgeColor) => updateAppearance({ ...appearance, pullBadgeColor })}
+                  onReset={() =>
+                    updateAppearance({ ...appearance, pullBadgeColor: defaultPullBadgeColor })
+                  }
+                />
+                <BadgeColorSetting
+                  label={t('settings.pushBadgeColor')}
+                  value={appearance.pushBadgeColor}
+                  onChange={(pushBadgeColor) => updateAppearance({ ...appearance, pushBadgeColor })}
+                  onReset={() =>
+                    updateAppearance({ ...appearance, pushBadgeColor: defaultPushBadgeColor })
+                  }
+                />
                 <p className="settings-note">
                   {t('settings.textSwitchesBetweenBlackAndWhiteAutomaticallyForContrast')}
                 </p>

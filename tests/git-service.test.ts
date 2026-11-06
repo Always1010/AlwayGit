@@ -837,6 +837,7 @@ describe('Git service integration', () => {
   it('fetches, pushes and pulls from a local bare remote with upstream tracking', async () => {
     const { root, service, repo } = await setup();
     await commit(root, 'a.txt', 'a');
+    expect((await service.repositoryStatus(repo)).behind).toBeUndefined();
     const bare = path.join(root, 'remote.git');
     await mkdir(bare);
     await git(bare, 'init', '--bare');
@@ -862,6 +863,7 @@ describe('Git service integration', () => {
       branch: 'main',
       upstream: 'origin/main',
       ahead: 1,
+      behind: 0,
       unpushed: 1,
     });
     const beforePush = await service.history(repo, { tips: ['HEAD'] });
@@ -871,8 +873,18 @@ describe('Git service integration', () => {
     expect(
       (await service.history(repo, { tips: ['HEAD'] })).commits.every((item) => item.pushed),
     ).toBe(true);
+    const peer = await setup();
+    await git(peer.root, 'fetch', bare, 'main');
+    await git(peer.root, 'reset', '--hard', 'FETCH_HEAD');
+    await commit(peer.root, 'remote-update.txt', 'incoming');
+    await git(peer.root, 'push', bare, 'HEAD:main');
+    const localHead = await git(root, 'rev-parse', 'HEAD');
+    expect((await service.repositoryStatus(repo)).behind).toBe(0);
     await service.execute(repo, { type: 'fetch', remote: 'origin' });
+    expect(await service.repositoryStatus(repo)).toMatchObject({ behind: 1, unpushed: 0 });
+    expect(await git(root, 'rev-parse', 'HEAD')).toBe(localHead);
     await service.execute(repo, { type: 'pull', strategy: 'ff-only' });
+    expect((await service.repositoryStatus(repo)).behind).toBe(0);
     const snapshot = await service.snapshot(repo);
     expect(snapshot.upstream).toBe('origin/main');
     expect(snapshot.refs.some((x) => x.name === 'origin/main')).toBe(true);

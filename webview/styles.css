@@ -323,6 +323,34 @@ p {
   line-height: 1;
   box-sizing: border-box;
 }
+.notification-badge-pull {
+  --notification-badge: var(--pull-badge, #006bff);
+  --notification-badge-fg: var(--pull-badge-fg, #fff);
+}
+.notification-badge-push {
+  --notification-badge: var(--push-badge, #d61f3c);
+  --notification-badge-fg: var(--push-badge-fg, #fff);
+}
+.repository-commit-counts {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: 4px;
+  margin-left: auto;
+}
+.sidebar-item .repository-commit-counts .notification-badge {
+  margin-left: 0;
+}
+.badge-preview-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.badge-color-setting {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+}
 .toolbar-divider {
   width: 1px;
   height: 20px;

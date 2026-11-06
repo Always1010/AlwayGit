@@ -1,3 +1,4 @@
+import { CommitCountBadge } from './CommitCountBadge';
 import { RepositoryFetchProgress } from './RepositoryFetchProgress';
 import { fetchRepositories } from './repositoryFetch';
 import { RepositoryGroupsDialog } from './RepositoryGroupsDialog';
@@ -650,8 +651,10 @@ export function App() {
             : 'none',
           '--diff-font': `${state.appearance.codeFont}px`,
           '--diff-row-height': `${diffRowHeight(state.appearance.codeFont, state.appearance.codeRowHeight)}px`,
-          '--notification-badge': state.appearance.badgeColor,
-          '--notification-badge-fg': textColorForBackground(state.appearance.badgeColor),
+          '--pull-badge': state.appearance.pullBadgeColor,
+          '--pull-badge-fg': textColorForBackground(state.appearance.pullBadgeColor),
+          '--push-badge': state.appearance.pushBadgeColor,
+          '--push-badge-fg': textColorForBackground(state.appearance.pushBadgeColor),
           '--graph-main': lightTheme
             ? state.appearance.mainColors.light
             : state.appearance.mainColors.dark,
@@ -688,11 +691,11 @@ export function App() {
             onClick={() => open({ type: 'pull' })}
           >
             {uiText('workbench.pull')}
-            {snapshot?.behind ? (
-              <span className="notification-badge" aria-hidden="true">
-                {snapshot.behind > 99 ? '99+' : snapshot.behind}
-              </span>
-            ) : null}
+            <CommitCountBadge
+              direction="pull"
+              count={snapshot?.upstream ? snapshot.behind : 0}
+              label={t('workbench.pullIncomingCommits', { behind: snapshot?.behind ?? 0 })}
+            />
           </Button>
           <Button
             icon="arrow-up"
@@ -713,11 +716,11 @@ export function App() {
             onClick={() => open({ type: 'push' })}
           >
             {uiText('workbench.push')}
-            {unpushed ? (
-              <span className="notification-badge" aria-hidden="true">
-                {unpushed > 99 ? '99+' : unpushed}
-              </span>
-            ) : null}
+            <CommitCountBadge
+              direction="push"
+              count={unpushed}
+              label={t('workbench.pushUnpushedCommits', { unpushed })}
+            />
           </Button>
           <span className="toolbar-divider" />
           {state.changeListMode === 'unified' && (

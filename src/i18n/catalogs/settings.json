@@ -444,20 +444,14 @@
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
   "settings.setSeparateColorsForCommitCountsTheCurrentBranch": {
-    "en": "Set separate colors for Commit counts, the current branch and the current repository.",
-    "zh-CN": "分别设置未推送提交数量、当前分支和当前仓库的颜色。",
+    "en": "Set separate colors for incoming commits, unpushed commits, the current branch and the current repository.",
+    "zh-CN": "分别设置待拉取提交、未推送提交、当前分支和当前仓库的颜色。",
     "review": "translated",
-    "context": "webview/SettingsDialog.tsx / SettingsDialog"
+    "context": "Status indicator settings description"
   },
   "settings.restoreDefault": {
     "en": "Restore default",
     "zh-CN": "恢复默认",
-    "review": "translated",
-    "context": "webview/SettingsDialog.tsx / SettingsDialog"
-  },
-  "settings.restoreDefaultBadgeColor": {
-    "en": "Restore default badge color",
-    "zh-CN": "恢复默认提醒颜色",
     "review": "translated",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
@@ -470,12 +464,6 @@
   "settings.customColor": {
     "en": "Custom color",
     "zh-CN": "自定义颜色",
-    "review": "translated",
-    "context": "webview/SettingsDialog.tsx / SettingsDialog"
-  },
-  "settings.notificationBadgeColor": {
-    "en": "Notification badge color",
-    "zh-CN": "通知角标颜色",
     "review": "translated",
     "context": "webview/SettingsDialog.tsx / SettingsDialog"
   },
@@ -1324,5 +1312,17 @@
     "zh-CN": "隐藏父目录，鼠标悬浮时查看包含文件名的完整仓库相对路径。",
     "review": "translated",
     "context": "webview/SettingsDialog.tsx / file path display"
+  },
+  "settings.pullBadgeColor": {
+    "en": "Incoming commits",
+    "zh-CN": "待拉取提交",
+    "review": "translated",
+    "context": "Pull badge color and labeled preview"
+  },
+  "settings.pushBadgeColor": {
+    "en": "Unpushed commits",
+    "zh-CN": "未推送提交",
+    "review": "translated",
+    "context": "Push badge color and labeled preview"
   }
 }

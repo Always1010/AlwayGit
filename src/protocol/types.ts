@@ -62,6 +62,7 @@ export interface RepositoryStatus {
   repositoryId: string;
   branch: string;
   upstream?: string;
+  behind?: number;
   ahead: number;
   unpushed: number;
 }

@@ -32,7 +32,8 @@ export interface Appearance {
   historyAlternateRows: boolean;
   fileSpacing: number;
   filePathDisplay: FilePathDisplay;
-  badgeColor: string;
+  pullBadgeColor: string;
+  pushBadgeColor: string;
   currentBranchColor: string;
   currentRepositoryColor: string;
   colors: GraphPaletteColors;
@@ -54,7 +55,8 @@ export type InterfaceSettingsUpdate = Partial<Omit<InterfaceSettings, 'appearanc
 };
 const hexColor = /^#[0-9a-f]{6}$/i;
 const defaultMainColors = { light: '#283447', dark: '#EDF3FF' } as const;
-export const defaultBadgeColor = '#D61F3C';
+export const defaultPullBadgeColor = '#006BFF';
+export const defaultPushBadgeColor = '#D61F3C';
 export const defaultCurrentBranchColor = '#2463C5';
 export const defaultCurrentRepositoryColor = '#2463C5';
 
@@ -75,7 +77,8 @@ export const defaultAppearance: Appearance = {
   historyAlternateRows: false,
   fileSpacing: 1,
   filePathDisplay: 'stacked',
-  badgeColor: defaultBadgeColor,
+  pullBadgeColor: defaultPullBadgeColor,
+  pushBadgeColor: defaultPushBadgeColor,
   currentBranchColor: defaultCurrentBranchColor,
   currentRepositoryColor: defaultCurrentRepositoryColor,
   colors: presetColors('vivid'),
@@ -132,9 +135,12 @@ export function normalizeAppearance(value: Partial<Appearance> = {}): Appearance
       value.filePathDisplay === 'inline' || value.filePathDisplay === 'name-only'
         ? value.filePathDisplay
         : 'stacked',
-    badgeColor: hexColor.test(value.badgeColor ?? '')
-      ? value.badgeColor!.toUpperCase()
-      : defaultBadgeColor,
+    pullBadgeColor: hexColor.test(value.pullBadgeColor ?? '')
+      ? value.pullBadgeColor!.toUpperCase()
+      : defaultPullBadgeColor,
+    pushBadgeColor: hexColor.test(value.pushBadgeColor ?? '')
+      ? value.pushBadgeColor!.toUpperCase()
+      : defaultPushBadgeColor,
     currentBranchColor: hexColor.test(value.currentBranchColor ?? '')
       ? value.currentBranchColor!.toUpperCase()
       : defaultCurrentBranchColor,

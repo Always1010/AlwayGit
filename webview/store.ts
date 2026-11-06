@@ -1037,7 +1037,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         repositoryStatuses[snapshot.repository.id] = {
           repositoryId: snapshot.repository.id,
           branch: snapshot.branch,
-          ...(snapshot.upstream ? { upstream: snapshot.upstream } : {}),
+          ...(snapshot.upstream ? { upstream: snapshot.upstream, behind: snapshot.behind } : {}),
           ahead: snapshot.ahead,
           unpushed: snapshot.unpushed ?? snapshot.ahead,
         };
@@ -1237,7 +1237,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
           [snapshot.repository.id]: {
             repositoryId: snapshot.repository.id,
             branch: snapshot.branch,
-            ...(snapshot.upstream ? { upstream: snapshot.upstream } : {}),
+            ...(snapshot.upstream ? { upstream: snapshot.upstream, behind: snapshot.behind } : {}),
             ahead: snapshot.ahead,
             unpushed: snapshot.unpushed ?? snapshot.ahead,
           },

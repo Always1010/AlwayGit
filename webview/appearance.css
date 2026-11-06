@@ -583,6 +583,7 @@
 }
 .badge-preview-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   min-height: 58px;
@@ -597,7 +598,7 @@
   color: var(--muted);
   font-size: 11px;
 }
-.settings-badge-preview {
+.badge-preview-item .notification-badge {
   min-width: 24px;
   height: 20px;
   margin: 0;

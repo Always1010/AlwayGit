@@ -1,3 +1,4 @@
+import { CommitCountBadge } from './CommitCountBadge';
 import {
   repositoryDrop,
   type RepositoryDrag,
@@ -907,11 +908,24 @@ function SidebarPanel({
     const repo = group.repository,
       status = state.repositoryStatuses[repo.id],
       unpushed = status?.unpushed ?? 0,
+      behind = status?.upstream ? (status.behind ?? 0) : 0,
       current = group.members.some((member) => member.id === state.repoId),
       selected = state.selectedRepositoryKeys.includes(rowKey),
-      label = unpushed
-        ? t('sidebar.unpushedCommits', { name: group.name, unpushed: unpushed })
-        : group.name;
+      incomingLabel = t('sidebar.incomingCommits', { name: group.name, count: behind }),
+      outgoingLabel = t('sidebar.unpushedCommits', { name: group.name, unpushed }),
+      comparisonHint = !status
+        ? t('sidebar.repositoryStatusUnavailable')
+        : status.upstream
+          ? t('sidebar.remoteStatusCached')
+          : t('sidebar.noUpstreamComparison'),
+      label = [
+        group.name,
+        behind ? incomingLabel : '',
+        unpushed ? outgoingLabel : '',
+        comparisonHint,
+      ]
+        .filter(Boolean)
+        .join(' · ');
     const key = repositoryOrderKey(group.key),
       activate = () => {
         if (!current) void state.selectRepository(repo.id);
@@ -964,9 +978,9 @@ function SidebarPanel({
           title={`${repo.root}${
             status?.branch
               ? `
-${status.branch}${unpushed ? ` · ${unpushed} unpushed` : ''}`
+${status.branch}${behind ? ` · ${incomingLabel}` : ''}${unpushed ? ` · ${outgoingLabel}` : ''}`
               : ''
-          }\n${t('sidebar.doubleClickOrPressEnterToSwitchRepository')}`}
+          }\n${comparisonHint}\n${t('sidebar.doubleClickOrPressEnterToSwitchRepository')}`}
           onClick={choose}
           onDoubleClick={activate}
           onKeyDown={(event) => {
@@ -978,11 +992,12 @@ ${status.branch}${unpushed ? ` · ${unpushed} unpushed` : ''}`
         >
           <RepositoryIcon current={current} />
           <span className="truncate">{group.name}</span>
-          {unpushed ? (
-            <span className="notification-badge" aria-hidden="true">
-              {unpushed > 99 ? '99+' : unpushed}
+          {(behind > 0 || unpushed > 0) && (
+            <span className="repository-commit-counts">
+              <CommitCountBadge direction="pull" count={behind} label={incomingLabel} />
+              <CommitCountBadge direction="push" count={unpushed} label={outgoingLabel} />
             </span>
-          ) : null}
+          )}
         </button>
       </div>
     );

@@ -1852,7 +1852,8 @@ describe('repository UI consistency', () => {
         historyAlternateRows: true,
         fileSpacing: 6,
         filePathDisplay: 'name-only',
-        badgeColor: '#006BFF',
+        pullBadgeColor: '#008F5D',
+        pushBadgeColor: '#D61F3C',
         currentBranchColor: '#00FF99',
         currentRepositoryColor: '#FF4AD4',
       },
@@ -1875,7 +1876,8 @@ describe('repository UI consistency', () => {
       historyAlternateRows: true,
       fileSpacing: 6,
       filePathDisplay: 'name-only',
-      badgeColor: '#006BFF',
+      pullBadgeColor: '#008F5D',
+      pushBadgeColor: '#D61F3C',
       currentBranchColor: '#00FF99',
       currentRepositoryColor: '#FF4AD4',
     });
@@ -2308,6 +2310,44 @@ describe('repository UI consistency', () => {
     expect(store.getState().tab).toBe('changes');
     expect(store.getState().detailsLoading).toBe(false);
   });
+  it('keeps incoming counts when repository badges are loaded, refreshed and switched', async () => {
+    const fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, repoId, ...args) => {
+      if (method === 'repositoryStatuses')
+        return Promise.resolve([
+          {
+            repositoryId: a.id,
+            branch: 'main',
+            upstream: 'origin/main',
+            ahead: 0,
+            behind: 3,
+            unpushed: 0,
+          },
+          { repositoryId: b.id, branch: 'main', ahead: 0, unpushed: 0 },
+        ]);
+      if (method === 'snapshot')
+        return Promise.resolve({
+          ...snapshot(repoId === b.id ? b : a),
+          upstream: 'origin/main',
+          behind: 3,
+        });
+      return fallback(method, repoId, ...args);
+    });
+    await store.getState().initialize();
+    expect(store.getState().repositoryStatuses[a.id].behind).toBe(3);
+    expect(store.getState().repositoryStatuses[b.id].behind).toBeUndefined();
+    await store.getState().selectRepository(a.id);
+    await store.getState().loadRepositoryStatuses();
+    expect(store.getState().repositoryStatuses[a.id].behind).toBe(3);
+    await store.getState().refresh({
+      background: true,
+      snapshot: { ...snapshot(a), upstream: 'origin/main', behind: 2 },
+    });
+    expect(store.getState().repositoryStatuses[a.id].behind).toBe(2);
+    await store.getState().selectRepository(b.id);
+    expect(store.getState().repositoryStatuses[b.id].behind).toBe(3);
+  });
+
   it('ignores delayed status responses after switching repositories', async () => {
     const delayed = deferred<Snapshot>();
     const fallback = bridge.rpc.getMockImplementation()!;

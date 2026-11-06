@@ -949,7 +949,7 @@ export class GitService implements GitServiceContract {
     return {
       repositoryId: repo.id,
       branch: status.branch,
-      ...(status.upstream ? { upstream: status.upstream } : {}),
+      ...(status.upstream ? { upstream: status.upstream, behind: status.behind } : {}),
       ahead: status.ahead,
       unpushed: status.branch ? unpushed : 0,
     };

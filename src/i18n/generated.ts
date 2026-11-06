@@ -6248,16 +6248,12 @@ export const catalog = {
     "zh-CN": "大字号会自动增加最小行高，避免文字被裁切。"
   },
   "settings.setSeparateColorsForCommitCountsTheCurrentBranch": {
-    "en": "Set separate colors for Commit counts, the current branch and the current repository.",
-    "zh-CN": "分别设置未推送提交数量、当前分支和当前仓库的颜色。"
+    "en": "Set separate colors for incoming commits, unpushed commits, the current branch and the current repository.",
+    "zh-CN": "分别设置待拉取提交、未推送提交、当前分支和当前仓库的颜色。"
   },
   "settings.restoreDefault": {
     "en": "Restore default",
     "zh-CN": "恢复默认"
-  },
-  "settings.restoreDefaultBadgeColor": {
-    "en": "Restore default badge color",
-    "zh-CN": "恢复默认提醒颜色"
   },
   "settings.badgeColorPresets": {
     "en": "Badge color presets",
@@ -6266,10 +6262,6 @@ export const catalog = {
   "settings.customColor": {
     "en": "Custom color",
     "zh-CN": "自定义颜色"
-  },
-  "settings.notificationBadgeColor": {
-    "en": "Notification badge color",
-    "zh-CN": "通知角标颜色"
   },
   "settings.textSwitchesBetweenBlackAndWhiteAutomaticallyForContrast": {
     "en": "Text switches between black and white automatically for contrast.",
@@ -6835,6 +6827,14 @@ export const catalog = {
     "en": "Hide the parent directory. Hover to see the full repository-relative file path.",
     "zh-CN": "隐藏父目录，鼠标悬浮时查看包含文件名的完整仓库相对路径。"
   },
+  "settings.pullBadgeColor": {
+    "en": "Incoming commits",
+    "zh-CN": "待拉取提交"
+  },
+  "settings.pushBadgeColor": {
+    "en": "Unpushed commits",
+    "zh-CN": "未推送提交"
+  },
   "sidebar.refreshRepositoryListAndStatusBadges": {
     "en": "Refresh repository list and status badges",
     "zh-CN": "刷新仓库列表和状态角标"
@@ -6938,6 +6938,22 @@ export const catalog = {
   "sidebar.locked": {
     "en": " · Locked",
     "zh-CN": " · 已锁定"
+  },
+  "sidebar.incomingCommits": {
+    "en": "{{name}}, {{count}} incoming commits on the tracked branch",
+    "zh-CN": "{{name}}，当前分支有 {{count}} 个待拉取提交"
+  },
+  "sidebar.repositoryStatusUnavailable": {
+    "en": "Repository status is unavailable; remote differences cannot be determined.",
+    "zh-CN": "仓库状态尚不可用，无法判断远程差异。"
+  },
+  "sidebar.remoteStatusCached": {
+    "en": "Remote differences use locally cached references. Fetch to check for new remote commits.",
+    "zh-CN": "远程差异基于本地缓存的引用；获取远程更新后才能发现远端的新提交。"
+  },
+  "sidebar.noUpstreamComparison": {
+    "en": "No upstream branch is configured; incoming commits cannot be determined.",
+    "zh-CN": "未设置跟踪分支，无法判断待拉取提交。"
   },
   "snapshotCoordinator.theSnapshotRequestWasCancelled": {
     "en": "The snapshot request was cancelled.",
@@ -9782,10 +9798,8 @@ export interface MessageParameters {
   "settings.rowHeightGrowsWithLargerTextToKeepEvery": {  };
   "settings.setSeparateColorsForCommitCountsTheCurrentBranch": {  };
   "settings.restoreDefault": {  };
-  "settings.restoreDefaultBadgeColor": {  };
   "settings.badgeColorPresets": {  };
   "settings.customColor": {  };
-  "settings.notificationBadgeColor": {  };
   "settings.textSwitchesBetweenBlackAndWhiteAutomaticallyForContrast": {  };
   "settings.currentBranchMarker": {  };
   "settings.circleBehindTheCurrentBranchIcon": {  };
@@ -9927,6 +9941,8 @@ export interface MessageParameters {
   "settings.filePathStackedDescription": {  };
   "settings.filePathInlineDescription": {  };
   "settings.filePathNameOnlyDescription": {  };
+  "settings.pullBadgeColor": {  };
+  "settings.pushBadgeColor": {  };
   "sidebar.refreshRepositoryListAndStatusBadges": {  };
   "sidebar.collapse": {  };
   "sidebar.expand": {  };
@@ -9953,6 +9969,10 @@ export interface MessageParameters {
   "sidebar.worktrees": {  };
   "sidebar.detachedHEAD": {  };
   "sidebar.locked": {  };
+  "sidebar.incomingCommits": { name: ParameterValue; count: number };
+  "sidebar.repositoryStatusUnavailable": {  };
+  "sidebar.remoteStatusCached": {  };
+  "sidebar.noUpstreamComparison": {  };
   "snapshotCoordinator.theSnapshotRequestWasCancelled": {  };
   "stash.stashRequiresRepositoryPathsEncodedAsUTF8": {  };
   "stash.cannotSafelyInspectAPathBelowASymbolicLink": { name: ParameterValue };

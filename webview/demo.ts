@@ -670,6 +670,7 @@ export function createDemoRequest(emit: (event: HostMessage) => void) {
             repositoryId: snapshot.repository.id,
             branch: snapshot.branch,
             upstream: snapshot.upstream,
+            behind: snapshot.upstream ? snapshot.behind : undefined,
             ahead: snapshot.ahead,
             unpushed: snapshot.unpushed ?? snapshot.ahead,
           }) satisfies RepositoryStatus,
