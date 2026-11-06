@@ -353,6 +353,11 @@ export function BranchComparison({
                 title={t('comparison.back')}
                 aria-label={t('comparison.back')}
                 onClick={() => {
+                  ++sequence.current;
+                  controller.current?.abort();
+                  controller.current = undefined;
+                  setLoading(false);
+                  setError(undefined);
                   setDetail(undefined);
                   setSelected(undefined);
                   setFilter('');
