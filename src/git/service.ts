@@ -26,7 +26,6 @@ import type {
   BranchComparison,
   BranchComparisonQuery,
   Change,
-  CheckoutBlocker,
   Commit,
   CommitComparison,
   CommitDetails,
@@ -48,15 +47,7 @@ import type {
   Worktree,
   WorktreeOverviewEntry,
 } from '../protocol/types';
-import {
-  branchNameConflict,
-  branchNameConflictMessage,
-  branchNameProblem,
-  branchNameProblemMessage,
-} from '../protocol/ref-name';
-import { remoteNameProblem, remoteUrlProblem } from '../protocol/remote';
-import { combinePushResults, parsePushResult } from './push-result';
-import { hostingRepository } from '../protocol/hosting';
+import { combinePushResults } from './push-result';
 import type { PushResult, RemoteLinks, DeletionResult } from '../protocol/types';
 import type { RemoteTags } from '../protocol/types';
 import type {
@@ -67,13 +58,21 @@ import type {
 } from '../protocol/types';
 import { inferDefaultBranch } from './default-branch';
 import { GitError, GitReadTerminationError, GitTerminationError } from './error';
+import type { GitExecution, GitRun } from './execution';
+import { BranchOperations } from './branches';
+import { RemoteOperations } from './remotes';
 import { isReadOnlyGitCommand } from './command-kind';
-import { assertGitArgumentBudget, prepareGitArguments, splitCleanArguments } from './arguments';
+import {
+  assertGitArgumentBudget,
+  prepareGitArguments,
+  splitCleanArguments,
+  gitToken as token,
+} from './arguments';
 import { mapGitQueries } from './query-map';
 import { runGitProcess, type GitResult } from './runner';
 import type { TextDiffHunk } from '../protocol/diff';
 export { GitError } from './error';
-import { createSelectedStash, preflightStash, StashStateError, type StashExecution } from './stash';
+import { createSelectedStash, preflightStash, StashStateError } from './stash';
 import { commitSelected } from './selected-commit';
 import { safeWorkingPath } from '../editor/paths';
 import { requireExactFileScope } from './file-scope';
@@ -91,6 +90,7 @@ import type { RevisionTreeRequest, RevisionTreeSearchRequest } from '../protocol
 import { fileHistoryIndex, type FileHistoryIndex } from './file-history';
 import { redactSecrets, SecretRedactor } from '../application/logging';
 import { BlobCache } from './blob-cache';
+import { OperationGuards, readOperationFile } from './operation-guards';
 
 export interface GitServiceOptions {
   allowDetachedHead?: () => boolean;
@@ -115,11 +115,6 @@ export interface GitServiceOptions {
       >);
 }
 type Result = GitResult;
-interface BoundRemote {
-  remote: string;
-  url: string;
-  configOverrides: [string, string][];
-}
 const queues = new Map<string, Promise<unknown>>();
 const unsafeTerminations = new Map<string, GitTerminationError>();
 const normalized = (p: string) =>
@@ -150,11 +145,6 @@ const exists = async (p: string) => {
     if ((e as NodeJS.ErrnoException).code === 'ENOENT') return false;
     throw e;
   }
-};
-const token = (value: string, label: string) => {
-  if (!value || value.startsWith('-') || /[\0\r\n]/.test(value))
-    throw new GitError(localizeMessage('service.invalid', { label: label }), 'INVALID_ARGUMENT');
-  return value;
 };
 export function validateFilePath(value: string): string {
   if (
@@ -281,8 +271,28 @@ export class GitService implements GitServiceContract {
   >();
   private readonly historyMatches = new Map<string, { created: number; ids: readonly string[] }>();
   private readonly blobs = new BlobCache();
-  private readonly reviews = new Map<string, { token: string; fingerprint: string }>();
-  private readonly aborts = new Map<string, { token: string; fingerprint: string }>();
+  private readonly operationGuards = new OperationGuards({
+    run: (repo, args, allowFailure, captureBytes, execution) =>
+      this.run(repo, args, allowFailure, captureBytes, execution),
+    text: (repo, args) => this.text(repo, args),
+    pathText: (repo, args) => this.pathText(repo, args),
+    status: (repo) => this.status(repo),
+    snapshot: (repo) => this.snapshot(repo),
+    contentFingerprint: (repo, current) => this.discardFingerprint(repo, current, current.changes),
+    decodePaths,
+    resumeRebase: (repo, command, keepEmpty, beforeDestructiveStep) =>
+      this.interactiveRebase.resume(
+        (args, execution) =>
+          this.run(repo, args, false, undefined, {
+            ...execution,
+            ...(args[0] === 'rebase' && ['--skip', '--abort'].includes(args[1])
+              ? { beforeSpawn: beforeDestructiveStep }
+              : {}),
+          }),
+        command,
+        keepEmpty,
+      ),
+  });
   private readonly hunks = new PatchHunkStore();
   async patchHunks(repo: Repository, target: { path: string; area: 'staged' | 'unstaged' }) {
     await this.verify(repo);
@@ -313,7 +323,27 @@ export class GitService implements GitServiceContract {
     (progress: NetworkOperationProgress) => void
   >();
   private readonly revisionTrees: RevisionTreeReader;
+  private readonly branches: BranchOperations;
+  private readonly remotes: RemoteOperations;
   constructor(private readonly options: GitServiceOptions = {}) {
+    const run: GitRun = (...args) => this.run(...args);
+    this.branches = new BranchOperations({
+      run,
+      text: (repo, args) => this.text(repo, args),
+      oid: (repo, revision) => this.oid(repo, revision),
+      snapshot: (repo) => this.snapshot(repo),
+      status: (repo) => this.status(repo),
+      worktrees: (repo) => this.worktrees(repo),
+      requireDetachedHead: () => this.requireDetachedHead(),
+      samePath: (left, right) => normalized(left) === normalized(right),
+    });
+    this.remotes = new RemoteOperations({
+      run,
+      text: (repo, args) => this.text(repo, args),
+      oid: (repo, revision) => this.oid(repo, revision),
+      optionalConfig: (repo, key) => this.optionalConfig(repo, key),
+      refName: (repo, name) => this.branches.refName(repo, name),
+    });
     this.revisionTrees = new RevisionTreeReader(
       (repo, args, stream) =>
         this.run(
@@ -360,14 +390,7 @@ export class GitService implements GitServiceContract {
     args: string[],
     allowFailure = false,
     captureBytes?: number,
-    execution: StashExecution & {
-      signal?: AbortSignal;
-      maxOutputBytes?: number;
-      configOverrides?: [string, string][];
-      beforeSpawn?: () => Promise<void>;
-      boundRemote?: BoundRemote;
-      onStdout?: (chunk: Buffer) => void;
-    } = {},
+    execution: GitExecution = {},
   ): Promise<Result> {
     const operationSignal = this.operationSignal.getStore();
     if (operationSignal?.aborted)
@@ -663,125 +686,15 @@ export class GitService implements GitServiceContract {
       );
     return result.stdout.toString('utf8').trim() || undefined;
   }
-  private async remoteDestination(
-    repo: Repository,
-    remote: string,
-    requireSingle = false,
-  ): Promise<string> {
-    const urls = (
-      await this.text(repo, ['remote', 'get-url', '--push', '--all', token(remote, 'remote')])
-    )
-      .split('\n')
-      .filter(Boolean);
-    if (requireSingle && urls.length !== 1)
-      throw new GitError(
-        localizeMessage('service.thisRemoteHasMultiplePushDestinationsSelectARemote'),
-        'MULTIPLE_PUSH_DESTINATIONS',
-      );
-    // The UI only receives a fingerprint; URLs may contain authentication secrets.
-    return createHash('sha256').update(JSON.stringify(urls)).digest('hex');
-  }
-  private async remoteReadDestination(repo: Repository, remote: string): Promise<string> {
-    const url = await this.text(repo, ['remote', 'get-url', token(remote, 'remote')]);
-    return createHash('sha256').update(url).digest('hex');
-  }
   async remoteTags(
     repo: Repository,
     remote: string,
     expectedDestination: string,
   ): Promise<RemoteTags> {
-    const configured = (await this.text(repo, ['remote'])).split('\n');
-    if (!configured.includes(token(remote, 'remote')))
-      throw new GitError(
-        localizeMessage('service.unknownRemote', { destination: remote }),
-        'INVALID_ARGUMENT',
-      );
-    const url = await this.text(repo, ['remote', 'get-url', remote]);
-    const destination = createHash('sha256').update(url).digest('hex');
-    if (destination !== expectedDestination)
-      throw new GitError(localizeMessage('tags.remoteChanged'), 'OPERATION_CHANGED');
-    const pushUrls = (await this.text(repo, ['remote', 'get-url', '--push', '--all', remote]))
-      .split('\n')
-      .filter(Boolean);
-    // Query the captured read address, never a moving remote configuration.
-    const output = (
-      await this.run(repo, ['ls-remote', '--tags', '--refs', '--', url], false, undefined, {
-        silent: true,
-        env: { GIT_ASKPASS: '', SSH_ASKPASS: '', SSH_ASKPASS_REQUIRE: 'never' },
-      })
-    ).stdout.toString('utf8');
-    if ((await this.remoteReadDestination(repo, remote)) !== destination)
-      throw new GitError(localizeMessage('tags.remoteChanged'), 'OPERATION_CHANGED');
-    const refs: Record<string, string> = {};
-    for (const line of output.split('\n').filter(Boolean)) {
-      const match = /^([a-f0-9]{40}|[a-f0-9]{64})\t(refs\/tags\/[^\s]+)$/.exec(line);
-      if (!match)
-        throw new GitError(localizeMessage('service.malformedGitStatusOutput'), 'PARSE_ERROR');
-      refs[match[2]] = match[1];
-    }
-    return {
-      remote,
-      destination,
-      separatePush: pushUrls.length !== 1 || pushUrls[0] !== url,
-      refs,
-      checkedAt: Date.now(),
-    };
+    return this.remotes.remoteTags(repo, remote, expectedDestination);
   }
-  private async confirmRemoteDestination(
-    repo: Repository,
-    remote: string,
-    expected?: string,
-  ): Promise<BoundRemote> {
-    token(remote, 'remote');
-    const urls = (await this.text(repo, ['remote', 'get-url', '--push', '--all', remote]))
-      .split('\n')
-      .filter(Boolean);
-    if (urls.length !== 1)
-      throw new GitError(
-        localizeMessage('service.thisRemoteHasMultiplePushDestinationsSelectARemote'),
-        'MULTIPLE_PUSH_DESTINATIONS',
-      );
-    const actual = createHash('sha256').update(JSON.stringify(urls)).digest('hex');
-    if (!expected || actual !== expected)
-      throw new GitError(
-        localizeMessage('service.theRemotePushDestinationIsMissingOrChangedRefresh'),
-        'OPERATION_CHANGED',
-      );
-    // Reset before replacing this multi-valued key. Appending alone would push
-    // to both the newly configured server and the confirmed one.
-    const configOverrides: [string, string][] = [
-      [`remote.${remote}.pushurl`, ''],
-      [`remote.${remote}.pushurl`, urls[0]],
-    ];
-    const bound = { remote, url: urls[0], configOverrides };
-    const resolved = await this.run(
-      repo,
-      ['remote', 'get-url', '--push', '--all', remote],
-      false,
-      undefined,
-      { configOverrides, boundRemote: bound },
-    );
-    // Only remove Git's final line ending. On older Git, the empty pushurl
-    // remains a destination; trim() would hide it when no pushurl was set.
-    if (resolved.stdout.toString('utf8').replace(/\r?\n$/, '') !== urls[0])
-      throw new GitError(
-        localizeMessage('service.cannotBindRemoteDestination'),
-        'REMOTE_BINDING_UNSUPPORTED',
-      );
-    return bound;
-  }
-  private confirmedRemoteOid(value: string | undefined): string {
-    if (value === undefined)
-      throw new GitError(
-        localizeMessage('service.theConfirmedRemoteBranchVersionIsMissingRefreshAnd'),
-        'OPERATION_CHANGED',
-      );
-    if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})?$/.test(value))
-      throw new GitError(
-        localizeMessage('service.invalidConfirmedRemoteBranchVersion'),
-        'INVALID_ARGUMENT',
-      );
-    return value;
+  async remoteLinks(repo: Repository, remote?: string, branch?: string): Promise<RemoteLinks> {
+    return this.remotes.remoteLinks(repo, remote, branch);
   }
   async discover(root: string): Promise<Repository> {
     const resolved = await realpath(path.resolve(root));
@@ -885,12 +798,6 @@ export class GitService implements GitServiceContract {
         210_000
     )
       this.historyMatches.delete(this.historyMatches.keys().next().value!);
-  }
-  private async refName(repo: Repository, name: string): Promise<string> {
-    const problem = branchNameProblem(name);
-    if (problem) throw new GitError(branchNameProblemMessage(problem), 'INVALID_BRANCH_NAME');
-    await this.run(repo, ['check-ref-format', `refs/heads/${name}`]);
-    return name;
   }
   private async status(repo: Repository) {
     return parseStatus(
@@ -1025,13 +932,13 @@ export class GitService implements GitServiceContract {
     const remoteDestinations = Object.fromEntries(
       await mapGitQueries(
         remotes,
-        async (remote) => [remote, await this.remoteDestination(repo, remote)] as const,
+        async (remote) => [remote, await this.remotes.remoteDestination(repo, remote)] as const,
       ),
     );
     const remoteReadDestinations = Object.fromEntries(
       await mapGitQueries(
         remotes,
-        async (remote) => [remote, await this.remoteReadDestination(repo, remote)] as const,
+        async (remote) => [remote, await this.remotes.remoteReadDestination(repo, remote)] as const,
       ),
     );
     const defaultBranch = inferDefaultBranch(refs, remotes, status.upstream);
@@ -1067,7 +974,7 @@ export class GitService implements GitServiceContract {
       const original =
         operation.kind === 'merge'
           ? status.head
-          : await this.readOperationFile(
+          : await readOperationFile(
               gitDir,
               markers[0]
                 ? 'rebase-merge/orig-head'
@@ -1090,7 +997,11 @@ export class GitService implements GitServiceContract {
       operation.canSkip = false;
     }
     if (operation.kind && operation.canSkip)
-      operation.skipToken = await this.skipFingerprint(repo, status, operation.kind);
+      operation.skipToken = await this.operationGuards.skipFingerprint(
+        repo,
+        status,
+        operation.kind,
+      );
     if (operation.kind === 'cherry-pick') operation.quitToken = operation.skipToken;
     let pushTarget: Snapshot['pushTarget'], pullTarget: Snapshot['pullTarget'];
     if (status.branch) {
@@ -2144,7 +2055,7 @@ export class GitService implements GitServiceContract {
   }
   private async discardFingerprint(
     repo: Repository,
-    status: Awaited<ReturnType<GitService['status']>>,
+    status: Pick<Snapshot, 'head' | 'branch'>,
     changes: Change[],
   ): Promise<string> {
     const index = await this.run(repo, [
@@ -2350,16 +2261,7 @@ export class GitService implements GitServiceContract {
   async prepareAction(repo: Repository, action: GitAction): Promise<GitAction> {
     if (action.type === 'operation.abort') {
       await this.verify(repo);
-      const snapshot = await this.snapshot(repo);
-      if (snapshot.operation.kind !== action.kind)
-        throw new GitError(
-          localizeMessage('service.theSelectedGitOperationIsNoLongerActive'),
-          'OPERATION_CHANGED',
-        );
-      const fingerprint = await this.abortFingerprint(repo, action.kind),
-        token = randomUUID();
-      this.aborts.set(repo.id, { token, fingerprint });
-      return { ...action, abortToken: token };
+      return this.operationGuards.prepareAbort(repo, action);
     }
     if (action.type === 'discard' && action.planToken) {
       const { plan } = await this.checkedDiscard(repo, action.planToken);
@@ -2439,479 +2341,8 @@ export class GitService implements GitServiceContract {
       if (queues.get(key) === operation) queues.delete(key);
     }
   }
-  async remoteLinks(repo: Repository, remote?: string, branch?: string): Promise<RemoteLinks> {
-    if (!remote && branch) {
-      const name = await this.refName(repo, branch);
-      remote =
-        (await this.optionalConfig(repo, `branch.${name}.pushRemote`)) ??
-        (await this.optionalConfig(repo, 'remote.pushDefault')) ??
-        (await this.optionalConfig(repo, `branch.${name}.remote`));
-    }
-    if (!remote || remote === '.') {
-      const remotes = (await this.text(repo, ['remote'])).split('\n').filter(Boolean);
-      remote = remotes.length === 1 ? remotes[0] : undefined;
-    }
-    if (!remote) return { repositories: [] };
-    const urls = await this.text(repo, [
-      'remote',
-      'get-url',
-      '--push',
-      '--all',
-      token(remote, 'remote'),
-    ]);
-    const head = await this.run(
-      repo,
-      ['symbolic-ref', '--short', `refs/remotes/${remote}/HEAD`],
-      true,
-    );
-    const name = head.stdout.toString('utf8').trim();
-    return {
-      repositories: urls.split('\n').flatMap((value) => {
-        const repository = hostingRepository(value);
-        return repository ? [repository] : [];
-      }),
-      ...(name.startsWith(remote + '/') ? { defaultBranch: name.slice(remote.length + 1) } : {}),
-    };
-  }
-  private async push(
-    repo: Repository,
-    args: string[],
-    remote?: string,
-    branch?: string,
-    bound?: BoundRemote,
-  ): Promise<PushResult> {
-    const configured =
-      !bound && remote
-        ? await this.run(
-            repo,
-            ['remote', 'get-url', '--push', '--all', token(remote, 'remote')],
-            true,
-          )
-        : undefined;
-    const output = await this.run(
-      repo,
-      ['push', '--porcelain', ...args.slice(1)],
-      true,
-      undefined,
-      bound ? { configOverrides: bound.configOverrides, boundRemote: bound } : {},
-    );
-    const result = parsePushResult(
-      output.stdout.toString('utf8'),
-      output.stderr.toString('utf8'),
-      output.code,
-      remote,
-      branch,
-      bound
-        ? [bound.url]
-        : configured?.code === 0
-          ? configured.stdout.toString('utf8').trim().split('\n').filter(Boolean)
-          : [],
-    );
-    if (output.code) {
-      const error = new GitError(
-        result.error || translate('en', 'service.gitExitedWithStatus', { code: output.code }),
-        result.outcome === 'partial' ? 'PARTIAL_FAILURE' : 'GIT_FAILED',
-        output.stdout.toString('utf8'),
-        output.stderr.toString('utf8'),
-      );
-      error.pushResult = result;
-      throw error;
-    }
-    return result;
-  }
-  private async readOperationFile(gitDir: string, name: string): Promise<string> {
-    try {
-      return await readFile(path.join(gitDir, name), 'utf8');
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return '';
-      throw error;
-    }
-  }
-  /** Pin Skip and Quit to this worktree, operation instance and current sequencer step. */
-  private async skipFingerprint(
-    repo: Repository,
-    current: { head?: string; branch: string },
-    kind: OperationState['kind'],
-  ): Promise<string> {
-    const gitDir = await this.pathText(repo, ['rev-parse', '--path-format=absolute', '--git-dir']);
-    const names = [
-      'MERGE_HEAD',
-      'CHERRY_PICK_HEAD',
-      'REVERT_HEAD',
-      'REBASE_HEAD',
-      'sequencer/head',
-      'sequencer/todo',
-      'sequencer/abort-safety',
-      'rebase-merge/head-name',
-      'rebase-merge/orig-head',
-      'rebase-merge/onto',
-      'rebase-merge/done',
-      'rebase-merge/git-rebase-todo',
-      'rebase-merge/stopped-sha',
-      'rebase-merge/msgnum',
-      'rebase-apply/head-name',
-      'rebase-apply/orig-head',
-      'rebase-apply/onto',
-      'rebase-apply/next',
-      'rebase-apply/last',
-      'rebase-apply/original-commit',
-    ];
-    const markers = await Promise.all(
-      names.map(async (name) => {
-        const filename = path.join(gitDir, name);
-        try {
-          const [content, info] = await Promise.all([readFile(filename, 'utf8'), lstat(filename)]);
-          // Identical commits can be replayed by a restarted operation. File identity
-          // and timestamps distinguish that new instance even when marker text matches.
-          return [name, content, info.dev, info.ino, info.birthtimeMs, info.ctimeMs, info.mtimeMs];
-        } catch (error) {
-          if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [name, null];
-          throw error;
-        }
-      }),
-    );
-    return createHash('sha256')
-      .update(
-        JSON.stringify([
-          repo.id,
-          normalized(repo.root),
-          normalized(gitDir),
-          current.branch,
-          current.head,
-          kind,
-          markers,
-        ]),
-      )
-      .digest('hex');
-  }
-  /** Freeze both operation identity and the Index/working content Abort may discard. */
-  private async abortFingerprint(repo: Repository, kind: OperationState['kind']): Promise<string> {
-    const current = await this.status(repo),
-      operation = await this.skipFingerprint(repo, current, kind),
-      index = await this.run(repo, ['ls-files', '--stage', '-z']),
-      content = await this.discardFingerprint(repo, current, current.changes),
-      gitDir = await this.text(repo, ['rev-parse', '--path-format=absolute', '--git-dir']),
-      restoration = await Promise.all(
-        ['ORIG_HEAD', 'MERGE_AUTOSTASH', 'rebase-merge/autostash', 'rebase-apply/autostash'].map(
-          (name) => this.readOperationFile(gitDir, name),
-        ),
-      );
-    return createHash('sha256')
-      .update(JSON.stringify([operation, content, restoration]))
-      .update(index.stdout)
-      .digest('hex');
-  }
-  private async requireAbort(
-    repo: Repository,
-    action: Extract<GitAction, { type: 'operation.abort' }>,
-  ): Promise<void> {
-    const prepared = this.aborts.get(repo.id);
-    if (
-      !action.abortToken ||
-      prepared?.token !== action.abortToken ||
-      prepared.fingerprint !== (await this.abortFingerprint(repo, action.kind))
-    )
-      throw new GitError(
-        localizeMessage('service.theSelectedGitOperationIsNoLongerActive'),
-        'OPERATION_CHANGED',
-      );
-  }
-  private async reviewFingerprint(
-    repo: Repository,
-    snapshot: Snapshot,
-    tree: string,
-  ): Promise<string> {
-    const gitDir = await this.pathText(repo, ['rev-parse', '--path-format=absolute', '--git-dir']);
-    const markers = await Promise.all(
-      [
-        'MERGE_HEAD',
-        'CHERRY_PICK_HEAD',
-        'REVERT_HEAD',
-        'sequencer/head',
-        'sequencer/todo',
-        'rebase-merge/onto',
-        'rebase-merge/orig-head',
-        'rebase-merge/done',
-        'rebase-merge/git-rebase-todo',
-        'rebase-apply/next',
-        'rebase-apply/last',
-        'rebase-apply/orig-head',
-      ].map((name) => this.readOperationFile(gitDir, name)),
-    );
-    return createHash('sha256')
-      .update(
-        JSON.stringify([
-          repo.id,
-          snapshot.branch,
-          snapshot.head,
-          snapshot.operation.kind,
-          tree,
-          markers,
-        ]),
-      )
-      .digest('hex');
-  }
   async reviewOperation(repo: Repository): Promise<OperationReview> {
-    const snapshot = await this.snapshot(repo),
-      kind = snapshot.operation.kind;
-    if (!kind)
-      throw new GitError(
-        localizeMessage('service.theGitOperationIsNoLongerActiveRefreshBefore'),
-        'OPERATION_CHANGED',
-      );
-    if (!snapshot.operation.canContinue)
-      throw new GitError(localizeMessage('service.resolveConflictsBeforeContinuing'), 'CONFLICTS');
-    // Scan an immutable tree, rather than working files or a truncated Diff preview.
-    const tree = await this.text(repo, ['write-tree']),
-      fingerprint = await this.reviewFingerprint(repo, snapshot, tree);
-    const paths = decodePaths(
-      (
-        await this.run(repo, [
-          'diff',
-          '--name-only',
-          '--no-renames',
-          '-z',
-          snapshot.head!,
-          tree,
-          '--',
-        ])
-      ).stdout,
-    )
-      .split('\0')
-      .filter(Boolean);
-    const records = decodePaths((await this.run(repo, ['ls-tree', '-r', '-z', tree])).stdout).split(
-      '\0',
-    );
-    const entries = new Map(
-      records.filter(Boolean).map((record) => {
-        const tab = record.indexOf('\t');
-        return [record.slice(tab + 1), record.slice(0, tab).split(' ')];
-      }),
-    );
-    const files: OperationReview['files'] = [];
-    let remaining = 16 * 1024 * 1024;
-    for (const name of paths) {
-      const entry = entries.get(name);
-      if (!entry) continue; // Staged deletions contain no text.
-      const file: OperationReview['files'][number] = { path: name, lines: [] };
-      files.push(file);
-      if (entry[1] !== 'blob') {
-        file.skipped = 'submodule';
-        continue;
-      }
-      const size = Number(await this.text(repo, ['cat-file', '-s', entry[2]]));
-      if (size > 2 * 1024 * 1024) {
-        file.skipped = 'large';
-        continue;
-      }
-      if (size > remaining) {
-        file.skipped = 'limit';
-        continue;
-      }
-      remaining -= size;
-      const bytes = (await this.run(repo, ['cat-file', 'blob', entry[2]], false, size + 1)).stdout;
-      if (bytes.includes(0)) {
-        file.skipped = 'binary';
-        continue;
-      }
-      let text: string;
-      try {
-        text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-      } catch {
-        file.skipped = 'encoding';
-        continue;
-      }
-      text.split(/\r?\n/).forEach((line, index) => {
-        // Include diff3/zdiff3 base markers and non-default marker widths. A single
-        // leftover marker is suspicious too; explicit confirmation allows literal text.
-        if (/^(?:<{7,}(?: .*)?|\|{7,}(?: .*)?|={7,}|>{7,}(?: .*)?)$/.test(line)) {
-          if (file.lines.length < 100) file.lines.push(index + 1);
-          else file.more = true;
-        }
-      });
-    }
-    const current = await this.snapshot(repo);
-    if (
-      !current.operation.canContinue ||
-      fingerprint !==
-        (await this.reviewFingerprint(repo, current, await this.text(repo, ['write-tree'])))
-    )
-      throw new GitError(
-        localizeMessage('service.stagedContentOrTheOperationChangedDuringInspectionCheck'),
-        'REVIEW_CHANGED',
-      );
-    const token = randomUUID();
-    this.reviews.set(repo.id, { token, fingerprint });
-    return { kind, token, files };
-  }
-  private async requireReview(repo: Repository, snapshot: Snapshot, token?: string): Promise<void> {
-    if (!snapshot.operation.kind) {
-      if (token)
-        throw new GitError(
-          localizeMessage('service.theReviewedGitOperationIsNoLongerActiveRefresh'),
-          'OPERATION_CHANGED',
-        );
-      return;
-    }
-    if (!snapshot.operation.canContinue)
-      throw new GitError(localizeMessage('service.resolveConflictsBeforeContinuing'), 'CONFLICTS');
-    const review = this.reviews.get(repo.id);
-    if (!token || token !== review?.token)
-      throw new GitError(
-        localizeMessage('service.inspectTheStagedResultAndConfirmBeforeCompletingThis'),
-        'REVIEW_REQUIRED',
-      );
-    if (
-      review.fingerprint !==
-      (await this.reviewFingerprint(repo, snapshot, await this.text(repo, ['write-tree'])))
-    )
-      throw new GitError(
-        localizeMessage('service.stagedContentOrTheOperationChangedInspectTheResult'),
-        'REVIEW_CHANGED',
-      );
-    this.reviews.delete(repo.id);
-  }
-  private async checkout(
-    repo: Repository,
-    target: string,
-    detached = false,
-    stashFirst = false,
-    includeUntracked = false,
-    createFrom?: { oid: string; upstream: string },
-  ): Promise<void> {
-    if (detached) this.requireDetachedHead();
-    const resolved = detached ? await this.oid(repo, target) : await this.refName(repo, target);
-    if (!detached && !createFrom) await this.oid(repo, `refs/heads/${resolved}`);
-    const snapshot = await this.snapshot(repo);
-    const conflictPaths = snapshot.changes
-      .filter((change) => change.conflict)
-      .map((change) => change.path);
-    if (conflictPaths.length || snapshot.operation.kind) {
-      throw new GitError(
-        conflictPaths.length
-          ? translate('en', 'service.resolveConflictsOrAbortTheActiveGitOperationBefore')
-          : translate('en', 'service.continueOrAbortTheActiveBeforeCheckout', {
-              kind: snapshot.operation.kind,
-            }),
-        'CHECKOUT_BLOCKED',
-        '',
-        '',
-        {
-          reason: conflictPaths.length ? 'conflicts' : 'operation-active',
-          paths: conflictPaths,
-          target,
-        },
-      );
-    }
-    const occupied =
-      !detached &&
-      snapshot.worktrees.find(
-        (tree) => tree.branch === target && normalized(tree.path) !== normalized(repo.root),
-      );
-    if (occupied)
-      throw new GitError(
-        localizeMessage('service.branchIsCheckedOutInOpenThatWorktreeTo', {
-          target: target,
-          path: occupied.path,
-        }),
-        'WORKTREE_OCCUPIED',
-        '',
-        '',
-        { reason: 'worktree-occupied', paths: [], target, worktreePath: occupied.path },
-      );
-    let branchCreated = false;
-    if (createFrom) {
-      // Create the ref before touching the Index or Working Tree. switch -c can
-      // update both even when an external ref namespace collision makes it fail.
-      await this.run(repo, ['branch', '--no-track', '--', resolved, createFrom.oid]);
-      branchCreated = true;
-      try {
-        await this.run(repo, [
-          'branch',
-          `--set-upstream-to=${createFrom.upstream}`,
-          '--',
-          resolved,
-        ]);
-      } catch (error) {
-        throw new GitError(
-          localizeMessage('service.branchWasCreatedAndRetainedButUpstreamConfigurationFailed', {
-            resolved: resolved,
-            value: error instanceof Error ? error.message : String(error),
-          }),
-          'PARTIAL_FAILURE',
-          '',
-          '',
-          { reason: 'checkout-failed', target, paths: [], branchCreated: true },
-        );
-      }
-    }
-    let stashOid: string | undefined;
-    if (detached) this.requireDetachedHead();
-    if (stashFirst) {
-      const previous = snapshot.stashes[0]?.oid;
-      await this.run(repo, [
-        'stash',
-        'push',
-        ...(includeUntracked ? ['--include-untracked'] : []),
-        '-m',
-        translate('en', 'service.alwayGitBeforeCheckout', { target: target }),
-      ]);
-      const top = await this.run(repo, ['rev-parse', '--verify', 'refs/stash'], true);
-      const saved = top.code ? undefined : top.stdout.toString('utf8').trim();
-      if (saved !== previous) stashOid = saved;
-    }
-    try {
-      if (detached) this.requireDetachedHead();
-      await this.run(repo, [
-        '-c',
-        'core.quotePath=false',
-        'switch',
-        ...(detached ? ['--detach'] : []),
-        '--',
-        resolved,
-      ]);
-    } catch (error) {
-      const cause = error instanceof Error ? error.message : String(error);
-      const blocked = /would be overwritten|local changes|needs merge|unmerged/i.test(cause);
-      const listed = cause
-        .split(/\r?\n/)
-        .filter((line) => /^\t/.test(line))
-        .map((line) => line.slice(1));
-      const current = await this.status(repo).catch(() => ({ changes: snapshot.changes }));
-      // Porcelain paths are authoritative even for filenames which Git quotes in its diagnostic.
-      const affected = listed.length
-        ? current.changes
-            .filter(
-              (change) =>
-                listed.includes(change.path) || listed.includes(change.originalPath ?? ''),
-            )
-            .map((change) => change.path)
-        : [];
-      const paths = blocked
-        ? affected.length
-          ? affected
-          : current.changes.map((change) => change.path)
-        : [];
-      const details: CheckoutBlocker = {
-        reason: blocked ? 'local-changes' : 'checkout-failed',
-        paths,
-        target,
-        ...(branchCreated ? { branchCreated: true } : {}),
-        ...(stashOid
-          ? { stashCreated: true, stashOid }
-          : stashFirst
-            ? { stashCreated: false }
-            : {}),
-      };
-      const message = `${branchCreated ? translate('en', 'service.retainedCheckoutBranch', { branch: resolved }) : ''}${cause}${stashOid ? translate('en', 'service.retainedCheckoutStash', { oid: stashOid }) : ''}`;
-      throw new GitError(
-        message,
-        blocked ? 'CHECKOUT_BLOCKED' : error instanceof GitError ? error.code : 'CHECKOUT_FAILED',
-        error instanceof GitError ? error.stdout : '',
-        error instanceof GitError ? error.stderr : '',
-        details,
-      );
-    }
+    return this.operationGuards.reviewOperation(repo);
   }
   private requireDetachedHead(): void {
     if (this.options.allowDetachedHead?.() !== true)
@@ -2919,139 +2350,6 @@ export class GitService implements GitServiceContract {
         localizeMessage('service.directDetachedHEADCheckoutIsDisabledCreateAndSwitch'),
         'DETACHED_HEAD_DISABLED',
       );
-  }
-  private async trackBranches(
-    repo: Repository,
-    action: Extract<GitAction, { type: 'branch.track' }>,
-  ): Promise<void> {
-    if (
-      !action.branches.length ||
-      action.branches.length > 1000 ||
-      (action.checkout && action.branches.length !== 1) ||
-      (action.stashFirst && !action.checkout)
-    )
-      throw new GitError(
-        localizeMessage('service.selectUpTo1000BranchesCheckoutAndStashRequire'),
-        'INVALID_ARGUMENT',
-      );
-    // Re-read full ref names under the common-directory write queue. Short names
-    // are ambiguous across remotes and upstreams may have changed since the UI opened.
-    const [output, remoteOutput] = await Promise.all([
-      this.text(repo, [
-        'for-each-ref',
-        '--format=%(refname)%00%(objectname)%00%(upstream)%00%(symref)%00%(objecttype)',
-        'refs/heads',
-        'refs/remotes',
-      ]),
-      this.text(repo, ['remote']),
-    ]);
-    const refs = new Map(
-      output
-        .split('\n')
-        .filter(Boolean)
-        .map((line) => {
-          const [fullName, oid, upstream, symbolicTarget, type] = line.split('\0');
-          return [fullName, { oid, upstream, symbolicTarget, type }] as const;
-        }),
-    );
-    const remotes = remoteOutput.split('\n').filter(Boolean);
-    const plan: { source: string; oid: string; name: string; exists: boolean }[] = [];
-    const names = new Map<string, string>();
-    for (const branch of action.branches) {
-      const name = await this.refName(repo, branch.name),
-        source = token(branch.source, 'remote reference');
-      const remoteRef = refs.get(source);
-      if (
-        !source.startsWith('refs/remotes/') ||
-        !remotes.some((remote) => source.startsWith(`refs/remotes/${remote}/`)) ||
-        !remoteRef ||
-        remoteRef.symbolicTarget ||
-        remoteRef.type !== 'commit'
-      )
-        throw new GitError(
-          localizeMessage('service.selectAnExistingRemoteBranchRatherThanASymbolic', {
-            source: source,
-          }),
-          'INVALID_ARGUMENT',
-        );
-      if (branch.expectedOid && remoteRef.oid !== branch.expectedOid)
-        throw new GitError(
-          localizeMessage('service.remoteBranchChangedRefreshAndSelectItAgain', { source: source }),
-          'OPERATION_CHANGED',
-        );
-      const prior = names.get(name);
-      if (prior && prior !== source)
-        throw new GitError(
-          localizeMessage('service.multipleRemoteBranchesWouldUseTheSameLocalName', { name: name }),
-          'BRANCH_EXISTS',
-        );
-      if (prior) continue;
-      names.set(name, source);
-      const local = refs.get(`refs/heads/${name}`);
-      if (local && (local.symbolicTarget || local.upstream !== source))
-        throw new GitError(
-          localizeMessage('service.localBranchAlreadyExistsAndDoesNotTrackChoose', {
-            name: name,
-            value: source.replace('refs/remotes/', ''),
-          }),
-          'BRANCH_EXISTS',
-        );
-      // refs/heads/feature and refs/heads/feature/a cannot coexist. Detect this
-      // before creating any branch, including collisions within the batch.
-      const collision = branchNameConflict(
-        name,
-        [...refs.keys()]
-          .filter((ref) => ref.startsWith('refs/heads/'))
-          .map((ref) => ref.slice('refs/heads/'.length))
-          .concat([...names.keys()])
-          .filter((other) => other !== name),
-      );
-      if (collision)
-        throw new GitError(branchNameConflictMessage(name, collision), 'BRANCH_EXISTS');
-      plan.push({ source, oid: remoteRef.oid, name, exists: !!local });
-    }
-    if (action.checkout) {
-      const branch = plan[0];
-      try {
-        await this.checkout(
-          repo,
-          branch.name,
-          false,
-          action.stashFirst,
-          action.includeUntracked,
-          branch.exists ? undefined : { oid: branch.oid, upstream: branch.source },
-        );
-      } catch (error) {
-        if (error instanceof GitError && error.details && 'target' in error.details)
-          throw new GitError(error.message, error.code, error.stdout, error.stderr, {
-            ...error.details,
-            trackBranches: action.branches,
-          });
-        throw error;
-      }
-      return;
-    }
-    let created = 0;
-    for (const branch of plan) {
-      if (branch.exists) continue;
-      try {
-        await this.run(repo, ['branch', '--no-track', '--', branch.name, branch.oid]);
-        created++;
-        await this.run(repo, ['branch', `--set-upstream-to=${branch.source}`, '--', branch.name]);
-      } catch (error) {
-        // An external Git process can race the preflight. Report exactly how far
-        // this operation got; never roll back refs which the user may now be using.
-        if (!created) throw error;
-        throw new GitError(
-          localizeMessage('service.localBranchEsCreatedCreationStoppedAtRefreshBefore', {
-            created: created,
-            name: branch.name,
-            value: error instanceof Error ? error.message : String(error),
-          }),
-          'PARTIAL_FAILURE',
-        );
-      }
-    }
   }
   private async validateStash(
     repo: Repository,
@@ -3255,10 +2553,8 @@ export class GitService implements GitServiceContract {
     action: GitAction,
     onProgress?: (progress: FileOperationProgress) => void,
   ): Promise<void | PushResult | DeletionResult> {
-    if (action.type !== 'commit' && action.type !== 'operation.continue')
-      this.reviews.delete(repo.id);
-    if (action.type !== 'operation.abort') this.aborts.delete(repo.id);
-    let args: string[], pushedRemote: string | undefined, boundRemote: BoundRemote | undefined;
+    this.operationGuards.invalidateForAction(repo, action);
+    let args: string[];
     const remote = (value?: string) => (value ? [token(value, 'remote')] : []);
     switch (action.type) {
       case 'conflict.choose':
@@ -3429,7 +2725,7 @@ export class GitService implements GitServiceContract {
           );
           return;
         }
-        await this.requireReview(repo, snapshot, action.reviewToken);
+        await this.operationGuards.requireReview(repo, snapshot, action.reviewToken);
         args = ['commit', ...(action.amend ? ['--amend'] : []), '-m', action.message];
         break;
       }
@@ -3444,7 +2740,7 @@ export class GitService implements GitServiceContract {
         if (action.remoteBranch && !action.remote)
           throw new GitError(localizeMessage('service.selectPullRemote'), 'INVALID_ARGUMENT');
         const source = action.remoteBranch
-          ? `refs/heads/${await this.refName(repo, action.remoteBranch)}`
+          ? `refs/heads/${await this.branches.refName(repo, action.remoteBranch)}`
           : undefined;
         args = [
           'pull',
@@ -3453,373 +2749,30 @@ export class GitService implements GitServiceContract {
         ];
         break;
       }
-      case 'push': {
-        if (action.forceWithLease && (!action.remote || !action.branch || !action.remoteBranch))
-          throw new GitError(
-            localizeMessage('service.selectExplicitLocalAndRemoteBranchesThenReopenThe'),
-            'OPERATION_CHANGED',
-          );
-        const branch = action.branch ? await this.refName(repo, action.branch) : undefined;
-        let destination = action.remote;
-        if (action.remoteBranch && !branch)
-          throw new GitError(
-            localizeMessage('service.selectALocalBranchBeforeChoosingARemoteBranch'),
-            'INVALID_ARGUMENT',
-          );
-        if (branch) {
-          await this.oid(repo, `refs/heads/${branch}`);
-          if (!destination) {
-            const configured = await this.run(
-              repo,
-              ['config', '--get', `branch.${branch}.remote`],
-              true,
-            );
-            if (configured.code > 1)
-              throw new GitError(configured.stderr.toString('utf8'), 'GIT_FAILED');
-            destination = configured.stdout.toString('utf8').trim();
-            if (!destination) {
-              const remotes = (await this.text(repo, ['remote'])).split('\n').filter(Boolean);
-              if (remotes.length !== 1)
-                throw new GitError(
-                  localizeMessage('service.selectARemoteBeforePushingThisBranch'),
-                  'INVALID_ARGUMENT',
-                );
-              destination = remotes[0];
-            }
-          }
-        }
-        const remoteBranch = branch
-          ? await this.refName(repo, action.remoteBranch ?? branch)
-          : undefined;
-        const setUpstream = branch && (action.setUpstream ?? true);
-        const lease = action.forceWithLease
-          ? this.confirmedRemoteOid(action.expectedOid)
-          : undefined;
-        if (action.forceWithLease)
-          boundRemote = await this.confirmRemoteDestination(
-            repo,
-            destination!,
-            action.expectedDestination,
-          );
-        pushedRemote = destination;
-        args = [
-          'push',
-          action.followTags ? '--follow-tags' : '--no-follow-tags',
-          ...(setUpstream ? ['--set-upstream'] : []),
-          ...(lease !== undefined
-            ? [`--force-with-lease=refs/heads/${remoteBranch}:${lease}`]
-            : []),
-          ...remote(destination),
-          ...(branch ? [`refs/heads/${branch}:refs/heads/${remoteBranch}`] : []),
-        ];
-        break;
-      }
-      case 'remote.add': {
-        const name = action.name.trim(),
-          url = action.url.trim();
-        if (remoteNameProblem(name))
-          throw new GitError(
-            localizeMessage('service.enterARemoteNameWithoutSpacesSuchAsOrigin'),
-            'INVALID_REMOTE_NAME',
-          );
-        if (remoteUrlProblem(url))
-          throw new GitError(localizeMessage('service.enterARepositoryURL'), 'INVALID_REMOTE_URL');
-        const configured = (await this.text(repo, ['remote'])).split('\n').filter(Boolean);
-        if (configured.includes(name))
-          throw new GitError(
-            localizeMessage('service.remoteAlreadyExists', { name: name }),
-            'REMOTE_EXISTS',
-          );
-        args = ['remote', 'add', name, url];
-        break;
-      }
-      case 'branch.create': {
-        const name = await this.refName(repo, action.name);
-        // Re-read inside the common-directory write queue; the dialog snapshot may be stale.
-        const localNames = (
-          await this.text(repo, ['for-each-ref', '--format=%(refname)', 'refs/heads'])
-        )
-          .split('\n')
-          .filter(Boolean)
-          .map((ref) => ref.slice('refs/heads/'.length));
-        const collision = branchNameConflict(name, localNames);
-        if (collision)
-          throw new GitError(branchNameConflictMessage(name, collision), 'BRANCH_EXISTS');
-        const start = await this.oid(repo, action.start ?? 'HEAD'),
-          upstream = action.start?.startsWith('refs/remotes/') ? action.start : undefined;
-        if (upstream) await this.run(repo, ['show-ref', '--verify', '--', upstream]);
-        // switch -c can change Index/Working Tree before a ref creation failure.
-        // Create the ref first so even an external race cannot start Checkout on failure.
-        await this.run(repo, ['branch', '--no-track', '--', name, start]);
-        if (upstream) {
-          try {
-            await this.run(repo, ['branch', `--set-upstream-to=${upstream}`, '--', name]);
-          } catch (error) {
-            throw new GitError(
-              localizeMessage(
-                'service.branchWasCreatedAndRetainedButUpstreamConfigurationFailedVariant2',
-                { name: name, value: error instanceof Error ? error.message : String(error) },
-              ),
-              'PARTIAL_FAILURE',
-            );
-          }
-        }
-        if (action.checkout) {
-          try {
-            await this.checkout(repo, name);
-          } catch (error) {
-            const details: CheckoutBlocker = {
-              ...(error instanceof GitError && error.details && 'target' in error.details
-                ? error.details
-                : { reason: 'checkout-failed' as const, paths: [], target: name }),
-              branchCreated: true,
-            };
-            throw new GitError(
-              localizeMessage('service.branchWasCreatedAndRetainedButCheckoutDidNotVariant2', {
-                name: name,
-                value: error instanceof Error ? error.message : String(error),
-              }),
-              error instanceof GitError ? error.code : 'CHECKOUT_FAILED',
-              error instanceof GitError ? error.stdout : '',
-              error instanceof GitError ? error.stderr : '',
-              details,
-            );
-          }
-        }
-        return;
-      }
+      case 'push':
+        return this.remotes.pushBranch(repo, action);
+      case 'remote.add':
+        return this.remotes.add(repo, action);
+      case 'branch.create':
+        return this.branches.create(repo, action);
       case 'branch.checkout':
-        return this.checkout(repo, action.name);
+        return this.branches.checkout(repo, action.name);
       case 'branch.track':
-        return this.trackBranches(repo, action);
+        return this.branches.trackBranches(repo, action);
       case 'commit.checkout':
-        return this.checkout(repo, action.target, true);
+        return this.branches.checkout(repo, action.target, true);
       case 'checkout.stash':
-        return this.checkout(repo, action.target, action.detached, true, action.includeUntracked);
-      case 'branch.delete': {
-        const names = await mapGitQueries([...new Set(action.names)], (name) =>
-          this.refName(repo, name),
-        );
-        if (!names.length)
-          throw new GitError(localizeMessage('service.selectAtLeastOneBranch'), 'INVALID_ARGUMENT');
-        const state = await this.snapshot(repo),
-          current = state.branch,
-          occupied = new Set(
-            state.worktrees
-              .map((tree) => tree.branch?.replace(/^refs\/heads\//, ''))
-              .filter(Boolean),
-          );
-        if (current && names.includes(current))
-          throw new GitError(
-            localizeMessage('service.theCurrentBranchCannotBeDeleted', { current: current }),
-            'INVALID_ARGUMENT',
-          );
-        const inUse = names.find((name) => occupied.has(name));
-        if (inUse)
-          throw new GitError(
-            localizeMessage('service.branchIsUsedByAWorktree', { inUse: inUse }),
-            'WORKTREE_OCCUPIED',
-          );
-        const expectedOids = new Map<string, string>();
-        for (const name of names) {
-          const oid = await this.oid(repo, `refs/heads/${name}`),
-            expected = action.expectedOids?.[name];
-          if (expected !== undefined && expected !== oid)
-            throw new GitError(
-              localizeMessage('service.branchChangedBeforeDeletion', { name }),
-              'OPERATION_CHANGED',
-            );
-          expectedOids.set(name, oid);
-        }
-        const failures: string[] = [];
-        let deleted = 0;
-        const deletion: DeletionResult = {
-          kind: 'deletion',
-          target: 'branch',
-          succeeded: [],
-          failures: [],
-        };
-        for (const name of names) {
-          try {
-            const expected = expectedOids.get(name)!;
-            // The ref transaction compares the old object while holding its lock.
-            // It also deletes the reflog, without touching a symbolic ref's target.
-            const result = await this.run(
-              repo,
-              ['update-ref', '--no-deref', '-d', `refs/heads/${name}`, expected],
-              true,
-              undefined,
-              {
-                beforeSpawn: async () => {
-                  const occupied = (await this.worktrees(repo)).find(
-                    (tree) => tree.branch === name,
-                  );
-                  if (occupied)
-                    throw new GitError(
-                      localizeMessage('service.branchIsUsedByAWorktree', { inUse: name }),
-                      'WORKTREE_OCCUPIED',
-                    );
-                  if (!action.force) {
-                    // Match native branch -d: use a valid upstream, otherwise current HEAD.
-                    const upstream = await this.text(repo, [
-                      'for-each-ref',
-                      '--format=%(upstream)',
-                      `refs/heads/${name}`,
-                    ]);
-                    const upstreamOid = upstream
-                      ? await this.run(
-                          repo,
-                          ['rev-parse', '--verify', `${upstream}^{commit}`],
-                          true,
-                        )
-                      : undefined;
-                    const mergeTarget =
-                      upstreamOid?.code === 0
-                        ? upstreamOid.stdout.toString('utf8').trim()
-                        : (await this.status(repo)).head;
-                    const merged = mergeTarget
-                      ? await this.run(
-                          repo,
-                          ['merge-base', '--is-ancestor', expected, mergeTarget],
-                          true,
-                        )
-                      : undefined;
-                    if (!merged || merged.code === 1)
-                      throw new GitError(
-                        localizeMessage('service.branchNotMerged', { name }),
-                        'BRANCH_NOT_MERGED',
-                      );
-                    if (merged.code)
-                      throw new GitError(merged.stderr.toString('utf8').trim(), 'GIT_FAILED');
-                  }
-                },
-              },
-            );
-            if (result.code)
-              throw new GitError(
-                localizeMessage('service.branchChangedBeforeDeletion', { name }),
-                'OPERATION_CHANGED',
-                result.stdout.toString('utf8'),
-                result.stderr.toString('utf8'),
-              );
-            deleted++;
-            deletion.succeeded.push(name);
-            // A newly recreated branch owns its own configuration.
-            const recreated = await this.run(
-              repo,
-              ['show-ref', '--verify', '--quiet', '--', `refs/heads/${name}`],
-              true,
-            );
-            if (!recreated.code) continue;
-            if (recreated.code !== 1)
-              throw new GitError(recreated.stderr.toString('utf8').trim(), 'GIT_FAILED');
-            const config = await this.run(
-              repo,
-              ['config', '--remove-section', `branch.${name}`],
-              true,
-            );
-            if (config.code) {
-              const pattern = `^branch\\.${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.`;
-              const remaining = await this.run(repo, ['config', '--get-regexp', pattern], true);
-              // Git versions differ in the missing-section exit code. Only
-              // confirmed absence makes failed cleanup harmless.
-              if (remaining.code !== 1)
-                throw new GitError(config.stderr.toString('utf8').trim(), 'GIT_FAILED');
-            }
-          } catch (error) {
-            failures.push(`${name}: ${error instanceof Error ? error.message : String(error)}`);
-            deletion.failures.push({
-              target: name,
-              message: error instanceof Error ? error.message : String(error),
-            });
-            if (error instanceof GitTerminationError) {
-              deletion.notAttempted = names.slice(names.indexOf(name) + 1);
-              error.deletionResult = deletion;
-              throw error;
-            }
-          }
-        }
-        if (failures.length) {
-          const error = new GitError(
-            localizeMessage('service.branchEsDeletedFailed', {
-              deleted,
-              count: failures.length,
-              value: failures.join('\n'),
-            }),
-            'PARTIAL_FAILURE',
-          );
-          error.deletionResult = deletion;
-          throw error;
-        }
-        return deletion;
-      }
-      case 'remote.delete': {
-        const destination = token(action.remote, 'remote'),
-          configured = (await this.text(repo, ['remote'])).split('\n').filter(Boolean);
-        if (!configured.includes(destination))
-          throw new GitError(
-            localizeMessage('service.unknownRemote', { destination: destination }),
-            'INVALID_ARGUMENT',
-          );
-        const branches = await mapGitQueries([...new Set(action.branches)], (name) =>
-          this.refName(repo, name),
-        );
-        if (!branches.length)
-          throw new GitError(
-            localizeMessage('service.selectAtLeastOneRemoteBranch'),
-            'INVALID_ARGUMENT',
-          );
-        for (const branch of branches)
-          this.confirmedRemoteOid(
-            Object.hasOwn(action.expectedOids ?? {}, branch)
-              ? action.expectedOids![branch]
-              : undefined,
-          );
-        const bound = await this.confirmRemoteDestination(
+        return this.branches.checkout(
           repo,
-          destination,
-          action.expectedDestination,
+          action.target,
+          action.detached,
+          true,
+          action.includeUntracked,
         );
-        const failures: string[] = [];
-        let deleted = 0;
-        for (const branch of branches) {
-          try {
-            await this.run(
-              repo,
-              [
-                'push',
-                '--no-follow-tags',
-                `--force-with-lease=refs/heads/${branch}:${action.expectedOids![branch]}`,
-                destination,
-                `:refs/heads/${branch}`,
-              ],
-              false,
-              undefined,
-              { configOverrides: bound.configOverrides, boundRemote: bound },
-            );
-            deleted++;
-          } catch (error) {
-            if (
-              error instanceof GitTerminationError ||
-              (error instanceof GitError && error.code === 'ABORTED')
-            )
-              throw error;
-            failures.push(
-              `${destination}/${branch}: ${error instanceof Error ? error.message : String(error)}`,
-            );
-          }
-        }
-        if (failures.length)
-          throw new GitError(
-            localizeMessage('service.remoteBranchEsDeletedFailed', {
-              deleted: deleted,
-              count: failures.length,
-              value: failures.join('\n'),
-            }),
-            'PARTIAL_FAILURE',
-          );
-        return;
-      }
+      case 'branch.delete':
+        return this.branches.delete(repo, action);
+      case 'remote.delete':
+        return this.remotes.deleteBranches(repo, action);
       case 'tag.create': {
         const name = token(action.name, 'tag name'),
           ref = `refs/tags/${name}`;
@@ -3843,7 +2796,7 @@ export class GitService implements GitServiceContract {
         ]);
         if (destination) {
           try {
-            return await this.push(
+            return await this.remotes.push(
               repo,
               ['push', '--no-follow-tags', destination, `${ref}:${ref}`],
               destination,
@@ -3911,7 +2864,7 @@ export class GitService implements GitServiceContract {
         for (const { name, oid } of plan) {
           try {
             results.push(
-              await this.push(
+              await this.remotes.push(
                 repo,
                 ['push', '--no-follow-tags', destination, `${oid}:refs/tags/${name}`],
                 destination,
@@ -3992,7 +2945,7 @@ export class GitService implements GitServiceContract {
               localizeMessage('service.theTagIdentityIsMissingOrInvalidRefreshAnd'),
               'OPERATION_CHANGED',
             );
-          const bound = await this.confirmRemoteDestination(
+          const bound = await this.remotes.confirmRemoteDestination(
             repo,
             destination,
             action.expectedDestination,
@@ -4013,7 +2966,7 @@ export class GitService implements GitServiceContract {
               localizeMessage('service.remoteTagDeletionRequiresMatchingReadAndPushAddresses'),
               'SEPARATE_PUSH_DESTINATION',
             );
-          published = await this.push(
+          published = await this.remotes.push(
             repo,
             [
               'push',
@@ -4228,12 +3181,12 @@ export class GitService implements GitServiceContract {
           'worktree',
           'add',
           ...(action.detach ? ['--detach'] : []),
-          ...(action.newBranch ? ['-b', await this.refName(repo, action.newBranch)] : []),
+          ...(action.newBranch ? ['-b', await this.branches.refName(repo, action.newBranch)] : []),
           '--',
           target,
         ];
         if (action.branch) {
-          await this.refName(repo, action.branch);
+          await this.branches.refName(repo, action.branch);
           args.push(await this.oid(repo, `refs/heads/${action.branch}`));
           if (!action.detach) args[args.length - 1] = action.branch;
         } else if (action.start) args.push(await this.oid(repo, action.start));
@@ -4398,105 +3351,11 @@ export class GitService implements GitServiceContract {
         this.requireActionContext(action, await this.status(repo));
         args = ['reset', `--${action.mode}`, await this.oid(repo, action.target), '--'];
         break;
-      case 'operation.quit': {
-        const state = (await this.snapshot(repo)).operation;
-        if (
-          state.kind !== 'cherry-pick' ||
-          !action.quitToken ||
-          state.quitToken !== action.quitToken
-        )
-          throw new GitError(
-            localizeMessage('service.theSelectedGitOperationIsNoLongerActive'),
-            'OPERATION_CHANGED',
-          );
-        await this.run(repo, ['cherry-pick', '--quit'], false, undefined, {
-          beforeSpawn: async () => {
-            if (
-              action.quitToken !==
-              (await this.skipFingerprint(repo, await this.status(repo), 'cherry-pick'))
-            )
-              throw new GitError(
-                localizeMessage('service.theSelectedGitOperationIsNoLongerActive'),
-                'OPERATION_CHANGED',
-              );
-          },
-        });
-        return;
-      }
+      case 'operation.quit':
       case 'operation.continue':
       case 'operation.abort':
-      case 'operation.skip': {
-        const snapshot = await this.snapshot(repo),
-          state = snapshot.operation;
-        if (!state.kind || state.kind !== action.kind)
-          throw new GitError(
-            localizeMessage('service.theSelectedGitOperationIsNoLongerActive'),
-            'OPERATION_CHANGED',
-          );
-        const command = action.type.split('.')[1];
-        if (command === 'skip' && !state.canSkip)
-          throw new GitError(
-            localizeMessage('service.thisOperationCannotBeSkipped'),
-            'INVALID_ARGUMENT',
-          );
-        const verifySkip =
-          action.type === 'operation.skip'
-            ? async () => {
-                if (
-                  !action.skipToken ||
-                  action.skipToken !==
-                    (await this.skipFingerprint(repo, await this.status(repo), state.kind))
-                ) {
-                  throw new GitError(
-                    localizeMessage('service.theSelectedGitOperationIsNoLongerActive'),
-                    'OPERATION_CHANGED',
-                  );
-                }
-              }
-            : undefined;
-        if (
-          action.type === 'operation.skip' &&
-          (!action.skipToken || action.skipToken !== state.skipToken)
-        )
-          throw new GitError(
-            localizeMessage('service.theSelectedGitOperationIsNoLongerActive'),
-            'OPERATION_CHANGED',
-          );
-        const verifyAbort =
-          action.type === 'operation.abort' ? () => this.requireAbort(repo, action) : undefined;
-        if (verifyAbort) await verifyAbort();
-        const verifyDestructiveStep = verifyAbort ?? verifySkip;
-        const beforeDestructiveStep = verifyDestructiveStep
-          ? async () => {
-              await verifyDestructiveStep();
-              if (action.type === 'operation.abort') this.aborts.delete(repo.id);
-            }
-          : undefined;
-        if (action.type === 'operation.continue')
-          await this.requireReview(repo, snapshot, action.reviewToken);
-        if (
-          action.kind === 'rebase' &&
-          state.managedRebase &&
-          (await this.interactiveRebase.resume(
-            (args, execution) =>
-              this.run(repo, args, false, undefined, {
-                ...execution,
-                ...(args[0] === 'rebase' && ['--skip', '--abort'].includes(args[1])
-                  ? { beforeSpawn: beforeDestructiveStep }
-                  : {}),
-              }),
-            command as 'continue' | 'abort' | 'skip',
-            action.type === 'operation.continue' && action.keepEmpty,
-          ))
-        )
-          return;
-        args = [action.kind, `--${command}`];
-        if (beforeDestructiveStep) {
-          await this.run(repo, args, false, undefined, { beforeSpawn: beforeDestructiveStep });
-          return;
-        }
-        break;
-      }
+      case 'operation.skip':
+        return this.operationGuards.executeRecovery(repo, action);
       default:
         throw new GitError(localizeMessage('service.unsupportedGitAction'), 'INVALID_ARGUMENT');
     }
@@ -4505,15 +3364,6 @@ export class GitService implements GitServiceContract {
       (action.detach || (!action.branch && !action.newBranch && !!action.start))
     )
       this.requireDetachedHead();
-    if (args[0] === 'push') {
-      return this.push(
-        repo,
-        args,
-        pushedRemote ?? ('remote' in action ? action.remote : undefined),
-        action.type === 'push' ? action.branch : undefined,
-        boundRemote,
-      );
-    }
     await this.run(repo, args);
   }
 }

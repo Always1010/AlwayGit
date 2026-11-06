@@ -36,7 +36,9 @@ AlwayGit 是 Workspace 类型的 VS Code 扩展。React 工作台共用一套消
 | --- | --- | --- |
 | `src/extension` | `extension.ts`、`workbench.ts`、`workbench-launcher.ts`、`project-windows.ts` | 扩展激活、活动栏入口、面板集合、RPC 路由、VS Code 命令和生命周期 |
 | `src/application` | `confirm.ts`、`credentials.ts`、`window-bridge.ts`、`operation-lock.ts`、`snapshot-coordinator.ts`、`query-coordinator.ts`、`session-persistence.ts` | 操作确认、认证与窗口 IPC、跨宿主写操作租约、查询与保存协调 |
-| `src/git` | `service.ts`、`runner.ts`、`error.ts`、`stash.ts`、`stash-drop.ts`、`default-branch.ts` | 系统 Git 执行、结构化解析、查询、操作、Stash 隔离与身份核验删除及共享仓库队列 |
+| `src/git` | `service.ts`、`runner.ts`、`execution.ts`、`error.ts`、`stash.ts`、`stash-drop.ts`、`default-branch.ts` | 系统 Git 执行与契约、结构化解析、查询、操作分发、Stash 隔离与身份核验删除及共享仓库队列 |
+| `src/git` | `branches.ts`、`remotes.ts` | 分支创建、跟踪、Checkout、原子删除，以及远端配置、目标身份、Tag 查询、链接和 Push |
+| `src/git` | `operation-guards.ts` | 操作实例与内容指纹、审阅和中止令牌，以及 Continue、Abort、Skip、Quit 的执行保护 |
 | `src/repositories` | `manager.ts`、`catalog-store.ts`、`discovery.ts` | 仓库注册、递归发现、文件监听和持久化 |
 | `src/editor` | `paths.ts`、`documents.ts` | 安全路径解析、Git 内容文档、只读预览和 VS Code 原生 Diff |
 | `src/git`、`src/protocol` | `patch-hunks.ts`、`conflicts.ts`、`history-search.ts`、`file-history.ts`、`tree.ts`、`lfs.ts` | 修改块暂存与内容复核、冲突版本身份、结构化历史查询、固定提交目录树，以及 LFS 对象与传输能力 |
@@ -174,7 +176,7 @@ Diff 的加载依赖比较目标的语义身份。历史比较不依赖 Snapshot
 
 历史中的删除文件没有工作区实体，打开时使用只读 Git 内容。Merge Commit 必须明确比较父提交。冲突比较使用 Index Stage 2/3，并允许打开实际文件解决冲突。
 
-`resolve-and-stage` 表达用户已人工处理后的 Git 标记与暂存，仍通过 `git add` 实现，不证明内容正确。`operationReview` 将当前 Index 写成不可变 Tree，扫描相对 HEAD 的暂存变更，并返回文件、标记行号、未扫描原因及宿主颁发的一次性确认 token。token 绑定工作目录身份、分支、HEAD、Tree 和操作控制文件；Continue 以及活动操作中的 Commit 在共享写队列内重新核对，普通 Stage/Abort 等写操作使已有 token 失效。确认后内容变化不能复用旧确认。每文件最多扫描 2 MiB、累计 16 MiB，未扫描内容必须向用户明确展示；标记检测只用于提醒，不做语义正确性保证。外部 Git 进程仍可能在最后检查与实际 Git 命令间竞争，Git 自身的 Index 锁及执行错误继续生效。
+`resolve-and-stage` 表达用户已人工处理后的 Git 标记与暂存，仍通过 `git add` 实现，不证明内容正确。`operationReview` 将当前 Index 写成不可变 Tree，扫描相对 HEAD 的暂存变更，并返回文件、标记行号、未扫描原因及宿主颁发的一次性确认 token。token 绑定工作目录身份、分支、HEAD、Tree 和操作控制文件；Continue 以及活动操作中的 Commit 在共享写队列内重新核对，普通 Stage/Abort 等写操作使已有 token 失效。确认后内容变化不能复用旧确认。每文件最多扫描 2 MiB、累计 16 MiB，未扫描内容必须向用户明确展示；标记检测只用于提醒，不做语义正确性保证。外部 Git 进程仍可能在最后检查与实际 Git 命令间竞争，Git 自身的 Index 锁及执行错误继续生效。 `operation-guards.ts` 集中维护操作确认指纹、Abort/审阅 token 和 Quit/Continue/Abort/Skip 恢复逻辑，依赖窄类型回调而不导入 GitService。所有恢复命令仍由 GitService 的共享写队列和原 runner 执行，托管 Rebase 经原有恢复器保留编辑器上下文及启动前校验。
 
 原生 Diff 和文件编辑请求先经项目窗口路由，再在接收方调用 `GitDocuments`；虚拟内容登记只存在于接收宿主。编辑器使用当前组与 `preview: false`，保留既有标签和工作台，避免新增侧边编辑器组。
 
@@ -254,7 +256,7 @@ Reset、Merge 和 Rebase 在确认前将目标解析为固定 Commit OID，并�
 
 ## 当前维护边界
 
-- GitService 仍组合查询、动作校验与执行，Workbench 保留路由与用例协调，Store 保留统一界面状态入口。已独立提取 runner、会话持久化、查询与快照协调和引用索引；后续按具体改动的独立职责拆分，避免仅按行数拆文件。
+- GitService 保留仓库身份校验、按 `commonDir` 的写队列、统一 `run` 执行及其余查询与动作分发。`BranchOperations` 维护分支名称、创建、跟踪、Checkout 和原子删除；`RemoteOperations` 维护远端配置、读写目标指纹与绑定、远端 Tag 查询、托管链接、分支 Push 和远端分支删除。`OperationGuards` 集中维护操作确认身份、内容指纹、令牌和恢复执行。这些模块通过窄类型回调读取上下文和执行 Git，不依赖 GitService 实例；`execution.ts` 只共享执行选项与调用契约。所有写入仍经 `execute` 入队和仓库复核，进程始终经注入的 `run`，保留只读 scope、取消、认证清理、日志脱敏、写隔离及启动前复核边界。Workbench 保留路由与用例协调，Store 保留统一界面状态入口；后续继续按独立职责拆分。
 - History 已虚拟化，Working Tree、Commit Details、Commit 比较和 Stash 文件列表共用 `VirtualFileRows`。后续性能优化继续测量可见行、筛选与选择成本及交互延迟，不仅以 DOM 数量推断整体性能；已有专项结果见验证文档。
 - Stash 隔离以准确复制现场为前提，当前保留完整捕获与大小限制。缩小复制范围需要证明不会遗漏属性、Index 和未选中修改，不能只为降低读取量放宽隔离保护。
 - 分块暂存和交互式 Rebase 分别使用独立模块维护其范围校验与执行。

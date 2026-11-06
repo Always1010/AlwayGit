@@ -69,3 +69,9 @@ export function splitCleanArguments(
   if (batch.length > fixed.length) result.push(batch);
   return result;
 }
+
+export const gitToken = (value: string, label: string) => {
+  if (!value || value.startsWith('-') || /[\0\r\n]/.test(value))
+    throw new GitError(localizeMessage('service.invalid', { label: label }), 'INVALID_ARGUMENT');
+  return value;
+};
