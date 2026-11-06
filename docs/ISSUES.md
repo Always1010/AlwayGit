@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-175：工作台共享脚本预加载被 CSP 拦截导致白屏
+
+- 日期：2026-11-06
+- 状态：已解决
+- 现象：远端扩展安装和激活成功，但重载窗口或重新打开工作台后页面空白；控制台提示 `jsx-runtime-*.js` 违反 `script-src 'nonce-…'` 安全策略。
+- 原因：Vite 构建生成初始 `link rel="modulepreload"` 共享脚本入口，宿主页仅给 `script` 标签添加 nonce；未授权的预加载被 CSP 拦截，影响入口脚本的模块依赖加载。
+- 解决方案：入口脚本和初始模块预加载标签使用相同 nonce，保留已有的延迟预加载 nonce 元标记及 CSP 限制；同步无头浏览器验证的页面授权处理。
+- 验证方式：用当前安装产物及相同 CSP 在无头 Chromium 复现白屏；补齐预加载 nonce 后同一产物恢复渲染，双语帮助页无头回归通过。入口定向 55 项单测、类型及 2030 条双语资源检查、扩展构建、修改文件格式及文档链接检查通过；未重新打包或安装，真实远程窗口需更新扩展后确认。
+- 相关文件：`src/extension/workbench.ts`、`tests/workbench-entry.test.ts`、`scripts/test-help-ui.mjs`、`docs/ARCHITECTURE.md`。
+
 ## BUG-174：Cherry-pick 与 Revert 的 Skip 未经确认即丢弃当前步骤
 
 - 日期：2026-11-06

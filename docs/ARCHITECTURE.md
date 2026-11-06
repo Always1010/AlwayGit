@@ -54,7 +54,7 @@ AlwayGit 是 Workspace 类型的 VS Code 扩展。React 工作台共用一套消
 
 共享协议先于两端实现修改。新增宿主能力时，应依次维护共享类型与校验、宿主路由、Git 或编辑器实现、Webview 调用和真实仓库测试。Webview 菜单及工具栏应复用相同的动作描述和执行入口，避免同一 Git 操作出现不同参数或禁用规则。
 
-帮助正文使用双语用户手册的固定章节 ID，Markdown 按手册所用的标题、段落、列表、表格、图片及行内格式提取为结构化内容，由 React 渲染为文本，不注入原始 HTML。HelpDialog 独立延迟加载；Vite 将手册文本及图片 URL 纳入 Webview 构建，图片资源位于现有 `dist/webview` 允许范围内。宿主页通过 `csp-nonce` 元标记将脚本 nonce 传给 Vite 的资源预加载逻辑，保持原有 CSP，不增加外部资源或 Git RPC。
+帮助正文使用双语用户手册的固定章节 ID，Markdown 按手册所用的标题、段落、列表、表格、图片及行内格式提取为结构化内容，由 React 渲染为文本，不注入原始 HTML。HelpDialog 独立延迟加载；Vite 将手册文本及图片 URL 纳入 Webview 构建，图片资源位于现有 `dist/webview` 允许范围内。宿主页为入口脚本和初始 `modulepreload` 标签设置同一 nonce，并通过 `csp-nonce` 元标记将其传给 Vite 的延迟资源预加载逻辑，保持原有 CSP，不增加外部资源或 Git RPC。
 
 <a id="repositories-refs-and-history"></a>
 

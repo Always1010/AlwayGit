@@ -1921,7 +1921,7 @@ describe('Workbench entry presentation', () => {
     },
   );
 
-  it('shares the script nonce with deferred Webview resource preloads without widening the CSP', async () => {
+  it('authorizes initial and deferred module preloads with the script nonce without widening the CSP', async () => {
     const { mkdtemp, writeFile, unlink, rmdir } = await import('node:fs/promises');
     const { tmpdir } = await import('node:os');
     const { join } = await import('node:path');
@@ -1930,7 +1930,10 @@ describe('Workbench entry presentation', () => {
     try {
       await writeFile(
         filename,
-        '<html><head><script type="module" src="./assets/app.js"></script></head><body></body></html>',
+        '<html><head><script type="module" src="./assets/app.js"></script>' +
+          '<link rel="modulepreload" crossorigin href="./assets/shared.js">' +
+          '<link crossorigin rel="modulepreload" href="./assets/other.js">' +
+          '<link rel="stylesheet" href="./assets/app.css"></head><body></body></html>',
       );
       vi.mocked(vscode.Uri.joinPath).mockReturnValue({ fsPath: filename } as vscode.Uri);
       const workbench = workbenchFixture() as unknown as {
@@ -1945,6 +1948,9 @@ describe('Workbench entry presentation', () => {
       expect(nonce).toBeTruthy();
       expect(markup).toContain(`script-src 'nonce-${nonce}'`);
       expect(markup).toContain(`<script nonce="${nonce}" type="module"`);
+      expect(markup).toContain(`<link nonce="${nonce}" rel="modulepreload"`);
+      expect(markup).toContain(`<link nonce="${nonce}" crossorigin rel="modulepreload"`);
+      expect(markup).toContain('<link rel="stylesheet"');
       expect(markup).not.toMatch(/script-src[^;"<>]*'unsafe-(?:inline|eval)'/);
     } finally {
       await unlink(filename);

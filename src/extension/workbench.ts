@@ -2524,7 +2524,11 @@ export class Workbench implements vscode.Disposable {
       (_match, attr, resource: string) =>
         `${attr}="${webview.asWebviewUri(vscode.Uri.joinPath(root, resource))}"`,
     );
-    html = html.replace(/<script /g, `<script nonce="${nonce}" `);
+    // Module preloads need the same authorization as their importing script.
+    html = html.replace(
+      /<(script|link(?=\s[^>]*\brel="modulepreload")) /g,
+      `<$1 nonce="${nonce}" `,
+    );
     const saved =
       initialSession ??
       this.context.workspaceState.get<Record<string, unknown>>('alwaygit.session', {});

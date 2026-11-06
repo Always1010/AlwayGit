@@ -30,7 +30,7 @@ export async function verifyHelp(browser, url) {
         }
         const response = await route.fetch();
         const body = (await response.text())
-          .replace(/<script /g, '<script nonce="help-test" ')
+          .replace(/<(script|link(?=\s[^>]*\brel="modulepreload")) /g, '<$1 nonce="help-test" ')
           .replace('<head>', '<head><meta property="csp-nonce" nonce="help-test">');
         await route.fulfill({
           response,
