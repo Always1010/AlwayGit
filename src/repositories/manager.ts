@@ -680,6 +680,7 @@ export class RepositoryManager implements vscode.Disposable {
         )
           throw new MessageError(localizeMessage('repositoryGroups.sourceChanged'));
       }
+      const order = this.catalogOrder(catalog);
       const byKey = new Map<string, Set<string>>();
       for (const row of rows) {
         const next = byKey.get(row.key) ?? new Set(catalog.assignments[row.key] ?? []);
@@ -697,7 +698,16 @@ export class RepositoryManager implements vscode.Disposable {
         this.assignCollections(catalog, key, [...next]);
         moved++;
       }
-      if (moved) catalog.order = this.catalogOrder(catalog);
+      if (moved) {
+        const destination =
+          targetCollectionId === null ? order.root : order.collections[targetCollectionId];
+        for (const key of byKey.keys()) {
+          const entry = repositoryOrderKey(key);
+          if (!destination.includes(entry)) destination.push(entry);
+        }
+        catalog.order = order;
+        catalog.order = this.catalogOrder(catalog);
+      }
       return moved;
     });
     if (moved) this.listEmitter.fire();

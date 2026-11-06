@@ -11,6 +11,8 @@ import { reconcileRepositoryOrder } from '../src/protocol/repository-order';
 import type {
   RepositoryOrder,
   ReorderRepository,
+  RepositoryMembershipUpdate,
+  MoveRepositoryRows,
   BranchComparison,
   BranchComparisonQuery,
   Commit,
@@ -601,12 +603,57 @@ export function createDemoRequest(emit: (event: HostMessage) => void) {
         demoOrder,
       );
       if (method === 'reorderRepository') {
-        const { key, targetKey, position } = payload as ReorderRepository,
-          entries = demoOrder.root.filter((entry) => entry !== key);
+        const { key, targetKey, position, collectionId } = payload as ReorderRepository,
+          current = collectionId ? demoOrder.collections[collectionId] : demoOrder.root,
+          entries = current.filter((entry) => entry !== key);
         entries.splice(entries.indexOf(targetKey) + Number(position === 'after'), 0, key);
-        demoOrder.root = entries;
+        if (collectionId) demoOrder.collections[collectionId] = entries;
+        else demoOrder.root = entries;
       }
       return structuredClone(demoOrder);
+    }
+    if (method === 'updateRepositoryMemberships' || method === 'moveRepositoryRows') {
+      // Preserve the old order before changing memberships so new occurrences append consistently.
+      demoOrder = reconcileRepositoryOrder(
+        groupRepositories([repo, website]),
+        demoCollections,
+        demoOrder,
+      );
+      let changed = 0;
+      for (const group of groupRepositories([repo, website])) {
+        const next = new Set(group.collectionIds);
+        if (method === 'updateRepositoryMemberships') {
+          const { keys, changes } = payload as RepositoryMembershipUpdate;
+          if (!keys.includes(group.key)) continue;
+          for (const change of changes) {
+            if (change.included) next.add(change.collectionId);
+            else next.delete(change.collectionId);
+          }
+        } else {
+          const { rows, targetCollectionId } = payload as MoveRepositoryRows,
+            sources = rows.filter((row) => row.key === group.key);
+          if (!sources.length) continue;
+          if (targetCollectionId === null) next.clear();
+          else {
+            for (const source of sources)
+              if (source.collectionId !== null) next.delete(source.collectionId);
+            next.add(targetCollectionId);
+          }
+        }
+        if (
+          next.size === group.collectionIds.length &&
+          group.collectionIds.every((id) => next.has(id))
+        )
+          continue;
+        for (const member of group.members) member.collectionIds = [...next];
+        changed++;
+      }
+      demoOrder = reconcileRepositoryOrder(
+        groupRepositories([repo, website]),
+        demoCollections,
+        demoOrder,
+      );
+      return changed;
     }
     if (method === 'createRepositoryCollection') {
       const collection = {

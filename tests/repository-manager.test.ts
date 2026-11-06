@@ -530,6 +530,55 @@ describe('batch repository registration', () => {
     expect(manager.order().root.at(-1)).toBe(repositoryOrderKey(key));
   });
 
+  it('appends dragged rows in visual order and rejects a stale batch before changing valid sources', async () => {
+    const root = await fixture(),
+      { manager } = setup();
+    await manager.addDirectory(root);
+    const groups = manager.groups().sort((left, right) => left.name.localeCompare(right.name)),
+      [aKey, bKey] = groups.map((group) => group.key),
+      a = await manager.createCollection('A'),
+      b = await manager.createCollection('B'),
+      c = await manager.createCollection('C');
+    await manager.moveRows({
+      rows: [
+        { key: bKey, collectionId: null },
+        { key: aKey, collectionId: null },
+      ],
+      targetCollectionId: a.id,
+    });
+    expect(manager.order().collections[a.id]).toEqual([
+      repositoryOrderKey(bKey),
+      repositoryOrderKey(aKey),
+    ]);
+    await manager.updateMemberships({
+      keys: [aKey],
+      changes: [{ collectionId: b.id, included: true }],
+    });
+    await manager.moveRows({
+      rows: [
+        { key: bKey, collectionId: a.id },
+        { key: aKey, collectionId: a.id },
+      ],
+      targetCollectionId: b.id,
+    });
+    expect(manager.order().collections[b.id]).toEqual([
+      repositoryOrderKey(aKey),
+      repositoryOrderKey(bKey),
+    ]);
+    const before = manager.order();
+    await expect(
+      manager.moveRows({
+        rows: [
+          { key: aKey, collectionId: b.id },
+          { key: bKey, collectionId: a.id },
+        ],
+        targetCollectionId: c.id,
+      }),
+    ).rejects.toThrow();
+    expect(manager.order()).toEqual(before);
+    expect(manager.groups().every((group) => group.collectionIds.includes(b.id))).toBe(true);
+  });
+
   it('persists mixed root order, appends additions, and reorders only siblings across restarts', async () => {
     const root = await fixture(),
       shared = new Map<string, unknown>(),

@@ -23,12 +23,6 @@
     "review": "translated",
     "context": "webview/Sidebar.tsx / SidebarPanel / addRemote"
   },
-  "sidebar.dragToReorderAltUpDownMovesWithinThe": {
-    "en": "Drag to reorder. Alt+Up/Down moves within the same level.",
-    "zh-CN": "拖动调整顺序；Alt+↑/↓ 可在同层移动。",
-    "review": "translated",
-    "context": "webview/Sidebar.tsx / dragHandle / hint"
-  },
   "sidebar.reorder": {
     "en": "Reorder {{label}}. {{hint}}",
     "zh-CN": "调整 {{label}} 的顺序。{{hint}}",

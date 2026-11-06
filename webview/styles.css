@@ -3701,6 +3701,35 @@ p {
 .repository-list [data-drop-position='after'] {
   box-shadow: inset 0 -2px 0 var(--vscode-focusBorder, #0078d4);
 }
+.repository-collection[data-drop-inside='true'] > .repository-collection-header,
+.repository-root-drop[data-drop-inside='true'] {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel));
+}
+.repository-empty-drop {
+  min-height: 24px;
+}
+.repository-root-drop {
+  min-height: 30px;
+  margin: 6px 4px;
+  padding: 6px;
+  border: 1px dashed var(--border);
+  border-radius: 3px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.repository-drop-hint {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--fg);
+  font-size: 11px;
+  pointer-events: none;
+}
 .repository-drag-handle[draggable='true'] {
   cursor: grab;
 }

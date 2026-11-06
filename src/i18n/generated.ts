@@ -5375,6 +5375,22 @@ export const catalog = {
     "en": "Delete repository group \"{{name}}\"? Repositories in other groups stay there; those with no remaining groups return to the root.",
     "zh-CN": "删除仓库分组“{{name}}”？仓库保留其他分组归属，没有其他分组的仓库回到根层。"
   },
+  "repositoryGroups.dragHint": {
+    "en": "Drag to move or reorder. Alt+Up/Down reorders within this level.",
+    "zh-CN": "拖动以移动或排序；Alt+上/下键在当前层级排序。"
+  },
+  "repositoryGroups.moveTo": {
+    "en": "Move to \"{{name}}\"",
+    "zh-CN": "移动到“{{name}}”"
+  },
+  "repositoryGroups.moveToRoot": {
+    "en": "Move to root and leave all groups",
+    "zh-CN": "移到根层，并退出所有分组"
+  },
+  "repositoryGroups.rootDrop": {
+    "en": "Drop here to move to the root and leave all groups",
+    "zh-CN": "拖到此处移至根层，并退出所有分组"
+  },
   "rpc.theReadRequestWasCancelled": {
     "en": "The read request was cancelled.",
     "zh-CN": "读取请求已取消。"
@@ -6830,10 +6846,6 @@ export const catalog = {
   "sidebar.addRemote": {
     "en": "Add Remote…",
     "zh-CN": "添加远端…"
-  },
-  "sidebar.dragToReorderAltUpDownMovesWithinThe": {
-    "en": "Drag to reorder. Alt+Up/Down moves within the same level.",
-    "zh-CN": "拖动调整顺序；Alt+↑/↓ 可在同层移动。"
   },
   "sidebar.reorder": {
     "en": "Reorder {{label}}. {{hint}}",
@@ -9554,6 +9566,10 @@ export interface MessageParameters {
   "repositoryGroups.noMatches": {  };
   "repositoryGroups.sourceChanged": {  };
   "repositoryGroups.deleteGroup": { name: ParameterValue };
+  "repositoryGroups.dragHint": {  };
+  "repositoryGroups.moveTo": { name: ParameterValue };
+  "repositoryGroups.moveToRoot": {  };
+  "repositoryGroups.rootDrop": {  };
   "rpc.theReadRequestWasCancelled": {  };
   "rpc.openAlwayGitInVSCodeToConnectToYour": {  };
   "rpc.theReadRequestTimedOut": {  };
@@ -9918,7 +9934,6 @@ export interface MessageParameters {
   "sidebar.collapse": {  };
   "sidebar.expand": {  };
   "sidebar.addRemote": {  };
-  "sidebar.dragToReorderAltUpDownMovesWithinThe": {  };
   "sidebar.reorder": { label: ParameterValue; hint: ParameterValue };
   "sidebar.unpushedCommits": { name: ParameterValue; unpushed: ParameterValue };
   "sidebar.doubleClickOrPressEnterToSwitchRepository": {  };

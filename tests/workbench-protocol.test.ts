@@ -11,6 +11,8 @@ import {
   historySchema,
   createRepositoryCollectionSchema,
   reorderRepositorySchema,
+  repositoryMembershipsSchema,
+  moveRepositoryRowsSchema,
   diffSchema,
   diffPageSchema,
   openRepositorySchema,
@@ -260,6 +262,23 @@ describe('Workbench protocol validation', () => {
     ).toMatchObject({ position: 'before' });
     expect(() =>
       reorderRepositorySchema.parse({ key: 'a', targetKey: 'b', position: 'sideways' }),
+    ).toThrow();
+  });
+  it('requires explicit drag sources and root targets and validates membership patches', () => {
+    const rows = [{ key: 'repo', collectionId: 'a' }];
+    expect(moveRepositoryRowsSchema.parse({ rows, targetCollectionId: null })).toEqual({
+      rows,
+      targetCollectionId: null,
+    });
+    expect(() => moveRepositoryRowsSchema.parse({ rows })).toThrow();
+    expect(() =>
+      moveRepositoryRowsSchema.parse({ rows: [{ key: 'repo' }], targetCollectionId: 'b' }),
+    ).toThrow();
+    expect(() =>
+      repositoryMembershipsSchema.parse({
+        keys: ['repo'],
+        changes: [{ collectionId: 'a', included: 'yes' }],
+      }),
     ).toThrow();
   });
   it('retains v2 layout, multi-reference views and drafts while accepting legacy sessions', () => {

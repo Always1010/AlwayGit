@@ -123,6 +123,125 @@ export async function verifySidebarSelection(browser, url) {
       1,
       'Scrolling moves the menu source and closes its menu without discarding selection',
     );
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    const dialog = page.getByRole('dialog'),
+      group = (name) => list.getByRole('group', { name, exact: true }),
+      groupRows = (name) => group(name).getByRole('option'),
+      mainRow = () => list.getByRole('option', { name: /^AlwayGit/ }).first();
+    for (const name of ['Work', 'Frequent', 'Archive']) {
+      await sidebar.getByRole('button', { name: 'Add…', exact: true }).click();
+      await dialog.getByRole('tab', { name: 'Add Group', exact: true }).click();
+      await dialog.getByRole('textbox', { name: 'Group name', exact: true }).fill(name);
+      await dialog.getByRole('button', { name: 'Create Group', exact: true }).click();
+      await dialog.waitFor({ state: 'hidden' });
+    }
+    await mainRow().locator('.repository-item').click({ button: 'right' });
+    assert.equal(
+      await menu.getByRole('menuitem', { name: 'Manage Groups…', exact: true }).count(),
+      1,
+    );
+    assert.equal(
+      await menu.getByRole('menuitem', { name: 'Move to Repository Group…', exact: true }).count(),
+      0,
+    );
+    await menu.getByRole('menuitem', { name: 'Manage Groups…', exact: true }).click();
+    assert.equal(
+      await dialog.getByRole('button', { name: 'Apply', exact: true }).isDisabled(),
+      true,
+    );
+    await dialog.getByRole('checkbox', { name: 'Work', exact: true }).check();
+    await dialog.getByRole('checkbox', { name: 'Frequent', exact: true }).check();
+    await page.screenshot({ path: 'artifacts/repository-groups-manage.png' });
+    await dialog.getByRole('button', { name: 'Apply', exact: true }).click();
+    await dialog.waitFor({ state: 'hidden' });
+    assert.equal(await groupRows('Work').count(), 1);
+    assert.equal(await groupRows('Frequent').count(), 1);
+
+    // Native dragging into a collapsed empty group moves only the source occurrence.
+    await group('Archive').locator('.repository-collection-heading').click();
+    await groupRows('Work')
+      .locator('.repository-drag-handle')
+      .dragTo(group('Archive').locator('.repository-collection-header'));
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[aria-label="Work"][role="group"] .repository-collection-count')
+          ?.textContent === '0',
+    );
+    assert.equal(await groupRows('Frequent').count(), 1);
+    assert.equal(await group('Archive').locator('.repository-collection-count').textContent(), '1');
+    assert.equal(
+      await group('Archive')
+        .locator('.repository-collection-heading')
+        .getAttribute('aria-expanded'),
+      'false',
+    );
+    await group('Archive').locator('.repository-collection-heading').click();
+    await groupRows('Archive')
+      .locator('.repository-drag-handle')
+      .dragTo(group('Frequent').locator('.repository-collection-header'));
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[aria-label="Archive"][role="group"] .repository-collection-count')
+          ?.textContent === '0',
+    );
+    assert.equal(
+      await groupRows('Frequent').count(),
+      1,
+      'An existing target occurrence is not duplicated',
+    );
+
+    // Mixed edits preserve the two repositories' different existing memberships.
+    await groupRows('Frequent').locator('.repository-item').click();
+    await list
+      .getByRole('option', { name: /^website/ })
+      .locator('.repository-item')
+      .click({ modifiers: ['Control'] });
+    await groupRows('Frequent').locator('.repository-item').click({ button: 'right' });
+    await menu.getByRole('menuitem', { name: 'Manage Groups…', exact: true }).click();
+    assert.equal(
+      await dialog
+        .getByRole('checkbox', { name: 'Frequent', exact: true })
+        .evaluate((input) => input.indeterminate),
+      true,
+    );
+    await dialog.getByRole('checkbox', { name: 'Work', exact: true }).check();
+    await dialog.getByRole('button', { name: 'Apply', exact: true }).click();
+    await dialog.waitFor({ state: 'hidden' });
+    assert.equal(await groupRows('Work').count(), 2);
+    assert.equal(await groupRows('Frequent').count(), 1);
+
+    // The root drop target appears only after a repository drag starts.
+    await groupRows('Frequent').locator('.repository-item').click();
+    const source = groupRows('Frequent').locator('.repository-drag-handle'),
+      sourceBox = await source.boundingBox();
+    await source.hover();
+    await page.mouse.down();
+    await page.mouse.move(
+      sourceBox.x + sourceBox.width / 2 + 10,
+      sourceBox.y + sourceBox.height / 2,
+      { steps: 4 },
+    );
+    const rootDrop = list.locator('.repository-root-drop');
+    await rootDrop.waitFor();
+    const rootBox = await rootDrop.boundingBox();
+    await page.mouse.move(rootBox.x + rootBox.width / 2, rootBox.y + rootBox.height / 2, {
+      steps: 8,
+    });
+    await page.mouse.move(rootBox.x + rootBox.width / 2, rootBox.y + rootBox.height / 2 + 1);
+    await list.getByRole('status').filter({ hasText: 'leave all groups' }).waitFor();
+    await page.mouse.up();
+    await page.waitForFunction(
+      () =>
+        document.querySelectorAll('.repository-list > .repository-row[data-repository-group]')
+          .length === 1,
+    );
+    assert.equal(await groupRows('Frequent').count(), 0);
+    assert.equal(
+      await groupRows('Work').count(),
+      1,
+      'Root movement clears every membership of the moved repository only',
+    );
+    await page.screenshot({ path: 'artifacts/repository-groups-moved.png' });
     assert.deepEqual(errors, []);
     console.log('ALWAYGIT_SIDEBAR_SELECTION_UI_TESTS_PASSED');
   } finally {

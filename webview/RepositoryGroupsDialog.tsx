@@ -95,6 +95,11 @@ export function RepositoryGroupsDialog({
               <label key={collection.id}>
                 <input
                   type="checkbox"
+                  data-autofocus={
+                    collections.length <= 8 && collection.id === collections[0]?.id
+                      ? 'true'
+                      : undefined
+                  }
                   checked={checked === true}
                   aria-checked={checked}
                   ref={(input) => {

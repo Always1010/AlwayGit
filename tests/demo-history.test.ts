@@ -33,3 +33,35 @@ it('shows two topic commits on a side lane before each demo merge', async () => 
   ).toBe(featureTip);
   expect(graph.endState.lanes).toEqual([]);
 });
+
+it('keeps demo group management and source-scoped movement consistent with repository rows', async () => {
+  vi.stubGlobal('location', { search: '?demo=1' });
+  vi.stubGlobal('localStorage', { getItem: () => null });
+  const request = createDemoRequest(() => {}),
+    repositories = (await request(
+      'repositories',
+      undefined,
+    )) as import('../src/protocol/types').Repository[],
+    a = (await request('createRepositoryCollection', { name: 'A' })) as { id: string },
+    b = (await request('createRepositoryCollection', { name: 'B' })) as { id: string },
+    c = (await request('createRepositoryCollection', { name: 'C' })) as { id: string },
+    key = repositories[0].commonDir.replaceAll('\\', '/').toLowerCase();
+  await request('updateRepositoryMemberships', {
+    keys: [key],
+    changes: [a, b].map((group) => ({ collectionId: group.id, included: true })),
+  });
+  await request('moveRepositoryRows', {
+    rows: [{ key, collectionId: a.id }],
+    targetCollectionId: c.id,
+  });
+  expect(
+    ((await request('repositories', undefined)) as typeof repositories)[0].collectionIds,
+  ).toEqual([b.id, c.id]);
+  const order = (await request(
+    'repositoryOrder',
+    undefined,
+  )) as import('../src/protocol/types').RepositoryOrder;
+  expect(order.collections[b.id]).toEqual(['repository:' + key]);
+  expect(order.collections[c.id]).toEqual(['repository:' + key]);
+  expect(order.collections[a.id]).toEqual([]);
+});

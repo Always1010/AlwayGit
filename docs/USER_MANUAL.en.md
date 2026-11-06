@@ -988,8 +988,9 @@ Click list whitespace or press Esc to clear the blue selection while retaining a
 
 1. In the Add… popover, switch to Add Group, enter a name, and create the group.
 2. Right-click one or more repositories and choose Manage Groups…. Check groups to join, uncheck groups to leave, and click Apply. A repository can belong to several groups; clearing all groups returns it to the root. Mixed checks indicate partial membership across selected repositories; change only the groups you want to update.
-3. Click a group heading to expand or collapse its contents. To change the order, drag items at the same level or focus the drag handle and press Alt+Up/Down.
-4. Right-click a group to rename or delete it. Read the confirmation message before deleting.
+3. Click a group heading to expand or collapse it. Drag a repository by its left handle onto the center of a target group to move it. Moving from A to B preserves other memberships; empty and collapsed groups accept drops, and existing target entries are not duplicated. Dropping in the root zone leaves all groups. Drag a selected row to move selected occurrences together.
+4. Same-level dragging shows insertion lines and changes the order; you can also focus the drag handle and press Alt+Up/Down. Groups themselves reorder only at the root.
+5. Right-click a group to rename or delete it. Read the confirmation message before deleting.
 
 **Result:** Repositories are arranged by your project categories. Deleting a group preserves entries in other groups; only repositories with no remaining groups return to the root.
 

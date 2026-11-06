@@ -1,3 +1,10 @@
+import {
+  repositoryDrop,
+  type RepositoryDrag,
+  type RepositoryDrop,
+  type RepositoryDropSurface,
+} from './repositoryDrag';
+import { rpc } from './rpc';
 import { TagStatus, TagRemoteControls, useTagEntries } from './TagRemoteStatus';
 import { BranchIcon, Button, Icon } from './ui';
 
@@ -8,7 +15,7 @@ import { indexRefs } from './refIndex';
 import { remoteNames, refsForRemote } from './remoteTracking';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import type React from 'react';
-import type { GitRef } from '../src/protocol/types';
+import type { GitRef, RepositoryRow } from '../src/protocol/types';
 import type { MenuTarget } from './menus';
 import { useSnapshotFields, useWorkbenchFields } from './subscriptions';
 import { useTranslation } from './i18n';
@@ -562,45 +569,117 @@ function SidebarPanel({
         });
     },
   });
-  const dragging = useRef<{ key: string; parent?: string }>(undefined),
-    [dropTarget, setDropTarget] = useState<{
-      key: string;
-      parent?: string;
-      position: 'before' | 'after';
-    }>(),
+  const dragging = useRef<RepositoryDrag>(undefined),
+    [dropTarget, setDropTarget] = useState<RepositoryDrop>(),
+    [draggingRepositories, setDraggingRepositories] = useState(false),
     [ordering, setOrdering] = useState(false);
+  const clearDrag = () => {
+    dragging.current = undefined;
+    setDropTarget(undefined);
+    setDraggingRepositories(false);
+  };
+  const finishDrop = async (drop: RepositoryDrop, source: RepositoryDrag) => {
+    clearDrag();
+    setOrdering(true);
+    try {
+      if (drop.kind === 'reorder') await state.reorderRepository(drop.payload);
+      else {
+        await rpc<number>('moveRepositoryRows', undefined, {
+          rows: source.rows,
+          targetCollectionId: drop.collectionId,
+        });
+        await useWorkbench.getState().initialize();
+        const keys = [
+          ...new Set(
+            source.rows.map((row) =>
+              repositoryRowKey({
+                key: row.key,
+                collectionId: drop.collectionId,
+              }),
+            ),
+          ),
+        ];
+        state.setRepositorySelection(keys, keys[0]);
+      }
+      requestAnimationFrame(() => {
+        const rowKey =
+          source.rows[0] &&
+          repositoryRowKey({
+            ...source.rows[0],
+            collectionId: drop.kind === 'move' ? drop.collectionId : source.collectionId,
+          });
+        const selector = rowKey
+          ? `[data-repository-row="${CSS.escape(rowKey)}"] .repository-drag-handle`
+          : `[data-repository-order-key="${CSS.escape(source.key)}"] .repository-drag-handle`;
+        const fallback =
+          source.collectionId === null
+            ? undefined
+            : `[data-repository-order-key="${CSS.escape(collectionOrderKey(source.collectionId))}"] .repository-drag-handle`;
+        const targetCollection = drop.kind === 'move' ? drop.collectionId : source.collectionId;
+        const collectionSelector =
+          targetCollection === null
+            ? fallback
+            : `[data-repository-order-key="${CSS.escape(collectionOrderKey(targetCollection))}"] .repository-drag-handle`;
+        const handle =
+          selectionRoot.current?.querySelector<HTMLElement>(selector) ??
+          (collectionSelector
+            ? selectionRoot.current?.querySelector<HTMLElement>(collectionSelector)
+            : undefined);
+        handle?.focus({ preventScroll: true });
+      });
+    } catch (error) {
+      useWorkbench.getState().report(error);
+      void useWorkbench.getState().initialize();
+    } finally {
+      setOrdering(false);
+    }
+  };
+  const dropEvents = (
+    surface: (event: React.DragEvent<HTMLDivElement>) => RepositoryDropSurface,
+  ) => ({
+    onDragOver: (event: React.DragEvent<HTMLDivElement>) => {
+      event.stopPropagation();
+      const source = dragging.current,
+        next = !ordering && source ? repositoryDrop(source, surface(event)) : undefined;
+      if (next) event.preventDefault();
+      event.dataTransfer.dropEffect = next ? 'move' : 'none';
+      setDropTarget((current) =>
+        JSON.stringify(current) === JSON.stringify(next) ? current : next,
+      );
+    },
+    onDragLeave: (event: React.DragEvent<HTMLDivElement>) => {
+      if (
+        !(event.relatedTarget instanceof Node) ||
+        !event.currentTarget.contains(event.relatedTarget)
+      )
+        setDropTarget(undefined);
+    },
+    onDrop: (event: React.DragEvent<HTMLDivElement>) => {
+      event.stopPropagation();
+      const source = dragging.current,
+        next = !ordering && source ? repositoryDrop(source, surface(event)) : undefined;
+      if (!next || !source) return;
+      event.preventDefault();
+      void finishDrop(next, source);
+    },
+  });
   const dropProps = (key: string, parent?: string) => ({
     'data-repository-order-key': key,
     'data-drop-position':
-      dropTarget?.key === key && dropTarget.parent === parent ? dropTarget.position : undefined,
-    onDragOver: (event: React.DragEvent<HTMLDivElement>) => {
-      const source = dragging.current;
-      if (ordering || !source || source.parent !== parent || source.key === key) {
-        setDropTarget(undefined);
-        return;
-      }
-      event.preventDefault();
-      event.dataTransfer.dropEffect = 'move';
+      dropTarget?.kind === 'reorder' &&
+      dropTarget.payload.targetKey === key &&
+      dropTarget.payload.collectionId === parent
+        ? dropTarget.payload.position
+        : undefined,
+    ...dropEvents((event) => {
       const bounds = event.currentTarget.getBoundingClientRect();
-      setDropTarget({
+      return {
+        kind: 'entry',
         key,
-        parent,
-        position: event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after',
-      });
-    },
-    onDrop: (event: React.DragEvent<HTMLDivElement>) => {
-      const source = dragging.current;
-      if (ordering || !source || source.parent !== parent || source.key === key) return;
-      event.preventDefault();
-      const bounds = event.currentTarget.getBoundingClientRect(),
-        position = event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after';
-      dragging.current = undefined;
-      setDropTarget(undefined);
-      setOrdering(true);
-      void state
-        .reorderRepository({ key: source.key, targetKey: key, position, collectionId: parent })
-        .finally(() => setOrdering(false));
-    },
+        collectionId: parent ?? null,
+        ratio: (event.clientY - bounds.top) / Math.max(1, bounds.height),
+      };
+    }),
   });
   const groupOpen = (key: string) => !state.collapsedSidebarGroups.includes(key);
   const { local, remote: remoteRefs, tag: tags } = indexRefs(snapshot?.refs);
@@ -735,7 +814,7 @@ function SidebarPanel({
     );
   };
   const dragHandle = (key: string, label: string, parent?: string) => {
-    const hint = t('sidebar.dragToReorderAltUpDownMovesWithinThe');
+    const hint = t('repositoryGroups.dragHint');
     return (
       <Button
         className="icon-only repository-drag-handle"
@@ -752,16 +831,40 @@ function SidebarPanel({
             return;
           }
           event.stopPropagation();
-          dragging.current = { key, parent };
+          const repositoryKey = key.startsWith('repository:') ? key.slice(11) : undefined,
+            row = repositoryKey ? { key: repositoryKey, collectionId: parent ?? null } : undefined,
+            rowKey = row && repositoryRowKey(row);
+          let rows: RepositoryRow[] = [];
+          if (row && rowKey) {
+            const selected = state.selectedRepositoryKeys.includes(rowKey);
+            if (selected) {
+              const allRows = new Map(
+                repositoryRows(repositoryGroups, state.repositoryCollections).map((item) => [
+                  repositoryRowKey(item),
+                  item,
+                ]),
+              );
+              rows = visibleRepositoryKeys(
+                repositoryEntries,
+                repositoryGroups,
+                [],
+                state.repositoryOrder,
+              )
+                .filter((item) => state.selectedRepositoryKeys.includes(item))
+                .flatMap((item) => (allRows.has(item) ? [allRows.get(item)!] : []));
+            } else {
+              rows = [row];
+              state.setRepositorySelection([rowKey], rowKey);
+            }
+          }
+          dragging.current = { key, collectionId: parent ?? null, rows };
+          setDraggingRepositories(rows.length > 0);
           event.dataTransfer.effectAllowed = 'move';
           event.dataTransfer.setData('text/plain', key);
-          const row = event.currentTarget.closest<HTMLElement>('.repository-row');
-          if (row) event.dataTransfer.setDragImage(row, 12, row.offsetHeight / 2);
+          const element = event.currentTarget.closest<HTMLElement>('.repository-row');
+          if (element) event.dataTransfer.setDragImage(element, 12, element.offsetHeight / 2);
         }}
-        onDragEnd={() => {
-          dragging.current = undefined;
-          setDropTarget(undefined);
-        }}
+        onDragEnd={clearDrag}
         onKeyDown={(event) => {
           event.stopPropagation();
           if (!event.altKey || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
@@ -904,6 +1007,16 @@ ${status.branch}${unpushed ? ` · ${unpushed} unpushed` : ''}`
       {groupOpen('repositories') && (
         <div
           className="sidebar-list repository-list"
+          {...dropEvents(() => ({ kind: 'root' }))}
+          onDragOverCapture={(event) => {
+            if (!dragging.current || ordering) return;
+            const panel = selectionRoot.current;
+            if (!panel) return;
+            const bounds = panel.getBoundingClientRect(),
+              edge = 36;
+            if (event.clientY < bounds.top + edge) panel.scrollTop -= 16;
+            else if (event.clientY > bounds.bottom - edge) panel.scrollTop += 16;
+          }}
           data-selection-scope="repositories"
           tabIndex={0}
           role="listbox"
@@ -929,6 +1042,12 @@ ${status.branch}${unpushed ? ` · ${unpushed} unpushed` : ''}`
             return (
               <div
                 className="repository-collection"
+                {...dropEvents(() => ({ kind: 'collection', collectionId: entry.collection.id }))}
+                data-drop-inside={
+                  dropTarget?.kind === 'move' && dropTarget.collectionId === entry.collection.id
+                    ? 'true'
+                    : undefined
+                }
                 key={entry.collection.id}
                 role="group"
                 aria-label={entry.collection.name}
@@ -964,11 +1083,37 @@ ${status.branch}${unpushed ? ` · ${unpushed} unpushed` : ''}`
                 {!collapsed && (
                   <div className="repository-collection-members">
                     {groups.map((group) => repositoryButton(group, entry.collection.id))}
+                    {!groups.length && draggingRepositories && (
+                      <div className="repository-empty-drop" aria-hidden="true" />
+                    )}
                   </div>
                 )}
               </div>
             );
           })}
+          {draggingRepositories && (
+            <div
+              className="repository-root-drop"
+              data-drop-inside={
+                dropTarget?.kind === 'move' && dropTarget.collectionId === null ? 'true' : undefined
+              }
+              {...dropEvents(() => ({ kind: 'root' }))}
+            >
+              {t('repositoryGroups.rootDrop')}
+            </div>
+          )}
+          {dropTarget?.kind === 'move' && (
+            <div className="repository-drop-hint" role="status" aria-live="polite">
+              {dropTarget.collectionId === null
+                ? t('repositoryGroups.moveToRoot')
+                : t('repositoryGroups.moveTo', {
+                    name:
+                      state.repositoryCollections.find(
+                        (collection) => collection.id === dropTarget.collectionId,
+                      )?.name ?? '',
+                  })}
+            </div>
+          )}
         </div>
       )}
       {snapshot && (
