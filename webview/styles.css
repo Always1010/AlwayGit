@@ -3747,17 +3747,6 @@ p {
   color: var(--muted);
   font-size: 11px;
 }
-.repository-drop-hint {
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  background: var(--panel);
-  color: var(--fg);
-  font-size: 11px;
-  pointer-events: none;
-}
 .repository-drag-handle[draggable='true'] {
   cursor: grab;
 }

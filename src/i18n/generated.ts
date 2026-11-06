@@ -5383,14 +5383,6 @@ export const catalog = {
     "en": "Drag to move or reorder. Alt+Up/Down reorders within this level.",
     "zh-CN": "拖动以移动或排序；Alt+上/下键在当前层级排序。"
   },
-  "repositoryGroups.moveTo": {
-    "en": "Move to \"{{name}}\"",
-    "zh-CN": "移动到“{{name}}”"
-  },
-  "repositoryGroups.moveToRoot": {
-    "en": "Move to root and leave all groups",
-    "zh-CN": "移到根层，并退出所有分组"
-  },
   "repositoryGroups.rootDrop": {
     "en": "Drop here to move to the root and leave all groups",
     "zh-CN": "拖到此处移至根层，并退出所有分组"
@@ -9580,8 +9572,6 @@ export interface MessageParameters {
   "repositoryGroups.sourceChanged": {  };
   "repositoryGroups.deleteGroup": { name: ParameterValue };
   "repositoryGroups.dragHint": {  };
-  "repositoryGroups.moveTo": { name: ParameterValue };
-  "repositoryGroups.moveToRoot": {  };
   "repositoryGroups.rootDrop": {  };
   "rpc.theReadRequestWasCancelled": {  };
   "rpc.openAlwayGitInVSCodeToConnectToYour": {  };

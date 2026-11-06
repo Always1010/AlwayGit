@@ -196,7 +196,12 @@ describe('repository drag interactions', () => {
     heading(tree, 'a').props.onDragOver(event());
     tree = render();
     expect(heading(tree, 'a').props['data-drop-position']).toBeUndefined();
-    expect(find(tree, (node) => node.props.role === 'status')).toBeDefined();
+    expect(
+      find(tree, (node) => node.props.role === 'group' && node.props['aria-label'] === 'A')?.props[
+        'data-drop-inside'
+      ],
+    ).toBe('true');
+    expect(find(tree, (node) => node.props.role === 'status')).toBeUndefined();
     handle(row(tree, '/two/.git')).props.onDragEnd();
     expect(fixture.rpc).not.toHaveBeenCalled();
     expect(fixture.state.reorderRepository).not.toHaveBeenCalled();

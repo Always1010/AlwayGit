@@ -1117,18 +1117,6 @@ ${status.branch}${behind ? ` · ${incomingLabel}` : ''}${unpushed ? ` · ${outgo
               {t('repositoryGroups.rootDrop')}
             </div>
           )}
-          {dropTarget?.kind === 'move' && (
-            <div className="repository-drop-hint" role="status" aria-live="polite">
-              {dropTarget.collectionId === null
-                ? t('repositoryGroups.moveToRoot')
-                : t('repositoryGroups.moveTo', {
-                    name:
-                      state.repositoryCollections.find(
-                        (collection) => collection.id === dropTarget.collectionId,
-                      )?.name ?? '',
-                  })}
-            </div>
-          )}
         </div>
       )}
       {snapshot && (
