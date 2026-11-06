@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { chmod, readFile, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { GitService } from '../src/git/service';
+import { InteractiveRebase } from '../src/git/interactive-rebase';
+import { GitTerminationError } from '../src/git/error';
 import type { RebasePlan, RebaseStep } from '../src/protocol/interactive-rebase';
 import { interactiveRebaseSchema } from '../src/protocol/interactive-rebase';
 import { git, commitFile as commit, gitFixtures } from './support/git-fixture';
@@ -13,6 +15,36 @@ const action = (
   acknowledgePublished = false,
 ) => ({ type: 'rebase.interactive' as const, token: plan.token, steps, acknowledgePublished });
 describe('managed interactive Rebase', () => {
+  it('retains recovery helpers after an unconfirmed Abort process exits without confirming operation completion', async () => {
+    const { repo } = await fixtures.setup();
+    const directory = path.join(repo.gitDir!, 'alwaygit-interactive-rebase'),
+      manifest = path.join(directory, 'manifest.json');
+    await mkdir(directory);
+    await writeFile(manifest, 'recoverable context');
+    // An interrupted command can leave an incomplete control directory.
+    await mkdir(path.join(repo.gitDir!, 'rebase-merge'));
+    let complete!: () => void;
+    const completion = new Promise<void>((resolve) => (complete = resolve)),
+      failure = new GitTerminationError('Abort termination unconfirmed', 123, completion),
+      rebase = new InteractiveRebase();
+    const cleanup = vi.spyOn(
+      rebase as unknown as { cleanup(gitDir: string): Promise<void> },
+      'cleanup',
+    );
+    const run = async (args: string[]) => {
+      if (args[0] === 'rev-parse')
+        return { stdout: Buffer.from(repo.gitDir! + '\n'), stderr: Buffer.alloc(0), code: 0 };
+      throw failure;
+    };
+    await expect(rebase.resume(run, 'abort')).rejects.toBe(failure);
+    complete();
+    await completion;
+    await Promise.resolve();
+    expect(cleanup).not.toHaveBeenCalled();
+    expect(await readFile(manifest, 'utf8')).toBe('recoverable context');
+    cleanup.mockRestore();
+  });
+
   it('reorders, rewords, squashes, fixes up and drops against a pinned base despite user configuration', async () => {
     const { root, repo, service } = await fixtures.setup();
     await commit(root, 'base', 'base');

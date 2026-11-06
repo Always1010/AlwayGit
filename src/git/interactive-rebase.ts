@@ -400,17 +400,9 @@ export class InteractiveRebase {
   ): Promise<boolean> {
     const gitDir = await pathText(run, ['rev-parse', '--path-format=absolute', '--git-dir']);
     if (command === 'abort') {
-      try {
-        await run(['rebase', '--abort']);
-      } catch (error) {
-        if (error instanceof GitTerminationError) {
-          void error.completion.then(() => this.cleanup(gitDir)).catch(() => {});
-          throw error;
-        }
-        // Rejected confirmation or failed Git abort can leave the operation active.
-        // Preserve its helper context so the current operation remains recoverable.
-        throw error;
-      }
+      // Only successful Abort confirms helper cleanup. A termination completion
+      // means the process exited; the operation may still need its recovery context.
+      await run(['rebase', '--abort']);
       await this.cleanup(gitDir);
       return true;
     }

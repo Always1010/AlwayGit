@@ -28,8 +28,8 @@
 - 状态：已解决
 - 现象：原生 Abort 确认打开后，外部 Git 中止并重新发起同类操作，或继续修改解冲突内容；接受旧确认仍会中止当前操作，可能丢失未确认丢弃的新内容。
 - 原因：确认仅保留操作类型，执行只比较 kind，未绑定操作实例、Index 或工作文件；托管 Rebase 的失败中止还会清理仍在使用的恢复辅助文件。
-- 解决方案：原生确认前宿主发放一次性 Abort token，绑定仓库与工作树、分支、HEAD、操作控制文件身份及步骤、完整 Index stages、变更文件内容和恢复控制文件；共享写队列内及 Git 启动前重新校验。普通与托管 Rebase 共用保护；拒绝中止或中止失败时保留托管恢复辅助文件。
-- 验证方式：真实 Git 定向回归覆盖旧 Merge 确认遇到相同/不同目标的新 Merge、已暂存与未暂存解冲突更新、缺失/伪造/跨仓库 token、排队写入、Git 启动前竞争、托管 Rebase 辅助文件保留与有效中止；现有 Merge、Rebase、Cherry-pick、Revert 相关中止与继续回归及类型检查。
+- 解决方案：原生确认前宿主发放一次性 Abort token，绑定仓库与工作树、分支、HEAD、操作控制文件身份及步骤、完整 Index stages、变更文件内容和恢复控制文件；共享写队列内及 Git 启动前重新校验。普通与托管 Rebase 共用保护；拒绝中止或中止失败时保留托管恢复辅助文件。异常终止的完成信号只表示进程退出，不证明 Abort 成功，不据此异步清理恢复上下文；仅明确中止成功后清理。
+- 验证方式：真实 Git 定向回归覆盖旧 Merge 确认遇到相同/不同目标的新 Merge、已暂存与未暂存解冲突更新、缺失/伪造/跨仓库 token、排队写入、Git 启动前竞争、托管 Rebase 辅助文件保留与有效中止；异常 Abort 的延迟进程完成信号不清理不完整操作的恢复上下文；现有 Merge、Rebase、Cherry-pick、Revert 相关中止与继续回归及类型检查。
 - 相关文件：`src/extension/workbench.ts`、`src/git/service.ts`、`src/git/interactive-rebase.ts`、`src/protocol/types.ts`、`src/protocol/validation.ts`、`tests/git-operation-abort.test.ts`、既有 Git 操作回归、双语架构与工作台规格。
 
 ## BUG-178：运行进度的停止入口难以辨认且状态与操作混排
