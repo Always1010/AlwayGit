@@ -26,6 +26,8 @@ export async function verifyFeedback(browser, url) {
         calls: [],
         cleanReview: false,
         holdRemoteLinks: false,
+        holdSnapshot: false,
+        pendingSnapshot: undefined,
         pendingRemoteLinks: [],
         snapshot: {
           repository: repo,
@@ -48,7 +50,7 @@ export async function verifyFeedback(browser, url) {
           operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false },
           version: 0,
         },
-        complete(error, publication) {
+        complete(error, publication, code) {
           window.postMessage(
             {
               type: 'response',
@@ -64,7 +66,7 @@ export async function verifyFeedback(browser, url) {
                       result: publication,
                     }
                   : structuredClone({ ...this.snapshot, version: ++this.snapshot.version }),
-              error: error ? { message: error } : undefined,
+              error: error ? { message: error, code } : undefined,
             },
             '*',
           );
@@ -99,6 +101,7 @@ export async function verifyFeedback(browser, url) {
           );
         },
       });
+      window.__ALWAYGIT_PREFERENCES__ = { changeListMode: 'split' };
       window.acquireVsCodeApi = () => ({
         getState: () => ({}),
         setState: () => {},
@@ -111,6 +114,25 @@ export async function verifyFeedback(browser, url) {
             return;
           }
           fixture.calls.push(request);
+          if (request.method === 'snapshot' && fixture.holdSnapshot) {
+            fixture.pendingSnapshot = request;
+            return;
+          }
+          if (
+            request.method === 'cancelOperation' &&
+            fixture.pendingSnapshot?.id === request.payload.requestId
+          ) {
+            window.postMessage(
+              {
+                type: 'response',
+                id: fixture.pendingSnapshot.id,
+                error: { code: 'ABORTED', message: 'Refresh stopped' },
+              },
+              '*',
+            );
+            fixture.pendingSnapshot = undefined;
+            fixture.holdSnapshot = false;
+          }
           if (request.method === 'action') {
             fixture.pending = request;
             return;
@@ -496,18 +518,67 @@ export async function verifyFeedback(browser, url) {
       .getByRole('dialog')
       .screenshot({ path: 'artifacts/pull-progress-preview.png' });
     assert.equal(await page.locator('.workspace').evaluate((node) => node.inert), true);
-    await page.keyboard.press('Tab');
-    await page.keyboard.press('Enter');
+    await pullProgress.getByRole('button', { name: 'Show Log', exact: true }).click();
     assert.equal(await pullProgress.isVisible(), true, 'Log access must not unlock Pull');
+    await page.keyboard.press('Tab');
+    assert.equal(
+      await pullProgress
+        .getByRole('button', { name: 'Stop Pull', exact: true })
+        .evaluate((node) => node === document.activeElement),
+      true,
+    );
+    await page.keyboard.press('Enter');
+    const stopConfirmation = page.getByRole('dialog', { name: 'Stop Pull?', exact: true });
+    await stopConfirmation.waitFor();
+    await stopConfirmation
+      .getByText('Pull may already be merging or rebasing', { exact: false })
+      .waitFor();
+    assert.equal(
+      await stopConfirmation
+        .getByRole('button', { name: 'Continue operation', exact: true })
+        .evaluate((node) => node === document.activeElement),
+      true,
+    );
+    assert.equal(await stopConfirmation.evaluate((node) => !!node.closest('[inert]')), false);
+    await stopConfirmation.screenshot({
+      path: 'artifacts/stop-operation-confirmation-preview.png',
+    });
+    await page.keyboard.press('Escape');
+    await stopConfirmation.waitFor({ state: 'hidden' });
+    assert.equal(
+      await page.evaluate(() =>
+        window.__feedbackFixture.calls.some((call) => call.method === 'cancelOperation'),
+      ),
+      false,
+    );
     await page.evaluate(() => window.__feedbackFixture.progress({ phase: 'integrating' }));
     await pullProgress.getByText('Merging or rebasing…', { exact: true }).waitFor();
     await page.evaluate(() => window.__feedbackFixture.progress({ phase: 'refreshing' }));
     await pullProgress.getByText('Updating the workbench…', { exact: true }).waitFor();
     assert.equal(await pullProgress.locator('.feedback-spinner').count(), 1);
     assert.equal(await pullProgress.getByRole('progressbar').count(), 0);
+    await pullProgress.getByRole('button', { name: 'Stop Pull', exact: true }).click();
+    await stopConfirmation.waitFor();
     await page.evaluate(() => window.__feedbackFixture.complete());
+    await stopConfirmation.waitFor({ state: 'hidden' });
     await pullProgress.waitFor({ state: 'hidden' });
     await bar.getByText('Pull completed', { exact: true }).waitFor();
+    await bar.getByRole('button', { name: 'Dismiss notification' }).click();
+    await pull.click();
+    await page
+      .getByRole('dialog', { name: 'Pull', exact: true })
+      .getByRole('button', { name: 'Pull', exact: true })
+      .click();
+    await pullProgress.waitFor();
+    await pullProgress.getByRole('button', { name: 'Stop Pull', exact: true }).click();
+    await stopConfirmation.getByRole('button', { name: 'Stop Pull', exact: true }).click();
+    await pullProgress.getByText('Stopping… Waiting for Git to exit.', { exact: true }).waitFor();
+    assert.equal(await page.locator('.workspace').evaluate((node) => node.inert), true);
+    await page.evaluate(() => window.__feedbackFixture.complete('Stopped', undefined, 'ABORTED'));
+    await pullProgress.waitFor({ state: 'hidden' });
+    await bar
+      .getByText('Operation stopped; check the current repository state.', { exact: true })
+      .waitFor();
     await bar.getByRole('button', { name: 'Dismiss notification' }).click();
     await toolbar.getByRole('button', { name: 'Fetch', exact: true }).click();
     await bar.getByText('Fetch in progress…', { exact: true }).waitFor();
@@ -525,6 +596,27 @@ export async function verifyFeedback(browser, url) {
     await page.evaluate(() => window.__feedbackFixture.complete());
     await bar.getByText('Fetch completed', { exact: true }).waitFor();
     assert.equal(await bar.locator('.feedback-spinner').count(), 0);
+    const refreshButton = toolbar.getByRole('button', {
+      name: 'Refresh current repository status and history',
+      exact: true,
+    });
+    await page.evaluate(() => {
+      window.__feedbackFixture.holdSnapshot = true;
+    });
+    await refreshButton.click();
+    const stopRefresh = toolbar.getByRole('button', { name: 'Stop Refresh', exact: true });
+    await stopRefresh.click();
+    const refreshConfirmation = page.getByRole('dialog', { name: 'Stop Refresh?', exact: true });
+    await refreshConfirmation
+      .getByText('The current view is retained and may be out of date.', { exact: false })
+      .waitFor();
+    await page.keyboard.press('Escape');
+    assert.equal(await stopRefresh.isEnabled(), true);
+    await stopRefresh.click();
+    await refreshConfirmation.getByRole('button', { name: 'Stop Refresh', exact: true }).click();
+    await refreshButton.waitFor();
+    assert.equal((await page.getByTestId('history').locator('[data-oid]').count()) > 0, true);
+    await bar.getByText('Fetch completed', { exact: true }).waitFor();
     await bar.getByRole('button', { name: 'Dismiss notification' }).click();
     await push();
     assert.equal(

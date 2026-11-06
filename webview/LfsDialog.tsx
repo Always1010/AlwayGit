@@ -3,6 +3,7 @@ import type { GitAction, Snapshot } from '../src/protocol/types';
 import type { LfsStatus, LfsTrackPreview } from '../src/protocol/lfs';
 import { useTranslation } from './i18n';
 import { Button, Modal } from './ui';
+import { StopOperationButton } from './StopOperation';
 import { rpc } from './rpc';
 import { captureActionContext, isActionContextCurrent, useWorkbench } from './store';
 import './revision-tools.css';
@@ -110,6 +111,7 @@ export function LfsDialog({
     >
       <p>{t('lfs.hint')}</p>
       <div className="revision-controls">
+        <StopOperationButton repoId={repoId} />
         <Button
           icon="refresh"
           title={t('common.refresh')}

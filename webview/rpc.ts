@@ -7,6 +7,9 @@ import { message, MessageError } from '../src/i18n';
 import type { HostMessage, RpcRequest } from '../src/protocol/types';
 import { createDemoRequest } from './demo';
 import { RpcError } from './rpc-error';
+import { operationTasks } from './operationTasks';
+import { canCancelAction } from '../src/protocol/operation-cancellation';
+import type { GitAction } from '../src/protocol/types';
 export { RpcError } from './rpc-error';
 import type { SessionState } from '../src/protocol/session';
 import {
@@ -155,7 +158,7 @@ export async function rpc<T>(
   options?: { signal?: AbortSignal; onRequestId?(id: string): void },
 ): Promise<T> {
   const category = readQueryCategory(method),
-    signal = category ? options?.signal : undefined;
+    signal = category || method === 'snapshot' ? options?.signal : undefined;
   if (signal?.aborted) throw new RpcError(message('rpc.theReadRequestWasCancelled'), 'ABORTED');
   if (demoMode) {
     demoRequest ??= createDemoRequest((event) => listeners.forEach((listener) => listener(event)));
@@ -171,46 +174,56 @@ export async function rpc<T>(
     )
       cancelRead(previousId);
   const id = `webview-${++sequence}`;
-  return new Promise<T>((resolve, reject) => {
-    // The host owns mutation deadlines, including time spent in native confirmation.
-    const timer = [
-      'action',
-      'pickRepositoryDirectory',
-      'discoverRepositories',
-      'addRepository',
-    ].includes(method)
-      ? undefined
-      : setTimeout(
-          () => {
-            if (category)
-              cancelRead(id, new RpcError(message('rpc.theReadRequestTimedOut'), 'TIMEOUT'));
-            else {
-              pending.delete(id);
-              reject(
-                new RpcError(
-                  message(
-                    method === 'saveSession'
-                      ? 'rpc.theSessionSaveTimedOut'
-                      : 'rpc.theGitOperationTimedOutRefreshToCheckIts',
-                  ),
-                  'TIMEOUT',
-                ),
-              );
-            }
-          },
-          method === 'saveSession' ? 10_000 : 180_000,
-        );
-    const abort = () => cancelRead(id);
-    pending.set(id, {
-      resolve: (value) => resolve(value as T),
-      reject,
-      timer,
-      category,
-      repoId,
-      cleanup: signal ? () => signal.removeEventListener('abort', abort) : undefined,
+  if (method === 'action' && repoId && canCancelAction(payload as GitAction))
+    operationTasks.add({ id, repoId, action: payload as GitAction, stopping: false });
+  try {
+    return await new Promise<T>((resolve, reject) => {
+      // The host owns mutation deadlines, including time spent in native confirmation.
+      const timer =
+        ['action', 'pickRepositoryDirectory', 'discoverRepositories', 'addRepository'].includes(
+          method,
+        ) ||
+        (method === 'snapshot' && signal)
+          ? undefined
+          : setTimeout(
+              () => {
+                if (category)
+                  cancelRead(id, new RpcError(message('rpc.theReadRequestTimedOut'), 'TIMEOUT'));
+                else {
+                  pending.delete(id);
+                  reject(
+                    new RpcError(
+                      message(
+                        method === 'saveSession'
+                          ? 'rpc.theSessionSaveTimedOut'
+                          : 'rpc.theGitOperationTimedOutRefreshToCheckIts',
+                      ),
+                      'TIMEOUT',
+                    ),
+                  );
+                }
+              },
+              method === 'saveSession' ? 10_000 : 180_000,
+            );
+      const abort = () => {
+        if (method === 'snapshot')
+          void rpc('cancelOperation', repoId, { requestId: id }).catch(() => {});
+        else cancelRead(id);
+      };
+      pending.set(id, {
+        resolve: (value) => resolve(value as T),
+        reject,
+        timer,
+        category,
+        repoId,
+        cleanup: signal ? () => signal.removeEventListener('abort', abort) : undefined,
+      });
+      signal?.addEventListener('abort', abort, { once: true });
+      options?.onRequestId?.(id);
+      vscode.postMessage({ id, method, repoId, payload } satisfies RpcRequest);
+      if (signal?.aborted) abort();
     });
-    signal?.addEventListener('abort', abort, { once: true });
-    options?.onRequestId?.(id);
-    vscode.postMessage({ id, method, repoId, payload } satisfies RpcRequest);
-  });
+  } finally {
+    operationTasks.remove(id);
+  }
 }

@@ -40,6 +40,12 @@
   "contributes": {
     "commands": [
       {
+        "command": "alwaygit.stopOperation",
+        "title": "%manifest.stopOperation%",
+        "category": "AlwayGit",
+        "icon": "$(debug-stop)"
+      },
+      {
         "command": "alwaygit.newTerminal",
         "title": "%manifest.newTerminal%",
         "category": "AlwayGit",

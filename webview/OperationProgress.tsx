@@ -18,7 +18,11 @@ export function OperationProgress({ feedback }: { feedback?: ActionFeedback }) {
     const original = new Map<HTMLElement, boolean>();
     const lock = () => {
       for (const node of root?.children ?? [])
-        if (node instanceof HTMLElement && node !== panel.current?.parentElement) {
+        if (
+          node instanceof HTMLElement &&
+          node !== panel.current?.parentElement &&
+          !node.hasAttribute('data-operation-stop')
+        ) {
           if (!original.has(node)) original.set(node, node.inert);
           node.inert = true;
         }
@@ -28,16 +32,22 @@ export function OperationProgress({ feedback }: { feedback?: ActionFeedback }) {
     if (root) observer.observe(root, { childList: true });
     panel.current?.focus({ preventScroll: true });
     const key = (event: KeyboardEvent) => {
-      if (feedback?.networkProgress && panel.current) {
-        const button = panel.current.querySelector<HTMLButtonElement>('button');
-        if (event.key === 'Tab') {
-          event.preventDefault();
-          event.stopImmediatePropagation();
-          button?.focus();
-          return;
-        }
-        if ((event.key === 'Enter' || event.key === ' ') && event.target === button) return;
+      if (document.querySelector('[data-operation-stop]')) return;
+      const buttons = [
+        ...(panel.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? []),
+      ];
+      if (event.key === 'Tab' && buttons.length) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
+        buttons[(index + (event.shiftKey ? -1 : 1) + buttons.length) % buttons.length]?.focus();
+        return;
       }
+      if (
+        (event.key === 'Enter' || event.key === ' ') &&
+        buttons.includes(event.target as HTMLButtonElement)
+      )
+        return;
       event.preventDefault();
       event.stopImmediatePropagation();
       panel.current?.focus({ preventScroll: true });

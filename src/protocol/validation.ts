@@ -310,6 +310,7 @@ export const requestSchema = z.object({
     'revisionTree',
     'revisionTreeSearch',
     'cancelQuery',
+    'cancelOperation',
     'action',
     'diff',
     'isolatedDiffPreview',
@@ -345,6 +346,7 @@ export const requestSchema = z.object({
   repoId: text.optional(),
   payload: z.unknown().optional(),
 });
+export const cancellableSnapshotSchema = z.object({ cancellable: z.literal(true) }).strict();
 export const cancelQuerySchema = z.object({ requestId: z.string().min(1).max(128) }).strict();
 export const operationSettingsScopeSchema = z
   .object({ scope: z.enum(['user', 'workspace']).optional() })

@@ -20,6 +20,22 @@ afterEach(() => {
 });
 
 describe('host request timeouts', () => {
+  it('keeps a stopped action pending until the host confirms termination and invalidates its confirmation', async () => {
+    const { rpc } = await import('../webview/rpc');
+    const { operationTasks } = await import('../webview/operationTasks');
+    const running = rpc('action', 'repo', { type: 'fetch' });
+    const id = postMessage.mock.calls[0][0].id;
+    operationTasks.confirm([id]);
+    const stopped = rpc('cancelOperation', 'repo', { requestId: id });
+    receive({ data: { type: 'response', id: postMessage.mock.calls[1][0].id, result: true } });
+    await stopped;
+    expect(operationTasks.snapshot()).toHaveLength(1);
+    const rejected = expect(running).rejects.toMatchObject({ code: 'ABORTED' });
+    receive({ data: { type: 'response', id, error: { code: 'ABORTED', message: 'Stopped' } } });
+    await rejected;
+    expect(operationTasks.snapshot()).toEqual([]);
+    expect(operationTasks.confirmation()).toEqual([]);
+  });
   it('keeps comparison-tree ordering independent from active main details and comparisons', async () => {
     const { rpc } = await import('../webview/rpc');
     const { readQueryCategory } = await import('../src/protocol/queries');

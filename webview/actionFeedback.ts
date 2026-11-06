@@ -12,10 +12,11 @@ export interface ActionFeedback {
   id: number;
   repoId: string;
   action: GitAction;
-  status: 'running' | 'success' | 'error';
+  status: 'running' | 'success' | 'error' | 'cancelled';
   startedAt?: number;
   phase?: 'executing' | 'refreshing';
   refreshWarning?: string;
+  terminationUnconfirmed?: boolean;
   preferenceWarning?: string;
   progress?: FileOperationProgress;
   networkProgress?: NetworkOperationProgress;

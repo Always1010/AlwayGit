@@ -1016,6 +1016,82 @@ export const catalog = {
     "en": "Messages cannot contain NUL characters",
     "zh-CN": "消息不能包含 NUL 字符"
   },
+  "manifest.stopOperation": {
+    "en": "Stop Current Operation",
+    "zh-CN": "停止当前操作"
+  },
+  "cancellation.command": {
+    "en": "Stop an AlwayGit operation",
+    "zh-CN": "停止 AlwayGit 操作"
+  },
+  "cancellation.title": {
+    "en": "Stop this operation?",
+    "zh-CN": "停止当前操作？"
+  },
+  "cancellation.titleNamed": {
+    "en": "Stop {{name}}?",
+    "zh-CN": "停止{{name}}？"
+  },
+  "cancellation.stop": {
+    "en": "Stop operation",
+    "zh-CN": "停止操作"
+  },
+  "cancellation.stopNamed": {
+    "en": "Stop {{name}}",
+    "zh-CN": "停止{{name}}"
+  },
+  "cancellation.keep": {
+    "en": "Continue operation",
+    "zh-CN": "继续操作"
+  },
+  "cancellation.stopping": {
+    "en": "Stopping… Waiting for Git to exit.",
+    "zh-CN": "正在停止…等待 Git 进程结束。"
+  },
+  "cancellation.stopped": {
+    "en": "Operation stopped; check the current repository state.",
+    "zh-CN": "操作已停止，请检查仓库当前状态。"
+  },
+  "cancellation.refresh": {
+    "en": "Refresh",
+    "zh-CN": "刷新"
+  },
+  "cancellation.batch": {
+    "en": "remaining fetches",
+    "zh-CN": "剩余获取操作"
+  },
+  "cancellation.refreshStopped": {
+    "en": "Refresh stopped. Displayed data may be out of date.",
+    "zh-CN": "刷新已停止，当前显示的数据可能不是最新状态。"
+  },
+  "cancellation.refreshRisk": {
+    "en": "The current view is retained and may be out of date. Stopping this read does not undo repository changes.",
+    "zh-CN": "将保留当前画面，数据可能不是最新状态。停止读取不会撤销仓库修改。"
+  },
+  "cancellation.fetchRisk": {
+    "en": "Downloaded objects and completed remote-tracking reference updates are retained. This fetch may be incomplete.",
+    "zh-CN": "已下载的对象和已完成的远端跟踪引用更新会保留，本次获取可能不完整。"
+  },
+  "cancellation.pullRisk": {
+    "en": "Downloads and completed changes are retained. Pull may already be merging or rebasing; local files or the branch may have changed and an unfinished operation may remain. Stopping does not restore the previous state. Check the repository before continuing.",
+    "zh-CN": "已下载的数据和已完成的修改会保留。拉取可能已进入合并或变基，本地文件或分支可能已变化，也可能留下未完成的操作。停止不会恢复到操作前，请检查仓库状态后继续。"
+  },
+  "cancellation.pushRisk": {
+    "en": "The remote may already have accepted some or all updates. Stopping cannot undo them. Verify the remote result before retrying; the result may be unknown.",
+    "zh-CN": "远端可能已接受部分或全部更新，停止不能撤销这些更新。停止后结果可能尚未确定，重试前请核实远端状态。"
+  },
+  "cancellation.tagRisk": {
+    "en": "Completed local tag changes and remote updates are retained. Stopping cannot undo them; verify both local and remote tags before retrying.",
+    "zh-CN": "已完成的本地标签修改和远端更新会保留，停止不能撤销。重试前请核实本地和远端标签状态。"
+  },
+  "cancellation.batchRisk": {
+    "en": "Completed items are retained. Running items will be asked to stop; no later steps will start. Check each repository result.",
+    "zh-CN": "已完成项目会保留，正在执行的项目将请求停止，后续步骤不再启动。请逐项检查仓库结果。"
+  },
+  "cancellation.confirmationRunning": {
+    "en": "The operation continues while this confirmation is open. Closing this window keeps it running.",
+    "zh-CN": "确认期间操作继续运行，关闭此浮窗将继续操作。"
+  },
   "catalogStore.theSharedRepositoryCatalogIsDamagedOrUsesAn": {
     "en": "The shared repository catalog is damaged or uses an unsupported schema. Its contents were preserved.",
     "zh-CN": "共享仓库目录已损坏或使用不受支持的架构，其内容已保留。"
@@ -8314,6 +8390,25 @@ export interface MessageParameters {
   "actions.rememberDeletionWorkspaceScope": {  };
   "arguments.gitCommandArgumentsAreTooLongSelectFewerItems": {  };
   "arguments.messagesCannotContainNULCharacters": {  };
+  "manifest.stopOperation": {  };
+  "cancellation.command": {  };
+  "cancellation.title": {  };
+  "cancellation.titleNamed": { name: ParameterValue };
+  "cancellation.stop": {  };
+  "cancellation.stopNamed": { name: ParameterValue };
+  "cancellation.keep": {  };
+  "cancellation.stopping": {  };
+  "cancellation.stopped": {  };
+  "cancellation.refresh": {  };
+  "cancellation.batch": {  };
+  "cancellation.refreshStopped": {  };
+  "cancellation.refreshRisk": {  };
+  "cancellation.fetchRisk": {  };
+  "cancellation.pullRisk": {  };
+  "cancellation.pushRisk": {  };
+  "cancellation.tagRisk": {  };
+  "cancellation.batchRisk": {  };
+  "cancellation.confirmationRunning": {  };
   "catalogStore.theSharedRepositoryCatalogIsDamagedOrUsesAn": {  };
   "catalogStore.theSharedRepositoryCatalogIsBusyTryAgain": {  };
   "commit.commitDidNotCompleteYourDraftIsPreserved": {  };

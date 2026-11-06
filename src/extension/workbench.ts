@@ -20,6 +20,9 @@ import {
 } from '../protocol/terminal';
 import { SnapshotCoordinator } from '../application/snapshot-coordinator';
 import { QueryCoordinator } from '../application/query-coordinator';
+import { GitReadTerminationError, GitError } from '../git/error';
+import { OperationCancellation } from '../application/operation-cancellation';
+import { canCancelAction, cancellationRisk } from '../protocol/operation-cancellation';
 import { reflogQuerySchema } from '../protocol/reflog';
 import { lfsHistoricalRequestSchema, lfsTrackRequestSchema } from '../protocol/lfs';
 import { readQueryCategory } from '../protocol/queries';
@@ -29,6 +32,7 @@ import {
   remoteLinksSchema,
   remoteTagsSchema,
   cancelQuerySchema,
+  cancellableSnapshotSchema,
   actionSchema,
   operationSettingsSchema,
   requestSchema,
@@ -236,6 +240,7 @@ export class Workbench implements vscode.Disposable {
   private activeRepository?: string;
   private readonly snapshots = new SnapshotCoordinator();
   private readonly queries = new QueryCoordinator();
+  private readonly cancellableOperations = new OperationCancellation();
   private readonly fingerprints = new Map<string, string>();
   private readonly disposables: vscode.Disposable[] = [];
   private readonly busy = new Set<string>();
@@ -1339,6 +1344,34 @@ export class Workbench implements vscode.Disposable {
       return this.text('host.aGroupWithThisNameAlreadyExists');
     return undefined;
   }
+  async stopOperation(): Promise<void> {
+    const operations = this.cancellableOperations.list();
+    if (!operations.length) return;
+    const chosen =
+      operations.length === 1
+        ? operations[0]
+        : (
+            await vscode.window.showQuickPick(
+              operations.map((operation) => ({
+                label: `${operation.action?.type ?? this.text('cancellation.refresh')} · ${this.repositories.get(operation.repoId)?.name ?? operation.repoId}`,
+                operation,
+              })),
+              { title: this.text('cancellation.command') },
+            )
+          )?.operation;
+    if (!chosen) return;
+    const stop = this.text('cancellation.stop'),
+      keep = this.text('cancellation.keep');
+    const answer = await vscode.window.showWarningMessage(
+      this.text('cancellation.title'),
+      { modal: true, detail: this.text(cancellationRisk(chosen.action)) },
+      { title: keep, isCloseAffordance: true },
+      { title: stop },
+    );
+    if (answer?.title === stop)
+      this.cancellableOperations.cancel(chosen.owner, chosen.id, chosen.repoId);
+  }
+
   /** All UI requests go through the same validated, trusted application boundary. */
   async handle(request: RpcRequest): Promise<unknown> {
     return this.handleRequest(request);
@@ -1448,6 +1481,24 @@ export class Workbench implements vscode.Disposable {
         throw new MessageError(message('tree.fixedPanel'));
       request = { ...request, repoId: target.repoId };
     }
+    if (request.method === 'cancelOperation') {
+      const { requestId } = cancelQuerySchema.parse(request.payload);
+      return this.cancellableOperations.cancel(source ?? this, requestId, request.repoId ?? '');
+    }
+    const manualRefresh = request.method === 'snapshot' && request.payload !== undefined;
+    if (manualRefresh) cancellableSnapshotSchema.parse(request.payload);
+    if (
+      manualRefresh ||
+      (request.method === 'action' && canCancelAction(actionSchema.parse(request.payload)))
+    ) {
+      return this.cancellableOperations.run(
+        source ?? this,
+        request.id,
+        request.repoId ?? '',
+        request.method === 'action' ? actionSchema.parse(request.payload) : undefined,
+        (signal) => this.executeRequest(request, source, signal),
+      );
+    }
     if (request.method === 'cancelQuery') {
       this.queries.cancelOwner(source ?? this, cancelQuerySchema.parse(request.payload).requestId);
       return null;
@@ -1461,7 +1512,11 @@ export class Workbench implements vscode.Disposable {
       );
     return this.executeRequest(request, source);
   }
-  private async executeRequest(request: RpcRequest, source?: WorkbenchPanel): Promise<unknown> {
+  private async executeRequest(
+    request: RpcRequest,
+    source?: WorkbenchPanel,
+    signal?: AbortSignal,
+  ): Promise<unknown> {
     if (request.method === 'workbenchReady') {
       if (source) {
         source.ready = true;
@@ -1836,7 +1891,28 @@ export class Workbench implements vscode.Disposable {
           this.lastPanel = source;
           this.updatePanelTitle(source);
         }
-        const snapshot = await this.snapshots.read(repo.id, () => this.git.snapshot(repo));
+        // An explicit refresh owns its read: cancelling it must not kill another panel's shared snapshot.
+        const snapshot = await (signal && this.git.withReadSignal
+          ? this.git
+              .withReadSignal(signal, () => this.git.snapshot(repo))
+              .catch((error) => {
+                if (error instanceof GitReadTerminationError)
+                  throw new GitError(
+                    error.localizedMessage ?? error.message,
+                    'GIT_READ_TERMINATION_UNCONFIRMED',
+                  );
+                if (signal.aborted)
+                  throw new GitError(
+                    message(
+                      signal.reason === 'TIMEOUT'
+                        ? 'runner.gitTimedOutCheckCredentialsHooksOrAnotherGit'
+                        : 'runner.gitOperationWasCancelled',
+                    ),
+                    signal.reason === 'TIMEOUT' ? 'TIMEOUT' : 'ABORTED',
+                  );
+                throw error;
+              })
+          : this.snapshots.read(repo.id, () => this.git.snapshot(repo)));
         this.recordFingerprint(snapshot);
         return snapshot;
       }
@@ -2088,9 +2164,15 @@ export class Workbench implements vscode.Disposable {
                   },
                   source,
                 ),
+              signal,
             ),
           );
         } catch (error) {
+          if (error instanceof GitReadTerminationError)
+            throw new GitError(
+              error.localizedMessage ?? error.message,
+              'GIT_READ_TERMINATION_UNCONFIRMED',
+            );
           if ((error as { terminationUnconfirmed?: unknown })?.terminationUnconfirmed === true)
             this.externalBusy.set(operationKey, { label: action.type });
           if (error instanceof RepositoryOperationRecoveryRequiredError) {
@@ -2145,7 +2227,10 @@ export class Workbench implements vscode.Disposable {
           );
         }
         try {
-          const snapshot = await this.snapshots.read(repo.id, () => this.git.snapshot(repo));
+          const snapshot =
+            signal && this.git.withReadSignal
+              ? await this.git.withReadSignal(signal, () => this.git.snapshot(repo))
+              : await this.snapshots.read(repo.id, () => this.git.snapshot(repo));
           this.recordFingerprint(snapshot);
           return { snapshot, result };
         } catch (error) {
@@ -2480,6 +2565,7 @@ export class Workbench implements vscode.Disposable {
     this.terminals.dispose();
     this.snapshots.dispose();
     this.queries.dispose();
+    this.cancellableOperations.dispose();
     this.documents.releaseDiffOwner(this);
     this.documents.releaseDiffOwner(this.isolatedDiffOwner);
     clearInterval(this.interval);

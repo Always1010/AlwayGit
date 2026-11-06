@@ -54,7 +54,7 @@ Focused browser entry points:
 | `--diff-only` | Complete change-block counts, paged text and large-file ends, huge line-count scrolling, loading / failure states, single-file and cross-file Commit cycling, saved settings, Parent switching, and content updates |
 | `--worktrees-only` | Repository consolidation, Worktree selection, and draft isolation |
 | `--remote-tracking-only` | Remote origin, local tracking branches, and batch creation |
-| `--feedback-only` | Frontend progress overlay and keyboard isolation; Push-link copy/open; PR target selection; Commit result summary and viewing entry; close and abort after conflicts; marking staged; result inspection; continue confirmation; protected Commit entry |
+| `--feedback-only` | Frontend progress overlay and keyboard isolation; Push-link copy/open; PR target selection; Commit result summary and viewing entry; close and abort after conflicts; marking staged; result inspection; continue confirmation; protected Commit entry, stop risk confirmation/default Continue/Escape, completed-target invalidation, keyboard stopping in Pull, shielding until termination acknowledgement, and stopping manual refresh while retaining the view |
 
 Select one focused argument per run. The script uses a shared registry to choose the check; with no argument it runs all registered checks. Unknown or multiple arguments produce an explicit error.
 

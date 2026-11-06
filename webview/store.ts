@@ -9,6 +9,8 @@ import { normalizeShortcutOverrides, type ShortcutOverrides } from '../src/proto
 import { useDock } from './dock-store';
 import { translate, uiText, setLanguageReader } from './text';
 import { create } from 'zustand';
+import { operationTasks } from './operationTasks';
+import { cancellationRisk } from '../src/protocol/operation-cancellation';
 import { readTreeDefaults, type TreeDefaults } from '../src/protocol/tree-settings';
 import { errorMessage } from './rpc-error';
 import type {
@@ -93,6 +95,7 @@ const session = readSession(),
   hostBusyRepositories = new Set<string>();
 let initialTransfer = globalThis.window?.__ALWAYGIT_TRANSFER__;
 const actionFeedbacks = new Map<string, ActionFeedback>();
+let refreshTaskSequence = 0;
 let actionSequence = 0;
 export interface RepositoryActionContext {
   repoId?: string;
@@ -1119,10 +1122,30 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     }
   },
   async refresh(options = {}) {
+    // Do not replace a user-controlled refresh with automatic compensation/polling.
+    if (
+      options.background &&
+      operationTasks.snapshot().some((task) => task.repoId === get().repoId && !task.action)
+    )
+      return;
     const epoch = repositoryEpoch,
       request = ++snapshotEpoch,
       repoId = get().repoId;
     if (!repoId) return;
+    const manual = !options.background && !options.snapshot;
+    const refreshController = new AbortController();
+    let refreshFailed = false;
+    const refreshTaskId = `refresh-${++refreshTaskSequence}`;
+    if (manual)
+      operationTasks.add({
+        id: refreshTaskId,
+        repoId,
+        stopping: false,
+        cancel: () => {
+          refreshController.abort();
+          if (epoch === repositoryEpoch && request === snapshotEpoch) get().cancelHistory();
+        },
+      });
     if (!options.background || !get().snapshot) set({ loading: true });
     refreshInvalidation = {
       epoch,
@@ -1135,7 +1158,12 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         (refreshInvalidation?.epoch === epoch && refreshInvalidation.forceHistory),
     };
     try {
-      const incoming = options.snapshot ?? (await rpc<Snapshot>('snapshot', repoId));
+      const incoming =
+        options.snapshot ??
+        (await rpc<Snapshot>('snapshot', repoId, manual ? { cancellable: true } : undefined, {
+          signal: manual ? refreshController.signal : undefined,
+        }));
+      if (refreshController.signal.aborted) return;
       if (
         epoch !== repositoryEpoch ||
         request !== snapshotEpoch ||
@@ -1237,9 +1265,18 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       }
       if (reloadHistory) await get().loadHistory();
     } catch (error) {
-      if (epoch === repositoryEpoch && request === snapshotEpoch) get().report(error);
+      refreshFailed = (error as { code?: string })?.code !== 'ABORTED';
+      if (
+        epoch === repositoryEpoch &&
+        request === snapshotEpoch &&
+        (!refreshController.signal.aborted || refreshFailed)
+      )
+        get().report(error);
     } finally {
+      if (manual) operationTasks.remove(refreshTaskId);
       if (epoch === repositoryEpoch && request === snapshotEpoch) {
+        if (refreshController.signal.aborted && !refreshFailed)
+          set({ notice: translate(get().language, 'cancellation.refreshStopped') });
         refreshInvalidation = undefined;
         set({ loading: false });
       }
@@ -2018,7 +2055,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         : {}),
     };
     const finish = (
-      status: 'success' | 'error',
+      status: 'success' | 'error' | 'cancelled',
       error?: string,
       result?: ActionFeedback['result'],
     ) => {
@@ -2028,7 +2065,9 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         status,
         error,
         result,
-        refreshWarning: status === 'success' && get().repoId === repoId ? get().error : undefined,
+        refreshWarning:
+          feedback.refreshWarning ??
+          (status === 'success' && get().repoId === repoId ? get().error : undefined),
       };
       actionFeedbacks.set(repoId, completed);
       if (get().repoId === repoId) set({ actionFeedback: completed });
@@ -2052,6 +2091,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       });
       // Accept legacy snapshots from demo fixtures and an older host during reload.
       const envelope = response && !('repository' in response) ? response : undefined;
+      feedback.refreshWarning = envelope?.refreshWarning;
       const result = response && 'repository' in response ? response : envelope?.snapshot;
       const published = envelope?.result?.kind === 'push' ? envelope.result : undefined;
       const commitResult: ActionFeedback['result'] =
@@ -2089,7 +2129,8 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         feedback.phase = 'refreshing';
         if (get().actionFeedback?.id === feedback.id)
           set({ actionFeedback: { ...get().actionFeedback!, phase: 'refreshing' } });
-        await get().refresh({ background: true, snapshot: result });
+        if (result || !envelope?.refreshWarning)
+          await get().refresh({ background: true, snapshot: result });
         if (epoch === repositoryEpoch) {
           const checkout =
             ['branch.checkout', 'commit.checkout', 'checkout.stash'].includes(action.type) ||
@@ -2212,6 +2253,36 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       if (failed && get().repoId === repoId) set({ error: published.error });
       return !failed;
     } catch (error) {
+      if (
+        ['GIT_TERMINATION_UNCONFIRMED', 'GIT_READ_TERMINATION_UNCONFIRMED'].includes(
+          (error as { code?: string })?.code ?? '',
+        )
+      ) {
+        feedback.terminationUnconfirmed = true;
+        finish('error', message(error));
+        if (get().repoId === repoId) {
+          set({ error: message(error) });
+          void get().refresh({ background: true });
+        }
+        return false;
+      }
+      if (
+        (error as { code?: string })?.code === 'ABORTED' &&
+        !(error as { terminationUnconfirmed?: boolean })?.terminationUnconfirmed
+      ) {
+        const detail = translate(get().language, cancellationRisk(action));
+        finish(
+          'cancelled',
+          detail,
+          (error as { pushResult?: ActionFeedback['result'] }).pushResult,
+        );
+        if (get().repoId === repoId) {
+          set({ notice: translate(get().language, 'cancellation.stopped'), error: undefined });
+          // Reconciliation is independent of releasing the confirmed-stopped operation.
+          void get().refresh({ background: true });
+        }
+        return false;
+      }
       if (get().repoId === repoId) {
         const structured = error as {
           code?: string;

@@ -59,11 +59,13 @@ export function ActionFeedbackBar({
               : t('feedback.commitCreated', { value: commit.oid.slice(0, 8) })
             : feedback?.action.type === 'resolve-and-stage' && status === 'success'
               ? t('feedback.markedAndStagedInspectTheResultBeforeContinuing')
-              : status === 'running'
-                ? t('feedback.inProgress', { name: name })
-                : status === 'success'
-                  ? t('feedback.completed', { name: name })
-                  : t('feedback.failed', { name: name });
+              : status === 'cancelled'
+                ? t('cancellation.stopped')
+                : status === 'running'
+                  ? t('feedback.inProgress', { name: name })
+                  : status === 'success'
+                    ? t('feedback.completed', { name: name })
+                    : t('feedback.failed', { name: name });
   const commitSummary = commit
     ? [
         commit.files === undefined
@@ -134,13 +136,15 @@ export function ActionFeedbackBar({
       >
         <Icon
           name={
-            status === 'running'
-              ? 'loading'
-              : marked
-                ? 'add'
-                : status === 'success'
-                  ? 'pass'
-                  : 'error'
+            status === 'cancelled'
+              ? 'debug-stop'
+              : status === 'running'
+                ? 'loading'
+                : marked
+                  ? 'add'
+                  : status === 'success'
+                    ? 'pass'
+                    : 'error'
           }
           className={status === 'running' ? 'feedback-spinner' : undefined}
         />

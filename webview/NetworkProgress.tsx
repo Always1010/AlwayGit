@@ -5,6 +5,7 @@ import type { NetworkOperationProgress } from '../src/protocol/types';
 import { rpc } from './rpc';
 import { useWorkbench } from './store';
 import { Button } from './ui';
+import { StopOperationButton } from './StopOperation';
 
 const labels: Record<NetworkOperationProgress['phase'], StaticMessageKey> = {
   connecting: 'feedback.network.connecting',
@@ -49,6 +50,7 @@ export function NetworkProgress({ feedback }: { feedback: ActionFeedback }) {
           {label}
           {determinate ? ` · ${progress.percent}%` : ''}
         </p>
+        <StopOperationButton requestId={feedback.requestId} repoId={feedback.repoId} />
         <Button
           icon="output"
           title={t('feedback.showLog')}

@@ -1,4 +1,5 @@
 {
+  "manifest.stopOperation": "停止当前操作",
   "manifest.newTerminal": "新建内嵌终端",
   "manifest.displayName": "AlwayGit",
   "manifest.description": "Visual Studio Code 中的专业 Git 工作台。",

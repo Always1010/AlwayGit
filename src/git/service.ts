@@ -305,6 +305,7 @@ export class GitService implements GitServiceContract {
     controller: AbortController;
     pending: Set<Promise<void>>;
   }>();
+  private readonly operationSignal = new AsyncLocalStorage<AbortSignal>();
   private readonly networkProgress = new AsyncLocalStorage<
     (progress: NetworkOperationProgress) => void
   >();
@@ -365,6 +366,9 @@ export class GitService implements GitServiceContract {
       onStdout?: (chunk: Buffer) => void;
     } = {},
   ): Promise<Result> {
+    const operationSignal = this.operationSignal.getStore();
+    if (operationSignal?.aborted)
+      throw new GitError(localizeMessage('runner.gitOperationWasCancelled'), 'ABORTED');
     const readOnly = isReadOnlyGitCommand(args),
       scope = this.readSignal.getStore(),
       scopeSignal = scope?.controller.signal;
@@ -500,6 +504,11 @@ export class GitService implements GitServiceContract {
       const report = this.networkProgress.getStore();
       if (networkCommand && report) progress = new NetworkProgressParser(networkCommand, report);
       // Stash cleanup uses Git pathspec matching; all other commands use literal paths.
+      if (operationSignal?.aborted)
+        throw new GitError(localizeMessage('runner.gitOperationWasCancelled'), 'ABORTED');
+      const signals = [execution.signal, scopeSignal, operationSignal].filter(
+        (signal): signal is AbortSignal => !!signal,
+      );
       const gitProcess = runGitProcess({
         executable,
         args: [...prefix, ...prepared.args],
@@ -518,10 +527,7 @@ export class GitService implements GitServiceContract {
           ...(bindingConfig ? { GIT_CONFIG_SYSTEM: bindingConfig, GIT_CONFIG_NOSYSTEM: '0' } : {}),
         },
         input: prepared.input,
-        signal:
-          execution.signal && scopeSignal
-            ? AbortSignal.any([execution.signal, scopeSignal])
-            : (execution.signal ?? scopeSignal),
+        signal: signals.length ? AbortSignal.any(signals) : undefined,
         readOnly,
         captureBytes,
         timeoutMs:
@@ -2355,7 +2361,12 @@ export class GitService implements GitServiceContract {
     action: GitAction,
     onProgress?: (progress: FileOperationProgress) => void,
     onNetworkProgress?: (progress: NetworkOperationProgress) => void,
+    signal?: AbortSignal,
   ): Promise<void | PushResult | DeletionResult> {
+    if (signal && this.operationSignal.getStore() !== signal)
+      return this.operationSignal.run(signal, () =>
+        this.execute(repo, action, onProgress, onNetworkProgress, signal),
+      );
     if (this.readSignal.getStore())
       throw new GitError(
         localizeMessage('service.aReadOnlyRequestCannotRunGitMutations'),
@@ -2366,6 +2377,8 @@ export class GitService implements GitServiceContract {
     const operation = prior
       .catch(() => {})
       .then(async () => {
+        if (signal?.aborted)
+          throw new GitError(localizeMessage('runner.gitOperationWasCancelled'), 'ABORTED');
         const unsafe = unsafeTerminations.get(key);
         if (unsafe) throw unsafe;
         await this.verify(repo);
@@ -3715,7 +3728,11 @@ export class GitService implements GitServiceContract {
             );
             deleted++;
           } catch (error) {
-            if (error instanceof GitTerminationError) throw error;
+            if (
+              error instanceof GitTerminationError ||
+              (error instanceof GitError && error.code === 'ABORTED')
+            )
+              throw error;
             failures.push(
               `${destination}/${branch}: ${error instanceof Error ? error.message : String(error)}`,
             );
@@ -3761,6 +3778,11 @@ export class GitService implements GitServiceContract {
               destination,
             );
           } catch (error) {
+            if (
+              error instanceof GitTerminationError ||
+              (error instanceof GitError && error.code === 'ABORTED')
+            )
+              throw error;
             const detail = error instanceof Error ? error.message : String(error);
             const failure = new GitError(
               localizeMessage('service.tagWasCreatedLocallyButCouldNotBePushed', {
@@ -3826,6 +3848,10 @@ export class GitService implements GitServiceContract {
             );
           } catch (error) {
             if (error instanceof GitTerminationError) throw error;
+            if (error instanceof GitError && error.code === 'ABORTED') {
+              error.pushResult = combinePushResults(results, destination, failures);
+              throw error;
+            }
             if (error instanceof GitError && error.pushResult) results.push(error.pushResult);
             failures.push(
               `${destination}/${name}: ${error instanceof Error ? error.message : String(error)}`,

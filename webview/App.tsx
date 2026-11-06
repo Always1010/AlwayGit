@@ -8,6 +8,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from 'react';
 import { isStaged, isUnstaged } from './changeEntries';
 import type { CommitSelection } from '../src/protocol/types';
@@ -28,6 +29,8 @@ import { BottomDock } from './BottomDock';
 import { ActionFeedbackBar } from './ActionFeedbackBar';
 import { blocksWorkbench } from './actionFeedback';
 import { OperationProgress } from './OperationProgress';
+import { StopOperationButton, StopOperationConfirmation } from './StopOperation';
+import { operationTasks } from './operationTasks';
 import { RemoteRequestDialog } from './RemoteRequestDialog';
 import { OperationNotice } from './OperationNotice';
 import { OperationReviewDialog } from './OperationReviewDialog';
@@ -73,6 +76,7 @@ const LfsDialog = lazy(() =>
 );
 
 export function App() {
+  const operationTaskList = useSyncExternalStore(operationTasks.subscribe, operationTasks.snapshot);
   const state = useWorkbenchFields(
       'repoId',
       'language',
@@ -770,15 +774,19 @@ export function App() {
           </Button>
         </div>
         <div className="toolbar-utilities">
-          <Button
-            className="icon-only"
-            icon="refresh"
-            shortcut="refresh"
-            title={t('workbench.refreshCurrentRepositoryStatusAndHistory')}
-            aria-label={t('workbench.refreshCurrentRepositoryStatusAndHistory')}
-            disabled={!canOperate}
-            onClick={() => void state.refresh()}
-          />
+          {operationTaskList.some((task) => task.repoId === state.repoId && !task.action) ? (
+            <StopOperationButton repoId={state.repoId} refresh />
+          ) : (
+            <Button
+              className="icon-only"
+              icon="refresh"
+              shortcut="refresh"
+              title={t('workbench.refreshCurrentRepositoryStatusAndHistory')}
+              aria-label={t('workbench.refreshCurrentRepositoryStatusAndHistory')}
+              disabled={!canOperate}
+              onClick={() => void state.refresh()}
+            />
+          )}
           <Button
             className="icon-only settings-trigger"
             icon="settings-gear"
@@ -1118,6 +1126,7 @@ export function App() {
           feedback={progressFeedback}
         />
       )}
+      <StopOperationConfirmation />
       {locationSettings && (
         <WorkbenchLocationsDialog
           locations={locationSettings}
@@ -1173,9 +1182,9 @@ function RepositoryFetchDialog({
             ]
           : [],
       );
-    await state.loadRepositoryStatuses();
+    void state.loadRepositoryStatuses();
     if (repositories.some((repository) => repository.id === useWorkbench.getState().repoId))
-      await useWorkbench.getState().refresh({ background: true });
+      void useWorkbench.getState().refresh({ background: true });
     if (failed.length) {
       setFailure(failed.join('\n'));
       setBusy(false);
@@ -1200,6 +1209,7 @@ function RepositoryFetchDialog({
       onClose={onClose}
       footer={
         <>
+          {busy && <StopOperationButton repositories={repositories.map((repo) => repo.id)} />}
           <Button disabled={busy} onClick={onClose}>
             {t('common.cancel')}
           </Button>

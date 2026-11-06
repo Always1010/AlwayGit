@@ -133,6 +133,7 @@ export async function activate(context: vscode.ExtensionContext) {
       for (const repo of manager.list()) manager.notify(repo.id);
     }),
     vscode.commands.registerCommand('alwaygit.showLog', () => output.show(true)),
+    vscode.commands.registerCommand('alwaygit.stopOperation', () => workbench.stopOperation()),
     createWorkbenchActivityLauncher(workbench),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (

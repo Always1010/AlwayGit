@@ -72,6 +72,56 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe('repository UI consistency', () => {
+  it.each(['GIT_TERMINATION_UNCONFIRMED', 'GIT_READ_TERMINATION_UNCONFIRMED'])(
+    'reports %s immediately while retaining host write protection during reconciliation',
+    async (code) => {
+      const recovery = deferred<Snapshot>();
+      store.setState({ repoId: a.id, snapshot: snapshot(a) });
+      bridge.rpc.mockImplementation((method) => {
+        if (method === 'action') {
+          bridge.event?.({ type: 'activity', repoId: a.id, busy: true, label: 'fetch' });
+          return Promise.reject(
+            Object.assign(new Error('Cannot confirm termination'), {
+              code,
+            }),
+          );
+        }
+        if (method === 'snapshot') return recovery.promise;
+        return Promise.resolve();
+      });
+      await expect(store.getState().execute({ type: 'fetch' })).resolves.toBe(false);
+      expect(store.getState()).toMatchObject({
+        busy: true,
+        error: 'Cannot confirm termination',
+        actionFeedback: { status: 'error' },
+      });
+      recovery.resolve(snapshot(a, 2));
+    },
+  );
+  it('stops a manual refresh without losing the visible snapshot or restarting it through background compensation', async () => {
+    const { operationTasks } = await import('../webview/operationTasks');
+    const before = snapshot(a);
+    store.setState({ repoId: a.id, snapshot: before });
+    bridge.rpc.mockImplementation((method, _repo, _payload, options) => {
+      if (method === 'snapshot')
+        return new Promise((_resolve, reject) =>
+          options.signal.addEventListener('abort', () => reject({ code: 'ABORTED' }), {
+            once: true,
+          }),
+        );
+      return Promise.resolve();
+    });
+    const refreshing = store.getState().refresh();
+    await store.getState().refresh({ background: true });
+    expect(bridge.rpc).toHaveBeenCalledTimes(1);
+    operationTasks.snapshot()[0].cancel!();
+    await refreshing;
+    expect(operationTasks.snapshot()).toEqual([]);
+    expect(store.getState()).toMatchObject({ snapshot: before, loading: false });
+    expect(store.getState().error).toBeUndefined();
+    expect(store.getState().notice).toContain('Refresh stopped');
+  });
+
   it('shares the saved wheel mode across repositories and restores it from preference broadcasts', async () => {
     expect(store.getState().treeWheelMode).toBe('zoom');
     bridge.rpc.mockImplementation(async (_method, _repo, payload) => payload);

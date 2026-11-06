@@ -2755,6 +2755,17 @@ p {
   background: #0007;
   padding: 16px;
 }
+.stop-operation-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+}
+.stop-operation-layer .modal {
+  width: min(460px, calc(100vw - 32px));
+}
+.feedback-cancelled {
+  border-color: var(--vscode-descriptionForeground);
+}
 .operation-progress-backdrop {
   z-index: 200;
   overscroll-behavior: contain;

@@ -606,6 +606,7 @@ export interface RpcRequest {
     | 'revisionTree'
     | 'revisionTreeSearch'
     | 'cancelQuery'
+    | 'cancelOperation'
     | 'action'
     | 'diff'
     | 'isolatedDiffPreview'
@@ -785,5 +786,6 @@ export interface GitServiceContract {
     action: GitAction,
     onProgress?: (progress: FileOperationProgress) => void,
     onNetworkProgress?: (progress: NetworkOperationProgress) => void,
+    signal?: AbortSignal,
   ): Promise<void | PushResult | DeletionResult>;
 }

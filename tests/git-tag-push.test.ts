@@ -8,6 +8,47 @@ const fixtures = gitFixtures('alwaygit-tag-push-');
 afterEach(fixtures.cleanup);
 
 describe('Tag Push', () => {
+  it('retains confirmed pushes and stops later tags after cancellation during command preparation', async () => {
+    const { root, repo } = await fixtures.setup();
+    const oid = await commitFile(root, 'base.txt', 'base');
+    const bare = path.join(root, 'remote.git');
+    await mkdir(bare);
+    await git(bare, 'init', '--bare');
+    await git(root, 'remote', 'add', 'origin', bare);
+    const names = ['first', 'second', 'third'];
+    for (const name of names) await git(root, 'tag', name, oid);
+    const controller = new AbortController();
+    let pushes = 0;
+    const service = new GitService({
+      environment: async (_repo, args) => {
+        if (args[0] === 'push' && ++pushes === 2) controller.abort();
+        return process.env;
+      },
+    });
+    const result = service.execute(
+      repo,
+      {
+        type: 'tag.push',
+        remote: 'origin',
+        names,
+        expectedOids: Object.fromEntries(names.map((name) => [name, oid])),
+      },
+      undefined,
+      undefined,
+      controller.signal,
+    );
+    await expect(result).rejects.toMatchObject({
+      code: 'ABORTED',
+      pushResult: {
+        destinations: [
+          expect.objectContaining({ refs: [expect.objectContaining({ name: 'first' })] }),
+        ],
+      },
+    });
+    expect(pushes).toBe(2);
+    expect(await git(bare, 'tag', '--list')).toBe('first');
+    expect((await git(root, 'tag', '--list')).split('\n')).toEqual(names);
+  });
   it('publishes confirmed raw objects despite Tag replacement before each batch push', async () => {
     const { root, repo } = await fixtures.setup();
     const original = await commitFile(root, 'base.txt', 'base');

@@ -565,6 +565,10 @@ Fetch updates your local knowledge of the remote state. Pull integrates remote c
 
 For large transfers that need more time, search VS Code settings for `alwaygit.networkTimeoutMinutes` to adjust the network command deadline. See the [workbench specification](WORKBENCH_SPEC.md) for values and scope.
 
+When an operation waits too long, use the stop icon in its progress view, including the protected Pull dialog. During manual refresh, the toolbar refresh icon becomes Stop; batch Fetch can stop its remaining active requests. Read the confirmation dialog’s repository, operation, and risk before choosing Stop. Continue operation is focused by default; Close, backdrop, and Escape keep it running. The task continues during confirmation, and completion invalidates the confirmation. Alternatively run **AlwayGit: Stop Current Operation** from the command palette, select a task, and confirm its risk.
+
+Wait for Stopping to finish, then inspect the result: Fetch retains downloaded data and completed reference updates; Push or remote deletion may already have taken effect, so verify the remote before retrying. Pull may leave a merge or rebase to review and continue/abort separately. Stopping does not roll back changes. A stopped refresh retains the view, which may be out of date. Unconfirmed process termination retains repository protection; inspect the log and recovery guidance. Other destructive local operations do not expose a generic force-kill control.
+
 <a id="section-08-01"></a>
 
 ### Add a remote

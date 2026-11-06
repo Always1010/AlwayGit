@@ -10,6 +10,42 @@ const setup = fixtures.setup;
 afterEach(fixtures.cleanup);
 
 describe('Git service integration', () => {
+  it('does not spawn a cancelled queued operation or poison the next repository operation', async () => {
+    const { root, repo } = await setup();
+    let entered!: () => void, resume!: () => void;
+    const waiting = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const service = new GitService({
+      environment: async (_repo, args) => {
+        if (args[0] === 'tag') {
+          entered();
+          await new Promise<void>((resolve) => {
+            resume = resolve;
+          });
+        }
+        return process.env;
+      },
+    });
+    await commit(root, 'base.txt', 'base');
+    const first = service.execute(repo, { type: 'tag.create', name: 'first' });
+    await waiting;
+    const controller = new AbortController();
+    const cancelled = service.execute(
+      repo,
+      { type: 'fetch' },
+      undefined,
+      undefined,
+      controller.signal,
+    );
+    const rejected = expect(cancelled).rejects.toMatchObject({ code: 'ABORTED' });
+    controller.abort();
+    resume();
+    await first;
+    await rejected;
+    await service.execute(repo, { type: 'branch.create', name: 'after-stop' });
+    expect(await git(root, 'branch', '--list', 'after-stop')).toContain('after-stop');
+  });
   it('classifies only confirmed missing commit objects as OBJECT_NOT_FOUND', async () => {
     const { root, service, repo } = await setup();
     const oid = await commit(root, 'file.txt', 'content');

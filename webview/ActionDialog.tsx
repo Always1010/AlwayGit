@@ -906,6 +906,14 @@ function StandardActionDialog({
       }
       if (!active()) return;
       const completed = await state.execute(action, repositoryContext);
+      const currentFeedback = useWorkbench.getState().actionFeedback;
+      if (
+        active() &&
+        (currentFeedback?.status === 'cancelled' || currentFeedback?.terminationUnconfirmed)
+      ) {
+        onClose();
+        return;
+      }
       if (
         active() &&
         checks.rememberDefault &&

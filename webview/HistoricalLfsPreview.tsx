@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { HistoricalLfsPreviewObject } from '../src/protocol/types';
 import type { LfsDestinations } from '../src/protocol/lfs';
 import { Button, Modal } from './ui';
+import { StopOperationButton } from './StopOperation';
 import { useTranslation } from './i18n';
 import { rpc } from './rpc';
 import { captureActionContext, isActionContextCurrent, useWorkbench } from './store';
@@ -122,6 +123,7 @@ export function HistoricalLfsPreview({
           onClose={() => setSelected(undefined)}
           footer={
             <>
+              <StopOperationButton repoId={repoId} />
               <Button disabled={state.busy} onClick={() => setSelected(undefined)}>
                 {t('common.cancel')}
               </Button>

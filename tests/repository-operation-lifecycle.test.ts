@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
-import { mkdtemp, rm, readdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, readdir, readFile, writeFile, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
@@ -9,6 +9,7 @@ import {
 } from '../src/application/operation-lock';
 import { ProjectWindows } from '../src/extension/project-windows';
 import { Workbench } from '../src/extension/workbench';
+import { GitReadTerminationError } from '../src/git/error';
 
 vi.mock('vscode', () => ({
   EventEmitter: class {
@@ -52,8 +53,9 @@ function context() {
 }
 const output = () => ({ appendLine: vi.fn() });
 async function projectWindows(broadcast = vi.fn(async () => {})) {
-  const root = await mkdtemp(path.join(tmpdir(), 'alwaygit-lifecycle-'));
-  roots.push(root);
+  const temporaryRoot = await mkdtemp(path.join(tmpdir(), 'alwaygit-lifecycle-'));
+  roots.push(temporaryRoot);
+  const root = await realpath(temporaryRoot);
   const lock = new RepositoryOperationLock(path.join(root, 'locks'), 'test');
   locks.push(lock);
   const legacy = new RepositoryOperationLock(path.join(root, 'legacy-locks'), 'test');
@@ -103,6 +105,102 @@ const action = {
 } as const;
 
 describe('repository operation lifecycle', () => {
+  it('does not report confirmed cancellation when a read-only action preflight could not terminate', async () => {
+    const { value, git } = workbench({
+      runRepositoryOperation: async (_key: string, _label: string, task: () => Promise<unknown>) =>
+        task(),
+    });
+    git.execute.mockRejectedValueOnce(
+      new GitReadTerminationError('Read termination unconfirmed', 'ABORTED', 42, Promise.resolve()),
+    );
+    await expect(value.handle(action)).rejects.toMatchObject({
+      code: 'GIT_READ_TERMINATION_UNCONFIRMED',
+    });
+  });
+  it('cancels the exact network request and retains busy protection until Git settles', async () => {
+    const projects = {
+      runRepositoryOperation: vi.fn(
+        async (_key: string, _label: string, task: () => Promise<unknown>) => task(),
+      ),
+    };
+    const { value, git } = workbench(projects);
+    let signal!: AbortSignal, finish!: () => void;
+    Object.assign(git, {
+      execute: vi.fn((_repo, _action, _files, _network, current: AbortSignal) => {
+        signal = current;
+        return new Promise<void>((_resolve, reject) => {
+          finish = () => reject(Object.assign(new Error('cancelled'), { code: 'ABORTED' }));
+        });
+      }),
+    });
+    const running = value.handle(action);
+    const rejected = expect(running).rejects.toMatchObject({ code: 'ABORTED' });
+    await vi.waitFor(() => expect(signal).toBeDefined());
+    await expect(
+      value.handle({
+        id: 'stop-wrong',
+        method: 'cancelOperation',
+        repoId: 'other',
+        payload: { requestId: action.id },
+      }),
+    ).resolves.toBe(false);
+    expect(signal.aborted).toBe(false);
+    await expect(
+      value.handle({
+        id: 'stop',
+        method: 'cancelOperation',
+        repoId: 'repo',
+        payload: { requestId: action.id },
+      }),
+    ).resolves.toBe(true);
+    expect(signal.aborted).toBe(true);
+    await expect(value.handle({ ...action, id: 'new-action' })).rejects.toThrow('already running');
+    finish();
+    await rejected;
+    await expect(
+      value.handle({
+        id: 'late-stop',
+        method: 'cancelOperation',
+        repoId: 'repo',
+        payload: { requestId: action.id },
+      }),
+    ).resolves.toBe(false);
+  });
+
+  it('isolates a cancellable refresh from a concurrent shared snapshot', async () => {
+    const { value, git } = workbench({});
+    let signal!: AbortSignal;
+    Object.assign(git, {
+      withReadSignal: vi.fn((current: AbortSignal) => {
+        signal = current;
+        return new Promise((_resolve, reject) =>
+          current.addEventListener(
+            'abort',
+            () => reject(Object.assign(new Error('cancelled'), { code: 'ABORTED' })),
+            { once: true },
+          ),
+        );
+      }),
+    });
+    const refresh = value.handle({
+      id: 'refresh',
+      method: 'snapshot',
+      repoId: 'repo',
+      payload: { cancellable: true },
+    });
+    const rejected = expect(refresh).rejects.toMatchObject({ code: 'ABORTED' });
+    await value.handle({ id: 'shared', method: 'snapshot', repoId: 'repo' });
+    expect(git.snapshot).toHaveBeenCalledOnce();
+    await value.handle({
+      id: 'stop',
+      method: 'cancelOperation',
+      repoId: 'repo',
+      payload: { requestId: 'refresh' },
+    });
+    expect(signal.aborted).toBe(true);
+    await rejected;
+  });
+
   it('respects live legacy owners, releases the shared lease on failure and advertises new operations to old hosts', async () => {
     const { projects, root, lock, legacy, broadcast } = await projectWindows();
     const old = new RepositoryOperationLock(path.join(root, 'legacy-locks'), 'old');
