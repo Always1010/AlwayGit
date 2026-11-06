@@ -405,7 +405,8 @@ export class InteractiveRebase {
           void error.completion.then(() => this.cleanup(gitDir)).catch(() => {});
           throw error;
         }
-        await this.cleanup(gitDir);
+        // Rejected confirmation or failed Git abort can leave the operation active.
+        // Preserve its helper context so the current operation remains recoverable.
         throw error;
       }
       await this.cleanup(gitDir);

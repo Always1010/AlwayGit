@@ -150,7 +150,10 @@ describe('managed interactive Rebase', () => {
     await expect(
       restored.execute(repo, { type: 'operation.continue', kind: 'rebase' }),
     ).rejects.toThrow();
-    await restored.execute(repo, { type: 'operation.abort', kind: 'rebase' });
+    await restored.execute(
+      repo,
+      await restored.prepareAction(repo, { type: 'operation.abort', kind: 'rebase' }),
+    );
     expect(await git(root, 'rev-parse', 'HEAD')).toBe(plan.head);
     expect(await readFile(path.join(root, 'x'), 'utf8')).toBe('b');
     const retry = await restored.prepareInteractiveRebase(repo, a);

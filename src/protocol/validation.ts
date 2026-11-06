@@ -240,7 +240,7 @@ export const actionSchema = z.union([
     reviewToken: text.optional(),
     keepEmpty: z.boolean().optional(),
   }),
-  z.object({ type: z.literal('operation.abort'), kind }),
+  z.object({ type: z.literal('operation.abort'), kind, abortToken: text.optional() }),
   z.object({
     type: z.literal('operation.quit'),
     kind: z.literal('cherry-pick'),

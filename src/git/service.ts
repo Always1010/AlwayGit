@@ -282,6 +282,7 @@ export class GitService implements GitServiceContract {
   private readonly historyMatches = new Map<string, { created: number; ids: readonly string[] }>();
   private readonly blobs = new BlobCache();
   private readonly reviews = new Map<string, { token: string; fingerprint: string }>();
+  private readonly aborts = new Map<string, { token: string; fingerprint: string }>();
   private readonly hunks = new PatchHunkStore();
   async patchHunks(repo: Repository, target: { path: string; area: 'staged' | 'unstaged' }) {
     await this.verify(repo);
@@ -2347,6 +2348,19 @@ export class GitService implements GitServiceContract {
     );
   }
   async prepareAction(repo: Repository, action: GitAction): Promise<GitAction> {
+    if (action.type === 'operation.abort') {
+      await this.verify(repo);
+      const snapshot = await this.snapshot(repo);
+      if (snapshot.operation.kind !== action.kind)
+        throw new GitError(
+          localizeMessage('service.theSelectedGitOperationIsNoLongerActive'),
+          'OPERATION_CHANGED',
+        );
+      const fingerprint = await this.abortFingerprint(repo, action.kind),
+        token = randomUUID();
+      this.aborts.set(repo.id, { token, fingerprint });
+      return { ...action, abortToken: token };
+    }
     if (action.type === 'discard' && action.planToken) {
       const { plan } = await this.checkedDiscard(repo, action.planToken);
       return { ...action, paths: plan.paths, mode: plan.scope === 'all' ? 'all' : undefined };
@@ -2569,6 +2583,38 @@ export class GitService implements GitServiceContract {
         ]),
       )
       .digest('hex');
+  }
+  /** Freeze both operation identity and the Index/working content Abort may discard. */
+  private async abortFingerprint(repo: Repository, kind: OperationState['kind']): Promise<string> {
+    const current = await this.status(repo),
+      operation = await this.skipFingerprint(repo, current, kind),
+      index = await this.run(repo, ['ls-files', '--stage', '-z']),
+      content = await this.discardFingerprint(repo, current, current.changes),
+      gitDir = await this.text(repo, ['rev-parse', '--path-format=absolute', '--git-dir']),
+      restoration = await Promise.all(
+        ['ORIG_HEAD', 'MERGE_AUTOSTASH', 'rebase-merge/autostash', 'rebase-apply/autostash'].map(
+          (name) => this.readOperationFile(gitDir, name),
+        ),
+      );
+    return createHash('sha256')
+      .update(JSON.stringify([operation, content, restoration]))
+      .update(index.stdout)
+      .digest('hex');
+  }
+  private async requireAbort(
+    repo: Repository,
+    action: Extract<GitAction, { type: 'operation.abort' }>,
+  ): Promise<void> {
+    const prepared = this.aborts.get(repo.id);
+    if (
+      !action.abortToken ||
+      prepared?.token !== action.abortToken ||
+      prepared.fingerprint !== (await this.abortFingerprint(repo, action.kind))
+    )
+      throw new GitError(
+        localizeMessage('service.theSelectedGitOperationIsNoLongerActive'),
+        'OPERATION_CHANGED',
+      );
   }
   private async reviewFingerprint(
     repo: Repository,
@@ -3211,6 +3257,7 @@ export class GitService implements GitServiceContract {
   ): Promise<void | PushResult | DeletionResult> {
     if (action.type !== 'commit' && action.type !== 'operation.continue')
       this.reviews.delete(repo.id);
+    if (action.type !== 'operation.abort') this.aborts.delete(repo.id);
     let args: string[], pushedRemote: string | undefined, boundRemote: BoundRemote | undefined;
     const remote = (value?: string) => (value ? [token(value, 'remote')] : []);
     switch (action.type) {
@@ -4415,6 +4462,16 @@ export class GitService implements GitServiceContract {
             localizeMessage('service.theSelectedGitOperationIsNoLongerActive'),
             'OPERATION_CHANGED',
           );
+        const verifyAbort =
+          action.type === 'operation.abort' ? () => this.requireAbort(repo, action) : undefined;
+        if (verifyAbort) await verifyAbort();
+        const verifyDestructiveStep = verifyAbort ?? verifySkip;
+        const beforeDestructiveStep = verifyDestructiveStep
+          ? async () => {
+              await verifyDestructiveStep();
+              if (action.type === 'operation.abort') this.aborts.delete(repo.id);
+            }
+          : undefined;
         if (action.type === 'operation.continue')
           await this.requireReview(repo, snapshot, action.reviewToken);
         if (
@@ -4424,8 +4481,8 @@ export class GitService implements GitServiceContract {
             (args, execution) =>
               this.run(repo, args, false, undefined, {
                 ...execution,
-                ...(args[0] === 'rebase' && args[1] === '--skip'
-                  ? { beforeSpawn: verifySkip }
+                ...(args[0] === 'rebase' && ['--skip', '--abort'].includes(args[1])
+                  ? { beforeSpawn: beforeDestructiveStep }
                   : {}),
               }),
             command as 'continue' | 'abort' | 'skip',
@@ -4434,8 +4491,8 @@ export class GitService implements GitServiceContract {
         )
           return;
         args = [action.kind, `--${command}`];
-        if (verifySkip) {
-          await this.run(repo, args, false, undefined, { beforeSpawn: verifySkip });
+        if (beforeDestructiveStep) {
+          await this.run(repo, args, false, undefined, { beforeSpawn: beforeDestructiveStep });
           return;
         }
         break;

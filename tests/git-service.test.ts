@@ -423,7 +423,10 @@ describe('Git service integration', () => {
     await expect(
       service.execute(repo, { type: 'operation.continue', kind: 'merge' }),
     ).rejects.toThrow('Resolve conflicts');
-    await service.execute(repo, { type: 'operation.abort', kind: 'merge' });
+    await service.execute(
+      repo,
+      await service.prepareAction(repo, { type: 'operation.abort', kind: 'merge' }),
+    );
     expect((await service.snapshot(repo)).operation.kind).toBeUndefined();
   });
   it.each(['merge', 'rebase', 'cherry-pick', 'revert'] as const)(
@@ -540,7 +543,10 @@ describe('Git service integration', () => {
       ]),
     );
     const original = (await service.snapshot(repo)).operation.originalHead;
-    await service.execute(repo, { type: 'operation.abort', kind: 'merge' });
+    await service.execute(
+      repo,
+      await service.prepareAction(repo, { type: 'operation.abort', kind: 'merge' }),
+    );
     expect(await git(root, 'rev-parse', 'HEAD')).toBe(original);
     expect(await git(root, 'status', '--porcelain')).toBe('');
   });

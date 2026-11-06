@@ -88,7 +88,7 @@ it.each(['skip', 'abort'] as const)(
         repo,
         command === 'skip'
           ? { type: 'operation.skip', kind: 'cherry-pick', skipToken: operation.skipToken! }
-          : { type: 'operation.abort', kind: 'cherry-pick' },
+          : await service.prepareAction(repo, { type: 'operation.abort', kind: 'cherry-pick' }),
       );
       expect((await service.snapshot(repo)).operation.kind).toBeUndefined();
       expect(await readFile(path.join(root, 'file.txt'), 'utf8')).toBe('ours\n');

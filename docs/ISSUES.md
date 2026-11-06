@@ -22,6 +22,16 @@
 - 验证方式：分支比较导航定向无界面回归覆盖迟到成功与失败、取消信号、立即解除加载、清空筛选、保留返回后的比较文件选择，以及继续查看其他提交；类型与修改文件格式检查通过。未启动可见窗口，未打包、安装、升版或远程推送。
 - 相关文件：`webview/BranchComparison.tsx`、`tests/branch-comparison-navigation.test.tsx`。
 
+## BUG-179：中止操作的旧确认可丢弃新操作与新解冲突内容
+
+- 日期：2026-11-07
+- 状态：已解决
+- 现象：原生 Abort 确认打开后，外部 Git 中止并重新发起同类操作，或继续修改解冲突内容；接受旧确认仍会中止当前操作，可能丢失未确认丢弃的新内容。
+- 原因：确认仅保留操作类型，执行只比较 kind，未绑定操作实例、Index 或工作文件；托管 Rebase 的失败中止还会清理仍在使用的恢复辅助文件。
+- 解决方案：原生确认前宿主发放一次性 Abort token，绑定仓库与工作树、分支、HEAD、操作控制文件身份及步骤、完整 Index stages、变更文件内容和恢复控制文件；共享写队列内及 Git 启动前重新校验。普通与托管 Rebase 共用保护；拒绝中止或中止失败时保留托管恢复辅助文件。
+- 验证方式：真实 Git 定向回归覆盖旧 Merge 确认遇到相同/不同目标的新 Merge、已暂存与未暂存解冲突更新、缺失/伪造/跨仓库 token、排队写入、Git 启动前竞争、托管 Rebase 辅助文件保留与有效中止；现有 Merge、Rebase、Cherry-pick、Revert 相关中止与继续回归及类型检查。
+- 相关文件：`src/extension/workbench.ts`、`src/git/service.ts`、`src/git/interactive-rebase.ts`、`src/protocol/types.ts`、`src/protocol/validation.ts`、`tests/git-operation-abort.test.ts`、既有 Git 操作回归、双语架构与工作台规格。
+
 ## BUG-178：运行进度的停止入口难以辨认且状态与操作混排
 
 - 日期：2026-11-07

@@ -95,7 +95,10 @@ it('aborts a real rebase after choosing a side and restores the original branch,
   await service.execute(repo, { type: 'conflict.choose', token: details.token, side: 'ours' });
   expect(await readFile(path.join(root, 'file.txt'), 'utf8')).toBe('incoming\n');
   const stale = await service.conflictDetails(repo, 'file.txt');
-  await service.execute(repo, { type: 'operation.abort', kind: 'rebase' });
+  await service.execute(
+    repo,
+    await service.prepareAction(repo, { type: 'operation.abort', kind: 'rebase' }),
+  );
   const restored = await service.snapshot(repo);
   expect(restored).toMatchObject({ branch: 'main', head: original, changes: [] });
   expect(restored.operation.kind).toBeUndefined();

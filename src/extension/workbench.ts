@@ -2162,13 +2162,12 @@ export class Workbench implements vscode.Disposable {
           action.type === 'merge' ||
           action.type === 'rebase' ||
           action.type === 'reset' ||
+          action.type === 'operation.abort' ||
           action.type === 'discard'
         )
           action = await this.git.prepareAction(repo, action);
         const operation =
-          action.type === 'operation.abort'
-            ? (await this.snapshots.read(repo.id, () => this.git.snapshot(repo))).operation
-            : undefined;
+          action.type === 'operation.abort' ? (await this.git.snapshot(repo)).operation : undefined;
         if (!(await confirmAction(repo, action, this.language(), operation)))
           throw new Error(this.text('host.operationCancelled'));
         await this.refreshExternalActivity(repo.commonDir);

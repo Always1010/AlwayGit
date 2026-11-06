@@ -438,7 +438,7 @@ export type GitAction =
       expectedBranch?: string;
     }
   | { type: 'operation.continue'; kind: OperationKind; reviewToken?: string; keepEmpty?: boolean }
-  | { type: 'operation.abort'; kind: OperationKind }
+  | { type: 'operation.abort'; kind: OperationKind; abortToken?: string }
   | { type: 'operation.quit'; kind: 'cherry-pick'; quitToken: string }
   | { type: 'operation.skip'; kind: OperationKind; skipToken: string };
 export type ContentSource =
