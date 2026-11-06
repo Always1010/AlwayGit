@@ -10,6 +10,33 @@ const setup = fixtures.setup;
 afterEach(fixtures.cleanup);
 
 describe('Git service integration', () => {
+  it.skipIf(process.platform === 'win32')(
+    'preserves trailing whitespace in working and Git directory paths',
+    async () => {
+      const { root, service } = await setup();
+      for (const suffix of [' ', '\t', '\r', '\n']) {
+        const workingRoot = path.join(root, `repository${suffix}`);
+        await mkdir(workingRoot);
+        await git(workingRoot, 'init', '-b', 'main');
+        await git(workingRoot, 'config', 'user.name', 'Path Test');
+        await git(workingRoot, 'config', 'user.email', 'path@example.com');
+        await git(workingRoot, 'config', 'commit.gpgsign', 'false');
+        const repo = await service.discover(workingRoot);
+        expect(repo.root).toBe(workingRoot);
+        expect(repo.commonDir).toBe(path.join(workingRoot, '.git'));
+        await commit(workingRoot, 'file.txt', 'content');
+        expect((await service.snapshot(repo)).branch).toBe('main');
+      }
+      const workingRoot = path.join(root, 'separate');
+      const gitDir = path.join(root, 'metadata ');
+      await mkdir(workingRoot);
+      await git(workingRoot, 'init', '-b', 'main', `--separate-git-dir=${gitDir}`);
+      const repo = await service.discover(workingRoot);
+      expect(repo.gitDir).toBe(gitDir);
+      expect(repo.commonDir).toBe(gitDir);
+      expect((await service.snapshot(repo)).branch).toBe('main');
+    },
+  );
   it('does not spawn a cancelled queued operation or poison the next repository operation', async () => {
     const { root, repo } = await setup();
     let entered!: () => void, resume!: () => void;

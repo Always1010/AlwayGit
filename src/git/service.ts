@@ -646,6 +646,10 @@ export class GitService implements GitServiceContract {
   private async text(repo: Repository, args: string[]): Promise<string> {
     return (await this.run(repo, args)).stdout.toString('utf8').trim();
   }
+  private async pathText(repo: Repository, args: string[]): Promise<string> {
+    // Git terminates path output with LF; whitespace before it belongs to the path.
+    return (await this.run(repo, args)).stdout.toString('utf8').replace(/\n$/, '');
+  }
   private async optionalConfig(repo: Repository, key: string): Promise<string | undefined> {
     const result = await this.run(repo, ['config', '--get', key], true);
     if (result.code > 1)
@@ -790,10 +794,10 @@ export class GitService implements GitServiceContract {
         localizeMessage('service.openAWorkingRepositoryRatherThanABareRepository'),
         'BARE_REPOSITORY',
       );
-    const top = await this.text(provisional, ['rev-parse', '--show-toplevel']);
+    const top = await this.pathText(provisional, ['rev-parse', '--show-toplevel']);
     provisional.root = await realpath(top);
     provisional.commonDir = await realpath(
-      await this.text(provisional, ['rev-parse', '--path-format=absolute', '--git-common-dir']),
+      await this.pathText(provisional, ['rev-parse', '--path-format=absolute', '--git-common-dir']),
     );
     provisional.id = createHash('sha256')
       .update(normalized(provisional.root))
@@ -801,7 +805,7 @@ export class GitService implements GitServiceContract {
       .slice(0, 24);
     provisional.name = path.basename(provisional.root);
     const gitDir = await realpath(
-      await this.text(provisional, ['rev-parse', '--path-format=absolute', '--git-dir']),
+      await this.pathText(provisional, ['rev-parse', '--path-format=absolute', '--git-dir']),
     );
     provisional.gitDir = gitDir;
     if (normalized(gitDir) === normalized(provisional.commonDir))
@@ -968,7 +972,7 @@ export class GitService implements GitServiceContract {
         ]),
         this.text(repo, ['stash', 'list', '--format=%gd%x00%H%x00%s']),
         this.worktrees(repo),
-        this.text(repo, ['rev-parse', '--path-format=absolute', '--git-dir']),
+        this.pathText(repo, ['rev-parse', '--path-format=absolute', '--git-dir']),
         this.text(repo, ['remote']),
         this.unpushed(repo),
       ]);
@@ -1320,7 +1324,7 @@ export class GitService implements GitServiceContract {
     let shallow: string | undefined;
     const shallowState = async () => {
       if (shallow !== undefined) return shallow;
-      const shallowPath = await this.text(repo, ['rev-parse', '--git-path', 'shallow']);
+      const shallowPath = await this.pathText(repo, ['rev-parse', '--git-path', 'shallow']);
       try {
         shallow = await readFile(path.resolve(repo.root, shallowPath), 'utf8');
       } catch (error) {
@@ -2104,7 +2108,7 @@ export class GitService implements GitServiceContract {
     status: Awaited<ReturnType<GitService['status']>>,
   ): Promise<void> {
     const gitDir =
-      repo.gitDir ?? (await this.text(repo, ['rev-parse', '--path-format=absolute', '--git-dir']));
+      repo.gitDir ?? (await this.pathText(repo, ['rev-parse', '--path-format=absolute', '--git-dir']));
     const markers = await Promise.all(
       [
         'rebase-merge',
@@ -2496,7 +2500,7 @@ export class GitService implements GitServiceContract {
     current: { head?: string; branch: string },
     kind: OperationState['kind'],
   ): Promise<string> {
-    const gitDir = await this.text(repo, ['rev-parse', '--path-format=absolute', '--git-dir']);
+    const gitDir = await this.pathText(repo, ['rev-parse', '--path-format=absolute', '--git-dir']);
     const names = [
       'MERGE_HEAD',
       'CHERRY_PICK_HEAD',
@@ -2552,7 +2556,7 @@ export class GitService implements GitServiceContract {
     snapshot: Snapshot,
     tree: string,
   ): Promise<string> {
-    const gitDir = await this.text(repo, ['rev-parse', '--path-format=absolute', '--git-dir']);
+    const gitDir = await this.pathText(repo, ['rev-parse', '--path-format=absolute', '--git-dir']);
     const markers = await Promise.all(
       [
         'MERGE_HEAD',
