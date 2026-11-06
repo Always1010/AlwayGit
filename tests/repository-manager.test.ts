@@ -211,11 +211,11 @@ describe('batch repository registration', () => {
     expect(manager.groups()).toHaveLength(2);
     expect(manager.collections()).toHaveLength(1);
     expect(
-      manager.groups().every((group) => group.collectionId === manager.collections()[0].id),
+      manager.groups().every((group) => group.collectionIds.includes(manager.collections()[0].id)),
     ).toBe(true);
     expect((manager as unknown as { catalog: CatalogStore }).catalog.snapshot().revision).toBe(1);
     await manager.registerDiscovered(discovery, {}, { collectionId: undefined });
-    expect(manager.groups().every((group) => !group.collectionId)).toBe(true);
+    expect(manager.groups().every((group) => !group.collectionIds.length)).toBe(true);
   });
   it('notifies when adding a new Worktree to an existing group without counting a new repository', async () => {
     const root = await fixture(),
@@ -323,7 +323,9 @@ describe('batch repository registration', () => {
       collection = await first.createCollection('Client');
     await first.move([group.key], collection.id);
     await second.synchronizeSharedState();
-    expect(second.groups().find((item) => item.name === 'A')?.collectionId).toBe(collection.id);
+    expect(second.groups().find((item) => item.name === 'A')?.collectionIds).toEqual([
+      collection.id,
+    ]);
     await first.remove([group.key]);
     await second.synchronizeSharedState();
     expect(second.groups().map((item) => item.name)).toEqual(['B']);
@@ -386,13 +388,15 @@ describe('batch repository registration', () => {
     const groups = manager.groups().sort((a, b) => a.name.localeCompare(b.name)),
       collection = await manager.createCollection('Client Project');
     expect(await manager.move([groups[0].key], collection.id)).toBe(1);
-    const assigned = manager.groups().filter((group) => group.collectionId === collection.id),
-      roots = manager.groups().filter((group) => !group.collectionId);
+    const assigned = manager
+        .groups()
+        .filter((group) => group.collectionIds.includes(collection.id)),
+      roots = manager.groups().filter((group) => !group.collectionIds.length);
     expect(roots.map((group) => group.name)).toEqual(['B']);
     expect(assigned.map((group) => group.name)).toEqual(['A']);
     expect(manager.collections().map((item) => item.name)).toEqual(['Client Project']);
-    expect(globalValues.get('alwaygit.repositoryCollectionAssignments.v1')).toMatchObject({
-      [groups[0].key]: collection.id,
+    expect(globalValues.get('alwaygit.repositoryCollectionAssignments.v2')).toMatchObject({
+      [groups[0].key]: [collection.id],
     });
     await manager.deleteCollection(collection.id);
     expect(
@@ -401,6 +405,129 @@ describe('batch repository registration', () => {
         .map((group) => group.name)
         .sort(),
     ).toEqual(['A', 'B']);
+  });
+
+  it('keeps independent memberships and ordering through edits, group deletion, and restart', async () => {
+    const root = await fixture(),
+      { manager, globalValues } = setup();
+    await manager.addDirectory(root);
+    const groups = manager.groups().sort((a, b) => a.name.localeCompare(b.name)),
+      keys = groups.map((group) => group.key),
+      [ak, bk] = keys.map(repositoryOrderKey),
+      a = await manager.createCollection('Client'),
+      b = await manager.createCollection('Frequent');
+    await manager.updateMemberships({
+      keys,
+      changes: [
+        { collectionId: a.id, included: true },
+        { collectionId: b.id, included: true },
+      ],
+    });
+    const originalB = manager.order().collections[b.id];
+    await manager.reorder({ key: bk, targetKey: ak, position: 'before', collectionId: a.id });
+    expect(manager.order().collections[a.id]).toEqual([bk, ak]);
+    expect(manager.order().collections[b.id]).toEqual(originalB);
+    expect(
+      await manager.updateMemberships({ keys, changes: [{ collectionId: b.id, included: true }] }),
+    ).toBe(0);
+    await manager.updateMemberships({
+      keys: [keys[0]],
+      changes: [{ collectionId: a.id, included: false }],
+    });
+    expect(manager.groups().find((group) => group.key === keys[0])!.collectionIds).toEqual([b.id]);
+    const restored = setup(globalValues).manager;
+    await restored.synchronizeSharedState();
+    expect(restored.order()).toEqual(manager.order());
+    await manager.deleteCollection(a.id);
+    expect(manager.order().root).toEqual([collectionOrderKey(b.id)]);
+    await manager.deleteCollection(b.id);
+    expect(manager.order().root).toEqual(originalB);
+    expect(manager.groups().every((group) => !group.collectionIds.length)).toBe(true);
+  });
+  it('merges membership edits from stale hosts and rejects missing targets without partial changes', async () => {
+    const root = await fixture(),
+      first = setup();
+    await first.manager.addDirectory(root);
+    const key = first.manager.groups()[0].key,
+      a = await first.manager.createCollection('Client'),
+      b = await first.manager.createCollection('Frequent'),
+      second = setup(first.globalValues).manager;
+    await second.synchronizeSharedState();
+    await first.manager.updateMemberships({
+      keys: [key],
+      changes: [{ collectionId: a.id, included: true }],
+    });
+    await second.updateMemberships({
+      keys: [key],
+      changes: [{ collectionId: b.id, included: true }],
+    });
+    await first.manager.synchronizeSharedState();
+    expect(first.manager.groups().find((group) => group.key === key)!.collectionIds).toEqual([
+      a.id,
+      b.id,
+    ]);
+    const before = first.manager.order();
+    await expect(
+      first.manager.updateMemberships({
+        keys: [key],
+        changes: [
+          { collectionId: a.id, included: false },
+          { collectionId: 'deleted', included: true },
+        ],
+      }),
+    ).rejects.toThrow();
+    expect(first.manager.order()).toEqual(before);
+    expect(first.manager.groups().find((group) => group.key === key)!.collectionIds).toEqual([
+      a.id,
+      b.id,
+    ]);
+    await first.manager.remove([key]);
+    expect(Object.values(first.manager.order().collections).flat()).not.toContain(
+      repositoryOrderKey(key),
+    );
+  });
+
+  it('moves selected occurrences atomically while retaining other groups and target positions', async () => {
+    const root = await fixture(),
+      { manager } = setup();
+    await manager.addDirectory(root);
+    const key = manager.groups()[0].key,
+      a = await manager.createCollection('A'),
+      b = await manager.createCollection('B'),
+      c = await manager.createCollection('C');
+    await manager.updateMemberships({
+      keys: [key],
+      changes: [a, b].map((group) => ({ collectionId: group.id, included: true })),
+    });
+    await manager.moveRows({ rows: [{ key, collectionId: a.id }], targetCollectionId: c.id });
+    expect(manager.groups().find((group) => group.key === key)!.collectionIds).toEqual([
+      b.id,
+      c.id,
+    ]);
+    const before = manager.order().collections[b.id];
+    await manager.moveRows({ rows: [{ key, collectionId: c.id }], targetCollectionId: b.id });
+    expect(manager.groups().find((group) => group.key === key)!.collectionIds).toEqual([b.id]);
+    expect(manager.order().collections[b.id]).toEqual(before);
+    await expect(
+      manager.moveRows({ rows: [{ key, collectionId: a.id }], targetCollectionId: c.id }),
+    ).rejects.toThrow();
+    expect(manager.groups().find((group) => group.key === key)!.collectionIds).toEqual([b.id]);
+    await manager.updateMemberships({
+      keys: [key],
+      changes: [{ collectionId: a.id, included: true }],
+    });
+    await manager.moveRows({
+      rows: [
+        { key, collectionId: a.id },
+        { key, collectionId: b.id },
+      ],
+      targetCollectionId: c.id,
+    });
+    expect(manager.groups().find((group) => group.key === key)!.collectionIds).toEqual([c.id]);
+    expect(manager.order().collections[c.id]).toEqual([repositoryOrderKey(key)]);
+    await manager.moveRows({ rows: [{ key, collectionId: c.id }], targetCollectionId: null });
+    expect(manager.groups().find((group) => group.key === key)!.collectionIds).toEqual([]);
+    expect(manager.order().root.at(-1)).toBe(repositoryOrderKey(key));
   });
 
   it('persists mixed root order, appends additions, and reorders only siblings across restarts', async () => {
@@ -426,7 +553,12 @@ describe('batch repository registration', () => {
     );
     await manager.move([manager.groups().find((group) => group.name === 'A')!.key], collection.id);
     expect(manager.order().collections[collection.id]).toEqual([bk, ak]);
-    await manager.reorder({ key: ak, targetKey: bk, position: 'before' });
+    await manager.reorder({
+      key: ak,
+      targetKey: bk,
+      position: 'before',
+      collectionId: collection.id,
+    });
     await manager.deleteCollection(collection.id);
     expect(manager.order()).toEqual({ root: [ak, bk], collections: {} });
     await manager.remove([manager.groups().find((group) => group.name === 'A')!.key]);
@@ -653,9 +785,9 @@ describe('repository scan coordination', () => {
     gate.resolve();
     await removing;
     expect(manager.groups()).toHaveLength(1);
-    expect(manager.groups()[0].collectionId).toBe(collection.id);
+    expect(manager.groups()[0].collectionIds).toEqual([collection.id]);
     await manager.synchronizeSharedState();
-    expect(manager.groups()[0].collectionId).toBe(collection.id);
+    expect(manager.groups()[0].collectionIds).toEqual([collection.id]);
   });
   it('reloads authoritative state despite stale Memento and discards a scan overtaken by another host removal', async () => {
     const first = setup(),
@@ -841,7 +973,7 @@ describe('Add Repository host entry', () => {
     release();
     await expect(adding).resolves.toEqual({ added: 1, existing: 0, skipped: 0 });
     expect(manager.list()).toEqual([repo]);
-    expect(manager.groups()[0].collectionId).toBeUndefined();
+    expect(manager.groups()[0].collectionIds).toEqual([]);
     await expect(value.addRepository('retry-scan', keys, undefined, undefined)).rejects.toThrow();
   });
   it.each(['cancel', 'dispose'] as const)(
@@ -972,9 +1104,9 @@ describe('Add Repository host entry', () => {
     });
     expect(result.collection).toEqual(manager.collections()[0]);
     expect(store.snapshot().revision).toBe(revision + 1);
-    expect(manager.groups().every((group) => group.collectionId === result.collection?.id)).toBe(
-      true,
-    );
+    expect(
+      manager.groups().every((group) => group.collectionIds.includes(result.collection!.id)),
+    ).toBe(true);
     const changed = vi.fn();
     manager.onDidChangeRepositories(changed);
     const regroup = await value.discoverRepositories('scan-root', root);
@@ -984,7 +1116,7 @@ describe('Add Repository host entry', () => {
       undefined,
       undefined,
     );
-    expect(manager.groups().every((group) => !group.collectionId)).toBe(true);
+    expect(manager.groups().every((group) => !group.collectionIds.length)).toBe(true);
     expect(changed).toHaveBeenCalledOnce();
     expect(projects.notifyCatalogChanged).toHaveBeenCalledTimes(3);
   });

@@ -7,7 +7,7 @@ export interface Repository {
   gitDir?: string;
   name: string;
   mainRoot?: string;
-  collectionId?: string;
+  collectionIds?: string[];
 }
 export type OpenProjectResult =
   { kind: 'current-window'; root: string; exactRoot: boolean } | { kind: 'other-window' };
@@ -23,6 +23,19 @@ export interface ReorderRepository {
   key: string;
   targetKey: string;
   position: 'before' | 'after';
+  collectionId?: string;
+}
+export interface RepositoryRow {
+  key: string;
+  collectionId: string | null;
+}
+export interface RepositoryMembershipUpdate {
+  keys: string[];
+  changes: { collectionId: string; included: boolean }[];
+}
+export interface MoveRepositoryRows {
+  rows: RepositoryRow[];
+  targetCollectionId: string | null;
 }
 export interface RepositoryDiscoveryCandidate {
   key: string;
@@ -585,6 +598,8 @@ export interface RpcRequest {
     | 'renameRepositoryCollection'
     | 'deleteRepositoryCollection'
     | 'moveRepositories'
+    | 'updateRepositoryMemberships'
+    | 'moveRepositoryRows'
     | 'snapshot'
     | 'operationReview'
     | 'conflictDetails'

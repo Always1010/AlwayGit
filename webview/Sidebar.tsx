@@ -29,6 +29,8 @@ import {
   repositoryEntryKey,
   visibleRepositoryKeys,
   repositoryCollectionGroups,
+  repositoryRowKey,
+  repositoryRows,
 } from './repositoryOrder';
 
 export type ContextHandler = (
@@ -561,11 +563,16 @@ function SidebarPanel({
     },
   });
   const dragging = useRef<{ key: string; parent?: string }>(undefined),
-    [dropTarget, setDropTarget] = useState<{ key: string; position: 'before' | 'after' }>(),
+    [dropTarget, setDropTarget] = useState<{
+      key: string;
+      parent?: string;
+      position: 'before' | 'after';
+    }>(),
     [ordering, setOrdering] = useState(false);
   const dropProps = (key: string, parent?: string) => ({
     'data-repository-order-key': key,
-    'data-drop-position': dropTarget?.key === key ? dropTarget.position : undefined,
+    'data-drop-position':
+      dropTarget?.key === key && dropTarget.parent === parent ? dropTarget.position : undefined,
     onDragOver: (event: React.DragEvent<HTMLDivElement>) => {
       const source = dragging.current;
       if (ordering || !source || source.parent !== parent || source.key === key) {
@@ -577,6 +584,7 @@ function SidebarPanel({
       const bounds = event.currentTarget.getBoundingClientRect();
       setDropTarget({
         key,
+        parent,
         position: event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after',
       });
     },
@@ -590,7 +598,7 @@ function SidebarPanel({
       setDropTarget(undefined);
       setOrdering(true);
       void state
-        .reorderRepository({ key: source.key, targetKey: key, position })
+        .reorderRepository({ key: source.key, targetKey: key, position, collectionId: parent })
         .finally(() => setOrdering(false));
     },
   });
@@ -639,7 +647,9 @@ function SidebarPanel({
     const scope = target.closest<HTMLElement>('[data-selection-scope]')?.dataset.selectionScope;
     if (!scope) return;
     if (scope === 'repositories') {
-      const keys = repositoryGroups.map((group) => group.key);
+      const keys = repositoryRows(repositoryGroups, state.repositoryCollections).map(
+        repositoryRowKey,
+      );
       handleSelectionKeyboard(
         event,
         () => state.setRepositorySelection(keys, keys[0]),
@@ -771,6 +781,7 @@ function SidebarPanel({
             .reorderRepository({
               key,
               targetKey,
+              collectionId: parent,
               position: event.key === 'ArrowUp' ? 'before' : 'after',
             })
             .finally(() => {
@@ -787,17 +798,18 @@ function SidebarPanel({
       />
     );
   };
-  const repositoryButton = (group: RepositoryGroup, nested = false) => {
+  const repositoryButton = (group: RepositoryGroup, parent?: string) => {
+    const nested = parent !== undefined,
+      rowKey = repositoryRowKey({ key: group.key, collectionId: parent ?? null });
     const repo = group.repository,
       status = state.repositoryStatuses[repo.id],
       unpushed = status?.unpushed ?? 0,
       current = group.members.some((member) => member.id === state.repoId),
-      selected = state.selectedRepositoryKeys.includes(group.key),
+      selected = state.selectedRepositoryKeys.includes(rowKey),
       label = unpushed
         ? t('sidebar.unpushedCommits', { name: group.name, unpushed: unpushed })
         : group.name;
     const key = repositoryOrderKey(group.key),
-      parent = nested ? group.collectionId : undefined,
       activate = () => {
         if (!current) void state.selectRepository(repo.id);
       };
@@ -806,22 +818,27 @@ function SidebarPanel({
         repositorySelectionOrder,
         state.selectedRepositoryKeys,
         state.repositorySelectionAnchor,
-        group.key,
+        rowKey,
         { toggle: event.ctrlKey || event.metaKey, range: event.shiftKey },
       );
       state.setRepositorySelection(next.selected, next.anchor);
     };
     const openContext = (event: React.MouseEvent | React.KeyboardEvent) => {
         const groups = selected
-          ? repositoryGroups.filter((item) => state.selectedRepositoryKeys.includes(item.key))
+          ? repositoryGroups.filter((item) =>
+              repositoryRows([item], state.repositoryCollections).some((row) =>
+                state.selectedRepositoryKeys.includes(repositoryRowKey(row)),
+              ),
+            )
           : [group];
-        if (!selected) state.setRepositorySelection([group.key], group.key);
+        if (!selected) state.setRepositorySelection([rowKey], rowKey);
         context(event, { kind: 'repository', group, groups });
       },
       target: MenuTarget = { kind: 'repository', group, groups: [group] };
     return (
       <div
-        key={group.key}
+        key={rowKey}
+        data-repository-row={rowKey}
         data-repository-group={group.key}
         {...dropProps(key, parent)}
         className={`repository-row${nested ? ' repository-collection-member' : ''} ${selected ? 'action-selected' : ''}`}
@@ -946,7 +963,7 @@ ${status.branch}${unpushed ? ` · ${unpushed} unpushed` : ''}`
                 </div>
                 {!collapsed && (
                   <div className="repository-collection-members">
-                    {groups.map((group) => repositoryButton(group, true))}
+                    {groups.map((group) => repositoryButton(group, entry.collection.id))}
                   </div>
                 )}
               </div>

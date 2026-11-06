@@ -17,7 +17,7 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 });
 const directories: string[] = [];
 const empty = (): RepositoryCatalog => ({
-  schemaVersion: 1,
+  schemaVersion: 2,
   revision: 0,
   roots: [],
   exclusions: [],
@@ -64,7 +64,7 @@ describe('authoritative shared repository catalog', () => {
       }),
       second.transaction((catalog) => {
         catalog.roots.push('C');
-        catalog.assignments.B = 'client';
+        catalog.assignments.B = ['client'];
         catalog.order!.root = ['repository:C', 'collection:client'];
         catalog.order!.collections.client = ['repository:B'];
       }),
@@ -73,7 +73,7 @@ describe('authoritative shared repository catalog', () => {
     expect(first.snapshot()).toMatchObject({
       roots: ['B', 'C'],
       exclusions: ['A'],
-      assignments: { B: 'client' },
+      assignments: { B: ['client'] },
       order: {
         root: ['repository:C', 'collection:client'],
         collections: { client: ['repository:B'] },
@@ -89,7 +89,7 @@ describe('authoritative shared repository catalog', () => {
     await store.reload();
     expect(migrate).toHaveBeenCalledOnce();
     expect(store.snapshot().roots).toEqual(['legacy']);
-    for (const text of ['broken JSON', JSON.stringify({ ...empty(), schemaVersion: 2 })]) {
+    for (const text of ['broken JSON', JSON.stringify({ ...empty(), schemaVersion: 99 })]) {
       await writeFile(store.filename, text);
       await expect(
         store.transaction((catalog) => {
@@ -99,6 +99,33 @@ describe('authoritative shared repository catalog', () => {
       expect(await readFile(store.filename, 'utf8')).toBe(text);
       expect(store.snapshot().roots).toEqual(['legacy']);
     }
+  });
+  it('upgrades a v1 catalog once while preserving order and rejecting failed migration writes', async () => {
+    const directory = await fixture(),
+      store = new CatalogStore(directory, empty);
+    const legacy = {
+      ...empty(),
+      schemaVersion: 1,
+      revision: 7,
+      roots: ['A'],
+      collections: [{ id: 'client', name: 'Client' }],
+      assignments: { A: 'client' },
+      order: { root: ['collection:client'], collections: { client: ['repository:A'] } },
+    };
+    await writeFile(store.filename, JSON.stringify(legacy));
+    io.failRename = true;
+    await expect(store.reload()).rejects.toThrow('replacement failure');
+    expect(JSON.parse(await readFile(store.filename, 'utf8'))).toEqual(legacy);
+    io.failRename = false;
+    await store.reload();
+    expect(store.snapshot()).toEqual({
+      ...legacy,
+      schemaVersion: 2,
+      revision: 8,
+      assignments: { A: ['client'] },
+    });
+    await store.reload();
+    expect(store.snapshot().revision).toBe(8);
   });
   it('keeps the previous disk and confirmed snapshot when atomic replacement fails, then permits a retry', async () => {
     const directory = await fixture(),

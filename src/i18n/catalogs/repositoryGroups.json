@@ -1,0 +1,62 @@
+{
+  "repositoryGroups.manage": {
+    "en": "Manage Groups…",
+    "zh-CN": "管理分组…",
+    "review": "translated",
+    "context": "Repository group membership management and drag-and-drop"
+  },
+  "repositoryGroups.title": {
+    "en": "Manage Groups",
+    "zh-CN": "管理分组",
+    "review": "translated",
+    "context": "Repository group membership management and drag-and-drop"
+  },
+  "repositoryGroups.selected": {
+    "en": "{{count}} repositories selected",
+    "zh-CN": "已选择 {{count}} 个仓库",
+    "review": "translated",
+    "context": "Repository group membership management and drag-and-drop"
+  },
+  "repositoryGroups.hint": {
+    "en": "Select one or more groups. Repositories with no groups appear at the root.",
+    "zh-CN": "可以选择多个分组。不选择任何分组时，仓库显示在根层。",
+    "review": "translated",
+    "context": "Repository group membership management and drag-and-drop"
+  },
+  "repositoryGroups.mixedHint": {
+    "en": "A mixed checkbox means some selected repositories belong to the group. Only changed groups will be applied.",
+    "zh-CN": "半选表示部分仓库属于该分组。只应用修改过的分组勾选，其他归属保持不变。",
+    "review": "translated",
+    "context": "Repository group membership management and drag-and-drop"
+  },
+  "repositoryGroups.search": {
+    "en": "Search groups",
+    "zh-CN": "搜索分组",
+    "review": "translated",
+    "context": "Repository group membership management and drag-and-drop"
+  },
+  "repositoryGroups.empty": {
+    "en": "No groups yet. Create a group using Add in Repositories.",
+    "zh-CN": "还没有分组，请通过仓库列表的添加入口创建分组。",
+    "review": "translated",
+    "context": "Repository group membership management and drag-and-drop"
+  },
+  "repositoryGroups.noMatches": {
+    "en": "No matching groups.",
+    "zh-CN": "没有匹配的分组。",
+    "review": "translated",
+    "context": "Repository group membership management and drag-and-drop"
+  },
+  "repositoryGroups.sourceChanged": {
+    "en": "The source group membership has changed. Refresh the repository list and try again.",
+    "zh-CN": "来源分组关系已变化，请刷新仓库列表后重试。",
+    "review": "translated",
+    "context": "Repository group membership management and drag-and-drop"
+  },
+  "repositoryGroups.deleteGroup": {
+    "en": "Delete repository group \"{{name}}\"? Repositories in other groups stay there; those with no remaining groups return to the root.",
+    "zh-CN": "删除仓库分组“{{name}}”？仓库保留其他分组归属，没有其他分组的仓库回到根层。",
+    "review": "translated",
+    "context": "Repository group membership management and drag-and-drop"
+  }
+}

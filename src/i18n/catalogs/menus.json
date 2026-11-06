@@ -47,12 +47,6 @@
     "review": "translated",
     "context": "webview/menus.ts / menuFor"
   },
-  "menus.moveToRepositoryGroup": {
-    "en": "Move to Repository Group…",
-    "zh-CN": "移动到仓库分组…",
-    "review": "translated",
-    "context": "webview/menus.ts / menuFor"
-  },
   "menus.removeFromAlwayGit": {
     "en": "Remove from AlwayGit…",
     "zh-CN": "从 AlwayGit 移除…",

@@ -13,7 +13,7 @@ export interface RepositoryGroup {
   name: string;
   repository: Repository;
   members: Repository[];
-  collectionId?: string;
+  collectionIds: string[];
 }
 
 /** Group display entries without changing working-directory IDs or action targets. */
@@ -35,7 +35,7 @@ export function groupRepositories(
     const repository = members.find((repo) => repo.id === activeId) ?? representative;
     const name =
       mainRoot?.replace(/\\/g, '/').replace(/\/+$/, '').split('/').at(-1) || representative.name;
-    const collectionId = members.find((repo) => repo.collectionId)?.collectionId;
-    return { key, name, repository, members, ...(collectionId ? { collectionId } : {}) };
+    const collectionIds = [...new Set(members.flatMap((repo) => repo.collectionIds ?? []))];
+    return { key, name, repository, members, collectionIds };
   });
 }

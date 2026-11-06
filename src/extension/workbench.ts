@@ -57,6 +57,8 @@ import {
   repositoryKeysSchema,
   repositoryCollectionSchema,
   moveRepositoriesSchema,
+  repositoryMembershipsSchema,
+  moveRepositoryRowsSchema,
   repositoryDiscoverySchema,
   cancelRepositoryDiscoverySchema,
   addRepositoriesSchema,
@@ -1304,7 +1306,7 @@ export class Workbench implements vscode.Disposable {
     if (!collection) return;
     const remove = this.text('host.deleteGroup'),
       confirmed = await vscode.window.showWarningMessage(
-        this.text('host.deleteRepositoryGroupItsRepositoriesWillRemainAtThe', {
+        this.text('repositoryGroups.deleteGroup', {
           name: collection.name,
         }),
         { modal: true },
@@ -1717,6 +1719,8 @@ export class Workbench implements vscode.Disposable {
         'renameRepositoryCollection',
         'deleteRepositoryCollection',
         'moveRepositories',
+        'updateRepositoryMemberships',
+        'moveRepositoryRows',
         'reorderRepository',
       ].includes(request.method)
     )
@@ -1767,6 +1771,20 @@ export class Workbench implements vscode.Disposable {
     if (request.method === 'deleteRepositoryCollection') {
       await this.deleteRepositoryCollection(repositoryCollectionSchema.parse(request.payload).id);
       return null;
+    }
+    if (request.method === 'updateRepositoryMemberships') {
+      const changed = await this.repositories.updateMemberships(
+        repositoryMembershipsSchema.parse(request.payload),
+      );
+      if (changed) await this.projects.notifyCatalogChanged();
+      return changed;
+    }
+    if (request.method === 'moveRepositoryRows') {
+      const moved = await this.repositories.moveRows(
+        moveRepositoryRowsSchema.parse(request.payload),
+      );
+      if (moved) await this.projects.notifyCatalogChanged();
+      return moved;
     }
     if (request.method === 'moveRepositories') {
       const data = moveRepositoriesSchema.parse(request.payload);

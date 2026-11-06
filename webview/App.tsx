@@ -1,3 +1,4 @@
+import { RepositoryGroupsDialog } from './RepositoryGroupsDialog';
 import { flushSync } from 'react-dom';
 import {
   Suspense,
@@ -112,6 +113,7 @@ export function App() {
     [dialog, setDialog] = useState<DialogRequest>(),
     [repositoryDialog, setRepositoryDialog] = useState(false),
     [repositoryRemoval, setRepositoryRemoval] = useState<RepositoryGroup[]>(),
+    [repositoryGroupsDialog, setRepositoryGroupsDialog] = useState<RepositoryGroup[]>(),
     [repositoryFetch, setRepositoryFetch] = useState<Repository[]>(),
     [context, setContext] = useState<{
       x: number;
@@ -380,6 +382,7 @@ export function App() {
         dialog ||
         repositoryDialog ||
         repositoryRemoval ||
+        repositoryGroupsDialog ||
         repositoryFetch ||
         context ||
         toolbarMenu ||
@@ -521,6 +524,10 @@ export function App() {
       editFile: (target) => void edit(target),
       host,
       addRepository,
+      manageRepositoryGroups: (groups) => {
+        setContext(undefined);
+        setRepositoryGroupsDialog(groups);
+      },
       removeRepositories: (groups) => {
         setContext(undefined);
         setRepositoryRemoval(groups);
@@ -1045,6 +1052,12 @@ export function App() {
         />
       )}
       {repositoryDialog && <RepositoryDialog onClose={() => setRepositoryDialog(false)} />}
+      {repositoryGroupsDialog && (
+        <RepositoryGroupsDialog
+          groups={repositoryGroupsDialog}
+          onClose={() => setRepositoryGroupsDialog(undefined)}
+        />
+      )}
       {repositoryRemoval && (
         <RepositoryRemoveDialog
           groups={repositoryRemoval}

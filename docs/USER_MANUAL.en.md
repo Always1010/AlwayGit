@@ -987,11 +987,11 @@ Click list whitespace or press Esc to clear the blue selection while retaining a
 ### Create and organize project groups
 
 1. In the Add… popover, switch to Add Group, enter a name, and create the group.
-2. Right-click one or more repositories, choose Move to Repository Group…, then select the target group.
-3. Click a group heading to expand or collapse its contents. To change the order, drag items at the same level or use the move-up and move-down options in the context menu.
+2. Right-click one or more repositories and choose Manage Groups…. Check groups to join, uncheck groups to leave, and click Apply. A repository can belong to several groups; clearing all groups returns it to the root. Mixed checks indicate partial membership across selected repositories; change only the groups you want to update.
+3. Click a group heading to expand or collapse its contents. To change the order, drag items at the same level or focus the drag handle and press Alt+Up/Down.
 4. Right-click a group to rename or delete it. Read the confirmation message before deleting.
 
-**Result:** Repositories are arranged by your project categories. When you delete a group, its repositories return to the root level.
+**Result:** Repositories are arranged by your project categories. Deleting a group preserves entries in other groups; only repositories with no remaining groups return to the root.
 
 **Caution:** Groups organize the navigation only. They do not move directories on disk or combine the contents of different repositories.
 

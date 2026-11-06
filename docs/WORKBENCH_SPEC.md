@@ -70,7 +70,9 @@ Workbench 的 Repositories 顶层列表按共享 Git 存储归并，同一仓库
 
 Repositories 标题只显示一个 `Add…` 加号和刷新图标，标题右键也复用该添加入口。加号打开工作台内嵌“添加”浮窗，顶部可切换“添加仓库”和“添加分组”，默认进入添加仓库；添加分组直接输入名称并创建空分组，空白、超长或同名名称在浮窗内提示，支持 Enter 提交及 Esc 取消，不使用 VS Code 输入框。切换类型保留各自草稿及已完成的扫描选择；切换时正在进行的扫描会取消，关闭不产生部分添加。只有选择磁盘目录时使用 VS Code 原生目录选择器。选定目录后，同一浮窗显示可取消的递归扫描进度，再按名称显示逻辑仓库级多选结果，分别标记“可添加”和禁用的“已添加”。可添加项默认全选，支持筛选、全选、普通切换与 Shift 连续范围；目标分组和内联新建分组位于同一确认流程，主按钮明确显示将添加的仓库数量。扫描、筛选和关闭浮窗不改变仓库目录，只有最终确认项才注册；跳过项及原因留在浮窗中查看。仓库行和分组标题通过右键打开管理菜单；仓库菜单及多选菜单提供 `Remove from AlwayGit…`。工作台内嵌确认浮窗列出将移除的仓库并说明磁盘文件不受影响。该操作只移除导航与持久化记录、释放监听并阻止自动发现立即恢复，不删除磁盘目录或 Git 数据；再次明确添加会恢复显示。
 
-用户可以创建、重命名和删除仓库分组，并将单个或多个逻辑仓库移动到分组。分组在 Workbench 的 Repositories 中显示为可折叠目录；没有归属的仓库不创建“未分组”目录，直接与分组目录同处 Repositories 根层。删除分组只删除组织结构，其中仓库回到根层，不从 AlwayGit 移除。分组名称、归属及排列顺序随仓库路径在同一 VS Code Profile 与运行环境内共享。根层的仓库与分组共用顺序，新增项追加到所在层级末尾；移动仓库到分组或根层时追加到目标末尾，重命名不改变位置。分组和仓库支持同层拖动排序，落点显示插入线；右键提供上移、下移，边界项禁用。删除分组时其中仓库按组内顺序追加到根层末尾。旧数据首次迁移保留根层仓库原有相对顺序，分组按保存的创建顺序排在其后；迁移与排序不改变仓库 ID、活动 工作树、草稿和选择，Shift 范围与展开后的显示顺序一致。
+用户可以创建、重命名和删除仓库分组；一个逻辑仓库可以同时属于多个分组，各处共用仓库身份、状态和操作目标。分组显示为可折叠目录，没有任何分组归属的仓库直接显示在 Repositories 根层。仓库单选与多选菜单只提供一个“管理分组…”入口，替换原移动入口；内嵌浮窗用勾选列表修改成员关系，可同时勾选多个组，全部取消后回到根层。多选时半选表示部分仓库属于该组，只保存用户修改过的分组勾选，保留其他不同归属；列表较长时支持搜索及内部滚动。取消不保存，无变化时禁用应用，失败保留草稿。删除分组只删除该组及其成员关系，仍属于其他组的仓库保留在那里，没有其他组的仓库才按原组内相对顺序追加到根层。完整“从 AlwayGit 移除”清理所有分组入口，不删除磁盘目录。
+
+分组名称、成员关系和排列顺序在同一 VS Code Profile 与运行环境内共享。根层仓库和分组共用顺序，每个分组独立保存成员顺序；新增成员追加到所在层级末尾，重复加入和重命名不改变位置。同层拖动排序显示插入线，Alt+上/下键调整当前层级顺序。列表行以所在层级和逻辑仓库键共同标识，选择、焦点和 Shift 范围按行处理，实际仓库操作去重。旧单分组数据兼容迁移为单元素成员集合，保留分组、各层顺序、仓库 ID、活动工作树及草稿。
 
 Repository 和 工作树 名称行单击只改变操作选择，不切换当前仓库或工作目录；普通单击单选，Ctrl/Cmd 单击切换单项，Shift 单击选择连续范围，Ctrl/Cmd+Shift 将连续范围加入既有选择。双击或键盘 Enter 才切换仓库或 工作树。普通仓库切换完成后，Graph 默认选择并滚动显示 Working Tree，右侧显示工作区状态，不恢复该仓库上次查看的 Commit；工作台启动、重载或标签恢复属于会话恢复，继续打开保存的 Graph 视图和 Commit；显式的跨标签页 Commit 或比较传递仍打开指定目标。右键已选项保留批量选择，右键未选项先切为单选。Repository、Local Branches、每个 Remote、Tags 和 工作树 是互斥的侧栏操作选择作用域；任一作用域产生非空选择时清除其他作用域的蓝色操作选择，避免同时显示不能被同一命令使用的目标。当前 Repository 以主题强调色的仓库图标标识，不另加三角形或占位列。工作树 和本地分支在内容排头显示实心播放三角形，浅色背景使用纯黑、深色背景使用纯白，非当前行保留同宽空位以对齐内容；蓝色选择背景只表示操作范围，当前状态与操作选择可以同时存在。分支复选框属于 Graph 筛选控件，三角形位于复选框之后、分支图标之前。切换操作选择作用域不改变当前 Repository、当前分支或 Graph 筛选。当前状态使用 `aria-current` 暴露给辅助技术，不重复显示 `Current` 文字徽标。Detached HEAD 时不标记本地分支，但仍标记当前 工作树。
 
@@ -173,8 +175,8 @@ Commit 的图形、Message、作者和日期作为整行统一悬停、选择和
 
 | 对象 | 项目 |
 | --- | --- |
-| Repository（单选） | `Switch to Repository`、`Open in New AlwayGit Tab`、`Open Repository in New Project Window`、`Fetch…`、`Refresh Status`、`Copy Repository Path`、`Move to Repository Group…`、`Remove from AlwayGit…` |
-| Repository（多选） | `Fetch N Repositories…`、`Refresh Status for N Repositories`、`Copy N Repository Paths`、`Move to Repository Group…`、`Remove from AlwayGit…` |
+| Repository（单选） | `Switch to Repository`、`Open in New AlwayGit Tab`、`Open Repository in New Project Window`、`Fetch…`、`Refresh Status`、`Copy Repository Path`、`Manage Groups…`、`Remove from AlwayGit…` |
+| Repository（多选） | `Fetch N Repositories…`、`Refresh Status for N Repositories`、`Copy N Repository Paths`、`Manage Groups…`、`Remove from AlwayGit…` |
 | Repository Group | `Rename Repository Group…`、`Delete Repository Group…` |
 | Local Branch | `Checkout…`、`Add to Graph Scope`、`Show Only This Branch History`、`Locate Branch Tip in Graph`、`Create Branch…`、`Create Tag…`、`Merge…`、`Rebase…`、`Push…`、`Delete Branch…`、`Copy Branch Name` |
 | Remote Branch | `Add to Graph Scope`、`Show Only This Branch History`、`Checkout as Local Branch…`、`Merge…`、`Rebase…`、`Delete Branch from <remote>…`、`Copy Branch Name` |

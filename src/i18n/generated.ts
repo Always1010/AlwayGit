@@ -3189,10 +3189,6 @@ export const catalog = {
     "en": "Delete Group",
     "zh-CN": "删除分组"
   },
-  "host.deleteRepositoryGroupItsRepositoriesWillRemainAtThe": {
-    "en": "Delete repository group \"{{name}}\"? Its repositories will remain at the repository root.",
-    "zh-CN": "删除仓库分组“{{name}}”？其中的仓库会保留在仓库根层。"
-  },
   "host.repositoryRoot": {
     "en": "Repository root",
     "zh-CN": "仓库根目录"
@@ -4063,10 +4059,6 @@ export const catalog = {
   "menus.copyRepositoryPaths": {
     "en": "Copy {{count}} Repository Paths",
     "zh-CN": "复制 {{count}} 个仓库路径"
-  },
-  "menus.moveToRepositoryGroup": {
-    "en": "Move to Repository Group…",
-    "zh-CN": "移动到仓库分组…"
   },
   "menus.removeFromAlwayGit": {
     "en": "Remove from AlwayGit…",
@@ -5342,6 +5334,46 @@ export const catalog = {
   "repositoriesRemove.filesOnDiskAndGitHistoryWillNotBe": {
     "en": "Files on disk and Git history will not be deleted. You can add these repositories again later.",
     "zh-CN": "不会删除磁盘上的文件或 Git 历史，之后仍可重新添加这些仓库。"
+  },
+  "repositoryGroups.manage": {
+    "en": "Manage Groups…",
+    "zh-CN": "管理分组…"
+  },
+  "repositoryGroups.title": {
+    "en": "Manage Groups",
+    "zh-CN": "管理分组"
+  },
+  "repositoryGroups.selected": {
+    "en": "{{count}} repositories selected",
+    "zh-CN": "已选择 {{count}} 个仓库"
+  },
+  "repositoryGroups.hint": {
+    "en": "Select one or more groups. Repositories with no groups appear at the root.",
+    "zh-CN": "可以选择多个分组。不选择任何分组时，仓库显示在根层。"
+  },
+  "repositoryGroups.mixedHint": {
+    "en": "A mixed checkbox means some selected repositories belong to the group. Only changed groups will be applied.",
+    "zh-CN": "半选表示部分仓库属于该分组。只应用修改过的分组勾选，其他归属保持不变。"
+  },
+  "repositoryGroups.search": {
+    "en": "Search groups",
+    "zh-CN": "搜索分组"
+  },
+  "repositoryGroups.empty": {
+    "en": "No groups yet. Create a group using Add in Repositories.",
+    "zh-CN": "还没有分组，请通过仓库列表的添加入口创建分组。"
+  },
+  "repositoryGroups.noMatches": {
+    "en": "No matching groups.",
+    "zh-CN": "没有匹配的分组。"
+  },
+  "repositoryGroups.sourceChanged": {
+    "en": "The source group membership has changed. Refresh the repository list and try again.",
+    "zh-CN": "来源分组关系已变化，请刷新仓库列表后重试。"
+  },
+  "repositoryGroups.deleteGroup": {
+    "en": "Delete repository group \"{{name}}\"? Repositories in other groups stay there; those with no remaining groups return to the root.",
+    "zh-CN": "删除仓库分组“{{name}}”？仓库保留其他分组归属，没有其他分组的仓库回到根层。"
   },
   "rpc.theReadRequestWasCancelled": {
     "en": "The read request was cancelled.",
@@ -8980,7 +9012,6 @@ export interface MessageParameters {
   "host.waitForTheRunningGitOperationBeforeRemovingThis": {  };
   "host.renameRepositoryGroup": {  };
   "host.deleteGroup": {  };
-  "host.deleteRepositoryGroupItsRepositoriesWillRemainAtThe": { name: ParameterValue };
   "host.repositoryRoot": {  };
   "host.placeAlongsideRepositoryGroups": {  };
   "host.moveRepositories": { count: number };
@@ -9198,7 +9229,6 @@ export interface MessageParameters {
   "menus.fetchRepositories": { count: number };
   "menus.refreshStatusForRepositories": { count: number };
   "menus.copyRepositoryPaths": { count: number };
-  "menus.moveToRepositoryGroup": {  };
   "menus.removeFromAlwayGit": {  };
   "menus.switchToRepository": {  };
   "menus.thisRepositoryIsAlreadyOpen": {  };
@@ -9514,6 +9544,16 @@ export interface MessageParameters {
   "repositoriesRemove.removing": {  };
   "repositoriesRemove.removeFromAlwayGitOnly": {  };
   "repositoriesRemove.filesOnDiskAndGitHistoryWillNotBe": {  };
+  "repositoryGroups.manage": {  };
+  "repositoryGroups.title": {  };
+  "repositoryGroups.selected": { count: number };
+  "repositoryGroups.hint": {  };
+  "repositoryGroups.mixedHint": {  };
+  "repositoryGroups.search": {  };
+  "repositoryGroups.empty": {  };
+  "repositoryGroups.noMatches": {  };
+  "repositoryGroups.sourceChanged": {  };
+  "repositoryGroups.deleteGroup": { name: ParameterValue };
   "rpc.theReadRequestWasCancelled": {  };
   "rpc.openAlwayGitInVSCodeToConnectToYour": {  };
   "rpc.theReadRequestTimedOut": {  };

@@ -14,13 +14,13 @@ export function reconcileRepositoryOrder(
   saved?: RepositoryOrder,
 ): RepositoryOrder {
   const ids = new Set(collections.map((collection) => collection.id));
-  const parent = new Map(
+  const memberships = new Map(
     groups.map((group) => [
       repositoryOrderKey(group.key),
-      group.collectionId && ids.has(group.collectionId) ? group.collectionId : undefined,
+      group.collectionIds.filter((id) => ids.has(id)),
     ]),
   );
-  const roots = groups.filter((group) => !parent.get(repositoryOrderKey(group.key)));
+  const roots = groups.filter((group) => !memberships.get(repositoryOrderKey(group.key))?.length);
   // Only legacy migration sorts existing root repositories. Future entries append.
   if (!saved) roots.sort((left, right) => left.name.localeCompare(right.name));
   const defaults = [
@@ -30,7 +30,7 @@ export function reconcileRepositoryOrder(
   return {
     root: appendMissing(
       (saved?.root ?? []).filter((key) =>
-        key.startsWith('collection:') ? ids.has(key.slice(11)) : !parent.get(key),
+        key.startsWith('collection:') ? ids.has(key.slice(11)) : !memberships.get(key)?.length,
       ),
       defaults,
     ),
@@ -39,10 +39,12 @@ export function reconcileRepositoryOrder(
         collection.id,
         appendMissing(
           (saved?.collections[collection.id] ?? []).filter(
-            (key) => !parent.has(key) || parent.get(key) === collection.id,
+            (key) => !memberships.has(key) || memberships.get(key)!.includes(collection.id),
           ),
           groups
-            .filter((group) => parent.get(repositoryOrderKey(group.key)) === collection.id)
+            .filter((group) =>
+              memberships.get(repositoryOrderKey(group.key))?.includes(collection.id),
+            )
             .map((group) => repositoryOrderKey(group.key)),
         ),
       ]),

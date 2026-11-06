@@ -10,7 +10,7 @@ const orderSchema = z.object({
   root: z.array(z.string()),
   collections: z.record(z.string(), z.array(z.string())),
 });
-const schema = z.object({
+const legacySchema = z.object({
   schemaVersion: z.literal(1),
   revision: z.number().int().nonnegative(),
   roots: z.array(z.string()),
@@ -20,13 +20,33 @@ const schema = z.object({
   order: orderSchema.optional(),
   importedWorkspaces: z.array(z.string()).optional(),
 });
+const schema = legacySchema.extend({
+  schemaVersion: z.literal(2),
+  assignments: z.record(
+    z.string(),
+    z.array(z.string()).transform((ids) => [...new Set(ids)]),
+  ),
+});
+type LegacyRepositoryCatalog = z.infer<typeof legacySchema>;
+const normalize = (value: unknown): RepositoryCatalog => {
+  const parsed = z.union([schema, legacySchema]).parse(value);
+  return parsed.schemaVersion === 2
+    ? parsed
+    : {
+        ...parsed,
+        schemaVersion: 2,
+        assignments: Object.fromEntries(
+          Object.entries(parsed.assignments).map(([key, id]) => [key, [id]]),
+        ),
+      };
+};
 export interface RepositoryCatalog {
-  schemaVersion: 1;
+  schemaVersion: 2;
   revision: number;
   roots: string[];
   exclusions: string[];
   collections: RepositoryCollection[];
-  assignments: Record<string, string>;
+  assignments: Record<string, string[]>;
   order?: RepositoryOrder;
   importedWorkspaces?: string[];
 }
@@ -38,11 +58,11 @@ export class CatalogStore {
   readonly filename: string;
   constructor(
     private readonly directory: string,
-    private readonly migrate: () => RepositoryCatalog,
+    private readonly migrate: () => RepositoryCatalog | LegacyRepositoryCatalog,
   ) {
     this.filename = path.join(directory, 'repository-catalog.v1.json');
     this.current = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       revision: 0,
       roots: [],
       exclusions: [],
@@ -53,7 +73,7 @@ export class CatalogStore {
   snapshot(): RepositoryCatalog {
     return structuredClone(this.current);
   }
-  private async read(): Promise<RepositoryCatalog | undefined> {
+  private async read(): Promise<{ catalog: RepositoryCatalog; migrated: boolean } | undefined> {
     let content: string;
     try {
       content = await readFile(this.filename, 'utf8');
@@ -62,7 +82,8 @@ export class CatalogStore {
       throw error;
     }
     try {
-      return schema.parse(JSON.parse(content));
+      const value = JSON.parse(content);
+      return { catalog: normalize(value), migrated: value.schemaVersion === 1 };
     } catch {
       throw new MessageError(
         localizeMessage('catalogStore.theSharedRepositoryCatalogIsDamagedOrUsesAn'),
@@ -119,11 +140,11 @@ export class CatalogStore {
     const operation = this.queue.then(() =>
       this.locked(async () => {
         const saved = await this.read(),
-          next = saved ?? schema.parse(this.migrate());
+          next = saved?.catalog ?? normalize(this.migrate());
         const previous = JSON.stringify(next),
           result = reduce(next);
         schema.parse(next);
-        if (!saved || JSON.stringify(next) !== previous) {
+        if (!saved || saved.migrated || JSON.stringify(next) !== previous) {
           next.revision++;
           await this.write(next);
         }

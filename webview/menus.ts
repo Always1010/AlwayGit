@@ -60,6 +60,7 @@ export interface MenuApi {
   ): Promise<void>;
   addRepository(): Promise<void>;
   removeRepositories(groups: RepositoryGroup[]): void;
+  manageRepositoryGroups?(groups: RepositoryGroup[]): void;
   fetchRepositories(repositories: Repository[]): void;
 }
 export function menuFor(
@@ -202,8 +203,8 @@ export function menuFor(
           ),
           copy(t('menus.copyRepositoryPaths', { count: groups.length }), paths.join('\n')),
           item(
-            t('menus.moveToRepositoryGroup'),
-            () => api.host('moveRepositories', { keys: groups.map((group) => group.key) }),
+            t('repositoryGroups.manage'),
+            () => api.manageRepositoryGroups?.(groups),
             'folder-opened',
           ),
           item(t('menus.removeFromAlwayGit'), () => api.removeRepositories(groups), 'close'),
@@ -236,8 +237,8 @@ export function menuFor(
         item(t('menus.refreshStatus'), () => state.loadRepositoryStatuses(), 'refresh'),
         copy(t('menus.copyRepositoryPath'), repository.root),
         item(
-          t('menus.moveToRepositoryGroup'),
-          () => api.host('moveRepositories', { keys: [target.group.key] }),
+          t('repositoryGroups.manage'),
+          () => api.manageRepositoryGroups?.([target.group]),
           'folder-opened',
         ),
         item(t('menus.removeFromAlwayGit'), () => api.removeRepositories([target.group]), 'close'),

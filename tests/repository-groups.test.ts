@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { groupRepositories } from '../src/protocol/repositories';
 import type { Repository, RepositoryCollection } from '../src/protocol/types';
 import { repositoryOrderKey } from '../src/protocol/repository-order';
-import { repositoryDisplayEntries, visibleRepositoryKeys } from '../webview/repositoryOrder';
+import {
+  repositoryDisplayEntries,
+  visibleRepositoryKeys,
+  repositoryRowKey,
+  repositoryCollectionGroups,
+} from '../webview/repositoryOrder';
 
 const main: Repository = {
   id: 'main',
@@ -55,8 +60,8 @@ describe('logical repository display groups', () => {
     expect(group.repository.root).toBe(linked.root);
   });
   it('carries a user collection across the logical repository without changing operation targets', () => {
-    const group = groupRepositories([{ ...linked, collectionId: 'client-project' }, main])[0];
-    expect(group.collectionId).toBe('client-project');
+    const group = groupRepositories([{ ...linked, collectionIds: ['client-project'] }, main])[0];
+    expect(group.collectionIds).toEqual(['client-project']);
     expect(group.repository.id).toBe(main.id);
   });
   it('uses rendered repository order when registration order differs', () => {
@@ -65,7 +70,7 @@ describe('logical repository display groups', () => {
       root: `D:/Projects/${name}`,
       commonDir: `D:/Projects/${name}/.git`,
       name,
-      ...(collectionId ? { collectionId } : {}),
+      ...(collectionId ? { collectionIds: [collectionId] } : {}),
     });
     const groups = groupRepositories([
       repo('llvm-project'),
@@ -103,8 +108,8 @@ describe('logical repository display groups', () => {
         mainRoot: 'D:/Clone',
         name: 'Clone',
       },
-      other = { ...linked, id: 'other', commonDir: 'D:/Other/.git', collectionId: 'client' };
-    const groups = groupRepositories([{ ...main, collectionId: 'client' }, other, clone]),
+      other = { ...linked, id: 'other', commonDir: 'D:/Other/.git', collectionIds: ['client'] };
+    const groups = groupRepositories([{ ...main, collectionIds: ['client'] }, other, clone]),
       keys = groups.map((group) => repositoryOrderKey(group.key));
     const collections = [
         { id: 'client', name: 'Client' },
@@ -118,16 +123,34 @@ describe('logical repository display groups', () => {
     expect(entries.map((entry) => entry.label)).toEqual(['Other', 'Clone', 'Client']);
     expect(visibleRepositoryKeys(entries, groups, [], order)).toEqual([
       groups[2].key,
-      groups[1].key,
-      groups[0].key,
+      repositoryRowKey({ key: groups[1].key, collectionId: 'client' }),
+      repositoryRowKey({ key: groups[0].key, collectionId: 'client' }),
     ]);
     expect(visibleRepositoryKeys(entries, groups, ['client'], order)).toEqual([groups[2].key]);
   });
   it('excludes collapsed collection members from the visible repository range', () => {
     const collections: RepositoryCollection[] = [{ id: 'client', name: 'Client' }];
-    const groups = groupRepositories([{ ...main, collectionId: 'client' }, linked]);
+    const groups = groupRepositories([{ ...main, collectionIds: ['client'] }, linked]);
     const entries = repositoryDisplayEntries(groups, collections);
-    expect(visibleRepositoryKeys(entries, groups, [])).toEqual([groups[0].key]);
+    expect(visibleRepositoryKeys(entries, groups, [])).toEqual([
+      repositoryRowKey({ key: groups[0].key, collectionId: 'client' }),
+    ]);
     expect(visibleRepositoryKeys(entries, groups, ['client'])).toEqual([]);
+  });
+  it('renders distinct rows for memberships without duplicating repository identities', () => {
+    const groups = groupRepositories([{ ...main, collectionIds: ['a', 'b'] }, linked]),
+      collections = [
+        { id: 'a', name: 'A' },
+        { id: 'b', name: 'B' },
+      ],
+      entries = repositoryDisplayEntries(groups, collections);
+    expect(entries.every((entry) => entry.kind === 'collection')).toBe(true);
+    expect(repositoryCollectionGroups(groups, 'a')).toEqual(groups);
+    expect(repositoryCollectionGroups(groups, 'b')).toEqual(groups);
+    expect(visibleRepositoryKeys(entries, groups, [])).toEqual([
+      repositoryRowKey({ key: groups[0].key, collectionId: 'a' }),
+      repositoryRowKey({ key: groups[0].key, collectionId: 'b' }),
+    ]);
+    expect(groups[0].members.map((member) => member.id)).toEqual(['main', 'linked']);
   });
 });

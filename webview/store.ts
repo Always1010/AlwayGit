@@ -69,6 +69,7 @@ import {
   type InterfaceSettingsUpdate,
 } from './appearance';
 import { groupRepositories } from '../src/protocol/repositories';
+import { repositoryRows, repositoryRowKey } from './repositoryOrder';
 import { fileHistoryKey } from '../src/protocol/history';
 import type { FileHistoryFilter } from '../src/protocol/types';
 
@@ -948,7 +949,11 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
       if (request !== catalogEpoch) return;
       const repositoryCollections = Array.isArray(collectionsResult) ? collectionsResult : [];
       const currentId = get().repoId,
-        keys = new Set(groupRepositories(repositories, currentId).map((group) => group.key));
+        keys = new Set(
+          repositoryRows(groupRepositories(repositories, currentId), repositoryCollections).map(
+            repositoryRowKey,
+          ),
+        );
       const selectedRepositoryKeys = get().selectedRepositoryKeys.filter((key) => keys.has(key));
       const repositorySelectionAnchor = selectedRepositoryKeys.includes(
         get().repositorySelectionAnchor ?? '',

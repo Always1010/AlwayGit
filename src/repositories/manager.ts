@@ -9,6 +9,8 @@ import type {
   RepositoryCollection,
   RepositoryOrder,
   ReorderRepository,
+  RepositoryMembershipUpdate,
+  MoveRepositoryRows,
 } from '../protocol/types';
 import {
   collectionOrderKey,
@@ -29,7 +31,7 @@ export interface AddDirectoryResult extends DiscoveryResult {
 const GLOBAL_ROOTS_KEY = 'alwaygit.repositoryRoots.v1';
 const GLOBAL_EXCLUDED_KEY = 'alwaygit.excludedRepositories.v1';
 const GLOBAL_COLLECTIONS_KEY = 'alwaygit.repositoryCollections.v1';
-const GLOBAL_COLLECTION_ASSIGNMENTS_KEY = 'alwaygit.repositoryCollectionAssignments.v1';
+const GLOBAL_COLLECTION_ASSIGNMENTS_KEY = 'alwaygit.repositoryCollectionAssignments.v2';
 const GLOBAL_ORDER_KEY = 'alwaygit.repositoryOrder.v1';
 const LEGACY_WORKSPACE_ROOTS_KEY = 'alwaygit.roots';
 
@@ -71,14 +73,21 @@ export class RepositoryManager implements vscode.Disposable {
         (root) => !exclusions.includes(pathKey(path.join(root, '.git'))),
       );
       return {
-        schemaVersion: 1,
+        schemaVersion: 2,
         revision: 0,
         roots,
         exclusions,
         collections: context.globalState.get<RepositoryCollection[]>(GLOBAL_COLLECTIONS_KEY, []),
-        assignments: context.globalState.get<Record<string, string>>(
+        assignments: context.globalState.get<Record<string, string[]>>(
           GLOBAL_COLLECTION_ASSIGNMENTS_KEY,
-          {},
+          Object.fromEntries(
+            Object.entries(
+              context.globalState.get<Record<string, string>>(
+                'alwaygit.repositoryCollectionAssignments.v1',
+                {},
+              ),
+            ).map(([key, id]) => [key, [id]]),
+          ),
         ),
         order: context.globalState.get<RepositoryOrder>(GLOBAL_ORDER_KEY),
       };
@@ -87,8 +96,8 @@ export class RepositoryManager implements vscode.Disposable {
   list(): Repository[] {
     const assignments = this.catalog.snapshot().assignments;
     return [...this.repositories.values()].map((repo) => {
-      const collectionId = assignments[repositoryGroupKey(repo)];
-      return collectionId ? { ...repo, collectionId } : repo;
+      const collectionIds = assignments[repositoryGroupKey(repo)];
+      return collectionIds?.length ? { ...repo, collectionIds } : repo;
     });
   }
   groups() {
@@ -105,7 +114,10 @@ export class RepositoryManager implements vscode.Disposable {
     const groups = groupRepositories(
       [...this.repositories.values(), ...additional]
         .filter((repo) => !excluded.has(repositoryGroupKey(repo)))
-        .map((repo) => ({ ...repo, collectionId: catalog.assignments[repositoryGroupKey(repo)] })),
+        .map((repo) => ({
+          ...repo,
+          collectionIds: catalog.assignments[repositoryGroupKey(repo)] ?? [],
+        })),
     );
     // Include saved but locally unavailable groups so another window's assignments/order survive reconciliation.
     const known = new Set(groups.map((group) => group.key));
@@ -126,7 +138,7 @@ export class RepositoryManager implements vscode.Disposable {
           name: key,
           repository: repo,
           members: [repo],
-          collectionId: catalog.assignments[key],
+          collectionIds: catalog.assignments[key] ?? [],
         });
       }
     return reconcileRepositoryOrder(groups, catalog.collections, catalog.order);
@@ -167,33 +179,31 @@ export class RepositoryManager implements vscode.Disposable {
       }
     return result;
   }
-  async reorder({ key, targetKey, position }: ReorderRepository): Promise<void> {
+  async reorder({ key, targetKey, position, collectionId }: ReorderRepository): Promise<void> {
     await this.mutate((catalog) => {
-      const collections = catalog.collections,
-        ids = new Set(collections.map((collection) => collection.id));
-      const parents = new Map<string, string | undefined>(
-        collections.map((collection) => [collectionOrderKey(collection.id), undefined]),
+      const ids = new Set(catalog.collections.map((collection) => collection.id));
+      if (collectionId && !ids.has(collectionId))
+        throw new MessageError(localizeMessage('manager.repositoryGroupNoLongerExists'));
+      const available = new Set(
+        this.groups()
+          .filter((group) => !catalog.exclusions.includes(group.key))
+          .flatMap((group) => {
+            const memberships = (catalog.assignments[group.key] ?? []).filter((id) => ids.has(id));
+            return (collectionId ? memberships.includes(collectionId) : !memberships.length)
+              ? [repositoryOrderKey(group.key)]
+              : [];
+          }),
       );
-      for (const group of this.groups())
-        if (!catalog.exclusions.includes(group.key))
-          parents.set(
-            repositoryOrderKey(group.key),
-            catalog.assignments[group.key] && ids.has(catalog.assignments[group.key])
-              ? catalog.assignments[group.key]
-              : undefined,
-          );
-      if (!parents.has(key) || !parents.has(targetKey))
-        throw new MessageError(localizeMessage('manager.theRepositoryOrGroupNoLongerExists'));
-      if (parents.get(key) !== parents.get(targetKey))
+      if (!collectionId) for (const id of ids) available.add(collectionOrderKey(id));
+      if (!available.has(key) || !available.has(targetKey))
         throw new MessageError(localizeMessage('manager.reorderItemsWithinTheSameLevel'));
       if (key === targetKey) return;
       const order = this.catalogOrder(catalog),
-        parent = parents.get(key),
-        entries = parent ? order.collections[parent] : order.root;
+        entries = collectionId ? order.collections[collectionId] : order.root;
       const next = entries.filter((entry) => entry !== key),
         target = next.indexOf(targetKey);
       next.splice(target + Number(position === 'after'), 0, key);
-      if (parent) order.collections[parent] = next;
+      if (collectionId) order.collections[collectionId] = next;
       else order.root = next;
       catalog.order = order;
     });
@@ -476,8 +486,9 @@ export class RepositoryManager implements vscode.Disposable {
               const key = repositoryGroupKey(repo);
               catalog.exclusions = catalog.exclusions.filter((item) => item !== key);
               if (collectionId) {
-                assignmentChanged ||= catalog.assignments[key] !== collectionId;
-                catalog.assignments[key] = collectionId;
+                const memberships = catalog.assignments[key] ?? [];
+                assignmentChanged ||= !memberships.includes(collectionId);
+                catalog.assignments[key] = [...new Set([...memberships, collectionId])];
               } else if (Object.hasOwn(destination, 'collectionId')) {
                 assignmentChanged ||= catalog.assignments[key] !== undefined;
                 delete catalog.assignments[key];
@@ -590,31 +601,100 @@ export class RepositoryManager implements vscode.Disposable {
         members = order.collections[id] ?? [];
       delete order.collections[id];
       order.root = order.root.filter((key) => key !== collectionOrderKey(id));
-      order.root.push(...members);
+      order.root.push(
+        ...members.filter(
+          (key) => !(catalog.assignments[key.slice(11)] ?? []).some((memberId) => memberId !== id),
+        ),
+      );
       catalog.collections = catalog.collections.filter((item) => item.id !== id);
       for (const [key, value] of Object.entries(catalog.assignments))
-        if (value === id) delete catalog.assignments[key];
+        this.assignCollections(
+          catalog,
+          key,
+          value.filter((memberId) => memberId !== id),
+        );
       catalog.order = order;
       catalog.order = this.catalogOrder(catalog);
     });
     this.listEmitter.fire();
   }
-  async move(keys: Iterable<string>, collectionId?: string): Promise<number> {
-    const requested = new Set(keys),
-      available = new Set(this.groups().map((group) => group.key));
-    const moved = await this.mutate((catalog) => {
-      if (collectionId && !catalog.collections.some((item) => item.id === collectionId))
+  private assignCollections(catalog: RepositoryCatalog, key: string, ids: string[]): void {
+    const unique = [...new Set(ids)];
+    if (unique.length) catalog.assignments[key] = unique;
+    else delete catalog.assignments[key];
+  }
+  private validateMembershipTargets(
+    catalog: RepositoryCatalog,
+    keys: Iterable<string>,
+    ids: Iterable<string>,
+  ): void {
+    const available = new Set(this.groups().map((group) => group.key)),
+      collections = new Set(catalog.collections.map((collection) => collection.id));
+    for (const key of keys)
+      if (!available.has(key) || catalog.exclusions.includes(key))
+        throw new MessageError(localizeMessage('manager.theRepositoryOrGroupNoLongerExists'));
+    for (const id of ids)
+      if (!collections.has(id))
         throw new MessageError(localizeMessage('manager.repositoryGroupNoLongerExists'));
-      let moved = 0;
-      for (const key of requested) {
+  }
+  async updateMemberships({ keys, changes }: RepositoryMembershipUpdate): Promise<number> {
+    const changed = await this.mutate((catalog) => {
+      this.validateMembershipTargets(
+        catalog,
+        keys,
+        changes.map((change) => change.collectionId),
+      );
+      let changed = 0;
+      for (const key of new Set(keys)) {
+        const before = catalog.assignments[key] ?? [],
+          next = new Set(before);
+        for (const { collectionId, included } of changes) {
+          if (included) next.add(collectionId);
+          else next.delete(collectionId);
+        }
+        if (before.length === next.size && before.every((id) => next.has(id))) continue;
+        this.assignCollections(catalog, key, [...next]);
+        changed++;
+      }
+      if (changed) catalog.order = this.catalogOrder(catalog);
+      return changed;
+    });
+    if (changed) this.listEmitter.fire();
+    return changed;
+  }
+  async moveRows({ rows, targetCollectionId }: MoveRepositoryRows): Promise<number> {
+    const moved = await this.mutate((catalog) => {
+      this.validateMembershipTargets(
+        catalog,
+        rows.map((row) => row.key),
+        [
+          ...rows.flatMap((row) => (row.collectionId === null ? [] : [row.collectionId])),
+          ...(targetCollectionId === null ? [] : [targetCollectionId]),
+        ],
+      );
+      // Validate every source before changing any memberships. A stale drag is rejected atomically.
+      for (const row of rows) {
+        const memberships = catalog.assignments[row.key] ?? [];
         if (
-          !available.has(key) ||
-          catalog.exclusions.includes(key) ||
-          catalog.assignments[key] === collectionId
+          row.collectionId === null ? memberships.length : !memberships.includes(row.collectionId)
         )
-          continue;
-        if (collectionId) catalog.assignments[key] = collectionId;
-        else delete catalog.assignments[key];
+          throw new MessageError(localizeMessage('repositoryGroups.sourceChanged'));
+      }
+      const byKey = new Map<string, Set<string>>();
+      for (const row of rows) {
+        const next = byKey.get(row.key) ?? new Set(catalog.assignments[row.key] ?? []);
+        if (targetCollectionId === null) next.clear();
+        else {
+          if (row.collectionId !== null) next.delete(row.collectionId);
+          next.add(targetCollectionId);
+        }
+        byKey.set(row.key, next);
+      }
+      let moved = 0;
+      for (const [key, next] of byKey) {
+        const before = catalog.assignments[key] ?? [];
+        if (before.length === next.size && before.every((id) => next.has(id))) continue;
+        this.assignCollections(catalog, key, [...next]);
         moved++;
       }
       if (moved) catalog.order = this.catalogOrder(catalog);
@@ -622,6 +702,23 @@ export class RepositoryManager implements vscode.Disposable {
     });
     if (moved) this.listEmitter.fire();
     return moved;
+  }
+  /** Compatibility for callers explicitly replacing all memberships with one destination. */
+  async move(keys: Iterable<string>, collectionId?: string): Promise<number> {
+    const requested = [...new Set(keys)];
+    return this.updateMemberships({
+      keys: requested,
+      changes: this.collections()
+        .map((collection) => ({
+          collectionId: collection.id,
+          included: collection.id === collectionId,
+        }))
+        .concat(
+          collectionId && !this.collections().some((collection) => collection.id === collectionId)
+            ? [{ collectionId, included: true }]
+            : [],
+        ),
+    });
   }
   private async discoveryRoots(): Promise<Set<string>> {
     const roots = await this.rememberedRoots();

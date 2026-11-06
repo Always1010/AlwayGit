@@ -1,4 +1,4 @@
-import type { RepositoryCollection, RepositoryOrder } from '../src/protocol/types';
+import type { RepositoryCollection, RepositoryOrder, RepositoryRow } from '../src/protocol/types';
 import type { RepositoryGroup } from '../src/protocol/repositories';
 import {
   collectionOrderKey,
@@ -16,9 +16,7 @@ export function repositoryDisplayEntries(
   order?: RepositoryOrder,
 ): RepositoryDisplayEntry[] {
   const collectionIds = new Set(collections.map((collection) => collection.id));
-  const roots = groups.filter(
-    (group) => !group.collectionId || !collectionIds.has(group.collectionId),
-  );
+  const roots = groups.filter((group) => !group.collectionIds.some((id) => collectionIds.has(id)));
   const entries: RepositoryDisplayEntry[] = [
     ...collections.map((collection) => ({
       kind: 'collection' as const,
@@ -43,7 +41,7 @@ export function repositoryCollectionGroups(
   collectionId: string,
   order?: RepositoryOrder,
 ): RepositoryGroup[] {
-  const members = groups.filter((group) => group.collectionId === collectionId),
+  const members = groups.filter((group) => group.collectionIds.includes(collectionId)),
     byKey = new Map(members.map((group) => [repositoryOrderKey(group.key), group]));
   return [...new Set([...(order?.collections[collectionId] ?? []), ...byKey.keys()])].flatMap(
     (key) => (byKey.has(key) ? [byKey.get(key)!] : []),
@@ -61,6 +59,25 @@ export function visibleRepositoryKeys(
   return entries.flatMap((entry) => {
     if (entry.kind === 'repository') return [entry.group.key];
     if (collapsed.has(entry.collection.id)) return [];
-    return repositoryCollectionGroups(groups, entry.collection.id, order).map((group) => group.key);
+    return repositoryCollectionGroups(groups, entry.collection.id, order).map((group) =>
+      repositoryRowKey({ key: group.key, collectionId: entry.collection.id }),
+    );
+  });
+}
+
+/** Row identity is separate from Git identity: one repository can appear in several collections. */
+export const repositoryRowKey = (row: RepositoryRow): string =>
+  row.collectionId === null ? row.key : JSON.stringify([row.collectionId, row.key]);
+
+export function repositoryRows(
+  groups: readonly RepositoryGroup[],
+  collections: readonly RepositoryCollection[],
+): RepositoryRow[] {
+  const ids = new Set(collections.map((collection) => collection.id));
+  return groups.flatMap<RepositoryRow>((group) => {
+    const memberships = group.collectionIds.filter((id) => ids.has(id));
+    return memberships.length
+      ? memberships.map((collectionId) => ({ key: group.key, collectionId }))
+      : [{ key: group.key, collectionId: null }];
   });
 }

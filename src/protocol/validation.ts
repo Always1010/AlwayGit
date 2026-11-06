@@ -291,6 +291,8 @@ export const requestSchema = z.object({
     'renameRepositoryCollection',
     'deleteRepositoryCollection',
     'moveRepositories',
+    'updateRepositoryMemberships',
+    'moveRepositoryRows',
     'snapshot',
     'operationReview',
     'conflictDetails',
@@ -380,6 +382,19 @@ export const createRepositoryCollectionSchema = z.object({
 });
 export const moveRepositoriesSchema = repositoryKeysSchema.extend({
   collectionId: text.optional(),
+});
+export const repositoryMembershipsSchema = repositoryKeysSchema.extend({
+  changes: z
+    .array(z.object({ collectionId: text, included: z.boolean() }))
+    .min(1)
+    .max(10000),
+});
+export const moveRepositoryRowsSchema = z.object({
+  rows: z
+    .array(z.object({ key: text, collectionId: text.nullable() }))
+    .min(1)
+    .max(10000),
+  targetCollectionId: text.nullable(),
 });
 const repositoryScanId = z
   .string()
@@ -492,6 +507,7 @@ export const reorderRepositorySchema = z.object({
   key: text,
   targetKey: text,
   position: z.enum(['before', 'after']),
+  collectionId: text.optional(),
 });
 
 export const externalUrlSchema = z

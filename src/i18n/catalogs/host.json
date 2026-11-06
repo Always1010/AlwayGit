@@ -53,12 +53,6 @@
     "review": "translated",
     "context": "src/extension/workbench.ts / deleteRepositoryCollection / remove"
   },
-  "host.deleteRepositoryGroupItsRepositoriesWillRemainAtThe": {
-    "en": "Delete repository group \"{{name}}\"? Its repositories will remain at the repository root.",
-    "zh-CN": "删除仓库分组“{{name}}”？其中的仓库会保留在仓库根层。",
-    "review": "translated",
-    "context": "src/extension/workbench.ts / deleteRepositoryCollection / confirmed"
-  },
   "host.repositoryRoot": {
     "en": "Repository root",
     "zh-CN": "仓库根目录",
