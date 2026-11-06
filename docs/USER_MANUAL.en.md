@@ -17,6 +17,7 @@ Select More actions → Help & Guide, with its question-mark icon, in the upper-
 | [Quick start](#quick-start) | Add a repository, inspect a change, and make your first commit |
 | Understand the workbench | [Installation and interface](#chapter-01), [selection and shortcuts](#section-12-01), [common terms](#section-12-02) |
 | Everyday tasks | [Working Tree and commits](#chapter-03), [history and comparisons](#chapter-04), [branches and old revisions](#chapter-05), [remote collaboration](#chapter-08), [Stash](#chapter-07) |
+| Synchronization and progress | [Fetch and Pull](#section-08-02), [Batch Fetch](#batch-fetch), [Push](#section-08-03), [Stop an operation](#stop-operation) |
 | Find and review | [Combined history search](#section-04-02), [File History](#file-history), [Full Tree](#commit-tree), [Branch comparison](#branch-comparison) |
 | Advanced tasks | [Merging and conflicts](#chapter-06), [history and Tags](#chapter-09), [repositories and groups](#chapter-02), [Worktrees](#chapter-10) |
 | Recovery and large files | [Reflog recovery](#reflog-recovery), [Interactive Rebase](#interactive-rebase), [Worktree overview](#worktree-overview), [Git LFS](#git-lfs) |
@@ -563,7 +564,11 @@ A branch is a movable reference to a version. Creating a branch, switching branc
 
 Fetch updates your local knowledge of the remote state. Pull integrates remote changes into the current branch. Push sends local commits to the target remote. Distinguish these three actions first, then check the source and destination.
 
-For large transfers that need more time, search VS Code settings for `alwaygit.networkTimeoutMinutes` to adjust the network command deadline. See the [workbench specification](WORKBENCH_SPEC.md) for values and scope.
+For large transfers that need more time, search VS Code settings for `alwaygit.networkTimeoutMinutes` to adjust the network command deadline. See the [workbench specification](WORKBENCH_SPEC.en.md#vscode-configuration) for values and scope.
+
+<a id="stop-operation"></a>
+
+### Stop a waiting operation
 
 When an operation waits too long, use the labeled Stop button in its progress view, including the footer of the protected Pull dialog. Show Log on the left opens output. During manual refresh, the toolbar refresh icon becomes a labeled Stop Refresh button; the batch Fetch progress area can stop active requests and skip queued repositories. Read the confirmation dialog’s repository, operation, and risk before choosing Stop. Continue operation is focused by default; Close, backdrop, and Escape keep it running. The task continues during confirmation, and completion invalidates the confirmation. Alternatively run **AlwayGit: Stop Current Operation** from the command palette, select a task, and confirm its risk.
 
@@ -605,6 +610,21 @@ Wait for Stopping to finish, then inspect the result: Fetch retains downloaded d
 ![Figure 26 Pull from the default origin/main source into main with a complete source ready for confirmation](images/user-manual/figure-26.png)
 
 ![Figure 35 Expanded Pull source selection using origin/develop for this Pull without changing upstream](images/user-manual/figure-35.png)
+
+<a id="batch-fetch"></a>
+
+### Batch Fetch remote updates
+
+**Prerequisite:** Add the repositories to synchronize. When using a group entry, check its membership first.
+
+1. Right-click a group and choose **Fetch All Repositories**, including its collapsed entries. To process every added repository, use the same action on the Repositories heading. Multiple worktrees sharing the same Git storage are fetched once.
+2. At most four repositories run concurrently by default. Adjust Batch Fetch concurrency in Settings → Advanced → Git Operations, or set `alwaygit.batchFetchConcurrency`. Values are 1–8; changes apply to the next batch.
+3. Watch completed, running, and queued counts. After fetching, repository statuses refresh before the final success/failure/skipped summary. An individual failure does not stop other repositories; inspect its error and retry only failed items.
+4. To stop, review the risk and confirm as described under [Stop a waiting operation](#stop-operation). Queued repositories are skipped, active requests in this batch are stopped, and completed fetches remain.
+
+**Result:** Each repository updates its locally known remote state using Git’s default remote selection. The current repository is preserved, and no Pull is performed.
+
+**Caution:** The same reference-pruning rules as [ordinary Fetch](#section-08-02) apply. Fetch does not integrate remote changes into each repository’s current branch. After the batch finishes, inspect the target repository before deciding whether to Pull.
 
 <a id="section-08-03"></a>
 
@@ -990,7 +1010,7 @@ Click list whitespace or press Esc to clear the blue selection while retaining a
 2. Right-click one or more repositories and choose Manage Groups…. Check groups to join, uncheck groups to leave, and click Apply. A repository can belong to several groups; clearing all groups returns it to the root. Mixed checks indicate partial membership across selected repositories; change only the groups you want to update.
 3. Click a group heading to expand or collapse it. Drag a repository by its left handle onto the center of a target group to move it. Moving from A to B preserves other memberships; empty and collapsed groups accept drops, and existing target entries are not duplicated. Dropping in the root zone leaves all groups. Drag a selected row to move selected occurrences together.
 4. Same-level dragging shows insertion lines and changes the order; you can also focus the drag handle and press Alt+Up/Down. Groups themselves reorder only at the root.
-5. Right-click a group and choose **Fetch All Repositories** to fetch its repositories in the background, including collapsed entries. The Repositories heading offers the same action for all added repositories. Shared worktrees are fetched once, with at most four repositories running concurrently by default. Choose 1–8 under Interface Settings → Advanced → Batch Fetch concurrency, or set `alwaygit.batchFetchConcurrency`; changes apply to the next batch. Each repository uses its default Git remote selection. Progress shows completed, running, and queued counts, followed by a repository-status refresh phase and a success/failure/skipped summary. Individual failures do not stop other repositories; expand failures to inspect errors and retry only failed items. Confirming Stop skips queued repositories and stops this batch’s active requests. Fetch preserves the current repository and does not perform Pull.
+5. To synchronize a whole group, follow [Batch Fetch remote updates](#batch-fetch). It runs in the background and preserves the current repository.
 6. Right-click a group to rename or delete it. Read the confirmation message before deleting.
 
 **Result:** Repositories are arranged by your project categories. Deleting a group preserves entries in other groups; only repositories with no remaining groups return to the root.

@@ -55,6 +55,8 @@ export const helpTopics: Record<Exclude<HelpCategory, 'manual'>, readonly string
     'section-05-02',
     'section-05-03',
     'section-08-02',
+    'batch-fetch',
+    'stop-operation',
     'section-08-03',
     'section-07-02',
     'section-07-03',
