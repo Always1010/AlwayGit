@@ -362,7 +362,10 @@ Each tab restores its own Webview state. A saved workspace session initializes o
 | `alwaygit.pushFollowTags` | false; boolean | Default related annotated Tags on ordinary Push; explicit one-off/remember |
 | `alwaygit.pushTagAfterCreate` | false; boolean | Default Push after local Tag creation; explicit one-off/remember |
 | `alwaygit.defaultResetMode` | mixed; soft/mixed/hard | Default Reset mode; change in settings or explicitly remember in dialog |
-| `alwaygit.openMode` | editor; editor/docked, user scope | Legacy default mode; VS Code manages docking; switching to editor creates an independent tab |
+| `alwaygit.forceDeleteUnmergedBranches` | false; boolean | Default Force selection for single/bulk local branch deletion; supports user defaults and workspace overrides; final confirmation still required |
+| `alwaygit.forceRemoveDirtyWorktrees` | false; boolean | Default Force selection for single/bulk Worktree removal; supports user defaults and workspace overrides; final confirmation still required |
+| `alwaygit.workbenchLocations` | Initially only editor enabled, with editor as default; user object | enabled selects 1–4 unique locations from editor/sidebar/auxiliary/panel; default must be enabled; opening the Workbench enters only the default, with independent instance state |
+| `alwaygit.openMode` | editor; editor/docked, user scope; deprecated | Read only for compatibility when the new location configuration is absent or invalid; editor enables only Editor Tab, while docked enables Editor Tab and Primary Sidebar with Primary Sidebar as default; use alwaygit.workbenchLocations for current configuration |
 | `alwaygit.interfaceSettings` | {}; user scope | Appearance/shortcuts/reading, not layout/drafts/repository browsing |
 | `alwaygit.language` | en; en/zh-CN/auto | Sole user-language source; auto follows VS Code; applied synchronization across windows |
 

@@ -379,7 +379,10 @@ Diff 标题栏去掉“Diff ·”前缀，以静态文件图标及完整加粗�
 | `alwaygit.pushFollowTags` | `false`；布尔值 | 普通 Push 是否默认附带相关注解 Tag；对话框可单次覆盖并明确记住 |
 | `alwaygit.pushTagAfterCreate` | `false`；布尔值 | Create Tag 是否默认在本地创建后把新标签推送到所选 Remote；对话框可单次覆盖并明确记住 |
 | `alwaygit.defaultResetMode` | `mixed`；`soft` / `mixed` / `hard` | Reset 对话框的默认模式；可在设置页修改，也可在执行时明确记住本次选择 |
-| `alwaygit.openMode` | `editor`；`editor` / `docked`，用户级 | 默认打开方式；停靠位置由 VS Code 管理，切回编辑器新建独立标签 |
+| `alwaygit.forceDeleteUnmergedBranches` | `false`；布尔值 | 单项与批量本地分支删除默认是否勾选 Force；支持用户默认和工作区覆盖，仍需最终确认 |
+| `alwaygit.forceRemoveDirtyWorktrees` | `false`；布尔值 | 单项与批量工作树移除默认是否勾选 Force；支持用户默认和工作区覆盖，仍需最终确认 |
+| `alwaygit.workbenchLocations` | 初始仅启用 `editor` 且默认打开 `editor`；用户级对象 | `enabled` 从 `editor` / `sidebar` / `auxiliary` / `panel` 中选择 1–4 个不重复位置；`default` 必须属于已启用位置；打开工作台只进入默认位置，各实例状态独立 |
+| `alwaygit.openMode` | `editor`；`editor` / `docked`，用户级；已弃用 | 仅在新位置配置缺失或无效时兼容读取；`editor` 仅启用编辑器标签页，`docked` 启用编辑器与主侧边栏并默认打开主侧边栏；当前配置入口使用 `alwaygit.workbenchLocations` |
 | `alwaygit.interfaceSettings` | `{}`；用户级 | 外观、快捷键和阅读偏好；不包含布局尺寸、草稿和仓库浏览状态 |
 | `alwaygit.language` | `en`；`en` / `zh-CN` / `auto` | 用户级语言的唯一配置来源；`auto` 跟随 VS Code，应用后跨窗口同步 |
 
