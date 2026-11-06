@@ -140,6 +140,7 @@ export interface OperationState {
   canAbort: boolean;
   canSkip: boolean;
   skipToken?: string;
+  quitToken?: string;
   originalHead?: string;
   managedRebase?: import('./interactive-rebase').ManagedRebaseState;
 }
@@ -424,6 +425,7 @@ export type GitAction =
     }
   | { type: 'operation.continue'; kind: OperationKind; reviewToken?: string; keepEmpty?: boolean }
   | { type: 'operation.abort'; kind: OperationKind }
+  | { type: 'operation.quit'; kind: 'cherry-pick'; quitToken: string }
   | { type: 'operation.skip'; kind: OperationKind; skipToken: string };
 export type ContentSource =
   | { kind: 'revision'; revision: string; path: string }

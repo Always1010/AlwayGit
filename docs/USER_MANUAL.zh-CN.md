@@ -802,6 +802,8 @@ Stash 用于暂时保存尚未提交的修改。它与 Stage 完全不同：Stag
 
 ![图 19 冲突解决并暂存后，继续前检查暂存结果清单](images/user-manual/figure-19.png)
 
+**退出 Cherry-pick 并保留文件：** 如果想结束 Cherry-pick 状态，保留当前文件留待手动处理，请点击操作条的“退出 Cherry-pick，保留文件…”并确认（英文为 `Quit Cherry-pick & Keep Files…`）。它执行 `git cherry-pick --quit`：HEAD、工作区、暂存区和未解决冲突都原样保留；已应用提交保留，批量中剩余提交不再应用。本次操作不能再 Continue / Skip / Abort。随后编辑保存冲突文件、标记并暂存，再普通提交即可。Skip 会丢弃当前提交的应用结果并继续后续提交，Abort 会撤销整批；单条提交时两者可能呈现相同结果。现有截图未展示新增的退出入口。
+
 <a id="section-06-04"></a>
 
 ### 中止一次进行中的操作

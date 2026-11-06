@@ -238,6 +238,11 @@ export const actionSchema = z.union([
   }),
   z.object({ type: z.literal('operation.abort'), kind }),
   z.object({
+    type: z.literal('operation.quit'),
+    kind: z.literal('cherry-pick'),
+    quitToken: z.string().regex(/^[a-f0-9]{64}$/),
+  }),
+  z.object({
     type: z.literal('operation.skip'),
     kind,
     skipToken: z.string().regex(/^[a-f0-9]{64}$/),

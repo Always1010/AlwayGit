@@ -19,9 +19,14 @@ type SkipConfirmation = {
   kind: OperationKind;
   skipToken: string;
 };
+type QuitConfirmation = {
+  context: RepositoryActionContext;
+  quitToken: string;
+};
 
 export function OperationNotice({ abort }: { abort(): void }) {
   const [confirmSkip, setConfirmSkip] = useState<SkipConfirmation>();
+  const [confirmQuit, setConfirmQuit] = useState<QuitConfirmation>();
   const [workflow, setWorkflow] = useState(false);
   const state = useWorkbench(),
     t = useTranslation(),
@@ -34,6 +39,9 @@ export function OperationNotice({ abort }: { abort(): void }) {
   useEffect(() => {
     setConfirmSkip(undefined);
   }, [state.repoId, operation?.skipToken]);
+  useEffect(() => {
+    setConfirmQuit(undefined);
+  }, [state.repoId, operation?.quitToken]);
   useEffect(() => {
     if (!operation?.kind && !count) setWorkflow(false);
   }, [operation?.kind, count]);
@@ -92,6 +100,26 @@ export function OperationNotice({ abort }: { abort(): void }) {
     isActionContextCurrent(confirmSkip.context) &&
     confirmSkip.kind === kind &&
     confirmSkip.skipToken === operation?.skipToken;
+  const validQuit =
+    confirmQuit &&
+    isActionContextCurrent(confirmQuit.context) &&
+    kind === 'cherry-pick' &&
+    confirmQuit.quitToken === operation?.quitToken;
+  function quit(confirmation: QuitConfirmation) {
+    setConfirmQuit(undefined);
+    const current = useWorkbench.getState();
+    if (
+      !isActionContextCurrent(confirmation.context) ||
+      current.busy ||
+      current.snapshot?.operation.kind !== 'cherry-pick' ||
+      current.snapshot.operation.quitToken !== confirmation.quitToken
+    )
+      return;
+    void current.execute(
+      { type: 'operation.quit', kind: 'cherry-pick', quitToken: confirmation.quitToken },
+      confirmation.context,
+    );
+  }
 
   return (
     <div
@@ -169,6 +197,20 @@ export function OperationNotice({ abort }: { abort(): void }) {
                 {uiText('operations.skip')}
               </Button>
             )}
+            {kind === 'cherry-pick' && operation.quitToken && (
+              <Button
+                disabled={state.busy}
+                title={t('operations.quitEffect')}
+                onClick={() =>
+                  setConfirmQuit({
+                    context: captureActionContext(),
+                    quitToken: operation.quitToken!,
+                  })
+                }
+              >
+                {t('operations.quit')}
+              </Button>
+            )}
             <Button disabled={!operation.canAbort || state.busy} onClick={abort}>
               {t('operations.abort', { name: name })}
             </Button>
@@ -184,6 +226,18 @@ export function OperationNotice({ abort }: { abort(): void }) {
         </Modal>
       )}
       {workflow && <ConflictWorkflow key={state.repoId} onClose={() => setWorkflow(false)} />}
+      {validQuit && (
+        <Modal title={t('operations.quit')} onClose={() => setConfirmQuit(undefined)}>
+          <p>{t('operations.quitEffect')}</p>
+          <p>{t('operations.quitNext')}</p>
+          <Button data-autofocus="true" onClick={() => setConfirmQuit(undefined)}>
+            {t('common.cancel')}
+          </Button>
+          <Button disabled={state.busy} onClick={() => quit(confirmQuit)}>
+            {t('operations.confirmQuit')}
+          </Button>
+        </Modal>
+      )}
     </div>
   );
 }

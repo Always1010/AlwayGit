@@ -266,6 +266,7 @@ export function createDemoRequest(emit: (event: HostMessage) => void) {
       id = snapshot.repository.id;
     if (!operation.kind || !operation.canSkip) {
       delete operation.skipToken;
+      delete operation.quitToken;
       skipContexts.delete(id);
       return;
     }
@@ -288,6 +289,8 @@ export function createDemoRequest(emit: (event: HostMessage) => void) {
       skipContexts.set(id, context);
     }
     operation.skipToken = context.token;
+    if (operation.kind === 'cherry-pick') operation.quitToken = context.token;
+    else delete operation.quitToken;
   }
   for (const { snapshot } of Object.values(demoStores))
     publishedTags.set(
@@ -983,6 +986,20 @@ export function createDemoRequest(emit: (event: HostMessage) => void) {
     }
     if (method === 'action') {
       const action = payload as GitAction;
+      if (action.type === 'operation.quit') {
+        if (
+          demoSnapshot.operation.kind !== 'cherry-pick' ||
+          !action.quitToken ||
+          action.quitToken !== demoSnapshot.operation.quitToken
+        )
+          throw new RpcError('The selected Git operation changed.', 'OPERATION_CHANGED');
+        demoSnapshot.operation = {
+          conflicts: demoSnapshot.changes.filter((change) => change.conflict).length,
+          canContinue: false,
+          canAbort: false,
+          canSkip: false,
+        };
+      }
       if (action.type === 'operation.skip') {
         const operation = demoSnapshot.operation;
         if (

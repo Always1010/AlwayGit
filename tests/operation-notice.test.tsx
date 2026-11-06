@@ -11,7 +11,13 @@ const fixture = vi.hoisted(() => ({
     snapshot: {
       repository: { id: 'a' },
       changes: [],
-      operation: { kind: 'rebase', canSkip: true, skipToken: 'first', conflicts: 1 },
+      operation: {
+        kind: 'rebase',
+        canSkip: true,
+        skipToken: 'first',
+        quitToken: undefined as string | undefined,
+        conflicts: 1,
+      },
     },
     execute: vi.fn(),
   },
@@ -70,6 +76,8 @@ beforeEach(() => {
   fixture.state.busy = false;
   fixture.state.snapshot.repository.id = 'a';
   fixture.state.snapshot.operation.skipToken = 'first';
+  fixture.state.snapshot.operation.kind = 'rebase';
+  fixture.state.snapshot.operation.quitToken = undefined;
   fixture.state.execute.mockClear();
 });
 it.each(['repository', 'step', 'epoch'] as const)(
@@ -93,3 +101,34 @@ it('sends the captured token and repository context for a still-current confirma
     { repoId: 'a', epoch: 1 },
   );
 });
+function openQuit() {
+  fixture.state.snapshot.operation.kind = 'cherry-pick';
+  fixture.state.snapshot.operation.quitToken = 'quit-first';
+  render().find((node) => node.type === 'button' && node.props.children === 'operations.quit')!
+    .props.onClick!();
+  return nodes(render().find((node) => node.type === 'modal')).find(
+    (node) => node.type === 'button' && node.props.children === 'operations.confirmQuit',
+  )!;
+}
+it('quits only after confirmation, using the captured operation and repository', () => {
+  const confirmation = openQuit();
+  expect(fixture.state.execute).not.toHaveBeenCalled();
+  confirmation.props.onClick!();
+  expect(fixture.state.execute).toHaveBeenCalledWith(
+    { type: 'operation.quit', kind: 'cherry-pick', quitToken: 'quit-first' },
+    { repoId: 'a', epoch: 1 },
+  );
+});
+it.each(['repository', 'step', 'epoch', 'kind'] as const)(
+  'rejects an open Quit confirmation and its stale handler after a changed %s',
+  (change) => {
+    const confirmation = openQuit();
+    if (change === 'repository') fixture.state.repoId = 'b';
+    else if (change === 'step') fixture.state.snapshot.operation.quitToken = 'quit-second';
+    else if (change === 'epoch') fixture.epoch++;
+    else fixture.state.snapshot.operation.kind = 'revert';
+    expect(render().some((node) => node.type === 'modal')).toBe(false);
+    confirmation.props.onClick!();
+    expect(fixture.state.execute).not.toHaveBeenCalled();
+  },
+);

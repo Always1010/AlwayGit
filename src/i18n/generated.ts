@@ -4647,6 +4647,22 @@ export const catalog = {
     "en": "Skip",
     "zh-CN": "跳过"
   },
+  "operations.quit": {
+    "en": "Quit Cherry-pick & Keep Files…",
+    "zh-CN": "退出 Cherry-pick，保留文件…"
+  },
+  "operations.quitEffect": {
+    "en": "End Cherry-pick and keep the current HEAD, working files and Index exactly as they are, including unresolved conflicts. Already applied commits remain; remaining commits will not be applied.",
+    "zh-CN": "退出 Cherry-pick，保留当前 HEAD、工作区和暂存区的原样状态，包括未解决的冲突。已应用的提交保留，剩余提交不再应用。"
+  },
+  "operations.quitNext": {
+    "en": "You can then edit the files, mark and stage resolved conflicts, and create a normal commit. Continue, Skip and Abort for this Cherry-pick will no longer be available.",
+    "zh-CN": "退出后可手动编辑文件、标记并暂存处理结果，再普通提交。本次 Cherry-pick 将无法再继续、跳过或中止。"
+  },
+  "operations.confirmQuit": {
+    "en": "Quit & Keep Files",
+    "zh-CN": "退出并保留文件"
+  },
   "operationsReview.binaryFileNotScanned": {
     "en": "Binary file: not scanned",
     "zh-CN": "二进制文件：未扫描"
@@ -9288,6 +9304,10 @@ export interface MessageParameters {
   "operations.abort": { name: ParameterValue };
   "operations.continue": {  };
   "operations.skip": {  };
+  "operations.quit": {  };
+  "operations.quitEffect": {  };
+  "operations.quitNext": {  };
+  "operations.confirmQuit": {  };
   "operationsReview.binaryFileNotScanned": {  };
   "operationsReview.over2MiBNotScanned": {  };
   "operationsReview.unsupportedTextEncodingNotScanned": {  };

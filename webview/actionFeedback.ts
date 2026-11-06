@@ -85,6 +85,7 @@ export function blocksWorkbench(action: GitAction | string): boolean {
 
 export function actionName(action: GitAction): string {
   const names: Partial<Record<GitAction['type'], string>> = {
+    'operation.quit': uiText('operations.quit'),
     'conflict.choose': uiText('conflicts.chooseVersion'),
     'lfs.fetchHistorical': uiText('historicalLfs.confirm'),
     'lfs.fetch': uiText('lfs.fetch'),

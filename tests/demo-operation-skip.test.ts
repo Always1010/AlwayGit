@@ -13,24 +13,27 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 // Seed only the existing Demo model during construction; production needs no test scenario.
-function pausedDemo() {
+function pausedDemo(kind: 'rebase' | 'cherry-pick' = 'rebase') {
   const clone = structuredClone;
   const seed = vi.spyOn(globalThis, 'structuredClone').mockImplementation((value) => {
     const result = clone(value);
     if (result && typeof result === 'object' && 'operation' in result) {
       const snapshot = result as Snapshot;
       snapshot.operation = {
-        kind: 'rebase',
+        kind,
         conflicts: 1,
         canContinue: false,
         canAbort: true,
         canSkip: true,
-        managedRebase: {
-          backupRef: 'refs/alwaygit/rebase-backups/demo-test',
-          step: 1,
-          total: 2,
-          pause: 'conflict',
-        },
+        managedRebase:
+          kind === 'rebase'
+            ? {
+                backupRef: 'refs/alwaygit/rebase-backups/demo-test',
+                step: 1,
+                total: 2,
+                pause: 'conflict',
+              }
+            : undefined,
       };
     }
     return result;
@@ -90,4 +93,24 @@ it('rejects a Demo token captured in a different repository', async () => {
   const remaining = request('snapshot', undefined, 'demo-website');
   await vi.advanceTimersByTimeAsync(110);
   expect(((await remaining) as Snapshot).operation.managedRebase?.step).toBe(1);
+});
+it('quits Demo Cherry-pick without removing staged or conflicting files', async () => {
+  const request = pausedDemo('cherry-pick');
+  const first = request('snapshot', undefined, 'demo-alwaygit');
+  await vi.advanceTimersByTimeAsync(110);
+  const before = (await first) as Snapshot;
+  const quitting = request(
+    'action',
+    {
+      type: 'operation.quit',
+      kind: 'cherry-pick',
+      quitToken: before.operation.quitToken,
+    },
+    'demo-alwaygit',
+  );
+  await vi.advanceTimersByTimeAsync(110);
+  const after = (await quitting) as Snapshot;
+  expect(after.operation.kind).toBeUndefined();
+  expect(after.head).toBe(before.head);
+  expect(after.changes).toEqual(before.changes);
 });

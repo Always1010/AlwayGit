@@ -50,6 +50,23 @@ export async function verifyCherryPick(browser, url) {
         snapshot.version++;
         window.postMessage({ type: 'changed', repoId: repo.id, snapshot }, '*');
       };
+      fixture.pause = () => {
+        snapshot.operation = {
+          kind: 'cherry-pick',
+          conflicts: 1,
+          canContinue: false,
+          canAbort: true,
+          canSkip: true,
+          skipToken: 'a'.repeat(64),
+          quitToken: 'a'.repeat(64),
+        };
+        snapshot.changes = [
+          { path: 'conflict.txt', indexStatus: 'U', worktreeStatus: 'U', conflict: true },
+          { path: 'staged.txt', indexStatus: 'A', worktreeStatus: ' ', conflict: false },
+        ];
+        snapshot.version++;
+        window.postMessage({ type: 'changed', repoId: repo.id, snapshot }, '*');
+      };
       window.acquireVsCodeApi = () => ({
         getState: () => ({}),
         setState: () => {},
@@ -80,7 +97,19 @@ export async function verifyCherryPick(browser, url) {
             });
             return;
           }
-          if (request.method === 'action') fixture.actions.push(request.payload);
+          if (request.method === 'action') {
+            fixture.actions.push(request.payload);
+            if (request.payload.type === 'operation.quit') {
+              snapshot.operation = {
+                conflicts: 1,
+                canContinue: false,
+                canAbort: false,
+                canSkip: false,
+              };
+              snapshot.version++;
+              result = { snapshot };
+            }
+          }
           queueMicrotask(() =>
             window.postMessage({ type: 'response', id: request.id, result }, '*'),
           );
@@ -177,6 +206,40 @@ export async function verifyCherryPick(browser, url) {
     );
     assert.equal(await cherry().isDisabled(), true);
     assert.equal(await reapply().count(), 0);
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => window.__cherryFixture.pause());
+    const notice = page.getByTestId('operation-notice');
+    const quit = notice.getByRole('button', {
+      name: 'Quit Cherry-pick & Keep Files…',
+      exact: true,
+    });
+    await quit.click();
+    const quitDialog = page.getByRole('dialog', {
+      name: 'Quit Cherry-pick & Keep Files…',
+      exact: true,
+    });
+    await quitDialog.getByText(/including unresolved conflicts/).waitFor();
+    await quitDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    assert.equal(await page.evaluate(() => window.__cherryFixture.actions.length), 1);
+    await quit.click();
+    await quitDialog.getByRole('button', { name: 'Quit & Keep Files', exact: true }).click();
+    await notice.getByText('Unresolved conflicts', { exact: true }).waitFor();
+    assert.equal(await quit.count(), 0);
+    assert.equal(await notice.getByRole('button', { name: 'Continue', exact: true }).count(), 0);
+    assert.deepEqual(await page.evaluate(() => window.__cherryFixture.actions.at(-1)), {
+      type: 'operation.quit',
+      kind: 'cherry-pick',
+      quitToken: 'a'.repeat(64),
+    });
+    await page.locator('[data-working-tree]').click();
+    await page
+      .getByTestId('details')
+      .getByRole('button', { name: 'conflict.txt', exact: true })
+      .waitFor();
+    await page
+      .getByTestId('details')
+      .getByRole('button', { name: 'staged.txt', exact: true })
+      .waitFor();
     assert.deepEqual(errors, []);
   } finally {
     await page.close();

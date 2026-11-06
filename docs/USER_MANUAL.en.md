@@ -802,6 +802,8 @@ The goal of conflict resolution is to produce the correct final file contents. M
 
 ![Figure 19 Review the staged result before continuing an operation after conflicts are resolved](images/user-manual/figure-19.png)
 
+**Quit Cherry-pick and keep files:** To end Cherry-pick while keeping your files for manual resolution, choose `Quit Cherry-pick & Keep Files…` in the operation bar and confirm. This runs `git cherry-pick --quit`, preserving HEAD, working files, Index and unresolved conflicts. Applied commits remain; any remaining commits in the batch are abandoned. Continue/Skip/Abort for that operation are no longer available. Edit and save files, mark and stage resolutions, then create a normal commit. Skip discards the current commit’s application and continues the remaining queue; Abort rolls back the batch. They can look identical for a single commit. Existing screenshots do not show the new Quit entry.
+
 <a id="section-06-04"></a>
 
 ### Abort an in-progress operation

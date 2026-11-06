@@ -1084,6 +1084,7 @@ export class GitService implements GitServiceContract {
     }
     if (operation.kind && operation.canSkip)
       operation.skipToken = await this.skipFingerprint(repo, status, operation.kind);
+    if (operation.kind === 'cherry-pick') operation.quitToken = operation.skipToken;
     let pushTarget: Snapshot['pushTarget'], pullTarget: Snapshot['pullTarget'];
     if (status.branch) {
       const [branchPushRemote, defaultPushRemote, branchRemote, mergeRef] = await Promise.all([
@@ -2489,7 +2490,7 @@ export class GitService implements GitServiceContract {
       throw error;
     }
   }
-  /** Pin destructive Skip to this worktree, operation instance and current sequencer step. */
+  /** Pin Skip and Quit to this worktree, operation instance and current sequencer step. */
   private async skipFingerprint(
     repo: Repository,
     current: { head?: string; branch: string },
@@ -4327,6 +4328,31 @@ export class GitService implements GitServiceContract {
         this.requireActionContext(action, await this.status(repo));
         args = ['reset', `--${action.mode}`, await this.oid(repo, action.target), '--'];
         break;
+      case 'operation.quit': {
+        const state = (await this.snapshot(repo)).operation;
+        if (
+          state.kind !== 'cherry-pick' ||
+          !action.quitToken ||
+          state.quitToken !== action.quitToken
+        )
+          throw new GitError(
+            localizeMessage('service.theSelectedGitOperationIsNoLongerActive'),
+            'OPERATION_CHANGED',
+          );
+        await this.run(repo, ['cherry-pick', '--quit'], false, undefined, {
+          beforeSpawn: async () => {
+            if (
+              action.quitToken !==
+              (await this.skipFingerprint(repo, await this.status(repo), 'cherry-pick'))
+            )
+              throw new GitError(
+                localizeMessage('service.theSelectedGitOperationIsNoLongerActive'),
+                'OPERATION_CHANGED',
+              );
+          },
+        });
+        return;
+      }
       case 'operation.continue':
       case 'operation.abort':
       case 'operation.skip': {
