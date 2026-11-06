@@ -86,6 +86,10 @@ function HistoryPanel({
       | undefined
     >(undefined);
   const [filtersOpen, setFiltersOpen] = useState(hasHistorySearch(state.historyFilters));
+  const stopLabel =
+    state.search.trim() || hasHistorySearch(state.historyFilters)
+      ? t('history.search.cancel')
+      : t('history.stopLoading');
   useEffect(() => {
     if (hasHistorySearch(state.historyFilters)) setFiltersOpen(true);
   }, [state.historyFilters]);
@@ -475,12 +479,14 @@ function HistoryPanel({
       )}
       {state.historyLoading && (
         <Button
-          icon="debug-stop"
-          className="history-search-cancel icon-only"
-          title={t('history.search.cancel')}
-          aria-label={t('history.search.cancel')}
+          icon="primitive-square"
+          className="history-search-cancel stop-operation-button"
+          title={stopLabel}
+          aria-label={stopLabel}
           onClick={state.cancelHistory}
-        />
+        >
+          {stopLabel}
+        </Button>
       )}
       {fileHistory && (
         <div className="history-file-scope" role="group" aria-label={t('history.fileHistory')}>

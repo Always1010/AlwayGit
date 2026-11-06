@@ -86,7 +86,7 @@ export async function verifyHistoryNavigation(browser, url, screenshotPath) {
       });
     });
     await page.goto(url);
-    await page.getByRole('option', { name: 'llvm-project', exact: true }).dblclick();
+    await page.getByRole('option', { name: /^llvm-project\b/ }).dblclick();
     const history = page.getByTestId('history'),
       viewport = history.locator('.history-viewport');
     await history.locator('[data-oid]').first().waitFor();
@@ -119,8 +119,24 @@ export async function verifyHistoryNavigation(browser, url, screenshotPath) {
       'Current-branch reset stays hidden in the normal current-branch view',
     );
     const search = history.getByRole('textbox', { name: 'Search commit history', exact: true });
+    await page.evaluate(() => {
+      window.__scopeFixture.hold = true;
+    });
     await search.fill('Scope');
     await reset.waitFor();
+    const stopSearch = history.getByRole('button', { name: 'Stop search', exact: true });
+    await stopSearch.waitFor();
+    assert.equal(await stopSearch.innerText(), 'Stop search');
+    await stopSearch.screenshot({ path: 'artifacts/history-stop-search.png' });
+    await stopSearch.press('Enter');
+    await stopSearch.waitFor({ state: 'hidden' });
+    assert.equal(await page.getByRole('dialog').count(), 0, 'Stopping a read needs no risk dialog');
+    await page.evaluate(() => {
+      window.__scopeFixture.hold = false;
+      window.__scopeFixture.pending
+        .splice(0)
+        .forEach((response) => window.postMessage(response, '*'));
+    });
     await search.fill('');
     await reset.waitFor({ state: 'hidden' });
     await history.getByText('Scope commit 0', { exact: true }).waitFor();
@@ -140,6 +156,11 @@ export async function verifyHistoryNavigation(browser, url, screenshotPath) {
     });
     await showTag('v1');
     await history.getByText('Loading history for tag v1', { exact: true }).waitFor();
+    assert.equal(
+      await history.getByRole('button', { name: 'Stop loading', exact: true }).innerText(),
+      'Stop loading',
+      'An unfiltered history read uses a loading label rather than a search label',
+    );
     await reset.waitFor();
     const [backBox, resetBox, searchBox] = await Promise.all([
       back.boundingBox(),
@@ -290,7 +311,7 @@ export async function verifyLocateHead(browser, url) {
       });
     });
     await page.goto(url);
-    await page.getByRole('option', { name: 'Locate fixture', exact: true }).dblclick();
+    await page.getByRole('option', { name: /^Locate fixture\b/ }).dblclick();
     const history = page.getByTestId('history'),
       viewport = history.locator('.history-viewport');
     await history.locator('[data-oid]').first().waitFor();

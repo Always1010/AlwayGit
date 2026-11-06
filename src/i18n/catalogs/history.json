@@ -432,10 +432,16 @@
     "context": "webview/HistorySearch.tsx / structured history filters"
   },
   "history.search.cancel": {
-    "en": "Cancel history query",
-    "zh-CN": "取消历史查询",
+    "en": "Stop search",
+    "zh-CN": "停止搜索",
     "review": "translated",
     "context": "webview/HistorySearch.tsx / structured history filters"
+  },
+  "history.stopLoading": {
+    "en": "Stop loading",
+    "zh-CN": "停止加载",
+    "review": "translated",
+    "context": "webview/History.tsx: stop an ordinary history read, without a search filter"
   },
   "history.search.invalid": {
     "en": "Check the commit ID and date range. Use real calendar dates, ordered from earliest to latest; code must fit one line.",

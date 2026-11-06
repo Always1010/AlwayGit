@@ -8,9 +8,9 @@
 - 状态：已解决
 - 现象：Pull 进度中的停止操作只显示空心方框，按钮边界与动作含义不明确；居中的标题与左对齐的状态混排，停止和日志被分散在状态行中。Push、后台网络进度、批量 Fetch、手动刷新及 LFS 复用相同的停止入口；LFS 的入口还位于可滚动正文中。
 - 原因：共享停止组件只提供图标及悬浮说明，停止中另插入长状态文字；网络进度将状态与两个按钮使用 space-between 排列，保护弹窗则沿用居中大转圈布局。
-- 解决方案：共享停止入口改为实心方块与明确的操作名称，保留风险确认，停止中使用简短禁用按钮并在网络进度正文说明等待 Git 退出。保护进度统一左对齐，缩小转圈并与标题同行；网络弹窗及后台进度将日志和停止移至独立操作区，弹窗底栏独立于正文滚动，窄窗口允许换行。LFS 停止入口移至底栏；为收起进度和查看日志保留文字，简化耗时显示并移除缺少指标时的空白指标行。
-- 验证方式：类型检查、2046 条双语资源检查、停止确认定向 2 项单测、Webview 生产构建及修改文件格式检查通过。feedback-only 和 lfs-only 无头界面回归验证进度布局、360px 窗口、长目标换行、浅色与深色预览、日志访问、停止确认默认继续、Esc、陈旧目标失效、停止完成前的保护，以及 LFS 运行时底栏入口与原有规则应用及历史对象下载。未启动可见窗口或真实 VS Code 集成测试；未打包、安装、升版或远程推送。
-- 相关文件：`webview/StopOperation.tsx`、`webview/NetworkProgress.tsx`、`webview/OperationProgress.tsx`、`webview/ActionDialog.tsx`、`webview/LfsDialog.tsx`、`webview/styles.css`、`webview/lfs.css`、双语资源、`tests/stop-operation.test.tsx`、`scripts/test-feedback-ui.mjs`、`scripts/test-lfs-ui.mjs`、双语工作台规格与用户手册。
+- 解决方案：共享停止入口改为实心方块与明确的操作名称，保留风险确认，停止中使用简短禁用按钮并在网络进度正文说明等待 Git 退出。保护进度统一左对齐，缩小转圈并与标题同行；网络弹窗及后台进度将日志和停止移至独立操作区，弹窗底栏独立于正文滚动，窄窗口允许换行。LFS 停止入口移至底栏；为收起进度和查看日志保留文字，简化耗时显示并移除缺少指标时的空白指标行。历史面板的独立停止入口也改为实心方块与文字，根据当前条件显示“停止搜索”或“停止加载”，使用中性边框，保留直接取消只读查询的行为。
+- 验证方式：类型检查、最终 2047 条双语资源检查、停止确认定向 2 项单测、历史查询取消定向 1 项单测、Webview 生产构建及修改文件格式检查通过。feedback-only 和 lfs-only 无头界面回归验证进度布局、360px 窗口、长目标换行、浅色与深色预览、日志访问、停止确认默认继续、Esc、陈旧目标失效、停止完成前的保护，以及 LFS 运行时底栏入口与原有规则应用及历史对象下载；历史行与 HEAD 定位无头回归通过，历史导航定向无头回归验证两种停止文字、键盘立即取消、迟到响应隔离及原有导航与分页。未启动可见窗口或真实 VS Code 集成测试；未打包、安装、升版或远程推送。
+- 相关文件：`webview/StopOperation.tsx`、`webview/NetworkProgress.tsx`、`webview/OperationProgress.tsx`、`webview/ActionDialog.tsx`、`webview/LfsDialog.tsx`、`webview/History.tsx`、`webview/styles.css`、`webview/lfs.css`、双语资源、`tests/stop-operation.test.tsx`、`scripts/test-feedback-ui.mjs`、`scripts/test-lfs-ui.mjs`、`scripts/test-history-ui.mjs`、`tests/ui-state.test.ts`、双语工作台规格与用户手册。
 
 ## BUG-177：移动仓库时目标提示反复显隐并改变列表高度
 

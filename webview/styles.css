@@ -4177,9 +4177,16 @@ p {
 .history-code-regex input {
   width: auto;
 }
-.history-search-cancel {
+.button.history-search-cancel {
   align-self: flex-end;
   margin: 3px 10px;
+  color: var(--fg);
+  border-color: var(--border);
+  background: transparent;
+}
+.button.stop-operation-button.history-search-cancel:hover:not(:disabled) {
+  border-color: var(--border);
+  background: var(--hover);
 }
 
 .repository-fetch-progress {

@@ -3138,8 +3138,12 @@ export const catalog = {
     "zh-CN": "清除高级条件"
   },
   "history.search.cancel": {
-    "en": "Cancel history query",
-    "zh-CN": "取消历史查询"
+    "en": "Stop search",
+    "zh-CN": "停止搜索"
+  },
+  "history.stopLoading": {
+    "en": "Stop loading",
+    "zh-CN": "停止加载"
   },
   "history.search.invalid": {
     "en": "Check the commit ID and date range. Use real calendar dates, ordered from earliest to latest; code must fit one line.",
@@ -9020,6 +9024,7 @@ export interface MessageParameters {
   "history.search.apply": {  };
   "history.search.clear": {  };
   "history.search.cancel": {  };
+  "history.stopLoading": {  };
   "history.search.invalid": {  };
   "history.search.help": {  };
   "history.search.authorDate": {  };
