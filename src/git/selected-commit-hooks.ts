@@ -1,3 +1,4 @@
+import { gitPathOutput } from './path-output';
 import { chmod, mkdtemp, readdir, rm, stat, writeFile, access } from 'node:fs/promises';
 import path from 'node:path';
 import { translate } from '../i18n';
@@ -17,11 +18,9 @@ export async function selectedCommitHooks(
   paths: string[],
   executable: string,
 ) {
-  const original = (
-    await run(['rev-parse', '--path-format=absolute', '--git-path', 'hooks'])
-  ).stdout
-    .toString('utf8')
-    .trim();
+  const original = gitPathOutput(
+    (await run(['rev-parse', '--path-format=absolute', '--git-path', 'hooks'])).stdout,
+  );
   const reference =
     (await run(['symbolic-ref', '-q', 'HEAD'], { allowFailure: true })).stdout
       .toString('utf8')

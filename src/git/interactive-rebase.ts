@@ -1,3 +1,4 @@
+import { gitPathOutput } from './path-output';
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -17,6 +18,7 @@ type Run = (
   execution?: StashExecution,
 ) => Promise<{ stdout: Buffer; stderr: Buffer; code: number }>;
 const text = async (run: Run, args: string[]) => (await run(args)).stdout.toString('utf8').trim();
+const pathText = async (run: Run, args: string[]) => gitPathOutput((await run(args)).stdout);
 const read = async (name: string) => {
   try {
     return await readFile(name, 'utf8');
@@ -246,7 +248,7 @@ export class InteractiveRebase {
     );
     if (plan.commits.some((x) => !local.has(x.oid)) && !action.acknowledgePublished)
       throw fail('published');
-    const gitDir = await text(run, ['rev-parse', '--path-format=absolute', '--git-dir']),
+    const gitDir = await pathText(run, ['rev-parse', '--path-format=absolute', '--git-dir']),
       dir = directory(gitDir);
     if (/[\r\n\0]/.test(gitDir + process.execPath)) throw fail('path');
     await this.cleanup(gitDir);
@@ -320,7 +322,7 @@ export class InteractiveRebase {
     };
   }
   private async manifest(run: Run): Promise<Manifest | undefined> {
-    const gitDir = await text(run, ['rev-parse', '--path-format=absolute', '--git-dir']);
+    const gitDir = await pathText(run, ['rev-parse', '--path-format=absolute', '--git-dir']);
     const raw = await read(path.join(directory(gitDir), 'manifest.json'));
     if (!raw) return;
     let m: Manifest;
@@ -331,7 +333,7 @@ export class InteractiveRebase {
     }
     if (
       normalized(m.gitDir) !== normalized(gitDir) ||
-      normalized(m.root) !== normalized(await text(run, ['rev-parse', '--show-toplevel'])) ||
+      normalized(m.root) !== normalized(await pathText(run, ['rev-parse', '--show-toplevel'])) ||
       (await read(path.join(gitDir, 'rebase-merge', 'orig-head'))) !== m.plan.head + '\n' ||
       (await read(path.join(gitDir, 'rebase-merge', 'head-name'))) !==
         `refs/heads/${m.plan.branch}\n`
@@ -396,7 +398,7 @@ export class InteractiveRebase {
     command: 'continue' | 'abort' | 'skip',
     keepEmpty = false,
   ): Promise<boolean> {
-    const gitDir = await text(run, ['rev-parse', '--path-format=absolute', '--git-dir']);
+    const gitDir = await pathText(run, ['rev-parse', '--path-format=absolute', '--git-dir']);
     if (command === 'abort') {
       try {
         await run(['rebase', '--abort']);

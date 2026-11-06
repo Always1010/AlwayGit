@@ -1,3 +1,4 @@
+import { gitPathOutput } from './path-output';
 import { randomUUID } from 'node:crypto';
 import { lstat, open, readFile, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
@@ -140,7 +141,7 @@ export async function dropStash(
   const names: string[] = [];
   for (const relative of ['refs/stash', 'logs/refs/stash', 'packed-refs']) {
     const result = await run(['rev-parse', '--path-format=absolute', '--git-path', relative]);
-    const name = path.resolve(result.stdout.toString('utf8').trim());
+    const name = path.resolve(gitPathOutput(result.stdout));
     const normalize = (value: string) =>
       process.platform === 'win32' ? value.toLowerCase() : value;
     if (result.code || normalize(name) !== normalize(path.join(base, relative)))

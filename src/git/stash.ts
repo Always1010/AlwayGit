@@ -1,3 +1,4 @@
+import { gitPathOutput } from './path-output';
 import { translate, message as localizeMessage, MessageError } from '../i18n/index';
 import { createHash } from 'node:crypto';
 import {
@@ -85,6 +86,9 @@ function indexPaths(buffer: Buffer): string[] {
 async function text(run: Run, args: string[], execution?: StashExecution): Promise<string> {
   return (await run(args, execution)).stdout.toString('utf8').trim();
 }
+async function pathText(run: Run, args: string[]): Promise<string> {
+  return gitPathOutput((await run(args)).stdout);
+}
 const absent = (error: unknown) =>
   ['ENOENT', 'ENOTDIR'].includes((error as NodeJS.ErrnoException).code ?? '');
 
@@ -124,7 +128,7 @@ async function fileState(root: string, name: string): Promise<FileState> {
 
 async function capture(repo: Repository, extraPaths: string[], run: Run): Promise<Captured> {
   const head = await text(run, ['rev-parse', '--verify', 'HEAD']);
-  const gitDir = await text(run, ['rev-parse', '--path-format=absolute', '--git-dir']);
+  const gitDir = await pathText(run, ['rev-parse', '--path-format=absolute', '--git-dir']);
   const [headFiles, indexFiles, otherFiles, occupied, configResult] = await Promise.all([
     run(['ls-tree', '-r', '-z', head]),
     run(['ls-files', '--stage', '-z']),
@@ -172,7 +176,7 @@ async function capture(repo: Repository, extraPaths: string[], run: Run): Promis
   let index: Buffer | undefined;
   try {
     index = await readFile(
-      await text(run, ['rev-parse', '--path-format=absolute', '--git-path', 'index']),
+      await pathText(run, ['rev-parse', '--path-format=absolute', '--git-path', 'index']),
     );
   } catch (error) {
     if (!absent(error)) throw error;
@@ -185,7 +189,7 @@ async function capture(repo: Repository, extraPaths: string[], run: Run): Promis
         translate('en', 'stash.stashIsolationNeedsGit243OrNewerTo'),
         'UNSUPPORTED_STASH_STATE',
       );
-    const sources = result.stdout.toString('utf8').trim().split(/\r?\n/).filter(Boolean);
+    const sources = gitPathOutput(result.stdout).split('\n').filter(Boolean);
     const chunks: Buffer[] = [];
     for (const source of sources.reverse())
       try {
@@ -197,7 +201,7 @@ async function capture(repo: Repository, extraPaths: string[], run: Run): Promis
       }
     attributes.set(variable, Buffer.concat(chunks));
   }
-  const infoAttributes = await text(run, [
+  const infoAttributes = await pathText(run, [
     'rev-parse',
     '--path-format=absolute',
     '--git-path',
@@ -334,7 +338,7 @@ async function makeSandbox(
   try {
     const format = await text(run, ['rev-parse', '--show-object-format']);
     await git(['init', '--quiet', '--template=', `--object-format=${format}`]);
-    const objects = await text(run, [
+    const objects = await pathText(run, [
       'rev-parse',
       '--path-format=absolute',
       '--git-path',

@@ -1,5 +1,5 @@
 import { afterEach, expect, it } from 'vitest';
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { GitService } from '../src/git/service';
 import { actionSchema } from '../src/protocol/validation';
@@ -181,3 +181,39 @@ it('preserves managed Rebase helpers when the final Abort check rejects changed 
   expect((await service.snapshot(repo)).operation.kind).toBeUndefined();
   await expect(readFile(manifestPath)).rejects.toMatchObject({ code: 'ENOENT' });
 });
+
+it.skipIf(process.platform === 'win32')(
+  'pins ORIG_HEAD in a separate Git directory with trailing whitespace before aborting Merge',
+  async () => {
+    const { root: parent, service } = await fixtures.setup();
+    const root = path.join(parent, 'worktree'),
+      gitDir = path.join(parent, 'metadata ');
+    await mkdir(root);
+    await git(root, 'init', '-b', 'main', `--separate-git-dir=${gitDir}`);
+    await git(root, 'config', 'user.name', 'Path Test');
+    await git(root, 'config', 'user.email', 'path@example.com');
+    await git(root, 'config', 'commit.gpgsign', 'false');
+    const repo = await service.discover(root);
+    const base = await commitFile(root, 'file.txt', 'base\n');
+    await git(root, 'switch', '-c', 'topic');
+    await commitFile(root, 'file.txt', 'incoming\n');
+    await git(root, 'switch', 'main');
+    const original = await commitFile(root, 'file.txt', 'ours\n');
+    await expect(git(root, 'merge', 'topic')).rejects.toThrow();
+    const action = await service.prepareAction(repo, { type: 'operation.abort', kind: 'merge' });
+    await git(root, 'update-ref', 'ORIG_HEAD', base);
+    const before = await workingState(root);
+    await expect(service.execute(repo, action)).rejects.toMatchObject({
+      code: 'OPERATION_CHANGED',
+    });
+    expect(await workingState(root)).toEqual(before);
+    await git(root, 'update-ref', 'ORIG_HEAD', original);
+    await service.execute(
+      repo,
+      await service.prepareAction(repo, { type: 'operation.abort', kind: 'merge' }),
+    );
+    expect((await service.snapshot(repo)).operation.kind).toBeUndefined();
+    expect(await git(root, 'rev-parse', 'HEAD')).toBe(original);
+    expect(await readFile(path.join(root, 'file.txt'), 'utf8')).toBe('ours\n');
+  },
+);

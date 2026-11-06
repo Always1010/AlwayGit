@@ -1,3 +1,4 @@
+import { gitPathOutput } from './path-output';
 import {
   hasHistorySearch,
   historySearchArguments,
@@ -503,7 +504,7 @@ export class GitService implements GitServiceContract {
             localizeMessage('service.cannotBindRemoteDestination'),
             'REMOTE_BINDING_UNSUPPORTED',
           );
-        const systemPath = system.stdout.toString('utf8').trim();
+        const systemPath = gitPathOutput(system.stdout);
         const includeSystem =
           !/^(?:1|true|yes|on)$/i.test(commandEnv.GIT_CONFIG_NOSYSTEM ?? '') &&
           systemPath &&
@@ -673,8 +674,7 @@ export class GitService implements GitServiceContract {
     return (await this.run(repo, args)).stdout.toString('utf8').trim();
   }
   private async pathText(repo: Repository, args: string[]): Promise<string> {
-    // Git terminates path output with LF; whitespace before it belongs to the path.
-    return (await this.run(repo, args)).stdout.toString('utf8').replace(/\n$/, '');
+    return gitPathOutput((await this.run(repo, args)).stdout);
   }
   private async optionalConfig(repo: Repository, key: string): Promise<string | undefined> {
     const result = await this.run(repo, ['config', '--get', key], true);
@@ -2039,7 +2039,8 @@ export class GitService implements GitServiceContract {
     status: Awaited<ReturnType<GitService['status']>>,
   ): Promise<void> {
     const gitDir =
-      repo.gitDir ?? (await this.pathText(repo, ['rev-parse', '--path-format=absolute', '--git-dir']));
+      repo.gitDir ??
+      (await this.pathText(repo, ['rev-parse', '--path-format=absolute', '--git-dir']));
     const markers = await Promise.all(
       [
         'rebase-merge',

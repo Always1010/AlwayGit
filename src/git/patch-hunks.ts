@@ -1,3 +1,4 @@
+import { gitPathOutput } from './path-output';
 import { createHash, randomUUID } from 'node:crypto';
 import { chmod, link, lstat, mkdir, open, rename, rm, unlink } from 'node:fs/promises';
 import path from 'node:path';
@@ -160,9 +161,9 @@ export class PatchHunkStore {
         : change.worktreeStatus === ' ' && !change.untracked
     )
       throw new Unsupported();
-    const gitDir = (await run(['rev-parse', '--path-format=absolute', '--git-dir'])).stdout
-      .toString('utf8')
-      .trim();
+    const gitDir = gitPathOutput(
+      (await run(['rev-parse', '--path-format=absolute', '--git-dir'])).stdout,
+    );
     for (const marker of [
       'MERGE_HEAD',
       'CHERRY_PICK_HEAD',
@@ -178,11 +179,9 @@ export class PatchHunkStore {
         if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
       }
     }
-    const indexPath = (
-      await run(['rev-parse', '--path-format=absolute', '--git-path', 'index'])
-    ).stdout
-      .toString('utf8')
-      .trim();
+    const indexPath = gitPathOutput(
+      (await run(['rev-parse', '--path-format=absolute', '--git-path', 'index'])).stdout,
+    );
     const indexBytes = await boundedFile(indexPath, INDEX_LIMIT);
     // Sparse/assume-unchanged entries have semantics that patch operations cannot preserve safely.
     const entries = (await run(['ls-files', '--stage', '-z', '--', target.path])).stdout
@@ -375,11 +374,9 @@ export class PatchHunkStore {
       throw stale();
     const part = context.parts.find((part) => part.id === action.hunkId);
     if (!part) throw stale();
-    const indexPath = (
-      await run(['rev-parse', '--path-format=absolute', '--git-path', 'index'])
-    ).stdout
-      .toString('utf8')
-      .trim();
+    const indexPath = gitPathOutput(
+      (await run(['rev-parse', '--path-format=absolute', '--git-path', 'index'])).stdout,
+    );
     const lockPath = indexPath + '.lock',
       temporary = indexPath + '.alwaygit-' + randomUUID();
     // The real index lock excludes cooperating Git writers during revalidation and publication.

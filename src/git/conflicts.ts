@@ -1,3 +1,4 @@
+import { gitPathOutput } from './path-output';
 import { createHash, randomUUID } from 'node:crypto';
 import { chmod, link, lstat, mkdir, open, readFile, rename, rm, unlink } from 'node:fs/promises';
 import path from 'node:path';
@@ -79,7 +80,7 @@ export class ConflictStore {
     let filtered = false;
     for (let i = 0; i + 2 < attrs.length; i += 3)
       if (!['unspecified', 'unset'].includes(attrs[i + 2])) filtered = true;
-    const gitDir = (await run(['rev-parse', '--absolute-git-dir'])).stdout.toString('utf8').trim();
+    const gitDir = gitPathOutput((await run(['rev-parse', '--absolute-git-dir'])).stdout);
     const markers = await Promise.all(
       ['MERGE_HEAD', 'REBASE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD'].map(async (marker) => {
         try {

@@ -1,3 +1,4 @@
+import { gitPathOutput } from './path-output';
 import { randomUUID } from 'node:crypto';
 import { copyFile, open, readFile, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
@@ -55,11 +56,9 @@ export async function commitSelected(
     ...new Set(unstagedSelections.flatMap((selection) => related(selection).slice(1))),
   ].filter((name) => !unique.has(name));
   const selectedPaths = [...new Set([...staged, ...unstaged, ...renameSources])];
-  const indexPath = (
-    await run(['rev-parse', '--path-format=absolute', '--git-path', 'index'])
-  ).stdout
-    .toString('utf8')
-    .trim();
+  const indexPath = gitPathOutput(
+    (await run(['rev-parse', '--path-format=absolute', '--git-path', 'index'])).stdout,
+  );
   const token = randomUUID(),
     originalIndex = path.join(path.dirname(indexPath), `alwaygit-${token}-original.index`);
   const commitIndex = path.join(path.dirname(indexPath), `alwaygit-${token}-commit.index`);

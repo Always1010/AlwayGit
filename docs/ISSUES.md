@@ -6,11 +6,11 @@
 
 - 日期：2026-11-07
 - 状态：已解决
-- 现象：Linux 等允许目录名末尾包含空白的系统中，添加名称以空格、制表符或换行结尾的仓库时报 ENOENT；独立 Git 元数据目录名称的尾部空白也会导致识别失败。
+- 现象：Linux 等允许目录名末尾包含空白的系统中，添加名称以空格、制表符或换行结尾的仓库时报 ENOENT；独立 Git 元数据目录名称的尾部空白也会导致识别失败。即使发现成功，托管 Rebase、选定文件 Stash、冲突控制、分块操作与选定提交仍可能读取错误目录；自定义 Hooks 路径尾空格会使已有钩子未被调用，Abort 也可能遗漏实际 ORIG_HEAD 变化。
 - 原因：路径查询复用普通 Git 文本读取的 trim()，把路径自身的尾部空白一并删除，后续 realpath 和操作状态文件读取使用了不存在的路径。
-- 解决方案：路径查询使用专用读取入口，仅移除 Git 添加的最后一个 LF；工作目录、commonDir、gitDir、shallow 和操作控制目录查询均保留路径原始空白。
-- 验证方式：真实 Git 回归覆盖以空格、制表符、回车和换行结尾的仓库目录，以及以空格结尾的独立 Git 目录；验证发现、提交后的快照与操作状态读取。Windows 跳过不支持的目录名称。
-- 相关文件：`src/git/service.ts`、`tests/git-service.test.ts`。
+- 解决方案：路径查询共用专用 gitPathOutput 解码，仅移除 Git 添加的最后一个 LF；工作目录、commonDir、gitDir、shallow、Index、Hooks、操作控制目录及 Stash 隔离预检的对象、属性路径均保留原始空白。普通 OID、配置值等非路径读取继续采用原有文本规则；Git 属性路径列表按 LF 分隔，保留每项首尾空白。
+- 验证方式：真实 Git 回归覆盖以空格、制表符、回车和换行结尾的仓库目录，以及以空格结尾的独立 Git 目录；验证发现、提交后的快照与操作状态读取。增加工作目录与分离 Git 目录尾空格下的选定文件 Stash 保存/恢复/删除、托管 Rebase 恢复/检查后继续/中止、分块暂存与经尾空格 Hooks 目录的选定提交；分离 Git 目录下修改 ORIG_HEAD 会拒绝旧 Abort 确认，新确认仍可中止。Windows 跳过不支持的目录名称。
+- 相关文件：`src/git/path-output.ts`、`src/git/service.ts`、`src/git/interactive-rebase.ts`、`src/git/stash.ts`、`src/git/patch-hunks.ts`、`src/git/selected-commit.ts`、`src/git/selected-commit-hooks.ts`、`src/git/stash-drop.ts`、`src/git/conflicts.ts`、`tests/git-service.test.ts`、`tests/git-path-operations.test.ts`、`tests/git-operation-abort.test.ts`。
 
 ## BUG-180：分支比较返回文件列表后迟到的提交详情重新打开
 
