@@ -92,8 +92,7 @@ export function OperationNotice({ abort }: { abort(): void }) {
   function requestSkip(kind: OperationKind) {
     if (!operation?.skipToken || state.snapshot?.repository.id !== state.repoId) return;
     const confirmation = { context: captureActionContext(), kind, skipToken: operation.skipToken };
-    if (kind === 'rebase') setConfirmSkip(confirmation);
-    else executeSkip(confirmation);
+    setConfirmSkip(confirmation);
   }
   const validConfirmation =
     confirmSkip &&
@@ -211,17 +210,32 @@ export function OperationNotice({ abort }: { abort(): void }) {
                 {t('operations.quit')}
               </Button>
             )}
-            <Button disabled={!operation.canAbort || state.busy} onClick={abort}>
+            <Button
+              disabled={!operation.canAbort || state.busy}
+              title={kind === 'cherry-pick' ? t('operations.cherryPickAbortEffect') : undefined}
+              onClick={abort}
+            >
               {t('operations.abort', { name: name })}
             </Button>
           </>
         )}
       </div>
       {validConfirmation && (
-        <Modal title={t('interactiveRebase.skipTitle')} onClose={() => setConfirmSkip(undefined)}>
-          <p>{t('interactiveRebase.skipConfirm')}</p>
-          <Button disabled={state.busy} onClick={() => executeSkip(confirmSkip)}>
-            {t('operations.skip')}
+        <Modal
+          title={
+            kind === 'rebase'
+              ? t('interactiveRebase.skipTitle')
+              : t('operations.skipTitle', { name })
+          }
+          onClose={() => setConfirmSkip(undefined)}
+        >
+          <p>{t(kind === 'rebase' ? 'interactiveRebase.skipConfirm' : 'operations.skipEffect')}</p>
+          {kind === 'cherry-pick' && <p>{t('operations.cherryPickKeepAlternative')}</p>}
+          <Button data-autofocus="true" onClick={() => setConfirmSkip(undefined)}>
+            {t('common.cancel')}
+          </Button>
+          <Button className="danger" disabled={state.busy} onClick={() => executeSkip(confirmSkip)}>
+            {t('operations.confirmSkip')}
           </Button>
         </Modal>
       )}

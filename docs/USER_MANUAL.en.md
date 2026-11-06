@@ -798,7 +798,7 @@ The goal of conflict resolution is to produce the correct final file contents. M
 
 **Result:** The in-progress operation has actually finished, and you have reviewed the resulting contents.
 
-**Caution:** The review has limits involving size, binary files, encoding, and submodules. An absence of suspected markers does not guarantee semantic correctness. Changes to the Index or branch after the review require another review. Skip appears only when the current Git operation supports it and discards the current commit and its conflict-resolution changes. Switching repositories, restarting the operation, or advancing a step invalidates an old confirmation; review the current step and confirm again.
+**Caution:** The review has limits involving size, binary files, encoding, and submodules. An absence of suspected markers does not guarantee semantic correctness. Changes to the Index or branch after the review require another review. Skip appears only when supported and first opens a confirmation with Cancel focused by default. Confirming discards the current commit’s application and conflict-resolution edits, retains applied commits, and continues the remaining queue; for a single commit this can look the same as Abort. Switching repositories, restarting the operation, or advancing a step invalidates an old confirmation; review the current step and confirm again.
 
 ![Figure 19 Review the staged result before continuing an operation after conflicts are resolved](images/user-manual/figure-19.png)
 
@@ -811,7 +811,7 @@ The goal of conflict resolution is to produce the correct final file contents. M
 **Prerequisite:** Confirm that you no longer want to continue this Merge, Rebase, Cherry-pick, or Revert.
 
 1. Choose Abort or the option to abort the current operation in the persistent operation bar or the operation dialog.
-2. Read the starting commit and the recovery information. If you need to keep your manual resolution work, make a reliable backup first.
+2. Read the starting commit and recovery information. Cherry-pick Abort rolls back the entire batch, including applied commits, and may lose manual resolution edits. Cancel is focused by default. To retain current files, cancel and choose `Quit Cherry-pick & Keep Files…` instead.
 3. Proceed through the workbench explanation and native confirmation, then check the current branch, history, and file status.
 
 **Result:** Git has attempted to restore the state from before the operation began, and the in-progress indicator has disappeared.

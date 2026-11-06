@@ -66,7 +66,7 @@ function openConfirmation() {
   render().find((node) => node.type === 'button' && node.props.children === 'operations.skip')!
     .props.onClick!();
   return nodes(render().find((node) => node.type === 'modal')).find(
-    (node) => node.type === 'button',
+    (node) => node.type === 'button' && node.props.children === 'operations.confirmSkip',
   )!;
 }
 beforeEach(() => {
@@ -101,6 +101,23 @@ it('sends the captured token and repository context for a still-current confirma
     { repoId: 'a', epoch: 1 },
   );
 });
+it.each(['cherry-pick', 'revert'])(
+  'requires confirmation before Skip for %s, and Cancel keeps the operation',
+  (kind) => {
+    fixture.state.snapshot.operation.kind = kind;
+    openConfirmation();
+    expect(fixture.state.execute).not.toHaveBeenCalled();
+    render().find((node) => node.type === 'button' && node.props.children === 'common.cancel')!
+      .props.onClick!();
+    expect(render().some((node) => node.type === 'modal')).toBe(false);
+    expect(fixture.state.execute).not.toHaveBeenCalled();
+    openConfirmation().props.onClick!();
+    expect(fixture.state.execute).toHaveBeenCalledWith(
+      { type: 'operation.skip', kind, skipToken: 'first' },
+      { repoId: 'a', epoch: 1 },
+    );
+  },
+);
 function openQuit() {
   fixture.state.snapshot.operation.kind = 'cherry-pick';
   fixture.state.snapshot.operation.quitToken = 'quit-first';

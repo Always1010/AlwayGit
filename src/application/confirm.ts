@@ -61,7 +61,12 @@ export async function confirmAction(
       effect: action.force ? warningText('confirm.forceRemoveWorktree') : '',
     });
   if (action.type === 'operation.abort')
-    warning = warningText('confirm.abort', { kind: action.kind });
+    warning =
+      action.kind === 'cherry-pick'
+        ? warningText('operations.cherryPickAbortEffect') +
+          '\n' +
+          warningText('operations.cherryPickKeepAlternative')
+        : warningText('confirm.abort', { kind: action.kind });
   if (action.type === 'commit.checkout')
     warning = text('confirm.detachedCheckout', { target: action.target });
   if (action.type === 'checkout.stash' && action.detached)

@@ -186,6 +186,17 @@ describe('operation confirmation', () => {
       await confirmAction(repo, { type: 'operation.abort', kind: 'merge' }, 'zh-CN', operation),
     ).toBe(true);
   });
+  it('explains Cherry-pick batch rollback and the keep-files alternative before native Abort', async () => {
+    const action = { type: 'operation.abort', kind: 'cherry-pick' } as const;
+    expect(await confirmAction(repo, action, 'zh-CN')).toBe(false);
+    const warning = host.warning.mock.calls[0][0];
+    expect(warning).toContain('本次整批 Cherry-pick');
+    expect(warning).toContain('已成功应用的提交');
+    expect(warning).toContain('手动处理冲突的改动可能丢失');
+    expect(warning).toContain('退出 Cherry-pick，保留文件');
+    host.warning.mockResolvedValue('继续');
+    expect(await confirmAction(repo, action, 'zh-CN')).toBe(true);
+  });
   it.each([
     { type: 'commit', message: 'Reviewed' },
     { type: 'operation.continue', kind: 'merge' },

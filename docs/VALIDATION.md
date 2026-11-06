@@ -42,7 +42,7 @@
 | `--terminal-only` | Diff 与多终端标签、目录隔离、终端键盘保护、菜单导航与焦点恢复、重命名、关闭/自然退出后重启、折叠、最大化与标签列表 |
 | `--branch-only` | 分支创建、Detached HEAD 策略与 Push 引导 |
 | `--tag-status-only` | 标签侧栏和 Graph 状态、对象差异、远端切换、核对详情、主题布局及查询失败恢复 |
-| `--cherry-pick-only` | Commit 菜单祖先关系禁用、过期查询取消与历史重新应用确认 |
+| `--cherry-pick-only` | Commit 菜单祖先关系禁用、过期查询取消与历史重新应用确认；保留文件退出、Skip / Abort 风险确认及默认取消 |
 | `--stash-only` | Stash 详情、保存范围及恢复受阻 |
 | `--refresh-only` | 后台刷新、选择保留和 Diff 更新 |
 | `--appearance-only` | 设置、主题、配色、字体、尺寸与恢复布局 |

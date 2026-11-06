@@ -42,7 +42,7 @@ Focused browser entry points:
 | `--terminal-only` | Diff and multiple terminal tabs, directory isolation, terminal keyboard protection, menu navigation and focus restoration, rename, restart after closing / natural exit, collapse, maximize, and tab list |
 | `--branch-only` | Branch creation, Detached HEAD policy, and Push guidance |
 | `--tag-status-only` | Tag sidebar and Graph status, object differences, remote switching, verification details, theme layouts, and query-failure recovery |
-| `--cherry-pick-only` | Commit-menu disabling based on ancestry, stale-query cancellation, and confirmation before reapplying history |
+| `--cherry-pick-only` | Commit-menu ancestry disabling, stale-query cancellation, historical reapply confirmation; Quit retaining files, Skip/Abort risk confirmation and default cancellation |
 | `--stash-only` | Stash details, save scope, and blocked restoration |
 | `--refresh-only` | Background refresh, preserved selection, and Diff updates |
 | `--appearance-only` | Settings, themes, colors, fonts, sizes, and layout restoration |

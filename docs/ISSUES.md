@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-174：Cherry-pick 与 Revert 的 Skip 未经确认即丢弃当前步骤
+
+- 日期：2026-11-06
+- 状态：已解决
+- 现象：点击 Cherry-pick 或 Revert 的 Skip 会立即执行，当前步骤的应用结果和冲突处理改动可能丢失；单条 Cherry-pick 时与 Abort 的结果看起来相同，用户难以判断范围。
+- 原因：操作条只为 Rebase 显示 Skip 确认，其他种类直接执行；已有 Abort 确认未明确解释 Cherry-pick 整批回退与保留文件退出的区别。
+- 解决方案：所有支持 Skip 的操作均先显示确认，默认取消，说明丢弃范围和批量后续行为，保留仓库代次及步骤指纹校验。Cherry-pick 的工作台与原生 Abort 确认明确整批回退和手动改动风险，工作台默认取消，确认按钮使用明确动作文字；两种确认提示保留文件应改用 Quit。
+- 验证方式：类型与 2030 条双语资源检查、确认及操作条定向 23 项测试通过；Cherry-pick 无头专项验证 Skip / Abort 的风险说明、默认取消、Enter / Esc 不执行、显式确认才发动作，并回归 Quit 取消与保留冲突及暂存文件。真实 Git 的单条与批量 Skip / Abort / Quit 差异、保留文件及陈旧操作拒绝已在配套退出功能中验证。Webview 生产构建、137 处本地文档链接和图片引用检查通过；未运行真实 VS Code 桌面集成，未打包或安装扩展。
+- 相关文件：`webview/OperationNotice.tsx`、`webview/ActionDialog.tsx`、`src/application/confirm.ts`、`src/i18n/catalogs/operations.json`、`src/i18n/generated.ts`、`tests/operation-notice.test.tsx`、`tests/confirm.test.ts`、`scripts/test-cherry-pick-ui.mjs`、双语工作台规格与用户手册。
+
 ## BUG-173：网络操作和刷新长时间等待时缺少可确认的停止入口
 
 - 日期：2026-11-06

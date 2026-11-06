@@ -4632,8 +4632,8 @@ export const catalog = {
     "zh-CN": "请等待当前操作完成。"
   },
   "operations.skipTheCurrentCommitInThisOperation": {
-    "en": "Skip the current commit in this operation",
-    "zh-CN": "跳过当前操作中的提交"
+    "en": "Discard the current commit’s application and conflict-resolution edits, then continue the remaining commits.",
+    "zh-CN": "丢弃当前提交的应用结果及冲突处理改动，继续后续提交。"
   },
   "operations.abort": {
     "en": "Abort {{name}}…",
@@ -4662,6 +4662,30 @@ export const catalog = {
   "operations.confirmQuit": {
     "en": "Quit & Keep Files",
     "zh-CN": "退出并保留文件"
+  },
+  "operations.skipTitle": {
+    "en": "Skip current {{name}} commit?",
+    "zh-CN": "跳过当前 {{name}} 提交？"
+  },
+  "operations.skipEffect": {
+    "en": "This discards the current commit’s application and conflict-resolution edits. Already applied commits remain, and Git continues the remaining commits. For a single commit, the operation ends and can look the same as Abort.",
+    "zh-CN": "将丢弃当前提交的应用结果及冲突处理改动。已应用提交保留，Git 继续后续提交；单条提交时操作直接结束，看起来可能与中止相同。"
+  },
+  "operations.confirmSkip": {
+    "en": "Confirm Skip",
+    "zh-CN": "确认跳过"
+  },
+  "operations.cherryPickAbortEffect": {
+    "en": "Abort rolls back this entire Cherry-pick sequence, including commits already applied in this batch. Manual conflict-resolution edits may be lost. This does not keep the current files for you to resolve later.",
+    "zh-CN": "中止会撤销本次整批 Cherry-pick，包括本批已成功应用的提交；手动处理冲突的改动可能丢失。此操作不会保留当前文件供稍后处理。"
+  },
+  "operations.cherryPickKeepAlternative": {
+    "en": "To exit and keep your files instead, cancel this dialog and choose Quit Cherry-pick & Keep Files… in the operation bar.",
+    "zh-CN": "如果想退出但保留文件，请取消此窗口，再点击操作条的“退出 Cherry-pick，保留文件…”。"
+  },
+  "operations.confirmAbort": {
+    "en": "Confirm Abort",
+    "zh-CN": "确认中止"
   },
   "operationsReview.binaryFileNotScanned": {
     "en": "Binary file: not scanned",
@@ -9308,6 +9332,12 @@ export interface MessageParameters {
   "operations.quitEffect": {  };
   "operations.quitNext": {  };
   "operations.confirmQuit": {  };
+  "operations.skipTitle": { name: ParameterValue };
+  "operations.skipEffect": {  };
+  "operations.confirmSkip": {  };
+  "operations.cherryPickAbortEffect": {  };
+  "operations.cherryPickKeepAlternative": {  };
+  "operations.confirmAbort": {  };
   "operationsReview.binaryFileNotScanned": {  };
   "operationsReview.over2MiBNotScanned": {  };
   "operationsReview.unsupportedTextEncodingNotScanned": {  };

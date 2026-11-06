@@ -992,13 +992,15 @@ function StandardActionDialog({
     ].includes(type) ||
     (type === 'reset' && values.mode === 'hard');
   const submitLabel =
-    type === 'tag.delete'
-      ? !deleteLocal
-        ? t('actions.deleteRemoteTag')
-        : checks.deleteRemote
-          ? t('actions.deleteLocalAndRemoteTag')
-          : t('actions.deleteLocalTag')
-      : title;
+    type === 'operation.abort'
+      ? t('operations.confirmAbort')
+      : type === 'tag.delete'
+        ? !deleteLocal
+          ? t('actions.deleteRemoteTag')
+          : checks.deleteRemote
+            ? t('actions.deleteLocalAndRemoteTag')
+            : t('actions.deleteLocalTag')
+        : title;
   if (
     snapshot.operation.kind &&
     ['merge', 'rebase', 'cherry-pick', 'revert', 'pull'].includes(type)
@@ -1133,7 +1135,11 @@ function StandardActionDialog({
         ) : (
           <>
             <Button
-              data-autofocus={(type === 'pull' && !actionContext.expectedBranch) || undefined}
+              data-autofocus={
+                type === 'operation.abort' ||
+                (type === 'pull' && !actionContext.expectedBranch) ||
+                undefined
+              }
               onClick={onClose}
               disabled={state.busy}
             >
@@ -1888,6 +1894,12 @@ function StandardActionDialog({
           )}
           {type === 'operation.abort' && (
             <>
+              {snapshot.operation.kind === 'cherry-pick' && (
+                <>
+                  <p className="warning-text">{t('operations.cherryPickAbortEffect')}</p>
+                  <p>{t('operations.cherryPickKeepAlternative')}</p>
+                </>
+              )}
               <p className="warning-text">
                 {t('actions.abortTheActiveEditsMadeWhileResolvingConflictsMay', {
                   kind: snapshot.operation.kind,

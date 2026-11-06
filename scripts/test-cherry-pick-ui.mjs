@@ -109,6 +109,17 @@ export async function verifyCherryPick(browser, url) {
               snapshot.version++;
               result = { snapshot };
             }
+            if (['operation.skip', 'operation.abort'].includes(request.payload.type)) {
+              snapshot.operation = {
+                conflicts: 0,
+                canContinue: false,
+                canAbort: false,
+                canSkip: false,
+              };
+              snapshot.changes = [];
+              snapshot.version++;
+              result = { snapshot };
+            }
           }
           queueMicrotask(() =>
             window.postMessage({ type: 'response', id: request.id, result }, '*'),
@@ -209,6 +220,57 @@ export async function verifyCherryPick(browser, url) {
     await page.keyboard.press('Escape');
     await page.evaluate(() => window.__cherryFixture.pause());
     const notice = page.getByTestId('operation-notice');
+    const skip = notice.getByRole('button', { name: 'Skip', exact: true });
+    await skip.click();
+    const skipDialog = page.getByRole('dialog', {
+      name: 'Skip current Cherry-pick commit?',
+      exact: true,
+    });
+    await skipDialog.getByText(/Already applied commits remain/).waitFor();
+    assert.equal(
+      await skipDialog
+        .getByRole('button', { name: 'Cancel', exact: true })
+        .evaluate((button) => button === document.activeElement),
+      true,
+    );
+    assert.equal(await page.evaluate(() => window.__cherryFixture.actions.length), 1);
+    await page.keyboard.press('Enter');
+    await skipDialog.waitFor({ state: 'hidden' });
+    await skip.click();
+    await page.keyboard.press('Escape');
+    await skipDialog.waitFor({ state: 'hidden' });
+    assert.equal(await page.evaluate(() => window.__cherryFixture.actions.length), 1);
+    await skip.click();
+    await skipDialog.getByRole('button', { name: 'Confirm Skip', exact: true }).click();
+    await notice.waitFor({ state: 'hidden' });
+    assert.deepEqual(await page.evaluate(() => window.__cherryFixture.actions.at(-1)), {
+      type: 'operation.skip',
+      kind: 'cherry-pick',
+      skipToken: 'a'.repeat(64),
+    });
+    await page.evaluate(() => window.__cherryFixture.pause());
+    const abort = notice.getByRole('button', { name: 'Abort Cherry-pick…', exact: true });
+    await abort.click();
+    const abortDialog = page.getByRole('dialog', { name: 'Abort', exact: true });
+    await abortDialog.getByText(/entire Cherry-pick sequence/).waitFor();
+    await abortDialog.getByText(/To exit and keep your files/).waitFor();
+    assert.equal(
+      await abortDialog
+        .getByRole('button', { name: 'Cancel', exact: true })
+        .evaluate((button) => button === document.activeElement),
+      true,
+    );
+    await page.keyboard.press('Enter');
+    await abortDialog.waitFor({ state: 'hidden' });
+    assert.equal(await page.evaluate(() => window.__cherryFixture.actions.length), 2);
+    await abort.click();
+    await abortDialog.getByRole('button', { name: 'Confirm Abort', exact: true }).click();
+    await notice.waitFor({ state: 'hidden' });
+    assert.deepEqual(await page.evaluate(() => window.__cherryFixture.actions.at(-1)), {
+      type: 'operation.abort',
+      kind: 'cherry-pick',
+    });
+    await page.evaluate(() => window.__cherryFixture.pause());
     const quit = notice.getByRole('button', {
       name: 'Quit Cherry-pick & Keep Files…',
       exact: true,
@@ -220,7 +282,7 @@ export async function verifyCherryPick(browser, url) {
     });
     await quitDialog.getByText(/including unresolved conflicts/).waitFor();
     await quitDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
-    assert.equal(await page.evaluate(() => window.__cherryFixture.actions.length), 1);
+    assert.equal(await page.evaluate(() => window.__cherryFixture.actions.length), 3);
     await quit.click();
     await quitDialog.getByRole('button', { name: 'Quit & Keep Files', exact: true }).click();
     await notice.getByText('Unresolved conflicts', { exact: true }).waitFor();
