@@ -4049,8 +4049,8 @@ export const catalog = {
     "zh-CN": "已选择 {{count}} 个仓库"
   },
   "menus.fetchRepositories": {
-    "en": "Fetch {{count}} Repositories…",
-    "zh-CN": "获取 {{count}} 个仓库…"
+    "en": "Fetch {{count}} Repositories",
+    "zh-CN": "获取 {{count}} 个仓库"
   },
   "menus.refreshStatusForRepositories": {
     "en": "Refresh Status for {{count}} Repositories",
@@ -4526,6 +4526,10 @@ export const catalog = {
   "menus.removeWorktrees": {
     "en": "Remove {{count}} Worktrees…",
     "zh-CN": "移除 {{count}} 个工作树…"
+  },
+  "menus.fetchAllRepositories": {
+    "en": "Fetch All Repositories",
+    "zh-CN": "获取全部仓库的远程更新"
   },
   "notices.theRepositoryWasRemovedFromAlwayGit": {
     "en": "The repository was removed from AlwayGit.",
@@ -7963,30 +7967,6 @@ export const catalog = {
     "en": "Quick start",
     "zh-CN": "快速开始"
   },
-  "workbench.fetchCompleted": {
-    "en": "Fetch completed.",
-    "zh-CN": "获取完成。"
-  },
-  "workbench.fetchedRepositories": {
-    "en": "Fetched {{count}} repositories.",
-    "zh-CN": "已获取 {{count}} 个仓库。"
-  },
-  "workbench.fetchRepository": {
-    "en": "Fetch Repository",
-    "zh-CN": "获取仓库"
-  },
-  "workbench.fetchRepositories": {
-    "en": "Fetch {{count}} Repositories",
-    "zh-CN": "获取 {{count}} 个仓库"
-  },
-  "workbench.fetching": {
-    "en": "Fetching…",
-    "zh-CN": "正在获取…"
-  },
-  "workbench.fetchTheSelectedRepositoriesWithoutChangingTheRepositoryOpen": {
-    "en": "Fetch the selected repositories without changing the repository open in this tab.",
-    "zh-CN": "获取所选仓库，不切换当前标签页中打开的仓库。"
-  },
   "workbench.theBranchIsInUseByAnotherWorktree": {
     "en": "The branch is in use by another Worktree.",
     "zh-CN": "该分支正被另一个工作树使用。"
@@ -8114,6 +8094,22 @@ export const catalog = {
   "workbench.retryRepositories": {
     "en": "Retry",
     "zh-CN": "重试"
+  },
+  "workbench.batchFetchProgress": {
+    "en": "Fetching repositories: {{completed}} / {{total}} completed",
+    "zh-CN": "正在获取仓库更新：已完成 {{completed}} / {{total}}"
+  },
+  "workbench.batchFetchResult": {
+    "en": "Fetch completed: {{completed}} succeeded, {{failed}} failed, {{skipped}} skipped",
+    "zh-CN": "获取结束：{{completed}} 个成功，{{failed}} 个失败，{{skipped}} 个跳过"
+  },
+  "workbench.batchFetchFailures": {
+    "en": "View {{count}} failed repositories",
+    "zh-CN": "查看 {{count}} 个失败仓库"
+  },
+  "workbench.retryFailedFetches": {
+    "en": "Retry failed repositories",
+    "zh-CN": "重试失败的仓库"
   },
   "workbenchEntry.showAlwayGitWorkbench": {
     "en": "Show AlwayGit Workbench",
@@ -9354,6 +9350,7 @@ export interface MessageParameters {
   "menus.locateTagCommit": {  };
   "menus.locateBranchTip": {  };
   "menus.removeWorktrees": { count: number };
+  "menus.fetchAllRepositories": {  };
   "notices.theRepositoryWasRemovedFromAlwayGit": {  };
   "notices.couldNotLocateThisCommitInTheFullHistory": {  };
   "notices.automaticLocateReachedItsReadLimitHistoryAndCommit": {  };
@@ -10210,12 +10207,6 @@ export interface MessageParameters {
   "workbench.addRepositories": {  };
   "workbench.findAndAddRepositories": {  };
   "workbench.quickStart": {  };
-  "workbench.fetchCompleted": {  };
-  "workbench.fetchedRepositories": { count: number };
-  "workbench.fetchRepository": {  };
-  "workbench.fetchRepositories": { count: number };
-  "workbench.fetching": {  };
-  "workbench.fetchTheSelectedRepositoriesWithoutChangingTheRepositoryOpen": {  };
   "workbench.theBranchIsInUseByAnotherWorktree": {  };
   "workbench.resolveConflictsBeforeCheckout": {  };
   "workbench.completeOrAbortTheActiveGitOperationBeforeCheckout": {  };
@@ -10248,6 +10239,10 @@ export interface MessageParameters {
   "workbench.repositoryLoadingFailed": {  };
   "workbench.repositoryLoadingSlow": {  };
   "workbench.retryRepositories": {  };
+  "workbench.batchFetchProgress": { completed: ParameterValue; total: ParameterValue };
+  "workbench.batchFetchResult": { completed: ParameterValue; failed: ParameterValue; skipped: ParameterValue };
+  "workbench.batchFetchFailures": { count: number };
+  "workbench.retryFailedFetches": {  };
   "workbenchEntry.showAlwayGitWorkbench": {  };
   "workbenchEntry.openAlwayGitWorkbench": {  };
   "workbenchEntry.editorMode": {  };

@@ -4076,3 +4076,17 @@ p {
   align-self: flex-end;
   margin: 3px 10px;
 }
+
+.repository-fetch-progress {
+  align-items: flex-start;
+}
+.repository-fetch-summary {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.repository-fetch-summary details {
+  margin-top: 4px;
+  max-height: 140px;
+  overflow: auto;
+}

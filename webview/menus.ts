@@ -8,7 +8,8 @@ import type {
   Stash,
   Worktree,
 } from '../src/protocol/types';
-import type { RepositoryGroup } from '../src/protocol/repositories';
+import { groupRepositories, type RepositoryGroup } from '../src/protocol/repositories';
+import { useRepositoryFetch } from './repositoryFetch';
 import type { DialogRequest } from './ActionDialog';
 import type { MenuItem } from './ContextMenu';
 import { useWorkbench } from './store';
@@ -233,7 +234,7 @@ export function menuFor(
           () => api.host('openRepository', { newWindow: true }, repository.id),
           'window',
         ),
-        item(uiText('menus.fetch'), () => api.fetchRepositories([repository]), 'cloud-download'),
+        item(uiText('workbench.fetch'), () => api.fetchRepositories([repository]), 'cloud-download'),
         item(t('menus.refreshStatus'), () => state.loadRepositoryStatuses(), 'refresh'),
         copy(t('menus.copyRepositoryPath'), repository.root),
         item(
@@ -245,10 +246,19 @@ export function menuFor(
       ],
     };
   }
-  if (target.kind === 'repository-collection')
+  if (target.kind === 'repository-collection') {
+    const repositories = groupRepositories(state.repositories, state.repoId)
+      .filter((group) => group.collectionIds.includes(target.collection.id))
+      .map((group) => group.repository);
     return {
       caption: target.collection.name,
       items: [
+        item(
+          t('menus.fetchAllRepositories'),
+          () => api.fetchRepositories(repositories),
+          'cloud-download',
+          !repositories.length || useRepositoryFetch.getState().running,
+        ),
         item(
           t('menus.renameRepositoryGroup'),
           () => api.host('renameRepositoryCollection', { id: target.collection.id }),
@@ -261,6 +271,7 @@ export function menuFor(
         ),
       ],
     };
+  }
   if (target.kind === 'group') {
     const name = target.group;
     if (name === 'repositories' && state.catalogState !== 'ready')
@@ -287,6 +298,12 @@ export function menuFor(
       name === 'repositories'
         ? [
             item(t('menus.add'), api.addRepository, 'add'),
+            item(
+              t('menus.fetchAllRepositories'),
+              () => api.fetchRepositories(state.repositories),
+              'cloud-download',
+              !state.repositories.length || useRepositoryFetch.getState().running,
+            ),
             item(t('common.refresh'), () => state.initialize(), 'refresh'),
           ]
         : name === 'local'

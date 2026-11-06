@@ -1,3 +1,5 @@
+import { RepositoryFetchProgress } from './RepositoryFetchProgress';
+import { fetchRepositories } from './repositoryFetch';
 import { RepositoryGroupsDialog } from './RepositoryGroupsDialog';
 import { flushSync } from 'react-dom';
 import {
@@ -114,7 +116,6 @@ export function App() {
     [repositoryDialog, setRepositoryDialog] = useState(false),
     [repositoryRemoval, setRepositoryRemoval] = useState<RepositoryGroup[]>(),
     [repositoryGroupsDialog, setRepositoryGroupsDialog] = useState<RepositoryGroup[]>(),
-    [repositoryFetch, setRepositoryFetch] = useState<Repository[]>(),
     [context, setContext] = useState<{
       x: number;
       y: number;
@@ -383,7 +384,6 @@ export function App() {
         repositoryDialog ||
         repositoryRemoval ||
         repositoryGroupsDialog ||
-        repositoryFetch ||
         context ||
         toolbarMenu ||
         helpOpen ||
@@ -532,7 +532,7 @@ export function App() {
         setContext(undefined);
         setRepositoryRemoval(groups);
       },
-      fetchRepositories: (repositories) => setRepositoryFetch(repositories),
+      fetchRepositories: (repositories) => void fetchRepositories(repositories),
     }),
     [open, checkout, startCommit, host, edit, addRepository],
   );
@@ -828,6 +828,7 @@ export function App() {
           </div>
         </div>
       )}
+      <RepositoryFetchProgress />
       <OperationNotice abort={() => open({ type: 'operation.abort' })} />
       {!blockInteraction && (
         <ActionFeedbackBar showLog={() => void host('showLog')} openAction={open} />
@@ -1099,12 +1100,6 @@ export function App() {
           close={closeMenu}
         />
       )}
-      {repositoryFetch && (
-        <RepositoryFetchDialog
-          repositories={repositoryFetch}
-          onClose={() => setRepositoryFetch(undefined)}
-        />
-      )}
       {state.checkoutFailure && snapshot && (
         <CheckoutFailureDialog
           onClose={() => {
@@ -1168,85 +1163,6 @@ function OpenRepositoryFolderIcon() {
       </svg>
       <Icon name="vscode" className="repository-folder-vscode" />
     </span>
-  );
-}
-
-function RepositoryFetchDialog({
-  repositories,
-  onClose,
-}: {
-  repositories: Repository[];
-  onClose(): void;
-}) {
-  const state = useWorkbench(),
-    t = useTranslation(),
-    [busy, setBusy] = useState(false),
-    [failure, setFailure] = useState<string>();
-  const run = async () => {
-    setBusy(true);
-    setFailure(undefined);
-    const results = await Promise.allSettled(
-        repositories.map((repository) => rpc('action', repository.id, { type: 'fetch' })),
-      ),
-      failed = results.flatMap((result, index) =>
-        result.status === 'rejected'
-          ? [
-              `${repositories[index].name}: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`,
-            ]
-          : [],
-      );
-    void state.loadRepositoryStatuses();
-    if (repositories.some((repository) => repository.id === useWorkbench.getState().repoId))
-      void useWorkbench.getState().refresh({ background: true });
-    if (failed.length) {
-      setFailure(failed.join('\n'));
-      setBusy(false);
-      return;
-    }
-    useWorkbench.setState({
-      notice:
-        repositories.length === 1
-          ? t('workbench.fetchCompleted')
-          : t('workbench.fetchedRepositories', { count: repositories.length }),
-    });
-    onClose();
-  };
-  return (
-    <Modal
-      title={
-        repositories.length === 1
-          ? t('workbench.fetchRepository')
-          : t('workbench.fetchRepositories', { count: repositories.length })
-      }
-      busy={busy}
-      onClose={onClose}
-      footer={
-        <>
-          {busy && <StopOperationButton repositories={repositories.map((repo) => repo.id)} />}
-          <Button disabled={busy} onClick={onClose}>
-            {t('common.cancel')}
-          </Button>
-          <Button className="primary" disabled={busy} onClick={() => void run()}>
-            {busy ? t('workbench.fetching') : uiText('workbench.fetch')}
-          </Button>
-        </>
-      }
-    >
-      <p>{t('workbench.fetchTheSelectedRepositoriesWithoutChangingTheRepositoryOpen')}</p>
-      <div className="repository-batch-list">
-        {repositories.map((repository) => (
-          <div key={repository.id}>
-            <strong>{repository.name}</strong>
-            <span>{repository.root}</span>
-          </div>
-        ))}
-      </div>
-      {failure && (
-        <pre className="warning-text" role="alert">
-          {failure}
-        </pre>
-      )}
-    </Modal>
   );
 }
 

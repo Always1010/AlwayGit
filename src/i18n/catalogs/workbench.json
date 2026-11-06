@@ -233,42 +233,6 @@
     "review": "translated",
     "context": "webview/App.tsx / App"
   },
-  "workbench.fetchCompleted": {
-    "en": "Fetch completed.",
-    "zh-CN": "获取完成。",
-    "review": "translated",
-    "context": "webview/App.tsx / RepositoryFetchDialog / run"
-  },
-  "workbench.fetchedRepositories": {
-    "en": "Fetched {{count}} repositories.",
-    "zh-CN": "已获取 {{count}} 个仓库。",
-    "review": "translated",
-    "context": "webview/App.tsx / RepositoryFetchDialog / run"
-  },
-  "workbench.fetchRepository": {
-    "en": "Fetch Repository",
-    "zh-CN": "获取仓库",
-    "review": "translated",
-    "context": "webview/App.tsx / RepositoryFetchDialog"
-  },
-  "workbench.fetchRepositories": {
-    "en": "Fetch {{count}} Repositories",
-    "zh-CN": "获取 {{count}} 个仓库",
-    "review": "translated",
-    "context": "webview/App.tsx / RepositoryFetchDialog"
-  },
-  "workbench.fetching": {
-    "en": "Fetching…",
-    "zh-CN": "正在获取…",
-    "review": "translated",
-    "context": "webview/App.tsx / RepositoryFetchDialog"
-  },
-  "workbench.fetchTheSelectedRepositoriesWithoutChangingTheRepositoryOpen": {
-    "en": "Fetch the selected repositories without changing the repository open in this tab.",
-    "zh-CN": "获取所选仓库，不切换当前标签页中打开的仓库。",
-    "review": "translated",
-    "context": "webview/App.tsx / RepositoryFetchDialog"
-  },
   "workbench.theBranchIsInUseByAnotherWorktree": {
     "en": "The branch is in use by another Worktree.",
     "zh-CN": "该分支正被另一个工作树使用。",
@@ -460,5 +424,29 @@
     "zh-CN": "重试",
     "review": "translated",
     "context": "webview/RepositoryCatalogStatus.tsx / startup repository catalog"
+  },
+  "workbench.batchFetchProgress": {
+    "en": "Fetching repositories: {{completed}} / {{total}} completed",
+    "zh-CN": "正在获取仓库更新：已完成 {{completed}} / {{total}}",
+    "review": "translated",
+    "context": "Background batch Fetch progress"
+  },
+  "workbench.batchFetchResult": {
+    "en": "Fetch completed: {{completed}} succeeded, {{failed}} failed, {{skipped}} skipped",
+    "zh-CN": "获取结束：{{completed}} 个成功，{{failed}} 个失败，{{skipped}} 个跳过",
+    "review": "translated",
+    "context": "Background batch Fetch progress"
+  },
+  "workbench.batchFetchFailures": {
+    "en": "View {{count}} failed repositories",
+    "zh-CN": "查看 {{count}} 个失败仓库",
+    "review": "translated",
+    "context": "Background batch Fetch progress"
+  },
+  "workbench.retryFailedFetches": {
+    "en": "Retry failed repositories",
+    "zh-CN": "重试失败的仓库",
+    "review": "translated",
+    "context": "Background batch Fetch progress"
   }
 }

@@ -1390,7 +1390,9 @@ describe('repository UI consistency', () => {
     await initializing;
     expect(store.getState()).toMatchObject({ catalogState: 'ready', repositories: [] });
     expect(
-      menuFor({ kind: 'group', group: 'repositories' }, api).items.every((item) => !item.disabled),
+      menuFor({ kind: 'group', group: 'repositories' }, api)
+        .items.filter((item) => item.icon !== 'cloud-download')
+        .every((item) => !item.disabled),
     ).toBe(true);
   });
 
@@ -3932,5 +3934,111 @@ describe('file history navigation', () => {
     });
     store.getState().selectWorking();
     expect(store.getState().diffTarget).toMatchObject({ path: 'renamed.txt', area: 'staged' });
+  });
+});
+
+describe('repository batch Fetch', () => {
+  it('fetches collection membership including hidden worktrees once and disables empty collections', async () => {
+    const { menuFor } = await import('../webview/menus');
+    const selected = vi.fn();
+    const api = { fetchRepositories: selected } as unknown as Parameters<typeof menuFor>[1];
+    const linked = { ...a, id: 'linked', root: '/linked', collectionIds: ['group'] };
+    store.setState({
+      catalogState: 'ready',
+      repoId: linked.id,
+      repositories: [a, b, linked],
+    });
+    const target = {
+      kind: 'repository-collection',
+      collection: { id: 'group', name: 'Group' },
+    } as const;
+    const entry = menuFor(target, api).items[0];
+    expect(entry.disabled).toBe(false);
+    entry.run?.();
+    expect(selected).toHaveBeenCalledWith([linked]);
+    expect(
+      menuFor({ ...target, collection: { id: 'empty', name: 'Empty' } }, api).items[0].disabled,
+    ).toBe(true);
+    menuFor({ kind: 'group', group: 'repositories' }, api)
+      .items.find((item) => item.icon === 'cloud-download')!
+      .run?.();
+    expect(selected).toHaveBeenLastCalledWith([a, b, linked]);
+  });
+
+  it('bounds concurrency, isolates failures and refreshes the active snapshot before repository badges', async () => {
+    const { fetchRepositories, useRepositoryFetch } = await import('../webview/repositoryFetch');
+    const repositories = Array.from({ length: 6 }, (_, i) => ({
+      ...a,
+      id: `repo-${i}`,
+      commonDir: `/repo-${i}/.git`,
+    }));
+    const pending = repositories.map(() => deferred<void>());
+    store.setState({ repositories, repoId: repositories[0].id });
+    const fallback = bridge.rpc.getMockImplementation()!;
+    bridge.rpc.mockImplementation((method, id, ...args) =>
+      method === 'action'
+        ? pending[repositories.findIndex((repo) => repo.id === id)].promise
+        : fallback(method, id, ...args),
+    );
+    const run = fetchRepositories([...repositories, { ...repositories[0], id: 'linked' }]);
+    await fetchRepositories([b]);
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'action')).toHaveLength(4);
+    pending[0].resolve();
+    pending[1].reject(new Error('network unavailable'));
+    await vi.waitFor(() =>
+      expect(bridge.rpc.mock.calls.filter(([method]) => method === 'action')).toHaveLength(6),
+    );
+    pending.slice(2).forEach((item) => item.resolve());
+    await run;
+    expect(useRepositoryFetch.getState()).toMatchObject({ running: false });
+    expect(useRepositoryFetch.getState().entries.map((entry) => entry.status)).toEqual([
+      'success',
+      'error',
+      'success',
+      'success',
+      'success',
+      'success',
+    ]);
+    expect(store.getState().repoId).toBe(repositories[0].id);
+    const methods = bridge.rpc.mock.calls.map(([method]) => method);
+    expect(methods.lastIndexOf('repositoryStatuses')).toBeGreaterThan(
+      methods.lastIndexOf('snapshot'),
+    );
+  });
+
+  it('stops queued repositories and cancels only requests belonging to this batch', async () => {
+    const { fetchRepositories, useRepositoryFetch } = await import('../webview/repositoryFetch');
+    const { operationTasks } = await import('../webview/operationTasks');
+    const repositories = Array.from({ length: 6 }, (_, i) => ({
+      ...a,
+      id: `repo-${i}`,
+      commonDir: `/repo-${i}/.git`,
+    }));
+    const pending = deferred<void>();
+    bridge.rpc.mockImplementation((method, id, _payload, options) => {
+      if (method !== 'action') return Promise.resolve();
+      options.onRequestId(`request-${id}`);
+      return pending.promise;
+    });
+    const run = fetchRepositories(repositories);
+    const task = operationTasks
+      .snapshot()
+      .find((entry) => entry.id === useRepositoryFetch.getState().taskId)!;
+    await task.cancel?.();
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'cancelOperation')).toHaveLength(
+      4,
+    );
+    pending.resolve();
+    await run;
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'action')).toHaveLength(4);
+    expect(useRepositoryFetch.getState().entries.map((entry) => entry.status)).toEqual([
+      'success',
+      'success',
+      'success',
+      'success',
+      'skipped',
+      'skipped',
+    ]);
+    expect(operationTasks.snapshot()).toEqual([]);
   });
 });
