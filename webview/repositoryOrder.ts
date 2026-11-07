@@ -14,11 +14,14 @@ export function repositoryDisplayEntries(
   groups: readonly RepositoryGroup[],
   collections: readonly RepositoryCollection[],
   order?: RepositoryOrder,
+  showEmptyCollections = false,
 ): RepositoryDisplayEntry[] {
   const collectionIds = new Set(collections.map((collection) => collection.id));
   const roots = groups.filter((group) => !group.collectionIds.some((id) => collectionIds.has(id)));
+  const visibleCollections =
+    groups.length && roots.length === groups.length && !showEmptyCollections ? [] : collections;
   const entries: RepositoryDisplayEntry[] = [
-    ...collections.map((collection) => ({
+    ...visibleCollections.map((collection) => ({
       kind: 'collection' as const,
       label: collection.name,
       collection,

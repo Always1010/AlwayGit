@@ -692,6 +692,7 @@ function SidebarPanel({
     repositoryGroups,
     state.repositoryCollections,
     state.repositoryOrder,
+    draggingRepositories,
   );
   const repositorySelectionOrder = visibleRepositoryKeys(
     repositoryEntries,

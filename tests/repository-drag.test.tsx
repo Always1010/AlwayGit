@@ -149,6 +149,33 @@ beforeEach(() => {
   vi.stubGlobal('requestAnimationFrame', (callback: () => void) => callback());
 });
 describe('repository drag interactions', () => {
+  it('keeps an ungrouped list flat while exposing saved empty groups during a repository drag', () => {
+    const repositories = fixture.state.repositories;
+    fixture.state.repositories = repositories.map((repo) => ({ ...repo, collectionIds: [] }));
+    try {
+      let tree = render();
+      expect(heading(tree, 'a')).toBeUndefined();
+      expect(heading(tree, 'b')).toBeUndefined();
+      expect(heading(tree, 'c')).toBeUndefined();
+      expect(row(tree, '/one/.git')).toBeDefined();
+      expect(row(tree, '/two/.git')).toBeDefined();
+      handle(row(tree, '/one/.git')).props.onDragStart(event());
+      tree = render();
+      expect(heading(tree, 'a')).toBeDefined();
+      heading(tree, 'a').props.onDragOver(event());
+      expect(
+        find(render(), (node) => node.props.role === 'group' && node.props['aria-label'] === 'A')
+          ?.props['data-drop-inside'],
+      ).toBe('true');
+      handle(row(render(), '/one/.git')).props.onDragEnd();
+      expect(heading(render(), 'a')).toBeUndefined();
+      expect(fixture.rpc).not.toHaveBeenCalled();
+      expect(fixture.state.reorderRepository).not.toHaveBeenCalled();
+      expect(fixture.state.repositoryCollections).toHaveLength(3);
+    } finally {
+      fixture.state.repositories = repositories;
+    }
+  });
   it('moves the dragged occurrence and preserves the source repository without activating it', async () => {
     const sourceKey = repositoryRowKey({ key: '/one/.git', collectionId: 'a' });
     let tree = render();
