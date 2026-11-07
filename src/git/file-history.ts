@@ -2,6 +2,7 @@ import { setImmediate } from 'node:timers/promises';
 import type { Commit } from '../protocol/types';
 import { message } from '../i18n';
 import { GitError } from './error';
+import { orderHistory } from './history-order';
 
 type Run = (args: string[], input?: Buffer) => Promise<Buffer>;
 interface Node {
@@ -83,6 +84,7 @@ export async function fileHistoryIndex(
   };
   const scope = ancestors(tips),
     anchorAncestors = ancestors([revision]);
+  const ordered = orderHistory(nodes, [...(head && scope.has(head) ? [head] : []), ...tips]);
   const edges = new Map<string, Edge>(),
     scanned = new Set<string>(),
     aliases = new Set([path]);
@@ -285,9 +287,9 @@ export async function fileHistoryIndex(
   // remain in Commit.parents; these edges are exclusively for the filtered graph.
   const nearest = new Map<string, string[]>(),
     result: FileHistoryEntry[] = [];
-  for (let index = nodes.length - 1; index >= 0; index--) {
+  for (let index = ordered.length - 1; index >= 0; index--) {
     if (index % 4096 === 0) await checkpoint();
-    const node = nodes[index],
+    const node = ordered[index],
       parents = [...new Set(node.parents.flatMap((parent) => nearest.get(parent) ?? []))],
       entry = related.get(node.oid);
     nearest.set(node.oid, entry ? [node.oid] : parents);

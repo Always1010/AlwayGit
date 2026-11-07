@@ -2367,6 +2367,34 @@ describe('repository UI consistency', () => {
     const calls = bridge.rpc.mock.calls.filter(([method]) => method === 'history');
     expect(calls.at(-1)?.[2]).toMatchObject({ offset: 1, tips: ['fixed-tip'] });
   });
+  it('orders selected refs by current branch, default branch and name without expanding the scope', async () => {
+    const names = ['zeta', 'main', 'topic', 'alpha'];
+    store.setState({
+      repoId: a.id,
+      snapshot: {
+        ...snapshot(a),
+        branch: 'topic',
+        defaultBranch: 'main',
+        refs: names.map((name) => ({
+          kind: 'local',
+          name,
+          fullName: `refs/heads/${name}`,
+          oid: name,
+        })),
+      },
+      checkedRefs: names.map((name) => `refs/heads/${name}`),
+    });
+    await store.getState().loadHistory();
+    expect(bridge.rpc.mock.calls.find(([method]) => method === 'history')?.[2]).toMatchObject({
+      tips: ['refs/heads/topic', 'refs/heads/main', 'refs/heads/alpha', 'refs/heads/zeta'],
+    });
+    bridge.rpc.mockClear();
+    store.setState({ checkedRefs: ['refs/heads/zeta', 'refs/heads/alpha'] });
+    await store.getState().loadHistory();
+    expect(bridge.rpc.mock.calls.find(([method]) => method === 'history')?.[2]).toMatchObject({
+      tips: ['refs/heads/alpha', 'refs/heads/zeta'],
+    });
+  });
   it.each(['', 'Example'])(
     'locates a loaded HEAD without reloading history or changing filters (search: %s)',
     async (search) => {

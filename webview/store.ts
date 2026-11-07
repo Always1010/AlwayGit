@@ -55,6 +55,7 @@ import {
   diffKey,
   fileHistoryChanges,
   historyKey,
+  orderHistoryRefs,
   mergeChanges,
   shareSnapshot,
   shareValue,
@@ -1329,7 +1330,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
     try {
       const query: HistoryQuery = {
         offset: append ? nextOffset : 0,
-        tips: append ? get().tips : (checkedRefs ?? []),
+        tips: append ? get().tips : orderHistoryRefs(get().snapshot, checkedRefs ?? []),
         ...(search ? { search } : {}),
         ...(hasHistorySearch(historyFilters) ? { filters: historyFilters } : {}),
         ...(fileHistory ? { file: fileHistory } : {}),

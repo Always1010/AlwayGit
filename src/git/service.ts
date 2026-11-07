@@ -89,6 +89,7 @@ import { lfsActionSchema, type LfsHistoricalRequest, type LfsTrackRequest } from
 import type { ReflogQuery } from '../protocol/reflog';
 import type { RevisionTreeRequest, RevisionTreeSearchRequest } from '../protocol/tree';
 import { fileHistoryIndex, type FileHistoryIndex } from './file-history';
+import { orderHistory } from './history-order';
 import { redactSecrets, SecretRedactor } from '../application/logging';
 import { BlobCache } from './blob-cache';
 import { OperationGuards, readOperationFile } from './operation-guards';
@@ -1214,6 +1215,7 @@ export class GitService implements GitServiceContract {
       if (head) tips.push(head);
     }
     tips = [...new Set(tips)];
+    const currentHead = query.head ? await this.oid(repo, query.head) : undefined;
     const parsedFilters = historySearchSchema.safeParse(query.filters ?? {});
     if (!parsedFilters.success || query.search?.includes('\0'))
       throw new GitError(localizeMessage('service.invalidSearch'), 'INVALID_ARGUMENT');
@@ -1305,15 +1307,14 @@ export class GitService implements GitServiceContract {
         name = validateFilePath(file.path),
         anchorPath = validateFilePath(file.anchorPath ?? name);
       if (!tips.length) return { commits: [], tips, nextOffset: offset, hasMore: false };
-      const revision = await this.oid(repo, file.revision ?? query.head ?? 'HEAD');
-      const currentHead = query.head ? await this.oid(repo, query.head) : undefined;
+      const revision = await this.oid(repo, file.revision ?? currentHead ?? 'HEAD');
       const run = async (args: string[], input?: Buffer) =>
         (await this.run(repo, args, false, undefined, { input })).stdout;
       // Commit identities pin pagination. Include shallow boundaries because a
       // deepen can reveal more ancestors without changing any reference tip.
       const key = JSON.stringify([
         repo.root,
-        [...tips].sort(),
+        tips,
         revision,
         anchorPath,
         currentHead,
@@ -1481,90 +1482,128 @@ export class GitService implements GitServiceContract {
         hasMore: offset + visible.length < matching.length,
       };
     }
-    // Only resolved commit IDs enter stdin; raw revisions cannot inject flags or
-    // negative tips. Keep --not/--remotes on argv to preserve remote exclusion.
-    const output =
-      tips.length && !matchingIds
+    // Pin the complete priority order before pagination. Sorting one loaded page
+    // cannot know which shared ancestors must wait for children on later pages.
+    const orderKey = JSON.stringify([
+      'history-order',
+      repo.id,
+      repo.commonDir,
+      tips,
+      currentHead ?? '',
+      query.search ?? '',
+      historySearchKey(normalizedFilters),
+      await shallowState(),
+    ]);
+    const cachedOrder = this.cachedHistoryMatches(orderKey);
+    if (cachedOrder) matchingIds = [...cachedOrder];
+    else {
+      const topology = tips.length
         ? (
             await this.run(
               repo,
-              [
-                'log',
-                '--topo-order',
-                '-z',
-                `--format=${commitFormat}`,
-                `--skip=${offset}`,
-                `--max-count=${limit + 1}`,
-                ...searchArgs,
-                '--stdin',
-                '--',
-              ],
+              ['rev-list', '--topo-order', '--parents', '--stdin', '--'],
               false,
               undefined,
-              { input: tipInput },
+              {
+                input: tipInput,
+                maxOutputBytes: Math.min(this.options.maxOutputBytes ?? Infinity, 32 * 1024 * 1024),
+              },
             )
           ).stdout
             .toString('utf8')
-            .split('\0')
+            .trim()
+        : '';
+      const nodes = topology
+        ? topology.split('\n').map((line) => {
+            const [oid, ...parents] = line.trim().split(' ');
+            return { oid, parents };
+          })
         : [];
-    const commits: Commit[] = [];
-    for (let i = 0; i + 5 < output.length; i += 6)
-      commits.push(parseCommit(output.slice(i, i + 6)));
-    if (matchingIds) {
-      const selected = matchingIds.slice(offset, offset + limit + 1),
-        records: Commit[] = [];
-      for (let start = 0; start < selected.length; start += 128) {
-        const metadata = (
-          await this.run(repo, [
-            'log',
-            '--no-walk=unsorted',
-            '-z',
-            `--format=${commitFormat}`,
-            ...selected.slice(start, start + 128),
-            '--',
-          ])
-        ).stdout
-          .toString('utf8')
-          .split('\0');
-        for (let i = 0; i + 5 < metadata.length; i += 6)
-          records.push(parseCommit(metadata.slice(i, i + 6)));
+      const ordered = orderHistory(nodes, [...(currentHead ? [currentHead] : []), ...tips]);
+      if (query.search && !matchingIds) {
+        const matches = tips.length
+          ? (
+              await this.run(
+                repo,
+                ['log', '--format=%H', ...searchArgs, '--stdin', '--'],
+                false,
+                undefined,
+                { input: tipInput },
+              )
+            ).stdout
+              .toString('utf8')
+              .trim()
+          : '';
+        matchingIds = matches ? matches.split(/\r?\n/) : [];
       }
-      const byOid = new Map(records.map((commit) => [commit.oid, commit]));
-      commits.splice(0, commits.length, ...selected.map((oid) => byOid.get(oid)!).filter(Boolean));
+      const matches = matchingIds ? new Set(matchingIds) : undefined;
+      matchingIds = ordered
+        .filter((node) => !matches || matches.has(node.oid))
+        .map((node) => node.oid);
+      pendingHistoryMatches.push({ key: orderKey, ids: matchingIds });
     }
-    const visible = commits.slice(0, limit);
-    if (visible.length) {
-      // Remote availability is based on locally known remote-tracking refs. The
-      // same search filter keeps the bounded query aligned with history paging.
-      const localOnlyOutput = (
-        await this.run(
-          repo,
-          [
-            'rev-list',
-            '--topo-order',
-            ...(!matchingIds ? [`--max-count=${offset + limit + 1}`, ...searchArgs] : []),
-            '--stdin',
-            '--not',
-            '--remotes',
-            '--',
-          ],
-          false,
-          undefined,
-          {
-            input: matchingIds
-              ? Buffer.from(visible.map((commit) => commit.oid).join('\n') + '\n')
-              : tipInput,
-          },
-        )
+    const selected = matchingIds.slice(offset, offset + limit + 1),
+      records: Commit[] = [];
+    for (let start = 0; start < selected.length; start += 128) {
+      const metadata = (
+        await this.run(repo, [
+          'log',
+          '--no-walk=unsorted',
+          '-z',
+          `--format=${commitFormat}`,
+          ...selected.slice(start, start + 128),
+          '--',
+        ])
       ).stdout
         .toString('utf8')
-        .trim();
-      const localOnly = new Set(localOnlyOutput ? localOnlyOutput.split('\n') : []);
+        .split('\0');
+      for (let i = 0; i + 5 < metadata.length; i += 6)
+        records.push(parseCommit(metadata.slice(i, i + 6)));
+    }
+    const byOid = new Map(records.map((commit) => [commit.oid, commit]));
+    const commits = selected.map((oid) => byOid.get(oid)!).filter(Boolean);
+    const visible = commits.slice(0, limit);
+    if (visible.length) {
+      // Share publication reads across pages, but invalidate them after Fetch
+      // even when all selected local tips and their display order stay pinned.
+      const remoteKey = await this.text(repo, [
+        'for-each-ref',
+        '--format=%(refname) %(objectname)',
+        'refs/remotes',
+      ]);
+      const localKey = JSON.stringify([
+        'history-local-only',
+        repo.id,
+        repo.commonDir,
+        tips,
+        remoteKey,
+        await shallowState(),
+      ]);
+      let localIds = this.cachedHistoryMatches(localKey);
+      if (!localIds) {
+        const output = (
+          await this.run(
+            repo,
+            ['rev-list', '--stdin', '--not', '--remotes', '--'],
+            false,
+            undefined,
+            {
+              input: tipInput,
+              maxOutputBytes: Math.min(this.options.maxOutputBytes ?? Infinity, 32 * 1024 * 1024),
+            },
+          )
+        ).stdout
+          .toString('utf8')
+          .trim();
+        localIds = output ? output.split('\n') : [];
+        pendingHistoryMatches.push({ key: localKey, ids: localIds });
+      }
+      const localOnly = new Set(localIds);
       for (const commit of visible) commit.pushed = !localOnly.has(commit.oid);
     }
-    let head = query.head ? visible.find((commit) => commit.oid === query.head) : undefined;
-    if (query.head && !head) {
-      const oid = await this.oid(repo, query.head);
+    let head = currentHead ? visible.find((commit) => commit.oid === currentHead) : undefined;
+    if (currentHead && !head) {
+      const oid = currentHead;
       const data = await this.text(repo, ['show', '-s', `--format=${commitFormat}`, oid, '--']);
       head = parseCommit(data.split('\0'));
       const localOnly = await this.text(repo, [

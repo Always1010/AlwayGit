@@ -46,10 +46,35 @@ export function historyKey(snapshot: Snapshot, refs: string[], file?: FileHistor
   const index = indexRefs(snapshot.refs);
   return JSON.stringify([
     snapshot.head,
+    snapshot.branch,
+    snapshot.defaultBranch,
     refs.map((name) => [name, name === 'HEAD' ? snapshot.head : index.byName.get(name)?.oid]),
     index.remote.map((ref) => [ref.fullName, ref.oid]).sort(),
     fileHistoryKey(file),
   ]);
+}
+
+/** Order only the selected refs; checkout must never expand the user's scope. */
+export function orderHistoryRefs(
+  snapshot: Snapshot | undefined,
+  refs: readonly string[],
+): string[] {
+  const byName = new Map(snapshot?.refs.map((ref) => [ref.fullName, ref]));
+  const priority = (name: string) => {
+    const ref = byName.get(name);
+    if (name === 'HEAD' || (ref?.kind === 'local' && ref.name === snapshot?.branch)) return 0;
+    if (
+      snapshot?.defaultBranch &&
+      ref &&
+      ((ref.kind === 'local' && ref.name === snapshot.defaultBranch) ||
+        (ref.kind === 'remote' && ref.name.endsWith(`/${snapshot.defaultBranch}`)))
+    )
+      return 1;
+    return 2;
+  };
+  return [...new Set(refs)].sort(
+    (a, b) => priority(a) - priority(b) || (a < b ? -1 : a > b ? 1 : 0),
+  );
 }
 
 export function shareSnapshot(previous: Snapshot | undefined, incoming: Snapshot): Snapshot {

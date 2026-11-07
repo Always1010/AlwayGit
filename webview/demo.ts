@@ -6,6 +6,7 @@ import {
   type InterfacePreferencesUpdate,
 } from '../src/protocol/interface-settings';
 import { groupRepositories } from '../src/protocol/repositories';
+import { orderHistory } from '../src/git/history-order';
 import { branchNameConflict, branchNameConflictMessage } from '../src/protocol/ref-name';
 import { reconcileRepositoryOrder } from '../src/protocol/repository-order';
 import type {
@@ -752,7 +753,10 @@ export function createDemoRequest(emit: (event: HostMessage) => void) {
         pending.push(...(byId.get(id)?.parents ?? []));
       }
       const filePaths = ['webview/App.tsx', 'webview/styles.css', 'src/git/service.ts'];
-      const result = commits
+      const result = orderHistory(
+        commits.filter((commit) => seen.has(commit.oid)),
+        [...(query.head ? [resolve(query.head)] : []), ...tips],
+      )
         .filter(
           (c) =>
             seen.has(c.oid) &&
