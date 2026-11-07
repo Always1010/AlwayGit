@@ -126,6 +126,8 @@ import {
   workbenchLauncherHtml,
   workbenchLocationSettingsCommands,
   workbenchViewIds,
+  workbenchClosedHtml,
+  workbenchOpenCommands,
 } from './workbench-launcher';
 
 import {
@@ -143,6 +145,8 @@ import {
 
 type WorkbenchSurface = vscode.WebviewPanel | vscode.WebviewView;
 interface WorkbenchPanel {
+  closing?: boolean;
+  inflight?: Set<string>;
   treeParents?: string[];
   commitTree?: CommitTreePanelState;
   isolatedDiffOwner?: object;
@@ -223,6 +227,8 @@ export class Workbench implements vscode.Disposable {
           )
         : undefined;
     try {
+      if (this.disposed || source.closing || this.panels.get(source.panel) !== source)
+        throw new MessageError(message('dock.closed'));
       return this.terminals.create(
         source,
         repoId,
@@ -524,7 +530,8 @@ export class Workbench implements vscode.Disposable {
     location: DockedWorkbenchLocation = 'sidebar',
   ): Promise<void> {
     const restored = sessionSchema.safeParse(restoredState);
-    if (restored.success) this.dockedRestoredStates.set(location, restored.data);
+    if (restored.success && !this.isDockedClosed(location))
+      this.dockedRestoredStates.set(location, restored.data);
     this.dockedViews.set(location, view);
     this.viewResolved.fire(location);
     this.disposables.push(
@@ -536,7 +543,11 @@ export class Workbench implements vscode.Disposable {
         this.locationVisibilityHolds.delete(view);
       }),
     );
-    if (this.locations.enabled.includes(location) && vscode.workspace.isTrusted) {
+    if (
+      this.locations.enabled.includes(location) &&
+      vscode.workspace.isTrusted &&
+      !this.isDockedClosed(location)
+    ) {
       await this.openDocked(location);
     } else this.showDockedLauncher(location);
   }
@@ -554,11 +565,22 @@ export class Workbench implements vscode.Disposable {
       this.showDockedLauncher(location);
     }
   }
-  private showDockedLauncher(location: DockedWorkbenchLocation): void {
+  private isDockedClosed(location: DockedWorkbenchLocation): boolean {
+    return this.context.workspaceState.get<boolean>(`alwaygit.closedWorkbench.${location}`, false);
+  }
+  private showDockedLauncher(location: DockedWorkbenchLocation, settings = false): void {
     const view = this.dockedViews.get(location);
     if (!view) return;
     this.releaseLauncher(view);
     view.title = this.locationLabel(location);
+    if (this.isDockedClosed(location) && !settings) {
+      view.webview.options = {
+        enableScripts: false,
+        enableCommandUris: [workbenchOpenCommands[location]],
+      };
+      view.webview.html = workbenchClosedHtml(location);
+      return;
+    }
     const root = vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'launcher');
     view.webview.options = {
       enableScripts: true,
@@ -713,6 +735,8 @@ export class Workbench implements vscode.Disposable {
         key,
         legacySidebar ? this.context.workspaceState.get<SessionState>('alwaygit.session', {}) : {},
       );
+    if (this.isDockedClosed(location))
+      await this.context.workspaceState.update(`alwaygit.closedWorkbench.${location}`, undefined);
     const entry = await this.attach(view, location, saved, false, { ...transfer, session: saved });
     if (suspended) {
       this.terminals.transferOwner(suspended, entry);
@@ -748,7 +772,11 @@ export class Workbench implements vscode.Disposable {
       await this.focusDockedView(fallback);
       target = this.dockedViews.get(fallback);
     }
-    if (target) await this.showLocationDialog(target);
+    if (target) {
+      for (const [kind, view] of this.dockedViews)
+        if (view === target && this.isDockedClosed(kind)) this.showDockedLauncher(kind, true);
+      await this.showLocationDialog(target);
+    }
   }
   private async showLocationDialog(target: WorkbenchSurface): Promise<void> {
     const entry = this.panels.get(target);
@@ -1110,6 +1138,9 @@ export class Workbench implements vscode.Disposable {
       this.terminals.suspendOwner(entry);
     } else this.terminals.disposeOwner(entry);
     this.queries.cancelOwner(entry);
+    for (const operation of this.cancellableOperations.list())
+      if (operation.owner === entry && !operation.action)
+        this.cancellableOperations.cancel(entry, operation.id, operation.repoId);
     this.documents.releaseDiffOwner(entry);
     if (entry.isolatedDiffOwner) this.documents.releaseDiffOwner(entry.isolatedDiffOwner);
     this.pendingLocationDialogs.delete(entry.panel);
@@ -1131,6 +1162,52 @@ export class Workbench implements vscode.Disposable {
     if (this.lastPanel === entry)
       this.lastPanel = [...this.panels.values()].filter((entry) => !entry.commitTree).at(-1);
     this.presenceEmitter.fire(this.presence);
+  }
+  private async closeWorkbench(source: WorkbenchPanel, payload: unknown): Promise<void> {
+    if (source.kind === 'editor' || source.closing) return;
+    const session = sessionSchema.parse(payload);
+    if (source.inflight?.size) throw new Error(this.text('workbenchEntry.waitForOperation'));
+    source.closing = true;
+    try {
+      const running = this.terminals
+        .list(source)
+        .filter((terminal) => terminal.status === 'running');
+      if (running.length) {
+        const confirm = this.text('workbenchEntry.endTerminalsAndClose');
+        const choice = await vscode.window.showWarningMessage(
+          this.text('workbenchEntry.confirmCloseTerminals', { count: running.length }),
+          { modal: true },
+          confirm,
+        );
+        if (choice !== confirm) return;
+      }
+      if (this.disposed || this.panels.get(source.panel) !== source) return;
+      // Serialize behind earlier debounced writes, then persist the click-time snapshot.
+      // Never tear down the renderer or terminals if either durable write fails.
+      try {
+        await this.saveSessionBaseline(session, source);
+        await this.context.workspaceState.update(`alwaygit.closedWorkbench.${source.kind}`, true);
+      } catch {
+        throw new Error(this.text('workbenchEntry.closeSaveFailed'));
+      }
+      if (this.disposed || this.panels.get(source.panel) !== source) return;
+      try {
+        await this.terminals.stopOwner(source);
+      } catch (error) {
+        await this.context.workspaceState.update(
+          `alwaygit.closedWorkbench.${source.kind}`,
+          undefined,
+        );
+        throw error;
+      }
+      if (this.disposed || this.panels.get(source.panel) !== source) return;
+      source.session = session;
+      this.dockedRestoredStates.delete(source.kind);
+      this.release(source);
+      this.showDockedLauncher(source.kind);
+    } finally {
+      source.closing = false;
+    }
   }
   async requestTerminal(): Promise<void> {
     await this.show();
@@ -1391,9 +1468,36 @@ export class Workbench implements vscode.Disposable {
     return this.handleRequest(request);
   }
   private async handleRequest(request: RpcRequest, source?: WorkbenchPanel): Promise<unknown> {
-    return this.requestLanguage.run(this.panelLanguage(source), () =>
-      this.routeRequest(request, source),
-    );
+    if (source?.closing) {
+      if (request.method === 'saveSession' || request.method === 'closeWorkbench') return null;
+      throw new MessageError(message('dock.closed'));
+    }
+    if (source && this.panels.get(source.panel) !== source)
+      throw new MessageError(message('dock.closed'));
+    const tracked =
+      source &&
+      !readQueryCategory(request.method) &&
+      ![
+        'closeWorkbench',
+        'saveSession',
+        'snapshot',
+        'workbenchReady',
+        'captureWorkbench',
+        'cancelQuery',
+        'terminalAck',
+        'terminalInput',
+        'terminalResize',
+        'terminalSync',
+        'terminalList',
+      ].includes(request.method);
+    if (tracked) (source.inflight ??= new Set()).add(request.id);
+    try {
+      return await this.requestLanguage.run(this.panelLanguage(source), () =>
+        this.routeRequest(request, source),
+      );
+    } finally {
+      if (tracked) source.inflight?.delete(request.id);
+    }
   }
   private async routeRequest(request: RpcRequest, source?: WorkbenchPanel): Promise<unknown> {
     if (source?.commitTree) {
@@ -1531,6 +1635,25 @@ export class Workbench implements vscode.Disposable {
     source?: WorkbenchPanel,
     signal?: AbortSignal,
   ): Promise<unknown> {
+    try {
+      return await this.performRequest(request, source, signal);
+    } finally {
+      // Cancelled reads may finish after their owner has gone. Drop any late Diff cache too.
+      if (source && this.panels.get(source.panel) !== source) {
+        this.documents.releaseDiffOwner(source);
+        if (source.isolatedDiffOwner) this.documents.releaseDiffOwner(source.isolatedDiffOwner);
+      }
+    }
+  }
+  private async performRequest(
+    request: RpcRequest,
+    source?: WorkbenchPanel,
+    signal?: AbortSignal,
+  ): Promise<unknown> {
+    if (request.method === 'closeWorkbench') {
+      if (source) await this.closeWorkbench(source, request.payload);
+      return null;
+    }
     if (request.method === 'workbenchReady') {
       if (source) {
         source.ready = true;
@@ -2421,8 +2544,10 @@ export class Workbench implements vscode.Disposable {
               !entry.panel.visible ||
               entry.activeRepository !== id ||
               this.panels.get(entry.panel) !== entry
-            )
+            ) {
+              if (this.panels.get(entry.panel) !== entry) this.documents.releaseDiffOwner(entry);
               continue;
+            }
             if (changed || diffChanges)
               this.post(
                 { type: 'changed', repoId: id, changes: diffChanges ?? { paths: [] }, snapshot },

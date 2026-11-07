@@ -55,6 +55,7 @@ vi.mock('vscode', () => {
       registerWebviewViewProvider: vi.fn(() => ({ dispose() {} })),
       showQuickPick: vi.fn(),
       showErrorMessage: vi.fn(),
+      showWarningMessage: vi.fn(),
       createWebviewPanel: vi.fn(),
     },
     commands: { executeCommand: vi.fn(), registerCommand: vi.fn() },
@@ -705,6 +706,175 @@ describe('Workbench entry presentation', () => {
     } as unknown as vscode.WorkspaceConfiguration);
     return values;
   }
+  function closeFixture(location: 'sidebar' | 'auxiliary' | 'panel') {
+    configure(['editor', location], location);
+    const workbench = workbenchFixture();
+    const internals = workbench as unknown as {
+      context: vscode.ExtensionContext;
+      panels: Map<object, { session?: SessionState; inflight?: Set<string> }>;
+      terminals: TerminalSessions;
+      documents: { releaseDiffOwner: ReturnType<typeof vi.fn> };
+      html: ReturnType<typeof vi.fn>;
+    };
+    const values = new Map<string, unknown>();
+    const update = vi.fn(async (key: string, value: unknown) => {
+      if (value === undefined) values.delete(key);
+      else values.set(key, value);
+    });
+    Object.assign(internals.context.workspaceState, {
+      get: <T>(key: string, fallback: T) => (values.get(key) ?? fallback) as T,
+      update,
+    });
+    return { workbench, internals, values, update, source: viewFixture() };
+  }
+  it.each(['sidebar', 'auxiliary', 'panel'] as const)(
+    'closes only the originating %s workbench and restores its last character and layout after reload',
+    async (location) => {
+      const { workbench, source, internals, values } = closeFixture(location);
+      await workbench.resolveDockedView(source.view as never, undefined, location);
+      const editor = panelFixture();
+      await workbench.open(undefined, editor.panel as never);
+      const owner = internals.panels.get(source.view)!;
+      const latest: SessionState = {
+        drafts: { repo: 'latest character!' },
+        layout: {
+          preset: 'workbench',
+          sidebar: 201,
+          details: 300,
+          diff: 240,
+          author: 120,
+          date: 100,
+          font: 13,
+          row: 24,
+        },
+      };
+      await source.receive({ id: 'close', method: 'closeWorkbench', payload: latest });
+      expect(values.get(`alwaygit.closedWorkbench.${location}`)).toBe(true);
+      expect(internals.panels.has(source.view)).toBe(false);
+      expect(internals.panels.has(editor.panel)).toBe(true);
+      expect(internals.documents.releaseDiffOwner).toHaveBeenCalledWith(owner);
+      expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+      expect(source.view.webview.html).toContain('Workbench closed');
+      expect(source.view.webview.html).not.toContain('<script');
+      expect(source.view.webview.options).toMatchObject({ enableScripts: false });
+      const restored = viewFixture();
+      await workbench.resolveDockedView(
+        restored.view as never,
+        { drafts: { repo: 'stale' } },
+        location,
+      );
+      expect(internals.panels.has(restored.view)).toBe(false);
+      await workbench.show(location);
+      expect(values.has(`alwaygit.closedWorkbench.${location}`)).toBe(false);
+      expect(internals.panels.get(restored.view)?.session).toMatchObject(latest);
+    },
+  );
+  it.each(['cancel', 'save failure', 'confirm'] as const)(
+    'handles terminal %s without affecting another owner',
+    async (outcome) => {
+      const { workbench, source, internals, update, values } = closeFixture('panel');
+      await workbench.resolveDockedView(source.view as never, undefined, 'panel');
+      const owner = internals.panels.get(source.view)!;
+      const processes: { kill: ReturnType<typeof vi.fn>; exit(): void }[] = [];
+      internals.terminals = new TerminalSessions(
+        () => {
+          let exited: ((event: { exitCode: number }) => void) | undefined;
+          const process = {
+            write() {},
+            resize() {},
+            pause() {},
+            resume() {},
+            kill: vi.fn(() => exited?.({ exitCode: 0 })),
+            onData: () => ({ dispose() {} }),
+            onExit: (listener: typeof exited) => {
+              exited = listener;
+              return { dispose() {} };
+            },
+            exit: () => exited?.({ exitCode: 0 }),
+          };
+          processes.push(process);
+          return process;
+        },
+        () => {},
+      );
+      const other = {};
+      const launch = { file: 'shell', args: [], name: 'Shell', env: {} };
+      internals.terminals.create(owner, 'repo', '/repo', 'default', launch, 80, 24);
+      internals.terminals.create(other, 'other', '/other', 'default', launch, 80, 24);
+      vi.mocked(vscode.window.showWarningMessage).mockImplementation(
+        async (_text, _options, ...items) =>
+          outcome === 'cancel' ? undefined : (items[0] as never),
+      );
+      if (outcome === 'save failure') update.mockRejectedValueOnce(new Error('write failed'));
+      await source.receive({
+        id: 'close',
+        method: 'closeWorkbench',
+        payload: { drafts: { repo: 'saved!' } },
+      });
+      expect(vscode.window.showWarningMessage).toHaveBeenCalledOnce();
+      expect(processes[1].kill).not.toHaveBeenCalled();
+      if (outcome === 'confirm') {
+        expect(processes[0].kill).toHaveBeenCalledOnce();
+        expect(internals.terminals.list(owner)).toEqual([]);
+        expect(internals.panels.has(source.view)).toBe(false);
+      } else {
+        expect(processes[0].kill).not.toHaveBeenCalled();
+        expect(internals.panels.has(source.view)).toBe(true);
+        expect(values.has('alwaygit.closedWorkbench.panel')).toBe(false);
+        if (outcome === 'save failure') {
+          expect(source.view.webview.postMessage).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+              id: 'close',
+              error: expect.objectContaining({ message: expect.stringContaining('save') }),
+            }),
+          );
+        }
+      }
+    },
+  );
+  it('rejects closing during an owned operation and orders the final snapshot behind an older save', async () => {
+    const { workbench, source, internals, update, values } = closeFixture('panel');
+    await workbench.resolveDockedView(source.view as never, undefined, 'panel');
+    const owner = internals.panels.get(source.view)!;
+    owner.inflight = new Set(['action']);
+    await source.receive({ id: 'blocked', method: 'closeWorkbench', payload: {} });
+    expect(internals.panels.has(source.view)).toBe(true);
+    expect(update).not.toHaveBeenCalled();
+    owner.inflight.clear();
+    let finish!: () => void;
+    update.mockImplementationOnce(async (key, value) => {
+      await new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+      values.set(key, value);
+    });
+    const saving = source.receive({
+      id: 'save',
+      method: 'saveSession',
+      payload: { drafts: { repo: 'old' } },
+    });
+    await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
+    const closing = source.receive({
+      id: 'close',
+      method: 'closeWorkbench',
+      payload: { drafts: { repo: 'new!' } },
+    });
+    await source.receive({
+      id: 'late',
+      method: 'saveSession',
+      payload: { drafts: { repo: 'late stale' } },
+    });
+    expect(internals.panels.has(source.view)).toBe(true);
+    finish();
+    await Promise.all([saving, closing]);
+    expect(values.get('alwaygit.panelSession')).toMatchObject({ drafts: { repo: 'new!' } });
+    await source.receive({
+      id: 'detached',
+      method: 'saveSession',
+      payload: { drafts: { repo: 'detached stale' } },
+    });
+    expect(values.get('alwaygit.panelSession')).toMatchObject({ drafts: { repo: 'new!' } });
+  });
   it('normalizes legacy preferences and keeps the default among enabled locations', () => {
     expect(readWorkbenchLocations(undefined, 'docked')).toEqual({
       enabled: ['editor', 'sidebar'],

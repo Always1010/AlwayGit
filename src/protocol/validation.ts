@@ -343,6 +343,7 @@ export const requestSchema = z.object({
     'openKeyboardShortcuts',
     'showLog',
     'workbenchReady',
+    'closeWorkbench',
     'captureWorkbench',
     'workbenchLocationsReady',
     'workbenchLocationsClosed',

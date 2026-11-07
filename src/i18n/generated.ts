@@ -8258,6 +8258,42 @@ export const catalog = {
   "workbenchEntry.locationsDescription": {
     "en": "Choose where to display the Workbench to suit your workflow and preferences. You can enable multiple locations and choose a default opening location.",
     "zh-CN": "根据你的使用习惯和偏好，选择工作台的显示位置。你可以同时启用多个位置，并设置默认打开位置。"
+  },
+  "workbenchEntry.closeWorkbench": {
+    "en": "Close Current Workbench",
+    "zh-CN": "关闭当前工作台"
+  },
+  "workbenchEntry.closingWorkbench": {
+    "en": "Saving and closing the workbench…",
+    "zh-CN": "正在保存并关闭工作台…"
+  },
+  "workbenchEntry.workbenchClosed": {
+    "en": "Workbench closed",
+    "zh-CN": "工作台已关闭"
+  },
+  "workbenchEntry.savedBeforeClose": {
+    "en": "Your layout and commit drafts have been saved.",
+    "zh-CN": "布局和提交草稿已保存。"
+  },
+  "workbenchEntry.reopenWorkbench": {
+    "en": "Open Workbench",
+    "zh-CN": "打开工作台"
+  },
+  "workbenchEntry.endTerminalsAndClose": {
+    "en": "End Terminals and Close",
+    "zh-CN": "结束终端并关闭"
+  },
+  "workbenchEntry.confirmCloseTerminals": {
+    "en": "Close the current workbench? Its {{count}} running terminal(s) and their commands will end. Your layout and commit drafts will be saved.",
+    "zh-CN": "关闭当前工作台？此工作台的 {{count}} 个运行中终端及其正在执行的命令将结束。布局和提交草稿会保留。"
+  },
+  "workbenchEntry.closeSaveFailed": {
+    "en": "Could not save the workbench state. Closing was cancelled; your workbench and terminals remain open.",
+    "zh-CN": "无法保存工作台状态，已取消关闭。工作台和终端仍保留。"
+  },
+  "workbenchEntry.terminalCloseFailed": {
+    "en": "Terminal exit could not be confirmed. The workbench remains open; check its terminals before trying again.",
+    "zh-CN": "尚未确认终端退出，工作台仍保留。请检查终端后重试。"
   }
 } as const;
 export interface MessageParameters {
@@ -10312,4 +10348,13 @@ export interface MessageParameters {
   "workbenchEntry.newWindowHelp": {  };
   "workbenchEntry.applyAndOpen": {  };
   "workbenchEntry.locationsDescription": {  };
+  "workbenchEntry.closeWorkbench": {  };
+  "workbenchEntry.closingWorkbench": {  };
+  "workbenchEntry.workbenchClosed": {  };
+  "workbenchEntry.savedBeforeClose": {  };
+  "workbenchEntry.reopenWorkbench": {  };
+  "workbenchEntry.endTerminalsAndClose": {  };
+  "workbenchEntry.confirmCloseTerminals": { count: number };
+  "workbenchEntry.closeSaveFailed": {  };
+  "workbenchEntry.terminalCloseFailed": {  };
 }

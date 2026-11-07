@@ -105,6 +105,8 @@ The launch page shows the default and enabled locations and the opening destinat
 
 ### Use multiple Workbench instances
 
+In a Primary Sidebar, Secondary Sidebar, or Panel workbench, choose **Close Current Workbench** at the bottom of **More actions** to save the latest layout and commit drafts and release that instance’s page, queries, Diff and terminal resources. Live embedded terminals require **End Terminals and Close** confirmation; cancelling keeps the workbench open. Save failures cancel closing, and pending operations must finish first. The lightweight closed page offers **Open Workbench** to restore that location’s layout, repository views and drafts without restarting terminals. Other workbenches, enabled locations and the default location are unchanged. Closed workbenches remain closed across window reloads.
+
 The four locations can coexist. Each location and editor tab keeps its own repository, drafts, history filters, file selection, comparison, layout, and embedded terminals. Repository directories, actual Git state, and interface preferences are shared. The Primary Sidebar launcher remains available; disabling Secondary Sidebar or Panel hides its view while retaining its session, drafts, and running terminals for reopening.
 
 Sidebar directions follow VS Code settings. Opening a location restores its native region. Narrow sidebars and short panels use region navigation for repositories, History, Details / Changes, and Diff / Terminal; switching regions retains selection.

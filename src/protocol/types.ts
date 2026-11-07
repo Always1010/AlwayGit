@@ -648,6 +648,7 @@ export interface RpcRequest {
     | 'openKeyboardShortcuts'
     | 'showLog'
     | 'workbenchReady'
+    | 'closeWorkbench'
     | 'captureWorkbench'
     | 'workbenchLocationsReady'
     | 'workbenchLocationsClosed'

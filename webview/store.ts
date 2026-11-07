@@ -2438,7 +2438,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   },
 }));
 /** Read live UI state for handoffs instead of waiting for the host-save debounce. */
-function workbenchSession(state: WorkbenchState): SessionState {
+export function workbenchSession(state: WorkbenchState): SessionState {
   if (state.repoId)
     views[state.repoId] = {
       tagRemote: state.tagRemote,

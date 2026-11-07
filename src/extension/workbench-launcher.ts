@@ -26,6 +26,52 @@ export const workbenchLocationSettingsCommands = {
   panel: 'alwaygit.panelLocationSettings',
 } as const;
 
+export const workbenchOpenCommands = {
+  sidebar: 'alwaygit.openWorkbenchInSidebar',
+  auxiliary: 'alwaygit.openWorkbenchInAuxiliary',
+  panel: 'alwaygit.openWorkbenchInPanel',
+} as const;
+
+/** No scripts, framework, repository subscriptions or terminal renderer survive closing. */
+export function workbenchClosedHtml(location: DockedWorkbenchLocation): string {
+  const language = preferredLanguage();
+  const t = translator(language);
+  const escape = (value: string) =>
+    value.replace(
+      /[&<>"']/g,
+      (character) =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!,
+    );
+  return `<!DOCTYPE html><html lang="${language}"><head><meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';">
+    <style>
+      body {
+        padding: 20px;
+        font: var(--vscode-font-size, 13px) var(--vscode-font-family, sans-serif);
+        color: var(--vscode-foreground);
+        background: var(--vscode-sideBar-background);
+      }
+      h1 { font-size: 18px; }
+      p { color: var(--vscode-descriptionForeground); }
+      a {
+        display: inline-block;
+        padding: 6px 12px;
+        color: var(--vscode-button-foreground);
+        background: var(--vscode-button-background);
+        text-decoration: none;
+      }
+      a:hover { background: var(--vscode-button-hoverBackground); }
+      a:focus-visible {
+        outline: 1px solid var(--vscode-focusBorder);
+        outline-offset: 2px;
+      }
+    </style>
+    </head><body><h1>${escape(t('workbenchEntry.workbenchClosed'))}</h1>
+    <p>${escape(t('workbenchEntry.savedBeforeClose'))}</p>
+    <a href="command:${workbenchOpenCommands[location]}">${escape(t('workbenchEntry.reopenWorkbench'))}</a>
+    </body></html>`;
+}
+
 /** Retain the legacy sidebar identity and register independent secondary-sidebar and panel views. */
 export function createWorkbenchActivityLauncher(workbench: Workbench): vscode.Disposable {
   const registrations = (['sidebar', 'auxiliary', 'panel'] as const).map((location) =>

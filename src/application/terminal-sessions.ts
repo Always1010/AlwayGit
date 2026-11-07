@@ -29,6 +29,7 @@ export type PtyFactory = (
   rows: number,
 ) => PtyProcess;
 interface Entry {
+  exited: Promise<void>;
   owner: object;
   session: TerminalSession;
   process: PtyProcess;
@@ -81,7 +82,12 @@ export class TerminalSessions {
       status: 'running',
     };
     let released = false;
+    let resolveExit!: () => void;
+    const exited = new Promise<void>((resolve) => {
+      resolveExit = resolve;
+    });
     const entry: Entry = {
+      exited,
       owner,
       session,
       process,
@@ -111,6 +117,7 @@ export class TerminalSessions {
         entry.timer ??= setTimeout(() => this.flush(entry), 16);
       }),
       process.onExit(({ exitCode }) => {
+        resolveExit();
         entry.releaseResources();
         this.flush(entry);
         entry.session = { ...entry.session, status: 'exited', exitCode };
@@ -208,6 +215,32 @@ export class TerminalSessions {
   disposeOwner(owner: object): void {
     this.closedOwners.add(owner);
     for (const session of this.list(owner)) this.close(owner, session.id);
+  }
+  /** Explicit workbench closing waits for exit instead of treating a kill request as completion. */
+  async stopOwner(owner: object): Promise<void> {
+    const running = [...this.entries.values()].filter(
+      (entry) => entry.owner === owner && entry.session.status === 'running',
+    );
+    if (!running.length) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(
+            () => reject(new MessageError(message('workbenchEntry.terminalCloseFailed'))),
+            7000,
+          );
+        }),
+        Promise.all(
+          running.map((entry) => {
+            this.stop(owner, entry.session.id);
+            return entry.exited;
+          }),
+        ),
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
   }
   dispose(): void {
     for (const entry of [...this.entries.values()]) this.disposeOwner(entry.owner);

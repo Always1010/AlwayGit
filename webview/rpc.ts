@@ -180,9 +180,13 @@ export async function rpc<T>(
     return await new Promise<T>((resolve, reject) => {
       // The host owns mutation deadlines, including time spent in native confirmation.
       const timer =
-        ['action', 'pickRepositoryDirectory', 'discoverRepositories', 'addRepository'].includes(
-          method,
-        ) ||
+        [
+          'action',
+          'closeWorkbench',
+          'pickRepositoryDirectory',
+          'discoverRepositories',
+          'addRepository',
+        ].includes(method) ||
         (method === 'snapshot' && signal)
           ? undefined
           : setTimeout(

@@ -141,6 +141,14 @@ describe('host request timeouts', () => {
       message: 'Host network deadline exceeded',
     });
   });
+  it('keeps workbench closing pending while its native terminal confirmation remains open', async () => {
+    const { rpc } = await import('../webview/rpc');
+    const pending = rpc('closeWorkbench', undefined, { drafts: { repo: 'latest!' } });
+    await vi.advanceTimersByTimeAsync(600_001);
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    receive({ data: { type: 'response', id: postMessage.mock.calls[0][0].id, result: null } });
+    await expect(pending).resolves.toBeNull();
+  });
   it('lets the cancellable directory scan finish after the normal Git timeout', async () => {
     const { rpc } = await import('../webview/rpc');
     const pending = rpc('addRepository');

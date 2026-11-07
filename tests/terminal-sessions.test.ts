@@ -55,6 +55,34 @@ function fixture() {
 }
 afterEach(() => vi.useRealTimers());
 describe('embedded terminal boundary and lifecycle', () => {
+  it('waits for the owned shell to exit before completing explicit workbench shutdown', async () => {
+    const { manager, processes } = fixture();
+    const owner = {},
+      other = {};
+    manager.create(owner, 'repo', '/repo', 'default', launch, 80, 24);
+    manager.create(other, 'other', '/other', 'default', launch, 80, 24);
+    const done = vi.fn();
+    const stopping = manager.stopOwner(owner).then(done);
+    await Promise.resolve();
+    expect(processes[0].kill).toHaveBeenCalledOnce();
+    expect(processes[1].kill).not.toHaveBeenCalled();
+    expect(done).not.toHaveBeenCalled();
+    processes[0].exit(0);
+    await stopping;
+    expect(done).toHaveBeenCalledOnce();
+    manager.dispose();
+  });
+  it('reports a missing terminal exit rather than claiming shutdown completed', async () => {
+    vi.useFakeTimers();
+    const { manager } = fixture();
+    const owner = {};
+    manager.create(owner, 'repo', '/repo', 'default', launch, 80, 24);
+    const stopped = expect(manager.stopOwner(owner)).rejects.toThrow();
+    await vi.advanceTimersByTimeAsync(7000);
+    await stopped;
+    expect(manager.list(owner)).toHaveLength(1);
+    manager.dispose();
+  });
   it.each(['exit', 'stop', 'close', 'dispose'] as const)(
     'releases authentication once on %s and keeps it alive across host transfers',
     (action) => {

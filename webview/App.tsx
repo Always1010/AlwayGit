@@ -48,7 +48,7 @@ import { translate, uiText } from './text';
 import type React from 'react';
 import type { OpenProjectResult, Repository, RpcRequest } from '../src/protocol/types';
 import { connected, demoMode, flushSession, rpc, subscribe } from './rpc';
-import { useWorkbench } from './store';
+import { useWorkbench, workbenchSession } from './store';
 import { useWorkbenchFields } from './subscriptions';
 import {
   diffRowHeight,
@@ -159,6 +159,22 @@ export function App() {
   }, [docked]);
   const [locationSettings, setLocationSettings] = useState<WorkbenchLocations>();
   const [toolbarMenu, setToolbarMenu] = useState<{ x: number; y: number; anchor: HTMLElement }>();
+  const [closingWorkbench, setClosingWorkbench] = useState(false);
+  const closingWorkbenchRef = useRef(false);
+  const closeWorkbench = async () => {
+    if (closingWorkbenchRef.current) return;
+    closingWorkbenchRef.current = true;
+    setClosingWorkbench(true);
+    const current = useWorkbench.getState();
+    try {
+      await rpc('closeWorkbench', undefined, workbenchSession(current));
+    } catch (error) {
+      current.report(error);
+    } finally {
+      closingWorkbenchRef.current = false;
+      setClosingWorkbench(false);
+    }
+  };
   const closeToolbarMenu = useCallback(() => setToolbarMenu(undefined), []);
   const toggleToolbarMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
     const anchor = event.currentTarget,
@@ -374,7 +390,8 @@ export function App() {
       });
   }, []);
   useWorkbenchKeyboard(
-    blockInteraction ||
+    closingWorkbench ||
+      blockInteraction ||
       !!(
         lfsOpen ||
         reflogOpen ||
@@ -598,6 +615,17 @@ export function App() {
       run: state.restoreLayout,
     },
     { label: t('workbench.helpGuide'), icon: 'question', shortcut: 'help', run: showHelp },
+    ...(docked
+      ? [
+          {
+            label: t('workbenchEntry.closeWorkbench'),
+            icon: 'close',
+            separatorBefore: true,
+            testId: 'close-workbench',
+            run: closeWorkbench,
+          },
+        ]
+      : []),
   ];
   if (!connected)
     return (
@@ -1138,6 +1166,20 @@ export function App() {
         />
       )}
       <StopOperationConfirmation />
+      {closingWorkbench && (
+        <Modal title={t('workbenchEntry.closeWorkbench')} busy onClose={() => {}} footer={null}>
+          <p
+            role="status"
+            tabIndex={0}
+            data-autofocus="true"
+            onKeyDown={(event) => {
+              if (event.key === 'Tab') event.preventDefault();
+            }}
+          >
+            {t('workbenchEntry.closingWorkbench')}
+          </p>
+        </Modal>
+      )}
       {locationSettings && (
         <WorkbenchLocationsDialog
           locations={locationSettings}
