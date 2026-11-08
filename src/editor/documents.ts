@@ -3,7 +3,7 @@ import { message as localizeMessage, MessageError, translate } from '../i18n/ind
 import * as vscode from 'vscode';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
-import { open, lstat, readlink } from 'node:fs/promises';
+import { open, lstat, stat, readlink } from 'node:fs/promises';
 import type {
   ContentSource,
   DiffImage,
@@ -242,15 +242,9 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
   async openFile(repo: Repository, filename: string): Promise<void> {
     try {
       const full = await safeWorkingPath(repo.root, filename);
-      const prefix = await this.readWorking(full, MAX_PREVIEW_BYTES + 1);
-      if (
-        imageHeader(prefix) ||
-        isBinary(prefix.subarray(0, MAX_PREVIEW_BYTES), prefix.length > MAX_PREVIEW_BYTES)
-      )
-        throw new MessageError(
-          localizeMessage('documents.imagesAndBinaryFilesCanOnlyBeViewedInTheAlwayGitDiffPreview'),
-        );
-      await vscode.window.showTextDocument(vscode.Uri.file(full), {
+      if (!(await stat(full)).isFile())
+        throw new MessageError(localizeMessage('documents.thisPathIsADirectoryOrSubmoduleNotA'));
+      await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(full), {
         viewColumn: vscode.ViewColumn.Active,
         preview: false,
         preserveFocus: false,
@@ -282,9 +276,7 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
   async openRevision(repo: Repository, target: RevisionTarget): Promise<void> {
     const preview = await this.revisionPreview(repo, target);
     if (preview.kind !== 'text')
-      throw new MessageError(
-        localizeMessage('documents.imagesAndBinaryFilesCanOnlyBeViewedInTheAlwayGitDiffPreview'),
-      );
+      throw new MessageError(localizeMessage('documents.historicalTextOnly'));
     const uri = this.uri(repo, preview.right, target.revision.slice(0, 8), target.path);
     await vscode.window.showTextDocument(uri, {
       viewColumn: vscode.ViewColumn.Active,
@@ -296,9 +288,7 @@ export class GitDocuments implements vscode.TextDocumentContentProvider {
     const comparison = await this.comparison(repo, target);
     const preview = await this.previewComparison(repo, comparison);
     if (preview.kind !== 'text')
-      throw new MessageError(
-        localizeMessage('documents.imagesAndBinaryFilesCanOnlyBeViewedInTheAlwayGitDiffPreview'),
-      );
+      throw new MessageError(localizeMessage('documents.nativeDiffTextOnly'));
     const uri = (side: Side, position: 'left' | 'right') =>
       preview.lfs?.some((object) => object.side === position && object.resolved)
         ? this.uri(repo, preview[position], side.label, side.path)

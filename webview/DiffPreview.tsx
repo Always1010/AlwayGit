@@ -872,7 +872,7 @@ function DiffPreviewPanel({
   const nativeUnavailable = !state.diffTarget || preview?.kind !== 'text',
     nativeUnavailableLabel =
       preview && preview.kind !== 'text'
-        ? t('diff.vsCodeOpenUnavailableForImagesAndBinaryFiles')
+        ? t('diff.nativeDiffUnavailableForImagesAndBinaryFiles')
         : undefined;
   const zoomBy = (direction: -1 | 1) =>
     setImageZoom((current) => {
@@ -941,7 +941,7 @@ function DiffPreviewPanel({
       ? {}
       : {
           diff: { enabled: active && !!state.diffTarget && !nativeUnavailable, run: native },
-          edit: { enabled: active && !!state.selectedFile && !nativeUnavailable, run: edit },
+          edit: { enabled: active && !!state.selectedFile, run: edit },
           previousChange: {
             enabled:
               active && !!preview && displayedKey.current === targetKey && !navigationDisabled,
@@ -1040,10 +1040,10 @@ function DiffPreviewPanel({
               className="icon-only"
               icon="go-to-file"
               shortcut="edit"
-              title={nativeUnavailableLabel ?? t('diff.openWorkingFileHint')}
+              title={t('diff.openWorkingFileHint')}
               aria-label={editLabel}
               onClick={edit}
-              disabled={!state.selectedFile || nativeUnavailable}
+              disabled={!state.selectedFile}
             />
           )}
           {preview?.kind === 'image' && !collapsed && (

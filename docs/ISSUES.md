@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-182：在 VS Code 中打开文件错误拒绝图片和二进制
+
+- 日期：2026-11-08
+- 状态：已解决
+- 现象：图片和二进制文件的右键“在 VS Code 中打开文件”报只能在 AlwayGit 预览查看；预览工具栏与 E 快捷键也被禁用，无法交给 VS Code 的图片或自定义编辑器。
+- 原因：工作区文件打开复用了图片/二进制分类拦截并调用仅面向文本的 showTextDocument；工具栏和快捷键与原生文本 Diff 共用禁用条件，测试与手册也固化了这一限制。
+- 解决方案：保留仓库真实路径边界、文件存在性及普通文件检查，使用 vscode.open 交由 VS Code 选择编辑器；打开文件不依赖预览类型、加载结果或预览大小限制。原生 Diff 与历史虚拟文本打开仍保留各自的文本限制，并分别提供准确的中英文提示。同步双语架构、规格和手册。
+- 验证方式：4 项定向文件/预览单测通过，覆盖文本、PNG、GIF、未知二进制请求、编辑器错误传播、缺失路径不创建文件、目录与路径越界拒绝、符号链接边界及 PNG 预览限制。无头 image-diff-only、file-open-only 通过，覆盖图片/二进制工具栏与 E、二进制菜单、工作区/单提交/双提交/历史树打开、D/E 和错误不回退 Diff。类型、2061 条双语资源及扩展/Webview 生产构建通过；文档本地链接与图片引用检查通过。未启动可见桌面集成，未打包或安装扩展。
+- 相关文件：`src/editor/documents.ts`、`webview/DiffPreview.tsx`、`src/i18n/catalogs/documents.json`、`src/i18n/catalogs/diff.json`、`src/i18n/generated.ts`、`tests/documents.test.ts`、`scripts/test-diff-ui.mjs`、`scripts/test-ui.mjs`、`docs/ARCHITECTURE.md`、`docs/ARCHITECTURE.en.md`、`docs/WORKBENCH_SPEC.md`、`docs/WORKBENCH_SPEC.en.md`、`docs/USER_MANUAL.zh-CN.md`、`docs/USER_MANUAL.en.md`。
+
 ## BUG-181：仓库路径末尾的空白被删除导致识别失败
 
 - 日期：2026-11-07

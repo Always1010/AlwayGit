@@ -191,9 +191,9 @@
     "review": "translated",
     "context": "webview/DiffPreview.tsx / DiffPreviewPanel / countLabel"
   },
-  "diff.vsCodeOpenUnavailableForImagesAndBinaryFiles": {
-    "en": "VS Code editing and native Diff are unavailable for images and binary files",
-    "zh-CN": "图片和二进制文件不可在 VS Code 中编辑或打开原生 Diff",
+  "diff.nativeDiffUnavailableForImagesAndBinaryFiles": {
+    "en": "AlwayGit currently opens native VS Code Diff for text comparisons only",
+    "zh-CN": "AlwayGit 当前仅支持将文本比较在 VS Code 原生 Diff 中打开",
     "review": "translated",
     "context": "webview/DiffPreview.tsx / DiffPreviewPanel"
   },

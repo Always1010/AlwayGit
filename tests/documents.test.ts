@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, readlink, symlink, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readlink, symlink, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { GitService } from '../src/git/service';
@@ -15,6 +15,7 @@ vi.mock('vscode', () => ({
   Uri: { file: (fsPath: string) => ({ scheme: 'file', fsPath }) },
   ViewColumn: { Active: -1 },
   window: { showTextDocument: vi.fn(async () => {}) },
+  commands: { executeCommand: vi.fn(async (..._args: unknown[]) => {}) },
 }));
 const exec = promisify(execFile);
 const roots: string[] = [];
@@ -81,20 +82,28 @@ afterEach(async () => {
 describe('Complete Git Diff previews', () => {
   it('opens the current working file and preserves editor failures', async () => {
     const { root, repo, documents } = await setup();
-    await writeFile(path.join(root, 'current.txt'), 'current working content');
-    await documents.openFile(repo, 'current.txt');
-    expect(vscode.window.showTextDocument).toHaveBeenLastCalledWith(
-      { scheme: 'file', fsPath: path.join(repo.root, 'current.txt') },
-      { viewColumn: -1, preview: false, preserveFocus: false },
-    );
+    for (const [filename, content] of [
+      ['current.txt', Buffer.from('current working content')],
+      ['image.png', png(2, 3)],
+      ['animation.gif', Buffer.from('GIF89a\x01\0\x01\0')],
+      ['binary.bin', Buffer.from([0, 255, 1])],
+    ] as const) {
+      await writeFile(path.join(root, filename), content);
+      await documents.openFile(repo, filename);
+      expect(vscode.commands.executeCommand).toHaveBeenLastCalledWith(
+        'vscode.open',
+        { scheme: 'file', fsPath: path.join(repo.root, filename) },
+        { viewColumn: -1, preview: false, preserveFocus: false },
+      );
+    }
     const failure = Object.assign(new Error('Editor permission denied'), { code: 'EACCES' });
-    vi.mocked(vscode.window.showTextDocument).mockRejectedValueOnce(failure);
+    vi.mocked(vscode.commands.executeCommand).mockRejectedValueOnce(failure);
     await expect(documents.openFile(repo, 'current.txt')).rejects.toBe(failure);
   });
 
   it('reports missing working paths without creating a file or opening an editor', async () => {
     const { root, repo, documents } = await setup();
-    const calls = vi.mocked(vscode.window.showTextDocument).mock.calls.length;
+    const calls = vi.mocked(vscode.commands.executeCommand).mock.calls.length;
     for (const filename of ['missing.txt', 'missing/folder/file.txt']) {
       await expect(documents.openFile(repo, filename)).rejects.toMatchObject({
         localizedMessage: { key: 'documents.workingFileMissing', parameters: { path: filename } },
@@ -103,7 +112,10 @@ describe('Complete Git Diff previews', () => {
         import('node:fs/promises').then((fs) => fs.stat(path.join(root, filename))),
       ).rejects.toMatchObject({ code: 'ENOENT' });
     }
-    expect(vscode.window.showTextDocument).toHaveBeenCalledTimes(calls);
+    await mkdir(path.join(root, 'folder'));
+    await expect(documents.openFile(repo, 'folder')).rejects.toThrow('directory or submodule');
+    await expect(documents.openFile(repo, '../outside.txt')).rejects.toThrow('outside');
+    expect(vscode.commands.executeCommand).toHaveBeenCalledTimes(calls);
   });
 
   it('compares symbolic-link target text without reading an external target', async () => {
@@ -658,7 +670,7 @@ describe('Complete Git Diff previews', () => {
     ).rejects.toThrow('resource limit');
   });
 
-  it('previews bounded PNG changes and blocks images from native VS Code editors', async () => {
+  it('previews bounded PNG changes and keeps native Diff limited to text', async () => {
     const { root, repo, documents } = await setup();
     await writeFile(path.join(root, 'image.png'), png(2, 3));
     await commit(root, 'image');
@@ -675,10 +687,10 @@ describe('Complete Git Diff previews', () => {
     });
     if (preview.kind !== 'image') throw new Error('Expected image preview');
     expect(Buffer.from(preview.right!.data, 'base64')).toEqual(png(4, 5, 64));
-    await expect(documents.openFile(repo, 'image.png')).rejects.toThrow('only be viewed');
+    await documents.openFile(repo, 'image.png');
     await expect(
       documents.diff(repo, { kind: 'change', path: 'image.png', area: 'unstaged' }),
-    ).rejects.toThrow('only be viewed');
+    ).rejects.toThrow('text comparisons only');
     await writeFile(path.join(root, 'large.png'), png(1, 1, 4 * 1024 * 1024 + 1));
     expect(
       await documents.preview(repo, { kind: 'change', path: 'large.png', area: 'unstaged' }),

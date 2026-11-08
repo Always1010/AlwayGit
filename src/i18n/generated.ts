@@ -2056,9 +2056,9 @@ export const catalog = {
     "en": "Image changes",
     "zh-CN": "图片更改"
   },
-  "diff.vsCodeOpenUnavailableForImagesAndBinaryFiles": {
-    "en": "VS Code editing and native Diff are unavailable for images and binary files",
-    "zh-CN": "图片和二进制文件不可在 VS Code 中编辑或打开原生 Diff"
+  "diff.nativeDiffUnavailableForImagesAndBinaryFiles": {
+    "en": "AlwayGit currently opens native VS Code Diff for text comparisons only",
+    "zh-CN": "AlwayGit 当前仅支持将文本比较在 VS Code 原生 Diff 中打开"
   },
   "diff.zoomOutImages": {
     "en": "Zoom out images",
@@ -2249,8 +2249,8 @@ export const catalog = {
     "zh-CN": "工作区 · 符号链接"
   },
   "documents.thisPathIsADirectoryOrSubmoduleNotA": {
-    "en": "This path is a directory or submodule, not a text file.",
-    "zh-CN": "此路径是目录或子模块，不是文本文件。"
+    "en": "This path is a directory or submodule, not a regular file.",
+    "zh-CN": "此路径是目录或子模块，不是普通文件。"
   },
   "documents.workingTree": {
     "en": "Working Tree",
@@ -2312,9 +2312,13 @@ export const catalog = {
     "en": "{{value}} · Index ↔ Working Tree",
     "zh-CN": "{{value}} · Index ↔ 工作区"
   },
-  "documents.imagesAndBinaryFilesCanOnlyBeViewedInTheAlwayGitDiffPreview": {
-    "en": "Images and binary files can only be viewed in the AlwayGit Diff preview.",
-    "zh-CN": "图片和二进制文件只能在 AlwayGit Diff 预览中查看。"
+  "documents.nativeDiffTextOnly": {
+    "en": "AlwayGit currently opens native VS Code Diff for text comparisons only. Use Open File in VS Code to open the current working file.",
+    "zh-CN": "AlwayGit 当前仅支持将文本比较在 VS Code 原生 Diff 中打开。请使用“在 VS Code 中打开文件”打开当前工作区文件。"
+  },
+  "documents.historicalTextOnly": {
+    "en": "AlwayGit currently opens historical files in VS Code as text only. View supported images in the AlwayGit preview.",
+    "zh-CN": "AlwayGit 当前仅支持将历史文件作为文本在 VS Code 中打开。受支持的图片请在 AlwayGit 预览中查看。"
   },
   "documents.textComparisonResourceLimit": {
     "en": "The complete text comparison reached a resource limit (32 MiB per side; 128 MiB for text and index caches). No partial comparison is displayed.",
@@ -8807,7 +8811,7 @@ export interface MessageParameters {
   "diff.imageExceedsThe4MiBPreviewLimit": {  };
   "diff.imageDimensionsExceedThePreviewLimit": {  };
   "diff.imageChanges": {  };
-  "diff.vsCodeOpenUnavailableForImagesAndBinaryFiles": {  };
+  "diff.nativeDiffUnavailableForImagesAndBinaryFiles": {  };
   "diff.zoomOutImages": {  };
   "diff.showImagesAtActualSize": {  };
   "diff.fitImagesToPanes": {  };
@@ -8871,7 +8875,8 @@ export interface MessageParameters {
   "documents.oursTheirsEditWorkingFileToResolve": { value: ParameterValue };
   "documents.thisFileHasNoUnstagedChangesRefreshItsComparison": {  };
   "documents.indexWorkingTree": { value: ParameterValue };
-  "documents.imagesAndBinaryFilesCanOnlyBeViewedInTheAlwayGitDiffPreview": {  };
+  "documents.nativeDiffTextOnly": {  };
+  "documents.historicalTextOnly": {  };
   "documents.textComparisonResourceLimit": {  };
   "documents.invalidDiffIndex": {  };
   "documents.unsafeDiffCleanup": {  };

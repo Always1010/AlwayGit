@@ -193,11 +193,11 @@ Split-mode heading actions use the current file filter; unified-mode toolbar bul
 1. Click Working Tree, then choose the file entry by its Unstaged or Staged label. In split mode, choose the file in the corresponding group.
 2. Check the file and comparison targets in the Diff title at the bottom. In particular, confirm whether you are viewing Staged or Unstaged changes.
 3. Use the previous and next arrows to review each change block, noting the counts of additions, modifications, and deletions.
-4. To edit the full contents of a text file, use Open File in VS Code to open the actual file in the current Working Tree. This also applies when viewing a historical Commit or comparing two Commits: the file belongs to the current checkout and may differ from the preview. Save it, then return to the workbench and check again. A missing file produces an explicit message; it is neither created nor replaced by a Diff view. Images and other binary files are view-only in the AlwayGit preview.
+4. Use Open File in VS Code to open the actual file in the current Working Tree. VS Code selects an editor by file type and editor associations for text, images, and other binary files. This also applies when viewing a historical Commit or comparing two Commits: the file belongs to the current checkout and may differ from the preview. Save it, then return to the workbench and check again. A missing file produces an explicit message; it is neither created nor replaced by a Diff view. File opening is independent of AlwayGit preview format and size limits; display capabilities depend on VS Code and installed editor extensions.
 
 **Result:** You can explain each block of changes you intend to keep and confirm that the comparison sources are correct.
 
-**Caution:** The bottom Diff pane is read-only. PNG, JPEG and WebP changes appear side by side with zoom, synchronized scrolling, fit, 100% and maximize controls. Other binary files, oversized images and invalid text encodings show an explanation. VS Code editing and native Diff are disabled for images and other binary files.
+**Caution:** The bottom Diff pane is read-only. PNG, JPEG and WebP changes appear side by side with zoom, synchronized scrolling, fit, 100% and maximize controls. Other binary files, oversized images and invalid text encodings show an explanation. AlwayGit does not open native Diff for images and other binary files, but Open File in VS Code remains available.
 
 **Troubleshooting:** If the content has not updated, first confirm that you saved it in the editor, then use Refresh. If the problem persists, check the output and error details.
 

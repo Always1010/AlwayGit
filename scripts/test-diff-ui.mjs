@@ -719,10 +719,9 @@ export async function verifyDiffNavigation(browser, url) {
     await page.close();
   }
   await verifyCommitNavigation(browser, url);
-  await verifyImagePreview(browser, url);
 }
 
-async function verifyImagePreview(browser, url) {
+export async function verifyImagePreview(browser, url) {
   const page = await browser.newPage({ viewport: { width: 1200, height: 760 } }),
     errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -744,6 +743,7 @@ async function verifyImagePreview(browser, url) {
         };
       const image =
         'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+      const fixture = (window.__imageFixture = { calls: [] });
       const snapshot = {
         repository: repo,
         branch: 'main',
@@ -773,9 +773,10 @@ async function verifyImagePreview(browser, url) {
         version: 1,
       };
       window.acquireVsCodeApi = () => ({
-        getState: () => null,
+        getState: () => ({ language: 'en', singleKeyShortcuts: true }),
         setState() {},
         postMessage(request) {
+          fixture.calls.push(structuredClone(request));
           let result;
           if (request.method === 'repositories') result = [repo];
           if (request.method === 'repositoryCollections') result = [];
@@ -841,10 +842,25 @@ async function verifyImagePreview(browser, url) {
     );
     assert.equal(await diff.getByTestId('diff-change-count').innerText(), '1/1');
     assert.equal(await diff.getByRole('button', { name: 'Open Diff' }).isDisabled(), true);
-    assert.equal(
-      await diff.getByRole('button', { name: 'Open File in VS Code' }).isDisabled(),
-      true,
-    );
+    const openButton = diff.getByRole('button', { name: 'Open File in VS Code', exact: true });
+    const assertFileOpened = async (filename, run) => {
+      await page.evaluate(() => (window.__imageFixture.calls = []));
+      await run();
+      await page.waitForFunction(() =>
+        window.__imageFixture.calls.some((call) => call.method === 'openFile'),
+      );
+      assert.deepEqual(
+        await page.evaluate(() =>
+          window.__imageFixture.calls
+            .filter((call) => ['openFile', 'diff'].includes(call.method))
+            .map(({ method, repoId, payload }) => ({ method, repoId, payload })),
+        ),
+        [{ method: 'openFile', repoId: 'images', payload: { path: filename } }],
+      );
+    };
+    await assertFileOpened('image.png', () => openButton.click());
+    await page.getByTestId('workbench').focus();
+    await assertFileOpened('image.png', () => page.keyboard.press('e'));
     await diff.getByRole('button', { name: 'Show images at actual size' }).click();
     assert.equal(
       await diff
@@ -877,13 +893,19 @@ async function verifyImagePreview(browser, url) {
       .click();
     await diff.getByText('Binary file: text preview unavailable', { exact: true }).waitFor();
     assert.equal(await diff.getByRole('button', { name: 'Open Diff' }).isDisabled(), true);
-    assert.equal(
-      await diff.getByRole('button', { name: 'Open File in VS Code' }).isDisabled(),
-      true,
+    await assertFileOpened('binary.bin', () => openButton.click());
+    await page.getByTestId('workbench').focus();
+    await assertFileOpened('binary.bin', () => page.keyboard.press('e'));
+    await page
+      .getByTestId('details')
+      .getByRole('button', { name: 'binary.bin', exact: true })
+      .click({ button: 'right' });
+    await assertFileOpened('binary.bin', () =>
+      page.getByRole('menuitem', { name: 'Open File in VS Code', exact: true }).click(),
     );
     assert.deepEqual(errors, []);
     console.log(
-      'ALWAYGIT_IMAGE_DIFF_UI_TESTS_PASSED: side-by-side image preview, metadata, zoom, maximize and disabled native actions',
+      'ALWAYGIT_IMAGE_DIFF_UI_TESTS_PASSED: image metadata/zoom/maximize, image/binary file opens via toolbar/E/menu, text-only native Diff',
     );
   } finally {
     await page.close();
