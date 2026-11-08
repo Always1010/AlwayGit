@@ -464,7 +464,7 @@ export type DiffTarget =
   | { kind: 'stash-working'; stashOid: string; path: string }
   | ({ kind: 'revision' } & import('./tree').RevisionTarget);
 export interface DiffImage {
-  mimeType: 'image/png' | 'image/jpeg' | 'image/webp';
+  mimeType: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
   data: string;
   byteLength: number;
   width: number;

@@ -72,6 +72,9 @@ function previewFingerprint(preview: DiffPreview): string {
 
 type ImageHeader = Pick<DiffImage, 'mimeType' | 'width' | 'height'>;
 function imageHeader(bytes: Buffer): ImageHeader | undefined {
+  if (bytes.length >= 13 && ['GIF87a', 'GIF89a'].includes(bytes.toString('latin1', 0, 6))) {
+    return { mimeType: 'image/gif', width: bytes.readUInt16LE(6), height: bytes.readUInt16LE(8) };
+  }
   if (
     bytes.length >= 24 &&
     bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) &&

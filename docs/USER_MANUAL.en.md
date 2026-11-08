@@ -197,7 +197,7 @@ Split-mode heading actions use the current file filter; unified-mode toolbar bul
 
 **Result:** You can explain each block of changes you intend to keep and confirm that the comparison sources are correct.
 
-**Caution:** The bottom Diff pane is read-only. PNG, JPEG and WebP changes appear side by side with zoom, synchronized scrolling, fit, 100% and maximize controls. Other binary files, oversized images and invalid text encodings show an explanation. AlwayGit does not open native Diff for images and other binary files, but Open File in VS Code remains available.
+**Caution:** The bottom Diff pane is read-only. PNG, JPEG, WebP and GIF changes appear side by side with zoom, synchronized scrolling, fit, 100% and maximize controls. GIFs follow their own frame timing and loop settings without synchronizing or comparing individual frames across sides. Other binary files, oversized images and invalid text encodings show an explanation. AlwayGit does not open native Diff for images and other binary files, but Open File in VS Code remains available.
 
 **Troubleshooting:** If the content has not updated, first confirm that you saved it in the editor, then use Refresh. If the problem persists, check the output and error details.
 

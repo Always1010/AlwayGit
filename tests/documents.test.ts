@@ -1,7 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, mkdir, readlink, symlink, rename, rm, writeFile } from 'node:fs/promises';
+import {
+  mkdtemp,
+  mkdir,
+  readFile,
+  readlink,
+  symlink,
+  rename,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { GitService } from '../src/git/service';
@@ -721,6 +730,87 @@ describe('Complete Git Diff previews', () => {
       left: undefined,
       right: { mimeType: 'image/webp', width: 640, height: 360 },
     });
+  });
+
+  it('preserves complete animated GIFs across HEAD, Index, Working Tree and historical previews', async () => {
+    const { root, repo, documents } = await setup();
+    const animation = await readFile(new URL('./fixtures/animated.gif', import.meta.url));
+    await writeFile(path.join(root, 'animation.data'), animation);
+    const revision = await commit(root, 'animation');
+    // A legal comment extension takes the complete GIF beyond the classification prefix.
+    const updated = Buffer.concat([
+      animation.subarray(0, -1),
+      Buffer.from([0x21, 0xfe]),
+      ...Array.from({ length: 1030 }, () => Buffer.concat([Buffer.from([255]), Buffer.alloc(255)])),
+      Buffer.from([0, 0x3b]),
+    ]);
+    updated.set([0, 255, 0], 13);
+    await writeFile(path.join(root, 'animation.data'), updated);
+    await git(root, 'add', '--', 'animation.data');
+    await writeFile(path.join(root, 'animation.data'), animation);
+    for (const area of ['staged', 'unstaged'] as const) {
+      const preview = await documents.preview(repo, {
+        kind: 'change',
+        path: 'animation.data',
+        area,
+      });
+      expect(preview.kind).toBe('image');
+      if (preview.kind !== 'image') throw new Error('Expected GIF preview');
+      for (const position of ['left', 'right'] as const) {
+        const expected = (area === 'staged') === (position === 'right') ? updated : animation;
+        expect(preview[position]).toMatchObject({
+          mimeType: 'image/gif',
+          width: 1,
+          height: 1,
+          byteLength: expected.length,
+        });
+        expect(Buffer.from(preview[position]!.data, 'base64')).toEqual(expected);
+      }
+    }
+    const historical = await documents.revisionPreview(repo, { revision, path: 'animation.data' });
+    expect(historical).toMatchObject({ kind: 'image', left: undefined });
+    if (historical.kind !== 'image') throw new Error('Expected historical GIF preview');
+    expect(Buffer.from(historical.right!.data, 'base64')).toEqual(animation);
+    await writeFile(
+      path.join(root, 'static.data'),
+      Buffer.from('R0lGODdhAQABAIAAAP8AAAAA/ywAAAAAAQABAAACAkQBADs=', 'base64'),
+    );
+    expect(
+      await documents.preview(repo, { kind: 'change', path: 'static.data', area: 'unstaged' }),
+    ).toMatchObject({
+      kind: 'image',
+      left: undefined,
+      right: { mimeType: 'image/gif', width: 1, height: 1 },
+    });
+    await rm(path.join(root, 'animation.data'));
+    expect(
+      await documents.preview(repo, { kind: 'change', path: 'animation.data', area: 'unstaged' }),
+    ).toMatchObject({ kind: 'image', left: { mimeType: 'image/gif' }, right: undefined });
+  });
+
+  it('applies image limits to GIFs and rejects truncated headers', async () => {
+    const { root, repo, documents } = await setup();
+    await writeFile(path.join(root, 'base.txt'), 'base');
+    await commit(root, 'initial');
+    const animation = await readFile(new URL('./fixtures/animated.gif', import.meta.url));
+    for (const [width, height, length, reason] of [
+      [1, 1, 4 * 1024 * 1024 + 1, 'image-too-large'],
+      [16_385, 1, animation.length, 'image-dimensions-too-large'],
+      [6000, 5000, animation.length, 'image-dimensions-too-large'],
+      [0, 1, animation.length, 'image-dimensions-too-large'],
+      [1, 1, 9, 'unsupported'],
+    ] as const) {
+      const bytes = Buffer.alloc(length);
+      animation.copy(bytes);
+      if (length >= 10) {
+        bytes.writeUInt16LE(width, 6);
+        bytes.writeUInt16LE(height, 8);
+      }
+      await writeFile(path.join(root, 'invalid.gif'), bytes);
+      expect(
+        await documents.preview(repo, { kind: 'change', path: 'invalid.gif', area: 'unstaged' }),
+      ).toMatchObject({ kind: 'binary', reason });
+    }
   });
 
   it('compares a detected working rename against its original Index path', async () => {

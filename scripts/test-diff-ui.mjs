@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 
 export async function verifyFileOpen(browser, url) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } }),
@@ -726,105 +727,109 @@ export async function verifyImagePreview(browser, url) {
     errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   try {
-    await page.addInitScript(() => {
-      const repo = {
-          id: 'images',
-          root: '/images',
-          commonDir: '/images/.git',
-          name: 'Image fixture',
-        },
-        commit = {
-          oid: '1'.repeat(40),
-          parents: [],
-          author: 'Fixture',
-          email: 'fixture@example.com',
-          timestamp: 0,
-          subject: 'Images',
+    const animation = await readFile(new URL('../tests/fixtures/animated.gif', import.meta.url));
+    await page.addInitScript(
+      ({ gif, gifBytes }) => {
+        const repo = {
+            id: 'images',
+            root: '/images',
+            commonDir: '/images/.git',
+            name: 'Image fixture',
+          },
+          commit = {
+            oid: '1'.repeat(40),
+            parents: [],
+            author: 'Fixture',
+            email: 'fixture@example.com',
+            timestamp: 0,
+            subject: 'Images',
+          };
+        const image =
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+        const fixture = (window.__imageFixture = { calls: [] });
+        const snapshot = {
+          repository: repo,
+          branch: 'main',
+          head: commit.oid,
+          ahead: 0,
+          behind: 0,
+          changes: [
+            {
+              path: 'image.png',
+              indexStatus: ' ',
+              worktreeStatus: 'M',
+              conflict: false,
+              untracked: false,
+            },
+            {
+              path: 'binary.bin',
+              indexStatus: ' ',
+              worktreeStatus: 'M',
+              conflict: false,
+              untracked: false,
+            },
+            ...['animated.gif', 'added.gif', 'deleted.gif', 'large.gif'].map((path) => ({
+              path,
+              indexStatus: ' ',
+              worktreeStatus: 'M',
+              conflict: false,
+              untracked: false,
+            })),
+          ],
+          refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }],
+          stashes: [],
+          worktrees: [],
+          operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false },
+          version: 1,
         };
-      const image =
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
-      const fixture = (window.__imageFixture = { calls: [] });
-      const snapshot = {
-        repository: repo,
-        branch: 'main',
-        head: commit.oid,
-        ahead: 0,
-        behind: 0,
-        changes: [
-          {
-            path: 'image.png',
-            indexStatus: ' ',
-            worktreeStatus: 'M',
-            conflict: false,
-            untracked: false,
-          },
-          {
-            path: 'binary.bin',
-            indexStatus: ' ',
-            worktreeStatus: 'M',
-            conflict: false,
-            untracked: false,
-          },
-        ],
-        refs: [{ name: 'main', fullName: 'refs/heads/main', kind: 'local', oid: commit.oid }],
-        stashes: [],
-        worktrees: [],
-        operation: { conflicts: 0, canContinue: false, canAbort: false, canSkip: false },
-        version: 1,
-      };
-      window.acquireVsCodeApi = () => ({
-        getState: () => ({ language: 'en', singleKeyShortcuts: true }),
-        setState() {},
-        postMessage(request) {
-          fixture.calls.push(structuredClone(request));
-          let result;
-          if (request.method === 'repositories') result = [repo];
-          if (request.method === 'repositoryCollections') result = [];
-          if (request.method === 'repositoryOrder') result = { root: [], collections: {} };
-          if (request.method === 'repositoryStatuses') result = [];
-          if (request.method === 'operationSettings')
-            result = { allowDetachedHead: false, scope: 'workspace' };
-          if (request.method === 'snapshot') result = snapshot;
-          if (request.method === 'history')
-            result = { commits: [commit], tips: [commit.oid], nextOffset: 1, hasMore: false };
-          if (request.method === 'details') result = { commit, body: '', files: [] };
-          if (request.method === 'diffPreview')
-            result =
-              request.payload.path === 'image.png'
+        window.acquireVsCodeApi = () => ({
+          getState: () => ({ language: 'en', singleKeyShortcuts: true }),
+          setState() {},
+          postMessage(request) {
+            fixture.calls.push(structuredClone(request));
+            let result;
+            if (request.method === 'repositories') result = [repo];
+            if (request.method === 'repositoryCollections') result = [];
+            if (request.method === 'repositoryOrder') result = { root: [], collections: {} };
+            if (request.method === 'repositoryStatuses') result = [];
+            if (request.method === 'operationSettings')
+              result = { allowDetachedHead: false, scope: 'workspace' };
+            if (request.method === 'snapshot') result = snapshot;
+            if (request.method === 'history')
+              result = { commits: [commit], tips: [commit.oid], nextOffset: 1, hasMore: false };
+            if (request.method === 'details') result = { commit, body: '', files: [] };
+            if (request.method === 'diffPreview') {
+              const path = request.payload.path,
+                labels = { path, leftLabel: 'Before', rightLabel: 'After' },
+                value = {
+                  mimeType: path === 'image.png' ? 'image/png' : 'image/gif',
+                  data: path === 'image.png' ? image : gif,
+                  byteLength: path === 'image.png' ? 68 : gifBytes,
+                  width: 1,
+                  height: 1,
+                };
+              result = ['binary.bin', 'large.gif'].includes(path)
                 ? {
-                    kind: 'image',
-                    path: 'image.png',
-                    leftLabel: 'Before',
-                    rightLabel: 'After',
-                    left: {
-                      mimeType: 'image/png',
-                      data: image,
-                      byteLength: 68,
-                      width: 1,
-                      height: 1,
-                    },
-                    right: {
-                      mimeType: 'image/png',
-                      data: image,
-                      byteLength: 68,
-                      width: 1,
-                      height: 1,
-                    },
+                    ...labels,
+                    kind: 'binary',
+                    reason: path === 'large.gif' ? 'image-too-large' : 'unsupported',
                   }
                 : {
-                    kind: 'binary',
-                    reason: 'unsupported',
-                    path: 'binary.bin',
-                    leftLabel: 'Before',
-                    rightLabel: 'After',
+                    ...labels,
+                    kind: 'image',
+                    left: path === 'added.gif' ? undefined : value,
+                    right: path === 'deleted.gif' ? undefined : value,
                   };
-          setTimeout(
-            () => window.postMessage({ type: 'response', id: request.id, result }, '*'),
-            0,
-          );
-        },
-      });
-    });
+            }
+            setTimeout(
+              () => window.postMessage({ type: 'response', id: request.id, result }, '*'),
+              0,
+            );
+          },
+        });
+      },
+      { gif: animation.toString('base64'), gifBytes: animation.length },
+    );
     await page.goto(url);
     await page.getByRole('option', { name: 'Image fixture' }).dblclick();
     await page.getByTestId('history').locator('[data-working-tree]').click();
@@ -889,6 +894,56 @@ export async function verifyImagePreview(browser, url) {
     );
     await page
       .getByTestId('details')
+      .getByRole('button', { name: 'animated.gif', exact: true })
+      .click();
+    await page.waitForFunction(() => {
+      const images = [...document.querySelectorAll('.image-diff img')];
+      return (
+        images.length === 2 &&
+        images.every(
+          (image) =>
+            image.src.startsWith('data:image/gif;') && image.complete && image.naturalWidth === 1,
+        )
+      );
+    });
+    // Sample rendered pixels: successful decoding alone would also pass for a frozen first frame.
+    const images = diff.locator('.image-diff img'),
+      frames = [new Set(), new Set()];
+    for (let attempt = 0; attempt < 12 && frames.some((values) => values.size < 2); attempt++) {
+      for (let side = 0; side < 2; side++)
+        frames[side].add(
+          (await images.nth(side).screenshot({ animations: 'allow' })).toString('base64'),
+        );
+      await page.waitForTimeout(73);
+    }
+    assert.ok(
+      frames.every((values) => values.size >= 2),
+      'Both GIF sides must render changing frames',
+    );
+    await assertFileOpened('animated.gif', () => openButton.click());
+    for (const [filename, summary] of [
+      ['added.gif', '.diff-change-added'],
+      ['deleted.gif', '.diff-change-removed'],
+    ]) {
+      await page
+        .getByTestId('details')
+        .getByRole('button', { name: filename, exact: true })
+        .click();
+      await diff.locator('.image-diff-empty').waitFor();
+      await page.waitForFunction(() => document.querySelectorAll('.image-diff img').length === 1);
+      assert.equal(
+        await diff.getByTestId('diff-change-summary').locator(summary).innerText(),
+        summary.includes('added') ? '+1' : '−1',
+      );
+    }
+    await page
+      .getByTestId('details')
+      .getByRole('button', { name: 'large.gif', exact: true })
+      .click();
+    await diff.getByText('Image exceeds the 4 MiB preview limit', { exact: true }).waitFor();
+    await assertFileOpened('large.gif', () => openButton.click());
+    await page
+      .getByTestId('details')
       .getByRole('button', { name: 'binary.bin', exact: true })
       .click();
     await diff.getByText('Binary file: text preview unavailable', { exact: true }).waitFor();
@@ -905,7 +960,7 @@ export async function verifyImagePreview(browser, url) {
     );
     assert.deepEqual(errors, []);
     console.log(
-      'ALWAYGIT_IMAGE_DIFF_UI_TESTS_PASSED: image metadata/zoom/maximize, image/binary file opens via toolbar/E/menu, text-only native Diff',
+      'ALWAYGIT_IMAGE_DIFF_UI_TESTS_PASSED: image metadata/zoom/maximize, both GIF sides animate, added/deleted GIFs, oversized fallback, file opens via toolbar/E/menu, text-only native Diff',
     );
   } finally {
     await page.close();
