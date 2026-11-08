@@ -181,7 +181,7 @@ export function ActionFeedbackBar({
           )}
           {commit && status === 'success' && (
             <Button
-              icon="cloud-upload"
+              icon="arrow-up"
               title={t('workbench.push')}
               aria-label={t('workbench.push')}
               disabled={busy || !state.snapshot?.branch}

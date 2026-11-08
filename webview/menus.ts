@@ -602,7 +602,7 @@ export function menuFor(
           () => {
             void state.execute({ type: 'stage', paths: ordinary });
           },
-          'add',
+          'stage-inbox',
           busy,
         ),
       );
@@ -613,7 +613,7 @@ export function menuFor(
           () => {
             void state.execute({ type: 'unstage', paths: unstage });
           },
-          'remove',
+          'discard',
           busy,
         ),
       );
@@ -636,7 +636,7 @@ export function menuFor(
         action(
           t('menus.discardFiles', { count: discard.length }),
           { type: 'discard', paths: discard },
-          'discard',
+          'trash',
           busy,
         ),
       );
