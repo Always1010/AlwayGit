@@ -133,6 +133,7 @@ async function verifyFileSelectionPreview(page, list, screenshotPath) {
     );
   const reads = await previewReads();
   const selectedBackground = await first.evaluate((row) => getComputedStyle(row).backgroundColor);
+  const previewMarker = await first.evaluate((row) => getComputedStyle(row).boxShadow);
   const unchanged = async () => {
     assert.equal(
       await heading.innerText(),
@@ -145,6 +146,11 @@ async function verifyFileSelectionPreview(page, list, screenshotPath) {
       'The preview marker stays on the viewed file',
     );
     assert.equal(await previewReads(), reads, 'Batch selection must not fetch another Diff');
+    assert.equal(
+      await first.evaluate((row) => getComputedStyle(row).boxShadow),
+      previewMarker,
+      'The current Diff keeps its accent stripe independently of focus and operation selection',
+    );
   };
   const outlined = (row) =>
     row.evaluate((element) => getComputedStyle(element).outlineStyle !== 'none');
@@ -186,20 +192,30 @@ async function verifyFileSelectionPreview(page, list, screenshotPath) {
   assert.notEqual(
     clearedBackground,
     selectedBackground,
-    'Deselecting the viewed file must remove its selection background',
+    'Deselecting the viewed file replaces operation selection with the subtle preview background',
   );
-  const marker = await first.locator('.file-status').evaluate((icon) => ({
-    width: getComputedStyle(icon, '::before').width,
-    color: getComputedStyle(icon, '::before').backgroundColor,
-  }));
-  assert.equal(marker.width, '4px', 'The current Diff uses a small icon marker');
-  assert.notEqual(marker.color, 'rgba(0, 0, 0, 0)');
+  assert.match(
+    previewMarker,
+    /inset.*3px|3px.*inset/,
+    'The current Diff has a visible accent stripe',
+  );
+  assert.equal(
+    await first.locator('.file-basename').evaluate((name) => getComputedStyle(name).fontWeight),
+    '600',
+    'The current Diff filename is emphasized',
+  );
   if (screenshotPath) await page.screenshot({ path: screenshotPath });
   await third.locator('.file-name').hover();
-  assert.equal(
+  assert.notEqual(
     await third.evaluate((row) => getComputedStyle(row).backgroundColor),
     clearedBackground,
-    'Viewed and other unselected rows have the same hover background',
+    'Hovering another file stays visually distinct from the current Diff',
+  );
+  await first.locator('.file-name').hover();
+  assert.equal(
+    await first.evaluate((row) => getComputedStyle(row).backgroundColor),
+    clearedBackground,
+    'Hovering the current Diff retains its preview background',
   );
   await click(second, ['Meta']);
   assert.equal(await selectedCount(), 0, 'Cmd toggles selection on macOS');

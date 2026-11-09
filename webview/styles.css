@@ -1539,17 +1539,6 @@ p {
   font-weight: 500;
   line-height: 1;
 }
-.preview-current .file-status::before {
-  content: '';
-  position: absolute;
-  left: -3px;
-  top: 9px;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--accent);
-  pointer-events: none;
-}
 .status-M {
   color: var(--yellow);
 }
@@ -1909,6 +1898,18 @@ p {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.file-item.preview-current,
+.change-file.preview-current {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.file-item.preview-current:not(.batch-selected),
+.change-file.preview-current:not(.batch-selected) {
+  background: color-mix(in srgb, var(--accent) 9%, var(--bg));
+}
+.preview-current .file-basename,
+.file-item.preview-current > .truncate {
+  font-weight: 600;
 }
 .file-item.batch-selected,
 .change-file.batch-selected {
