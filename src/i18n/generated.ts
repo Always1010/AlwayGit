@@ -1614,10 +1614,6 @@ export const catalog = {
     "en": "Filter paths…",
     "zh-CN": "筛选相对路径…"
   },
-  "details.copyPaths": {
-    "en": "Copy Paths",
-    "zh-CN": "复制路径"
-  },
   "details.currentDiffIsOutsideThePathFilter": {
     "en": "Current Diff is outside the path filter: ",
     "zh-CN": "当前 Diff 文件被路径筛选隐藏："
@@ -8702,7 +8698,6 @@ export interface MessageParameters {
   "details.selected": { count: number };
   "details.filterChangedFilePaths": {  };
   "details.filterPaths": {  };
-  "details.copyPaths": {  };
   "details.currentDiffIsOutsideThePathFilter": {  };
   "details.changedFiles": {  };
   "details.noFilesMatchThisPathFilter": {  };

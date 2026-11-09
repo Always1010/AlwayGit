@@ -495,18 +495,7 @@ export async function verifyFiles(browser, url) {
       1,
       'Select All must stay within filtered files',
     );
-    await panel.getByRole('button', { name: 'Copy Paths (1)', exact: true }).click();
-    await page.waitForFunction(() =>
-      window.__filesFixture.calls.some((call) => call.method === 'copyText'),
-    );
-    assert.equal(
-      await page.evaluate(
-        () =>
-          window.__filesFixture.calls.filter((call) => call.method === 'copyText').at(-1).payload
-            .text,
-      ),
-      'src/services/auth/login.ts',
-    );
+    assert.equal(await panel.getByRole('button', { name: /^Copy Paths/ }).count(), 0);
     await filter.fill('missing/directory');
     await panel.getByText('No files match this path filter', { exact: true }).waitFor();
     await filter.fill('');
@@ -519,18 +508,6 @@ export async function verifyFiles(browser, url) {
       await page.evaluate(() => window.getSelection().toString()),
       '',
       'Ctrl+A must not select page text',
-    );
-    await panel.getByRole('button', { name: 'Copy Paths (3)', exact: true }).click();
-    await page.waitForFunction(
-      () => window.__filesFixture.calls.filter((call) => call.method === 'copyText').length === 2,
-    );
-    assert.equal(
-      await page.evaluate(
-        () =>
-          window.__filesFixture.calls.filter((call) => call.method === 'copyText').at(-1).payload
-            .text,
-      ),
-      'src/features/auth/login.ts\nsrc/services/auth/login.ts\nREADME.md',
     );
     await page.keyboard.press('Escape');
     assert.equal(await panel.locator('.file-item[aria-selected="true"]').count(), 0);

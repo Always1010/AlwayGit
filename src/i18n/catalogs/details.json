@@ -41,12 +41,6 @@
     "review": "translated",
     "context": "webview/Details.tsx / CommitFiles"
   },
-  "details.copyPaths": {
-    "en": "Copy Paths",
-    "zh-CN": "复制路径",
-    "review": "translated",
-    "context": "webview/Details.tsx / CommitFiles"
-  },
   "details.currentDiffIsOutsideThePathFilter": {
     "en": "Current Diff is outside the path filter: ",
     "zh-CN": "当前 Diff 文件被路径筛选隐藏：",

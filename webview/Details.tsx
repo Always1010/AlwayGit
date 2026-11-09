@@ -211,18 +211,6 @@ function CommitFiles({
             {visibleFiles.length} / {files.length}
           </span>
         )}
-        <Button
-          icon="copy"
-          disabled={!batch.selection.paths.length}
-          onClick={() =>
-            void rpc('copyText', state.repoId, { text: batch.selection.paths.join('\n') }).catch(
-              state.report,
-            )
-          }
-        >
-          {t('details.copyPaths')}
-          {batch.selection.paths.length ? ` (${batch.selection.paths.length})` : ''}
-        </Button>
       </div>
       <FileSelectionHint clickSelect count={batch.selection.paths.length} />
       {filtering &&
