@@ -1897,8 +1897,8 @@ export const catalog = {
     "zh-CN": "分别显示未暂存和已暂存变更，保留分组操作。"
   },
   "changes.unifiedDescription": {
-    "en": "Show unstaged entries first, then staged entries; sort each area alphabetically.",
-    "zh-CN": "在一个列表中显示所有变更；未暂存在前、已暂存在后，各自按字母排序。"
+    "en": "Show unstaged entries first, then staged entries; apply the selected sort within each area.",
+    "zh-CN": "在一个列表中显示所有变更；未暂存在前、已暂存在后，各区内采用所选排序。"
   },
   "changes.changedFiles": {
     "en": "Changed Files",
@@ -1923,6 +1923,38 @@ export const catalog = {
   "changes.discardAllScope": {
     "en": "Discard all unstaged changes in this repository; keep staged changes.",
     "zh-CN": "丢弃当前仓库全部未暂存更改，保留已暂存内容。"
+  },
+  "details.sortBy": {
+    "en": "Sort by",
+    "zh-CN": "排序依据"
+  },
+  "details.sortCurrent": {
+    "en": "Sort changed files: {{key}} · {{direction}}",
+    "zh-CN": "变更文件排序：{{key}} · {{direction}}"
+  },
+  "details.sortName": {
+    "en": "File name",
+    "zh-CN": "文件名"
+  },
+  "details.sortPath": {
+    "en": "Full path",
+    "zh-CN": "完整路径"
+  },
+  "details.sortExtension": {
+    "en": "File type (extension)",
+    "zh-CN": "文件类型（扩展名）"
+  },
+  "details.sortStatus": {
+    "en": "Change status",
+    "zh-CN": "变更状态"
+  },
+  "details.sortAsc": {
+    "en": "Ascending A → Z",
+    "zh-CN": "升序 A → Z"
+  },
+  "details.sortDesc": {
+    "en": "Descending Z → A",
+    "zh-CN": "降序 Z → A"
   },
   "diff.before": {
     "en": "Before",
@@ -8774,6 +8806,14 @@ export interface MessageParameters {
   "changes.stageAllScope": {  };
   "changes.unstageAllScope": {  };
   "changes.discardAllScope": {  };
+  "details.sortBy": {  };
+  "details.sortCurrent": { key: ParameterValue; direction: ParameterValue };
+  "details.sortName": {  };
+  "details.sortPath": {  };
+  "details.sortExtension": {  };
+  "details.sortStatus": {  };
+  "details.sortAsc": {  };
+  "details.sortDesc": {  };
   "diff.before": {  };
   "diff.after": {  };
   "diff.openDiff": {  };

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { sessionSchema, type SessionState, type LayoutState } from './session';
 import { treeDefaultsSchema } from './tree-settings';
+import { defaultFileSort } from './file-sort';
 
 export const defaultLayout: LayoutState = {
   preset: 'workbench',
@@ -25,6 +26,7 @@ export const interfaceSettingsSchema = z
     row: sessionSchema.shape.layout.unwrap().shape.row.optional(),
     appearance: sessionSchema.shape.appearance,
     changeListMode: sessionSchema.shape.changeListMode,
+    fileSort: sessionSchema.shape.fileSort,
     diffNavigationScope: sessionSchema.shape.diffNavigationScope,
     singleKeyShortcuts: sessionSchema.shape.singleKeyShortcuts,
     shortcutOverrides: sessionSchema.shape.shortcutOverrides,
@@ -64,6 +66,7 @@ export function overlayInterfaceSettings(
     language: settings.language ?? 'en',
     appearance: settings.appearance,
     changeListMode: settings.changeListMode ?? 'unified',
+    fileSort: settings.fileSort ?? defaultFileSort,
     diffNavigationScope: settings.diffNavigationScope ?? 'commit',
     singleKeyShortcuts: settings.singleKeyShortcuts ?? true,
     shortcutOverrides: settings.shortcutOverrides ?? {},

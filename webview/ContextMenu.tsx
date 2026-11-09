@@ -13,6 +13,7 @@ export interface MenuItem {
   disabled?: boolean;
   reason?: string;
   pressed?: boolean;
+  checked?: boolean;
   run(): void | Promise<void>;
 }
 export function ContextMenu({
@@ -142,7 +143,8 @@ export function ContextMenu({
           {item.separatorBefore && <div className="menu-separator" role="separator" />}
           <button
             type="button"
-            role="menuitem"
+            role={item.checked === undefined ? 'menuitem' : 'menuitemradio'}
+            aria-checked={item.checked}
             tabIndex={-1}
             data-testid={item.testId}
             disabled={item.disabled}

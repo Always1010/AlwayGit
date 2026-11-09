@@ -35,12 +35,14 @@ import {
   changeKey,
   isStaged,
   isUnstaged,
-  compareChangedFiles,
+  changeComparator,
   type ChangeEntry,
 } from './changeEntries';
 import type { ContextHandler } from './Sidebar';
 import { RevisionTree } from './RevisionTree';
 import { FileLabel } from './FileLabel';
+import { FileSortButton } from './FileSortButton';
+import { sortFiles } from './fileSort';
 import { fileRowHeight } from './appearance';
 
 function fileStatusLabel(status: string, t: ReturnType<typeof useTranslation>) {
@@ -119,6 +121,7 @@ function useFileSelection(scope: string, order: string[]) {
     if (!event.ctrlKey && !event.metaKey && !event.shiftKey) preview();
   };
   const keyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if ((event.target as HTMLElement).closest('[role="menu"]')) return;
     handleSelectionKeyboard(
       event,
       () => update(() => ({ paths: [...order] })),
@@ -175,6 +178,7 @@ function CommitFiles({
 }) {
   const state = useWorkbenchFields(
       'appearance',
+      'fileSort',
       'layout',
       'diffTarget',
       'repoId',
@@ -183,7 +187,10 @@ function CommitFiles({
       'selectedFile',
     ),
     t = useTranslation(),
-    visibleFiles = useMemo(() => filterFilesByPath(files, filter), [files, filter]),
+    visibleFiles = useMemo(
+      () => sortFiles(filterFilesByPath(files, filter), state.fileSort),
+      [files, filter, state.fileSort],
+    ),
     order = useMemo(() => visibleFiles.map((file) => file.path), [visibleFiles]),
     byPath = useMemo(() => new Map(visibleFiles.map((file) => [file.path, file])), [visibleFiles]),
     batch = useFileSelection(`${state.repoId}:${scope}`, order),
@@ -211,6 +218,7 @@ function CommitFiles({
             {visibleFiles.length} / {files.length}
           </span>
         )}
+        <FileSortButton />
       </div>
       <FileSelectionHint clickSelect count={batch.selection.paths.length} />
       {filtering &&
@@ -583,6 +591,7 @@ function WorkingTree({
   const state = {
     ...useWorkbenchFields(
       'appearance',
+      'fileSort',
       'layout',
       'busy',
       'diffTarget',
@@ -620,11 +629,15 @@ function WorkingTree({
   const unified = state.changeListMode === 'unified';
   const { staged, unstaged, conflicts } = useMemo(
     () => ({
-      staged: snapshot.changes.filter(isStaged).sort(compareChangedFiles),
-      unstaged: snapshot.changes.filter(isUnstaged).sort(compareChangedFiles),
-      conflicts: snapshot.changes.filter((c) => c.conflict).sort(compareChangedFiles),
+      staged: snapshot.changes.filter(isStaged).sort(changeComparator('staged', state.fileSort)),
+      unstaged: snapshot.changes
+        .filter(isUnstaged)
+        .sort(changeComparator('unstaged', state.fileSort)),
+      conflicts: snapshot.changes
+        .filter((c) => c.conflict)
+        .sort(changeComparator('conflict', state.fileSort)),
     }),
-    [snapshot.changes],
+    [snapshot.changes, state.fileSort],
   );
   const filter = state.workingFilters[state.repoId!] ?? '',
     filtering = !!filter.trim() || !!scope,
@@ -657,7 +670,10 @@ function WorkingTree({
         },
   );
   const fileKey = changeKey;
-  const entries = useMemo(() => changeEntries(matchingFiles), [matchingFiles]);
+  const entries = useMemo(
+    () => changeEntries(matchingFiles, state.fileSort),
+    [matchingFiles, state.fileSort],
+  );
   const order = useMemo(
       () =>
         unified
@@ -930,6 +946,7 @@ function WorkingTree({
             onClick={() => state.setWorkingFilter('')}
           />
         )}
+        <FileSortButton />
       </div>
       {filtering &&
         state.snapshot!.changes.filter((file) => file.conflict).length >

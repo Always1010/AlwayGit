@@ -8,6 +8,8 @@ import {
 } from '../webview/fileSelection';
 import { selectionKeyboardCommand } from '../webview/selectionKeyboard';
 import { changeEntries } from '../webview/changeEntries';
+import { sortFiles } from '../webview/fileSort';
+import type { FileSort } from '../src/protocol/file-sort';
 
 it('orders change areas before filenames and keeps both versions independently selectable', () => {
   const changes = ['z.ts', 'nested/a.ts', 'a.ts'].map((path) => ({
@@ -27,6 +29,73 @@ it('orders change areas before filenames and keeps both versions independently s
     ['staged', 'z.ts'],
   ]);
   expect(new Set(entries.map((entry) => entry.key)).size).toBe(6);
+});
+
+describe('changed file sorting', () => {
+  const files = [
+    { path: 'z/index.ts', status: 'M' },
+    { path: 'a/Zeta.ts', status: 'D' },
+    { path: 'b/index.css', status: 'A' },
+    { path: 'README', status: '?' },
+    { path: '.gitignore', status: 'M' },
+    { path: 'a/index.ts', status: 'R100' },
+  ];
+  it.each<[FileSort['key'], string[]]>([
+    ['name', ['.gitignore', 'b/index.css', 'a/index.ts', 'z/index.ts', 'README', 'a/Zeta.ts']],
+    ['path', ['.gitignore', 'a/index.ts', 'a/Zeta.ts', 'b/index.css', 'README', 'z/index.ts']],
+    ['extension', ['.gitignore', 'README', 'b/index.css', 'a/index.ts', 'z/index.ts', 'a/Zeta.ts']],
+    ['status', ['b/index.css', 'a/Zeta.ts', '.gitignore', 'z/index.ts', 'a/index.ts', 'README']],
+  ])('sorts by %s in either direction without mutating source data', (key, expected) => {
+    const original = [...files];
+    expect(sortFiles(files, { key, direction: 'asc' }).map((file) => file.path)).toEqual(expected);
+    expect(sortFiles(files, { key, direction: 'desc' }).map((file) => file.path)).toEqual(
+      [...expected].reverse(),
+    );
+    expect(files).toEqual(original);
+  });
+
+  it('sorts each version by its own status and preserves conflict/unstaged/staged priority', () => {
+    const changes = [
+      { path: 'a.ts', indexStatus: 'A', worktreeStatus: 'D', conflict: false, untracked: false },
+      { path: 'b.ts', indexStatus: 'D', worktreeStatus: 'A', conflict: false, untracked: false },
+      {
+        path: 'conflict.ts',
+        indexStatus: 'U',
+        worktreeStatus: 'U',
+        conflict: true,
+        untracked: false,
+      },
+    ];
+    const summarize = (direction: FileSort['direction']) =>
+      changeEntries(changes, { key: 'status', direction }).map(({ area, file }) => [
+        area,
+        file.path,
+      ]);
+    expect(summarize('asc')).toEqual([
+      ['conflict', 'conflict.ts'],
+      ['unstaged', 'b.ts'],
+      ['unstaged', 'a.ts'],
+      ['staged', 'a.ts'],
+      ['staged', 'b.ts'],
+    ]);
+    expect(summarize('desc')).toEqual([
+      ['conflict', 'conflict.ts'],
+      ['unstaged', 'a.ts'],
+      ['unstaged', 'b.ts'],
+      ['staged', 'b.ts'],
+      ['staged', 'a.ts'],
+    ]);
+  });
+
+  it('retains selected paths and the range anchor when the visible order changes', () => {
+    const selection = { paths: ['z/index.ts', 'a/index.ts'], anchor: 'a/index.ts' };
+    const order = sortFiles(files, { key: 'path', direction: 'desc' }).map((file) => file.path);
+    expect(reconcileFileSelection(order, selection)).toEqual(selection);
+    expect(fileSelectionForClick(order, selection, 'a/Zeta.ts', { range: true }).paths).toEqual([
+      'a/Zeta.ts',
+      'a/index.ts',
+    ]);
+  });
 });
 
 describe('file path labels', () => {

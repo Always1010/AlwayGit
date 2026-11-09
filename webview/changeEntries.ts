@@ -1,4 +1,6 @@
 import type { Change } from '../src/protocol/types';
+import { defaultFileSort, type FileSort } from '../src/protocol/file-sort';
+import { fileComparator } from './fileSort';
 
 export type ChangeArea = 'conflict' | 'unstaged' | 'staged';
 export interface ChangeEntry {
@@ -16,22 +18,26 @@ export const isStaged = (file: Change) =>
 export const isUnstaged = (file: Change) =>
   !file.conflict && (file.untracked || (!!file.worktreeStatus && file.worktreeStatus !== ' '));
 export function compareChangedFiles(a: Change, b: Change): number {
-  return (
-    a.path
-      .split('/')
-      .at(-1)!
-      .localeCompare(b.path.split('/').at(-1)!, 'en', { sensitivity: 'base' }) ||
-    a.path.localeCompare(b.path, 'en', { sensitivity: 'base' }) ||
-    a.path.localeCompare(b.path, 'en')
+  return fileComparator<Change>()(a, b);
+}
+export function changeComparator(area: ChangeArea, sort: FileSort) {
+  return fileComparator<Change>(sort, (file) =>
+    area === 'conflict'
+      ? 'U'
+      : area === 'staged'
+        ? file.indexStatus
+        : file.untracked
+          ? '?'
+          : file.worktreeStatus,
   );
 }
-export function changeEntries(changes: Change[]): ChangeEntry[] {
+export function changeEntries(changes: Change[], sort: FileSort = defaultFileSort): ChangeEntry[] {
   return (['conflict', 'unstaged', 'staged'] as const).flatMap((area) =>
     changes
       .filter(
         area === 'conflict' ? (file) => file.conflict : area === 'staged' ? isStaged : isUnstaged,
       )
-      .sort(compareChangedFiles)
+      .sort(changeComparator(area, sort))
       .map((file) => ({ file, area, key: changeKey(area, file.path) })),
   );
 }

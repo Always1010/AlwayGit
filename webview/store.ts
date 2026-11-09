@@ -1,3 +1,4 @@
+import { defaultFileSort, type FileSort } from '../src/protocol/file-sort';
 import {
   hasHistorySearch,
   historySearchKey,
@@ -255,6 +256,9 @@ interface WorkbenchState {
   singleKeyShortcuts: boolean;
   shortcutOverrides: ShortcutOverrides;
   changeListMode: 'split' | 'unified';
+  fileSort: FileSort;
+  fileSortSaving: boolean;
+  setFileSort(sort: FileSort): Promise<void>;
   settingsBaseline?: InterfaceSettings;
   beginSettings(): void;
   previewSettings(value: InterfaceSettingsUpdate): void;
@@ -399,6 +403,7 @@ function interfaceSnapshot(
     | 'singleKeyShortcuts'
     | 'shortcutOverrides'
     | 'changeListMode'
+    | 'fileSort'
     | 'treeDefaults'
   >,
 ): InterfaceSettings {
@@ -411,6 +416,7 @@ function interfaceSnapshot(
     singleKeyShortcuts: state.singleKeyShortcuts,
     shortcutOverrides: state.shortcutOverrides,
     changeListMode: state.changeListMode,
+    fileSort: state.fileSort,
     treeDefaults: state.treeDefaults,
   };
 }
@@ -451,6 +457,7 @@ function synchronizeInterfaceSettings(preferences: InterfacePreferences): void {
     row: saved.layout!.row,
     appearance: normalizeAppearance(saved.appearance),
     changeListMode: saved.changeListMode ?? 'unified',
+    fileSort: saved.fileSort ?? defaultFileSort,
     diffNavigationScope: saved.diffNavigationScope ?? 'commit',
     singleKeyShortcuts: saved.singleKeyShortcuts !== false,
     shortcutOverrides: normalizeShortcutOverrides(saved.shortcutOverrides),
@@ -803,6 +810,33 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
   },
   diffNavigationScope: session.diffNavigationScope === 'file' ? 'file' : 'commit',
   changeListMode: session.changeListMode === 'split' ? 'split' : 'unified',
+  fileSort: session.fileSort ?? defaultFileSort,
+  fileSortSaving: false,
+  async setFileSort(sort) {
+    const previous = get().fileSort;
+    if (
+      get().fileSortSaving ||
+      (sort.key === previous.key && sort.direction === previous.direction)
+    )
+      return;
+    ++preferencesEpoch;
+    set({ fileSort: sort, fileSortSaving: true });
+    try {
+      const saved = interfaceSettingsSchema.parse(
+        await rpc<InterfacePreferences>('saveInterfaceSettings', undefined, { fileSort: sort }),
+      );
+      ++preferencesEpoch;
+      // Sorting is an immediate preference, even if Settings is currently open.
+      const baseline = get().settingsBaseline;
+      if (baseline) set({ settingsBaseline: { ...baseline, fileSort: saved.fileSort ?? sort } });
+      synchronizeInterfaceSettings(saved);
+    } catch (error) {
+      set({ fileSort: previous });
+      throw error;
+    } finally {
+      set({ fileSortSaving: false });
+    }
+  },
   singleKeyShortcuts: session.singleKeyShortcuts !== false,
   shortcutOverrides: normalizeShortcutOverrides(session.shortcutOverrides),
   operationSettings: {
@@ -2395,6 +2429,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         singleKeyShortcuts: state.singleKeyShortcuts,
         shortcutOverrides: state.shortcutOverrides,
         changeListMode: state.changeListMode,
+        fileSort: state.fileSort,
       },
     });
   },
@@ -2410,6 +2445,7 @@ export const useWorkbench = create<WorkbenchState>((set, get) => ({
         value.shortcutOverrides ?? state.shortcutOverrides,
       ),
       changeListMode: value.changeListMode ?? state.changeListMode,
+      fileSort: value.fileSort ?? state.fileSort,
       treeDefaults: value.treeDefaults ?? state.treeDefaults,
       layout: layout({
         ...state.layout,
@@ -2461,6 +2497,7 @@ export function workbenchSession(state: WorkbenchState): SessionState {
   return {
     version: 2,
     changeListMode: baseline?.changeListMode ?? state.changeListMode,
+    fileSort: baseline?.fileSort ?? state.fileSort,
     diffNavigationScope: baseline?.diffNavigationScope ?? state.diffNavigationScope,
     singleKeyShortcuts: baseline?.singleKeyShortcuts ?? state.singleKeyShortcuts,
     shortcutOverrides: baseline?.shortcutOverrides ?? state.shortcutOverrides,
@@ -2498,6 +2535,7 @@ useWorkbench.subscribe((state) => {
     state.singleKeyShortcuts,
     state.shortcutOverrides,
     state.changeListMode,
+    state.fileSort,
     state.settingsBaseline,
   ];
   if (selection.every((value, index) => Object.is(value, persistedSelection[index]))) return;

@@ -2,6 +2,16 @@
 
 本文记录已确认的项目 Bug、异常与明确影响现有行为的实现不足；当前产品行为以 [工作台规格](WORKBENCH_SPEC.md) 为准。
 
+## BUG-183：排序菜单未继承工作台主题
+
+- 日期：2026-11-09
+- 状态：已解决
+- 现象：Changed Files 在浅色工作台中展开排序菜单后，菜单显示深色背景，与文件列表及工作台主题不一致。
+- 原因：排序菜单通过 Portal 挂载到 `document.body`，脱离了定义主题变量的 `.workbench[data-theme]` 容器，继承了页面根节点默认的深色样式。
+- 解决方案：Portal 挂载到按钮所属工作台，在保持菜单定位与焦点处理的同时继承其主题；统一展开按钮、排序选中行、分隔线与阴影，使用线条加箭头图标和升降序单选标记。
+- 验证方式：类型检查、2068 条双语资源校验及生产构建通过；无头文件列表回归验证浅色、深色和纸张主题下菜单与工作台的背景/文字一致、选中态清晰，并验证 Escape、多选保留、排序与重载恢复。提交 Diff 导航回归通过；更新中文实际界面截图，未启动桌面窗口，未打包或安装扩展。
+- 相关文件：`webview/FileSortButton.tsx`、`webview/styles.css`、`src/i18n/catalogs/details.json`、`src/i18n/generated.ts`、`scripts/test-files-ui.mjs`、`scripts/test-diff-ui.mjs`。
+
 ## BUG-182：在 VS Code 中打开文件错误拒绝图片和二进制
 
 - 日期：2026-11-08

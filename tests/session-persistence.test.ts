@@ -1,7 +1,8 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { SessionPersistence } from '../webview/session-persistence';
 import { mergeSessionBaseline, SessionWriter } from '../src/application/session-persistence';
-import type { SessionState } from '../src/protocol/session';
+import { sessionSchema, type SessionState } from '../src/protocol/session';
+import { fileSortSchema } from '../src/protocol/file-sort';
 import {
   legacyInterfaceSettings,
   mergeInterfaceSettings,
@@ -63,6 +64,21 @@ it('restores latest user preferences over an old panel without changing geometry
     font: 16,
   });
 });
+it('persists file sorting without losing other preferences or legacy session data', () => {
+  const fileSort = { key: 'status', direction: 'desc' } as const;
+  const session = sessionSchema.parse({ drafts: { repo: 'keep' }, fileSort });
+  const preferences = mergeInterfaceSettings({ font: 16, changeListMode: 'split' }, { fileSort });
+  expect(preferences).toEqual({ font: 16, changeListMode: 'split', fileSort });
+  expect(legacyInterfaceSettings(session).fileSort).toEqual(fileSort);
+  expect(overlayInterfaceSettings(session, preferences)).toMatchObject({
+    fileSort,
+    drafts: { repo: 'keep' },
+  });
+  expect(overlayInterfaceSettings({}, {}).fileSort).toEqual({ key: 'name', direction: 'asc' });
+  expect(fileSortSchema.safeParse({ key: 'mtime', direction: 'asc' }).success).toBe(false);
+  expect(fileSortSchema.safeParse({ key: 'name', direction: 'sideways' }).success).toBe(false);
+});
+
 const deferred = () => {
   let resolve!: () => void;
   const promise = new Promise<void>((done) => {

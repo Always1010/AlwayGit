@@ -270,6 +270,169 @@ async function verifyFileSelectionPreview(page, list, screenshotPath) {
   assert.notEqual(await heading.innerText(), previewTitle);
 }
 
+async function verifyFileSorting(page, panel) {
+  const rows = panel.locator('.file-item .file-name'),
+    sort = panel.getByRole('button', { name: /^Sort changed files:/ }),
+    menu = page.getByRole('menu', { name: 'Sort by', exact: true }),
+    paths = () =>
+      rows.evaluateAll((buttons) => buttons.map((button) => button.getAttribute('aria-label')));
+  const open = async () => {
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector('.file-selection-toolbar [aria-haspopup="menu"]')
+          ?.getAttribute('aria-busy') === 'false',
+    );
+    await sort.click();
+    await menu.waitFor();
+  };
+  await rows.first().click();
+  const selected = await rows.first().getAttribute('aria-label');
+  await open();
+  await menu.getByRole('menuitemradio', { name: 'File name', exact: true }).waitFor();
+  const preferences = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('files-preferences') || '{"changeListMode":"split"}'),
+  );
+  for (const theme of ['light', 'dark', 'paper']) {
+    await page.evaluate(
+      ({ preferences, theme }) =>
+        window.postMessage(
+          {
+            type: 'interfaceSettingsChanged',
+            settings: { ...preferences, appearance: { theme, palette: 'vivid', codeFont: 12 } },
+          },
+          '*',
+        ),
+      { preferences, theme },
+    );
+    await page
+      .getByTestId('workbench')
+      .and(page.locator(`[data-theme="${theme}"]`))
+      .waitFor();
+    const colors = await menu.evaluate((element) => {
+      const workbench = element.closest('.workbench'),
+        surface = getComputedStyle(workbench),
+        menu = getComputedStyle(element),
+        selected = getComputedStyle(element.querySelector('[aria-checked="true"]'));
+      return {
+        background: menu.backgroundColor,
+        expected: surface.backgroundColor,
+        foreground: menu.color,
+        expectedForeground: surface.color,
+        selectedBackground: selected.backgroundColor,
+        selectedColor: selected.color,
+      };
+    });
+    assert.equal(
+      colors.background,
+      colors.expected,
+      `${theme}: the menu inherits the Workbench surface`,
+    );
+    assert.equal(
+      colors.foreground,
+      colors.expectedForeground,
+      `${theme}: menu text follows the Workbench theme`,
+    );
+    assert.notEqual(
+      colors.selectedBackground,
+      colors.background,
+      `${theme}: the selected sort remains highlighted`,
+    );
+    assert.notEqual(
+      colors.selectedColor,
+      colors.foreground,
+      `${theme}: the selected sort uses the theme accent`,
+    );
+  }
+  await page.evaluate(
+    (settings) => window.postMessage({ type: 'interfaceSettingsChanged', settings }, '*'),
+    preferences,
+  );
+
+  await page.keyboard.press('Escape');
+  assert.equal(
+    await panel.locator('.file-item[aria-selected="true"]').count(),
+    1,
+    'Closing the sort menu must retain selection',
+  );
+  await open();
+  await menu.getByRole('menuitemradio', { name: 'Full path', exact: true }).click();
+  await page.waitForFunction(
+    () =>
+      document.querySelector('.detail-files .file-name')?.getAttribute('aria-label') ===
+      'README.md',
+  );
+  assert.deepEqual(await paths(), [
+    'README.md',
+    'src/features/auth/login.ts',
+    'src/services/auth/login.ts',
+  ]);
+  assert.equal(
+    await panel.locator('.file-item[aria-selected="true"] .file-name').getAttribute('aria-label'),
+    selected,
+  );
+  assert.equal(
+    await panel.locator('.file-item[aria-current="true"] .file-name').getAttribute('aria-label'),
+    selected,
+  );
+  await panel
+    .getByRole('button', { name: 'src/services/auth/login.ts', exact: true })
+    .click({ modifiers: ['Shift'] });
+  assert.equal(
+    await panel.locator('.file-item[aria-selected="true"]').count(),
+    2,
+    'Shift ranges follow the sorted visible order',
+  );
+  await open();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(
+    () =>
+      document.querySelector('.detail-files .file-name')?.getAttribute('aria-label') ===
+      'src/services/auth/login.ts',
+  );
+  assert.deepEqual(await paths(), [
+    'src/services/auth/login.ts',
+    'src/features/auth/login.ts',
+    'README.md',
+  ]);
+  await page.waitForFunction(
+    () => JSON.parse(localStorage.getItem('files-preferences')).fileSort.direction === 'desc',
+  );
+  await open();
+  assert.equal(
+    await menu
+      .getByRole('menuitemradio', { name: 'Full path', exact: true })
+      .getAttribute('aria-checked'),
+    'true',
+  );
+  assert.equal(
+    await menu
+      .getByRole('menuitemradio', { name: 'Descending Z → A', exact: true })
+      .getAttribute('aria-checked'),
+    'true',
+  );
+  await page.screenshot({ path: 'artifacts/changed-files-sort-menu.png' });
+  await page.keyboard.press('Escape');
+  await page.reload();
+  await panel.locator('.file-item').first().waitFor();
+  assert.deepEqual(
+    await paths(),
+    ['src/services/auth/login.ts', 'src/features/auth/login.ts', 'README.md'],
+    'The applied sort survives reopening',
+  );
+  await page.screenshot({ path: 'artifacts/changed-files-sort-descending.png' });
+  await open();
+  await menu.getByRole('menuitemradio', { name: 'File name', exact: true }).click();
+  await open();
+  await menu.getByRole('menuitemradio', { name: 'Ascending A → Z', exact: true }).click();
+  await page.waitForFunction(
+    () => JSON.parse(localStorage.getItem('files-preferences')).fileSort.direction === 'asc',
+  );
+  await panel.locator('.detail-files').focus();
+  await page.keyboard.press('Escape');
+}
+
 export async function verifyFiles(browser, url) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
@@ -466,6 +629,7 @@ export async function verifyFiles(browser, url) {
       36,
       'Default two-line rows reserve space for complete file-name glyphs',
     );
+    await verifyFileSorting(page, panel);
     await verifyFilePathDisplay(page, panel.locator('.detail-files'));
     await verifyFileSelectionPreview(page, panel.locator('.detail-files'));
     await historyCommits.nth(1).click({ modifiers: ['Control'] });
@@ -524,7 +688,7 @@ export async function verifyFiles(browser, url) {
     );
     await menu.getByRole('menuitem', { name: 'Copy Path', exact: true }).click();
     await page.waitForFunction(
-      () => window.__filesFixture.calls.filter((call) => call.method === 'copyText').length === 3,
+      () => window.__filesFixture.calls.filter((call) => call.method === 'copyText').length === 1,
     );
     assert.equal(
       await page.evaluate(

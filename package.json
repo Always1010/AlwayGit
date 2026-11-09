@@ -294,6 +294,32 @@
                 "unified"
               ]
             },
+            "fileSort": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "key",
+                "direction"
+              ],
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "enum": [
+                    "name",
+                    "path",
+                    "extension",
+                    "status"
+                  ]
+                },
+                "direction": {
+                  "type": "string",
+                  "enum": [
+                    "asc",
+                    "desc"
+                  ]
+                }
+              }
+            },
             "diffNavigationScope": {
               "type": "string",
               "enum": [

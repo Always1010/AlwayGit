@@ -1452,9 +1452,9 @@ export async function verifyCommitNavigation(browser, url) {
         .click();
       return page.getByRole('dialog', { name: 'Settings' });
     };
-    await expectCount('File 1/6 · Change 1/3');
+    await expectCount('File 2/6 · Change 1/3');
     await diff.getByRole('button', { name: 'Previous change' }).click();
-    await expectCount('File 1/6 · Change 1/3');
+    await expectCount('File 2/6 · Change 1/3');
     await diff
       .getByTestId('diff-navigation-boundary')
       .getByText(
@@ -1482,12 +1482,13 @@ export async function verifyCommitNavigation(browser, url) {
         { exact: true },
       )
       .waitFor();
-    await step(1, 'File 1/6 · Change 1/3');
-    await step(1, 'File 1/6 · Change 2/3');
-    await step(1, 'File 1/6 · Change 3/3');
+    await step(1, 'File 2/6 · Change 1/3');
+    await step(1, 'File 2/6 · Change 2/3');
+    await step(1, 'File 2/6 · Change 3/3');
     const filter = details.getByLabel('Filter changed file paths');
     await filter.fill('diff');
-    await step(1, 'File 4/6 · Change 1/1');
+    await step(1, 'File 3/6 · Change 1/1');
+    await step(1, 'File 5/6 · Change 1/1');
     assert.equal(await filter.inputValue(), 'diff');
     await details
       .getByText('Current Diff is outside the path filter: single.txt', { exact: true })
@@ -1504,18 +1505,20 @@ export async function verifyCommitNavigation(browser, url) {
         .getByRole('button', { name: 'single.txt', exact: true })
         .count(),
     );
-    await step(-1, 'File 1/6 · Change 3/3');
-    await step(1, 'File 4/6 · Change 1/1');
+    await step(-1, 'File 3/6 · Change 1/1');
+    await step(-1, 'File 2/6 · Change 3/3');
+    await step(1, 'File 3/6 · Change 1/1');
     await step(1, 'File 5/6 · Change 1/1');
     await step(1, 'File 6/6 · Change 1/2');
     await step(1, 'File 6/6 · Change 2/2');
     await diff.getByRole('button', { name: 'Next change' }).click();
     await expectCount('File 6/6 · Change 2/2');
-    await step(1, 'File 1/6 · Change 1/3');
+    await step(1, 'File 2/6 · Change 1/3');
     await details.getByRole('button', { name: 'binary.bin', exact: true }).click();
-    await expectCount('File 3/6 · Change 0/0');
-    await step(1, 'File 4/6 · Change 1/1');
-    await step(-1, 'File 1/6 · Change 3/3');
+    await expectCount('File 1/6 · Change 0/0');
+    await step(1, 'File 2/6 · Change 1/3');
+    await details.getByRole('button', { name: 'large.txt', exact: true }).click();
+    await expectCount('File 3/6 · Change 1/1');
     await page.evaluate(() => {
       window.__diffFixture.failPath = 'same.txt';
     });
@@ -1523,13 +1526,13 @@ export async function verifyCommitNavigation(browser, url) {
     await diff.getByRole('alert').getByText('same.txt: Read failed', { exact: true }).waitFor();
     assert.equal(
       await count.innerText(),
-      'File 1/6 · Change 3/3',
+      'File 3/6 · Change 1/1',
       'A failed file read must not skip to a later file',
     );
     await page.evaluate(() => {
       window.__diffFixture.failPath = null;
     });
-    await step(1, 'File 4/6 · Change 1/1');
+    await step(1, 'File 5/6 · Change 1/1');
     await details.getByRole('button', { name: 'tail.txt', exact: true }).click();
     await expectCount('File 6/6 · Change 1/2');
     await step(1, 'File 6/6 · Change 2/2');
@@ -1551,12 +1554,14 @@ export async function verifyCommitNavigation(browser, url) {
       await page.evaluate(() => window.__diffFixture.previews.at(-1).parent),
       'c'.repeat(40),
     );
+    await details.getByRole('button', { name: 'large.txt', exact: true }).click();
+    await expectCount('File 3/6 · Change 1/1');
     // Cancelling settings restores the default; applying persists across reload.
     let dialog = await settings();
     await dialog.getByLabel('Diff navigation scope').selectOption('file');
     await expectCount('1/1');
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await expectCount('File 5/6 · Change 1/1');
+    await expectCount('File 3/6 · Change 1/1');
     dialog = await settings();
     await dialog.getByLabel('Diff navigation scope').selectOption('file');
     await dialog.getByRole('button', { name: 'Apply', exact: true }).click();
@@ -1578,12 +1583,17 @@ export async function verifyCommitNavigation(browser, url) {
     assert.equal(await dialog.getByLabel('Diff navigation scope').inputValue(), 'file');
     await dialog.getByLabel('Diff navigation scope').selectOption('commit');
     await dialog.getByRole('button', { name: 'Apply', exact: true }).click();
+    // Changing the sort retains the current Diff and changes cross-file navigation.
+    await details.getByRole('button', { name: /^Sort changed files:/ }).click();
+    await page.getByRole('menuitemradio', { name: 'Descending Z → A', exact: true }).click();
+    await expectCount('File 4/6 · Change 1/1');
+    await step(1, 'File 5/6 · Change 1/3');
     // Empty previews terminate a full scan and disable both arrows.
     await page.evaluate(() => {
       window.__diffFixture.emptyFiles = true;
     });
     await details.getByRole('button', { name: 'same.txt', exact: true }).click();
-    await expectCount('File 2/6 · Change 0/0');
+    await expectCount('File 3/6 · Change 0/0');
     await diff.getByRole('button', { name: 'Next change' }).click();
     await page.waitForFunction(
       () =>
@@ -1594,7 +1604,7 @@ export async function verifyCommitNavigation(browser, url) {
           .every((button) => button.disabled) &&
         !document.querySelector('.diff-viewport [role="status"]'),
     );
-    assert.equal(await count.innerText(), 'File 2/6 · Change 0/0');
+    assert.equal(await count.innerText(), 'File 3/6 · Change 0/0');
     assert.deepEqual(errors, []);
     console.log(
       'ALWAYGIT_COMMIT_DIFF_UI_TESTS_PASSED: cross-file boundary confirmation, reverse landing, rename/parent, filtering, binary/empty files, read failures, cancellation and saved scope',

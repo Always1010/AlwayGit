@@ -1,4 +1,5 @@
 import type { ShortcutOverrides } from '../src/protocol/shortcuts';
+import type { FileSort } from '../src/protocol/file-sort';
 import { useEffect, useState } from 'react';
 import type { LayoutState } from './rpc';
 import type { Language } from './i18n';
@@ -49,6 +50,7 @@ export interface InterfaceSettings {
   singleKeyShortcuts: boolean;
   shortcutOverrides: ShortcutOverrides;
   changeListMode: 'split' | 'unified';
+  fileSort: FileSort;
 }
 export type InterfaceSettingsUpdate = Partial<Omit<InterfaceSettings, 'appearance'>> & {
   appearance?: Partial<Appearance>;

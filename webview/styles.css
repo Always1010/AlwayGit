@@ -1808,6 +1808,55 @@ p {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+.context-menu.file-sort-menu {
+  width: 240px;
+  min-width: min(240px, calc(100vw - 12px));
+}
+.file-selection-toolbar .file-sort-button {
+  width: 28px;
+  flex: none;
+}
+.file-selection-toolbar .file-sort-button[aria-expanded='true'] {
+  background: var(--soft-accent);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.file-sort-icon {
+  flex: none;
+}
+.workbench .context-menu.file-sort-menu {
+  box-shadow: 0 4px 16px #07132624;
+}
+.file-sort-menu .menu-separator {
+  background: var(--border);
+}
+.file-sort-menu > button[aria-checked='true'] {
+  color: var(--accent);
+}
+.file-sort-menu > button[aria-checked='true']:not(:has(.file-sort-radio)) {
+  background: var(--soft-accent);
+}
+.file-sort-menu > button:hover:not(:disabled),
+.file-sort-menu > button:focus-visible:not(:disabled) {
+  background: var(--hover);
+}
+.file-sort-radio {
+  display: inline-grid;
+  place-items: center;
+  width: 12px;
+  height: 12px;
+  margin: 1px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  flex: none;
+}
+.file-sort-menu > button[aria-checked='true'] .file-sort-radio::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
 .working-file-toolbar {
   flex-wrap: nowrap;
   flex: none;

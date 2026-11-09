@@ -1,3 +1,4 @@
+import { sortFiles } from './fileSort';
 import { HistoricalLfsPreview } from './HistoricalLfsPreview';
 import type { DiffTarget } from '../src/protocol/types';
 import { Button, Empty, Icon, Modal, hasOpenInteractionLayer } from './ui';
@@ -183,6 +184,7 @@ function DiffPreviewPanel({
     'execute',
     'appearance',
     'diffNavigationScope',
+    'fileSort',
     'details',
     'selectedStashOid',
     'tab',
@@ -290,15 +292,25 @@ function DiffPreviewPanel({
         ? state.diffRevision
         : 0;
   const commitTarget = state.diffTarget?.kind === 'commit' ? state.diffTarget : undefined;
-  const commitFiles =
-    state.diffNavigationScope === 'commit' &&
-    commitTarget &&
-    !state.selectedStashOid &&
-    state.tab === 'history' &&
-    state.details?.commit.oid === commitTarget.oid &&
-    state.details.parent === commitTarget.parent
-      ? state.details.files
-      : undefined;
+  const commitFiles = useMemo(
+    () =>
+      state.diffNavigationScope === 'commit' &&
+      commitTarget &&
+      !state.selectedStashOid &&
+      state.tab === 'history' &&
+      state.details?.commit.oid === commitTarget.oid &&
+      state.details.parent === commitTarget.parent
+        ? sortFiles(state.details.files, state.fileSort)
+        : undefined,
+    [
+      state.diffNavigationScope,
+      commitTarget,
+      state.selectedStashOid,
+      state.tab,
+      state.details,
+      state.fileSort,
+    ],
+  );
   const fileIndex = commitFiles?.findIndex((file) => file.path === commitTarget?.path) ?? -1,
     commitMode = fileIndex >= 0;
   const commitScopeKey = JSON.stringify(commitFiles);

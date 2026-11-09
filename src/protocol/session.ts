@@ -1,6 +1,7 @@
 import { historySearchSchema } from './history-search';
 import { shortcutOverridesSchema } from './shortcuts';
 import { fileHistorySchema } from './history';
+import { fileSortSchema } from './file-sort';
 import { translate } from '../i18n/index';
 import { z } from 'zod';
 const text = z.string().min(1).max(4096);
@@ -18,6 +19,7 @@ export const sessionSchema = z
   .object({
     version: z.literal(2).optional(),
     changeListMode: z.enum(['split', 'unified']).optional(),
+    fileSort: fileSortSchema.optional(),
     singleKeyShortcuts: z.boolean().optional(),
     shortcutOverrides: shortcutOverridesSchema.optional(),
     diffNavigationScope: z.enum(['commit', 'file']).optional(),
