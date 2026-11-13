@@ -55,6 +55,13 @@ describe('Git read request lifetime', () => {
           code: 0,
         });
       }
+      if (options.args.includes('for-each-ref')) {
+        return Promise.resolve({
+          stdout: Buffer.alloc(0),
+          stderr: Buffer.alloc(0),
+          code: 0,
+        });
+      }
       return options.args.at(-1) === 'a' ? first.promise : second.promise;
     });
     const caller = service.withReadSignal(new AbortController().signal, () =>
@@ -69,8 +76,7 @@ describe('Git read request lifetime', () => {
       },
       (error) => error as Error & { completion: Promise<void> },
     );
-    await settle();
-    expect(runGitProcess).toHaveBeenCalledTimes(4);
+    await vi.waitFor(() => expect(runGitProcess).toHaveBeenCalledTimes(6));
     first.reject(new GitReadTerminationError('aborted', 'ABORTED', 1, firstClosed.promise));
     const error = await failed;
     expect(signals.every((signal) => signal.aborted)).toBe(true);
