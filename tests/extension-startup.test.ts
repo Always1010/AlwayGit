@@ -255,6 +255,7 @@ it('gives embedded shells real Git authentication with fresh sessions and releas
   const { workbench } = await activate(context);
   const host = workbench as unknown as {
     terminals: TerminalSessions;
+    panels: Map<object, object>;
     createTerminal(
       owner: object,
       repoId: string,
@@ -264,7 +265,15 @@ it('gives embedded shells real Git authentication with fresh sessions and releas
       rows: number,
     ): Promise<TerminalSession>;
   };
-  const owner = { panel: { webview: { postMessage: async () => true } }, ready: true };
+  const owner = {
+    panel: { webview: { postMessage: async () => true } },
+    kind: 'editor',
+    ready: true,
+    subscriptions: [],
+    visible: true,
+    blank: false,
+  };
+  host.panels.set(owner.panel, owner);
   const fill = (env: NodeJS.ProcessEnv) =>
     new Promise<string>((resolve, reject) => {
       const child = spawn('git', ['-c', 'credential.helper=', 'credential', 'fill'], {
@@ -316,7 +325,16 @@ it('gives embedded shells real Git authentication with fresh sessions and releas
           : config;
       },
     );
-    await host.createTerminal({}, 'repo', process.cwd(), 'default', 80, 24);
+    const optedOutOwner = {
+      panel: { webview: { postMessage: async () => true } },
+      kind: 'editor',
+      ready: true,
+      subscriptions: [],
+      visible: true,
+      blank: false,
+    };
+    host.panels.set(optedOutOwner.panel, optedOutOwner);
+    await host.createTerminal(optedOutOwner, 'repo', process.cwd(), 'default', 80, 24);
     expect(launches[1].env.ALWAYGIT_ASKPASS_PORT).toBeUndefined();
   } finally {
     for (const disposable of context.subscriptions) disposable.dispose();
