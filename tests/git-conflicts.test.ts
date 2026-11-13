@@ -3,11 +3,10 @@ import { readFile, writeFile, rm, symlink, readdir, mkdir } from 'node:fs/promis
 import path from 'node:path';
 import { gitFixtures, commitFile, git } from './support/git-fixture';
 import { GitDocuments } from '../src/editor/documents';
-const editor = vi.hoisted(() => ({ execute: vi.fn(), show: vi.fn(), native: true, fail: false }));
+const editor = vi.hoisted(() => ({ execute: vi.fn(), native: true, fail: false }));
 vi.mock('vscode', () => ({
   Uri: { file: (fsPath: string) => ({ fsPath }) },
   ViewColumn: { Active: 1 },
-  window: { showTextDocument: editor.show },
   commands: { getCommands: async () => ['git.openMergeEditor'], executeCommand: editor.execute },
   extensions: {
     getExtension: () =>
@@ -143,8 +142,18 @@ it('uses the native editor when supported and falls back to working-file editing
   );
   editor.native = false;
   expect(await documents.openMergeEditor(repo, 'file.txt')).toEqual({ mode: 'text' });
-  expect(editor.show).toHaveBeenCalled();
+  const fallback = [
+    'vscode.open',
+    expect.objectContaining({ fsPath: path.join(repo.root, 'file.txt') }),
+    {
+      viewColumn: 1,
+      preview: false,
+      preserveFocus: false,
+    },
+  ];
+  expect(editor.execute).toHaveBeenLastCalledWith(...fallback);
   editor.native = true;
   editor.fail = true;
   expect(await documents.openMergeEditor(repo, 'file.txt')).toEqual({ mode: 'text' });
+  expect(editor.execute).toHaveBeenLastCalledWith(...fallback);
 });
