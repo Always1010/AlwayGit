@@ -41,7 +41,10 @@ import {
 } from '../src/protocol/workbench-host';
 
 /** Construct sample state only when the explicit Demo transport is used. */
-export function createDemoRequest(emit: (event: HostMessage) => void) {
+export function createDemoRequest(
+  emit: (event: HostMessage) => void,
+  options: { showcase?: boolean } = {},
+) {
   let appliedLocation: string | undefined;
   const noRemoteDemo = new URLSearchParams(location.search).get('noRemote') === '1';
   const rebasePlans = new Map<string, RebasePlan>();
@@ -217,21 +220,178 @@ export function createDemoRequest(emit: (event: HostMessage) => void) {
     commonDir: 'D:\\Examples\\website\\.git',
     name: 'website',
   };
+  // Opt-in documentation scene: keep ordinary Demo operations and their fixtures stable.
+  const repositories: Repository[] = [repo, website];
+  if (options.showcase) {
+    repo.collectionIds = ['product'];
+    website.collectionIds = ['product'];
+    for (const name of [
+      'api-server',
+      'shared-utils',
+      'docs-site',
+      'playground',
+      'dotfiles',
+      'dev-tools',
+    ]) {
+      const root = `D:\\Examples\\${name}`;
+      repositories.push({
+        id: `demo-${name}`,
+        name,
+        root,
+        commonDir: root + '\\.git',
+        ...(['api-server', 'shared-utils', 'docs-site'].includes(name)
+          ? { collectionIds: ['platform'] }
+          : {}),
+      });
+    }
+    // Overlapping feature work keeps a visible parallel region. A short fix and
+    // unmerged work use separate bases instead of turning the graph into serial loops.
+    const paths = [
+      [0, 16, 3, 9, 6, 11, 12, 15, 18],
+      [1, 4, 7, 13, 15],
+      [2, 5, 8, 18],
+      [10, 14, 11],
+    ];
+    for (const path of paths)
+      for (let index = 0; index < path.length - 1; index++)
+        commits[path[index]].parents = [commits[path[index + 1]].oid];
+    commits[3].parents.push(commits[1].oid);
+    commits[9].parents.push(commits[10].oid);
+    commits[6].parents.push(commits[2].oid);
+    const pendingTests = [
+      'Exercise multi-branch graph navigation',
+      'Cover unmerged branch selection',
+    ].map((subject, index) => ({
+      ...commits[17],
+      oid: oid(180 + index),
+      parents: [index === 0 ? oid(181) : commits[12].oid],
+      subject,
+      pushed: false,
+    }));
+    commits[17].parents = [pendingTests[0].oid];
+    commits.push(...pendingTests);
+    const titles = [
+      'Polish multi-repository workbench',
+      'Keep graph lanes stable across pages',
+      'Support grouped repository navigation',
+      'Merge branch feature/history-graph',
+      'Preserve branch colors at merge points',
+      'Keep repository order within each group',
+      'Merge branch feature/repository-groups',
+      'Draw continuous paths for parallel branches',
+      'Support moving repositories between groups',
+      'Merge branch fix/status-refresh',
+      'Fix repository status after checkout',
+      'Improve keyboard navigation',
+      'Add native diff integration',
+      'Add graph layout regression coverage',
+      'Refresh status after switching worktrees',
+      'Preserve commit drafts when switching repositories',
+      'Improve repository switcher feedback',
+      'Add multi-branch history test scenarios',
+      'Introduce repository workbench',
+    ];
+    titles.forEach((subject, index) => {
+      commits[index].subject = subject;
+      commits[index].pushed = index !== 0 && index !== 16 && index !== 17;
+    });
+    // Align timestamps with the topological display order, including merge parents.
+    orderHistory(commits, [commits[0].oid, commits[17].oid]).forEach((commit, index) => {
+      commit.timestamp = 1793331000 - index * 7200;
+    });
+    const refs = (demoSnapshot.refs = demoSnapshot.refs.filter(
+      (ref) =>
+        ref.name !== 'feature/login/api' &&
+        (ref.kind !== 'remote' || ['origin/main', 'origin/develop'].includes(ref.name)),
+    ));
+    Object.assign(
+      refs.find((ref) => ref.name === 'feature/history-graph')!,
+      {
+        oid: commits[1].oid,
+        upstream: 'origin/feature/history-graph',
+      },
+    );
+    refs.find((ref) => ref.name === 'feature/test')!.oid = commits[17].oid;
+    refs.find((ref) => ref.name === 'fix/status-refresh')!.oid = commits[10].oid;
+    refs.find((ref) => ref.name === 'origin/main')!.oid = commits[3].oid;
+    refs.find((ref) => ref.name === 'origin/develop')!.oid = commits[11].oid;
+    Object.assign(
+      refs.find((ref) => ref.name === 'v0.1.0')!,
+      {
+        name: 'v1.0.0',
+        fullName: 'refs/tags/v1.0.0',
+        oid: commits[18].oid,
+        refOid: commits[18].oid,
+      },
+    );
+    refs.push(
+      {
+        name: 'develop',
+        fullName: 'refs/heads/develop',
+        kind: 'local',
+        oid: commits[11].oid,
+        upstream: 'origin/develop',
+      },
+      {
+        name: 'feature/repository-groups',
+        fullName: 'refs/heads/feature/repository-groups',
+        kind: 'local',
+        oid: commits[2].oid,
+        upstream: 'origin/feature/repository-groups',
+      },
+      {
+        name: 'origin/feature/history-graph',
+        fullName: 'refs/remotes/origin/feature/history-graph',
+        kind: 'remote',
+        oid: commits[1].oid,
+      },
+      {
+        name: 'origin/feature/repository-groups',
+        fullName: 'refs/remotes/origin/feature/repository-groups',
+        kind: 'remote',
+        oid: commits[2].oid,
+      },
+      {
+        name: 'v1.1.0',
+        fullName: 'refs/tags/v1.1.0',
+        kind: 'tag',
+        oid: commits[6].oid,
+        refOid: commits[6].oid,
+      },
+    );
+    demoSnapshot.worktrees[1].head = commits[1].oid;
+  }
   const publishedTags = new Map<string, Record<string, string>>();
   const demoStores: Record<
     string,
     { snapshot: Snapshot; commits: Commit[]; saved: Map<string, Snapshot['changes']> }
   > = Object.fromEntries(
-    [repo, website].map((repository) => [
+    repositories.map((repository, index) => [
       repository.id,
       {
         snapshot: {
           ...structuredClone(demoSnapshot),
           repository,
+          ...(options.showcase && index > 0
+            ? {
+                head: commits[index === 1 ? 16 : 3].oid,
+                ahead: index === 1 ? 1 : 0,
+                changes: index % 2 ? structuredClone(demoSnapshot.changes).slice(1, 2) : [],
+                refs: demoSnapshot.refs.map((ref) => ({
+                  ...ref,
+                  ...(ref.kind === 'local' && ref.name === 'main'
+                    ? { oid: commits[index === 1 ? 16 : 3].oid }
+                    : {}),
+                })),
+              }
+            : {}),
           remotes: ['origin'],
           worktrees: demoSnapshot.worktrees.map((tree, i) => ({
             ...tree,
             path: i ? repository.root + '-graph' : repository.root,
+            ...(options.showcase && index > 0 && i === 0
+              ? { head: commits[index === 1 ? 16 : 3].oid }
+              : {}),
           })),
         },
         commits: structuredClone(commits),
@@ -311,8 +471,18 @@ export function createDemoRequest(emit: (event: HostMessage) => void) {
       delete store.snapshot.upstream;
       delete store.snapshot.pushTarget;
     }
-  const demoCollections: RepositoryCollection[] = [];
-  let demoOrder: RepositoryOrder | undefined;
+  const demoCollections: RepositoryCollection[] = options.showcase
+    ? [
+        { id: 'product', name: 'Product' },
+        { id: 'platform', name: 'Platform' },
+      ]
+    : [];
+  let demoOrder: RepositoryOrder | undefined = options.showcase
+    ? {
+        root: ['collection:product', 'collection:platform'],
+        collections: {},
+      }
+    : undefined;
   const storedResetMode = localStorage.getItem('alwaygit.demo-defaultResetMode');
   const storedPullStrategy = localStorage.getItem('alwaygit.demo-defaultPullStrategy');
   const storedConcurrency = Number(localStorage.getItem('alwaygit.demo-batchFetchConcurrency'));
@@ -573,7 +743,7 @@ export function createDemoRequest(emit: (event: HostMessage) => void) {
           }
         : effectiveDemoOperationSettings();
     }
-    if (method === 'repositories') return [repo, website];
+    if (method === 'repositories') return repositories;
     if (method === 'pickRepositoryDirectory') return 'D:\\Examples';
     if (method === 'discoverRepositories') {
       const scanId = (payload as { scanId: string }).scanId;
@@ -606,7 +776,7 @@ export function createDemoRequest(emit: (event: HostMessage) => void) {
     if (method === 'repositoryCollections') return demoCollections;
     if (method === 'repositoryOrder' || method === 'reorderRepository') {
       demoOrder = reconcileRepositoryOrder(
-        groupRepositories([repo, website]),
+        groupRepositories(repositories),
         demoCollections,
         demoOrder,
       );
@@ -623,12 +793,12 @@ export function createDemoRequest(emit: (event: HostMessage) => void) {
     if (method === 'updateRepositoryMemberships' || method === 'moveRepositoryRows') {
       // Preserve the old order before changing memberships so new occurrences append consistently.
       demoOrder = reconcileRepositoryOrder(
-        groupRepositories([repo, website]),
+        groupRepositories(repositories),
         demoCollections,
         demoOrder,
       );
       let changed = 0;
-      for (const group of groupRepositories([repo, website])) {
+      for (const group of groupRepositories(repositories)) {
         const next = new Set(group.collectionIds);
         if (method === 'updateRepositoryMemberships') {
           const { keys, changes } = payload as RepositoryMembershipUpdate;
@@ -657,7 +827,7 @@ export function createDemoRequest(emit: (event: HostMessage) => void) {
         changed++;
       }
       demoOrder = reconcileRepositoryOrder(
-        groupRepositories([repo, website]),
+        groupRepositories(repositories),
         demoCollections,
         demoOrder,
       );

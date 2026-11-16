@@ -81,7 +81,7 @@ const fixture = await build({
   import { createDemoRequest } from './webview/demo';
   const options = window.__captureOptions;
   window.__capturePending = 0;
-  const request = createDemoRequest(event => window.postMessage(event, '*'));
+  const request = createDemoRequest(event => window.postMessage(event, '*'), { showcase: options.showcase });
   // Features without a general Demo response receive explicit, capture-only sample data.
   // These are protocol responses rendered by production components, never replacement markup.
   const sampleTree = [
@@ -218,6 +218,17 @@ const fixture = await build({
   let session = { version: 2, repoId: 'demo-alwaygit', language: 'en',
     layout: { preset: 'workbench', sidebar: 248, details: 350, diff: 260, graph: 75, author: 105, date: 120, font: 13, row: 24 },
     drafts: {}, views: { 'demo-alwaygit': { search: '', tab: 'changes', expandedRefGroups: ['local:feature'] } } };
+  if (options.showcase) {
+    session.layout = { ...session.layout, sidebar: 288, graph: 100, details: 360, diff: 280 };
+    session.views['demo-alwaygit'].expandedRefGroups.push('local:fix', 'remote:origin:feature');
+    session.views['demo-alwaygit'].checkedRefs = [
+      'refs/heads/main',
+      'refs/heads/feature/history-graph',
+      'refs/heads/feature/repository-groups',
+      'refs/heads/fix/status-refresh',
+      'refs/heads/feature/test',
+    ];
+  }
   if (options.tree) {
     session = { commitTree: { repoId: 'demo-alwaygit', revision: '009a73edc42d9918a6bc5e4791033ad7e6f202cc' } };
     window.__ALWAYGIT_COMMIT_TREE__ = session;
@@ -236,8 +247,8 @@ const fixture = await build({
       if (beforeCommit && !call.payload.amend) committed = { oid: result.head, paths: call.payload.files?.map(file => file.path) ?? beforeCommit.changes.filter(file => !file.untracked && file.indexStatus !== ' ').map(file => file.path) };
       if (call.method === 'details' && committed?.oid === result.commit.oid) { result.files = committed.paths.map(path => ({ path, status: 'M' })); result.body = ''; }
       if (call.method === 'interfaceSettings') result = preferences;
-      if (call.method === 'repositories') result[0].collectionId = 'learning';
-      if (call.method === 'repositoryCollections') result = [{ id: 'learning', name: 'learning labs' }];
+      if (!options.showcase && call.method === 'repositories') result[0].collectionIds = ['learning'];
+      if (!options.showcase && call.method === 'repositoryCollections') result = [{ id: 'learning', name: 'learning labs' }];
       if (call.method === 'snapshot' && options.operation) {
         result.operation = { kind: 'merge', conflicts: options.operation === 'conflict' ? 1 : 0, canContinue: options.operation !== 'conflict', canAbort: true, canSkip: false, originalHead: result.head };
         result.changes = [{ path: 'webview/App.tsx', indexStatus: options.operation === 'conflict' ? 'U' : 'M', worktreeStatus: options.operation === 'conflict' ? 'U' : ' ', conflict: options.operation === 'conflict', untracked: false }];
@@ -313,6 +324,7 @@ async function commit(page, message, amend = false) {
   if (amend) await dialog(page).locator('.commit-amend input').check();
   await dialog(page).getByRole('textbox', { name: 'Commit message', exact: true }).fill(message);
 }
+const showcaseScene = { showcase: true, viewport: { width: 1600, height: 1000 } };
 const scenes = [
   [
     '01',
@@ -338,7 +350,7 @@ const scenes = [
   ],
   [
     '03',
-    {},
+    showcaseScene,
     async (p) => {
       await file(p);
     },
@@ -363,7 +375,7 @@ const scenes = [
   ],
   [
     '06',
-    {},
+    showcaseScene,
     async (p) => {
       await sidebar(p)
         .getByRole('button', { name: /^AlwayGit-Demo/ })
@@ -442,7 +454,7 @@ const scenes = [
   ],
   [
     '14',
-    {},
+    showcaseScene,
     async (p) => {
       await rows(p).nth(3).click();
       await rows(p)
@@ -896,6 +908,33 @@ try {
       await page.evaluate(async () => {
         await document.fonts.ready;
       });
+      if (options.showcase) {
+        const navigation = sidebar(page);
+        assert.equal(await navigation.locator('.repository-item').count(), 8);
+        assert.equal(await navigation.locator('.repository-collection').count(), 2);
+        assert.equal(
+          await navigation
+            .getByRole('group', { name: 'Product', exact: true })
+            .locator('.repository-item')
+            .count(),
+          2,
+        );
+        assert.equal(
+          await navigation
+            .getByRole('group', { name: 'Platform', exact: true })
+            .locator('.repository-item')
+            .count(),
+          3,
+        );
+        assert.equal(await navigation.locator('.ref-row input:checked').count(), 5);
+        assert.equal(await navigation.locator('.remote-group .ref-row').count(), 4);
+        assert.equal(await navigation.locator('.tag-row').count(), 2);
+        assert.equal(await navigation.locator('.worktree-list > .sidebar-item').count(), 2);
+        const fits = await navigation.evaluate(
+          (element) => element.scrollHeight <= element.clientHeight,
+        );
+        assert.ok(fits, 'Showcase navigation must fit without hiding sample objects');
+      }
       const viewport = page.viewportSize();
       await page.mouse.move(viewport.width - 4, viewport.height - 4);
       const visibleDialog = dialog(page);

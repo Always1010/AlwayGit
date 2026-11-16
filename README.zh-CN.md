@@ -6,7 +6,7 @@ AlwayGit 是可在 VS Code 编辑器标签页、主侧边栏、第二侧边栏�
 
 ![AlwayGit 工作台：仓库与分支导航、提交历史、工作区状态及文件并排 Diff](docs/images/user-manual/figure-03.png)
 
-工作台全景采用真实界面组件与示例仓库渲染。采集来源见[用户手册的截图说明](docs/USER_MANUAL.zh-CN.md#screenshot-notes)，点击图片可查看原图。
+工作台全景展示 8 个仓库、两个项目分组和五个分支的提交图（包含并行开发与未合并分支），并保留工作区状态与并排 Diff；由真实界面组件与示例数据渲染。采集来源见[用户手册的截图说明](docs/USER_MANUAL.zh-CN.md#screenshot-notes)，点击图片可查看原图。
 
 提交快照还支持可视化文件树：横向树便于查看变更在目录中的分布，径向树展示同一版本的整体结构。以下两图使用手册中的 `AlwayGit-Demo` 示例数据。
 
