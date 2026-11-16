@@ -33,6 +33,13 @@ function pathFor(segment: GraphSegment, height: number, laneWidth: number): stri
   const y1 = segment.from === 'top' ? 0 : height / 2;
   const y2 = segment.to === 'middle' ? height / 2 : height;
   if (x1 === x2) return `M ${x1} ${y1} L ${x2} ${y2}`;
+  if (segment.kind === 'through') {
+    // Collapse a vacated lane after passing this row's node, so unrelated
+    // paths do not graze the node and look like an additional connection.
+    const turnY = y1 + (y2 - y1) * 0.75;
+    const bend = (y2 - turnY) / 2;
+    return `M ${x1} ${y1} L ${x1} ${turnY} C ${x1} ${turnY + bend}, ${x2} ${y2 - bend}, ${x2} ${y2}`;
+  }
   const bend = (y2 - y1) / 2;
   return `M ${x1} ${y1} C ${x1} ${y1 + bend}, ${x2} ${y2 - bend}, ${x2} ${y2}`;
 }

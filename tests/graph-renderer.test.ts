@@ -116,6 +116,78 @@ describe('Git graph SVG rows', () => {
     expect(markup).not.toContain('<path');
   });
 
+  it('keeps collapsing paths clear of adjacent selected nodes at every row density', () => {
+    const { rows } = layoutGraph([
+      { oid: 'merge', parents: ['main', 'closing', 'continuing'] },
+      { oid: 'main', parents: ['base'] },
+      { oid: 'closing', parents: ['base'] },
+      { oid: 'continuing', parents: ['base'] },
+      { oid: 'base', parents: [] },
+    ]);
+    const row = rows[2];
+    const segmentIndex = row.segments.findIndex(
+      (segment) => segment.kind === 'through' && segment.fromLane !== segment.toLane,
+    );
+    expect(segmentIndex).toBeGreaterThanOrEqual(0);
+    const segment = row.segments[segmentIndex];
+    const samplePath = (d: string) => {
+      let current = [0, 0];
+      const points: number[][] = [];
+      for (const match of d.matchAll(/([MLC])([^MLC]*)/g)) {
+        const values = match[2].trim().split(/[ ,]+/).map(Number);
+        if (match[1] === 'M') {
+          current = values;
+          points.push(current);
+          continue;
+        }
+        const start = current;
+        for (let step = 1; step <= 256; step++) {
+          const t = step / 256,
+            u = 1 - t;
+          points.push(
+            start.map((value, axis) =>
+              match[1] === 'L'
+                ? value * u + values[axis] * t
+                : value * u ** 3 +
+                  3 * values[axis] * u ** 2 * t +
+                  3 * values[axis + 2] * u * t ** 2 +
+                  values[axis + 4] * t ** 3,
+            ),
+          );
+        }
+        current = values.slice(-2);
+      }
+      return points;
+    };
+    for (const height of [22, 24, 28]) {
+      for (const highlighted of [false, true]) {
+        const markup = renderToStaticMarkup(
+          React.createElement(GraphRow, {
+            row,
+            height,
+            selected: true,
+            hoveredPath: highlighted ? segment.pathId : undefined,
+          }),
+        );
+        const path = markup.match(/<path\b[^>]+>/g)![segmentIndex];
+        const node = markup.match(/<circle\b[^>]*class="git-graph-node"[^>]*>/)![0];
+        const attribute = (element: string, name: string) =>
+          Number(element.match(new RegExp(` ${name}="([^"]+)"`))![1]);
+        const points = samplePath(path.match(/ d="([^"]+)"/)![1]);
+        const nearest = Math.min(
+          ...points.map(([x, y]) =>
+            Math.hypot(x - attribute(node, 'cx'), y - attribute(node, 'cy')),
+          ),
+        );
+        const nodeRadius = attribute(node, 'r') + attribute(node, 'stroke-width') / 2;
+        const pathRadius = attribute(path, 'stroke-width') / 2;
+        expect(nearest - nodeRadius - pathRadius).toBeGreaterThanOrEqual(highlighted ? 3 : 4);
+        expect(points[0]).toEqual([(segment.fromLane + 0.5) * 18, 0]);
+        expect(points.at(-1)).toEqual([(segment.toLane + 0.5) * 18, height]);
+      }
+    }
+  });
+
   it('renders a local-only commit as a smaller hollow node', () => {
     const { rows } = layoutGraph([
       {
