@@ -28,6 +28,8 @@ export interface GraphState {
   paletteId?: GraphPaletteId;
   paletteSize?: number;
   paletteKey?: string;
+  /** Color allocations from least to most recent, bounded by palette size. */
+  colorHistory?: readonly number[];
 }
 
 export interface GraphSegment {
@@ -90,6 +92,9 @@ export function layoutGraph<T extends GraphCommit>(
   let nextColor = (prior?.nextColor ?? 0) % paletteSize;
   let laneCount = lanes.length;
   const rows: GraphLayoutRow[] = [];
+  const colorHistory = [
+    ...new Set(prior?.colorHistory ?? lanes.flatMap((lane) => (lane ? [lane.color] : []))),
+  ];
 
   const allocateColor = (slot: number, source?: { lane: number; color: number }): number => {
     const active = lanes.flatMap((lane, index) =>
@@ -97,6 +102,17 @@ export function layoutGraph<T extends GraphCommit>(
     );
     if (source) active.push(source);
     const used = new Set(active.map((lane) => lane.color));
+    const free = Array.from({ length: paletteSize }, (_, index) => index).filter(
+      (color) => !used.has(color),
+    );
+    const fresh = free.filter((color) => !colorHistory.includes(color));
+    // Try every unused color before recycling a retired one. Once all colors
+    // have appeared, recycle the least recently allocated free color.
+    const candidates = fresh.length
+      ? fresh
+      : free.length
+        ? [colorHistory.find((color) => !used.has(color))!]
+        : undefined;
     const left = active.filter((lane) => lane.lane < slot).sort((a, b) => b.lane - a.lane)[0];
     const right = active.filter((lane) => lane.lane > slot).sort((a, b) => a.lane - b.lane)[0];
     const neighbors = [left, right, source].filter(
@@ -113,6 +129,7 @@ export function layoutGraph<T extends GraphCommit>(
       bestScore = -Infinity;
     for (let offset = 0; offset < paletteSize; offset++) {
       const candidate = (nextColor + offset) % paletteSize;
+      if (candidates && !candidates.includes(candidate)) continue;
       const separation = relevant.length
         ? Math.min(
             ...relevant.map((lane) =>
@@ -126,8 +143,8 @@ export function layoutGraph<T extends GraphCommit>(
             0,
           ) / active.length
         : 0;
-      // Unused colors win first. Once exhausted, avoid equal neighbors and
-      // crossing paths before maximizing perceptual separation in both themes.
+      // Separate fresh colors perceptually in both themes. When every color is
+      // active, avoid equal neighbors and crossings before maximizing distance.
       const equalNeighbors = neighbors.filter((lane) => lane.color === candidate).length;
       const score =
         (used.has(candidate) ? 0 : 1000) - equalNeighbors * 100 + separation * 10 + average;
@@ -137,6 +154,9 @@ export function layoutGraph<T extends GraphCommit>(
       }
     }
     nextColor = (best + 1) % paletteSize;
+    const previousUse = colorHistory.indexOf(best);
+    if (previousUse !== -1) colorHistory.splice(previousUse, 1);
+    colorHistory.push(best);
     return best;
   };
 
@@ -260,5 +280,9 @@ export function layoutGraph<T extends GraphCommit>(
     lanes.splice(0, lanes.length, ...compacted);
   }
 
-  return { rows, endState: { lanes, nextColor, paletteId, paletteSize, paletteKey }, laneCount };
+  return {
+    rows,
+    endState: { lanes, nextColor, paletteId, paletteSize, paletteKey, colorHistory },
+    laneCount,
+  };
 }

@@ -336,6 +336,67 @@ describe('Git history graph', () => {
       expect(colors[index]).not.toBe(colors[index - 1]);
   });
 
+  it('keeps nearby unmerged and merged paths distinct across every page boundary', () => {
+    const history = [
+      commit('head', 'merge'),
+      commit('unmerged-tip', 'unmerged'),
+      commit('unmerged', 'merge'),
+      commit('merge', 'base', 'merged-tip'),
+      commit('merged-tip', 'base'),
+      commit('base'),
+    ];
+    for (const palette of graphPalettes) {
+      for (const colors of [
+        undefined,
+        { light: palette.light.slice(0, 4), dark: palette.dark.slice(0, 4) },
+      ]) {
+        const whole = layoutGraph(history, undefined, palette.id, colors);
+        expect(whole.rows[1].color).not.toBe(whole.rows[4].color);
+        expect(whole.rows[2].color).toBe(whole.rows[1].color);
+        for (let boundary = 0; boundary <= history.length; boundary++) {
+          const first = layoutGraph(history.slice(0, boundary), undefined, palette.id, colors);
+          const second = layoutGraph(history.slice(boundary), first.endState, palette.id, colors);
+          expect([...first.rows, ...second.rows]).toEqual(whole.rows);
+          expect(second.endState).toEqual(whole.endState);
+        }
+        if (colors) {
+          const changed = { light: [...colors.light].reverse(), dark: [...colors.dark].reverse() };
+          expect(layoutGraph(history, whole.endState, palette.id, changed)).toEqual(
+            layoutGraph(history, undefined, palette.id, changed),
+          );
+        }
+      }
+    }
+  });
+
+  it('uses every color before rotating retired colors with bounded allocation history', () => {
+    for (const palette of graphPalettes) {
+      const history = [
+        commit('main', 'base'),
+        ...Array.from({ length: (palette.light.length - 1) * 3 }, (_, index) =>
+          commit(`topic-${index}`, 'base'),
+        ),
+        commit('base'),
+      ];
+      const graph = layoutGraph(history, undefined, palette.id);
+      const colors = graph.rows.slice(1, -1).map((row) => row.color);
+      const firstCycle = colors.slice(0, palette.light.length - 1);
+      expect(new Set(firstCycle).size).toBe(palette.light.length - 1);
+      expect(colors).not.toContain(graph.rows[0].color);
+      expect(colors).toEqual([...firstCycle, ...firstCycle, ...firstCycle]);
+      expect(graph.endState.colorHistory).toHaveLength(palette.light.length);
+      let state = undefined as Parameters<typeof layoutGraph>[1];
+      const pagedRows = [] as typeof graph.rows;
+      for (const row of history) {
+        const page = layoutGraph([row], state, palette.id);
+        pagedRows.push(...page.rows);
+        state = page.endState;
+      }
+      expect(pagedRows).toEqual(graph.rows);
+      expect(state).toEqual(graph.endState);
+    }
+  });
+
   it('preserves lineage, cursor and colors across pages and resets for a new palette', () => {
     const history = [
       commit('merge', 'left', 'right'),
