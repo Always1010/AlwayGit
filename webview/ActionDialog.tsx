@@ -22,6 +22,7 @@ import { DiscardDialog } from './DiscardDialog';
 import { blocksWorkbench, networkCommand } from './actionFeedback';
 import { NetworkProgress, NetworkProgressActions } from './NetworkProgress';
 import { selectedTagRemote, tagQueryKey } from './tagStatus';
+import { useCherryPickCheck } from './useCherryPickCheck';
 import {
   captureTagDeleteLease,
   completeTagDeleteLease,
@@ -64,7 +65,6 @@ export interface DialogRequest {
     fixedTarget?: FixedTagTarget;
   };
   requireCheckout?: boolean;
-  reapply?: boolean;
 }
 export const actionTitles: Partial<Record<ActionType, StaticMessageKey>> = {
   'branch.create': 'actions.createBranch',
@@ -269,6 +269,25 @@ function StandardActionDialog({
     mainline: '',
     url: '',
   });
+  const [cherryTargets] = useState(() =>
+    type === 'cherry-pick'
+      ? [...new Set(values.target.split(/[\s,]+/).filter(Boolean))].map((oid) => ({
+          oid,
+          commit: state.commits.find((commit) => commit.oid === oid),
+        }))
+      : [],
+  );
+  const cherryCheck = useCherryPickCheck(
+    repositoryContext,
+    actionContext.expectedHead,
+    actionContext.expectedBranch,
+    type === 'cherry-pick' && !snapshot.operation.kind
+      ? cherryTargets.map((target) => target.oid)
+      : undefined,
+  );
+  const cherryReapply = !!cherryCheck.check?.included.length;
+  const cherryMerge =
+    cherryTargets.length === 1 && (cherryTargets[0].commit?.parents.length ?? 0) > 1;
   const [deletionDefaultScope] = useState(() =>
     type === 'branch.delete'
       ? (state.operationSettings.deletionDefaultScopes?.branch ?? 'user')
@@ -289,6 +308,23 @@ function StandardActionDialog({
     rememberDefault: dialog.tagDraft?.rememberDefault ?? false,
     deleteRemote: type === 'tag.delete' && !deleteLocal,
   });
+  const cherryProblem = cherryCheck.changed
+    ? t('actions.cherryPickContextChanged')
+    : cherryCheck.failed
+      ? t('actions.cherryPickCheckFailed')
+      : !cherryCheck.check
+        ? t('actions.cherryPickChecking')
+        : cherryCheck.check.included.includes(cherryCheck.check.head)
+          ? t('menus.cherryPickCurrentHead')
+          : undefined;
+  const cherryUnavailable =
+    type === 'cherry-pick' &&
+    (!!cherryProblem ||
+      !cherryTargets.length ||
+      (cherryTargets.length > 1 &&
+        cherryTargets.some((target) => (target.commit?.parents.length ?? 0) > 1)) ||
+      (cherryMerge && !values.mainline) ||
+      (cherryReapply && !checks.allowIncluded));
   const [customizePush, setCustomizePush] = useState(() => type === 'push' && !push.remote);
   const [customizePull, setCustomizePull] = useState(
     () => type === 'pull' && (!pull.remote || !pull.remoteBranch),
@@ -436,25 +472,23 @@ function StandardActionDialog({
       ? t('details.stageAll')
       : type === 'unstage'
         ? t('details.unstageAll')
-        : type === 'cherry-pick' && dialog.reapply
-          ? t('menus.cherryPickReapply')
-          : type === 'stash.create'
-            ? stashPaths
-              ? t('actions.stashSelectedFiles')
-              : t('actions.stashAllChanges')
-            : type === 'branch.create' && dialog.requireCheckout
-              ? t('actions.createBranchAndCheckout')
-              : type === 'stash.apply' && checks.pop
-                ? uiText('actions.popStash')
-                : type === 'worktree.remove' && (dialog.paths?.length ?? 0) > 1
-                  ? t('actions.removeWorktrees', { count: dialog.paths!.length })
-                  : type === 'branch.delete' && (dialog.names?.length ?? 0) > 1
-                    ? uiText('actions.deleteBranches')
-                    : type === 'tag.push' && (dialog.names?.length ?? 0) > 1
-                      ? t('actions.pushTags', { count: dialog.names!.length })
-                      : actionTitles[type]
-                        ? t(actionTitles[type]!)
-                        : type;
+        : type === 'stash.create'
+          ? stashPaths
+            ? t('actions.stashSelectedFiles')
+            : t('actions.stashAllChanges')
+          : type === 'branch.create' && dialog.requireCheckout
+            ? t('actions.createBranchAndCheckout')
+            : type === 'stash.apply' && checks.pop
+              ? uiText('actions.popStash')
+              : type === 'worktree.remove' && (dialog.paths?.length ?? 0) > 1
+                ? t('actions.removeWorktrees', { count: dialog.paths!.length })
+                : type === 'branch.delete' && (dialog.names?.length ?? 0) > 1
+                  ? uiText('actions.deleteBranches')
+                  : type === 'tag.push' && (dialog.names?.length ?? 0) > 1
+                    ? t('actions.pushTags', { count: dialog.names!.length })
+                    : actionTitles[type]
+                      ? t(actionTitles[type]!)
+                      : type;
   const stashFailure =
     type === 'stash.apply' && state.stashApplyFailure?.selector === values.selector
       ? state.stashApplyFailure
@@ -582,7 +616,13 @@ function StandardActionDialog({
     }
   }
   async function executeAction(branchCheckout?: boolean) {
-    if (pending.current || state.busy || !isActionContextCurrent(repositoryContext)) return;
+    if (
+      pending.current ||
+      state.busy ||
+      !isActionContextCurrent(repositoryContext) ||
+      cherryUnavailable
+    )
+      return;
     pending.current = true;
     setSubmitting(true);
     const request = ++submission.current;
@@ -840,10 +880,6 @@ function StandardActionDialog({
           break;
         case 'cherry-pick':
         case 'revert': {
-          if (type === 'cherry-pick' && dialog.reapply && !checks.allowIncluded) {
-            setValidation(t('actions.cherryPickReapplyConfirm'));
-            return;
-          }
           const mainline = v.mainline ? Number(v.mainline) : undefined;
           if (mainline !== undefined && (!Number.isInteger(mainline) || mainline < 1)) {
             setValidation(t('actions.mainlineParentMustBeAPositiveInteger'));
@@ -856,7 +892,7 @@ function StandardActionDialog({
             ...(type === 'cherry-pick'
               ? actionContext
               : { expectedHead: snapshot.head, expectedBranch: snapshot.branch || undefined }),
-            ...(type === 'cherry-pick' && dialog.reapply
+            ...(type === 'cherry-pick' && cherryReapply
               ? { allowIncluded: !!checks.allowIncluded }
               : {}),
           };
@@ -993,15 +1029,17 @@ function StandardActionDialog({
     ].includes(type) ||
     (type === 'reset' && values.mode === 'hard');
   const submitLabel =
-    type === 'operation.abort'
-      ? t('operations.confirmAbort')
-      : type === 'tag.delete'
-        ? !deleteLocal
-          ? t('actions.deleteRemoteTag')
-          : checks.deleteRemote
-            ? t('actions.deleteLocalAndRemoteTag')
-            : t('actions.deleteLocalTag')
-        : title;
+    type === 'cherry-pick'
+      ? t(cherryReapply ? 'actions.cherryPickReapply' : 'actions.cherryPickApply')
+      : type === 'operation.abort'
+        ? t('operations.confirmAbort')
+        : type === 'tag.delete'
+          ? !deleteLocal
+            ? t('actions.deleteRemoteTag')
+            : checks.deleteRemote
+              ? t('actions.deleteLocalAndRemoteTag')
+              : t('actions.deleteLocalTag')
+          : title;
   if (
     snapshot.operation.kind &&
     ['merge', 'rebase', 'cherry-pick', 'revert', 'pull'].includes(type)
@@ -1161,7 +1199,7 @@ function StandardActionDialog({
                 pullUnavailable ||
                 pushUnavailable ||
                 deleteRemoteUnavailable ||
-                (type === 'cherry-pick' && !!dialog.reapply && !checks.allowIncluded)
+                cherryUnavailable
               }
             >
               {state.busy ? t('common.working') : submitLabel}
@@ -1633,17 +1671,61 @@ function StandardActionDialog({
           )}
           {(type === 'cherry-pick' || type === 'revert') && (
             <>
-              {type === 'cherry-pick' && dialog.reapply && (
+              {type === 'cherry-pick' ? (
                 <>
-                  <p className="warning-text">{t('actions.cherryPickReapplyWarning')}</p>
-                  {checkbox('allowIncluded', 'actions.cherryPickReapplyConfirm')}
+                  <ul className="cherry-pick-targets" aria-label={t('actions.commitIDs')}>
+                    {cherryTargets.map(({ oid, commit }) => (
+                      <li key={oid}>
+                        <code title={oid}>{oid.slice(0, 8)}</code>
+                        <span>{commit?.subject}</span>
+                        {cherryCheck.check?.included.includes(oid) && (
+                          <small>{t('actions.cherryPickIncluded')}</small>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                  {cherryProblem && (
+                    <p role={cherryCheck.failed || cherryCheck.changed ? 'alert' : 'status'}>
+                      {cherryProblem}
+                      {cherryCheck.failed && !cherryCheck.changed && (
+                        <Button
+                          type="button"
+                          icon="refresh"
+                          aria-label={t('actions.cherryPickRetry')}
+                          onClick={cherryCheck.retry}
+                        />
+                      )}
+                    </p>
+                  )}
+                  {cherryReapply && (
+                    <>
+                      <p className="warning-text">{t('actions.cherryPickReapplyWarning')}</p>
+                      {checkbox('allowIncluded', 'actions.cherryPickReapplyConfirm')}
+                    </>
+                  )}
+                  {cherryMerge &&
+                    field(
+                      'mainline',
+                      'actions.mainlineParentMergeCommitsOnly',
+                      [
+                        { value: '', label: t('actions.cherryPickChooseMainline') },
+                        ...cherryTargets[0].commit!.parents.map((parent, index) => ({
+                          value: String(index + 1),
+                          label: `${index + 1} · ${parent.slice(0, 8)}`,
+                        })),
+                      ],
+                      true,
+                    )}
+                </>
+              ) : (
+                <>
+                  {field('target', 'actions.commitIDs', undefined, true)}
+                  {field('mainline', 'actions.mainlineParentMergeCommitsOnly')}
                 </>
               )}
-              {field('target', 'actions.commitIDs', undefined, true)}
-              {field('mainline', 'actions.mainlineParentMergeCommitsOnly')}
               <strong>
                 {type === 'cherry-pick'
-                  ? t('actions.cherryPickOnto', { target: displayTarget, branch })
+                  ? t('actions.cherryPickTargetBranch', { branch })
                   : uiText('actions.revertOn', { displayTarget: displayTarget, branch: branch })}
               </strong>
               <p>

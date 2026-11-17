@@ -586,11 +586,9 @@ const scenes = [
     '29',
     {},
     async (p) => {
-      await rows(p).nth(1).click({ button: 'right' });
-      await p
-        .getByTestId('context-menu')
-        .getByRole('menuitem', { name: 'Reapply Historical Commits…', exact: true })
-        .waitFor();
+      await menu(p, rows(p).nth(1), 'Cherry-pick to main…');
+      await dialog(p).getByRole('button', { name: 'Reapply Commits', exact: true }).waitFor();
+      assert.equal(await dialog(p).getByRole('checkbox').isChecked(), false);
     },
   ],
   [

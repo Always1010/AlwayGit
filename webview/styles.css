@@ -3250,6 +3250,25 @@ p {
   align-items: center;
   gap: 6px;
 }
+.cherry-pick-targets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow: auto;
+  padding: 0;
+  list-style: none;
+}
+.cherry-pick-targets li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+  overflow-wrap: anywhere;
+}
+.cherry-pick-targets small {
+  color: var(--muted);
+}
 .branch-start-point {
   display: flex;
   flex-direction: column;

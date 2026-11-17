@@ -18,7 +18,6 @@ import { rpc } from './rpc';
 import { remoteNames, remoteParts as resolveRemoteParts, refsForRemote } from './remoteTracking';
 import { showRemoteRequest } from './RemoteRequestDialog';
 import { cherryPickOrder } from './commitSelection';
-import type { CherryPickMenuCheck } from './useCherryPickCheck';
 import type { CommitSelection } from '../src/protocol/types';
 import type { RevisionTreeEntry } from '../src/protocol/tree';
 
@@ -64,11 +63,7 @@ export interface MenuApi {
   manageRepositoryGroups?(groups: RepositoryGroup[]): void;
   fetchRepositories(repositories: Repository[]): void;
 }
-export function menuFor(
-  target: MenuTarget,
-  api: MenuApi,
-  check?: CherryPickMenuCheck,
-): { caption: string; items: MenuItem[] } {
+export function menuFor(target: MenuTarget, api: MenuApi): { caption: string; items: MenuItem[] } {
   const state = useWorkbench.getState(),
     snapshot = state.snapshot,
     busy = state.busy;
@@ -1022,7 +1017,6 @@ export function menuFor(
     hasMerge = selectedCommits.some((commit) => (commit?.parents.length ?? 0) > 1),
     operationBlocked = busy || !snapshot?.branch || !!snapshot.operation.kind;
   const atHead = !!snapshot?.head && selected.includes(snapshot.head),
-    included = check?.included.length ?? 0,
     selectionMissing = selectedCommits.length !== selected.length;
   const eligibilityReason = !snapshot?.branch
     ? uiText('menus.cherryPickRequiresALocalBranch')
@@ -1030,42 +1024,20 @@ export function menuFor(
       ? uiText('menus.cherryPickCurrentHead')
       : selectionMissing
         ? uiText('menus.cherryPickSelectionChanged')
-        : check?.failed
-          ? uiText('menus.cherryPickCheckFailed')
-          : !check
-            ? uiText('menus.cherryPickChecking')
-            : included
-              ? uiText('menus.cherryPickAlreadyIncluded')
-              : undefined;
+        : undefined;
   const cherryBlocked = operationBlocked || !!eligibilityReason;
-  const reapply =
-    included && !atHead && !selectionMissing && !check?.failed
-      ? action(
-          uiText('menus.cherryPickReapply'),
-          { type: 'cherry-pick', target: ordered.join(' '), reapply: true },
-          'history',
-          operationBlocked || (selected.length > 1 && hasMerge),
-        )
-      : undefined;
-  const cherry = item(
+  const cherry = action(
     selected.length > 1
       ? uiText('menus.cherryPickCommitsTo', {
           count: selected.length,
           value: snapshot?.branch ?? uiText('menus.detachedHEAD'),
         })
       : uiText('menus.cherryPickTo', { value: snapshot?.branch ?? uiText('menus.detachedHEAD') }),
-    () => {
-      void state.execute({
-        type: 'cherry-pick',
-        commits: ordered,
-        expectedHead: snapshot?.head,
-        expectedBranch: snapshot?.branch || undefined,
-      });
-    },
+    { type: 'cherry-pick', target: ordered.join(' ') },
     'git-commit',
-    cherryBlocked || hasMerge,
+    cherryBlocked || (selected.length > 1 && hasMerge),
     eligibilityReason ??
-      (hasMerge
+      (selected.length > 1 && hasMerge
         ? t('menus.selectMergeCommitsIndividuallyAndChooseTheirMainlineParent')
         : !snapshot?.branch
           ? t('menus.cherryPickRequiresALocalBranch')
@@ -1087,7 +1059,6 @@ export function menuFor(
             ]
           : []),
         cherry,
-        ...(reapply ? [reapply] : []),
         copy(uiText('menus.copyCommitIDs'), ordered.join('\n')),
         ...(selected.length === 2
           ? [
@@ -1135,8 +1106,7 @@ export function menuFor(
         { type: 'branch.create', target: oid, checkout: true, requireCheckout: true },
         'git-branch',
       );
-  const commit = selectedCommits[0],
-    targetCommit = state.commits.find((item) => item.oid === oid),
+  const targetCommit = state.commits.find((item) => item.oid === oid),
     items = [
       checkout,
       createBranch,
@@ -1167,16 +1137,7 @@ export function menuFor(
         'git-pull-request',
         busy || !snapshot?.branch || !!snapshot.operation.kind,
       ),
-      (commit?.parents.length ?? 0) > 1
-        ? action(
-            uiText('menus.cherryPickMerge'),
-            { type: 'cherry-pick', target: oid },
-            'git-commit',
-            cherryBlocked,
-            eligibilityReason,
-          )
-        : cherry,
-      ...(reapply ? [reapply] : []),
+      cherry,
       action(uiText('menus.revert'), { type: 'revert', target: oid }, 'discard'),
       action(
         uiText('menus.reset'),

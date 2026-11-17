@@ -213,7 +213,7 @@ Tags 合并显示本地标签和上次成功查询中仅存在于所选远端的
 | Stashes | `Stash All Changes…` |
 | 工作树 | `Add 工作树…` |
 
-Graph 中 Commit 的菜单集中提供 `Create Branch…`、`Create Tag…`、Cherry-pick、`Revert…`、`Reset…`、分支感知的 Checkout、关闭策略时置灰的 `Checkout to Detached HEAD…`、`Copy Commit ID` 和 `Copy Commit Message`；顶部工具栏和 Commit Details 标题不重复提供这些入口。普通 Commit 的 Cherry-pick 点击后直接执行；Merge Commit 单独选择 Mainline Parent。多选 Commit 按当前拓扑列表从旧到新执行批量 Cherry-pick，且只处理明确选中的 Commit；包含 Merge Commit 时禁用批量操作并要求单独处理。具体项目根据提交、当前分支和仓库操作状态禁用。Cherry-pick 通过独立只读查询检查所选提交与当前 HEAD 的祖先关系，不依赖 Graph 分页或引用标签；检查期间和检查失败时禁用。当前 HEAD、当前分支已有的历史提交（包括通过 Merge 纳入的提交）均禁用普通入口，多选中包含这些提交时整体禁用且不自动跳过。已有历史提交可通过 `Reapply Historical Commits…` 明确勾选确认后重新应用；当前 HEAD 不提供此入口，包含 Merge Commit 的批量重新应用仍禁用。执行前复核真实提交关系及目标分支、HEAD；重新应用对话框绑定打开时的目标上下文，编辑提交或 Mainline Parent 后重新确认。
+Graph 中 Commit 的菜单集中提供 `Create Branch…`、`Create Tag…`、`Cherry-pick to <当前分支>…`、`Revert…`、`Reset…`、分支感知的 Checkout、关闭策略时置灰的 `Checkout to Detached HEAD…`、`Copy Commit ID` 和 `Copy Commit Message`；顶部工具栏和 Commit Details 标题不重复提供这些入口。右键菜单只根据已有分支、HEAD、提交选择及操作状态决定可用性，不发起 Cherry-pick 提交关系查询，也不动态插入重新应用入口。点击 Cherry-pick 后立即打开统一确认窗口，显示固定的提交 ID、摘要和目标分支，再通过独立可取消的只读查询检查真实祖先关系，不依赖 Graph 分页或引用标签；检查中和失败时禁止执行，失败可在窗口中重试，普通提交检查通过后仍需确认。当前分支已有的历史提交（包括通过 Merge 纳入的提交）在清单中明确标识，并要求勾选确认后重新应用；此检查不判断改动是否已被撤销，重新应用仍可能冲突或为空。多选 Commit 按当前拓扑列表从旧到新执行，只处理明确选中的全部 Commit，混合选择不自动跳过已有历史。当前 HEAD 禁用；包含 Merge Commit 的批量操作禁用，单个 Merge 在同一窗口选择 Mainline Parent，修改父提交后清除重新应用确认。确认绑定打开窗口时的仓库代次、分支和 HEAD；目标变化即失效，即使切回原目标也不恢复，关闭或切换仓库取消未完成查询，过期响应不得覆盖新窗口。实际写入前继续复核真实提交关系及目标分支、HEAD。
 
 恰好选择两个 Commit 时自动进入 `Compare Commits`，右键菜单仍保留显式入口。存在祖先关系时祖先位于左侧；没有祖先关系时保持选择顺序。右侧显示两个 Commit 和差异文件列表，交换按钮可反转比较方向，文件 Diff 支持新增、删除和重命名。取消到一个 Commit 时恢复该提交详情；增加到三个以上时显示最后操作的提交并保留多选批量操作；清空选择时同步清空右侧详情。手动或后台刷新 History 时保留仍然有效的双 Commit 比较。
 

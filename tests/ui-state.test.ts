@@ -1227,11 +1227,10 @@ describe('repository UI consistency', () => {
       browseComparisonTree,
     });
     const target = { kind: 'commit' as const, oid: 'target', oids: ['target', 'base'] };
-    const menu = menuFor(target, api, { included: ['base'] }).items;
+    const menu = menuFor(target, api).items;
     expect(menu.map((item) => item.label)).toEqual([
       'Compare Commits',
       expect.stringContaining('Cherry-pick'),
-      'Reapply Historical Commits…',
       'Copy Commit IDs',
       translate('en', 'treeCompare.browse'),
     ]);
@@ -1239,9 +1238,7 @@ describe('repository UI consistency', () => {
     expect(menu.slice(0, -1).some((item) => item.separatorBefore)).toBe(false);
     menu.at(-1)!.run();
     expect(browseComparisonTree).toHaveBeenCalledWith('target', 'base');
-    const multiple = menuFor({ ...target, oids: ['target', 'base', 'third'] }, api, {
-      included: [],
-    }).items;
+    const multiple = menuFor({ ...target, oids: ['target', 'base', 'third'] }, api).items;
     expect(multiple.map((item) => item.label)).toEqual([
       expect.stringContaining('Cherry-pick'),
       'Copy Commit IDs',
@@ -1249,7 +1246,7 @@ describe('repository UI consistency', () => {
     expect(multiple.some((item) => item.separatorBefore)).toBe(false);
   });
 
-  it('disables already-included cherry-picks, waits for ancestry and keeps deliberate historical reapplication separate', async () => {
+  it('opens one stable cherry-pick confirmation without querying ancestry from the menu', async () => {
     await store.getState().selectRepository('a');
     store.setState({ commits: [commit, ...['topic', 'old'].map((oid) => ({ ...commit, oid }))] });
     const { menuFor } = await import('../webview/menus');
@@ -1266,48 +1263,42 @@ describe('repository UI consistency', () => {
         removeRepositories: noop,
         fetchRepositories: noop,
       };
-    const cherry = (
-      oid: string,
-      check?: { included: string[]; failed?: boolean },
-      oids?: string[],
-    ) =>
-      menuFor({ kind: 'commit', oid, oids }, api, check).items.find((item) =>
+    const cherry = (oid: string, oids?: string[]) =>
+      menuFor({ kind: 'commit', oid, oids }, api).items.find((item) =>
         item.label.startsWith('Cherry-pick'),
       )!;
-    expect(cherry('abc', { included: [] })).toMatchObject({
+    const checksBefore = bridge.rpc.mock.calls.filter(
+      ([method]) => method === 'cherryPickCheck',
+    ).length;
+    expect(cherry('abc')).toMatchObject({
       disabled: true,
       reason: 'This commit is the current branch HEAD.',
     });
-    expect(
-      menuFor({ kind: 'commit', oid: 'abc' }, api, { included: ['abc'] }).items.some(
-        (item) => item.label === 'Reapply Historical Commits…',
-      ),
-    ).toBe(false);
-    expect(cherry('old')).toMatchObject({
-      disabled: true,
-      reason: 'Checking whether this branch already includes the selected commits…',
-    });
-    expect(cherry('old', { included: [], failed: true }).disabled).toBe(true);
-    expect(cherry('old', { included: ['old'] }).disabled).toBe(true);
-    const reapply = menuFor({ kind: 'commit', oid: 'old' }, api, { included: ['old'] }).items.find(
-      (item) => item.label === 'Reapply Historical Commits…',
-    )!;
-    expect(reapply.disabled).toBe(false);
-    reapply.run();
-    expect(open).toHaveBeenCalledWith({ type: 'cherry-pick', target: 'old', reapply: true });
-    expect(cherry('topic', { included: [] }).disabled).toBe(false);
-    expect(cherry('topic', { included: ['old'] }, ['topic', 'old']).disabled).toBe(true);
-    expect(cherry('topic', { included: [] }, ['topic', 'abc']).disabled).toBe(true);
+    for (const oid of ['old', 'topic', 'old']) {
+      const entry = cherry(oid);
+      expect(entry).toMatchObject({ label: 'Cherry-pick to main…', disabled: false });
+      entry.run();
+      expect(open).toHaveBeenLastCalledWith({ type: 'cherry-pick', target: oid });
+      expect(
+        menuFor({ kind: 'commit', oid }, api).items.some((item) =>
+          item.label.startsWith('Reapply'),
+        ),
+      ).toBe(false);
+    }
+    expect(bridge.rpc.mock.calls.filter(([method]) => method === 'cherryPickCheck')).toHaveLength(
+      checksBefore,
+    );
+    expect(cherry('topic', ['topic', 'old']).disabled).toBe(false);
+    expect(cherry('topic', ['topic', 'abc']).disabled).toBe(true);
     store.setState({
       commits: [
         ...store.getState().commits,
         { ...commit, oid: 'merged', parents: ['abc', 'other'] },
       ],
     });
-    expect(cherry('merged', { included: ['merged'] }).disabled).toBe(true);
-    expect(cherry('merged', { included: [] }).disabled).toBe(false);
-    expect(cherry('topic', { included: [] }, ['topic', 'merged']).disabled).toBe(true);
-    expect(cherry('missing', { included: [] }).disabled).toBe(true);
+    expect(cherry('merged').disabled).toBe(false);
+    expect(cherry('topic', ['topic', 'merged']).disabled).toBe(true);
+    expect(cherry('missing').disabled).toBe(true);
   });
   it('keeps the newest catalog and active repository when an older initialization finishes late', async () => {
     await store.getState().selectRepository('b');

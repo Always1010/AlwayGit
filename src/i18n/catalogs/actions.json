@@ -1172,12 +1172,6 @@
     "review": "translated",
     "context": "webview/ActionDialog.tsx"
   },
-  "actions.cherryPickOnto": {
-    "en": "Cherry-pick {{target}} onto {{branch}}",
-    "zh-CN": "将 {{target}} Cherry-pick 到 {{branch}}",
-    "review": "translated",
-    "context": "webview/ActionDialog.tsx"
-  },
   "actions.cherryPickReapplyWarning": {
     "en": "These commits are already in the branch history. Reapply only when their changes were reverted or removed. This can produce conflicts or an empty result.",
     "zh-CN": "这些提交已经在当前分支历史中。仅在其改动曾被撤销或移除、确需恢复时重新应用；此操作仍可能产生冲突或空结果。",
@@ -1297,5 +1291,59 @@
     "zh-CN": "至少一项删除成功后保存到当前 VS Code 工作区。",
     "review": "translated",
     "context": "Deletion operation preferences"
+  },
+  "actions.cherryPickApply": {
+    "en": "Apply Commits",
+    "zh-CN": "应用提交",
+    "review": "translated",
+    "context": "Cherry-pick confirmation dialog / click-triggered ancestry check"
+  },
+  "actions.cherryPickReapply": {
+    "en": "Reapply Commits",
+    "zh-CN": "重新应用",
+    "review": "translated",
+    "context": "Cherry-pick confirmation dialog / click-triggered ancestry check"
+  },
+  "actions.cherryPickChecking": {
+    "en": "Checking commit ancestry…",
+    "zh-CN": "正在检查提交关系…",
+    "review": "translated",
+    "context": "Cherry-pick confirmation dialog / click-triggered ancestry check"
+  },
+  "actions.cherryPickCheckFailed": {
+    "en": "Could not check commit ancestry. Retry before applying these commits.",
+    "zh-CN": "无法检查提交关系，请重试后再应用提交。",
+    "review": "translated",
+    "context": "Cherry-pick confirmation dialog / click-triggered ancestry check"
+  },
+  "actions.cherryPickContextChanged": {
+    "en": "The target repository, branch or HEAD changed. Close this window and select the commits again.",
+    "zh-CN": "目标仓库、分支或 HEAD 已变化，请关闭窗口并重新选择提交。",
+    "review": "translated",
+    "context": "Cherry-pick confirmation dialog / click-triggered ancestry check"
+  },
+  "actions.cherryPickIncluded": {
+    "en": "Already in branch history",
+    "zh-CN": "已在分支历史中",
+    "review": "translated",
+    "context": "Cherry-pick confirmation dialog / click-triggered ancestry check"
+  },
+  "actions.cherryPickChooseMainline": {
+    "en": "Choose a mainline parent",
+    "zh-CN": "请选择主线父提交",
+    "review": "translated",
+    "context": "Cherry-pick confirmation dialog / click-triggered ancestry check"
+  },
+  "actions.cherryPickRetry": {
+    "en": "Retry ancestry check",
+    "zh-CN": "重新检查提交关系",
+    "review": "translated",
+    "context": "Cherry-pick confirmation dialog / click-triggered ancestry check"
+  },
+  "actions.cherryPickTargetBranch": {
+    "en": "Target branch: {{branch}}",
+    "zh-CN": "目标分支：{{branch}}",
+    "review": "translated",
+    "context": "Cherry-pick confirmation dialog / receiving branch"
   }
 }

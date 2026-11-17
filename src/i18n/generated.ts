@@ -924,10 +924,6 @@ export const catalog = {
     "en": "Reset {{branch}} to {{target}}",
     "zh-CN": "将 {{branch}} 重置到 {{target}}"
   },
-  "actions.cherryPickOnto": {
-    "en": "Cherry-pick {{target}} onto {{branch}}",
-    "zh-CN": "将 {{target}} Cherry-pick 到 {{branch}}"
-  },
   "actions.cherryPickReapplyWarning": {
     "en": "These commits are already in the branch history. Reapply only when their changes were reverted or removed. This can produce conflicts or an empty result.",
     "zh-CN": "这些提交已经在当前分支历史中。仅在其改动曾被撤销或移除、确需恢复时重新应用；此操作仍可能产生冲突或空结果。"
@@ -1007,6 +1003,42 @@ export const catalog = {
   "actions.rememberDeletionWorkspaceScope": {
     "en": "Saved to this VS Code workspace after at least one target is removed.",
     "zh-CN": "至少一项删除成功后保存到当前 VS Code 工作区。"
+  },
+  "actions.cherryPickApply": {
+    "en": "Apply Commits",
+    "zh-CN": "应用提交"
+  },
+  "actions.cherryPickReapply": {
+    "en": "Reapply Commits",
+    "zh-CN": "重新应用"
+  },
+  "actions.cherryPickChecking": {
+    "en": "Checking commit ancestry…",
+    "zh-CN": "正在检查提交关系…"
+  },
+  "actions.cherryPickCheckFailed": {
+    "en": "Could not check commit ancestry. Retry before applying these commits.",
+    "zh-CN": "无法检查提交关系，请重试后再应用提交。"
+  },
+  "actions.cherryPickContextChanged": {
+    "en": "The target repository, branch or HEAD changed. Close this window and select the commits again.",
+    "zh-CN": "目标仓库、分支或 HEAD 已变化，请关闭窗口并重新选择提交。"
+  },
+  "actions.cherryPickIncluded": {
+    "en": "Already in branch history",
+    "zh-CN": "已在分支历史中"
+  },
+  "actions.cherryPickChooseMainline": {
+    "en": "Choose a mainline parent",
+    "zh-CN": "请选择主线父提交"
+  },
+  "actions.cherryPickRetry": {
+    "en": "Retry ancestry check",
+    "zh-CN": "重新检查提交关系"
+  },
+  "actions.cherryPickTargetBranch": {
+    "en": "Target branch: {{branch}}",
+    "zh-CN": "目标分支：{{branch}}"
   },
   "arguments.gitCommandArgumentsAreTooLongSelectFewerItems": {
     "en": "Git command arguments are too long. Select fewer items or shorten the description and retry.",
@@ -4468,16 +4500,16 @@ export const catalog = {
     "zh-CN": "复制工作树路径"
   },
   "menus.cherryPickCommitsTo": {
-    "en": "Cherry-pick {{count}} Commits to {{value}}",
-    "zh-CN": "将 {{count}} 个提交 Cherry-pick 到 {{value}}"
+    "en": "Cherry-pick {{count}} Commits to {{value}}…",
+    "zh-CN": "将 {{count}} 个提交 Cherry-pick 到 {{value}}…"
   },
   "menus.detachedHEAD": {
     "en": "Detached HEAD",
     "zh-CN": "Detached HEAD"
   },
   "menus.cherryPickTo": {
-    "en": "Cherry-pick to {{value}}",
-    "zh-CN": "Cherry-pick 到 {{value}}"
+    "en": "Cherry-pick to {{value}}…",
+    "zh-CN": "Cherry-pick 到 {{value}}…"
   },
   "menus.commits": {
     "en": "{{count}} Commits",
@@ -4490,10 +4522,6 @@ export const catalog = {
   "menus.copyCommitIDs": {
     "en": "Copy Commit IDs",
     "zh-CN": "复制提交 ID"
-  },
-  "menus.cherryPickMerge": {
-    "en": "Cherry-pick Merge…",
-    "zh-CN": "Cherry-pick 合并提交…"
   },
   "menus.revert": {
     "en": "Revert…",
@@ -4514,22 +4542,6 @@ export const catalog = {
   "menus.cherryPickCurrentHead": {
     "en": "This commit is the current branch HEAD.",
     "zh-CN": "该提交就是当前分支的最新提交。"
-  },
-  "menus.cherryPickAlreadyIncluded": {
-    "en": "The selection contains commits already in this branch. Deselect them before cherry-picking.",
-    "zh-CN": "所选提交中包含当前分支已有的提交，请先取消选择这些提交。"
-  },
-  "menus.cherryPickChecking": {
-    "en": "Checking whether this branch already includes the selected commits…",
-    "zh-CN": "正在检查当前分支是否已包含所选提交…"
-  },
-  "menus.cherryPickCheckFailed": {
-    "en": "Could not check commit ancestry. Close the menu, refresh and try again.",
-    "zh-CN": "无法检查提交关系，请关闭菜单、刷新后重试。"
-  },
-  "menus.cherryPickReapply": {
-    "en": "Reapply Historical Commits…",
-    "zh-CN": "重新应用历史提交…"
   },
   "menus.cherryPickSelectionChanged": {
     "en": "The selected commits are no longer loaded. Close this menu and select them again.",
@@ -5940,8 +5952,8 @@ export const catalog = {
     "zh-CN": "该提交就是当前分支的最新提交，不能 Cherry-pick 到自身。"
   },
   "service.cherryPickAlreadyIncluded": {
-    "en": "This branch already includes selected commits. Deselect them or explicitly confirm Reapply Historical Commits.",
-    "zh-CN": "当前分支已包含所选提交，请取消选择这些提交，或明确确认重新应用历史提交。"
+    "en": "This branch already includes selected commits. Explicitly confirm reapplication in the Cherry-pick dialog.",
+    "zh-CN": "当前分支历史中已包含所选提交，请在 Cherry-pick 窗口中明确确认重新应用。"
   },
   "service.cherryPickCheckFailed": {
     "en": "Could not check whether this branch already includes the selected commits.",
@@ -8559,7 +8571,6 @@ export interface MessageParameters {
   "actions.hard": {  };
   "actions.fastForwardOnly": {  };
   "actions.resetBranchToTarget": { branch: ParameterValue; target: ParameterValue };
-  "actions.cherryPickOnto": { target: ParameterValue; branch: ParameterValue };
   "actions.cherryPickReapplyWarning": {  };
   "actions.cherryPickReapplyConfirm": {  };
   "actions.pushTag": {  };
@@ -8580,6 +8591,15 @@ export interface MessageParameters {
   "actions.rememberDeletionDefault": {  };
   "actions.rememberDeletionUserScope": {  };
   "actions.rememberDeletionWorkspaceScope": {  };
+  "actions.cherryPickApply": {  };
+  "actions.cherryPickReapply": {  };
+  "actions.cherryPickChecking": {  };
+  "actions.cherryPickCheckFailed": {  };
+  "actions.cherryPickContextChanged": {  };
+  "actions.cherryPickIncluded": {  };
+  "actions.cherryPickChooseMainline": {  };
+  "actions.cherryPickRetry": {  };
+  "actions.cherryPickTargetBranch": { branch: ParameterValue };
   "arguments.gitCommandArgumentsAreTooLongSelectFewerItems": {  };
   "arguments.messagesCannotContainNULCharacters": {  };
   "manifest.stopOperation": {  };
@@ -9441,16 +9461,11 @@ export interface MessageParameters {
   "menus.commits": { count: number };
   "menus.compareCommits": {  };
   "menus.copyCommitIDs": {  };
-  "menus.cherryPickMerge": {  };
   "menus.revert": {  };
   "menus.reset": {  };
   "menus.copyCommitMessage": {  };
   "menus.commit": { value: ParameterValue };
   "menus.cherryPickCurrentHead": {  };
-  "menus.cherryPickAlreadyIncluded": {  };
-  "menus.cherryPickChecking": {  };
-  "menus.cherryPickCheckFailed": {  };
-  "menus.cherryPickReapply": {  };
   "menus.cherryPickSelectionChanged": {  };
   "menus.switchToNamedBranch": { name: ParameterValue };
   "menus.chooseBranchToCheckout": {  };

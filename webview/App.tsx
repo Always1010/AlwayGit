@@ -65,7 +65,6 @@ import { useTranslation } from './i18n';
 import type { DialogRequest } from './ActionDialog';
 
 import { menuFor } from './menus';
-import { useCherryPickCheck } from './useCherryPickCheck';
 import type { MenuApi, MenuTarget } from './menus';
 import type { RepositoryGroup } from '../src/protocol/repositories';
 
@@ -558,13 +557,7 @@ export function App() {
     (target: MenuTarget) => menuFor(target, menuApi).items,
     [menuApi],
   );
-  const cherryPickCheck = useCherryPickCheck(
-    state.repoId,
-    state.snapshot?.head,
-    state.snapshot?.branch,
-    context?.target,
-  );
-  const menu = context ? menuFor(context.target, menuApi, cherryPickCheck) : undefined;
+  const menu = context ? menuFor(context.target, menuApi) : undefined;
   const toolbarMenuItems: MenuItem[] = [
     { label: t('lfs.title'), icon: 'database', disabled: !snapshot, run: () => setLfsOpen(true) },
     {

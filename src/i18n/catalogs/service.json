@@ -654,8 +654,8 @@
     "context": "Cherry-pick eligibility and explicit historical reapplication"
   },
   "service.cherryPickAlreadyIncluded": {
-    "en": "This branch already includes selected commits. Deselect them or explicitly confirm Reapply Historical Commits.",
-    "zh-CN": "当前分支已包含所选提交，请取消选择这些提交，或明确确认重新应用历史提交。",
+    "en": "This branch already includes selected commits. Explicitly confirm reapplication in the Cherry-pick dialog.",
+    "zh-CN": "当前分支历史中已包含所选提交，请在 Cherry-pick 窗口中明确确认重新应用。",
     "review": "translated",
     "context": "Cherry-pick eligibility and explicit historical reapplication"
   },

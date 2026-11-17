@@ -27,10 +27,19 @@ export async function verifyCherryPick(browser, url) {
         commonDir: '/fixture/.git',
         name: 'Cherry fixture',
       };
+      const otherRepo = {
+        ...repo,
+        id: 'other',
+        name: 'Other fixture',
+        root: '/other-fixture',
+        commonDir: '/other-fixture/.git',
+      };
       const commits = [
-        { oid: oid(1), parents: [oid(2)], subject: 'Current HEAD' },
-        { oid: oid(2), parents: [], subject: 'Historical commit' },
+        { oid: oid(1), parents: [oid(4)], subject: 'Current HEAD' },
+        { oid: oid(4), parents: [oid(2), oid(5)], subject: 'Historical merge' },
         { oid: oid(3), parents: [oid(2)], subject: 'Topic commit' },
+        { oid: oid(5), parents: [oid(2)], subject: 'Merged topic' },
+        { oid: oid(2), parents: [], subject: 'Historical commit' },
       ].map((commit) => ({
         ...commit,
         author: 'Fixture',
@@ -64,6 +73,11 @@ export async function verifyCherryPick(browser, url) {
         snapshot.version++;
         window.postMessage({ type: 'changed', repoId: repo.id, snapshot }, '*');
       };
+      fixture.changeHead = (head) => {
+        snapshot.head = head;
+        snapshot.version++;
+        window.postMessage({ type: 'changed', repoId: repo.id, snapshot }, '*');
+      };
       fixture.pause = () => {
         snapshot.operation = {
           kind: 'cherry-pick',
@@ -86,10 +100,19 @@ export async function verifyCherryPick(browser, url) {
         setState: () => {},
         postMessage(request) {
           let result;
-          if (request.method === 'repositories') result = [repo];
-          if (request.method === 'snapshot') result = snapshot;
+          if (request.method === 'repositories') result = [repo, otherRepo];
+          if (request.method === 'snapshot')
+            result = {
+              ...snapshot,
+              repository: request.repoId === 'other' ? otherRepo : repo,
+            };
           if (request.method === 'history')
-            result = { commits, tips: [oid(1), oid(3)], nextOffset: 3, hasMore: false };
+            result = {
+              commits,
+              tips: [oid(1), oid(3)],
+              nextOffset: commits.length,
+              hasMore: false,
+            };
           if (request.method === 'details') {
             const commit = commits.find((commit) => commit.oid === request.payload.oid);
             result = { commit, body: commit?.subject, files: [] };
@@ -105,7 +128,9 @@ export async function verifyCherryPick(browser, url) {
                     result: {
                       head: snapshot.head,
                       branch: snapshot.branch,
-                      included: request.payload.commits.filter((oid) => oid === commits[1].oid),
+                      included: request.payload.commits.filter(
+                        (oid) => oid === commits[4].oid || oid === commits[1].oid,
+                      ),
                     },
                   }),
             });
@@ -142,55 +167,68 @@ export async function verifyCherryPick(browser, url) {
       });
     });
     await page.goto(url);
-    await page.getByRole('option', { name: 'Cherry fixture', exact: true }).dblclick();
+    await page.getByRole('option', { name: /^Cherry fixture(?: ·|$)/ }).dblclick();
     const rows = page.getByTestId('history').locator('[data-oid]'),
       menu = page.getByTestId('context-menu');
-    const cherry = () => menu.getByRole('menuitem', { name: 'Cherry-pick to main', exact: true });
-    const reapply = () =>
-      menu.getByRole('menuitem', { name: 'Reapply Historical Commits…', exact: true });
+    const cherry = () => menu.getByRole('menuitem', { name: 'Cherry-pick to main…', exact: true });
     const flush = () => page.evaluate(() => window.__cherryFixture.flush());
+    const actionCount = () => page.evaluate(() => window.__cherryFixture.actions.length);
+    const checkCount = () => page.evaluate(() => window.__cherryFixture.checks.length);
     const open = async (index) => {
       await rows.nth(index).click();
       await rows.nth(index).click({ button: 'right' });
       await menu.waitFor();
     };
+    const dialog = page.getByRole('dialog');
+    const apply = () => dialog.getByRole('button', { name: 'Apply Commits', exact: true });
+    const reapply = () => dialog.getByRole('button', { name: 'Reapply Commits', exact: true });
+    const begin = async (index) => {
+      const before = await checkCount();
+      await open(index);
+      assert.equal(await checkCount(), before, 'Opening a menu must not query ancestry');
+      assert.equal(await cherry().isEnabled(), true);
+      assert.equal(await menu.getByRole('menuitem', { name: /Reapply/ }).count(), 0);
+      await cherry().click();
+      await dialog.waitFor();
+      await page.waitForFunction(
+        (before) => window.__cherryFixture.checks.length === before + 1,
+        before,
+      );
+      return dialog;
+    };
+    const forceSubmit = () =>
+      dialog
+        .locator('form')
+        .evaluate((form) =>
+          form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
+        );
     await open(0);
     assert.equal(await cherry().isDisabled(), true);
     assert.equal(await cherry().getAttribute('title'), 'This commit is the current branch HEAD.');
-    assert.equal(await reapply().count(), 0);
     await page.keyboard.press('Escape');
+    for (let repeat = 0; repeat < 2; repeat++) {
+      await open(4);
+      assert.equal(await cherry().isEnabled(), true);
+      await page.keyboard.press('Escape');
+    }
+    assert.equal(await checkCount(), 0);
 
-    await open(1);
-    await page.waitForFunction(() => window.__cherryFixture.checks.length === 1);
-    assert.equal(await cherry().isDisabled(), true);
-    assert.match(await cherry().getAttribute('title'), /Checking/);
+    await begin(4);
+    await dialog.getByText('Checking commit ancestry…', { exact: true }).waitFor();
+    assert.equal(await apply().isDisabled(), true);
+    await forceSubmit();
+    assert.equal(await actionCount(), 0);
     await flush();
     await reapply().waitFor();
-    assert.equal(await cherry().isDisabled(), true);
+    await dialog.getByText('Historical commit', { exact: true }).waitFor();
+    await dialog.getByText('Already in branch history', { exact: true }).waitFor();
+    assert.equal(await reapply().isDisabled(), true);
+    await forceSubmit();
+    assert.equal(await actionCount(), 0);
+    await dialog.getByRole('checkbox').check();
     await reapply().click();
-    const dialog = page.getByRole('dialog'),
-      submit = dialog.getByRole('button', { name: 'Reapply Historical Commits…', exact: true });
-    const confirmation = dialog.getByRole('checkbox');
-    assert.equal(await submit.isDisabled(), true);
-    await dialog
-      .locator('form')
-      .evaluate((form) =>
-        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
-      );
-    assert.equal(await page.evaluate(() => window.__cherryFixture.actions.length), 0);
-    await confirmation.check();
-    assert.equal(await submit.isEnabled(), true);
-    await dialog.getByLabel('Commit IDs', { exact: true }).fill('2'.repeat(40));
-    assert.equal(await confirmation.isChecked(), false);
-    assert.equal(await submit.isDisabled(), true);
-    await dialog.getByLabel('Commit IDs', { exact: true }).fill('2'.padStart(40, '0'));
-    await confirmation.check();
-    await page.evaluate(() => window.__cherryFixture.changeBranch('other'));
-    await page.getByTestId('current-branch').getByText('other', { exact: true }).waitFor();
-    await submit.click();
     await dialog.waitFor({ state: 'hidden' });
-    const actions = await page.evaluate(() => window.__cherryFixture.actions);
-    assert.deepEqual(actions[0], {
+    assert.deepEqual(await page.evaluate(() => window.__cherryFixture.actions[0]), {
       type: 'cherry-pick',
       commits: ['2'.padStart(40, '0')],
       mainline: undefined,
@@ -198,40 +236,122 @@ export async function verifyCherryPick(browser, url) {
       expectedBranch: 'main',
       allowIncluded: true,
     });
-    await page.evaluate(() => window.__cherryFixture.changeBranch('main'));
-    await page.getByTestId('current-branch').getByText('main', { exact: true }).waitFor();
 
-    await open(1);
-    await page.waitForFunction(() => window.__cherryFixture.pending.length > 0);
+    // Cancel one pending query and deliver its late response while another dialog is open.
+    await begin(4);
     await page.keyboard.press('Escape');
-    await open(2);
-    await page.waitForFunction(
-      () => window.__cherryFixture.checks.at(-1)?.commits[0] === '3'.padStart(40, '0'),
-    );
-    assert.equal(await cherry().isDisabled(), true);
+    await begin(2);
     await flush();
-    await page.waitForFunction(
-      () => !document.querySelector('[role="menuitem"][title*="Checking"]'),
-    );
-    assert.equal(
-      await cherry().isEnabled(),
-      true,
-      'A cancelled historical check must not disable an unrelated selection',
-    );
-    assert.equal(await reapply().count(), 0);
-    await page.keyboard.press('Escape');
+    await apply().waitFor();
+    assert.equal(await apply().isEnabled(), true);
+    assert.equal(await dialog.getByRole('checkbox').count(), 0);
+    assert.equal(await actionCount(), 1, 'A successful check must still wait for confirmation');
+    await apply().click();
+    await dialog.waitFor({ state: 'hidden' });
+    assert.deepEqual(await page.evaluate(() => window.__cherryFixture.actions.at(-1)), {
+      type: 'cherry-pick',
+      commits: ['3'.padStart(40, '0')],
+      mainline: undefined,
+      expectedHead: '1'.padStart(40, '0'),
+      expectedBranch: 'main',
+    });
+
     await page.evaluate(() => {
       window.__cherryFixture.fail = true;
     });
-    await open(1);
+    await begin(4);
+    await flush();
+    await dialog.getByRole('alert').waitFor();
+    assert.equal(await apply().isDisabled(), true);
+    await forceSubmit();
+    assert.equal(await actionCount(), 2);
+    await page.evaluate(() => {
+      window.__cherryFixture.fail = false;
+    });
+    await dialog.getByRole('button', { name: 'Retry ancestry check', exact: true }).click();
+    await page.waitForFunction(() => window.__cherryFixture.pending.length > 0);
+    assert.equal(await apply().isDisabled(), true);
+    await flush();
+    await reapply().waitFor();
+    assert.equal(await dialog.getByRole('checkbox').isChecked(), false);
+    await page.keyboard.press('Escape');
+
+    // Merge parent choice and explicit reapplication stay in this same dialog.
+    await begin(1);
+    await flush();
+    await reapply().waitFor();
+    const mainline = dialog.getByLabel('Mainline Parent (Merge Commits only)', { exact: true });
+    await dialog.getByRole('checkbox').check();
+    assert.equal(await reapply().isDisabled(), true);
+    await mainline.selectOption('1');
+    assert.equal(await dialog.getByRole('checkbox').isChecked(), false);
+    await dialog.getByRole('checkbox').check();
+    await reapply().click();
+    await dialog.waitFor({ state: 'hidden' });
+    assert.equal(await page.evaluate(() => window.__cherryFixture.actions.at(-1).mainline), 1);
+
+    // Mixed selections are all listed and applied, with no silent filtering of existing history.
+    await rows.nth(4).click();
+    await rows.nth(2).click({ modifiers: ['Control'] });
+    await rows.nth(4).click({ button: 'right' });
+    await menu
+      .getByRole('menuitem', { name: 'Cherry-pick 2 Commits to main…', exact: true })
+      .click();
     await page.waitForFunction(() => window.__cherryFixture.pending.length > 0);
     await flush();
-    await page.waitForFunction(() =>
-      document.querySelector('[role="menuitem"][title*="Could not check"]'),
+    await reapply().waitFor();
+    await dialog.getByText('Topic commit', { exact: true }).waitFor();
+    await dialog.getByText('Historical commit', { exact: true }).waitFor();
+    assert.equal(await dialog.getByText('Already in branch history', { exact: true }).count(), 1);
+    await dialog.getByRole('checkbox').check();
+    await reapply().click();
+    await dialog.waitFor({ state: 'hidden' });
+    assert.deepEqual(await page.evaluate(() => window.__cherryFixture.actions.at(-1).commits), [
+      '2'.padStart(40, '0'),
+      '3'.padStart(40, '0'),
+    ]);
+
+    const beforeStale = await actionCount();
+    await begin(4);
+    await flush();
+    await reapply().waitFor();
+    await dialog.getByRole('checkbox').check();
+    await page.evaluate(() => window.__cherryFixture.changeBranch('other'));
+    await dialog.getByRole('alert').waitFor();
+    await forceSubmit();
+    assert.equal(await actionCount(), beforeStale);
+    await page.evaluate(() => window.__cherryFixture.changeBranch('main'));
+    await page.getByTestId('current-branch').getByText('main', { exact: true }).waitFor();
+    assert.equal(
+      await apply().isDisabled(),
+      true,
+      'Returning to the old branch must not restore confirmation',
     );
-    assert.equal(await cherry().isDisabled(), true);
-    assert.equal(await reapply().count(), 0);
     await page.keyboard.press('Escape');
+
+    await begin(4);
+    await page.evaluate(() => window.__cherryFixture.changeHead('5'.padStart(40, '0')));
+    await dialog.getByRole('alert').waitFor();
+    await flush();
+    assert.equal(await apply().isDisabled(), true);
+    await forceSubmit();
+    assert.equal(await actionCount(), beforeStale);
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => window.__cherryFixture.changeHead('1'.padStart(40, '0')));
+
+    // Switching away and back cannot reuse a pending query or reopen its confirmation.
+    await begin(4);
+    // Dispatch the repository activation event to simulate a host-driven switch behind the modal.
+    await page
+      .getByRole('option', { name: /^Other fixture(?: ·|$)/ })
+      .locator('.repository-item')
+      .dispatchEvent('dblclick');
+    await dialog.waitFor({ state: 'hidden' });
+    await page.getByRole('option', { name: /^Cherry fixture(?: ·|$)/ }).dblclick();
+    await flush();
+    assert.equal(await dialog.count(), 0);
+    assert.equal(await actionCount(), beforeStale);
+    const recoveryStart = beforeStale;
     await page.evaluate(() => window.__cherryFixture.pause());
     const notice = page.getByTestId('operation-notice');
     const skip = notice.getByRole('button', { name: 'Skip', exact: true });
@@ -248,13 +368,13 @@ export async function verifyCherryPick(browser, url) {
         .evaluate((button) => button === document.activeElement),
       true,
     );
-    assert.equal(await page.evaluate(() => window.__cherryFixture.actions.length), 1);
+    assert.equal(await page.evaluate(() => window.__cherryFixture.actions.length), recoveryStart);
     await page.keyboard.press('Enter');
     await skipDialog.waitFor({ state: 'hidden' });
     await skip.click();
     await page.keyboard.press('Escape');
     await skipDialog.waitFor({ state: 'hidden' });
-    assert.equal(await page.evaluate(() => window.__cherryFixture.actions.length), 1);
+    assert.equal(await page.evaluate(() => window.__cherryFixture.actions.length), recoveryStart);
     await skip.click();
     await skipDialog.getByRole('button', { name: 'Confirm Skip', exact: true }).click();
     await notice.waitFor({ state: 'hidden' });
@@ -277,7 +397,10 @@ export async function verifyCherryPick(browser, url) {
     );
     await page.keyboard.press('Enter');
     await abortDialog.waitFor({ state: 'hidden' });
-    assert.equal(await page.evaluate(() => window.__cherryFixture.actions.length), 2);
+    assert.equal(
+      await page.evaluate(() => window.__cherryFixture.actions.length),
+      recoveryStart + 1,
+    );
     await abort.click();
     await abortDialog.getByRole('button', { name: 'Confirm Abort', exact: true }).click();
     await notice.waitFor({ state: 'hidden' });
@@ -298,7 +421,10 @@ export async function verifyCherryPick(browser, url) {
     await quitDialog.getByText(/including unresolved conflicts/).waitFor();
     await verifyConfirmationFooter(quitDialog, 'Quit & Keep Files', 'primary');
     await quitDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
-    assert.equal(await page.evaluate(() => window.__cherryFixture.actions.length), 3);
+    assert.equal(
+      await page.evaluate(() => window.__cherryFixture.actions.length),
+      recoveryStart + 2,
+    );
     await quit.click();
     await quitDialog.getByRole('button', { name: 'Quit & Keep Files', exact: true }).click();
     await notice.getByText('Unresolved conflicts', { exact: true }).waitFor();
@@ -319,6 +445,10 @@ export async function verifyCherryPick(browser, url) {
       .getByRole('button', { name: 'staged.txt', exact: true })
       .waitFor();
     assert.deepEqual(errors, []);
+  } catch (error) {
+    await page.screenshot({ path: 'artifacts/cherry-pick-failure.png' });
+    console.error('CHERRY_PICK_DIAGNOSTICS', errors, await page.locator('body').innerText());
+    throw error;
   } finally {
     await page.close();
   }

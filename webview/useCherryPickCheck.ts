@@ -1,62 +1,72 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CherryPickCheck } from '../src/protocol/types';
-import type { MenuTarget } from './menus';
-import { rpc } from './rpc';
+import { rpc, RpcError } from './rpc';
+import { isActionContextCurrent, useWorkbench, type RepositoryActionContext } from './store';
 
-export interface CherryPickMenuCheck {
-  included: string[];
-  failed?: boolean;
-}
-
-/** Results belong to one repository, branch, HEAD and selection, never to the graph page. */
+/** Check only an opened action dialog, bound to its original repository, branch and HEAD. */
 export function useCherryPickCheck(
-  repoId: string | undefined,
-  head: string | undefined,
+  context: RepositoryActionContext,
+  head: string,
   branch: string | undefined,
-  target?: MenuTarget,
-): CherryPickMenuCheck | undefined {
-  const commits =
-    target?.kind === 'commit' ? [...new Set(target.oids?.length ? target.oids : [target.oid])] : [];
-  const selection = JSON.stringify(commits);
-  const key = JSON.stringify([repoId, head, branch, selection]);
+  commits?: string[],
+) {
+  const [revision, setRevision] = useState(0);
+  const key = JSON.stringify([context.repoId, context.epoch, head, branch, commits, revision]);
   const [result, setResult] = useState<{
     key: string;
-    target: MenuTarget;
-    check: CherryPickMenuCheck;
+    check?: CherryPickCheck;
+    failed?: boolean;
+    changed?: boolean;
   }>();
+  const invalidated = useRef(false);
+  const isCurrent = () => {
+    const snapshot = useWorkbench.getState().snapshot;
+    return (
+      !invalidated.current &&
+      isActionContextCurrent(context) &&
+      snapshot?.head === head &&
+      snapshot?.branch === branch
+    );
+  };
+  invalidated.current ||= !!commits && !isCurrent();
+  const current = !invalidated.current;
   useEffect(() => {
-    if (!repoId || !head || !branch || target?.kind !== 'commit' || !commits.length) return;
+    if (!context.repoId || !head || !branch || !commits?.length || !current) return;
     let active = true;
-    if (commits.includes(head)) {
-      setResult({ key, target, check: { included: [head] } });
-      return;
-    }
     const controller = new AbortController();
     void rpc<CherryPickCheck>(
       'cherryPickCheck',
-      repoId,
+      context.repoId,
       { commits, expectedHead: head, expectedBranch: branch },
       { signal: controller.signal },
     ).then(
       (check) => {
-        if (active)
+        if (active && isCurrent())
           setResult({
             key,
-            target,
-            check:
-              check.head === head && check.branch === branch
-                ? { included: check.included }
-                : { included: [], failed: true },
+            ...(check.head === head && check.branch === branch ? { check } : { changed: true }),
           });
       },
-      () => {
-        if (active) setResult({ key, target, check: { included: [], failed: true } });
+      (error) => {
+        if (active && isCurrent())
+          setResult({
+            key,
+            ...(error instanceof RpcError && error.code === 'OPERATION_CHANGED'
+              ? { changed: true }
+              : { failed: true }),
+          });
       },
     );
     return () => {
       active = false;
       controller.abort();
     };
-  }, [key, target]);
-  return result?.key === key && result.target === target ? result.check : undefined;
+  }, [key, current]);
+  const matching = result?.key === key ? result : undefined;
+  return {
+    check: current ? matching?.check : undefined,
+    failed: !!matching?.failed,
+    changed: !current || !!matching?.changed,
+    retry: () => setRevision((previous) => previous + 1),
+  };
 }
